@@ -1,0 +1,96 @@
+name: Deploy to Azure
+
+# Builds the API image, pushes it to Azure Container Registry, and rolls it out
+# to Azure Container Apps.
+#
+# Auth is OIDC federated credentials — GitHub mints a short-lived token per run
+# and Azure trusts it. There is deliberately no AZURE_CREDENTIALS secret and no
+# service-principal password anywhere in this repo (CLAUDE.md: never commit
+# tokens or connection strings). Run `infra/azure/bootstrap.sh` once to create
+# the federation.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  id-token: write # required to request the OIDC token
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false # never cancel a deploy mid-rollout
+
+jobs:
+  deploy:
+    name: Build & deploy API
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Gate the deploy on the same invariants CI enforces. A green deploy of a
+      # build that leaks genome-scoped data would be worse than no deploy.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push image to ACR
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_ACR_NAME }}" \
+            --image "sparksocial-api:${{ github.sha }}" \
+            --image "sparksocial-api:latest" \
+            --file apps/api/Dockerfile \
+            .
+
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sparksocial-api:${{ github.sha }}" \
+            --set-env-vars REVISION="${{ github.sha }}" NODE_ENV=production
+
+      # The cheapest possible answer to "did the deploy actually land?" — read
+      # the commit SHA back off the running service rather than trusting that
+      # `az containerapp update` returning 0 means traffic shifted.
+      - name: Verify the running revision
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+
+          echo "Probing https://$FQDN/health"
+          for attempt in $(seq 1 30); do
+            LIVE=$(curl -fsS "https://$FQDN/health" | jq -r '.revision // empty' || true)
+            if [ "$LIVE" = "${{ github.sha }}" ]; then
+              echo "Revision ${{ github.sha }} is live."
+              exit 0
+            fi
+            echo "attempt $attempt: serving '${LIVE:-<unreachable>}', waiting…"
+            sleep 10
+          done
+
+          echo "::error::Deploy did not converge — /health never reported ${{ github.sha }}."
+          exit 1

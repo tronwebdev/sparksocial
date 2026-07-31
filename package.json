@@ -1,0 +1,28 @@
+{
+  "name": "sparksocial",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Agent-first, autonomous social-media content platform (SPARK).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:policy": "vitest run packages/tools/test/policy.test.ts",
+    "test:isolation": "vitest run packages/db/test/isolation.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

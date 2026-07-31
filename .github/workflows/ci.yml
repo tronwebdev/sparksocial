@@ -1,0 +1,80 @@
+name: CI
+
+# Runs on every push and PR. The two jobs that matter are `guardrails` — they
+# encode CLAUDE.md invariants 2 and 3 as build failures rather than as review
+# comments, which is the only way those rules survive contact with a deadline.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: Typecheck & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+  guardrails:
+    name: Architecture invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # CLAUDE.md invariant 2 — genome isolation is a repository predicate.
+      # Fails the build if any module reaches a scoped table directly.
+      - name: Genome isolation
+        run: npm run test:isolation
+
+      # CLAUDE.md invariant 3 — the policy engine is pure and fully covered.
+      # The 100% branch threshold is enforced in vitest.config.ts, so an
+      # unreachable-but-untested governance branch fails here.
+      - name: Policy engine coverage
+        run: npx vitest run --coverage
+
+  secrets-scan:
+    name: No committed secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # CLAUDE.md: never commit tokens, PATs, or connection strings. Azure auth
+      # is Key Vault + Managed Identity in cloud and `az login` locally, so a
+      # connection string appearing in the tree is always a mistake.
+      - name: Scan history for credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
