@@ -3,7 +3,8 @@ import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
-import { devCaptionClient, devEmbedClient } from './dev-vendors.js';
+import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
+import { devCaptionClient, devEmbedClient, devBriefWriter } from './dev-vendors.js';
 
 /**
  * Explicit registration of the tools in the Aug 29 alpha scope.
@@ -27,4 +28,8 @@ export function registerAlphaTools(): void {
   register(makeAssetIngestUrl({ ...devCaptionClient(), ...devEmbedClient() }));
   register(makeAssetRetrieve(devEmbedClient()));
   register(assetGaps);
+
+  // Capture loop (§6.2, §6.3): the moat.
+  register(makeBriefGenerate(devBriefWriter()));
+  register(makeSessionBatch(devBriefWriter()));
 }

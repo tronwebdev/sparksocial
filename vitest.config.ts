@@ -32,6 +32,7 @@ export default defineConfig({
       "@sparksocial/genome": r("./packages/genome/src/index.ts"),
       "@sparksocial/playbooks": r("./packages/playbooks/src/index.ts"),
       "@sparksocial/assetgraph": r("./packages/assetgraph/src/index.ts"),
+      "@sparksocial/capture": r("./packages/capture/src/index.ts"),
     },
   },
 });
