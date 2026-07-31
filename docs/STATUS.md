@@ -26,15 +26,28 @@ have been expensive to get wrong, because everything downstream indexes on it.
 The P1 exit criterion holds and is under test: a UI click and a SPARK request for the
 same capability produce `tool_calls` rows that differ only in `caller`, `id`, and actor.
 
+**The §13 acceptance test is now executable** (`packages/playbooks/test/golden.test.ts`),
+covering the three named cases plus four long-tail ones. Live output from
+`playbook.resolve`, one engine, no rule written for any of them:
+
+| | top format | mode | mix |
+|---|---|---|---|
+| Lagos barbershop | `craft_capture` *(needs filming)* | Direct+Finish, 6 of 11 | community 40 / product 20 / personality 20 |
+| Toronto B2B SaaS | `workflow_clip` | Assemble, 0 filming | educational 50 / product 25 / proof 15 |
+| Manila freelancer | `before_after_transformation` | Assemble | educational 35 / personality 30 / proof 25 |
+
+The eval was **mutation-tested rather than trusted**. Four deliberate regressions are
+each caught: dropping the unlockable `direct_finish` rule, removing the §10 likeness
+gate, raising the promotional ceiling, and classifying on the wrong dimension. The
+ceiling assertion originally used the imported constant — a tautology that let one
+mutation through — and now uses the spec's literal.
+
 ## Not built yet
 
 Ordered by what blocks what.
 
 | Gap | Spec | Blocks |
 |---|---|---|
-| Full Genome schema — only `dimensions` exists; missing identity, voice, audience, offer, constraints, learned | §3.2 | everything downstream |
-| Playbook records + resolver | §5.1–5.3 | the engine |
-| Mix engine + cold-start weights | §7.1 | correct ratios |
 | Asset Graph: captioning, embeddings, retrieval, gap detection | §4 | Assemble |
 | Capture brief generation + validator | §6.2 | Direct+Finish |
 | Finish pipeline (trim/stabilize/caption/hook/music/export) | §6.3 | Direct+Finish |
@@ -43,24 +56,20 @@ Ordered by what blocks what.
 | Postgres persistence — audit rows are in-memory | Plan §5 | everything real |
 | Clerk auth — dev resolver trusts headers | Plan §2.2 | any deployment |
 
-## The recommendation
+## Next
 
-**Write the §13 acceptance test as a failing eval harness before building the resolver.**
+The eval harness recommendation is **done** — see above. What follows from it:
 
-Both the engine spec §13 and the outcomes doc Part 4 state the same bar: a Lagos
-barbershop, a Toronto B2B SaaS, and a Manila freelance web designer each answer five
-questions and get a month of content a competent marketer would call correct — with
-nobody having authored a rule for any of those three. Plan §11 formalises it as 40
-synthetic workspaces with **zero anti-pattern selections**.
+**Grow the golden set toward plan §11's 40 workspaces.** Seven cases is enough to
+catch the obvious anti-patterns; forty is what the plan asks for, and each new one is
+cheap now that the harness exists. Add them as real design partners are signed, so the
+fixtures track reality rather than imagination.
 
-That is mechanically testable, and right now nothing measures it. The same discipline
-that just worked for the policy engine and the isolation rule applies here, and it
-matters more: "fit is the product" (§0), so an unfalsifiable resolver is the one
-component we cannot afford to write on vibes. Concretely — assert that the barbershop
-never resolves an avatar playbook, that the SaaS never resolves a generated quote card,
-that no genome exceeds 35% promotional, and that local businesses land near 20%.
+**The Asset Graph is the next blocker.** The resolver takes an asset inventory as
+input and nothing produces one yet. Until captioning, embedding and `asset.gaps` land,
+Assemble cannot retrieve and the capture loop has nothing to close against.
 
-Two supporting calls:
+Two standing calls:
 
 **Trim the tool count for the alpha.** Plan §3.2 targets ~135 tools at GA. The Aug 29
 scope needs roughly 30. Building the registry breadth-first would consume the month
