@@ -24,6 +24,8 @@
       "@sparksocial/genome/*": ["packages/genome/src/*"],
       "@sparksocial/playbooks/*": ["packages/playbooks/src/*"],
       "@sparksocial/playbooks": ["packages/playbooks/src/index.ts"],
+      "@sparksocial/assetgraph/*": ["packages/assetgraph/src/*"],
+      "@sparksocial/assetgraph": ["packages/assetgraph/src/index.ts"],
       "@sparksocial/genome": ["packages/genome/src/index.ts"]
     }
   },

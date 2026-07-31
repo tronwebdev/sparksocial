@@ -66,7 +66,11 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => undefined,
       },
-      assets: { inventory: async () => ({}) },
+      assets: {
+        inventory: async () => ({}),
+        retrieve: async () => [],
+        create: async () => ({ id: 'asset_1' }),
+      },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n, fn) => fn(), event: () => {} },

@@ -2,6 +2,8 @@ import { register } from '@sparksocial/tools';
 import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
+import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
+import { devCaptionClient, devEmbedClient } from './dev-vendors.js';
 
 /**
  * Explicit registration of the tools in the Aug 29 alpha scope.
@@ -20,4 +22,9 @@ export function registerAlphaTools(): void {
 
   // Content engine: rank what this brand can actually make.
   register(playbookResolve);
+
+  // Asset Graph (§4): grow it, query it, know what it's missing.
+  register(makeAssetIngestUrl({ ...devCaptionClient(), ...devEmbedClient() }));
+  register(makeAssetRetrieve(devEmbedClient()));
+  register(assetGaps);
 }

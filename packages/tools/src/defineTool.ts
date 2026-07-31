@@ -60,8 +60,42 @@ export interface ScopedDb {
     get(genomeId: string, orgId: string): Promise<Genome | undefined>;
   };
   assets: {
-    /** Counts by asset_role for the genome — the resolver's availability input. */
+    /**
+     * Counts by asset_role for the genome — the resolver's availability input.
+     * Must reflect assets actually ingested via `create`; a store that returns
+     * static counts here would make `playbook.resolve` lie about the Asset Graph.
+     */
     inventory(genomeId: string, orgId: string): Promise<Partial<Record<AssetRole, number>>>;
+    /** §4.3 retrieval — ranked by similarity minus recency/usage penalties. */
+    retrieve(args: {
+      genomeId: string;
+      orgId: string;
+      embedding: number[];
+      requiredRoles?: AssetRole[];
+      k: number;
+    }): Promise<
+      Array<{
+        assetId: string;
+        role: AssetRole;
+        caption: string | null;
+        score: number;
+        usageCount: number;
+        lastUsedAt: Date | null;
+        rightsStatus: string;
+      }>
+    >;
+    /** §4.1 ingest — the only way a new asset enters the graph. */
+    create(args: {
+      genomeId: string;
+      orgId: string;
+      url: string;
+      assetRole: AssetRole;
+      mediaType: 'image' | 'video' | 'audio';
+      rightsStatus: 'cleared' | 'pending' | 'restricted';
+      caption: string;
+      embedding: number[];
+      source: string;
+    }): Promise<{ id: string }>;
   };
 }
 
