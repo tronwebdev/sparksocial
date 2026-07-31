@@ -1,6 +1,7 @@
 import { register } from '@sparksocial/tools';
 import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
+import { playbookResolve } from '@sparksocial/playbooks/tools';
 
 /**
  * Explicit registration of the tools in the Aug 29 alpha scope.
@@ -16,4 +17,7 @@ export function registerAlphaTools(): void {
   // ONB-01 → ONB-06: the five-question onboarding.
   register(genomeBootstrapFromUrl);
   register(genomeDimensionsSet);
+
+  // Content engine: rank what this brand can actually make.
+  register(playbookResolve);
 }

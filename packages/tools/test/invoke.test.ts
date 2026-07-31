@@ -64,7 +64,9 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       genomes: {
         createDraft: async () => ({ id: 'gen_draft' }),
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
+        get: async () => undefined,
       },
+      assets: { inventory: async () => ({}) },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n, fn) => fn(), event: () => {} },

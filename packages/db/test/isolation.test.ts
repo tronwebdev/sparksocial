@@ -64,22 +64,33 @@ describe('static check — raw queries cannot bypass the scoped layer', () => {
   });
 
   it.each([...SCOPED_TABLE_NAMES])(
-    'no module outside scoped.ts references the `%s` table',
+    'no module outside scoped.ts imports the `%s` table',
     (table) => {
       const offenders: string[] = [];
 
       for (const file of sourceFiles()) {
         if (ALLOWED.has(file)) continue;
-        const src = readFileSync(join(REPO_ROOT, file), 'utf8');
+        const src = stripComments(readFileSync(join(REPO_ROOT, file), 'utf8'));
 
-        // Match the table as an identifier — `assets.embedding`, `from(assets)`,
-        // `{ assets }` — but not `assetsScoped` or a word inside a comment sentence.
-        const asIdentifier = new RegExp(`\\b${table}\\b\\s*[.,)\\]}]`, 'm');
-        const asImport = new RegExp(`import[^;]*\\b${table}\\b[^;]*from\\s+['"][^'"]*schema`, 'm');
+        // Checking *imports* rather than bare identifiers is what makes this
+        // precise. A Drizzle table cannot be referenced without being imported —
+        // module scope guarantees it — whereas an identifier scan flags every
+        // unrelated property that happens to be called `assets`, which is common
+        // enough that the guard would get muted within a week.
+        //
+        // `packages/db/src/index.ts` does not re-export `./schema.js`, so a named
+        // import is the only route in and this pattern sees all of them.
+        const named = new RegExp(
+          `import\\s+(?:type\\s+)?\\{[^}]*\\b${table}\\b[^}]*\\}\\s*from`,
+          'm',
+        );
 
-        if (asImport.test(src) || asIdentifier.test(stripComments(src))) {
-          offenders.push(file);
-        }
+        // ...and the namespace form, `import * as schema from './schema.js'`
+        // followed by `schema.assets`.
+        const nsMatch = /import\s+\*\s+as\s+(\w+)\s+from\s+['"][^'"]*(?:schema|@sparksocial\/db)/m.exec(src);
+        const viaNamespace = nsMatch ? new RegExp(`\\b${nsMatch[1]}\\.${table}\\b`, 'm').test(src) : false;
+
+        if (named.test(src) || viaNamespace) offenders.push(file);
       }
 
       expect(
@@ -90,6 +101,14 @@ describe('static check — raw queries cannot bypass the scoped layer', () => {
       ).toEqual([]);
     },
   );
+
+  it('the db barrel does not re-export the scoped tables', () => {
+    // If `index.ts` re-exported `./schema.js`, any module could reach a table via
+    // `import { assets } from '@sparksocial/db'` while looking entirely innocent,
+    // and the guard above would be relying on luck.
+    const barrel = readFileSync(join(REPO_ROOT, 'packages', 'db', 'src', 'index.ts'), 'utf8');
+    expect(stripComments(barrel)).not.toMatch(/export\s+\*\s+from\s+['"]\.\/schema/);
+  });
 });
 
 /** Crude but sufficient: prevents prose in doc comments tripping the identifier match. */

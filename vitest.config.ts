@@ -30,6 +30,7 @@ export default defineConfig({
       "@sparksocial/tools/defineTool": r("./packages/tools/src/defineTool.ts"),
       "@sparksocial/tools": r("./packages/tools/src/index.ts"),
       "@sparksocial/genome": r("./packages/genome/src/index.ts"),
+      "@sparksocial/playbooks": r("./packages/playbooks/src/index.ts"),
     },
   },
 });

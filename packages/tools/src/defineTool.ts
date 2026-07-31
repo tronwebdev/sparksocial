@@ -1,5 +1,6 @@
 import { z, ZodTypeAny } from 'zod';
-import type { Role, Effect, Autonomy } from '@sparksocial/shared/types';
+import type { Role, Effect, Autonomy, AssetRole } from '@sparksocial/shared/types';
+import type { Genome } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
 
@@ -55,6 +56,12 @@ export interface ScopedDb {
       dimensions: unknown;
       avatarEnabled: boolean;
     }): Promise<{ id: string; version: number }>;
+    /** Scoped read. Returns undefined rather than throwing when out of scope. */
+    get(genomeId: string, orgId: string): Promise<Genome | undefined>;
+  };
+  assets: {
+    /** Counts by asset_role for the genome — the resolver's availability input. */
+    inventory(genomeId: string, orgId: string): Promise<Partial<Record<AssetRole, number>>>;
   };
 }
 

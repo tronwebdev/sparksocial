@@ -1,5 +1,6 @@
 import type { ToolCtx } from '@sparksocial/tools';
 import type { Role } from '@sparksocial/shared/types';
+import { createDevStore } from './dev-store.js';
 
 /**
  * DEVELOPMENT AUTH ONLY.
@@ -14,6 +15,9 @@ import type { Role } from '@sparksocial/shared/types';
  * from the membership claim.
  */
 
+/** One store per process, seeded with the golden set. */
+const store = createDevStore();
+
 export async function devResolveCtx(req: Request): Promise<ToolCtx & { caller: 'user' | 'agent' }> {
   const h = req.headers;
   return {
@@ -26,12 +30,7 @@ export async function devResolveCtx(req: Request): Promise<ToolCtx & { caller: '
     caller: h.get('x-caller') === 'agent' ? 'agent' : 'user',
     approvalMode: 'autopublish',
     budget: { remainingCents: 100_000, monthlyCapCents: 100_000 },
-    db: {
-      genomes: {
-        createDraft: async () => ({ id: `gen_draft_${Date.now()}` }),
-        patchDimensions: async ({ genomeId }) => ({ id: genomeId, version: 1 }),
-      },
-    },
+    db: store,
     logger: {
       info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),
       warn: (m, meta) => console.warn(`[warn] ${m}`, meta ?? ''),
