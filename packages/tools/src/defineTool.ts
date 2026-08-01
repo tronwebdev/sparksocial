@@ -96,6 +96,27 @@ export interface ScopedDb {
       embedding: number[];
       source: string;
     }): Promise<{ id: string }>;
+    /** Concatenatable grounding text for `guard.claim_grounding` (§10). */
+    captionsByRole(genomeId: string, orgId: string, roles: AssetRole[]): Promise<string[]>;
+    /** Rights + reuse-cooldown lookup for `guard.rights` / `guard.duplicate` (§10). */
+    info(
+      ids: string[],
+      genomeId: string,
+      orgId: string,
+    ): Promise<Record<string, { rightsStatus: string; lastUsedDaysAgo?: number }>>;
+  };
+  /** Published content history — the guardrail layer's only reader of it. */
+  content: {
+    /**
+     * Trailing-window published items for `guard.avatar_saturation` and
+     * `guard.duplicate` (§10). `embedding` is null for items that predate
+     * embedding or aren't text-bearing.
+     */
+    recent(
+      genomeId: string,
+      orgId: string,
+      windowDays: number,
+    ): Promise<Array<{ isAvatarFormat: boolean; embedding: number[] | null }>>;
   };
 }
 

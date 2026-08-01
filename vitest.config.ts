@@ -33,6 +33,7 @@ export default defineConfig({
       "@sparksocial/playbooks": r("./packages/playbooks/src/index.ts"),
       "@sparksocial/assetgraph": r("./packages/assetgraph/src/index.ts"),
       "@sparksocial/capture": r("./packages/capture/src/index.ts"),
+      "@sparksocial/guardrails": r("./packages/guardrails/src/index.ts"),
     },
   },
 });

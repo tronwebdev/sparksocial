@@ -43,6 +43,14 @@ interface AssetRow {
   source: string;
 }
 
+interface ContentRow {
+  genomeId: string;
+  orgId: string;
+  isAvatarFormat: boolean;
+  embedding: number[] | null;
+  publishedAt: Date;
+}
+
 /** Exported so dev-vendors.ts's fake embed client produces compatible vectors. */
 export const EMBED_DIM = 8;
 
@@ -84,6 +92,7 @@ function score(a: AssetRow, queryEmbedding: number[], now: Date, cooldownDays = 
 export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: number } {
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
+  const content: ContentRow[] = [];
 
   for (const c of GOLDEN_SET) {
     genomes.set(c.genome.genome_id, { genome: c.genome, orgId });
@@ -108,6 +117,37 @@ export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: numbe
         });
       }
     }
+  }
+
+  // Seed a little publishing history so avatar_saturation and duplicate have
+  // something real to evaluate against, rather than always trivially passing
+  // on an empty window.
+  const freelancer = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_freelancer');
+  if (freelancer) {
+    const now = Date.now();
+    // 3 avatar-format posts already in the trailing 30 days — one more avatar
+    // post would put this genome at 4-of-5 (80%), well over the 30% cap.
+    for (let i = 0; i < 3; i++) {
+      content.push({
+        genomeId: freelancer.genome.genome_id,
+        orgId,
+        isAvatarFormat: true,
+        embedding: deterministicEmbedding(`freelancer_avatar_${i}`),
+        publishedAt: new Date(now - i * 86_400_000),
+      });
+    }
+  }
+  const barber = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_barber');
+  if (barber) {
+    // A published post whose embedding the demo can deliberately restate, to
+    // show the duplicate guardrail actually firing rather than always passing.
+    content.push({
+      genomeId: barber.genome.genome_id,
+      orgId,
+      isAvatarFormat: false,
+      embedding: deterministicEmbedding('the fade finishing, up close, no talking'),
+      publishedAt: new Date(),
+    });
   }
 
   let nextDraft = 1;
@@ -193,6 +233,35 @@ export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: numbe
           source,
         });
         return { id };
+      },
+
+      async captionsByRole(genomeId, org, roles) {
+        return [...assets.values()]
+          .filter((a) => a.genomeId === genomeId && a.orgId === org && roles.includes(a.role))
+          .map((a) => a.caption);
+      },
+
+      async info(ids, genomeId, org) {
+        const now = Date.now();
+        const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number }> = {};
+        for (const id of ids) {
+          const a = assets.get(id);
+          if (!a || a.genomeId !== genomeId || a.orgId !== org) continue;
+          out[id] = {
+            rightsStatus: a.rightsStatus,
+            lastUsedDaysAgo: a.lastUsedAt ? (now - a.lastUsedAt.getTime()) / 86_400_000 : undefined,
+          };
+        }
+        return out;
+      },
+    },
+
+    content: {
+      async recent(genomeId, org, windowDays) {
+        const cutoff = Date.now() - windowDays * 86_400_000;
+        return content
+          .filter((c) => c.genomeId === genomeId && c.orgId === org && c.publishedAt.getTime() >= cutoff)
+          .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
     },
   };

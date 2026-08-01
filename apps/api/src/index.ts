@@ -1,7 +1,9 @@
 import { serve } from '@hono/node-server';
+import { makeRunGuardrails } from '@sparksocial/guardrails';
 import { createApp, memoryInvokeDeps } from './app.js';
 import { registerAlphaTools } from './tools.js';
 import { devResolveCtx, devBrandGovernance } from './dev-auth.js';
+import { devEmbedClient } from './dev-vendors.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -30,7 +32,9 @@ if (env === 'production' && process.env.ALLOW_DEV_AUTH !== 'true') {
 const app = createApp({
   resolveCtx: devResolveCtx,
   loadBrandGovernance: devBrandGovernance,
-  invokeDeps: memoryInvokeDeps(),
+  // Wired now so the moment a tool declares `guardrails: [...]` on itself,
+  // enforcement is live — no plumbing to add later.
+  invokeDeps: memoryInvokeDeps({ runGuardrails: makeRunGuardrails(devEmbedClient()) }),
   ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
 });
 

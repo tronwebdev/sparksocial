@@ -147,10 +147,11 @@ function errorBody(e: unknown, fallback: ToolError['code']) {
 }
 
 /** In-memory audit sink. Development and tests only — production writes Postgres. */
-export function memoryInvokeDeps(): InvokeDeps & { rows: ToolCallRecord[] } {
+export function memoryInvokeDeps(over: Partial<InvokeDeps> = {}): InvokeDeps & { rows: ToolCallRecord[] } {
   const rows: ToolCallRecord[] = [];
   return {
     rows,
     writeToolCall: async (r) => void rows.push(r),
+    ...over,
   };
 }

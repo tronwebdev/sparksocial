@@ -28,6 +28,8 @@
       "@sparksocial/assetgraph": ["packages/assetgraph/src/index.ts"],
       "@sparksocial/capture/*": ["packages/capture/src/*"],
       "@sparksocial/capture": ["packages/capture/src/index.ts"],
+      "@sparksocial/guardrails/*": ["packages/guardrails/src/*"],
+      "@sparksocial/guardrails": ["packages/guardrails/src/index.ts"],
       "@sparksocial/genome": ["packages/genome/src/index.ts"]
     }
   },

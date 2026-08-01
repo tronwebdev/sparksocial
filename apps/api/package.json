@@ -18,6 +18,7 @@
     "zod": "^3.23.8",
     "@sparksocial/playbooks": "*",
     "@sparksocial/assetgraph": "*",
-    "@sparksocial/capture": "*"
+    "@sparksocial/capture": "*",
+    "@sparksocial/guardrails": "*"
   }
 }

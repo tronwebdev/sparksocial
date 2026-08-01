@@ -4,6 +4,7 @@ import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
+import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { devCaptionClient, devEmbedClient, devBriefWriter } from './dev-vendors.js';
 
 /**
@@ -32,4 +33,7 @@ export function registerAlphaTools(): void {
   // Capture loop (§6.2, §6.3): the moat.
   register(makeBriefGenerate(devBriefWriter()));
   register(makeSessionBatch(devBriefWriter()));
+
+  // Guardrails (§10): report every check on a draft before it can be scheduled.
+  register(makeEvaluateDraft(devEmbedClient()));
 }
