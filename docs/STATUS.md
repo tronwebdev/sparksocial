@@ -1,4 +1,4 @@
-# Status against the specs — 31 Jul 2026
+# Status against the specs — 1 Aug 2026
 
 Checked against `PRD.md`, `CONTENT_ENGINE_SPEC.md`, `CONTENT_OUTCOMES_AND_CAMPAIGN_FLOW.md`,
 `MASTER_BUILD_PLAN.md`, and the original voice note.
@@ -42,34 +42,40 @@ gate, raising the promotional ceiling, and classifying on the wrong dimension. T
 ceiling assertion originally used the imported constant — a tautology that let one
 mutation through — and now uses the spec's literal.
 
+## Built since the last pass
+
+| Capability | Spec | Notes |
+|---|---|---|
+| Asset Graph: captioning, embeddings, retrieval, gap detection | §4 | `packages/assetgraph` |
+| Capture brief generation + validator, weekly batching | §6.2, §6.3 | `packages/capture` |
+| Guardrail layer: seven checks, evaluator tool | §10 | `packages/guardrails` |
+| Finish pipeline (trim/stabilize/caption/hook/music/export) | §6.3 | `packages/finish` |
+| SPARK runtime: agent loop, subagent scopes, prompt-injection containment | Plan §4 | `packages/spark` |
+| Postgres persistence — genomes/assets/content/tool_calls/agent_runs via Drizzle + pgvector | Plan §5 | `packages/db`; `apps/api` uses it automatically when `DATABASE_URL` is set, in-memory dev store otherwise |
+
 ## Not built yet
 
 Ordered by what blocks what.
 
 | Gap | Spec | Blocks |
 |---|---|---|
-| Asset Graph: captioning, embeddings, retrieval, gap detection | §4 | Assemble |
-| Capture brief generation + validator | §6.2 | Direct+Finish |
-| Finish pipeline (trim/stabilize/caption/hook/music/export) | §6.3 | Direct+Finish |
-| Guardrail implementations (IDs exist, logic does not) | §10 | publishing safely |
-| SPARK runtime + subagents | Plan §4 | autonomy |
-| Postgres persistence — audit rows are in-memory | Plan §5 | everything real |
-| Clerk auth — dev resolver trusts headers | Plan §2.2 | any deployment |
+| Clerk auth — dev resolver still trusts headers (`ALLOW_DEV_AUTH` refuses to boot this way in production) | Plan §2.2 | any real deployment |
+| Publishing adapters — `publish.*` tools don't exist as concrete implementations; only scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
+| Frontend — not started, deferred by design during backend-first build order | Plan §6 | any UI-facing demo |
 
 ## Next
 
-The eval harness recommendation is **done** — see above. What follows from it:
+**Clerk auth is the next blocker for any real deployment.** The dev resolver
+(`apps/api/src/dev-auth.ts`) trusts `x-org-id`/`x-genome-id`/etc. headers, which is a
+genome-isolation bypass by construction — `index.ts` already refuses to start this way
+in production unless `ALLOW_DEV_AUTH=true` is set explicitly for a throwaway
+environment.
 
-**Grow the golden set toward plan §11's 40 workspaces.** Seven cases is enough to
-catch the obvious anti-patterns; forty is what the plan asks for, and each new one is
-cheap now that the harness exists. Add them as real design partners are signed, so the
-fixtures track reality rather than imagination.
+**Publishing adapters follow.** `packages/spark/src/agents.ts` already grants
+`publish.*`/`integration.*` to the `producer` agent, but no concrete `PlatformAdapter`
+(aggregator-class, per CLAUDE.md's Aug 29 scope) exists yet.
 
-**The Asset Graph is the next blocker.** The resolver takes an asset inventory as
-input and nothing produces one yet. Until captioning, embedding and `asset.gaps` land,
-Assemble cannot retrieve and the capture loop has nothing to close against.
-
-Two standing calls:
+Two standing calls, unchanged:
 
 **Trim the tool count for the alpha.** Plan §3.2 targets ~135 tools at GA. The Aug 29
 scope needs roughly 30. Building the registry breadth-first would consume the month

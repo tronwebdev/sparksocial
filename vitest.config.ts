@@ -25,6 +25,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@sparksocial/shared/types": r("./packages/shared/src/types.ts"),
+      "@sparksocial/shared/genome": r("./packages/shared/src/genome.ts"),
       "@sparksocial/shared": r("./packages/shared/src/index.ts"),
       "@sparksocial/db": r("./packages/db/src/index.ts"),
       "@sparksocial/tools/defineTool": r("./packages/tools/src/defineTool.ts"),
