@@ -19,6 +19,7 @@
     "@sparksocial/playbooks": "*",
     "@sparksocial/assetgraph": "*",
     "@sparksocial/capture": "*",
-    "@sparksocial/guardrails": "*"
+    "@sparksocial/guardrails": "*",
+    "@sparksocial/finish": "*"
   }
 }

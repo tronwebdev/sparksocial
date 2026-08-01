@@ -30,6 +30,8 @@
       "@sparksocial/capture": ["packages/capture/src/index.ts"],
       "@sparksocial/guardrails/*": ["packages/guardrails/src/*"],
       "@sparksocial/guardrails": ["packages/guardrails/src/index.ts"],
+      "@sparksocial/finish/*": ["packages/finish/src/*"],
+      "@sparksocial/finish": ["packages/finish/src/index.ts"],
       "@sparksocial/genome": ["packages/genome/src/index.ts"]
     }
   },

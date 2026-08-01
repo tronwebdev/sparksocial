@@ -34,6 +34,7 @@ export default defineConfig({
       "@sparksocial/assetgraph": r("./packages/assetgraph/src/index.ts"),
       "@sparksocial/capture": r("./packages/capture/src/index.ts"),
       "@sparksocial/guardrails": r("./packages/guardrails/src/index.ts"),
+      "@sparksocial/finish": r("./packages/finish/src/index.ts"),
     },
   },
 });

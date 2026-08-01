@@ -23,6 +23,43 @@ export function devCaptionClient() {
   };
 }
 
+/**
+ * The four Finish-pipeline deps (`direct.media.ingest`). Deterministic on the
+ * media URL so the demo can exercise both the accept and the reject path
+ * reproducibly: a URL containing "blurry" reports high blur; anything else
+ * reports clean metrics. A real analyzer runs actual signal processing on the
+ * file — this stub exists so the pipeline is exercisable end to end without one.
+ */
+export function devMediaIngestDeps() {
+  return {
+    async analyze(mediaUrl: string) {
+      const blurry = mediaUrl.includes('blurry');
+      return {
+        blurScore: blurry ? 0.9 : 0.1,
+        exposureScore: 0.15,
+        shakeScore: 0.1,
+        durationSec: 20,
+      };
+    },
+    async detect(_mediaUrl: string) {
+      return { startSec: 2, endSec: 20 };
+    },
+    async dimensions(_mediaUrl: string) {
+      return { width: 1920, height: 1080 };
+    },
+    async run(_plan: unknown, mediaUrl: string) {
+      return {
+        '9:16': `${mediaUrl}#9x16`,
+        '1:1': `${mediaUrl}#1x1`,
+        '16:9': `${mediaUrl}#16x9`,
+      };
+    },
+    async embed(text: string) {
+      return deterministicEmbedding(text);
+    },
+  };
+}
+
 export function devEmbedClient() {
   return {
     async embed(text: string): Promise<number[]> {

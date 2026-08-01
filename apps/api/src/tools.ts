@@ -5,7 +5,8 @@ import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
-import { devCaptionClient, devEmbedClient, devBriefWriter } from './dev-vendors.js';
+import { makeMediaIngest } from '@sparksocial/finish';
+import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
 /**
  * Explicit registration of the tools in the Aug 29 alpha scope.
@@ -36,4 +37,7 @@ export function registerAlphaTools(): void {
 
   // Guardrails (§10): report every check on a draft before it can be scheduled.
   register(makeEvaluateDraft(devEmbedClient()));
+
+  // Finish pipeline (§6.3): raw phone footage in, publishable clips out.
+  register(makeMediaIngest(devMediaIngestDeps()));
 }
