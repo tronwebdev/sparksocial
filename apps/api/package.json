@@ -5,8 +5,9 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts"
+    "//env": "`--env-file-if-exists` (Node >=20.12): local .env is how secrets reach dev without a shell export, and in Azure the values come from Key Vault via Container Apps env, where no file exists. The optional form makes one script correct in both, and in CI, which also has no .env.",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts"
   },
   "dependencies": {
     "@clerk/backend": "^3.16.1",
@@ -19,8 +20,9 @@
     "@sparksocial/guardrails": "*",
     "@sparksocial/playbooks": "*",
     "@sparksocial/shared": "*",
+    "@sparksocial/spark": "*",
     "@sparksocial/tools": "*",
-    "hono": "^4.6.0",
+    "hono": "^4.13.1",
     "zod": "^3.23.8"
   }
 }

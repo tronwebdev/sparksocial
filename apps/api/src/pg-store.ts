@@ -1,6 +1,7 @@
-import { connect, createPostgresScopedDb, createAuditRepository } from '@sparksocial/db';
+import { connect, createPostgresScopedDb, createAuditRepository, createRunRecorder } from '@sparksocial/db';
 import type { InvokeDeps } from '@sparksocial/tools';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
+import type { RunRecorder } from '@sparksocial/spark';
 
 /**
  * POSTGRES-BACKED STORE — plan §5.
@@ -15,12 +16,14 @@ import type { ScopedDb } from '@sparksocial/tools/defineTool';
 export function connectPostgresStore(): {
   scopedDb: ScopedDb;
   auditDeps: Pick<InvokeDeps, 'writeToolCall' | 'lookupIdempotent'>;
+  runRecorder: RunRecorder;
   close: () => Promise<void>;
 } {
   const { db, pool } = connect();
   return {
     scopedDb: createPostgresScopedDb(db),
     auditDeps: createAuditRepository(db),
+    runRecorder: createRunRecorder(db),
     close: () => pool.end(),
   };
 }

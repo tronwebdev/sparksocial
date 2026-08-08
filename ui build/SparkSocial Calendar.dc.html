@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Calendar</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    @font-face { font-family: "CS Mollwish"; src: url("fonts/CS-Mollwish.otf") format("opentype"); font-weight: 400; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus, textarea:focus { outline: none; }
+    input::placeholder, textarea::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-modal-in { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes ss-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Calendar" style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ wrapH }};">
+    <div style="position:absolute;top:0;width:1728px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;height:{{ stageH }};">
+
+      <div style="position:absolute;left:15px;top:18px;width:1698px;border-radius:30px;overflow:hidden;background:linear-gradient(151.005deg, rgba(245,107,255,0.2) 3.02%, rgba(255,255,255,0) 63.11%), linear-gradient(210.896deg, rgba(108,232,255,0.3) 3.17%, rgba(255,255,255,0) 67.52%), #F7F7F7;transform:scaleX(-1);height:{{ bgH }};"></div>
+
+      <!-- Header -->
+      <span style="position:absolute;left:32px;top:34px;font-family:'CS Mollwish','Comfortaa',sans-serif;font-size:27.49px;line-height:1.13;color:#0C0C0C;white-space:nowrap;">Sparksocial</span>
+      <div onClick="{{ goBack }}" style="position:absolute;left:195px;top:30px;width:92px;height:36.4px;border-radius:7.07px;box-shadow:0 0 0 0.71px #838383;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:12px;" style-hover="background:#FFFFFF;">
+        <svg width="8" height="16" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#838383" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-size:16.9px;font-weight:500;color:#838383;">Back</span>
+      </div>
+      <span style="position:absolute;left:772px;top:40px;font-size:18px;font-weight:500;color:#0C0C0C;white-space:nowrap;">7 Post from 1st April 2026 to 30th April 2026</span>
+      <div style="position:absolute;left:1163px;top:26px;width:64px;height:64px;">
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+        <div style="position:absolute;left:18px;top:27px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+        <div style="position:absolute;left:37px;top:27px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+      </div>
+      <div style="position:absolute;left:1239px;top:36px;height:44px;padding:0 20px;border-radius:22px;background:#FFFFFF;box-shadow:0 10px 26px -14px rgba(12,12,12,0.3);display:inline-flex;align-items:center;">
+        <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Post this month is doing 89% better than last month</span>
+      </div>
+      <div style="position:absolute;left:53px;top:117px;width:1623px;height:1px;background:rgba(131,131,131,0.25);"></div>
+
+      <span style="position:absolute;left:64px;top:150px;font-size:30px;font-weight:600;line-height:1.27;color:#0C0C0C;white-space:nowrap;">Calendar</span>
+      <span style="position:absolute;left:64px;top:196px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">A sleek and intuitive calendar interface for easy scheduling and management.</span>
+
+      <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+        <span style="position:absolute;left:917px;top:172px;font-size:18px;font-weight:500;color:#838383;white-space:nowrap;">Timezone: <b style="font-weight:600;color:#5B5B5B;">UTC</b></span>
+        <div style="position:absolute;left:1082px;top:156px;width:272px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 28px -18px rgba(12,12,12,0.28);">
+          <sc-for list="{{ segItems }}" as="sg" hint-placeholder-count="3">
+            <div onClick="{{ sg.click }}" style="position:absolute;top:6px;height:44px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ sg.bg }};left:{{ sg.left }};width:{{ sg.width }};transition:background 0.2s ease;">
+              <span style="font-size:16px;color:#0C0C0C;white-space:nowrap;font-weight:{{ sg.weight }};">{{ sg.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="position:absolute;left:1372px;top:156px;width:304px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 28px -18px rgba(12,12,12,0.28);">
+        <div onClick="{{ showGrid }}" style="position:absolute;left:5px;top:5px;width:168px;height:46px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;background:{{ gridBg }};transition:background 0.2s ease;">
+          <svg width="18" height="18" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#0C0C0C" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Calendar Mode</span>
+        </div>
+        <div onClick="{{ showList }}" style="position:absolute;left:177px;top:5px;width:122px;height:46px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;background:{{ listBg }};transition:background 0.2s ease;">
+          <svg width="19" height="16" viewBox="0 0 19 16" fill="none" style="display:block;"><path d="M6 2h12M6 8h12M6 14h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><circle cx="1.6" cy="2" r="1.5" fill="#0C0C0C"></circle><circle cx="1.6" cy="8" r="1.5" fill="#0C0C0C"></circle><circle cx="1.6" cy="14" r="1.5" fill="#0C0C0C"></circle></svg>
+          <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">List View</span>
+        </div>
+      </div>
+
+      <!-- ============ LIST VIEW ============ -->
+      <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:48px;top:250px;width:1629px;height:860px;border-radius:15px;background:#FFFFFF;">
+          <span style="position:absolute;left:28px;top:30px;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Upcoming action queue</span>
+          <svg width="21.6" height="21.6" viewBox="0 0 22 22" fill="none" style="position:absolute;left:265px;top:32px;display:block;"><circle cx="11" cy="11" r="9.8" stroke="#838383" stroke-width="1.5"></circle><path d="M11 10v5.4" stroke="#838383" stroke-width="1.6" stroke-linecap="round"></path><circle cx="11" cy="6.8" r="1.05" fill="#838383"></circle></svg>
+          <div style="position:absolute;left:496px;top:33px;display:flex;flex-direction:row;align-items:center;gap:11px;">
+            <svg width="24" height="17" viewBox="0 0 24 17" fill="none" style="display:block;"><path d="M1 2h22M4.5 8.5h15M9 15h6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+            <span style="font-size:16px;font-weight:600;color:#838383;">Filters:</span>
+          </div>
+          <sc-for list="{{ filtersList }}" as="cf" hint-placeholder-count="5">
+            <div onClick="{{ cf.click }}" style="position:absolute;top:16px;width:194px;height:54px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 16px;gap:11px;left:{{ cf.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <sc-if value="{{ cf.hasCal }}" hint-placeholder-val="{{ true }}">
+                <svg width="19" height="20" viewBox="0 0 24 25" fill="none" style="display:block;flex-shrink:0;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <span style="flex:1;font-size:16px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ cf.label }}</span>
+              <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-for>
+          <span style="position:absolute;left:28px;top:102px;font-size:18px;font-weight:500;color:#838383;">Content</span>
+          <span style="position:absolute;left:690px;top:102px;font-size:18px;font-weight:500;color:#838383;">Type</span>
+          <span style="position:absolute;left:838px;top:102px;font-size:18px;font-weight:500;color:#838383;">Preview</span>
+          <span style="position:absolute;left:1035px;top:102px;font-size:18px;font-weight:500;color:#838383;">Channel</span>
+          <span style="position:absolute;left:1190px;top:102px;font-size:18px;font-weight:500;color:#838383;">Status</span>
+          <span style="position:absolute;left:1462px;top:102px;font-size:18px;font-weight:500;color:#838383;">Action</span>
+          <div style="position:absolute;left:0;top:140px;width:1629px;height:1px;background:rgba(131,131,131,0.2);"></div>
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+            <div style="position:absolute;left:0;width:1629px;height:157px;top:{{ r.top }};">
+              <span style="position:absolute;left:28px;top:38px;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Stop losing Opportunities to tiny problems</span>
+              <div style="position:absolute;left:28px;top:80px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+                <svg width="20" height="21" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.7"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                <span style="font-size:18px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Tue 12 Apr, 10:00</span>
+              </div>
+              <span style="position:absolute;left:690px;top:62px;font-size:18px;font-weight:500;color:#838383;white-space:nowrap;">Carousel</span>
+              <div style="position:absolute;left:838px;top:24px;width:127px;height:110px;border-radius:10px;background:rgba(131,131,131,0.1);overflow:hidden;">
+                <div style="position:absolute;left:35px;top:8px;width:57px;height:94px;border-radius:6px;background:url('{{ r.thumb }}') center / cover no-repeat;"></div>
+                <sc-if value="{{ r.hasPlay }}" hint-placeholder-val="{{ false }}">
+                  <svg width="12" height="13" viewBox="0 0 9 10" fill="none" style="position:absolute;left:58px;top:63px;display:block;filter:drop-shadow(0 0 4px rgba(0,0,0,0.8));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                </sc-if>
+              </div>
+              <img src="assets/icons/ig-color.png" alt="" style="position:absolute;left:1035px;top:64px;width:28px;height:28px;object-fit:contain;">
+              <img src="assets/icons/fb-color.png" alt="" style="position:absolute;left:1068px;top:64px;width:28px;height:28px;object-fit:contain;">
+              <div style="position:absolute;left:1190px;top:58px;height:41px;padding:0 18px;border-radius:8.3px;background:{{ r.chipBg }};box-shadow:inset 0 0 0 1.06px {{ r.chipRing }};display:inline-flex;align-items:center;gap:8px;">
+                <sc-if value="{{ r.isRegen }}" hint-placeholder-val="{{ false }}">
+                  <span style="width:15px;height:15px;display:inline-flex;"><svg width="15" height="15" viewBox="0 0 19 19" fill="none" style="display:block;"><path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#F56BFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </sc-if>
+                <span style="font-size:15px;font-weight:500;color:{{ r.chipColor }};white-space:nowrap;">{{ r.status }}</span>
+              </div>
+              <sc-if value="{{ r.showSend }}" hint-placeholder-val="{{ true }}">
+                <div onClick="{{ r.send }}" style="position:absolute;left:1462px;top:60px;width:37px;height:37px;border-radius:8px;background:#9CEFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#6CE8FF;">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="M18.3 1.7 9.2 10.8M18.3 1.7 12.5 18.3l-3.3-7.5-7.5-3.3L18.3 1.7Z" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </sc-if>
+              <sc-if value="{{ r.showApprove }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ r.approve }}" style="position:absolute;left:1462px;top:60px;width:37px;height:37px;border-radius:8px;background:#3EC332;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#34A82A;">
+                  <svg width="15" height="12" viewBox="0 0 15 12" fill="none" style="display:block;"><path d="m1.5 6 4 4L13.5 1.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </sc-if>
+              <div onClick="{{ r.review }}" style="position:absolute;top:60px;width:37px;height:37px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;left:{{ r.eyeLeft }};" style-hover="background:rgba(131,131,131,0.08);">
+                <svg width="18" height="14" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#838383" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#838383" stroke-width="1.4"></circle></svg>
+              </div>
+              <div onClick="{{ r.remove }}" style="position:absolute;top:60px;width:37px;height:37px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.6);cursor:pointer;display:flex;align-items:center;justify-content:center;left:{{ r.trashLeft }};" style-hover="background:rgba(243,85,37,0.08);">
+                <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+              </div>
+              <div style="position:absolute;left:0;bottom:0;width:1629px;height:1px;background:rgba(131,131,131,0.12);"></div>
+            </div>
+          </sc-for>
+          <span style="position:absolute;left:28px;top:800px;font-size:16px;font-weight:500;color:#838383;">Page 1 of 4</span>
+          <div style="position:absolute;left:1524px;top:792px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);display:flex;align-items:center;justify-content:center;opacity:0.45;">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;transform:scaleX(-1);"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+          <div onClick="{{ toastPage }}" style="position:absolute;left:1568px;top:792px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ CALENDAR MODE (month grid) ============ -->
+      <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:48px;top:250px;width:1629px;height:1345px;border-radius:15px;background:#FFFFFF;">
+          <div style="position:absolute;left:24px;top:22px;width:242px;height:54px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);">
+            <div onClick="{{ prevMonth }}" style="position:absolute;left:6px;top:11px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;" style-hover="background:rgba(131,131,131,0.08);">
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style="display:block;"><path d="M7 1 1 7l6 6" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:0;right:0;top:16px;text-align:center;font-size:17px;font-weight:600;color:#0C0C0C;">April 2026</span>
+            <div onClick="{{ nextMonth }}" style="position:absolute;right:6px;top:11px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;" style-hover="background:rgba(131,131,131,0.08);">
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style="display:block;"><path d="m1 1 6 6-6 6" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+          <sc-for list="{{ filtersGrid }}" as="cf" hint-placeholder-count="5">
+            <div onClick="{{ cf.click }}" style="position:absolute;top:22px;width:194px;height:54px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 16px;gap:11px;left:{{ cf.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <sc-if value="{{ cf.hasCal }}" hint-placeholder-val="{{ true }}">
+                <svg width="19" height="20" viewBox="0 0 24 25" fill="none" style="display:block;flex-shrink:0;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </sc-if>
+              <span style="flex:1;font-size:16px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ cf.label }}</span>
+              <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:24px;top:100px;width:1581px;display:grid;grid-template-columns:repeat(7, 1fr);gap:8px;">
+            <sc-for list="{{ weekDays }}" as="wd" hint-placeholder-count="7">
+              <div style="text-align:center;font-size:17px;font-weight:500;padding-bottom:12px;color:{{ wd.color }};">{{ wd.label }}</div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:24px;top:146px;width:1581px;display:grid;grid-template-columns:repeat(7, 1fr);gap:8px;">
+            <sc-for list="{{ cells }}" as="cell" hint-placeholder-count="35">
+              <div onClick="{{ cell.click }}" style="position:relative;height:226px;border-radius:20px;background:{{ cell.bg }};box-shadow:{{ cell.ring }};cursor:pointer;overflow:hidden;" style-hover="box-shadow:inset 0 0 0 1.5px rgba(131,131,131,0.45);">
+                <span style="position:absolute;left:16px;top:11px;font-size:20px;font-weight:500;color:{{ cell.numColor }};">{{ cell.num }}</span>
+                <sc-if value="{{ cell.hasPost }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;right:11px;top:11px;width:34px;height:34px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);display:flex;align-items:center;justify-content:center;">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="display:block;"><path d="M6.5 1v11M1 6.5h11" stroke="#838383" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                  </div>
+                  <div style="position:absolute;left:16px;top:52px;display:flex;flex-direction:row;align-items:center;gap:8px;">
+                    <div style="width:26px;height:26px;border-radius:50%;background:#000000 url('assets/agent-memoji.png') center / cover no-repeat;"></div>
+                    <span style="font-size:13.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Planned by Agent</span>
+                  </div>
+                  <div style="position:absolute;left:16px;top:94px;right:16px;height:37px;border-radius:9px;background:rgba(255,255,255,0.65);box-shadow:inset 0 0 0 1.2px {{ cell.chipRing }};display:flex;align-items:center;padding:0 12px;">
+                    <span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{ cell.chipColor }};">{{ cell.chipText }}</span>
+                  </div>
+                  <span style="position:absolute;left:16px;top:146px;font-size:15px;font-weight:500;color:#3B3B3B;white-space:nowrap;">{{ cell.typeText }}</span>
+                  <div style="position:absolute;left:16px;top:176px;display:flex;flex-direction:row;gap:6px;">
+                    <sc-if value="{{ cell.showIg }}" hint-placeholder-val="{{ true }}"><img src="assets/icons/ig-color.png" alt="" style="width:24px;height:24px;object-fit:contain;"></sc-if>
+                    <sc-if value="{{ cell.showFb }}" hint-placeholder-val="{{ false }}"><img src="assets/icons/fb-color.png" alt="" style="width:24px;height:24px;object-fit:contain;"></sc-if>
+                    <sc-if value="{{ cell.showX }}" hint-placeholder-val="{{ false }}"><img src="assets/icons/x-white.png" alt="" style="width:22px;height:22px;object-fit:contain;background:#000;border-radius:5px;padding:3px;"></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ cell.isHover }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:6px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);display:flex;align-items:center;justify-content:center;">
+                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none" style="display:block;"><path d="M6.5 1v11M1 6.5h11" stroke="#838383" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ MODALS ============ -->
+      <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeModal }}" style="position:absolute;inset:0;background:rgba(40,40,40,0.45);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+
+        <!-- Date Action / Add Post -->
+        <sc-if value="{{ mAdd }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Add Post Modal" style="position:absolute;left:346px;top:120px;width:1035px;height:660px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F6F9FE 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:64px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:16px;">
+              <svg width="26" height="27" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#0C0C0C" stroke-width="2"></rect><path d="M2.9 9.9h18.2" stroke="#0C0C0C" stroke-width="2" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#0C0C0C" stroke-width="2" stroke-linecap="round"></path></svg>
+              <span style="font-size:28px;font-weight:700;color:#0C0C0C;white-space:nowrap;">March 14, 2026</span>
+              <div style="height:52px;padding:0 16px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;flex-direction:row;align-items:center;gap:12px;cursor:pointer;">
+                <svg width="19" height="19" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="7" stroke="#0C0C0C" stroke-width="1.4"></circle><path d="M8 4.4V8l2.4 1.6" stroke="#0C0C0C" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <span style="font-size:18px;font-weight:500;color:#0C0C0C;">12 : 00 : 00</span>
+                <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+            <div style="position:absolute;left:0;top:140px;width:100%;text-align:center;font-size:18px;font-weight:400;color:#838383;">Choose how you want to create content for this date</div>
+            <div onClick="{{ openAsk }}" style="position:absolute;left:151px;top:198px;width:733px;height:118px;border-radius:16px;background:linear-gradient(103deg, #B7ECF7 0%, #DDF7EE 100%);cursor:pointer;box-shadow:0 14px 34px -20px rgba(11,170,199,0.55);" style-hover="box-shadow:0 16px 40px -18px rgba(11,170,199,0.75);">
+              <div style="position:absolute;left:34px;top:42px;width:46px;height:34px;">
+                <div style="position:absolute;left:0;top:12px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+                <div style="position:absolute;left:22px;top:12px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+              </div>
+              <span style="position:absolute;left:110px;top:26px;font-size:22px;font-weight:700;color:#0C0C0C;">Ask Agent to plan</span>
+              <span style="position:absolute;left:110px;top:63px;font-size:17px;font-weight:400;color:#5B5B5B;">Let your Agent suggest the best content</span>
+            </div>
+            <div onClick="{{ openCreate }}" style="position:absolute;left:151px;top:330px;width:733px;height:118px;border-radius:16px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.15), 0 10px 26px -20px rgba(12,12,12,0.3);cursor:pointer;" style-hover="box-shadow:inset 0 0 0 1.4px rgba(131,131,131,0.4), 0 10px 26px -16px rgba(12,12,12,0.4);">
+              <div style="position:absolute;left:44px;top:34px;width:50px;height:50px;border-radius:10px;background:#EEF0FB;display:flex;align-items:center;justify-content:center;">
+                <svg width="26" height="26" viewBox="0 0 26 26" fill="none" style="display:block;"><path d="m15.8 5.4 4.8 4.8M3 23l.9-4.3a2.6 2.6 0 0 1 .7-1.3L14.7 7.3a2.2 2.2 0 0 1 3.1 0l1.9 1.9a2.2 2.2 0 0 1 0 3.1L9.6 22.4a2.6 2.6 0 0 1-1.3.7L4 24l-1-1Z" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="m20 2 .8 2.1L23 5l-2.2.8L20 8l-.8-2.2L17 5l2.2-.9L20 2Z" fill="#0C0C0C"></path></svg>
+              </div>
+              <span style="position:absolute;left:110px;top:26px;font-size:22px;font-weight:700;color:#0C0C0C;">Create Something Specific</span>
+              <span style="position:absolute;left:110px;top:63px;font-size:17px;font-weight:400;color:#5B5B5B;">Create with AI or from scratch</span>
+            </div>
+            <div onClick="{{ openMove }}" style="position:absolute;left:151px;top:462px;width:733px;height:118px;border-radius:16px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.15), 0 10px 26px -20px rgba(12,12,12,0.3);cursor:pointer;" style-hover="box-shadow:inset 0 0 0 1.4px rgba(131,131,131,0.4), 0 10px 26px -16px rgba(12,12,12,0.4);">
+              <div style="position:absolute;left:44px;top:34px;width:50px;height:50px;border-radius:10px;background:#EEF0FB;display:flex;align-items:center;justify-content:center;">
+                <svg width="27" height="27" viewBox="0 0 27 27" fill="none" style="display:block;"><path d="M10.5 12V5.6a1.9 1.9 0 1 1 3.8 0V11l4.6 1.1a2.6 2.6 0 0 1 2 2.7l-.4 4.2a4 4 0 0 1-4 3.7h-4.2a4 4 0 0 1-3.2-1.6l-3.2-4.2a1.8 1.8 0 0 1 2.5-2.5l2.1 1.5Z" stroke="#0C0C0C" stroke-width="1.8" stroke-linejoin="round"></path><path d="M19.5 3.5 22 6l-2.5 2.5M22 6h-5.5M6.5 3.5 4 6l2.5 2.5" stroke="#0C0C0C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <span style="position:absolute;left:110px;top:26px;font-size:22px;font-weight:700;color:#0C0C0C;">Move existing post</span>
+              <span style="position:absolute;left:110px;top:63px;font-size:17px;font-weight:400;color:#5B5B5B;">Reschedule another post here</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Draft Review -->
+        <sc-if value="{{ mReview }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Draft Review Modal" style="position:absolute;left:346px;top:80px;width:1035px;height:760px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:50px;top:36px;font-size:28px;font-weight:700;color:#0C0C0C;">Draft Review</span>
+            <span style="position:absolute;left:50px;top:82px;font-size:18px;font-weight:400;color:#838383;">Review Sparks generated content before publishing</span>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:120px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+            <div style="position:absolute;left:50px;top:158px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+              <span style="font-size:19px;font-weight:700;color:#0C0C0C;">Draft: Needs Review</span>
+              <img src="assets/icons/ig-color.png" alt="" style="width:26px;height:26px;object-fit:contain;">
+              <span style="font-size:19px;font-weight:500;color:#0C0C0C;">Instagram Reel</span>
+            </div>
+            <div style="position:absolute;left:50px;top:206px;display:flex;flex-direction:row;align-items:center;gap:12px;">
+              <svg width="21" height="22" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#0C0C0C" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <span style="font-size:19px;font-weight:500;color:#0C0C0C;">Scheduled: March 14, 10:00 AM</span>
+            </div>
+            <div style="position:absolute;left:50px;top:270px;width:935px;height:196px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:26px 32px;">
+              <div style="font-size:18px;font-weight:400;color:#9B9B9B;">Caption Preview</div>
+              <div style="margin-top:20px;font-size:20px;font-weight:700;color:#0C0C0C;">Here’s how founders are scaling faster using AI agents..</div>
+            </div>
+            <span style="position:absolute;left:50px;top:498px;font-size:19px;font-weight:600;color:#0C0C0C;">Agent Notes</span>
+            <div style="position:absolute;left:50px;top:534px;width:935px;height:120px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:26px 32px;">
+              <span style="font-size:18px;font-weight:400;color:#9B9B9B;">Generated based on engagement growth objective</span>
+            </div>
+            <div style="position:absolute;left:0;top:680px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:18px;">
+              <div onClick="{{ approveSchedule }}" style="height:52px;padding:0 24px;border-radius:12px;background:linear-gradient(90deg, #C46BF5 0%, #8F7BFF 45%, #6CD5FF 100%);cursor:pointer;display:inline-flex;align-items:center;" style-hover="opacity:0.92;" style-active="transform:scale(0.985);">
+                <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Approve &amp; Schedule</span>
+              </div>
+              <div onClick="{{ editDraft }}" style="height:52px;padding:0 30px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#F5F5F5;">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Edit Draft</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Ask Agent -->
+        <sc-if value="{{ mAsk }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Ask Agent Modal" style="position:absolute;left:346px;top:50px;width:1035px;height:872px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:38px;top:34px;font-size:28px;font-weight:700;color:#0C0C0C;">Ask Agent</span>
+            <span style="position:absolute;left:38px;top:80px;font-size:18px;font-weight:400;color:#838383;">Agent suggests content before creating it</span>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:118px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+            <span style="position:absolute;left:40px;top:152px;font-size:19px;font-weight:600;color:#0C0C0C;">Agent Recommendation</span>
+            <div onClick="{{ toastEditRec }}" style="position:absolute;right:56px;top:142px;height:38px;padding:0 15px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:8px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#0C0C0C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span style="font-size:15px;font-weight:500;color:#0C0C0C;">Edit</span>
+            </div>
+            <div style="position:absolute;left:40px;top:194px;width:900px;height:172px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:28px 34px;">
+              <span style="font-size:19px;font-weight:500;line-height:1.4;color:#3B3B3B;">Am going to Create content that answers the questions your ideal customer is already asking.</span>
+            </div>
+            <span style="position:absolute;left:40px;top:398px;font-size:19px;font-weight:600;color:#0C0C0C;">Preview</span>
+            <div style="position:absolute;left:40px;top:434px;width:900px;height:330px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:26px 32px;display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;flex-direction:row;align-items:center;gap:9px;font-size:17px;color:#5B5B5B;">Format: Reel <img src="assets/icons/ig-color.png" alt="" style="width:20px;height:20px;object-fit:contain;"></div>
+              <div style="font-size:17px;line-height:1.4;color:#5B5B5B;">Hook: Here’s how founders are scaling faster using AI agents..</div>
+              <div style="font-size:17px;line-height:1.4;color:#5B5B5B;">CTA: "Comment 'STRATEGY' and I'll send you a simple content framework."</div>
+              <div style="font-size:17px;line-height:1.4;color:#5B5B5B;">Goal: Lead Generation</div>
+              <div style="font-size:17px;line-height:1.4;color:#5B5B5B;">This post is designed to:</div>
+              <div style="padding-left:24px;display:flex;flex-direction:column;gap:8px;font-size:17px;line-height:1.3;color:#5B5B5B;">
+                <span>•&nbsp;&nbsp;Increase comments and engagement</span>
+                <span>•&nbsp;&nbsp;Start conversations in DMs</span>
+                <span>•&nbsp;&nbsp;Generate qualified leads</span>
+                <span>•&nbsp;&nbsp;Position your brand as an authority</span>
+              </div>
+            </div>
+            <div onClick="{{ acceptDraft }}" style="position:absolute;right:56px;top:788px;height:52px;padding:0 26px;border-radius:12px;background:linear-gradient(90deg, #C46BF5 0%, #8F7BFF 45%, #6CD5FF 100%);cursor:pointer;display:inline-flex;align-items:center;" style-hover="opacity:0.92;" style-active="transform:scale(0.985);">
+              <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Accept &amp; Draft</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Create Something Specific -->
+        <sc-if value="{{ mCreate }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Create Specific Modal" style="position:absolute;left:346px;top:100px;width:1035px;height:700px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:38px;top:34px;font-size:28px;font-weight:700;color:#0C0C0C;">Create Something Specific</span>
+            <span style="position:absolute;left:38px;top:80px;font-size:18px;font-weight:400;color:#838383;">Create with AI or from scratch for March 14, 2026 · 12 : 00 : 00</span>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:118px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+            <span style="position:absolute;left:40px;top:150px;font-size:19px;font-weight:600;color:#0C0C0C;">Enter Prompt</span>
+            <textarea placeholder="Example: Repurpose this trend into a reel that drives DMs." style="position:absolute;left:40px;top:188px;width:900px;height:170px;border-radius:16px;background:#FFFFFF;border:none;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);resize:none;padding:26px 32px;font-size:18px;font-weight:500;line-height:1.4;color:#0C0C0C;"></textarea>
+            <div style="position:absolute;left:40px;top:392px;display:flex;flex-direction:row;align-items:center;gap:16px;">
+              <span style="font-size:18px;font-weight:600;color:#0C0C0C;">Apply Brand Kit</span>
+              <div onClick="{{ toggleBrandKit }}" style="position:relative;width:46px;height:26px;border-radius:26px;cursor:pointer;transition:background 0.2s ease;background:{{ brandKitBg }};">
+                <div style="position:absolute;top:2.5px;width:21px;height:21px;border-radius:50%;background:#FFFFFF;transition:left 0.2s ease;left:{{ brandKitKnob }};"></div>
+              </div>
+            </div>
+            <span style="position:absolute;left:40px;top:446px;font-size:18px;font-weight:600;color:#0C0C0C;">Outputs:</span>
+            <div style="position:absolute;left:40px;top:484px;display:flex;flex-direction:row;gap:12px;">
+              <sc-for list="{{ outputChips }}" as="oc" hint-placeholder-count="4">
+                <div onClick="{{ oc.click }}" style="height:44px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;background:{{ oc.bg }};box-shadow:{{ oc.ring }};">
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ oc.label }}</span>
+                  <sc-if value="{{ oc.active }}" hint-placeholder-val="{{ false }}">
+                    <span style="width:15px;height:15px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div onClick="{{ createForDate }}" style="position:absolute;right:56px;top:610px;height:52px;padding:0 26px;border-radius:12px;background:linear-gradient(90deg, #C46BF5 0%, #8F7BFF 45%, #6CD5FF 100%);cursor:pointer;display:inline-flex;align-items:center;" style-hover="opacity:0.92;" style-active="transform:scale(0.985);">
+              <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Create for this date</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Move existing post -->
+        <sc-if value="{{ mMove }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Move Post Modal" style="position:absolute;left:346px;top:120px;width:1035px;height:640px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:38px;top:34px;font-size:28px;font-weight:700;color:#0C0C0C;">Move existing post</span>
+            <span style="position:absolute;left:38px;top:80px;font-size:18px;font-weight:400;color:#838383;">Reschedule another post to March 14, 2026 · 12 : 00 : 00</span>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:118px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+            <span style="position:absolute;left:40px;top:150px;font-size:19px;font-weight:600;color:#0C0C0C;">Agent recommendation</span>
+            <div style="position:absolute;left:40px;top:188px;width:900px;height:150px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:26px 32px;">
+              <span style="font-size:19px;font-weight:500;line-height:1.45;color:#3B3B3B;">Move the Apr 16 Instagram Reel here — engagement for your audience peaks on Fridays around 12:00, and this slot has no scheduled content.</span>
+            </div>
+            <div style="position:absolute;left:40px;top:372px;width:900px;height:118px;border-radius:16px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px #B37BE8;">
+              <div style="position:absolute;left:24px;top:22px;width:74px;height:74px;border-radius:12px;background:rgba(131,131,131,0.08);overflow:hidden;">
+                <img src="assets/thumb-reel.png" alt="" style="position:absolute;left:18px;top:5px;width:38px;height:64px;border-radius:4px;object-fit:cover;">
+              </div>
+              <span style="position:absolute;left:118px;top:24px;font-size:19px;font-weight:600;color:#0C0C0C;">3 Step Work flow for agencies</span>
+              <div style="position:absolute;left:118px;top:60px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+                <img src="assets/icons/ig-color.png" alt="" style="width:22px;height:22px;object-fit:contain;">
+                <span style="font-size:16px;font-weight:500;color:#838383;">Instagram Reel · currently Apr 16, 10:00</span>
+              </div>
+              <div style="position:absolute;right:24px;top:40px;height:36px;padding:0 14px;border-radius:9px;background:#E9D7FA;display:inline-flex;align-items:center;">
+                <span style="font-size:14.5px;font-weight:600;color:#8937D6;">Selected</span>
+              </div>
+            </div>
+            <div style="position:absolute;left:0;top:548px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:18px;">
+              <div onClick="{{ tryAnother }}" style="height:52px;padding:0 24px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#F5F5F5;">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Try another suggestion</span>
+              </div>
+              <div onClick="{{ acceptMove }}" style="height:52px;padding:0 26px;border-radius:12px;background:linear-gradient(90deg, #C46BF5 0%, #8F7BFF 45%, #6CD5FF 100%);cursor:pointer;display:inline-flex;align-items:center;" style-hover="opacity:0.92;" style-active="transform:scale(0.985);">
+                <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Accept &amp; Generate Draft Pack</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startView&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;grid&quot;, &quot;list&quot;], &quot;default&quot;: &quot;grid&quot;, &quot;tsType&quot;: &quot;'grid'|'list'&quot;, &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    vw: 1728,
+    view: "grid",            // grid | list
+    seg: 0,                  // 0 month, 1 week, 2 day
+    modal: null,             // null | add | review | ask | create | move
+    listStatuses: ["Scheduled", "Approved", "Regenerating", "Waiting for approval"],
+    brandKit: true,
+    outputs: [0],
+    movedTo14: false,
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    if (this.props.startView === "list") this.setState({ view: "list" });
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    const stageH = s.view === "grid" ? 1660 : 1180;
+
+    const chipStyles = {
+      "Scheduled": { bg: "rgba(94,100,244,0.06)", ring: "#5E64F4", color: "#5E64F4" },
+      "Approved": { bg: "#E9F9E7", ring: "#13D711", color: "#13A711" },
+      "Regenerating": { bg: "#FEF0FF", ring: "#F56BFF", color: "#F56BFF" },
+      "Waiting for approval": { bg: "#FFF6E9", ring: "#FFB453", color: "#E48915" }
+    };
+    const thumbs = ["assets/thumb-reel.png", "assets/thumb-carousel.png", "assets/thumb-reel-girl.png", "assets/thumb-linkedin.png"];
+
+    const weeks = [[1,2,3,4,5,6,7],[8,9,10,11,12,13,14],[15,16,17,18,19,20,21],[22,23,24,25,26,27,28],[29,30,31,1,2,3,4]];
+    const posts = {
+      1: { tint: "#FDF1DF", ring: "#E8B06B", chipRing: "#E48915", chipColor: "#E48915", chipText: "2 Campaigns", typeText: "Carousel, Reel", ig: true, fb: true, x: false },
+      5: { tint: "#C9EEF7", ring: "#35B7D4", chipRing: "#0BAAC7", chipColor: "#0BAAC7", chipText: "Planning a post, CT...", typeText: "X Post", ig: false, fb: false, x: true },
+      16: { tint: "#E9D7FA", ring: "#B37BE8", chipRing: "#8937D6", chipColor: "#8937D6", chipText: "3 Step Work flow for..", typeText: "Instagram Reel", ig: true, fb: false, x: false }
+    };
+    if (s.movedTo14) {
+      posts[14] = { tint: "#E9D7FA", ring: "#B37BE8", chipRing: "#8937D6", chipColor: "#8937D6", chipText: "3 Step Work flow for..", typeText: "Instagram Reel", ig: true, fb: false, x: false };
+      delete posts[16];
+    }
+    const cells = [];
+    weeks.forEach((week, wi) => week.forEach((num, di) => {
+      const otherMonth = wi === 4 && num < 10;
+      const post = !otherMonth ? posts[num] : null;
+      cells.push({
+        num,
+        bg: post ? post.tint : num === 11 && !otherMonth ? "rgba(131,131,131,0.08)" : "#FFFFFF",
+        ring: post ? "inset 0 0 0 1.5px " + post.ring : "inset 0 0 0 1px rgba(131,131,131,0.18)",
+        numColor: otherMonth ? "rgba(131,131,131,0.45)" : "#0C0C0C",
+        hasPost: !!post,
+        isHover: num === 11 && !otherMonth,
+        chipRing: post ? post.chipRing : "",
+        chipColor: post ? post.chipColor : "",
+        chipText: post ? post.chipText : "",
+        typeText: post ? post.typeText : "",
+        showIg: post ? post.ig : false,
+        showFb: post ? post.fb : false,
+        showX: post ? post.x : false,
+        click: () => post ? this.setState({ modal: "review" }) : this.setState({ modal: "add" })
+      });
+    }));
+
+    const mkFilters = (lefts) => [
+      { label: "Date", hasCal: true },
+      { label: "Channels", hasCal: false },
+      { label: "Content type", hasCal: false },
+      { label: "By Status", hasCal: false },
+      { label: "By Account", hasCal: false }
+    ].map((f, i) => ({ ...f, left: lefts[i] + "px", click: () => this.toast(f.label + " filter — mock") }));
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(stageH * scale) + "px",
+      stageH: stageH + "px",
+      bgH: (stageH - 36) + "px",
+
+      goBack: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+      isGrid: s.view === "grid",
+      isList: s.view === "list",
+      gridBg: s.view === "grid" ? "#9CEFFF" : "#FFFFFF",
+      listBg: s.view === "list" ? "#9CEFFF" : "#FFFFFF",
+      showGrid: () => this.setState({ view: "grid" }),
+      showList: () => this.setState({ view: "list" }),
+      segItems: ["Month", "Week", "Day"].map((label, i) => ({
+        label,
+        left: (6 + i * 87) + "px",
+        width: "86px",
+        bg: s.seg === i ? "#9CEFFF" : "transparent",
+        weight: s.seg === i ? "600" : "500",
+        click: () => { this.setState({ seg: i }); if (i > 0) this.toast(label + " view — mock (Month is the designed view)"); }
+      })),
+      prevMonth: () => this.toast("March 2026 — mock"),
+      nextMonth: () => this.toast("May 2026 — mock"),
+      weekDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((label, i) => ({
+        label, color: i === 6 ? "#E23B3B" : "#0C0C0C"
+      })),
+      cells,
+
+      filtersList: mkFilters([601, 811, 1021, 1231, 1441]),
+      filtersGrid: mkFilters([601, 811, 1021, 1231, 1441]),
+      rows: s.listStatuses.map((status, i) => {
+        const showSend = status === "Scheduled";
+        const showApprove = status === "Waiting for approval";
+        const hasLeft = showSend || showApprove;
+        return {
+          top: (141 + i * 157) + "px",
+          thumb: thumbs[i],
+          hasPlay: i === 3,
+          status,
+          isRegen: status === "Regenerating",
+          chipBg: chipStyles[status].bg,
+          chipRing: chipStyles[status].ring,
+          chipColor: chipStyles[status].color,
+          showSend, showApprove,
+          eyeLeft: (hasLeft ? 1509 : 1462) + "px",
+          trashLeft: (hasLeft ? 1556 : 1509) + "px",
+          send: () => this.toast("Publishing now…"),
+          approve: () => { const cs = [...this.state.listStatuses]; cs[i] = "Approved"; this.setState({ listStatuses: cs }); this.toast("Post approved"); },
+          review: () => this.setState({ modal: "review" }),
+          remove: () => this.toast("Post removed from queue (mock)")
+        };
+      }),
+      toastPage: () => this.toast("Pagination — mock"),
+
+      modalOpen: !!s.modal,
+      mAdd: s.modal === "add",
+      mReview: s.modal === "review",
+      mAsk: s.modal === "ask",
+      mCreate: s.modal === "create",
+      mMove: s.modal === "move",
+      closeModal: () => this.setState({ modal: null }),
+      openAsk: () => this.setState({ modal: "ask" }),
+      openCreate: () => this.setState({ modal: "create" }),
+      openMove: () => this.setState({ modal: "move" }),
+      approveSchedule: () => { this.setState({ modal: null }); this.toast("Approved & scheduled for March 14, 10:00 AM"); },
+      editDraft: () => { this.setState({ modal: null }); window.location.href = "SparkSocial Command Center.dc.html"; },
+      toastEditRec: () => this.toast("Edit recommendation — mock"),
+      acceptDraft: () => { this.setState({ modal: null }); this.toast("Accepted — Agent is drafting the Reel"); },
+      tryAnother: () => this.toast("Looking for another slot suggestion…"),
+      acceptMove: () => { this.setState({ modal: null, movedTo14: true, view: "grid" }); this.toast("Post moved — draft pack generating"); },
+      createForDate: () => { this.setState({ modal: null }); this.toast("Creating content for March 14 — check the Draft Panel"); },
+      toggleBrandKit: () => this.setState(st => ({ brandKit: !st.brandKit })),
+      brandKitBg: s.brandKit ? "#3EC332" : "rgba(12,12,12,0.15)",
+      brandKitKnob: s.brandKit ? "22.5px" : "2.5px",
+      outputChips: ["Image", "Reel", "Carousel", "Text"].map((label, i) => ({
+        label,
+        active: s.outputs.includes(i),
+        bg: s.outputs.includes(i) ? "#FFFFFF" : "rgba(131,131,131,0.06)",
+        ring: s.outputs.includes(i) ? "inset 0 0 0 1.2px #838383" : "inset 0 0 0 1px rgba(12,12,12,0.1)",
+        click: () => this.setState(st => ({
+          outputs: st.outputs.includes(i) ? st.outputs.filter(x => x !== i) : [...st.outputs, i]
+        }))
+      })),
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

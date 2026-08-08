@@ -64,6 +64,25 @@ export interface RetrieveArgs {
  * Ranking is deliberately not pure cosine similarity. Without the recency and
  * usage penalties the same three photos appear every week and the account reads
  * as automated — which is the specific failure this product exists to avoid.
+ *
+ * ── Why there is no ivfflat/hnsw index on `assets.embedding` ────────────────
+ * Not an oversight, and adding one would not help. A pgvector ANN index can
+ * only accelerate an `ORDER BY embedding <=> vec`; this query orders by
+ * `similarity - recencyPenalty - diversityPenalty`, which is not the distance
+ * operator, so the planner cannot use an ANN index for it under any
+ * configuration. Postgres must evaluate the score per candidate row regardless.
+ *
+ * What keeps that affordable is the isolation predicate: every candidate set is
+ * already narrowed to one genome's cleared assets by `assets_scope_idx` before
+ * any distance is computed, so the scan is over one brand's library — hundreds
+ * of rows — not the table. The scoping requirement and the performance story
+ * are the same mechanism.
+ *
+ * The cliff, when it comes, is a single genome with a very large library. The
+ * fix then is two-phase, not an index on this query: take top-K by raw distance
+ * (which *can* use an ANN index) in a subquery, then apply the penalties and
+ * re-rank the K rows. That trades exact recall for speed and should not be done
+ * before there is a genome big enough to need it.
  */
 export function buildRetrieveQuery(scope: Scope, args: RetrieveArgs) {
   assertScope(scope);

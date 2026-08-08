@@ -89,6 +89,30 @@ export const ContentPillar = z.enum([
 ]);
 export type ContentPillar = z.infer<typeof ContentPillar>;
 
+/* ── Agent runs (plan §4.5 — the Agent Timeline) ───────────────────── */
+
+/**
+ * The run vocabulary lives here, not in `packages/spark`, because both ends of
+ * the Timeline need it and they sit on opposite sides of the build order:
+ * `packages/spark` *writes* runs through `RunRecorder`, `packages/tools` *reads*
+ * them through `ScopedDb.runs`, and tools is built long before spark. Declaring
+ * it twice would let the writer and the reader drift, which on a timeline shows
+ * up as steps that silently render in the wrong order or not at all.
+ */
+export const RunTrigger = z.enum(['user', 'schedule', 'event']);
+export type RunTrigger = z.infer<typeof RunTrigger>;
+
+export const RunStatus = z.enum(['running', 'succeeded', 'failed', 'cancelled']);
+export type RunStatus = z.infer<typeof RunStatus>;
+
+/**
+ * `think` and `wait` are the reason this is not derived from `tool_calls`: the
+ * reasoning between calls, and the time spent parked on a human, are exactly
+ * what answers "why is this here?".
+ */
+export const StepType = z.enum(['think', 'tool', 'delegate', 'wait']);
+export type StepType = z.infer<typeof StepType>;
+
 /* ── Untrusted input containment ───────────────────────────────────── */
 
 const UNTRUSTED = Symbol('untrusted');

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Workspaces</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button { font-family: inherit; }
+    input:focus { outline: none; }
+    input::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-menu-in { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: translateY(0); } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Workspaces (Account Home)" style="position:relative;width:100%;overflow:hidden;height:{{ wrapH }};background:#EDF3F7;">
+    <div style="position:absolute;top:0;width:1728px;height:800px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;background:linear-gradient(180deg, #F6FAFC 0%, #EDF3F7 55%, #E9F0F5 100%);">
+
+      <!-- top bar -->
+      <span style="position:absolute;left:46px;top:44px;font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#0C0C0C;white-space:nowrap;">Sparksocial</span>
+      <div style="position:absolute;left:952px;top:38px;height:56px;border-radius:28px;background:#FFFFFF;box-shadow:0 10px 26px -18px rgba(12,12,12,0.35);display:flex;flex-direction:row;align-items:center;padding:0 8px;">
+        <div onClick="{{ goSettings }}" style="height:42px;padding:0 15px;border-radius:21px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="background:rgba(131,131,131,0.08);">
+          <svg width="17" height="17" viewBox="0 0 22 22" fill="none" style="display:block;"><circle cx="9" cy="7" r="2.8" stroke="#5B5B5B" stroke-width="1.6"></circle><path d="M3 17c1-2.7 3.2-4.2 6-4.2 1 0 1.9.2 2.7.5" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round"></path><path d="m15.8 12.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+          <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Account Settings</span>
+        </div>
+        <div onClick="{{ goPortal }}" style="height:42px;padding:0 15px;border-radius:21px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="background:rgba(131,131,131,0.08);">
+          <svg width="16" height="15" viewBox="0 0 16 15" fill="none" style="display:block;"><rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#5B5B5B" stroke-width="1.4"></rect><path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke="#5B5B5B" stroke-width="1.4"></path></svg>
+          <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Agency Portal</span>
+        </div>
+      </div>
+      <div onClick="{{ toastBell }}" style="position:absolute;left:1354px;top:38px;width:56px;height:56px;border-radius:50%;background:#FFFFFF;box-shadow:0 10px 26px -18px rgba(12,12,12,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 10px 26px -12px rgba(12,12,12,0.45);">
+        <svg width="20" height="21" viewBox="0 0 22 22" fill="none" style="display:block;"><path d="M11 3a5.6 5.6 0 0 1 5.6 5.6c0 3 .8 4.8 1.6 5.9.3.4 0 1-.5 1H4.3c-.5 0-.8-.6-.5-1 .8-1.1 1.6-2.9 1.6-5.9A5.6 5.6 0 0 1 11 3Z" stroke="#5B5B5B" stroke-width="1.6" stroke-linejoin="round"></path><path d="M9 18.6a2.1 2.1 0 0 0 4 0" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round"></path></svg>
+      </div>
+      <div style="position:absolute;left:1428px;top:38px;width:254px;height:56px;border-radius:28px;background:#FFFFFF;box-shadow:0 10px 26px -18px rgba(12,12,12,0.35);">
+        <div style="position:absolute;left:8px;top:8px;width:40px;height:40px;border-radius:50%;background:#BDEBFA url('assets/portal-52d66b.png') center / cover no-repeat;"></div>
+        <div style="position:absolute;left:36px;top:32px;width:14px;height:14px;border-radius:50%;background:#13D711;box-shadow:0 0 0 2px #FFFFFF;"></div>
+        <span style="position:absolute;left:60px;top:17px;font-size:16.5px;font-weight:700;color:#0C0C0C;">Godswill</span>
+        <div onClick="{{ toggleMenu }}" style="position:absolute;right:6px;top:8px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+          <svg width="4" height="17" viewBox="0 0 4 17" fill="#5B5B5B" style="display:block;"><circle cx="2" cy="2" r="1.8"></circle><circle cx="2" cy="8.5" r="1.8"></circle><circle cx="2" cy="15" r="1.8"></circle></svg>
+        </div>
+      </div>
+      <!-- account menu -->
+      <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeMenu }}" style="position:fixed;left:-4000px;top:-4000px;width:12000px;height:12000px;z-index:49;cursor:default;"></div>
+        <div style="position:absolute;left:1428px;top:102px;width:254px;border-radius:16px;background:#FFFFFF;box-shadow:0 30px 70px -30px rgba(12,12,12,0.45);padding:8px;z-index:50;animation:ss-menu-in 0.18s ease;">
+          <sc-for list="{{ menuItems }}" as="mi" hint-placeholder-count="5">
+            <div onClick="{{ mi.click }}" style="height:48px;border-radius:11px;cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 14px;gap:12px;background:{{ mi.bg }};" style-hover="background:rgba(108,232,255,0.16);">
+              <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;color:#3B3B3B;" dangerouslySetInnerHTML="{{ mi.icon }}"></span>
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ mi.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- hero -->
+      <div style="position:absolute;left:42px;top:118px;width:1644px;height:272px;border-radius:20px;overflow:hidden;background:#05070C;">
+        <img src="assets/jobfinder-hero.png" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;opacity:0.9;">
+        <div style="position:absolute;right:140px;top:-120px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(140,80,220,0.36) 0%, rgba(90,50,160,0.18) 55%, rgba(0,0,0,0) 75%);"></div>
+        <div style="position:absolute;right:-80px;bottom:-260px;width:620px;height:620px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.12);background:rgba(20,24,36,0.35);"></div>
+        <div style="position:absolute;right:330px;top:88px;width:152px;height:64px;border-radius:34px;background:linear-gradient(140deg, #2A3350 0%, #171C2E 100%);box-shadow:0 24px 50px -18px rgba(120,80,240,0.55), inset 0 1px 4px rgba(255,255,255,0.18);">
+          <span style="position:absolute;left:26px;top:24px;width:16px;height:16px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 16px rgba(255,255,255,0.9);"></span>
+          <span style="position:absolute;right:26px;top:24px;width:16px;height:16px;border-radius:50%;background:#8FD4FF;box-shadow:0 0 16px rgba(143,212,255,0.9);"></span>
+        </div>
+        <img src="assets/ws-hero-robot.png" alt="" style="position:absolute;right:560px;top:36px;width:58px;height:58px;object-fit:cover;border-radius:14px;box-shadow:0 0 0 2.5px rgba(255,255,255,0.85);">
+        <img src="assets/ws-avatar-2.jpg" alt="" style="position:absolute;right:690px;bottom:44px;width:40px;height:40px;object-fit:cover;border-radius:12px;box-shadow:0 0 0 2.5px rgba(255,255,255,0.85);">
+        <span style="position:absolute;left:50px;top:44px;font-size:34px;font-weight:700;color:#FFFFFF;">Workspaces</span>
+        <span style="position:absolute;left:50px;top:100px;font-size:17px;font-weight:400;color:rgba(255,255,255,0.65);white-space:nowrap;">Organize your projects and collaborate efficiently in dedicated workspaces.</span>
+        <div style="position:absolute;left:50px;top:156px;width:454px;height:54px;border-radius:27px;background:#FFFFFF;">
+          <input type="text" value="{{ searchQ }}" onInput="{{ onSearch }}" placeholder="Search" style="position:absolute;left:22px;top:0;width:380px;height:54px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+          <svg width="19" height="19" viewBox="0 0 26 26" fill="none" style="position:absolute;right:20px;top:18px;display:block;"><circle cx="11" cy="11" r="8" stroke="#5B5B5B" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#5B5B5B" stroke-width="2" stroke-linecap="round"></path></svg>
+        </div>
+        <div onClick="{{ createWs }}" style="position:absolute;left:520px;top:156px;height:54px;padding:0 22px;border-radius:12px;background:linear-gradient(90deg, #8B3DFF 0%, #37C7F4 100%);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;box-shadow:0 14px 30px -14px rgba(120,70,240,0.7);" style-hover="filter:brightness(1.08);" style-active="transform:scale(0.985);">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+          <span style="font-size:15.5px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Create Workspace</span>
+        </div>
+      </div>
+
+      <!-- workspace cards -->
+      <div style="position:absolute;left:42px;top:424px;width:1644px;display:grid;grid-template-columns:repeat(5, 1fr);gap:18px;">
+        <sc-for list="{{ cards }}" as="c" hint-placeholder-count="5">
+          <div style="position:relative;height:264px;border-radius:22px;background:{{ c.bg }};-webkit-mask-image:radial-gradient(circle 36px at calc(100% - 30px) 30px, transparent 35px, #000 36px);mask-image:radial-gradient(circle 36px at calc(100% - 30px) 30px, transparent 35px, #000 36px);">
+            <div onClick="{{ c.open }}" style="position:absolute;left:0;top:0;right:0;bottom:64px;cursor:pointer;"></div>
+            <div style="position:absolute;left:22px;top:26px;width:92px;height:92px;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,0.9);pointer-events:none;background:#FFFFFF url('{{ c.icon }}') center / cover no-repeat;"></div>
+            <span style="position:absolute;left:24px;top:138px;font-size:20px;font-weight:700;color:#0C0C0C;white-space:nowrap;pointer-events:none;">{{ c.name }}</span>
+            <span style="position:absolute;left:24px;top:172px;font-size:14px;font-weight:500;color:#7B7B7B;pointer-events:none;">Created Mar 5, 2026</span>
+            <div style="position:absolute;left:24px;bottom:20px;display:flex;flex-direction:row;align-items:center;">
+              <sc-for list="{{ c.avatars }}" as="av" hint-placeholder-count="3">
+                <span style="width:30px;height:30px;border-radius:50%;box-shadow:0 0 0 2px #FFFFFF;display:inline-block;background:#DCEAF6 url('{{ av.img }}') center / cover no-repeat;margin-left:{{ av.ml }};"></span>
+              </sc-for>
+              <sc-if value="{{ c.hasMore }}" hint-placeholder-val="{{ false }}">
+                <span style="width:30px;height:30px;border-radius:50%;background:#57D9F2;box-shadow:0 0 0 2px #FFFFFF;margin-left:-9px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#0C0C0C;">{{ c.more }}</span>
+              </sc-if>
+            </div>
+            <div onClick="{{ c.edit }}" style="position:absolute;right:66px;bottom:18px;width:40px;height:40px;border-radius:50%;background:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 6px 14px -6px rgba(12,12,12,0.4);">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div onClick="{{ c.remove }}" style="position:absolute;right:18px;bottom:18px;width:40px;height:40px;border-radius:50%;background:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 6px 14px -6px rgba(12,12,12,0.4);">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+            </div>
+          </div>
+          <div onClick="{{ c.open }}" style="position:absolute;width:52px;height:52px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(12,12,12,0.25);cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:4px;left:{{ c.arrowLeft }};" style-hover="background:#FFFFFF;box-shadow:inset 0 0 0 1.5px #0C0C0C;">
+            <svg width="15" height="15" viewBox="0 0 10 10" fill="none" style="display:block;"><path d="M1 9 9 1M9 1H3M9 1v6" stroke="#0C0C0C" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { vw: 1728, searchQ: "", removed: [], menuOpen: false, toastMsg: "", toastN: 0 };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    const av = ["assets/ws-avatar-1.jpg", "assets/ws-avatar-2.jpg", "assets/portal-avatar-photo.jpg"];
+    const defs = [
+      { name: "My Marketing WSP", bg: "#C9F0FA", icon: "assets/ws-icon-3.png", avatars: 3, more: 0 },
+      { name: "Galactic Hub 365", bg: "#D9F4DC", icon: "assets/ws-icon-2.png", avatars: 3, more: 3 },
+      { name: "Strategic Marketing Hub", bg: "#FBDCD4", icon: "assets/ws-icon-1.png", avatars: 3, more: 1 },
+      { name: "Innovative Space", bg: "#FBF0D4", icon: "assets/ws-icon-4.png", avatars: 2, more: 0 },
+      { name: "Creative Hub 2026", bg: "#EDDBF8", icon: "assets/ws-icon-5.png", avatars: 1, more: 0 }
+    ];
+    const q = s.searchQ.trim().toLowerCase();
+    const cardW = (1644 - 4 * 18) / 5;
+    let vi = 0;
+    const cards = defs
+      .map((d, i) => ({ ...d, i }))
+      .filter(d => !s.removed.includes(d.i) && (!q || d.name.toLowerCase().includes(q)))
+      .map(d => {
+        const col = vi++;
+        return {
+          name: d.name, bg: d.bg, icon: d.icon,
+          avatars: Array.from({ length: d.avatars }, (_, j) => ({ img: av[j % 3], ml: j === 0 ? "0" : "-9px" })),
+          hasMore: d.more > 0, more: "+" + d.more,
+          arrowLeft: Math.round(col * (cardW + 18) + cardW - 56) + "px",
+          open: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+          edit: () => this.toast("Rename workspace — mock"),
+          remove: () => { this.setState(st => ({ removed: [...st.removed, d.i] })); this.toast(d.name + " removed (mock)"); }
+        };
+      });
+
+    const mi = (label, icon, click, active) => ({ label, icon: { __html: icon }, click, bg: active ? "linear-gradient(90deg, rgba(108,232,255,0.5) 0%, rgba(148,238,255,0.15) 100%)" : "transparent" });
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(800 * scale) + "px",
+      searchQ: s.searchQ,
+      onSearch: (e) => this.setState({ searchQ: e.target.value }),
+      cards,
+      createWs: () => this.toast("Create Workspace — flows through onboarding brand setup"),
+      goSettings: () => { window.location.href = "SparkSocial Settings.dc.html#org"; },
+      goPortal: () => { window.location.href = "SparkSocial Agency Portal.dc.html"; },
+      toastBell: () => this.toast("Notification center — mock"),
+      menuOpen: s.menuOpen,
+      toggleMenu: (e) => { e.stopPropagation(); this.setState(st => ({ menuOpen: !st.menuOpen })); },
+      closeMenu: () => { if (this.state.menuOpen) this.setState({ menuOpen: false }); },
+      menuItems: [
+        mi("Profile", '<svg width="20" height="20" viewBox="0 0 22 22" fill="none"><rect x="2.5" y="2.5" width="17" height="17" rx="4" stroke="currentColor" stroke-width="1.5"></rect><circle cx="11" cy="9" r="2.6" stroke="currentColor" stroke-width="1.4"></circle><path d="M5.8 17.6c1.1-2.4 3-3.7 5.2-3.7s4.1 1.3 5.2 3.7" stroke="currentColor" stroke-width="1.4"></path></svg>', () => { window.location.href = "SparkSocial Settings.dc.html#personal"; }, true),
+        mi("Account Settings", '<svg width="20" height="20" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="3" stroke="currentColor" stroke-width="1.5"></circle><path d="M11 2.6v2.2M11 17.2v2.2M2.6 11h2.2M17.2 11h2.2M4.9 4.9l1.6 1.6M15.5 15.5l1.6 1.6M4.9 17.1l1.6-1.6M15.5 6.5l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>', () => { window.location.href = "SparkSocial Settings.dc.html#org"; }, false),
+        mi("Bonuses", '<svg width="20" height="20" viewBox="0 0 22 22" fill="none"><rect x="2.5" y="7" width="17" height="5" rx="1.6" stroke="currentColor" stroke-width="1.5"></rect><path d="M4.5 12v6.5a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V12M11 7v13M7.2 7a2.3 2.3 0 1 1 3.8-2.4A2.3 2.3 0 1 1 14.8 7" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></svg>', () => this.toast("Bonuses — mock"), false),
+        mi("Resources/Trainings", '<svg width="20" height="20" viewBox="0 0 22 22" fill="none"><path d="M11 4.8C9.2 3.4 6.8 3 3.5 3v14c3.3 0 5.7.4 7.5 1.8 1.8-1.4 4.2-1.8 7.5-1.8V3c-3.3 0-5.7.4-7.5 1.8Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path><path d="M11 4.8v14" stroke="currentColor" stroke-width="1.5"></path></svg>', () => this.toast("Resources & trainings — mock"), false),
+        mi("Logout", '<svg width="20" height="20" viewBox="0 0 22 22" fill="none"><path d="M8.5 2.8H5a2 2 0 0 0-2 2v12.4a2 2 0 0 0 2 2h3.5M14 15l4-4-4-4M18 11H8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>', () => { window.location.href = "SparkSocial Auth.dc.html"; }, false)
+      ],
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

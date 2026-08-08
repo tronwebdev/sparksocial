@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Agency Portal</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus { outline: none; }
+    input::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-modal-in { 0% { opacity: 0; transform: scale(0.97); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes ss-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes ss-twinkle { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Agency Portal" style="position:relative;width:100%;overflow:hidden;height:{{ wrapH }};background:#E7F3F6;">
+    <div style="position:absolute;top:0;width:1728px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;background:linear-gradient(180deg, #E2F1F5 0%, #EAF5F7 60%, #EEF6F7 100%);height:{{ stageH }};">
+
+      <!-- ============ TOP BAR ============ -->
+      <span onClick="{{ goDashboard }}" style="position:absolute;left:46px;top:48px;font-size:26px;font-weight:800;letter-spacing:-0.02em;color:#0C0C0C;white-space:nowrap;cursor:pointer;">Sparksocial</span>
+      <sc-if value="{{ inHome }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:1000px;top:40px;width:378px;height:56px;border-radius:28px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.3);">
+          <div onClick="{{ goAccountSettings }}" style="position:absolute;left:6px;top:6px;height:44px;padding:0 15px;border-radius:22px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="background:rgba(131,131,131,0.08);">
+            <svg width="17" height="17" viewBox="0 0 22 22" fill="none" style="display:block;"><circle cx="9" cy="7" r="2.8" stroke="#5B5B5B" stroke-width="1.6"></circle><path d="M3 17c1-2.7 3.2-4.2 6-4.2 1 0 1.9.2 2.7.5" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round"></path><path d="m15.8 12.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+            <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Account Settings</span>
+          </div>
+          <div style="position:absolute;left:194px;top:6px;height:44px;padding:0 16px;border-radius:22px;background:#0C0C0C;display:inline-flex;flex-direction:row;align-items:center;gap:9px;">
+            <svg width="16" height="15" viewBox="0 0 16 15" fill="none" style="display:block;"><rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#FFFFFF" stroke-width="1.4"></rect><path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke="#FFFFFF" stroke-width="1.4"></path></svg>
+            <span style="font-size:15.5px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Agency Portal</span>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ inTool }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ backHome }}" style="position:absolute;left:46px;top:100px;width:96px;height:44px;border-radius:11px;background:rgba(255,255,255,0.7);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;" style-hover="background:#FFFFFF;">
+          <svg width="8" height="14" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#838383" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span style="font-size:15.5px;font-weight:500;color:#838383;">Back</span>
+        </div>
+        <sc-if value="{{ toolIsCf }}" hint-placeholder-val="{{ true }}">
+          <svg width="30" height="30" viewBox="0 0 26 26" fill="none" style="position:absolute;left:170px;top:108px;display:block;"><circle cx="10" cy="8" r="3.4" stroke="#0C0C0C" stroke-width="1.8"></circle><path d="M3 20c1.2-3.2 3.9-5 7-5 .9 0 1.8.15 2.6.45" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><circle cx="17.4" cy="16.4" r="3.4" stroke="#0C0C0C" stroke-width="1.8"></circle><path d="m20 19 3 3" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        </sc-if>
+        <span style="position:absolute;left:212px;top:106px;font-size:25px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ toolTitle }}</span>
+        <div style="position:absolute;left:46px;top:164px;width:1636px;height:1px;background:rgba(131,131,131,0.2);"></div>
+      </sc-if>
+      <div onClick="{{ toastBell }}" style="position:absolute;left:1398px;top:40px;width:56px;height:56px;border-radius:50%;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 10px 26px -12px rgba(12,12,12,0.45);">
+        <svg width="21" height="22" viewBox="0 0 22 22" fill="none" style="display:block;"><path d="M11 3a5.6 5.6 0 0 1 5.6 5.6c0 3 .8 4.8 1.6 5.9.3.4 0 1-.5 1H4.3c-.5 0-.8-.6-.5-1 .8-1.1 1.6-2.9 1.6-5.9A5.6 5.6 0 0 1 11 3Z" fill="#2FC5DE" stroke="#2FC5DE" stroke-width="1.4" stroke-linejoin="round"></path><path d="M9 18.6a2.1 2.1 0 0 0 4 0" stroke="#2FC5DE" stroke-width="1.6" stroke-linecap="round"></path></svg>
+      </div>
+      <div style="position:absolute;left:1472px;top:40px;width:210px;height:56px;border-radius:28px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.3);">
+        <div style="position:absolute;left:8px;top:8px;width:40px;height:40px;border-radius:50%;background:#BDEBFA url('assets/portal-52d66b.png') center / cover no-repeat;"></div>
+        <div style="position:absolute;left:36px;top:32px;width:14px;height:14px;border-radius:50%;background:#13D711;box-shadow:0 0 0 2px #FFFFFF;"></div>
+        <span style="position:absolute;left:60px;top:17px;font-size:16.5px;font-weight:700;color:#0C0C0C;">Godswill</span>
+        <svg onClick="{{ toastMenu }}" width="4" height="17" viewBox="0 0 4 17" fill="#5B5B5B" style="position:absolute;right:18px;top:20px;display:block;cursor:pointer;"><circle cx="2" cy="2" r="1.8"></circle><circle cx="2" cy="8.5" r="1.8"></circle><circle cx="2" cy="15" r="1.8"></circle></svg>
+      </div>
+
+      <!-- ============ PORTAL HOME ============ -->
+      <sc-if value="{{ inHome }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="Portal Home">
+          <sc-if value="{{ homePre }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:42px;top:118px;width:1644px;height:376px;border-radius:22px;overflow:hidden;background:linear-gradient(100deg, #F3FAFC 0%, #EFF6FA 46%, #F4EDF9 78%, #F7EAF6 100%);box-shadow:0 20px 50px -42px rgba(12,12,12,0.4);">
+              <div style="position:absolute;right:-40px;top:-190px;width:760px;height:760px;border-radius:50%;background:radial-gradient(circle, rgba(244,214,246,0.75) 0%, rgba(226,222,250,0.45) 52%, rgba(233,242,250,0) 74%);"></div>
+              <div style="position:absolute;right:200px;top:-60px;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle, rgba(250,236,252,0.9) 0%, rgba(236,230,252,0.4) 58%, rgba(236,230,252,0) 78%);"></div>
+              <div style="position:absolute;right:490px;top:158px;width:170px;height:96px;border-radius:34px;background:linear-gradient(180deg, rgba(140,210,244,0.55) 0%, rgba(108,184,236,0.4) 100%);box-shadow:0 24px 54px -22px rgba(76,150,220,0.55), inset 0 2px 10px rgba(255,255,255,0.7);">
+                <div style="position:absolute;left:36px;top:36px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 18px rgba(255,255,255,0.9);"></div>
+                <div style="position:absolute;right:36px;top:36px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 18px rgba(255,255,255,0.9);"></div>
+              </div>
+              <img src="assets/portal-usermsg.png" alt="" style="position:absolute;right:650px;top:44px;width:118px;height:auto;">
+              <div style="position:absolute;right:118px;top:40px;width:64px;height:64px;border-radius:16px;background:radial-gradient(circle at 28% 108%, #FFD600 0%, #FF6930 36%, #E1306C 64%, #7638FA 100%);box-shadow:0 18px 40px -16px rgba(225,48,108,0.6);display:flex;align-items:center;justify-content:center;">
+                <svg width="34" height="34" viewBox="0 0 34 34" fill="none" style="display:block;"><rect x="4" y="4" width="26" height="26" rx="8" stroke="#FFFFFF" stroke-width="2.4"></rect><circle cx="17" cy="17" r="6.2" stroke="#FFFFFF" stroke-width="2.4"></circle><circle cx="25" cy="9" r="1.9" fill="#FFFFFF"></circle></svg>
+              </div>
+              <div style="position:absolute;right:690px;top:196px;width:74px;height:64px;border-radius:14px;background:linear-gradient(160deg, #FFE9B8 0%, #F7B95C 100%);box-shadow:0 18px 40px -18px rgba(240,160,60,0.65);display:flex;align-items:center;justify-content:center;transform:rotate(-8deg);">
+                <svg width="40" height="34" viewBox="0 0 40 34" fill="none" style="display:block;"><rect x="2" y="2" width="36" height="30" rx="5" fill="#FDF4E0"></rect><circle cx="13" cy="12" r="4" fill="#F2A93C"></circle><path d="m6 28 10-10 7 7 5-5 6 6v4a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-2Z" fill="#E88F30"></path></svg>
+              </div>
+              <div style="position:absolute;right:96px;top:196px;width:96px;height:78px;border-radius:12px;background:linear-gradient(170deg, #4E7BF0 0%, #3157D6 100%);box-shadow:0 20px 44px -18px rgba(64,102,224,0.65);">
+                <div style="position:absolute;left:8px;top:8px;right:8px;height:14px;border-radius:5px;background:#FFFFFF;display:flex;flex-direction:row;align-items:center;gap:3px;padding:0 4px;">
+                  <span style="width:4px;height:4px;border-radius:50%;background:#57D9F2;"></span><span style="width:4px;height:4px;border-radius:50%;background:#F8B84A;"></span><span style="width:4px;height:4px;border-radius:50%;background:#F06BF5;"></span>
+                </div>
+                <div style="position:absolute;left:8px;top:28px;width:34px;height:22px;border-radius:4px;background:#F2B23E;"></div>
+                <div style="position:absolute;left:48px;top:28px;right:8px;height:9px;border-radius:3px;background:#8FE39A;"></div>
+                <div style="position:absolute;left:48px;top:41px;right:8px;height:9px;border-radius:3px;background:#79D6F2;"></div>
+              </div>
+              <span style="position:absolute;left:104px;top:96px;font-size:42px;font-weight:700;letter-spacing:-0.01em;color:#0C0C0C;white-space:nowrap;">Launch Your AI Social Media Agency</span>
+              <span style="position:absolute;left:104px;top:164px;width:880px;font-size:20.5px;font-weight:400;line-height:1.55;color:#5B5B5B;">Create a fully branded AI-powered social media agency complete with:<br><b style="font-weight:700;color:#3B3B3B;">Website, Service pages, Lead capture, Client onboarding,<br>Social media assets, Proposals</b></span>
+              <div onClick="{{ openWizard }}" style="position:absolute;left:104px;top:296px;height:56px;padding:0 26px;border-radius:12px;background:#0C0C0C;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:12px;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+                <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Launch Your Ai Agency</span>
+                <svg width="13" height="13" viewBox="0 0 10 10" fill="none" style="display:block;"><path d="M1 9 9 1M9 1H3M9 1v6" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+            <span style="position:absolute;left:56px;top:688px;font-size:24px;font-weight:700;color:#0C0C0C;">My Clients</span>
+            <div style="position:absolute;left:1226px;top:674px;width:460px;height:58px;border-radius:13px;background:#FFFFFF;box-shadow:0 10px 26px -20px rgba(12,12,12,0.35);">
+              <input type="text" placeholder="Search Workspace" style="position:absolute;left:20px;top:0;width:390px;height:58px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+              <svg width="19" height="19" viewBox="0 0 26 26" fill="none" style="position:absolute;right:18px;top:20px;display:block;"><circle cx="11" cy="11" r="8" stroke="#5B5B5B" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#5B5B5B" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+          </sc-if>
+          <sc-if value="{{ homeLaunched }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:42px;top:118px;width:1644px;height:372px;border-radius:22px;background:#FCFCFC;box-shadow:0 20px 50px -42px rgba(12,12,12,0.4);"></div>
+          <span style="position:absolute;left:66px;top:150px;font-size:29px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Welcome to your Agency Portal</span>
+          <span style="position:absolute;left:66px;top:196px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">Your central hub for managing agency tasks and resources.</span>
+          <div style="position:absolute;left:66px;top:240px;width:246px;height:112px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);background:#FFFFFF;">
+            <span style="position:absolute;left:17px;top:14px;font-size:14.5px;font-weight:500;color:#5B5B5B;">Agency setup</span>
+            <div style="position:absolute;left:17px;top:40px;display:flex;flex-direction:row;align-items:center;gap:7px;">
+              <span style="width:17px;height:17px;border-radius:50%;background:#22B14C;display:inline-flex;align-items:center;justify-content:center;"><svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;">Completed</span>
+            </div>
+            <div onClick="{{ openWizard }}" style="position:absolute;left:17px;top:70px;height:30px;padding:0 11px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:7px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#5B5B5B" stroke-width="1.5"></path></svg>
+              <span style="font-size:13.5px;font-weight:500;color:#5B5B5B;">Edit Wizard</span>
+            </div>
+            <div style="position:absolute;right:14px;top:22px;width:68px;height:68px;border-radius:50%;background:radial-gradient(circle at 32% 32%, #F56BFF 0%, #A341FF 65%, #7B2BE0 100%);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:17px;font-weight:700;color:#FFFFFF;">100%</span>
+            </div>
+          </div>
+          <div style="position:absolute;left:330px;top:240px;width:224px;height:112px;border-radius:14px;background:#D8F5E6;">
+            <span style="position:absolute;left:18px;top:16px;font-size:15.5px;font-weight:500;color:#3B3B3B;">Total Workspaces</span>
+            <span style="position:absolute;left:18px;top:52px;font-size:30px;font-weight:700;color:#0C0C0C;">10</span>
+            <svg width="22" height="21" viewBox="0 0 16 15" fill="none" style="position:absolute;right:18px;bottom:18px;display:block;"><rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#3B3B3B" stroke-width="1.3"></rect><path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke="#3B3B3B" stroke-width="1.3"></path></svg>
+          </div>
+          <div style="position:absolute;left:572px;top:240px;width:224px;height:112px;border-radius:14px;background:#FBE4C2;">
+            <span style="position:absolute;left:18px;top:16px;font-size:15.5px;font-weight:500;color:#3B3B3B;">Total Clients</span>
+            <span style="position:absolute;left:18px;top:52px;font-size:30px;font-weight:700;color:#0C0C0C;">530</span>
+            <svg width="24" height="21" viewBox="0 0 22 19" fill="none" style="position:absolute;right:18px;bottom:18px;display:block;"><circle cx="8" cy="6" r="2.6" stroke="#3B3B3B" stroke-width="1.4"></circle><circle cx="15" cy="7.4" r="2" stroke="#3B3B3B" stroke-width="1.3"></circle><path d="M3 15.4c.8-2.4 2.7-3.8 5-3.8s4.2 1.4 5 3.8M13.4 11.8c1.9.1 3.4 1.2 4.2 3" stroke="#3B3B3B" stroke-width="1.4" stroke-linecap="round"></path></svg>
+          </div>
+          <span style="position:absolute;left:66px;top:374px;font-size:16px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Website URL: <b style="font-weight:600;color:#3B3B3B;">Https://myagencywebsite.com</b></span>
+          <div style="position:absolute;left:66px;top:406px;width:740px;display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;">
+            <sc-for list="{{ socialChips }}" as="sc" hint-placeholder-count="7">
+              <div onClick="{{ sc.click }}" style="height:36px;padding:0 12px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:8px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                <span style="width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;" dangerouslySetInnerHTML="{{ sc.icon }}"></span>
+                <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ sc.handle }}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style="display:block;"><path d="M1 9 9 1M9 1H3M9 1v6" stroke="#5B5B5B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:826px;top:142px;width:836px;height:326px;border-radius:16px;background:#DCF1F8;overflow:hidden;">
+            <div style="position:absolute;left:16px;top:16px;width:300px;height:294px;border-radius:12px;background:linear-gradient(160deg, #CBEcF6 0%, #EAF7FB 100%);box-shadow:0 12px 30px -24px rgba(12,12,12,0.35);">
+              <span style="position:absolute;left:16px;top:14px;font-size:15px;font-weight:700;color:#0C0C0C;">Agency Website</span>
+              <div onClick="{{ toastPreview }}" style="position:absolute;right:12px;top:10px;width:32px;height:32px;border-radius:50%;background:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 4px 12px -6px rgba(12,12,12,0.4);">
+                <svg width="15" height="12" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.2" stroke="#5B5B5B" stroke-width="1.3"></circle></svg>
+              </div>
+              <div style="position:absolute;left:70px;top:76px;width:160px;height:250px;border-radius:10px 10px 0 0;background:#FFFFFF;box-shadow:0 -6px 24px -12px rgba(12,12,12,0.2);"></div>
+            </div>
+            <div style="position:absolute;left:332px;top:16px;width:300px;height:294px;border-radius:12px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.35);">
+              <span style="position:absolute;left:16px;top:14px;font-size:15px;font-weight:700;color:#0C0C0C;">Facebook cover</span>
+              <div onClick="{{ toastPreview }}" style="position:absolute;right:12px;top:10px;width:32px;height:32px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.06);">
+                <svg width="15" height="12" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.2" stroke="#5B5B5B" stroke-width="1.3"></circle></svg>
+              </div>
+            </div>
+            <div style="position:absolute;left:648px;top:16px;width:300px;height:294px;border-radius:12px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.35);">
+              <span style="position:absolute;left:16px;top:14px;font-size:15px;font-weight:700;color:#0C0C0C;">LinkedIn banners</span>
+              <div style="position:absolute;left:16px;top:150px;width:200px;height:96px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);"></div>
+            </div>
+            <div onClick="{{ toastCarousel }}" style="position:absolute;left:10px;top:148px;width:34px;height:34px;border-radius:50%;background:#FFFFFF;box-shadow:0 6px 16px -8px rgba(12,12,12,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;transform:scaleX(-1);"><path d="m1 1 5 5-5 5" stroke="#3B3B3B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div onClick="{{ toastCarousel }}" style="position:absolute;right:10px;top:148px;width:34px;height:34px;border-radius:50%;background:#FFFFFF;box-shadow:0 6px 16px -8px rgba(12,12,12,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="m1 1 5 5-5 5" stroke="#3B3B3B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="position:absolute;left:42px;top:514px;width:1644px;height:136px;border-radius:20px;background:#FAE3C2;">
+            <div style="position:absolute;left:32px;top:28px;display:flex;flex-direction:row;align-items:center;gap:11px;">
+              <svg width="18" height="24" viewBox="0 0 16 20" fill="none" style="display:block;"><path d="M9.5 1 2 11.5h5L6.5 19 14 8.5H9L9.5 1Z" fill="#0C0C0C"></path></svg>
+              <span style="font-size:22px;font-weight:700;color:#0C0C0C;">Growth Tools:</span>
+            </div>
+            <span style="position:absolute;left:32px;top:66px;width:430px;font-size:15.5px;font-weight:500;line-height:1.35;color:#5B5B5B;">Discover new clients and job opportunities with our powerful Growth Tools.</span>
+            <div onClick="{{ openClientFinder }}" style="position:absolute;left:640px;top:20px;width:438px;height:96px;border-radius:14px;background:#FFFFFF;cursor:pointer;box-shadow:0 10px 26px -20px rgba(12,12,12,0.4);" style-hover="box-shadow:0 14px 30px -16px rgba(12,12,12,0.5);">
+              <div style="position:absolute;left:16px;top:18px;width:60px;height:60px;border-radius:14px;background:#E2C4FA;display:flex;align-items:center;justify-content:center;">
+                <svg width="28" height="28" viewBox="0 0 26 26" fill="none" style="display:block;"><circle cx="10" cy="8" r="3.4" stroke="#0C0C0C" stroke-width="1.8"></circle><path d="M3 20c1.2-3.2 3.9-5 7-5 .9 0 1.8.15 2.6.45" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><circle cx="17.4" cy="16.4" r="3.4" stroke="#0C0C0C" stroke-width="1.8"></circle><path d="m20 19 3 3" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </div>
+              <span style="position:absolute;left:92px;top:18px;font-size:18.5px;font-weight:700;color:#0C0C0C;">Client Finder</span>
+              <span style="position:absolute;left:92px;top:48px;width:330px;font-size:13.5px;font-weight:400;line-height:1.3;color:#5B5B5B;">A tool designed to help businesses easily locate and connect with potential clients.</span>
+            </div>
+            <div onClick="{{ openJobFinder }}" style="position:absolute;left:1104px;top:20px;width:438px;height:96px;border-radius:14px;background:#FFFFFF;cursor:pointer;box-shadow:0 10px 26px -20px rgba(12,12,12,0.4);" style-hover="box-shadow:0 14px 30px -16px rgba(12,12,12,0.5);">
+              <div style="position:absolute;left:16px;top:18px;width:60px;height:60px;border-radius:14px;background:#BFC4F6;display:flex;align-items:center;justify-content:center;">
+                <svg width="27" height="27" viewBox="0 0 26 26" fill="none" style="display:block;"><circle cx="10.5" cy="7.5" r="3.2" stroke="#0C0C0C" stroke-width="1.8"></circle><path d="M3 19.4c1.1-3 3.6-4.7 6.6-4.7" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><rect x="12.6" y="14" width="10.4" height="8" rx="2" stroke="#0C0C0C" stroke-width="1.7"></rect><path d="M15.8 14v-1.2a2 2 0 0 1 2-2h.2a2 2 0 0 1 2 2V14" stroke="#0C0C0C" stroke-width="1.6"></path></svg>
+              </div>
+              <span style="position:absolute;left:92px;top:18px;font-size:18.5px;font-weight:700;color:#0C0C0C;">Job Finder</span>
+              <span style="position:absolute;left:92px;top:48px;width:330px;font-size:13.5px;font-weight:400;line-height:1.3;color:#5B5B5B;">Discover your dream job effortlessly with our intuitive Job Finder tool.</span>
+            </div>
+          </div>
+
+          <div style="position:absolute;left:42px;width:1644px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 50px -42px rgba(12,12,12,0.4);top:{{ wsTableTop }};height:{{ wsTableH }};">
+            <span style="position:absolute;left:96px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Name</span>
+            <span style="position:absolute;left:388px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Client Name</span>
+            <span style="position:absolute;left:742px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Team members</span>
+            <span style="position:absolute;left:1046px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Social Accounts Connected</span>
+            <span style="position:absolute;left:1330px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Industry</span>
+            <span style="position:absolute;left:1544px;top:28px;font-size:16px;font-weight:600;color:#5B5B5B;">Action</span>
+            <div style="position:absolute;left:0;top:66px;width:1644px;height:1px;background:rgba(131,131,131,0.15);"></div>
+            <sc-for list="{{ wsRows }}" as="w" hint-placeholder-count="4">
+              <div style="position:absolute;left:0;width:1644px;top:{{ w.top }};height:{{ w.h }};border-radius:14px;background:{{ w.bg }};">
+                <div style="position:absolute;left:26px;top:28px;width:56px;height:56px;border-radius:14px;background:linear-gradient(140deg, #F06BF5 0%, #D24ED9 100%);display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:24px;font-weight:700;color:#FFFFFF;">A</span>
+                </div>
+                <span style="position:absolute;left:96px;top:44px;font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Atlas Studio</span>
+                <span style="position:absolute;left:388px;top:46px;font-size:17px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Godswill Okoyomon</span>
+                <span style="position:absolute;left:742px;top:46px;font-size:17px;font-weight:500;color:#5B5B5B;white-space:nowrap;">24 members</span>
+                <div style="position:absolute;left:1046px;top:32px;width:160px;height:44px;">
+                  <sc-for list="{{ w.accounts }}" as="ac" hint-placeholder-count="4">
+                    <div style="position:absolute;top:0;width:44px;height:44px;left:{{ ac.left }};">
+                      <div style="position:absolute;inset:0;border-radius:50%;background:{{ ac.bg }} url('{{ ac.img }}') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+                      <div style="position:absolute;right:-2px;bottom:-2px;width:16px;height:16px;border-radius:5px;background:#FFFFFF url('{{ ac.badge }}') center / 12px 12px no-repeat;box-shadow:0 0 0 1px rgba(12,12,12,0.08);"></div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="position:absolute;left:1318px;top:38px;height:40px;padding:0 15px;border-radius:9px;background:#FBD9FA;display:inline-flex;align-items:center;">
+                  <span style="font-size:15px;font-weight:600;color:#D24ED9;">Ecommerce</span>
+                </div>
+                <div onClick="{{ w.view }}" style="position:absolute;left:1508px;top:38px;width:40px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.06);">
+                  <svg width="17" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#5B5B5B" stroke-width="1.4"></circle></svg>
+                </div>
+                <div onClick="{{ w.remove }}" style="position:absolute;left:1556px;top:38px;width:40px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.55);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.06);">
+                  <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                </div>
+                <div onClick="{{ w.expand }}" style="position:absolute;left:1604px;top:38px;width:40px;height:40px;border-radius:10px;background:#9CEFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#6CE8FF;">
+                  <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;transition:transform 0.25s ease;transform:{{ w.chev }};"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <sc-if value="{{ w.isOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:26px;right:26px;top:108px;height:76px;display:flex;flex-direction:row;align-items:center;">
+                    <span style="margin-left:806px;font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">$ Client Revenue:</span>
+                    <div style="margin-left:14px;height:52px;padding:0 18px;border-radius:11px;background:#FBE4C2;display:inline-flex;align-items:center;">
+                      <span style="font-size:22px;font-weight:700;color:#0C0C0C;">$250</span>
+                    </div>
+                    <span style="margin-left:10px;font-size:16px;font-weight:500;color:#5B5B5B;">/Monthly</span>
+                    <div style="margin-left:36px;flex:1;height:60px;border-radius:12px;background:#EFE3FB;display:flex;flex-direction:row;align-items:center;padding:0 16px;gap:14px;">
+                      <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Payment Information</span>
+                      <div style="width:34px;height:34px;border-radius:9px;background:#635BFF;display:flex;align-items:center;justify-content:center;"><span style="font-size:19px;font-weight:700;color:#FFFFFF;">S</span></div>
+                      <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;letter-spacing:0.04em;white-space:nowrap;">1234***********7789</span>
+                      <div onClick="{{ w.copy }}" style="margin-left:auto;height:38px;padding:0 17px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                        <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Copy</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+                <div style="position:absolute;left:0;bottom:0;width:1644px;height:1px;background:rgba(131,131,131,0.1);"></div>
+              </div>
+            </sc-for>
+            <span style="position:absolute;left:26px;bottom:24px;font-size:16px;font-weight:500;color:#5B5B5B;">Page 1 of 4</span>
+            <div style="position:absolute;left:1548px;bottom:20px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);display:flex;align-items:center;justify-content:center;opacity:0.45;">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;transform:scaleX(-1);"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div onClick="{{ toastPage }}" style="position:absolute;left:1592px;bottom:20px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ CLIENT FINDER ============ -->
+      <sc-if value="{{ inClientFinder }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ cfNotConnected }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Client Finder">
+            <div style="position:absolute;left:46px;top:190px;width:1636px;height:430px;border-radius:24px;overflow:hidden;background:radial-gradient(700px 300px at 20% 20%, #101826 0%, #05070C 70%);">
+              <img src="assets/jobfinder-hero.png" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;">
+              <div style="position:absolute;left:82px;top:74px;display:flex;flex-direction:row;align-items:center;gap:18px;">
+                <span style="font-size:44px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Connect to</span>
+                <div style="width:52px;height:52px;border-radius:50%;background:#26D34A;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:30px;font-weight:800;color:#FFFFFF;font-style:italic;">f</span>
+                </div>
+                <span style="font-size:44px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Clienforce</span>
+              </div>
+              <span style="position:absolute;left:82px;top:172px;width:700px;font-size:23px;font-weight:400;line-height:1.35;color:rgba(255,255,255,0.55);">An incredibly powerful tool designed to seamlessly connect businesses with potential clients and customers.</span>
+              <div onClick="{{ cfConnect }}" style="position:absolute;left:82px;top:300px;height:58px;padding:0 24px;border-radius:10px;background:#26D34A;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#1FBE41;" style-active="transform:scale(0.985);">
+                <span style="font-size:18px;font-weight:700;color:#FFFFFF;white-space:nowrap;">+ Connect Clienforce</span>
+              </div>
+              <div style="position:absolute;right:36px;top:96px;width:520px;height:310px;border-radius:14px;background:#FCFDFE;box-shadow:0 30px 70px -40px rgba(0,0,0,0.8);overflow:hidden;">
+                <div style="position:absolute;left:0;top:0;width:100%;height:44px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.15);display:flex;flex-direction:row;align-items:center;padding:0 18px;gap:16px;">
+                  <span style="font-size:12px;font-weight:600;color:#5B5B5B;">Contacts</span><span style="font-size:12px;font-weight:500;color:#9B9B9B;">Analytics</span><span style="font-size:12px;font-weight:500;color:#9B9B9B;">Playbook</span><span style="font-size:12px;font-weight:500;color:#9B9B9B;">Widgets</span><span style="font-size:12px;font-weight:500;color:#9B9B9B;">Chrome Ext</span><span style="font-size:12px;font-weight:500;color:#9B9B9B;">Settings</span>
+                </div>
+                <span style="position:absolute;left:18px;top:60px;font-size:13px;font-weight:700;color:#0C0C0C;">Capture Automation</span>
+                <span style="position:absolute;left:18px;top:82px;width:280px;font-size:11px;font-weight:400;color:#838383;">With rules, the agent will automatically find &amp; add new clients</span>
+                <div style="position:absolute;left:18px;top:120px;height:30px;padding:0 10px;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;align-items:center;"><span style="font-size:11.5px;font-weight:600;color:#0C0C0C;">+ Add New Rule</span></div>
+                <div style="position:absolute;left:18px;top:166px;display:flex;flex-direction:row;gap:8px;">
+                  <sc-for list="{{ cfMockDrops }}" as="md" hint-placeholder-count="4">
+                    <div style="height:28px;padding:0 9px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);display:inline-flex;align-items:center;gap:6px;"><span style="font-size:10.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ md.label }}</span><svg width="8" height="5" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#838383" stroke-width="1.8"></path></svg></div>
+                  </sc-for>
+                </div>
+                <div style="position:absolute;right:16px;top:60px;width:170px;height:230px;border-radius:10px;background:#FFFFFF;box-shadow:0 10px 30px -18px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15);">
+                  <span style="position:absolute;left:12px;top:10px;font-size:11.5px;font-weight:700;color:#0C0C0C;">Sample Leads Preview</span>
+                  <sc-for list="{{ cfMockLeads }}" as="ml" hint-placeholder-count="3">
+                    <div style="position:relative;margin-top:6px;height:52px;">
+                      <div style="position:absolute;left:12px;width:26px;height:26px;border-radius:50%;background:#DCEFE2;top:14px;"></div>
+                      <span style="position:absolute;left:46px;top:12px;font-size:10.5px;font-weight:600;color:#0C0C0C;">{{ ml.name }}</span>
+                      <div style="position:absolute;left:46px;top:28px;width:60px;height:5px;border-radius:3px;background:#DFF2E4;"></div>
+                      <div style="position:absolute;right:12px;top:16px;height:20px;padding:0 8px;border-radius:10px;background:#26D34A;display:inline-flex;align-items:center;"><span style="font-size:9px;font-weight:700;color:#FFFFFF;">Connect</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+            </div>
+            <div style="position:absolute;left:1206px;top:170px;width:236px;height:64px;border-radius:16px;background:#FFFFFF;box-shadow:0 14px 34px -20px rgba(12,12,12,0.45);display:flex;flex-direction:row;align-items:center;justify-content:center;gap:12px;z-index:3;">
+              <div style="width:30px;height:30px;border-radius:50%;background:#26D34A;display:flex;align-items:center;justify-content:center;"><span style="font-size:17px;font-weight:800;color:#FFFFFF;font-style:italic;">f</span></div>
+              <span style="font-size:17px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Not connected</span>
+            </div>
+            <div onClick="{{ cfImportCsv }}" style="position:absolute;left:1462px;top:170px;width:220px;height:64px;border-radius:16px;background:#FFFFFF;box-shadow:0 14px 34px -20px rgba(12,12,12,0.45);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:12px;z-index:3;" style-hover="box-shadow:0 14px 34px -14px rgba(12,12,12,0.6);">
+              <svg width="22" height="26" viewBox="0 0 16 20" fill="none" style="display:block;"><path d="M1.5 3A2 2 0 0 1 3.5 1h6l5 5v11a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V3Z" stroke="#0C0C0C" stroke-width="1.4" stroke-linejoin="round"></path><text x="3" y="15" font-size="5.5" font-weight="800" fill="#0C0C0C" font-family="Arial">CSV</text></svg>
+              <span style="font-size:17px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Import CSV</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Saved Leads (connected) -->
+        <sc-if value="{{ cfConnected }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Client Finder Saved Leads">
+            <div style="position:absolute;left:46px;top:190px;width:520px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 28px -18px rgba(12,12,12,0.28);">
+              <div onClick="{{ cfTabSearch }}" style="position:absolute;left:5px;top:5px;width:252px;height:46px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ cfSearchBg }};transition:background 0.2s ease;">
+                <span style="font-size:16px;font-weight:600;color:#0C0C0C;">My Search</span>
+              </div>
+              <div onClick="{{ cfTabSaved }}" style="position:absolute;left:262px;top:5px;width:252px;height:46px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ cfSavedBg }};transition:background 0.2s ease;">
+                <span style="font-size:16px;font-weight:600;color:#0C0C0C;">Saved Leads</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:46px;top:272px;font-size:17px;font-weight:600;color:#5B5B5B;">24 Results</span>
+            <div style="position:absolute;left:600px;top:190px;width:330px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);">
+              <input type="text" placeholder="Search clients" style="position:absolute;left:18px;top:0;width:260px;height:56px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+              <svg width="18" height="18" viewBox="0 0 26 26" fill="none" style="position:absolute;right:16px;top:19px;display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <sc-for list="{{ cfDrops }}" as="cd" hint-placeholder-count="2">
+              <div onClick="{{ cd.click }}" style="position:absolute;top:190px;width:170px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;left:{{ cd.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;">{{ cd.label }}</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </sc-for>
+            <div onClick="{{ cfExport }}" style="position:absolute;left:1330px;top:190px;height:56px;padding:0 20px;border-radius:14px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Export Clients</span>
+            </div>
+            <div onClick="{{ cfFindClients }}" style="position:absolute;left:1508px;top:190px;height:56px;padding:0 22px;border-radius:14px;background:#26D34A;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#1FBE41;">
+              <span style="font-size:15.5px;font-weight:700;color:#FFFFFF;white-space:nowrap;">Find Clients</span>
+            </div>
+            <!-- table -->
+            <div style="position:absolute;left:46px;top:312px;width:1636px;height:806px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 50px -42px rgba(12,12,12,0.4);">
+              <span style="position:absolute;left:30px;top:26px;font-size:16px;font-weight:600;color:#5B5B5B;">Business Name</span>
+              <span style="position:absolute;left:760px;top:26px;font-size:16px;font-weight:600;color:#5B5B5B;">Location</span>
+              <span style="position:absolute;left:1010px;top:26px;font-size:16px;font-weight:600;color:#5B5B5B;">Ranking</span>
+              <span style="position:absolute;left:1230px;top:26px;font-size:16px;font-weight:600;color:#5B5B5B;">Status</span>
+              <span style="position:absolute;left:1500px;top:26px;font-size:16px;font-weight:600;color:#5B5B5B;">View</span>
+              <div style="position:absolute;left:0;top:64px;width:1636px;height:1px;background:rgba(131,131,131,0.15);"></div>
+              <sc-for list="{{ cfLeads }}" as="ld" hint-placeholder-count="4">
+                <div style="position:absolute;left:0;width:1636px;top:{{ ld.top }};height:{{ ld.h }};">
+                  <div style="position:absolute;left:30px;top:24px;width:52px;height:52px;border-radius:50%;background:#DCEFE2;display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:20px;font-weight:700;color:#26A344;">S</span>
+                  </div>
+                  <span style="position:absolute;left:98px;top:24px;font-size:18.5px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Sunnyvale Innovations</span>
+                  <div style="position:absolute;left:98px;top:56px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+                    <span style="font-size:14.5px;font-weight:500;color:#838383;">sunnyvaleinnovate@admin.com</span>
+                    <span style="width:4px;height:4px;border-radius:50%;background:#B0B0B0;"></span>
+                    <span style="font-size:14.5px;font-weight:500;color:#838383;">+1 00 003 7373</span>
+                    <div style="height:24px;padding:0 8px;border-radius:6px;background:#EFEFEF;display:inline-flex;align-items:center;"><span style="font-size:11.5px;font-weight:700;color:#5B5B5B;">CSV</span></div>
+                  </div>
+                  <span style="position:absolute;left:760px;top:38px;font-size:16px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Sunnyvale, CA</span>
+                  <div style="position:absolute;left:1010px;top:32px;display:flex;flex-direction:row;align-items:center;gap:8px;">
+                    <svg width="18" height="17" viewBox="0 0 18 17" fill="none" style="display:block;"><path d="m9 1 2.3 5 5.2.5-4 3.5 1.2 5.2L9 12.4 4.3 15.2 5.5 10 1.5 6.5 6.7 6 9 1Z" fill="#F8B84A"></path></svg>
+                    <span style="font-size:16.5px;font-weight:700;color:#0C0C0C;">4.5</span>
+                  </div>
+                  <div style="position:absolute;left:1230px;top:26px;height:38px;padding:0 14px;border-radius:19px;background:#DCF6E3;display:inline-flex;align-items:center;">
+                    <span style="font-size:14.5px;font-weight:600;color:#26A344;">Contacted</span>
+                  </div>
+                  <div onClick="{{ ld.view }}" style="position:absolute;left:1488px;top:26px;height:40px;padding:0 18px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:rgba(131,131,131,0.06);">
+                    <span style="font-size:15px;font-weight:600;color:#0C0C0C;">View</span>
+                  </div>
+                  <sc-if value="{{ ld.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:30px;top:100px;display:flex;flex-direction:row;gap:14px;">
+                      <div onClick="{{ ld.contact }}" style="height:46px;padding:0 20px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;"><span style="font-size:15px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Contact Lead</span></div>
+                      <sc-for list="{{ ld.actions }}" as="la" hint-placeholder-count="4">
+                        <div onClick="{{ la.click }}" style="height:46px;padding:0 18px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><span style="font-size:15px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ la.label }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <div style="position:absolute;left:0;bottom:0;width:1636px;height:1px;background:rgba(131,131,131,0.1);"></div>
+                </div>
+              </sc-for>
+              <span style="position:absolute;left:30px;top:760px;font-size:16px;font-weight:500;color:#5B5B5B;">Page 1 of 4</span>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ JOB FINDER ============ -->
+      <sc-if value="{{ inJobFinder }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Job Finder">
+          <div style="position:absolute;left:46px;top:190px;width:1636px;height:300px;border-radius:24px;overflow:hidden;background:radial-gradient(700px 280px at 24% 24%, #131B2A 0%, #05070C 72%);">
+            <img src="assets/jobfinder-hero.png" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;">
+            <div style="position:absolute;left:82px;top:64px;height:38px;padding:0 14px;border-radius:19px;background:rgba(120,170,255,0.18);box-shadow:inset 0 0 0 1px rgba(120,170,255,0.5);display:inline-flex;align-items:center;">
+              <span style="font-size:14px;font-weight:600;color:#9CC2FF;white-space:nowrap;">NEW: 15 opportunities waiting</span>
+            </div>
+            <span style="position:absolute;left:82px;top:122px;width:760px;font-size:40px;font-weight:600;line-height:1.25;color:#FFFFFF;">Find Potential Jobs for your Agency on Demand</span>
+            <img src="assets/jobfinder-892c.jpg" alt="" style="position:absolute;right:64px;top:32px;width:380px;height:236px;object-fit:cover;object-position:center 20%;border-radius:14px;box-shadow:0 26px 60px -30px rgba(0,0,0,0.7);">
+            <img src="assets/jobfinder-288d.png" alt="" style="position:absolute;right:308px;top:236px;width:264px;height:auto;filter:drop-shadow(0 16px 34px rgba(0,0,0,0.5));">
+          </div>
+          <div style="position:absolute;left:46px;top:520px;width:520px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 28px -18px rgba(12,12,12,0.28);">
+            <div onClick="{{ jfTabDiscover }}" style="position:absolute;left:5px;top:5px;width:252px;height:46px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ jfDiscoverBg }};transition:background 0.2s ease;">
+              <span style="font-size:16px;font-weight:600;color:#0C0C0C;">Discover</span>
+            </div>
+            <div onClick="{{ jfTabSaved }}" style="position:absolute;left:262px;top:5px;width:252px;height:46px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ jfSavedBg }};transition:background 0.2s ease;">
+              <span style="font-size:16px;font-weight:600;color:#0C0C0C;">Saved</span>
+            </div>
+          </div>
+          <sc-if value="{{ jfIsSaved }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;left:46px;top:606px;font-size:22px;font-weight:700;color:#0C0C0C;">Saved Jobs</span>
+            <span style="position:absolute;left:46px;top:642px;font-size:15.5px;font-weight:400;color:#838383;">Your bookmarked opportunities, all in one place</span>
+          </sc-if>
+          <sc-if value="{{ jfIsDiscover }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:46px;top:606px;font-size:22px;font-weight:700;color:#0C0C0C;">Search Jobs</span>
+            <div style="position:absolute;left:46px;top:648px;width:560px;height:58px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);">
+              <input type="text" placeholder="Job Title, Company, keyword" style="position:absolute;left:18px;top:0;width:500px;height:58px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+            </div>
+            <sc-for list="{{ jfDrops }}" as="jd" hint-placeholder-count="3">
+              <div onClick="{{ jd.click }}" style="position:absolute;top:648px;width:170px;height:58px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;left:{{ jd.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ jd.label }}</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </sc-for>
+            <div onClick="{{ jfBrowse }}" style="position:absolute;left:1500px;top:648px;height:58px;padding:0 24px;border-radius:13px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;">
+              <span style="font-size:15.5px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Browse Jobs</span>
+            </div>
+          </sc-if>
+          <span style="position:absolute;left:46px;top:734px;font-size:17px;font-weight:600;color:#5B5B5B;">15 Results</span>
+          <div style="position:absolute;left:46px;top:772px;width:1636px;display:grid;grid-template-columns:repeat(3, 1fr);gap:18px;">
+            <sc-for list="{{ jfJobs }}" as="jb" hint-placeholder-count="6">
+              <div style="position:relative;height:150px;border-radius:16px;background:#FFFFFF;box-shadow:0 16px 40px -34px rgba(12,12,12,0.45);">
+                <div style="position:absolute;left:20px;top:22px;width:52px;height:52px;border-radius:12px;background:#635BFF;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:26px;font-weight:700;color:#FFFFFF;">S</span>
+                </div>
+                <span style="position:absolute;left:88px;top:26px;font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Stripe</span>
+                <span style="position:absolute;left:88px;top:56px;font-size:14.5px;font-weight:500;color:#838383;white-space:nowrap;">San Francisco, CA · 2 days ago</span>
+                <span style="position:absolute;left:20px;top:100px;font-size:17px;font-weight:700;color:#26A344;white-space:nowrap;">$140k - $190k</span>
+                <div onClick="{{ jb.save }}" style="position:absolute;right:16px;top:20px;width:40px;height:40px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.06);">
+                  <svg width="14" height="18" viewBox="0 0 15 19" fill="none" style="display:block;"><path d="M1 3.2A2.2 2.2 0 0 1 3.2 1h8.6A2.2 2.2 0 0 1 14 3.2V17.4a.6.6 0 0 1-.96.48L7.5 13.7l-5.54 4.18A.6.6 0 0 1 1 17.4V3.2Z" stroke="#0C0C0C" stroke-width="1.5" stroke-linejoin="round" fill="{{ jb.fill }}"></path></svg>
+                </div>
+                <div onClick="{{ jb.view }}" style="position:absolute;right:16px;bottom:16px;height:38px;padding:0 16px;border-radius:9px;background:#9CEFFF;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#6CE8FF;">
+                  <span style="font-size:14px;font-weight:600;color:#0C0C0C;">View Job</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <span style="position:absolute;left:46px;top:1130px;font-size:16px;font-weight:500;color:#5B5B5B;">Page 1 of 4</span>
+        </div>
+      </sc-if>
+
+      <!-- ============ LAUNCH WIZARD (overlay) ============ -->
+      <sc-if value="{{ wizOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ wizClose }}" style="position:absolute;inset:0;background:rgba(30,34,40,0.5);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+        <div data-screen-label="Agency Launch Wizard" style="position:absolute;left:346px;top:30px;width:1036px;border-radius:30px;overflow:hidden;background:linear-gradient(159deg,#DEF3FA 0%,#EDF3F8 38%,#F1EAF9 70%,#E8DDF6 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.55);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);height:{{ wizH }};">
+          <!-- header -->
+          <div onClick="{{ wizBack }}" style="position:absolute;left:30px;top:30px;height:46px;padding:0 22px 0 15px;border-radius:12px;background:rgba(255,255,255,0.55);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:10px;z-index:5;" style-hover="background:#FFFFFF;">
+            <svg width="9" height="15" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#5B5B5B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:16.5px;font-weight:600;color:#3B3B3B;">Back</span>
+          </div>
+          <span style="position:absolute;left:0;right:0;top:37px;text-align:center;font-size:18.5px;font-weight:700;color:#0C0C0C;">{{ wizHeadTitle }}</span>
+          <div style="position:absolute;right:198px;top:40px;display:flex;flex-direction:row;align-items:center;gap:8px;">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="M13 7.5A5.5 5.5 0 1 1 11.4 3.6" stroke="#9B9B9B" stroke-width="1.4" stroke-linecap="round"></path><path d="M13.2 1.6v3.2H10" stroke="#9B9B9B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:14.5px;font-weight:400;color:#9B9B9B;white-space:nowrap;">{{ wizHeadSub }}</span>
+          </div>
+          <div onClick="{{ wizNext }}" style="position:absolute;right:28px;top:30px;height:46px;padding:0 16px;border-radius:10px;background:rgba(255,255,255,0.45);cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:9px;z-index:5;" style-hover="background:#FFFFFF;">
+            <span style="font-size:17.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ wizNextLabel }}</span>
+            <svg width="8" height="14" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#0C0C0C" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+          <div style="position:absolute;left:292px;right:188px;top:94px;height:14px;border-radius:8px;background:rgba(12,12,12,0.05);overflow:hidden;">
+            <div style="position:absolute;left:0;top:0;height:14px;border-radius:8px;background:linear-gradient(90deg,#6CE8FF 0%,#F56BFF 27%,#A341FF 67%,#FEDEB5 100%);transition:width 0.45s cubic-bezier(0.22,1,0.36,1);width:{{ wizProgress }};"></div>
+          </div>
+
+          <!-- floating icon cluster -->
+          <div style="position:absolute;left:352px;top:186px;width:58px;height:42px;border-radius:9px;background:linear-gradient(160deg,#FDF3DE,#F6D89A);box-shadow:0 16px 30px -16px rgba(210,170,90,0.7);transform:rotate(-7deg);opacity:0.92;display:flex;align-items:center;justify-content:center;">
+            <svg width="32" height="22" viewBox="0 0 32 22" fill="none" style="display:block;"><rect x="1" y="1" width="30" height="20" rx="3" fill="#FFFCF4"></rect><circle cx="8.5" cy="8" r="3" fill="#EBB24B"></circle><rect x="14" y="5" width="12" height="2.4" rx="1.2" fill="#E7C583"></rect><rect x="14" y="10" width="8" height="2.4" rx="1.2" fill="#EED9A6"></rect><path d="M1 18l7-6 5 4 4-3 14 7H1Z" fill="#E5A63C" opacity="0.5"></path></svg>
+          </div>
+          <div style="position:absolute;left:634px;top:184px;width:48px;height:48px;border-radius:13px;background:radial-gradient(circle at 30% 108%,#FFD600 0%,#FF6930 34%,#E1306C 62%,#7638FA 100%);box-shadow:0 16px 32px -14px rgba(225,48,108,0.6);opacity:0.95;display:flex;align-items:center;justify-content:center;">
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" style="display:block;"><rect x="4" y="4" width="18" height="18" rx="5.4" stroke="#FFFFFF" stroke-width="2"></rect><circle cx="13" cy="13" r="4.4" stroke="#FFFFFF" stroke-width="2"></circle><circle cx="18.6" cy="7.4" r="1.4" fill="#FFFFFF"></circle></svg>
+          </div>
+          <div style="position:absolute;left:348px;top:262px;width:44px;height:44px;border-radius:50%;background:linear-gradient(160deg,#8CD2F4,#5B93E8);box-shadow:0 14px 28px -14px rgba(76,140,224,0.7);opacity:0.85;display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display:block;"><circle cx="10" cy="4" r="2.6" fill="#FFFFFF"></circle><path d="M10 6.4v5.2m0 0 3.4 6.4M10 11.6 6.6 18" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          </div>
+          <div style="position:absolute;left:436px;top:280px;width:54px;height:44px;border-radius:11px;background:linear-gradient(160deg,#FFE9B8,#F4A94C);box-shadow:0 14px 30px -16px rgba(240,160,60,0.65);opacity:0.9;transform:rotate(6deg);display:flex;align-items:center;justify-content:center;">
+            <svg width="32" height="24" viewBox="0 0 32 24" fill="none" style="display:block;"><rect x="1" y="1" width="30" height="22" rx="4" fill="#FDF4E0"></rect><circle cx="9" cy="8" r="3" fill="#F2A93C"></circle><path d="M1 18l8-8 5 5 4-4 13 10v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-4Z" fill="#E88F30"></path></svg>
+          </div>
+          <div style="position:absolute;left:584px;top:266px;width:62px;height:50px;border-radius:11px;background:linear-gradient(170deg,#4E7BF0,#3157D6);box-shadow:0 16px 34px -16px rgba(64,102,224,0.65);opacity:0.92;">
+            <div style="position:absolute;left:6px;top:6px;right:6px;height:9px;border-radius:3px;background:#FFFFFF;display:flex;flex-direction:row;align-items:center;gap:2.5px;padding:0 4px;"><span style="width:3px;height:3px;border-radius:50%;background:#57D9F2;"></span><span style="width:3px;height:3px;border-radius:50%;background:#F8B84A;"></span><span style="width:3px;height:3px;border-radius:50%;background:#F06BF5;"></span></div>
+            <div style="position:absolute;left:6px;top:20px;width:22px;height:22px;border-radius:3px;background:#F2B23E;"></div>
+            <div style="position:absolute;left:32px;top:20px;right:6px;height:6px;border-radius:2px;background:#8FE39A;"></div>
+            <div style="position:absolute;left:32px;top:30px;right:6px;height:6px;border-radius:2px;background:#79D6F2;"></div>
+          </div>
+          <div style="position:absolute;left:664px;top:238px;width:46px;height:44px;border-radius:12px 12px 12px 3px;background:linear-gradient(160deg,#C99BF7,#9A55E8);box-shadow:0 14px 28px -14px rgba(150,80,230,0.6);opacity:0.85;display:flex;align-items:center;justify-content:center;">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="display:block;"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h11A1.5 1.5 0 0 1 18 5.5v7A1.5 1.5 0 0 1 16.5 14H9l-4 3.5V14H5.5A1.5 1.5 0 0 1 4 12.5v-7Z" fill="#FFFFFF"></path></svg>
+          </div>
+          <div style="position:absolute;left:500px;top:238px;display:flex;flex-direction:row;gap:10px;"><span style="width:9px;height:9px;border-radius:50%;background:rgba(131,131,131,0.4);"></span><span style="width:9px;height:9px;border-radius:50%;background:rgba(131,131,131,0.4);"></span></div>
+
+          <!-- scalloped white card -->
+          <svg width="360" height="54" viewBox="0 0 360 54" fill="none" style="position:absolute;left:338px;top:248px;display:block;z-index:1;"><path d="M0 54C72 54 96 6 180 6C264 6 288 54 360 54Z" fill="#FFFFFF"></path></svg>
+          <div style="position:absolute;left:24px;top:296px;width:988px;border-radius:26px;background:#FFFFFF;box-shadow:0 30px 60px -46px rgba(12,12,12,0.4);height:{{ wizCardH }};"></div>
+
+          <!-- Step 1: model -->
+          <sc-if value="{{ wz0 }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:68px;top:354px;font-size:22px;font-weight:700;color:#0C0C0C;">Choose Agency Model</span>
+            <span style="position:absolute;left:68px;top:390px;font-size:15.5px;font-weight:400;color:#838383;">Select your preferred agency model</span>
+            <div style="position:absolute;left:68px;top:436px;width:900px;height:250px;border-radius:20px;background:linear-gradient(180deg,rgba(238,240,251,0.6),rgba(236,230,248,0.45));"></div>
+            <sc-for list="{{ wizModels }}" as="wm" hint-placeholder-count="2">
+              <div onClick="{{ wm.click }}" style="position:absolute;top:458px;width:404px;height:206px;border-radius:18px;cursor:pointer;background:{{ wm.bg }};box-shadow:{{ wm.ring }};left:{{ wm.left }};" style-hover="box-shadow:inset 0 0 0 1.6px rgba(12,12,12,0.5);">
+                <div style="position:absolute;left:0;right:0;top:30px;display:flex;flex-direction:row;justify-content:center;">
+                  <div style="width:58px;height:58px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:{{ wm.iconBg }};"><span style="display:inline-flex;" dangerouslySetInnerHTML="{{ wm.icon }}"></span></div>
+                </div>
+                <span style="position:absolute;left:20px;right:20px;top:106px;text-align:center;font-size:19px;font-weight:700;color:#0C0C0C;">{{ wm.name }}</span>
+                <span style="position:absolute;left:34px;right:34px;top:137px;text-align:center;font-size:15px;font-weight:500;line-height:1.35;color:#838383;">{{ wm.desc }}</span>
+                <sc-if value="{{ wm.selected }}" hint-placeholder-val="{{ true }}">
+                  <span style="position:absolute;right:18px;top:18px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg,#6CE8FF,#F56BFF);display:inline-flex;align-items:center;justify-content:center;"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" style="display:block;"><path d="m1 5 3.2 3.2L11 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </sc-if>
+                <sc-if value="{{ wm.unselected }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;right:18px;top:18px;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 1.6px rgba(131,131,131,0.42);"></span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <!-- Step 2: identity + brand -->
+          <sc-if value="{{ wz1 }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;left:68px;top:352px;font-size:21px;font-weight:700;color:#0C0C0C;">Agency Identity</span>
+            <span style="position:absolute;left:68px;top:386px;font-size:15px;font-weight:400;color:#838383;">Create the business identity</span>
+            <div onClick="{{ wizGenAi }}" style="position:absolute;left:796px;top:350px;height:38px;padding:0 15px;border-radius:10px;background:#93E1F2;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:8px;" style-hover="background:#7FD8ED;">
+              <svg width="15" height="15" viewBox="0 0 20 19" fill="none" style="display:block;"><defs><linearGradient id="apspa" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3157D6"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient></defs><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#apspa)"></path></svg>
+              <span style="font-size:14px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Generate With Ai</span>
+            </div>
+            <span style="position:absolute;left:68px;top:424px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Agency Name</span>
+            <input type="text" placeholder="Enter agency name" style="position:absolute;left:68px;top:452px;width:428px;height:56px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);padding:0 18px;font-size:15px;font-weight:500;color:#0C0C0C;">
+            <span style="position:absolute;left:540px;top:424px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Your Name</span>
+            <input type="text" placeholder="Enter name" style="position:absolute;left:540px;top:452px;width:428px;height:56px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);padding:0 18px;font-size:15px;font-weight:500;color:#0C0C0C;">
+            <span style="position:absolute;left:68px;top:536px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Phone</span>
+            <input type="text" placeholder="Enter phone" style="position:absolute;left:68px;top:564px;width:428px;height:56px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);padding:0 18px;font-size:15px;font-weight:500;color:#0C0C0C;">
+            <span style="position:absolute;left:540px;top:536px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Agency Email</span>
+            <input type="text" placeholder="Enter email" style="position:absolute;left:540px;top:564px;width:428px;height:56px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);padding:0 18px;font-size:15px;font-weight:500;color:#0C0C0C;">
+            <span style="position:absolute;left:68px;top:648px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Tagline</span>
+            <textarea placeholder="Enter tagline" style="position:absolute;left:68px;top:676px;width:428px;height:150px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);padding:14px 18px;font-size:15px;font-weight:500;color:#0C0C0C;resize:none;"></textarea>
+            <span style="position:absolute;left:540px;top:648px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Pick a timezone</span>
+            <div style="position:absolute;left:540px;top:676px;width:428px;height:150px;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);">
+              <span style="position:absolute;left:20px;top:20px;font-size:14px;font-weight:400;color:#838383;">Country</span>
+              <span style="position:absolute;left:228px;top:20px;font-size:14px;font-weight:400;color:#838383;">Timezone</span>
+              <div onClick="{{ wizToast }}" style="position:absolute;left:20px;top:52px;width:180px;height:52px;border-radius:11px;background:#F2F3F5;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 16px;" style-hover="background:#EAEBEE;">
+                <span style="font-size:15px;font-weight:500;color:#3B3B3B;">India</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <div onClick="{{ wizToast }}" style="position:absolute;left:228px;top:52px;width:180px;height:52px;border-radius:11px;background:#F2F3F5;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 16px;" style-hover="background:#EAEBEE;">
+                <span style="font-size:15px;font-weight:500;color:#9B9B9B;">Select</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+            <div style="position:absolute;left:68px;top:862px;width:900px;height:1px;background:rgba(131,131,131,0.15);"></div>
+            <span style="position:absolute;left:68px;top:890px;font-size:21px;font-weight:700;color:#0C0C0C;">Brand Generator</span>
+            <span style="position:absolute;left:68px;top:924px;font-size:15px;font-weight:400;color:#838383;">Choose unique brand theme tailored to your vision.</span>
+            <div onClick="{{ wizGenAi }}" style="position:absolute;left:796px;top:888px;height:38px;padding:0 15px;border-radius:10px;background:#93E1F2;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:8px;" style-hover="background:#7FD8ED;">
+              <svg width="15" height="15" viewBox="0 0 20 19" fill="none" style="display:block;"><defs><linearGradient id="apspb" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3157D6"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient></defs><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#apspb)"></path></svg>
+              <span style="font-size:14px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Generate With Ai</span>
+            </div>
+            <span style="position:absolute;left:68px;top:966px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Tone</span>
+            <div onClick="{{ wizToast }}" style="position:absolute;left:68px;top:994px;width:428px;height:56px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:15px;font-weight:500;color:#3B3B3B;">Professional</span>
+              <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:68px;top:1080px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Logo upload (optional)</span>
+            <div onClick="{{ wizToast }}" style="position:absolute;left:68px;top:1108px;width:428px;height:100px;border-radius:12px;border:1.5px dashed rgba(131,131,131,0.4);cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:16px;padding:0 20px;" style-hover="background:rgba(131,131,131,0.04);">
+              <div style="width:60px;height:60px;border-radius:10px;background:#F2F3F5;display:flex;align-items:center;justify-content:center;"><svg width="26" height="24" viewBox="0 0 26 24" fill="none" style="display:block;"><rect x="2" y="3" width="22" height="18" rx="3" stroke="#9B9B9B" stroke-width="1.6"></rect><circle cx="9" cy="10" r="2.4" stroke="#9B9B9B" stroke-width="1.6"></circle><path d="m3 20 7-6 4 3.4 4-3 5 4.6" stroke="#9B9B9B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <span style="font-size:14.5px;font-weight:600;color:#3B3B3B;">Drop files here or browse</span>
+                <span style="font-size:12.5px;font-weight:400;color:#9B9B9B;">Png, Jpeg up to 50MB</span>
+                <span style="margin-top:4px;font-size:12.5px;font-weight:600;color:#5B5B5B;text-decoration:underline;">Browse files</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:540px;top:966px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Color Theme</span>
+            <div style="position:absolute;left:540px;top:994px;width:428px;height:214px;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);">
+              <span style="position:absolute;left:20px;top:22px;font-size:14.5px;font-weight:500;color:#3B3B3B;">Selected Colors</span>
+              <div style="position:absolute;left:154px;top:16px;display:flex;flex-direction:row;gap:8px;">
+                <sc-for list="{{ selectedColors }}" as="sc2" hint-placeholder-count="3">
+                  <span style="width:30px;height:30px;border-radius:8px;background:{{ sc2.c }};"></span>
+                </sc-for>
+              </div>
+              <div style="position:absolute;left:16px;top:66px;right:16px;bottom:16px;border-radius:12px;background:#F2F3F5;">
+                <span style="position:absolute;left:16px;top:14px;font-size:14px;font-weight:500;color:#9B9B9B;">Colors templates</span>
+                <div style="position:absolute;left:16px;top:46px;right:16px;display:flex;flex-direction:row;gap:9px;align-items:center;">
+                  <sc-for list="{{ colorTemplates }}" as="ct" hint-placeholder-count="7">
+                    <span onClick="{{ ct.click }}" style="width:32px;height:32px;border-radius:9px;cursor:pointer;background:{{ ct.c }};" style-hover="transform:scale(1.08);"></span>
+                  </sc-for>
+                  <div onClick="{{ wizToast }}" style="width:34px;height:34px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><svg width="15" height="15" viewBox="0 0 17 17" fill="none" style="display:block;"><path d="M11.5 2.5a1.8 1.8 0 0 1 2.6 2.6l-.9.9 1 1-1.3 1.3-1-1-5.3 5.3-2.6.6.6-2.6 5.3-5.3-1-1L10.2 3l1 1 .3-1.5Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path></svg></div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- Step 3: website -->
+          <sc-if value="{{ wz2 }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;left:68px;top:352px;font-size:21px;font-weight:700;color:#0C0C0C;">Agency Website</span>
+            <span style="position:absolute;left:68px;top:386px;font-size:15px;font-weight:400;color:#838383;">A cutting-edge AI-driven agency website</span>
+            <span style="position:absolute;left:68px;top:436px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Layout Style</span>
+            <div style="position:absolute;left:68px;top:468px;width:900px;height:378px;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);overflow:hidden;"></div>
+            <span style="position:absolute;left:90px;top:492px;font-size:14.5px;font-weight:400;color:#9B9B9B;">Select Layout Style</span>
+            <sc-for list="{{ layoutStyles }}" as="li" hint-placeholder-count="6">
+              <div onClick="{{ li.click }}" style="position:absolute;width:264px;height:158px;border-radius:12px;background:#FFFFFF;box-shadow:{{ li.ring }};cursor:pointer;left:{{ li.left }};top:{{ li.top }};" style-hover="box-shadow:inset 0 0 0 1.6px rgba(12,12,12,0.4);">
+                <span style="position:absolute;left:16px;top:13px;font-size:14px;font-weight:600;color:#0C0C0C;">{{ li.label }}</span>
+                <sc-if value="{{ li.selected }}" hint-placeholder-val="{{ true }}">
+                  <span style="position:absolute;right:14px;top:13px;width:22px;height:22px;border-radius:50%;background:linear-gradient(90deg,#6CE8FF,#F56BFF);display:inline-flex;align-items:center;justify-content:center;"><svg width="11" height="9" viewBox="0 0 12 10" fill="none" style="display:block;"><path d="m1 5 3.2 3.2L11 1" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </sc-if>
+                <sc-if value="{{ li.unselected }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;right:14px;top:13px;width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(131,131,131,0.4);"></span>
+                </sc-if>
+                <div style="position:absolute;left:16px;top:40px;width:232px;height:104px;border-radius:8px;background:#EFF0F3;overflow:hidden;">
+                  <div style="position:absolute;left:14px;top:18px;width:70px;height:8px;border-radius:3px;background:rgba(12,12,12,0.65);"></div>
+                  <div style="position:absolute;left:14px;top:32px;width:100px;height:5px;border-radius:2px;background:#C9CCD2;"></div>
+                  <div style="position:absolute;left:14px;top:42px;width:78px;height:5px;border-radius:2px;background:#C9CCD2;"></div>
+                  <div style="position:absolute;left:14px;top:58px;width:46px;height:13px;border-radius:4px;background:#5B7CFF;"></div>
+                  <div style="position:absolute;right:14px;top:16px;width:66px;height:72px;border-radius:5px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(12,12,12,0.06);"></div>
+                </div>
+              </div>
+            </sc-for>
+            <span style="position:absolute;left:68px;top:876px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Title Fonts Style</span>
+            <div onClick="{{ wizToast }}" style="position:absolute;left:68px;top:906px;width:428px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:18px;font-weight:700;color:#0C0C0C;">Asgard</span>
+              <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:540px;top:876px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Select services</span>
+            <div onClick="{{ wizToast }}" style="position:absolute;left:540px;top:906px;width:428px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:15.5px;font-weight:500;color:#3B3B3B;">Content creation</span>
+              <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:68px;top:1000px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Templates</span>
+            <div style="position:absolute;left:68px;top:1032px;width:900px;height:298px;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);overflow:hidden;"></div>
+            <span style="position:absolute;left:90px;top:1056px;font-size:14.5px;font-weight:400;color:#9B9B9B;">Select Template Design</span>
+            <sc-for list="{{ templateCards }}" as="tc" hint-placeholder-count="3">
+              <div style="position:absolute;width:264px;height:196px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);left:{{ tc.left }};top:1088px;">
+                <span style="position:absolute;left:16px;top:13px;font-size:14px;font-weight:600;color:#0C0C0C;">Style 1</span>
+                <div onClick="{{ wizToast }}" style="position:absolute;right:48px;top:11px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.06);"><svg width="15" height="12" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.2" stroke="#5B5B5B" stroke-width="1.3"></circle></svg></div>
+                <div onClick="{{ tc.click }}" style="position:absolute;right:14px;top:11px;width:26px;height:26px;border-radius:50%;cursor:pointer;box-shadow:{{ tc.ring }};display:flex;align-items:center;justify-content:center;"><sc-if value="{{ tc.selected }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 12 10" fill="none" style="display:block;"><path d="m1 5 3.2 3.2L11 1" stroke="#FFFFFF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if></div>
+                <div style="position:absolute;left:16px;top:46px;right:16px;bottom:14px;border-radius:8px;background:#F4F5F7;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;">
+                  <div style="width:96px;height:108px;border-radius:8px 8px 0 0;background:#FFFFFF;box-shadow:0 -6px 20px -10px rgba(12,12,12,0.25);"></div>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <!-- Step 4: summary & subdomain (100% completed) -->
+          <sc-if value="{{ wz3 }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:54px;top:352px;width:62px;height:62px;transform:rotate(-12deg);">
+              <div style="position:absolute;inset:0;border-radius:15px;background:#FFFFFF;box-shadow:0 12px 26px -14px rgba(12,12,12,0.28);"></div>
+              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" style="position:absolute;left:16px;top:15px;display:block;"><path d="M5 3.5 23 11l-7.2 2.2L13 21 5 3.5Z" fill="#F056C9"></path></svg>
+            </div>
+            <div style="position:absolute;left:896px;top:352px;width:62px;height:62px;transform:rotate(11deg);">
+              <div style="position:absolute;inset:0;border-radius:17px;background:linear-gradient(150deg,#8B7BF5,#6C4BE0);box-shadow:0 12px 26px -12px rgba(108,75,224,0.6);"></div>
+              <svg width="30" height="26" viewBox="0 0 30 26" fill="none" style="position:absolute;left:16px;top:18px;display:block;"><circle cx="9" cy="8" r="2.4" fill="#FFFFFF"></circle><circle cx="20" cy="8" r="2.4" fill="#FFFFFF"></circle><path d="M8 15c2 2.4 11 2.4 13 0" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:140px;right:140px;top:358px;text-align:center;font-size:28px;font-weight:700;line-height:1.26;color:#0C0C0C;">Congratulations On Successfully Creating Your Ai Social Media Agency</span>
+
+            <div style="position:absolute;left:68px;top:474px;width:900px;height:300px;border-radius:16px;overflow:hidden;background:linear-gradient(118deg,#DAEFFB 0%,#E8F3FB 52%,#EFF4FA 100%);">
+              <div style="position:absolute;right:44px;top:36px;width:196px;height:236px;border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,0.7),rgba(255,255,255,0.25));box-shadow:0 18px 40px -26px rgba(60,120,200,0.5);transform:rotate(4deg);"></div>
+              <div style="position:absolute;left:24px;top:30px;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 40% 34%,#EAF6FF,#BFE1FB);box-shadow:0 8px 20px -12px rgba(60,120,200,0.6);display:flex;align-items:center;justify-content:center;">
+                <svg width="30" height="28" viewBox="0 0 30 28" fill="none" style="display:block;"><path d="M6 12a9 9 0 0 1 18 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V12Z" fill="#FFFFFF"></path><circle cx="11.5" cy="13.5" r="2" fill="#3B6FB0"></circle><circle cx="18.5" cy="13.5" r="2" fill="#3B6FB0"></circle></svg>
+              </div>
+              <span style="position:absolute;left:96px;top:46px;font-size:23px;font-weight:700;color:#0C0C0C;">My Agency Name</span>
+              <span style="position:absolute;left:24px;top:114px;font-size:15px;font-weight:400;color:#5B5B5B;">Website URL: <b style="font-weight:600;color:#3B3B3B;">Https://myagencywebsite.com</b></span>
+              <span style="position:absolute;left:24px;top:150px;font-size:15px;font-weight:400;color:#5B5B5B;">Agency Email: <b style="font-weight:600;color:#3B3B3B;">myageny@mywebsite.com</b></span>
+              <span style="position:absolute;left:24px;top:186px;font-size:15px;font-weight:400;color:#5B5B5B;">Tagline: <b style="font-weight:600;color:#3B3B3B;">my business agency tagline</b></span>
+              <span style="position:absolute;left:24px;top:230px;font-size:15px;font-weight:600;color:#0C0C0C;">Accounts:</span>
+              <div style="position:absolute;left:120px;top:222px;display:flex;flex-direction:row;gap:9px;">
+                <sc-for list="{{ summaryAccounts }}" as="sa" hint-placeholder-count="7">
+                  <span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;" dangerouslySetInnerHTML="{{ sa.icon }}"></span>
+                </sc-for>
+              </div>
+              <span style="position:absolute;left:24px;top:272px;font-size:15px;font-weight:600;color:#0C0C0C;">Tone:</span>
+              <div style="position:absolute;left:82px;top:264px;height:32px;padding:0 14px;border-radius:9px;background:#EDEEF1;display:inline-flex;align-items:center;"><span style="font-size:14px;font-weight:600;color:#5B5B5B;">Professional</span></div>
+              <div style="position:absolute;left:214px;top:264px;height:32px;padding:0 14px;border-radius:9px;background:#EAF1FF;box-shadow:inset 0 0 0 1px rgba(59,111,255,0.4);display:inline-flex;align-items:center;"><span style="font-size:14px;font-weight:600;color:#3B6FFF;">6 Social Media Assets</span></div>
+            </div>
+
+            <span style="position:absolute;left:68px;top:812px;font-size:19px;font-weight:700;color:#0C0C0C;">Connect your own domain</span>
+            <div onClick="{{ wizLaunch }}" style="position:absolute;left:832px;top:808px;height:40px;padding:0 16px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:9px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:14.5px;font-weight:600;color:#5B5B5B;">Skip for now</span>
+              <svg width="14" height="11" viewBox="0 0 14 11" fill="none" style="display:block;"><path d="m1 1 4.5 4.5L1 10M7 1l4.5 4.5L7 10" stroke="#5B5B5B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:68px;top:858px;width:900px;height:448px;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);"></div>
+            <span style="position:absolute;left:92px;top:886px;font-size:15px;font-weight:400;color:#5B5B5B;">Enter the domain you want to connect to your website</span>
+            <div style="position:absolute;left:92px;top:920px;width:852px;height:56px;border-radius:11px;background:#F2F3F5;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;">
+              <span style="font-size:16px;font-weight:600;color:#0C0C0C;">tronweb.co</span>
+              <svg onClick="{{ wizToast }}" width="16" height="16" viewBox="0 0 20 20" fill="none" style="display:block;cursor:pointer;"><path d="m12.4 4.2 3.4 3.4M2.6 17.4l.7-3.3a2 2 0 0 1 .54-1L11.4 5.8a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.6 7.6a2 2 0 0 1-1 .54l-3.3.7-.7-1.2Z" stroke="#5B5B5B" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            </div>
+            <span style="position:absolute;left:92px;top:1000px;font-size:15.5px;font-weight:700;color:#0C0C0C;">DNS Records</span>
+            <span style="position:absolute;left:92px;top:1030px;font-size:14px;font-weight:400;color:#838383;">Next, add the following records to your domain's DNS settings. <b style="font-weight:700;color:#0C0C0C;">Learn more</b></span>
+            <div style="position:absolute;left:92px;top:1066px;width:852px;height:48px;border-radius:10px 10px 0 0;background:#ECEDF0;">
+              <span style="position:absolute;left:22px;top:15px;font-size:14.5px;font-weight:600;color:#3B3B3B;">Type</span>
+              <span style="position:absolute;left:170px;top:15px;font-size:14.5px;font-weight:600;color:#3B3B3B;">Hostname</span>
+              <span style="position:absolute;left:380px;top:15px;font-size:14.5px;font-weight:600;color:#3B3B3B;">Records</span>
+            </div>
+            <sc-for list="{{ dnsRows }}" as="dn" hint-placeholder-count="2">
+              <div style="position:absolute;left:92px;width:852px;height:60px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.14);top:{{ dn.top }};">
+                <span style="position:absolute;left:22px;top:20px;font-size:15px;font-weight:500;color:#3B3B3B;">{{ dn.type }}</span>
+                <span style="position:absolute;left:170px;top:20px;font-size:15px;font-weight:500;color:#3B3B3B;">@</span>
+                <svg onClick="{{ wizToast }}" width="15" height="17" viewBox="0 0 15 17" fill="none" style="position:absolute;left:210px;top:20px;display:block;cursor:pointer;"><rect x="4" y="4" width="10" height="12" rx="2" stroke="#8A8A8A" stroke-width="1.4"></rect><path d="M11 4V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" stroke="#8A8A8A" stroke-width="1.4"></path></svg>
+                <span style="position:absolute;left:380px;top:20px;right:60px;font-size:15px;font-weight:500;color:#3B3B3B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ dn.rec }}</span>
+                <svg onClick="{{ wizToast }}" width="15" height="17" viewBox="0 0 15 17" fill="none" style="position:absolute;right:22px;top:20px;display:block;cursor:pointer;"><rect x="4" y="4" width="10" height="12" rx="2" stroke="#8A8A8A" stroke-width="1.4"></rect><path d="M11 4V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" stroke="#8A8A8A" stroke-width="1.4"></path></svg>
+              </div>
+            </sc-for>
+            <div onClick="{{ wizClose }}" style="position:absolute;left:346px;top:1246px;width:180px;height:52px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:15.5px;font-weight:600;color:#5B5B5B;">Cancel</span>
+            </div>
+            <div onClick="{{ wizLaunch }}" style="position:absolute;left:538px;top:1246px;width:180px;height:52px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+              <span style="font-size:15.5px;font-weight:600;color:#FFFFFF;">Link</span>
+              <svg width="12" height="12" viewBox="0 0 10 10" fill="none" style="display:block;"><path d="M1 9 9 1M9 1H3M9 1v6" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-if>
+
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startView&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;home&quot;, &quot;clientFinder&quot;, &quot;jobFinder&quot;], &quot;default&quot;: &quot;home&quot;, &quot;tsType&quot;: &quot;'home'|'clientFinder'|'jobFinder'&quot;, &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    vw: 1728,
+    view: "home",            // home | clientFinder | jobFinder
+    cfState: "notConnected", // notConnected | connected
+    cfTab: 1,                // 0 my search, 1 saved leads
+    cfOpenLead: 0,
+    jfTab: 0,                // 0 discover, 1 saved
+    jfSaved: [0],
+    wizStep: -1,             // -1 closed, 0..3
+    wizModel: 0,
+    wizLayout: 0,
+    wizTemplate: 0,
+    wsOpenRow: -1,
+    launched: (typeof localStorage !== "undefined" && localStorage.getItem("ss-agency-launched") === "1"),
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    const h = window.location.hash;
+    if (h === "#wizard") this.setState({ wizStep: 0 });
+    else if (h === "#clientFinder") this.setState({ view: "clientFinder" });
+    else if (h === "#jobFinder") this.setState({ view: "jobFinder" });
+    else if (this.props.startView && this.props.startView !== "home") this.setState({ view: this.props.startView });
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  doLaunch() {
+    try { localStorage.setItem("ss-agency-launched", "1"); } catch (e) {}
+    this.setState({ wizStep: -1, launched: true, view: "home" });
+    this.toast("Agency launched — welcome to your Agency Portal");
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    let stageH = (s.wsOpenRow >= 0 ? 1430 : 1330) + (s.launched ? 0 : 75);
+    if (s.view === "clientFinder") stageH = s.cfState === "notConnected" ? 760 : 1180;
+    if (s.view === "jobFinder") stageH = 1200;
+    const wizHs = [760, 1280, 1400, 1360];
+    if (s.wizStep >= 0) stageH = Math.max(stageH, 30 + wizHs[Math.max(0, Math.min(3, s.wizStep))] + 40);
+
+    const chipIcons = {
+      fb: '<svg width="17" height="17" viewBox="0 0 17 17"><circle cx="8.5" cy="8.5" r="8.5" fill="#1877F2"></circle><path d="M11.6 11 12 8.5H9.6V6.9c0-.7.3-1.35 1.4-1.35h1.1V3.4s-1-.17-1.95-.17c-2 0-3.3 1.2-3.3 3.4v1.9H4.6V11h2.25v6h2.75v-6h2Z" fill="#FFFFFF" transform="scale(0.82) translate(1.8,-0.5)"></path></svg>',
+      ig: '<svg width="17" height="17" viewBox="0 0 17 17"><defs><radialGradient id="apig" cx="0.3" cy="1.1" r="1.3"><stop offset="0" stop-color="#FFD600"></stop><stop offset="0.35" stop-color="#FF6930"></stop><stop offset="0.65" stop-color="#E1306C"></stop><stop offset="1" stop-color="#7638FA"></stop></radialGradient></defs><rect width="17" height="17" rx="4.5" fill="url(#apig)"></rect><circle cx="8.5" cy="8.5" r="3.4" stroke="#FFFFFF" stroke-width="1.4" fill="none"></circle><circle cx="12.8" cy="4.2" r="1" fill="#FFFFFF"></circle></svg>',
+      li: '<svg width="17" height="17" viewBox="0 0 17 17"><rect width="17" height="17" rx="3.5" fill="#0A66C2"></rect><path d="M4.6 6.8h2v6h-2v-6Zm1-3.2a1.16 1.16 0 1 1 0 2.32 1.16 1.16 0 0 1 0-2.32ZM8 6.8h1.9v.82c.27-.5.93-1.02 1.9-1.02 2 0 2.4 1.32 2.4 3v3.2h-2V9.9c0-.72-.02-1.66-1-1.66-1 0-1.2.8-1.2 1.6v2.96H8v-6Z" fill="#FFFFFF"></path></svg>',
+      pin: '<svg width="17" height="17" viewBox="0 0 17 17"><circle cx="8.5" cy="8.5" r="8.5" fill="#E60023"></circle><path d="M8.7 3.5c-2.8 0-4.2 2-4.2 3.7 0 1 .38 1.9 1.2 2.24.13.05.25 0 .29-.15l.12-.47c.04-.14.02-.2-.08-.32-.23-.28-.38-.63-.38-1.13 0-1.46 1.1-2.77 2.85-2.77 1.55 0 2.4.95 2.4 2.22 0 1.67-.74 3.08-1.84 3.08-.6 0-1.06-.5-.91-1.12.17-.74.51-1.53.51-2.06 0-.48-.25-.87-.78-.87-.62 0-1.12.64-1.12 1.5 0 .55.18.92.18.92l-.75 3.16c-.22.94-.03 2.08-.02 2.2.01.07.1.09.14.03.06-.07.77-.96 1.02-1.85l.4-1.55c.19.37.76.7 1.36.7 1.8 0 3.02-1.64 3.02-3.83 0-1.66-1.4-3.2-3.55-3.2Z" fill="#FFFFFF"></path></svg>',
+      x: '<svg width="17" height="17" viewBox="0 0 17 17"><rect width="17" height="17" rx="3.5" fill="#0C0C0C"></rect><path d="m3.8 3.8 4 5.2-4 4.6h1.5l3.2-3.7 2.9 3.7h3l-4.2-5.5 3.7-4.3h-1.5l-3 3.4-2.6-3.4h-3Z" fill="#FFFFFF" transform="scale(0.86) translate(1.2,1.2)"></path></svg>',
+      tt: '<svg width="17" height="17" viewBox="0 0 17 17"><rect width="17" height="17" rx="3.5" fill="#0C0C0C"></rect><path d="M10.4 3.4h1.7c.1 1 .8 1.9 2 2.1v1.7c-.8 0-1.5-.25-2-.62v3.72a3.6 3.6 0 1 1-3.6-3.6c.14 0 .28 0 .42.03v1.75a1.9 1.9 0 1 0 1.48 1.85V3.4Z" fill="#FFFFFF" transform="scale(0.9) translate(0.6,0.6)"></path></svg>',
+      yt: '<svg width="17" height="17" viewBox="0 0 17 17"><rect width="17" height="17" rx="3.5" fill="#FF0000"></rect><path d="M6.8 5.8 11.4 8.5 6.8 11.2V5.8Z" fill="#FFFFFF"></path></svg>'
+    };
+    const badgeMap = ["assets/tiktok-badge.png", "assets/icons/fb-color.png", "assets/icons/ig-color.png", "assets/icons/linkedin.png"];
+    const wsRowH = 108, wsOpenH = 196;
+    const avatarImgs = ["assets/avatar-2.png", "assets/agent-avatar-photo.png", "assets/pro-memoji.png", "assets/avatar-2.png"];
+    const avatarBgs = ["#F3D1E8", "#DCEAF6", "#F6E24B", "#CBE4F2"];
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(stageH * scale) + "px",
+      stageH: stageH + "px",
+
+      inHome: s.view === "home",
+      homePre: s.view === "home" && !s.launched,
+      homeLaunched: s.view === "home" && s.launched,
+      wsTableTop: (s.launched ? 674 : 745) + "px",
+      inTool: s.view !== "home",
+      toolIsCf: s.view === "clientFinder",
+      toolTitle: s.view === "clientFinder" ? (s.cfState === "connected" ? "Saved Leads" : "Client Finder") : "Job Finder",
+      backHome: () => this.setState({ view: "home" }),
+      goDashboard: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+      goAccountSettings: () => { window.location.href = "SparkSocial Settings.dc.html#org"; },
+      toastBell: () => this.toast("Notification center — mock"),
+      toastMenu: () => this.toast("Account menu — mock"),
+      toastPage: () => this.toast("Pagination — mock"),
+      toastPreview: () => this.toast("Asset preview — generated in the launch wizard"),
+      toastCarousel: () => this.toast("More generated assets — mock"),
+
+      socialChips: [
+        { handle: "@godswill..", icon: chipIcons.fb }, { handle: "@gods_wi..", icon: chipIcons.ig },
+        { handle: "Godswill O..", icon: chipIcons.li }, { handle: "Godswill O..", icon: chipIcons.pin },
+        { handle: "Godswill O..", icon: chipIcons.x }, { handle: "Godswill O..", icon: chipIcons.tt },
+        { handle: "Godswill O..", icon: chipIcons.yt }
+      ].map(c => ({ ...c, icon: { __html: c.icon }, click: () => this.toast("Opens " + c.handle + " — external link in production") })),
+
+      wsRows: (() => {
+        let y = 67;
+        return [0, 1, 2, 3].map(i => {
+          const isOpen = s.wsOpenRow === i;
+          const top = y;
+          y += (isOpen ? wsOpenH : wsRowH) + 8;
+          this._wsTableH = y + 66;
+          return {
+            top: top + "px",
+            h: (isOpen ? wsOpenH : wsRowH) + "px",
+            bg: isOpen ? "#F4F4F6" : "transparent",
+            isOpen,
+            chev: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+            accounts: [0, 1, 2, 3].map(j => ({
+              left: (j * 34) + "px",
+              img: avatarImgs[j],
+              bg: avatarBgs[j],
+              badge: badgeMap[j]
+            })),
+            view: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+            remove: () => this.toast("Workspace removed (mock)"),
+            expand: () => this.setState(st => ({ wsOpenRow: st.wsOpenRow === i ? -1 : i })),
+            copy: () => this.toast("Card number copied")
+          };
+        });
+      })(),
+      wsTableH: (67 + (3 * (wsRowH + 8)) + (s.wsOpenRow >= 0 ? wsOpenH : wsRowH) + 8 + 66) + "px",
+
+      openClientFinder: () => { this.setState({ view: "clientFinder" }); window.scrollTo(0, 0); },
+      openJobFinder: () => { this.setState({ view: "jobFinder" }); window.scrollTo(0, 0); },
+      inClientFinder: s.view === "clientFinder",
+      inJobFinder: s.view === "jobFinder",
+      cfNotConnected: s.cfState === "notConnected",
+      cfConnected: s.cfState === "connected",
+      cfConnect: () => { this.setState({ cfState: "connected", cfTab: 1 }); this.toast("Clienforce connected"); },
+      cfImportCsv: () => { this.setState({ cfState: "connected", cfTab: 1 }); this.toast("CSV imported — 24 leads added"); },
+      cfMockDrops: [{ label: "Industry" }, { label: "Location" }, { label: "10km" }, { label: "10 Leads/Run" }, { label: "Weekly" }],
+      cfMockLeads: [{ name: "Ruth Uttah" }, { name: "Martins will" }, { name: "Lambo gini" }],
+      cfTabSearch: () => this.setState({ cfTab: 0 }),
+      cfTabSaved: () => this.setState({ cfTab: 1 }),
+      cfSearchBg: s.cfTab === 0 ? "#9CEFFF" : "#FFFFFF",
+      cfSavedBg: s.cfTab === 1 ? "#9CEFFF" : "#FFFFFF",
+      cfDrops: [{ label: "Sources", left: "950px" }, { label: "Folder", left: "1140px" }].map(d => ({ ...d, click: () => this.toast(d.label + " filter — mock") })),
+      cfExport: () => this.toast("Clients exported to CSV (mock)"),
+      cfFindClients: () => this.toast("Lead capture run started — mock"),
+      cfLeads: [0, 1, 2, 3].map(i => {
+        const open = s.cfOpenLead === i;
+        return {
+          top: (65 + i * (open ? 170 : 92) + (i > 0 && s.cfOpenLead < i ? 78 : 0)) + "px",
+          h: (open ? 170 : 92) + "px",
+          open,
+          view: () => this.setState({ cfOpenLead: open ? -1 : i }),
+          contact: () => this.toast("Contact Lead — opens outreach composer (mock)"),
+          actions: ["Add to campaign", "Send Email", "Call Client", "Send SMS"].map(label => ({
+            label, click: () => this.toast(label + " — mock")
+          }))
+        };
+      }),
+
+      jfTabDiscover: () => this.setState({ jfTab: 0 }),
+      jfTabSaved: () => this.setState({ jfTab: 1 }),
+      jfDiscoverBg: s.jfTab === 0 ? "#9CEFFF" : "#FFFFFF",
+      jfSavedBg: s.jfTab === 1 ? "#9CEFFF" : "#FFFFFF",
+      jfIsDiscover: s.jfTab === 0,
+      jfIsSaved: s.jfTab === 1,
+      jfDrops: [{ label: "Location", left: "630px" }, { label: "Amount", left: "820px" }, { label: "All Type", left: "1010px" }].map(d => ({ ...d, click: () => this.toast(d.label + " — mock") })),
+      jfBrowse: () => this.toast("Browsing jobs — 15 results"),
+      jfJobs: (s.jfTab === 0 ? [0, 1, 2, 3, 4, 5] : s.jfSaved).map(i => ({
+        fill: s.jfSaved.includes(i) ? "#0C0C0C" : "none",
+        save: () => {
+          this.setState(st => ({ jfSaved: st.jfSaved.includes(i) ? st.jfSaved.filter(x => x !== i) : [...st.jfSaved, i] }));
+          this.toast(s.jfSaved.includes(i) ? "Removed from Saved" : "Job saved");
+        },
+        view: () => this.toast("Job detail — external listing in production")
+      })),
+
+      wizOpen: s.wizStep >= 0,
+      wizH: wizHs[Math.max(0, Math.min(3, s.wizStep))] + "px",
+      wizCardH: (wizHs[Math.max(0, Math.min(3, s.wizStep))] - 320) + "px",
+      wz0: s.wizStep === 0, wz1: s.wizStep === 1, wz2: s.wizStep === 2, wz3: s.wizStep === 3,
+      wizHeadTitle: s.wizStep === 3 ? "100% Completed" : ("Step " + Math.min(s.wizStep + 1, 3) + " of 4"),
+      wizHeadSub: s.wizStep === 3 ? "Created your Social Media Agency" : "Creating your Social Media Agency",
+      wizProgress: ["20%", "52%", "78%", "100%"][Math.max(0, Math.min(3, s.wizStep))],
+      wizNextLabel: s.wizStep === 3 ? "Launch" : "Continue",
+      openWizard: () => this.setState({ wizStep: 0 }),
+      wizClose: () => this.setState({ wizStep: -1 }),
+      wizBack: () => this.setState(st => ({ wizStep: st.wizStep <= 0 ? -1 : st.wizStep - 1 })),
+      wizNext: () => {
+        if (this.state.wizStep === 3) { this.doLaunch(); return; }
+        this.setState(st => ({ wizStep: st.wizStep + 1 }));
+      },
+      wizLaunch: () => this.doLaunch(),
+      wizGenAi: () => this.toast("Generating with Ai… (mock)"),
+      wizToast: () => this.toast("Mock control"),
+      wizModels: [
+        { name: "Local Business Agency", desc: "Help local businesses grow with AI content and social media.", icon: '<svg width="34" height="34" viewBox="0 0 26 26" fill="none"><path d="M3 10 5 4h16l2 6M4 10v11a1.6 1.6 0 0 0 1.6 1.6h14.8A1.6 1.6 0 0 0 22 21V10" stroke="#0C0C0C" stroke-width="1.7" stroke-linejoin="round"></path><path d="M3 10h20M10 22v-6h6v6" stroke="#0C0C0C" stroke-width="1.7" stroke-linejoin="round"></path></svg>', left: "98px" },
+        { name: "Personal Brand Agency", desc: "Personal Brand Agency Help coaches and creators dominate social media.", icon: '<svg width="34" height="34" viewBox="0 0 26 26" fill="none"><path d="M3 6.5V4.5A1.5 1.5 0 0 1 4.5 3H6M20 3h1.5A1.5 1.5 0 0 1 23 4.5v2M23 19.5v2a1.5 1.5 0 0 1-1.5 1.5H20M6 23H4.5A1.5 1.5 0 0 1 3 21.5v-2" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round"></path><circle cx="13" cy="11" r="3" stroke="#0C0C0C" stroke-width="1.7"></circle><path d="M8 19c1-2.4 2.8-3.6 5-3.6s4 1.2 5 3.6" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round"></path></svg>', left: "534px" }
+      ].map((m, i) => ({
+        ...m,
+        icon: { __html: m.icon },
+        iconBg: s.wizModel === i ? "#F3F4F7" : "rgba(131,131,131,0.08)",
+        selected: s.wizModel === i,
+        unselected: s.wizModel !== i,
+        bg: s.wizModel === i ? "#FFFFFF" : "rgba(255,255,255,0.35)",
+        ring: s.wizModel === i ? "inset 0 0 0 1.6px #0C0C0C" : "inset 0 0 0 1.3px rgba(12,12,12,0.1)",
+        click: () => this.setState({ wizModel: i })
+      })),
+      selectedColors: [{ c: "#0A66FF" }, { c: "#22C9EE" }, { c: "#A5ECFA" }],
+      colorTemplates: ["#0A66FF", "#22C55E", "#5B5BF5", "#7EE0F2", "#F472B6", "#F35555", "#9333EA"].map(c => ({ c, click: () => this.toast("Color added to theme") })),
+      layoutStyles: [0, 1, 2, 3, 4, 5].map(i => ({
+        label: "Style " + ((i % 3) + 1),
+        left: (90 + (i % 3) * 272) + "px",
+        top: (524 + Math.floor(i / 3) * 176) + "px",
+        selected: s.wizLayout === i,
+        unselected: s.wizLayout !== i,
+        ring: s.wizLayout === i ? "inset 0 0 0 1.6px #0C0C0C" : "inset 0 0 0 1px rgba(131,131,131,0.22)",
+        click: () => this.setState({ wizLayout: i })
+      })),
+      templateCards: [0, 1, 2].map(i => ({
+        left: (90 + i * 272) + "px",
+        selected: s.wizTemplate === i,
+        ring: s.wizTemplate === i ? "inset 0 0 0 13px #8A45F0" : "inset 0 0 0 1.5px rgba(131,131,131,0.4)",
+        click: () => this.setState({ wizTemplate: i })
+      })),
+      summaryAccounts: ["fb", "ig", "li", "x", "yt", "tt", "pin"].map(k => ({ icon: { __html: chipIcons[k].replace('width="17" height="17"', 'width="30" height="30"') } })),
+      dnsRows: [
+        { type: "A", rec: "34.111.179.208", top: "1114px" },
+        { type: "TXT", rec: "replit.verify=f212bd64-b6ao-4590-a38a-bcd6f5ffc6b3", top: "1174px" }
+      ],
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

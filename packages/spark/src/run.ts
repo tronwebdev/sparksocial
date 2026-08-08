@@ -1,3 +1,4 @@
+import type { RunStatus, RunTrigger, StepType } from '@sparksocial/shared/types';
 import type { AgentName } from './agents.js';
 
 /**
@@ -13,9 +14,12 @@ import type { AgentName } from './agents.js';
  * because the reasoning between the calls is exactly what's missing.
  */
 
-export type RunTrigger = 'user' | 'schedule' | 'event';
-export type RunStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
-export type StepType = 'think' | 'tool' | 'delegate' | 'wait';
+/**
+ * Re-exported rather than redeclared: `ScopedDb.runs` (the Timeline's read side)
+ * is typed against the same three unions from `@sparksocial/shared`, and a
+ * second declaration here would let the writer and the reader drift apart.
+ */
+export type { RunTrigger, RunStatus, StepType };
 
 export interface AgentRun {
   id: string;

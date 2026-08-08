@@ -21,7 +21,17 @@ export type Database = NodePgDatabase<typeof schema>;
 export interface ConnectOptions {
   /** Defaults to `process.env.DATABASE_URL`. Azure Flexible Server requires `sslmode=require`. */
   connectionString?: string;
-  /** Pool sizing — Container Apps default replica count means this stays small per instance. */
+  /**
+   * Connections **per replica**, not in total — the number that matters is
+   * `max × maxReplicas`. `infra/azure/bootstrap.sh` currently scales to 3, so
+   * the default 10 means a ceiling of 30 server-side connections, comfortably
+   * inside a Flexible Server's limit (a small B-series tier allows ~50).
+   *
+   * Raise `maxReplicas` and this stops being true quietly: Postgres refuses new
+   * connections with "too many clients", which surfaces as the API failing
+   * *every* request rather than degrading. If replicas go past ~5, either lower
+   * this or put PgBouncer in front — the pool size is not an isolated knob.
+   */
   max?: number;
 }
 

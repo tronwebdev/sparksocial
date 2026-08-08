@@ -1,0 +1,120 @@
+/* Generated from Figma Variables. First mode = :root default.
+   FLOAT tokens are unitless — multiply by 1px in calc() where a length is needed. */
+
+:root {
+  --accents-blue: rgb(0,136,255); /* @kind color */
+  --accents-indigo: rgb(97,85,245); /* @kind color */
+  --accents-teal: rgb(0,195,208); /* @kind color */
+  --background-brand-default: var(--brand-800); /* @kind color */
+  --background-brand-hover: var(--brand-900); /* @kind color */
+  --background-default-default-hover: var(--gray-100); /* @kind color */
+  --background-default-default: var(--white-1000); /* @kind color */
+  --background-default-secondary-hover: var(--gray-200); /* @kind color */
+  --background-default-secondary: var(--gray-100); /* @kind color */
+  --background-disabled-default: var(--gray-300); /* @kind color */
+  --black-100: rgba(12,12,13,0.05); /* @kind color */
+  --black-200: rgba(12,12,13,0.1); /* @kind color */
+  --body-font-family: var(--family-sans);
+  --body-font-weight-regular: var(--weight-regular);
+  --body-font-weight-strong: var(--weight-semibold);
+  --body-size-medium: var(--scale-03);
+  --border-brand-default: var(--brand-800); /* @kind color */
+  --border-default-default: var(--gray-300); /* @kind color */
+  --border-disabled-default: var(--gray-400); /* @kind color */
+  --border-neutral-default: var(--slate-900); /* @kind color */
+  --brand-100: rgb(245,245,245); /* @kind color */
+  --brand-300: rgb(217,217,217); /* @kind color */
+  --brand-800: rgb(44,44,44); /* @kind color */
+  --brand-900: rgb(30,30,30); /* @kind color */
+  --color-gray-100: rgb(32,32,32); /* @kind color */
+  --component-stroke: var(--accents-indigo); /* @kind color */
+  --depth-025: 1;
+  --depth-0: 0;
+  --depth-100: 4;
+  --family-sans: "Inter";
+  --fills-tertiary: rgba(118,118,128,0.12); /* @kind color */
+  --fonts-font-sans: "Geist";
+  --gray-100: rgb(245,245,245); /* @kind color */
+  --gray-200: rgb(230,230,230); /* @kind color */
+  --gray-300: rgb(217,217,217); /* @kind color */
+  --gray-400: rgb(179,179,179); /* @kind color */
+  --gray-500: rgb(117,117,117); /* @kind color */
+  --gray-600: rgb(68,68,68); /* @kind color */
+  --gray-700: rgb(56,56,56); /* @kind color */
+  --gray-800: rgb(44,44,44); /* @kind color */
+  --gray-900-2: rgb(30,30,30); /* @kind color */
+  --gray-900: rgb(30,30,30); /* @kind color */
+  --icon-brand-on-brand: var(--brand-100); /* @kind color */
+  --icon-default-default-2: var(--gray-900); /* @kind color */
+  --icon-default-default: var(--gray-900); /* @kind color */
+  --icon-disabled-on-disabled: var(--gray-400); /* @kind color */
+  --labels-primary: rgb(0,0,0); /* @kind color */
+  --leading-leading-tight: 20;
+  --radius-200: 8;
+  --radius-400: 16;
+  --scale-03: 16;
+  --scale-06: 32;
+  --scale-07: 40;
+  --size-text-sm: 14;
+  --size-text-xs: 12;
+  --slate-100: rgb(243,243,243); /* @kind color */
+  --slate-900: rgb(48,48,48); /* @kind color */
+  --space-150: 6;
+  --space-200: 8;
+  --space-300: 12;
+  --space-400: 16;
+  --stroke-border: 1;
+  --text-brand-default: var(--brand-800); /* @kind color */
+  --text-brand-on-brand: var(--brand-100); /* @kind color */
+  --text-default-default: var(--gray-900); /* @kind color */
+  --text-default-secondary: var(--gray-500); /* @kind color */
+  --text-disabled-default: var(--gray-400); /* @kind color */
+  --weight-font-normal: 400;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --white-1000-2: rgb(255,255,255); /* @kind color */
+  --white-1000: rgb(255,255,255); /* @kind color */
+  --white-500: rgba(255,255,255,0.7); /* @kind color */
+}
+
+:root[data-theme="dark"], .dark {
+  --accents-blue: rgb(0,145,255); /* @kind color */
+  --accents-blue: rgb(92,184,255); /* @kind color */
+  --accents-indigo: rgb(109,124,255); /* @kind color */
+  --accents-indigo: rgb(167,170,255); /* @kind color */
+  --accents-teal: rgb(0,210,224); /* @kind color */
+  --accents-teal: rgb(59,221,236); /* @kind color */
+  --background-brand-default: var(--brand-100); /* @kind color */
+  --background-brand-hover: var(--brand-300); /* @kind color */
+  --background-default-default-hover: var(--gray-700); /* @kind color */
+  --background-default-default: var(--gray-900); /* @kind color */
+  --background-default-secondary-hover: var(--gray-900); /* @kind color */
+  --background-default-secondary: var(--gray-800); /* @kind color */
+  --background-disabled-default: var(--gray-700); /* @kind color */
+  --border-brand-default: var(--brand-100); /* @kind color */
+  --border-default-default: var(--gray-600); /* @kind color */
+  --border-disabled-default: var(--gray-600); /* @kind color */
+  --border-neutral-default: var(--slate-100); /* @kind color */
+  --fills-tertiary: rgba(118,118,128,0.24); /* @kind color */
+  --fills-tertiary: rgba(118,118,128,0.32); /* @kind color */
+  --icon-brand-on-brand: var(--brand-900); /* @kind color */
+  --icon-default-default-2: var(--white-1000); /* @kind color */
+  --icon-default-default: var(--white-1000); /* @kind color */
+  --icon-disabled-on-disabled: var(--gray-400); /* @kind color */
+  --labels-primary: rgb(255,255,255); /* @kind color */
+  --labels-primary: rgb(255,255,255); /* @kind color */
+  --text-brand-default: var(--brand-100); /* @kind color */
+  --text-brand-on-brand: var(--brand-900); /* @kind color */
+  --text-default-default: var(--white-1000); /* @kind color */
+  --text-default-secondary: var(--white-500); /* @kind color */
+  --text-disabled-default: var(--gray-500); /* @kind color */
+}
+
+:root[data-theme="light"], .light {
+  --accents-blue: rgb(30,110,244); /* @kind color */
+  --accents-indigo: rgb(86,74,222); /* @kind color */
+  --accents-teal: rgb(0,129,152); /* @kind color */
+  --fills-tertiary: rgba(118,118,128,0.2); /* @kind color */
+  --icon-default-default: var(--gray-900); /* @kind color */
+  --labels-primary: rgb(0,0,0); /* @kind color */
+}

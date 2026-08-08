@@ -8,6 +8,12 @@
       "port": 3000
     },
     {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "-w", "@sparksocial/api"],
+      "port": 8080
+    },
+    {
       "name": "prototype",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "ui build", "-l", "4000"],

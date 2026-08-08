@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { GenomeDimensions, Explanation, untrusted, ToolError } from '@sparksocial/shared/types';
+import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import { crawl } from './crawl.js';
 import { inferGenome } from './infer.js';
 
@@ -24,7 +25,9 @@ export const genomeBootstrapFromUrl = defineTool({
     'dimensions. Returns inferences for the user to confirm — does not save a final genome.',
 
   input: z.object({
-    url: z.string().url(),
+    // Server-side fetched: guarded against link-local/loopback targets, not
+    // merely parsed. See packages/shared/src/safeUrl.ts.
+    url: PublicHttpUrl,
     brandId: z.string(),
     maxPages: z.number().int().min(1).max(25).default(12),
   }),

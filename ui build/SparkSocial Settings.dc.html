@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #FFFFFF; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 10% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+</helmet>
+<div style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;height:{{ outerH }};">
+  <div style="position:absolute;left:0;top:0;width:1728px;transform-origin:top left;transform:{{ stageScale }};height:{{ frameH }};">
+    <sc-if value="{{ isWs1 }}" hint-placeholder-val="{{ true }}"><dc-import name="Settings WS Overview" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs2 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Social Accounts" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs3 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Credit Usage" nav="{{ nav }}" hint-size="1728px,2662px" style="position:absolute;left:0;top:0;width:1728px;height:2662px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs4 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Team Users" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs5 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Team Groups" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs6 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Team Groups Flows" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs7 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Add Member" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs8 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Add Client" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs9 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Edit Group" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs10 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Export" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs11 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Clone" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs12 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Import" nav="{{ nav }}" hint-size="1728px,1404px" style="position:absolute;left:0;top:0;width:1728px;height:1404px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs13 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Engagement Start" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs14 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Engagement Done" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs15 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS EI Autonomy" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs16 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS EI Platforms" nav="{{ nav }}" hint-size="1728px,1213px" style="position:absolute;left:0;top:0;width:1728px;height:1213px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs17 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS EI Voice" nav="{{ nav }}" hint-size="1728px,1213px" style="position:absolute;left:0;top:0;width:1728px;height:1213px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs18 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS EI Boundaries" nav="{{ nav }}" hint-size="1728px,1213px" style="position:absolute;left:0;top:0;width:1728px;height:1213px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs19 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS EI Sales" nav="{{ nav }}" hint-size="1728px,1213px" style="position:absolute;left:0;top:0;width:1728px;height:1213px;"></dc-import></sc-if>
+    <sc-if value="{{ isWs20 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings WS Brand Kits" nav="{{ nav }}" hint-size="1728px,3007px" style="position:absolute;left:0;top:0;width:1728px;height:3007px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs1 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Profile" nav="{{ nav }}" hint-size="1728px,1198px" style="position:absolute;left:0;top:0;width:1728px;height:1198px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs2 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Password" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs3 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Connected" nav="{{ nav }}" hint-size="1728px,1523px" style="position:absolute;left:0;top:0;width:1728px;height:1523px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs4 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Accessibility" nav="{{ nav }}" hint-size="1728px,1093px" style="position:absolute;left:0;top:0;width:1728px;height:1093px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs5 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Privacy" nav="{{ nav }}" hint-size="1728px,1093px" style="position:absolute;left:0;top:0;width:1728px;height:1093px;"></dc-import></sc-if>
+    <sc-if value="{{ isPs7 }}" hint-placeholder-val="{{ false }}"><dc-import name="Settings PS Notifications" nav="{{ nav }}" hint-size="1728px,1402px" style="position:absolute;left:0;top:0;width:1728px;height:1402px;"></dc-import></sc-if>
+  </div>
+  <sc-if value="{{ sparkOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;right:24px;top:78px;width:541px;height:982px;z-index:120;transform:scale(0.82);transform-origin:top right;">
+      <dc-import name="Spark Chat" on-close="{{ closeSpark }}" on-toast="{{ sparkToast }}" hint-size="541px,982px" style="position:absolute;left:0;top:0;width:541px;height:982px;"></dc-import>
+    </div>
+  </sc-if>
+  <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startSection&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;overview&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;overview&quot;, &quot;brand-kits&quot;, &quot;engagement&quot;, &quot;accounts&quot;, &quot;import-export&quot;, &quot;credits&quot;, &quot;team&quot;, &quot;profile&quot;, &quot;password&quot;, &quot;notifications&quot;, &quot;connected&quot;, &quot;accessibility&quot;, &quot;privacy&quot;], &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = { sec: null, sparkOpen: false, vw: typeof window !== 'undefined' ? window.innerWidth : 1728, toastMsg: '', toastN: 0 };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener('resize', this._onResize);
+    if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth });
+    this._vwPoll = setInterval(() => { if (window.innerWidth > 0 && window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth }); }, 500);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    if (this._vwPoll) clearInterval(this._vwPoll);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: '' }), 2200);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const startMap = {
+      'overview': 'ws1', 'brand-kits': 'ws20', 'engagement': 'ws13', 'accounts': 'ws2',
+      'import-export': 'ws10', 'credits': 'ws3', 'team': 'ws4',
+      'profile': 'ps1', 'password': 'ps2', 'notifications': 'ps7',
+      'connected': 'ps3', 'accessibility': 'ps4', 'privacy': 'ps5'
+    };
+    const hash = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '';
+    const sec = s.sec ?? startMap[hash] ?? (startMap[this.props.startSection] || 'ws1');
+    const heights = {
+      ws1: 1117, ws2: 1117, ws3: 2662, ws4: 1117, ws5: 1117, ws6: 1117, ws7: 1117, ws8: 1117,
+      ws9: 1117, ws10: 1117, ws11: 1117, ws12: 1404, ws13: 1117, ws14: 1117, ws15: 1117,
+      ws16: 1213, ws17: 1213, ws18: 1213, ws19: 1213, ws20: 3007,
+      ps1: 1198, ps2: 1117, ps3: 1523, ps4: 1093, ps5: 1093, ps7: 1402
+    };
+    const frameH = heights[sec] || 1117;
+    const scale = (s.vw > 0 ? s.vw : 1728) / 1728;
+    const go = (k) => () => { this.setState({ sec: k }); window.scrollTo(0, 0); };
+    const nav = {};
+    for (const k of Object.keys(heights)) nav[k] = go(k);
+    nav.back = () => { window.location.href = 'SparkSocial Dashboard.dc.html'; };
+    nav.save = () => this.toast('Changes saved (mock)');
+    nav.cancel = () => this.toast('Changes discarded');
+    nav.mock = () => this.toast('Mock action — not wired in this prototype');
+    nav.spark = () => this.setState({ sparkOpen: true });
+    const vals = {
+      nav,
+      sparkOpen: s.sparkOpen,
+      closeSpark: () => this.setState({ sparkOpen: false }),
+      sparkToast: (m) => this.toast(m),
+      frameH: frameH + 'px',
+      outerH: Math.round(frameH * scale) + 'px',
+      stageScale: 'scale(' + scale + ')',
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+    for (const k of Object.keys(heights)) {
+      vals['is' + k.charAt(0).toUpperCase() + k.slice(1)] = sec === k;
+    }
+    return vals;
+  }
+}
+</script>
+</body>
+</html>

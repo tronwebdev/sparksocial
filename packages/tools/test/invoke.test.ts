@@ -75,6 +75,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         info: async () => ({}),
       },
       content: { recent: async () => [] },
+      runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n, fn) => fn(), event: () => {} },

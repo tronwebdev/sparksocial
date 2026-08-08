@@ -43,7 +43,15 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
     );
   }
 
-  const clerk = deps.clerk ?? createClerkClient({ secretKey: requireEnv('CLERK_SECRET_KEY') });
+  // Both keys. `authenticateRequest` needs the publishable key to resolve the
+  // instance's frontend API for the handshake — without it, every request fails
+  // with "Publishable key is missing" no matter how valid the token is.
+  const clerk =
+    deps.clerk ??
+    createClerkClient({
+      secretKey: requireEnv('CLERK_SECRET_KEY'),
+      publishableKey: requireEnv('CLERK_PUBLISHABLE_KEY'),
+    });
 
   return async function clerkResolveCtx(req: Request): Promise<ToolCtx & { caller: 'user' | 'agent' }> {
     // 1. Verify the session. `authenticateRequest` handles both the Bearer token

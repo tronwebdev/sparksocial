@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="figma-dp/fig-assets.css">
+  <link rel="stylesheet" href="figma-dp/fig-tokens.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #FFFFFF; }
+    a { color: rgb(163,65,255); text-decoration: none; }
+    a:hover { color: rgb(140,50,225); }
+    @font-face { font-family: 'CS Mollwish Regular Demo'; src: url('fonts/CS-Mollwish.otf') format('opentype'); font-weight: 400; }
+  </style>
+</helmet>
+<div ref="{{ setRoot }}" style="position:relative;width:1728px;height:1117px;font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <x-import component-from-global-scope="DraftPannelPreviewCarousel" from="./figma-dp/_bundle_prevCarousel.jsx" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1728,&quot;height&quot;:1117},&quot;nav&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;}}">
+class Component extends DCLogic {
+  setRoot = (el) => { this._root = el; };
+  componentDidMount() {
+    if (!this._root) return;
+    this._onClick = (e) => {
+      const nav = this.props.nav || {};
+      const t = ((e.target && e.target.textContent) || '').trim().toLowerCase();
+      if (t === 'back') { nav.closed && nav.closed(); }
+      else if (/publish|post now|schedule now/.test(t)) { nav.publish && nav.publish(); }
+      else if (/regenerate/.test(t)) { nav.mockT && nav.mockT(); }
+      else if (/ask spark/.test(t)) { nav.chat && nav.chat(); }
+    };
+    this._root.addEventListener('click', this._onClick, true);
+  }
+  componentWillUnmount() {
+    if (this._root && this._onClick) this._root.removeEventListener('click', this._onClick, true);
+  }
+  renderVals() { return { setRoot: this.setRoot }; }
+}
+</script>
+</body>
+</html>

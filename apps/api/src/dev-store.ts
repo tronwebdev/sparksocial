@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { ScopedDb } from '@sparksocial/tools';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
 import type { AssetRole, Genome } from '@sparksocial/shared';
+import { createDevRunStore, seedDevRuns, type DevRunStore } from './dev-runs.js';
 
 /**
  * DEVELOPMENT STORE — in-memory, seeded with the golden set.
@@ -89,7 +90,16 @@ function score(a: AssetRow, queryEmbedding: number[], now: Date, cooldownDays = 
   return similarity - recencyPenalty - diversityPenalty;
 }
 
-export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: number } {
+export function createDevStore(
+  orgId = 'org_dev',
+  /**
+   * The run store is injected rather than created here because the *recorder*
+   * half of it belongs to the agent endpoint, and both halves must be the same
+   * arrays — a timeline reading a different store than the loop writes to would
+   * always render empty. Defaulting keeps existing callers unchanged.
+   */
+  runStore: DevRunStore = createDevRunStore(),
+): ScopedDb & { seedCount: number; runs: ScopedDb['runs'] } {
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
   const content: ContentRow[] = [];
@@ -149,6 +159,14 @@ export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: numbe
       publishedAt: new Date(),
     });
   }
+
+  // A little run history, for the same reason the golden set is seeded above:
+  // the Agent Timeline is a P1 deliverable and needs to be reviewable without
+  // an ANTHROPIC_API_KEY. These are obviously synthetic — one succeeded, one
+  // failed, one still running — so the three states the UI must handle are all
+  // reachable locally. Postgres seeds nothing; there, runs only exist if the
+  // agent made them.
+  seedDevRuns(runStore, GOLDEN_SET.map((c) => c.genome.workspace_id));
 
   let nextDraft = 1;
 
@@ -275,5 +293,7 @@ export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: numbe
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
     },
+
+    runs: runStore.reader,
   };
 }

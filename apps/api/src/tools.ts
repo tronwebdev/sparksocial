@@ -8,6 +8,7 @@ import { createAzureBlobStore, createMemoryBlobStore, type BlobStore } from '@sp
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
+import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
 /**
@@ -45,6 +46,11 @@ export function registerAlphaTools(): void {
 
   // Finish pipeline (§6.3): raw phone footage in, publishable clips out.
   register(makeMediaIngest(devMediaIngestDeps()));
+
+  // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
+  // that makes autopublish something a user can reasonably agree to.
+  register(agentRunList);
+  register(agentRunGet);
 }
 
 /**

@@ -61,6 +61,54 @@ mutation through — and now uses the spec's literal.
 | **P0 frontend foundation** — design tokens from the prototype, nine restyled shadcn primitives, `AppShell` + `SidebarNav` | Plan §12 P0 | `apps/web`; measured 1:1 against the prototype at a 1728px viewport |
 | **P0 Clerk auth** — verified-session `resolveCtx`, five custom auth screens, single tool proxy | Plan §2.2 | `apps/api/src/clerk-auth.ts`, `apps/web/src/app/(auth)` |
 | **P0 Azure Blob storage** — presigned upload via user-delegation SAS, `asset.upload_url` | Plan §2.2 | `packages/storage`; bytes never transit the API container |
+| **P1 Agent Timeline** — `agent.run.list` / `agent.run.get`, run+step read model, live UI at `/agents` | Plan §4.5 | the trust surface behind autopublish; brand-scoped, out-of-scope runs read as absent |
+| **P1 agent runtime over HTTP** — `POST /v1/agent/runs`, and SSE at `/v1/agent/runs/:id/events` | Plan §12 P1 | SPARK was a package with no way to reach it; 501 when no model key is configured |
+| **SSRF guard** on every server-fetched URL | — | `packages/shared/src/safeUrl.ts`; see the security pass below |
+
+## Security & scalability pass (8 Aug)
+
+Bypasses were attempted against a running server, not just read for in code.
+
+**Held.** Forged `x-org-id`/`x-genome-id` headers, a garbage bearer, and an
+`alg:none` JWT with `org_role: admin` are all 401 against the Clerk resolver.
+Cross-brand reads of a known run id return `NOT_FOUND`, never `FORBIDDEN` — so a
+run id cannot be used to confirm another brand's activity. No secrets are
+tracked by git.
+
+**Fixed.**
+
+| Finding | Severity | Fix |
+|---|---|---|
+| `z.string().url()` accepted `file://`, `localhost`, and `169.254.169.254` on three server-fetched URL fields. On Container Apps with Managed Identity, that endpoint mints tokens for the app's *own* identity — Key Vault, storage, the database. Not exploitable yet only because `crawl()` is unimplemented | **High (latent)** | `PublicHttpUrl` in `packages/shared/src/safeUrl.ts`, applied to `genome.bootstrap_from_url`, `asset.ingest_url`, `media.ingest`. Rejects at schema validation, so it applies identically to UI and SPARK calls. 14 tests |
+| The URL parser normalises `::ffff:169.254.169.254` to hex, so the first version of the guard missed IPv4-mapped IPv6 entirely | **High (latent)** | Decode the hex groups back to IPv4 and apply the same rules. Caught by the guard's own test suite before it shipped |
+| `apps/api/.env` was never loaded — the Clerk keys on disk were inert, and the API silently ran the header-trusting dev resolver | **High** | `--env-file-if-exists=.env`; correct in dev, CI, and Azure (where config comes from Key Vault and no file exists) |
+| `createClerkClient` was built with only the secret key, so every authenticated request failed the handshake | **High** | Pass `publishableKey` too; `clerkConfigured` now requires both keys, so a half-configured instance is visibly wrong rather than quietly falling back |
+| `/v1/agent/*` answered 501 *before* authenticating, letting an anonymous caller probe how the deployment is wired | Low | Authenticate first — 401 before 501 |
+| `agent_runs` was indexed on `brand_id` alone, but the Timeline's only query is `WHERE brand_id ORDER BY started_at DESC LIMIT n` — Postgres sorted a brand's entire history to return 25 rows, on the most-visited screen | Perf | Composite `(brand_id, started_at DESC)`; same treatment for the guardrail layer's trailing-window read on `content_items`. Migration `0001` |
+| `drizzle-orm` 0.36 carried a SQL-injection advisory on identifier escaping — the library genome isolation is built on | High (advisory) | Upgraded to 0.45.2; all 451 tests pass, including the 20 real-SQL pglite integration tests |
+
+**Documented rather than changed**, because the analysis says leave it:
+
+- **No ANN index on `assets.embedding`, deliberately.** The ranking expression is
+  `similarity − recency − diversity`, not the distance operator, so pgvector's
+  index *cannot* serve this `ORDER BY` under any configuration. What keeps it
+  fast is the isolation predicate narrowing candidates to one genome first — the
+  scoping requirement and the performance story are the same mechanism. The fix
+  at scale is two-phase retrieval, not an index. Written up in `scoped.ts`.
+- **The run event bus is in-process**, so with >1 replica an SSE client only sees
+  events from its own replica. Correctness never depends on it — every event is
+  also durable in `agent_runs`/`agent_steps`, and the Timeline UI polls rather
+  than subscribing for exactly this reason. Redis pub/sub is the swap, behind the
+  same interface.
+- **Pool sizing is per-replica**: `max: 10 × maxReplicas: 3` = 30 connections.
+  Fine now; past ~5 replicas it needs lowering or PgBouncer. Noted in `client.ts`.
+
+**Open, needs your call.** Five advisories remain, all requiring framework major
+upgrades, and none reachable in our usage: `next` 15→16 (via `postcss`/`sharp` —
+`next/image` is unused, so sharp is never invoked) and `@hono/node-server` 1→2
+(via `serve-static`, which we do not use). Also behind: `zod` 3→4 (touches every
+schema in the repo), `typescript` 5→7, `vitest` 2→4, `tailwindcss` 3→4,
+`@clerk/*`. Each is a real migration, not a bump.
 
 ## Not built yet
 
@@ -76,6 +124,13 @@ Ordered by what blocks what.
 | `apps/web` deployment — needs a second Container App, Dockerfile and workflow job | Plan §2.2 | a live URL |
 
 ## Next
+
+**P1 is now closed too.** Its last genuinely missing pieces were the Agent
+Timeline — which `run.ts` had called *"a Phase-1 deliverable, not polish"* while
+nothing rendered it — and the fact that the SPARK runtime was a package with no
+HTTP route to reach it. Both now exist and are verified end to end. What remains
+of P1 is observability (Langfuse, OpenTelemetry, Sentry) and the tRPC-vs-REST
+reconciliation noted below; neither blocks P2.
 
 **P2 is where the build actually is**, and its two real gaps are the Assemble
 render and WhatsApp delivery. Without them the capture loop produces data but
@@ -112,9 +167,19 @@ the segment the capture loop exists to serve.
    capture footage lands. The playbook resolver (§5.2) is where asset availability
    properly enters — this layer must not be read as the final word.
 
-3. **Prototype vs. wireframe** (plan open decision #10). The `.dc.html` prototype and
-   the Whimsical map need a screen-by-screen diff before any frontend work. Neither
-   file is in this repo.
+3. **Prototype vs. wireframe** (plan open decision #10). The `.dc.html` prototype
+   is now in the repo under `ui build/` and is what P0 was measured against. The
+   Whimsical map still is not, so the screen-by-screen diff remains open.
+
+4. **tRPC vs. the REST door.** Plan §2.2 and CLAUDE.md invariant 1 both name tRPC
+   *generated from the tool schemas*. What exists is a single hand-written Hono
+   route (`POST /v1/tools/:name`) plus one Next proxy — same "one registry, one
+   door" property, different transport, and no generated client. It has not cost
+   anything yet because the registry is small and the proxy is generic. Worth
+   settling deliberately before the tool count grows: either generate the tRPC
+   router from the registry as specified, or amend the invariant to describe the
+   transport actually in use. Leaving the doc and the code disagreeing is the
+   option to avoid.
 
 ## Schedule risk
 

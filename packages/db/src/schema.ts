@@ -111,7 +111,15 @@ export const contentItems = pgTable(
     runId: uuid('run_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('content_items_scope_idx').on(t.orgId, t.genomeId)],
+  (t) => [
+    index('content_items_scope_idx').on(t.orgId, t.genomeId),
+    // The guardrail layer's trailing-window read (`recentContent`) filters
+    // scope *and* `published_at >= cutoff` on every draft evaluated. Carrying
+    // the date in the index keeps that from widening into a scan of the
+    // genome's entire publishing history as an account ages — which is exactly
+    // the account that most needs the duplicate check to stay fast.
+    index('content_items_published_idx').on(t.orgId, t.genomeId, t.publishedAt.desc()),
+  ],
 );
 
 /**
@@ -223,7 +231,15 @@ export const agentRuns = pgTable(
     endedAt: timestamp('ended_at', { withTimezone: true }),
     error: jsonb('error'),
   },
-  (t) => [index('agent_runs_brand_idx').on(t.brandId), index('agent_runs_parent_idx').on(t.parentRunId)],
+  (t) => [
+    // Composite, and descending on `started_at`, because the Agent Timeline's
+    // only list query is `WHERE brand_id = ? ORDER BY started_at DESC LIMIT n`.
+    // With an index on `brand_id` alone, Postgres filters by index and then
+    // sorts *every* run the brand has ever made to find the newest 25 — on the
+    // screen people open most. Matching the sort order lets it stop after n.
+    index('agent_runs_brand_started_idx').on(t.brandId, t.startedAt.desc()),
+    index('agent_runs_parent_idx').on(t.parentRunId),
+  ],
 );
 
 export const agentSteps = pgTable(

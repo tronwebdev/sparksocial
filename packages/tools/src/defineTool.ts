@@ -1,5 +1,7 @@
 import { z, ZodTypeAny } from 'zod';
-import type { Role, Effect, Autonomy, AssetRole } from '@sparksocial/shared/types';
+import type {
+  Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType,
+} from '@sparksocial/shared/types';
 import type { Genome } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
@@ -125,6 +127,51 @@ export interface ScopedDb {
       windowDays: number,
     ): Promise<Array<{ isAvatarFormat: boolean; embedding: number[] | null }>>;
   };
+  /**
+   * Agent run history — the Agent Timeline's read side (plan §4.5). Read-only by
+   * construction: runs are written by `RunRecorder` inside the agent loop, and
+   * nothing a *tool* does should ever be able to rewrite the record of what the
+   * agent did. The Timeline is the trust mechanism that makes autopublish
+   * acceptable, so its history has to be append-only from every other angle.
+   */
+  runs: {
+    /** Most recent runs for the brand, newest first. `limit` is enforced by the store. */
+    list(brandId: string, limit: number): Promise<RunSummary[]>;
+    /**
+     * One run with its ordered steps. Returns undefined rather than throwing
+     * when the run belongs to another brand — same "out of scope reads as not
+     * found" rule as `genomes.get`, so probing ids leaks nothing.
+     */
+    get(runId: string, brandId: string): Promise<RunDetail | undefined>;
+  };
+}
+
+/** One row in the Timeline's run list. */
+export interface RunSummary {
+  id: string;
+  agent: string;
+  goal: string;
+  trigger: RunTrigger;
+  status: RunStatus;
+  costCents: number;
+  startedAt: Date;
+  endedAt?: Date;
+  /** Set on a delegated subagent run, pointing at the orchestrator's run. */
+  parentRunId?: string;
+}
+
+/** A run plus the ordered steps that make up its timeline. */
+export interface RunDetail extends RunSummary {
+  tokens: { input: number; output: number };
+  error?: { code: string; message: string };
+  steps: Array<{
+    /** Monotonic within the run — the render order, never sorted on time. */
+    idx: number;
+    type: StepType;
+    payload: unknown;
+    ms: number;
+    at: Date;
+  }>;
 }
 
 /* ── Guardrail identifiers (engine spec §10) ───────────────────────── */

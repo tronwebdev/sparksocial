@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { AssetRole } from '@sparksocial/shared';
+import { AssetRole, PublicHttpUrl } from '@sparksocial/shared';
 
 /**
  * `asset.ingest_url` — engine spec §4.1.
@@ -20,7 +20,9 @@ import { AssetRole } from '@sparksocial/shared';
 
 export const AssetIngestUrlInput = z.object({
   genomeId: z.string(),
-  url: z.string().url(),
+  // Fetched server-side to caption and embed it — must not be able to point
+  // at the instance metadata endpoint (packages/shared/src/safeUrl.ts).
+  url: PublicHttpUrl,
   assetRole: AssetRole,
   mediaType: z.enum(['image', 'video', 'audio']),
   /** 'cleared' only when consent/licensing is already confirmed; else 'pending'. */

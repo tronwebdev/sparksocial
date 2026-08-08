@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&amp;family=DM+Sans:wght@700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="figma-cc/fig-assets.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #FFFFFF; }
+    input { font-family: inherit; outline: none; border: none; background: transparent; }
+    input::placeholder { color: rgb(131,131,131); }
+    @keyframes ccspin { to { transform: rotate(360deg); } }
+    @font-face { font-family: 'CS Mollwish Regular Demo'; src: url('fonts/CS-Mollwish.otf') format('opentype'); font-weight: 400; }
+    @font-face { font-family: 'Asgard Trial'; src: url('fonts/AsgardTrial-FitBold.ttf') format('truetype'); font-weight: 700; }
+  </style>
+</helmet>
+<div style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ outerH }};font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <div style="position:absolute;left:0;top:0;width:1728px;transform-origin:top left;transform:{{ stageScale }};height:{{ frameH }};">
+
+    <!-- ================= POPUP ================= -->
+    <sc-if value="{{ isPopup }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Create Campaign Popup" style="position:absolute;left:0;top:0;width:1728px;height:1117px;overflow:hidden;">
+        <x-import component="PopupBackdrop" from="./figma-cc/backdrop-popup.jsx" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></x-import>
+        <div style="position:absolute;left:0;top:0;width:1728px;height:1117px;background:linear-gradient(rgba(0,0,0,0.3),rgba(0,0,0,0.3)), linear-gradient(126.04deg, rgba(108,232,255,0.4) 3.85%, rgba(245,107,255,0.4) 85.15%);backdrop-filter:blur(10px);"></div>
+
+        <!-- agent avatar (large) -->
+        <div style="position:absolute;left:757.5px;top:100px;width:212.891px;height:212.891px;border-radius:50%;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;width:212.891px;height:212.891px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 10.645px rgb(0,0,0);"></div>
+          <div style="position:absolute;left:0;top:0;width:212.891px;height:212.891px;border-radius:50%;background:rgba(108,232,255,0.2);backdrop-filter:blur(102.134px);box-shadow:inset 0 0 32.536px 11.703px rgb(153,149,176);"></div>
+          <div style="position:absolute;left:43.428px;top:58.426px;width:126.742px;height:113.858px;overflow:hidden;">
+            <div style="position:absolute;left:47.53px;top:0;width:57.06px;height:57.06px;border-radius:50%;background:rgb(245,107,255);"></div>
+            <div style="position:absolute;left:0;top:8.64px;width:83.17px;height:83.17px;border-radius:50%;background:rgb(108,232,255);"></div>
+            <div style="position:absolute;left:41.77px;top:66.25px;width:47.61px;height:47.61px;border-radius:50%;background:rgb(163,65,255);"></div>
+            <div style="position:absolute;left:79.14px;top:36.29px;width:47.61px;height:47.61px;border-radius:50%;background:rgb(255,255,255);"></div>
+          </div>
+          <div style="position:absolute;left:42.417px;top:78.822px;width:130.011px;height:52.707px;border-radius:39.338px;background:rgba(255,255,255,0.07);backdrop-filter:blur(35.528px);box-shadow:inset 0 0 19.799px -3.514px rgb(108,232,255);"></div>
+          <div style="position:absolute;left:61.74px;top:94.589px;width:21.289px;height:21.289px;border-radius:50%;background:rgb(255,255,255);"></div>
+          <div style="position:absolute;left:134.121px;top:94.589px;width:21.289px;height:21.289px;border-radius:50%;background:rgb(255,255,255);"></div>
+        </div>
+
+        <!-- popup card -->
+        <div style="position:absolute;left:590px;top:322px;width:548px;height:335px;">
+          <div style="position:absolute;left:0;top:0;width:548px;height:335px;background:rgb(255,255,255);backdrop-filter:blur(45.794px);clip-path:path('M 0 53.284 C 0 34.914 14.891 20.023 33.261 20.023 L 236.019 20.023 C 242.922 20.023 249.646 17.825 255.216 13.748 C 266.447 5.528 281.665 5.37 293.064 13.356 L 293.988 14.003 C 299.581 17.921 306.244 20.023 313.072 20.023 L 514.739 20.023 C 533.109 20.023 548 34.914 548 53.284 L 548 301.739 C 548 320.109 533.109 335 514.739 335 L 33.457 335 C 15.011 335 0.088 319.989 0.197 301.544 L 1.04 157.941 L 0 121.012 L 0 73.46 L 0 53.284 Z');"></div>
+          <span style="position:absolute;left:35px;top:55px;width:478px;font-weight:600;font-size:35px;text-align:center;line-height:1.21;color:rgb(131,131,131);display:inline-block;">Your agent is ready! <span style="color:rgb(0,0,0);">Let's Create your first campaign.</span></span>
+          <span style="position:absolute;left:91px;top:151px;width:367px;font-weight:500;font-size:18px;text-align:center;line-height:1.31;color:rgb(131,131,131);display:inline-block;">Reach your audience in just a few clicks and see your campaign take off.</span>
+          <div onClick="{{ start }}" style="position:absolute;left:178px;top:214px;width:192px;height:48px;border-radius:9.82px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgb(131,131,131);cursor:pointer;" style-hover="background:rgb(245,245,245);" style-active="transform:scale(0.98);">
+            <svg width="13.854" height="13.814" viewBox="0 0 13.854 13.814" fill="rgb(0,0,0)" style="position:absolute;left:20px;top:17px;display:block;"><path d="M 5.423 5.383 L 5.423 0 L 8.471 0 L 8.471 5.383 L 13.854 5.383 L 13.854 8.471 L 8.471 8.471 L 8.471 13.814 L 5.423 13.814 L 5.423 8.471 L 0 8.471 L 0 5.383 L 5.423 5.383 Z"></path></svg>
+            <span style="position:absolute;left:39.854px;top:14px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Create Campaign</span>
+          </div>
+          <a href="SparkSocial Command Center.dc.html" style="position:absolute;left:224px;top:283px;width:101px;font-weight:500;font-size:18px;text-align:center;white-space:nowrap;line-height:1.35;color:rgb(131,131,131);text-decoration:none;cursor:pointer;display:inline-block;" style-hover="color:rgb(12,12,12);">Setup Later</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ================= WIZARD ================= -->
+    <sc-if value="{{ inSteps }}" hint-placeholder-val="{{ false }}">
+      <x-import component="WizardBackdrop" from="./figma-cc/backdrop-wizard.jsx" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></x-import>
+      <div style="position:absolute;left:0;top:0;width:1728px;background:rgba(0,0,0,0.3);backdrop-filter:blur(10px);height:{{ frameH }};"></div>
+
+      <!-- modal -->
+      <div style="position:absolute;left:346px;width:1036px;border-radius:30px;background:rgb(245,245,245);overflow:hidden;top:{{ modalTop }};height:{{ modalH }};">
+        <!-- decorative gradient blobs -->
+        <div style="position:absolute;left:591px;top:29px;width:445px;height:320px;background:linear-gradient(90deg, rgb(108,232,255) 4.81%, rgba(108,232,255,0.3) 100%);clip-path:path('M 98.287 114.141 L 352.583 11.767 C 370.633 4.501 391.426 7.74 406.582 19.942 C 428.166 37.319 433.35 68.539 418.097 91.672 L 296.34 276.321 C 280.309 300.631 247.834 307.753 223.101 292.38 L 89.987 209.641 C 52.616 186.413 57.469 130.574 98.287 114.141 Z');"></div>
+        <div style="position:absolute;left:0;top:0;width:445px;height:320px;transform:matrix(-1,0,0,1,446,437);transform-origin:0 0;background:linear-gradient(90deg, rgb(163,65,255) 4.81%, rgba(108,232,255,0.3) 100%);clip-path:path('M 98.287 114.141 L 352.583 11.767 C 370.633 4.501 391.426 7.74 406.582 19.942 C 428.166 37.319 433.35 68.539 418.097 91.672 L 296.34 276.321 C 280.309 300.631 247.834 307.753 223.101 292.38 L 89.987 209.641 C 52.616 186.413 57.469 130.574 98.287 114.141 Z');"></div>
+
+        <!-- header: Back -->
+        <div onClick="{{ back }}" style="position:absolute;left:47px;width:110.023px;height:43.522px;border-radius:8.457px;backdrop-filter:blur(26.946px);box-shadow:0 0 0 0.846px rgb(131,131,131);cursor:pointer;top:{{ hdrTop }};" style-hover="background:rgba(255,255,255,0.6);" style-active="transform:scale(0.98);">
+          <x-import component="IconChevronR" from="./figma-cc/cc-icons.jsx" color="rgb(131,131,131)" hint-size="9px,17px" style="position:absolute;left:13.532px;top:14.125px;width:8.035px;height:16.069px;transform:scaleX(-1);"></x-import>
+          <span style="position:absolute;left:55px;top:10.996px;font-weight:500;font-size:16.915px;white-space:nowrap;line-height:1.269;color:rgb(131,131,131);">Back</span>
+        </div>
+        <!-- header: Continue / Activate -->
+        <div onClick="{{ next }}" style="position:absolute;left:857.023px;width:132px;height:43px;border-radius:8.457px;background:rgba(255,255,255,0.07);backdrop-filter:blur(26.946px);cursor:pointer;top:{{ hdrTop }};" style-hover="background:rgba(255,255,255,0.6);" style-active="transform:scale(0.98);">
+          <sc-if value="{{ notS6 }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:15px;top:10.768px;font-weight:500;font-size:16.915px;white-space:nowrap;line-height:1.269;color:rgb(12,12,12);">Continue</span>
+          </sc-if>
+          <sc-if value="{{ isS6 }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;left:18px;top:10.768px;font-weight:500;font-size:16.915px;white-space:nowrap;line-height:1.269;color:rgb(12,12,12);">Activate</span>
+          </sc-if>
+          <x-import component="IconChevronR" from="./figma-cc/cc-icons.jsx" color="rgb(12,12,12)" hint-size="9px,17px" style="position:absolute;left:109.135px;top:13.864px;width:8.035px;height:16.069px;"></x-import>
+        </div>
+        <!-- step label -->
+        <span style="position:absolute;left:265px;top:47px;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);font-weight:600;">Step {{ stepNo }}<span style="font-weight:400;"> of 6</span></span>
+        <!-- progress -->
+        <div style="position:absolute;left:264px;width:508px;height:15px;border-radius:16.843px;background:rgba(12,12,12,0.05);overflow:hidden;top:{{ progTop }};">
+          <div style="position:absolute;left:1px;top:1.039px;height:13px;border-radius:24.137px;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 27.26%, rgb(163,65,255) 66.83%, rgb(254,222,181) 100%);transition:width 0.5s cubic-bezier(0.22,1,0.36,1);width:{{ progW }};"></div>
+        </div>
+        <!-- assigning -->
+        <div style="position:absolute;left:514px;top:49px;width:258px;height:18px;">
+          <x-import component="IconSpinner" from="./figma-cc/cc-icons.jsx" hint-size="14px,14px" style="position:absolute;left:0;top:2px;width:14px;height:14.001px;animation:ccspin 3.5s linear infinite;"></x-import>
+          <span style="position:absolute;right:0;top:0;font-weight:400;font-size:14px;text-align:right;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Assigning this campaign to <span style="font-weight:700;color:rgb(163,65,255);">{{ agentName }}</span></span>
+        </div>
+        <!-- agent avatar (small, steps 1-5) -->
+        <sc-if value="{{ notS6 }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:461px;width:113px;height:113px;border-radius:50%;overflow:hidden;top:{{ avTop }};">
+            <div style="position:absolute;left:0;top:0;width:113px;height:113px;border-radius:50%;background:rgb(255,255,255);box-shadow:inset 0 0 0 5.65px rgb(0,0,0);"></div>
+            <div style="position:absolute;left:0;top:0;width:113px;height:113px;border-radius:50%;background:rgba(108,232,255,0.2);backdrop-filter:blur(54.211px);box-shadow:inset 0 0 17.27px 6.212px rgba(255,255,255,0.84);"></div>
+            <div style="position:absolute;left:23.051px;top:31.011px;width:67.274px;height:60.435px;overflow:hidden;">
+              <div style="position:absolute;left:25.228px;top:0;width:30.288px;height:30.288px;border-radius:50%;background:rgb(245,107,255);"></div>
+              <div style="position:absolute;left:0;top:4.584px;width:44.148px;height:44.148px;border-radius:50%;background:rgb(108,232,255);"></div>
+              <div style="position:absolute;left:22.17px;top:35.165px;width:25.27px;height:25.27px;border-radius:50%;background:rgb(163,65,255);"></div>
+              <div style="position:absolute;left:42.004px;top:19.264px;width:25.27px;height:25.27px;border-radius:50%;background:rgb(255,255,255);"></div>
+            </div>
+            <div style="position:absolute;left:22.514px;top:41.838px;width:69.008px;height:27.976px;border-radius:20.88px;background:rgba(255,255,255,0.07);backdrop-filter:blur(18.858px);box-shadow:inset 0 0 10.509px -1.865px rgb(108,232,255);"></div>
+            <div style="position:absolute;left:32.771px;top:50.205px;width:11.3px;height:11.3px;border-radius:50%;background:rgb(255,255,255);"></div>
+            <div style="position:absolute;left:71.19px;top:50.205px;width:11.3px;height:11.3px;border-radius:50%;background:rgb(255,255,255);"></div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 1: campaign goal ======== -->
+        <sc-if value="{{ isS1 }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Step 1 — Campaign Goal" style="position:absolute;left:220px;top:235px;width:596px;height:551px;">
+            <div style="position:absolute;left:0;top:0;width:596px;height:551px;background:linear-gradient(180deg, rgb(255,255,255) 0%, rgba(255,255,255,0) 100%);backdrop-filter:blur(41.304px);clip-path:path('M 1.032 44.922 C 1.032 28.353 14.463 14.922 31.032 14.922 L 251.423 14.922 C 254.678 14.922 257.911 14.392 260.995 13.354 L 290.908 3.283 C 297.229 1.155 304.077 1.194 310.373 3.393 L 338.575 13.244 C 341.755 14.354 345.1 14.922 348.468 14.922 L 566 14.922 C 582.569 14.922 596 28.353 596 44.922 L 596 521 C 596 537.569 582.569 551 566 551 L 30.069 551 C 13.474 551 0.031 537.527 0.069 520.931 L 1.032 102.125 L 1.032 79.008 L 1.032 56.554 L 1.032 44.922 Z');"></div>
+            <span style="position:absolute;left:37px;top:42px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.43;color:rgb(0,0,0);">What's your campaign goal?</span>
+            <span style="position:absolute;left:37px;top:85px;font-weight:400;font-size:18px;white-space:nowrap;line-height:0.9987;color:rgb(131,131,131);">Could you share what matters most to you right now?</span>
+
+            <div onClick="{{ pickLeads }}" style="position:absolute;left:37px;top:145px;width:252px;height:177px;border-radius:20px;cursor:pointer;background:{{ leadsBg }};box-shadow:{{ leadsRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconGetLeads" from="./figma-cc/cc-icons.jsx" hint-size="35px,35px" style="position:absolute;left:109px;top:32px;width:34.466px;height:34.5px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Get Leads</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Capture emails, signups or d inquires</span>
+              <sc-if value="{{ selLeads }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:216px;top:10px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unLeads }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickSales }}" style="position:absolute;left:308px;top:145px;width:252px;height:177px;border-radius:20px;cursor:pointer;background:{{ salesBg }};box-shadow:{{ salesRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconSales" from="./figma-cc/cc-icons.jsx" hint-size="37px,35px" style="position:absolute;left:108px;top:31.292px;width:36.383px;height:34.708px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Drive Sales/Bookings</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Push offers, demos or paid actions</span>
+              <sc-if value="{{ selSales }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:216px;top:10px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unSales }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickTraffic }}" style="position:absolute;left:37px;top:346px;width:252px;height:177px;border-radius:20px;cursor:pointer;background:{{ trafficBg }};box-shadow:{{ trafficRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconTraffic" from="./figma-cc/cc-icons.jsx" hint-size="39px,37px" style="position:absolute;left:106px;top:30px;width:39px;height:36.25px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Increase Website Traffic</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Drive clicks to pages or content</span>
+              <sc-if value="{{ selTraffic }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:216px;top:10px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unTraffic }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickAuthority }}" style="position:absolute;left:308px;top:346px;width:252px;height:177px;border-radius:20px;cursor:pointer;background:{{ authorityBg }};box-shadow:{{ authorityRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconAuthority" from="./figma-cc/cc-icons.jsx" hint-size="35px,36px" style="position:absolute;left:109.192px;top:29.5px;width:34.08px;height:35.5px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Build Authority &amp; Trust</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Educate and position your brand</span>
+              <sc-if value="{{ selAuthority }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:216px;top:10px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unAuthority }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 2: campaign type ======== -->
+        <sc-if value="{{ isS2 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Step 2 — Campaign Type" style="position:absolute;left:220px;top:236px;width:596px;height:551px;">
+            <div style="position:absolute;left:0;top:0;width:596px;height:551px;background:linear-gradient(180deg, rgb(255,255,255) 0%, rgba(255,255,255,0) 100%);backdrop-filter:blur(41.304px);clip-path:path('M 1.032 44.922 C 1.032 28.353 14.463 14.922 31.032 14.922 L 251.423 14.922 C 254.678 14.922 257.911 14.392 260.995 13.354 L 290.908 3.283 C 297.229 1.155 304.077 1.194 310.373 3.393 L 338.575 13.244 C 341.755 14.354 345.1 14.922 348.468 14.922 L 566 14.922 C 582.569 14.922 596 28.353 596 44.922 L 596 521 C 596 537.569 582.569 551 566 551 L 30.069 551 C 13.474 551 0.031 537.527 0.069 520.931 L 1.032 102.125 L 1.032 79.008 L 1.032 56.554 L 1.032 44.922 Z');"></div>
+            <span style="position:absolute;left:37px;top:31px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.43;color:rgb(0,0,0);">Select a campaign type</span>
+            <span style="position:absolute;left:37px;top:68px;width:474px;font-weight:400;font-size:18px;line-height:0.9987;color:rgb(131,131,131);display:inline-block;">I've chosen a type for you based on your goal, but feel free to pick a different one if you prefer:</span>
+
+            <div onClick="{{ pickPromo }}" style="position:absolute;left:37px;top:131px;width:252px;height:191px;border-radius:20px;cursor:pointer;background:{{ promoBg }};box-shadow:{{ promoRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconPromo" from="./figma-cc/cc-icons.jsx" hint-size="34px,33px" style="position:absolute;left:109px;top:31px;width:33.24px;height:32.999px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Promotion / Offers</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Direct benefits, urgency and clear calls to action</span>
+              <sc-if value="{{ selPromo }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unPromo }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:216px;top:10px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickLeadMagnet }}" style="position:absolute;left:308px;top:131px;width:252px;height:191px;border-radius:20px;cursor:pointer;background:{{ leadMagnetBg }};box-shadow:{{ leadMagnetRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconLeadMagnet" from="./figma-cc/cc-icons.jsx" hint-size="34px,34px" style="position:absolute;left:109.926px;top:31px;width:33.001px;height:33.001px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Lead Magnet</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Educational content with opt-in focus</span>
+              <sc-if value="{{ selLeadMagnet }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unLeadMagnet }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickEducation }}" style="position:absolute;left:37px;top:345px;width:252px;height:191px;border-radius:20px;cursor:pointer;background:{{ educationBg }};box-shadow:{{ educationRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconEducation" from="./figma-cc/cc-icons.jsx" hint-size="38px,38px" style="position:absolute;left:107px;top:30px;width:37.918px;height:38px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Authority / Education</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Teach, explain and build credibility</span>
+              <sc-if value="{{ selEducation }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unEducation }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+
+            <div onClick="{{ pickLaunch }}" style="position:absolute;left:308px;top:345px;width:252px;height:191px;border-radius:20px;cursor:pointer;background:{{ launchBg }};box-shadow:{{ launchRing }};" style-hover="box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.35);">
+              <x-import component="IconLaunch" from="./figma-cc/cc-icons.jsx" hint-size="36px,31px" style="position:absolute;left:108.463px;top:35.75px;width:35.538px;height:30.999px;"></x-import>
+              <span style="position:absolute;left:0;right:0;top:87px;font-weight:600;font-size:18px;text-align:center;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Launch / Announcement</span>
+              <span style="position:absolute;left:35.5px;top:118px;width:181px;font-weight:500;font-size:16px;text-align:center;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Short term visibility burst</span>
+              <sc-if value="{{ selLaunch }}" hint-placeholder-val="{{ true }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.749px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </sc-if>
+              <sc-if value="{{ unLaunch }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;left:212px;top:14px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 3: offer details ======== -->
+        <sc-if value="{{ isS3 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Step 3 — Offer Details" style="position:absolute;left:199px;top:222px;width:638px;height:806px;">
+            <div style="position:absolute;left:0;top:0;width:638px;height:806px;background:linear-gradient(180deg, rgb(255,255,255) 48.96%, rgba(255,255,255,0) 100%);backdrop-filter:blur(41.304px);clip-path:path('M 1.105 46.236 C 1.105 29.668 14.536 16.236 31.105 16.236 L 269.411 16.236 C 272.715 16.236 275.997 15.69 279.124 14.62 L 311.952 3.386 C 318.36 1.193 325.321 1.233 331.703 3.499 L 362.707 14.507 C 365.93 15.651 369.325 16.236 372.745 16.236 L 608 16.236 C 624.569 16.236 638 29.668 638 46.236 L 638 776 C 638 792.569 624.569 806 608 806 L 30.048 806 C 13.461 806 0.021 792.539 0.048 775.952 L 1.105 111.122 L 1.105 85.968 L 1.105 61.537 L 1.105 46.236 Z');"></div>
+            <span style="position:absolute;left:43px;top:42px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1.43;color:rgb(131,131,131);">Campaign Offer Details</span>
+            <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:224px;top:42px;width:21.563px;height:21.563px;"></x-import>
+            <span style="position:absolute;left:43px;top:78px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.43;color:rgb(0,0,0);">What is this campaign about?</span>
+            <span style="position:absolute;left:43px;top:114px;font-weight:400;font-size:18px;white-space:nowrap;line-height:0.9987;color:rgb(131,131,131);">Provide me with an anchor, and I'll craft the messaging.</span>
+
+            <!-- brand card -->
+            <div style="position:absolute;left:43px;top:157px;width:551px;height:442px;border-radius:20px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.1);">
+              <span style="position:absolute;left:27px;top:24px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1.273;color:rgb(131,131,131);">I've chosen a type for you based on your recent data.</span>
+              <div style="position:absolute;left:0;top:64px;width:551px;height:1px;background:rgba(131,131,131,0.2);"></div>
+              <div style="position:absolute;left:25px;top:73px;width:387px;height:255px;">
+                <div style="position:absolute;left:1px;top:0;width:63px;height:63px;border-radius:50%;background:url('figma-cc/assets/e7438c5cf2792b21.png') center/cover no-repeat, linear-gradient(rgb(255,212,184),rgb(255,212,184));box-shadow:inset 0 0 0 0.67px rgba(131,131,131,0.4);"></div>
+                <span style="position:absolute;left:76px;top:4px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.269;color:rgb(0,0,0);">Starsocial</span>
+                <span style="position:absolute;left:76px;top:37px;font-weight:500;font-size:18px;white-space:nowrap;line-height:1.269;color:rgb(36,116,237);">www.starsocial.io</span>
+                <span style="position:absolute;left:1px;top:78px;width:386px;font-weight:500;font-size:16px;line-height:1.269;color:rgb(131,131,131);display:inline-block;">StarSocial links people and brands with engaging, creative social experiences.</span>
+                <div style="position:absolute;left:1px;top:132px;width:247px;height:26.751px;">
+                  <span style="position:absolute;left:0;top:0;width:69.552px;height:26.751px;border-radius:9.26px;background:rgb(255,255,255);box-shadow:inset 0 0 0 0.617px rgba(12,12,12,0.2);font-weight:500;font-size:14.267px;line-height:26.751px;text-align:center;color:rgb(131,131,131);display:inline-block;">Formal</span>
+                  <span style="position:absolute;left:74.011px;top:0;width:67.769px;height:26.751px;border-radius:9.26px;background:rgb(255,255,255);box-shadow:inset 0 0 0 0.617px rgba(12,12,12,0.2);font-weight:500;font-size:14.267px;line-height:26.751px;text-align:center;color:rgb(131,131,131);display:inline-block;">Casual</span>
+                  <span style="position:absolute;left:146.238px;top:0;width:100.762px;height:26.751px;border-radius:9.26px;background:rgb(255,255,255);box-shadow:inset 0 0 0 0.617px rgba(12,12,12,0.2);font-weight:500;font-size:14.267px;line-height:26.751px;text-align:center;color:rgb(131,131,131);display:inline-block;">Story driven</span>
+                </div>
+                <span style="position:absolute;left:1px;top:176px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1.269;color:rgb(131,131,131);">(UTC - 08:00). Pacific Time (US &amp; Canada)</span>
+                <div style="position:absolute;left:0;top:208px;width:271px;height:47px;border-radius:10px;background:rgb(243,244,248);box-shadow:inset 0 0 0 1.379px rgba(12,12,12,0.1);">
+                  <div style="position:absolute;left:7px;top:4px;width:37px;height:37px;background:url('figma-cc/assets/8a2bb401aa473f5a.png') center/contain no-repeat;"></div>
+                  <span style="position:absolute;left:47px;top:14px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Starsocial Company Docs (PDF)</span>
+                </div>
+              </div>
+              <div style="position:absolute;left:26px;top:344px;width:201px;height:28.782px;">
+                <span style="position:absolute;left:0;top:5.453px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Brand Colors:</span>
+                <span style="position:absolute;left:102px;top:0;width:28.782px;height:28.782px;border-radius:7.995px;background:rgb(0,151,253);box-shadow:inset 0 0 0 1.009px rgba(12,12,12,0.1);display:inline-block;"></span>
+                <span style="position:absolute;left:137.04px;top:0;width:28.782px;height:28.782px;border-radius:7.995px;background:rgb(6,197,251);box-shadow:inset 0 0 0 1.009px rgba(12,12,12,0.1);display:inline-block;"></span>
+                <span style="position:absolute;left:172.218px;top:0;width:28.782px;height:28.782px;border-radius:7.995px;background:rgb(108,232,255);box-shadow:inset 0 0 0 1.009px rgba(12,12,12,0.1);display:inline-block;"></span>
+              </div>
+              <div style="position:absolute;left:26px;top:394.166px;width:263.04px;height:26px;">
+                <span style="position:absolute;left:0;top:4.287px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Font Styles:</span>
+                <span style="position:absolute;left:102px;top:1px;font-family:'Asgard Trial',sans-serif;font-weight:700;font-size:20px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Asgard</span>
+                <span style="position:absolute;left:170.04px;top:0;font-family:'DM Sans',sans-serif;font-weight:700;font-size:20px;white-space:nowrap;line-height:1.3;color:rgb(12,12,12);">, DM Sans</span>
+              </div>
+            </div>
+            <!-- Edit / Add New -->
+            <div onClick="{{ noop }}" style="position:absolute;left:210px;top:622px;width:104px;height:34px;border-radius:7.482px;background:rgb(255,255,255);box-shadow:inset 0 0 0 0.762px rgb(131,131,131);cursor:pointer;text-align:center;" style-hover="background:rgb(245,245,245);" style-active="transform:scale(0.97);"><span style="font-weight:400;font-size:16px;line-height:34px;color:rgb(0,0,0);">Edit</span></div>
+            <div onClick="{{ noop }}" style="position:absolute;left:324px;top:622px;width:104px;height:34px;border-radius:7.482px;background:rgb(12,12,12);cursor:pointer;text-align:center;" style-hover="background:rgb(45,45,45);" style-active="transform:scale(0.97);"><span style="font-weight:400;font-size:16px;line-height:34px;color:rgb(255,255,255);">+ Add New</span></div>
+            <!-- CTA URL -->
+            <div style="position:absolute;left:43px;top:686px;width:551px;height:90px;">
+              <span style="position:absolute;left:1px;top:1px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Enable CTA URL</span>
+              <div onClick="{{ tglCta }}" style="position:absolute;left:146px;top:0;width:45px;height:24.324px;cursor:pointer;">
+                <div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ ctaTrack }};"></div>
+                <div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ ctaKnob }};"></div>
+              </div>
+              <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:209px;top:2px;width:21.563px;height:21.563px;"></x-import>
+              <div style="position:absolute;left:0;top:41px;width:551px;height:49px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);transition:opacity 0.2s;opacity:{{ ctaOpacity }};">
+                <input type="text" placeholder="https://" style="position:absolute;left:19px;top:0;width:512px;height:49px;font-weight:400;font-size:18px;color:rgb(12,12,12);">
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 4: add social account ======== -->
+        <sc-if value="{{ isS4 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Step 4 — Add Social Account" style="position:absolute;left:218px;top:237px;width:592px;height:756px;">
+            <div style="position:absolute;left:0;top:0;width:592px;height:749px;background:linear-gradient(180deg, rgb(255,255,255) 0%, rgba(255,255,255,0) 100%);backdrop-filter:blur(41.304px);clip-path:path('M 1.025 50.284 C 1.025 33.715 14.457 20.284 31.025 20.284 L 248.039 20.284 C 252.373 20.284 256.656 19.344 260.592 17.531 L 285.853 5.892 C 293.955 2.159 303.297 2.225 311.345 6.072 L 334.938 17.35 C 338.978 19.281 343.399 20.284 347.876 20.284 L 562 20.284 C 578.569 20.284 592 33.715 592 50.284 L 592 719 C 592 735.569 578.569 749 562 749 L 30.05 749 C 13.462 749 0.023 735.538 0.05 718.95 L 1.025 138.823 L 1.025 107.399 L 1.025 76.877 L 1.025 50.284 Z');"></div>
+            <span style="position:absolute;left:24px;top:42px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.43;color:rgb(0,0,0);">Add Social Account</span>
+            <span style="position:absolute;left:24px;top:79px;width:431px;font-weight:400;font-size:18px;line-height:0.9987;color:rgb(131,131,131);display:inline-block;">Connect your social media accounts to enhance your online presence.</span>
+            <span style="position:absolute;left:25px;top:155px;font-weight:500;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Preselected Accounts</span>
+            <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:218px;top:156px;width:21.563px;height:21.563px;"></x-import>
+
+            <sc-if value="{{ showIg }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;left:24px;top:193px;width:221px;height:68px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <div style="position:absolute;left:11px;top:9px;width:53.238px;height:51.587px;">
+                  <div style="position:absolute;left:0.032px;top:0;width:46.968px;height:46.968px;border-radius:50%;background:rgb(248,248,248);box-shadow:inset 0 0 0 1.188px rgba(120,120,120,0.28);"></div>
+                  <div style="position:absolute;left:0;top:0;width:46.968px;height:46.968px;border-radius:50%;background:url('figma-cc/assets/996b86b781440304.png') center/cover no-repeat, linear-gradient(rgb(178,173,150),rgb(178,173,150));"></div>
+                  <div style="position:absolute;left:26.745px;top:25.094px;width:26.493px;height:26.493px;background:url('figma-cc/assets/67e34b1cbcffd45e.png') center/contain no-repeat;"></div>
+                </div>
+                <span style="position:absolute;left:73px;top:25px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Glitex Agency</span>
+                <svg onClick="{{ removeIg }}" width="12.764" height="12.764" viewBox="0 0 12.764 12.764" fill="rgb(131,131,131)" style="position:absolute;left:197px;top:11px;cursor:pointer;display:block;"><path d="M 1.567 0.256 C 1.396 0.09 1.165 -0.002 0.926 0 C 0.687 0.002 0.458 0.098 0.289 0.267 C 0.12 0.436 0.025 0.665 0.022 0.904 C 0.02 1.143 0.112 1.373 0.278 1.545 L 5.104 6.371 L 0.278 11.196 C 0.191 11.28 0.122 11.381 0.074 11.492 C 0.026 11.603 0.001 11.723 0 11.844 C -0.001 11.965 0.022 12.085 0.068 12.197 C 0.114 12.309 0.181 12.411 0.267 12.497 C 0.353 12.582 0.454 12.65 0.566 12.696 C 0.679 12.742 0.799 12.765 0.92 12.764 C 1.041 12.763 1.16 12.737 1.272 12.69 C 1.383 12.642 1.483 12.572 1.567 12.485 L 6.393 7.66 L 11.219 12.485 C 11.391 12.651 11.621 12.743 11.86 12.741 C 12.099 12.739 12.328 12.643 12.497 12.474 C 12.666 12.305 12.762 12.077 12.764 11.837 C 12.766 11.598 12.674 11.368 12.508 11.196 L 7.682 6.371 L 12.508 1.545 C 12.674 1.373 12.766 1.143 12.764 0.904 C 12.762 0.665 12.666 0.436 12.497 0.267 C 12.328 0.098 12.099 0.002 11.86 0 C 11.621 -0.002 11.391 0.09 11.219 0.256 L 6.393 5.081 L 1.567 0.256 Z"></path></svg>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showFb }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;left:257px;top:193px;width:221px;height:68px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <div style="position:absolute;left:11px;top:9px;width:53.238px;height:51.587px;">
+                  <div style="position:absolute;left:0.032px;top:0;width:46.968px;height:46.968px;border-radius:50%;background:rgb(248,248,248);box-shadow:inset 0 0 0 1.188px rgba(120,120,120,0.28);"></div>
+                  <div style="position:absolute;left:0;top:0;width:46.968px;height:46.968px;border-radius:50%;background:url('figma-cc/assets/75744a74f30bbd3d.png') center/cover no-repeat, linear-gradient(rgb(192,217,191),rgb(192,217,191));"></div>
+                  <div style="position:absolute;left:26.745px;top:25.094px;width:26.493px;height:26.493px;background:url('figma-cc/assets/2ae7294df113b3ec.png') center/contain no-repeat;"></div>
+                </div>
+                <span style="position:absolute;left:73px;top:25px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Glitex Agency</span>
+                <svg onClick="{{ removeFb }}" width="12.764" height="12.764" viewBox="0 0 12.764 12.764" fill="rgb(131,131,131)" style="position:absolute;left:197px;top:11px;cursor:pointer;display:block;"><path d="M 1.567 0.256 C 1.396 0.09 1.165 -0.002 0.926 0 C 0.687 0.002 0.458 0.098 0.289 0.267 C 0.12 0.436 0.025 0.665 0.022 0.904 C 0.02 1.143 0.112 1.373 0.278 1.545 L 5.104 6.371 L 0.278 11.196 C 0.191 11.28 0.122 11.381 0.074 11.492 C 0.026 11.603 0.001 11.723 0 11.844 C -0.001 11.965 0.022 12.085 0.068 12.197 C 0.114 12.309 0.181 12.411 0.267 12.497 C 0.353 12.582 0.454 12.65 0.566 12.696 C 0.679 12.742 0.799 12.765 0.92 12.764 C 1.041 12.763 1.16 12.737 1.272 12.69 C 1.383 12.642 1.483 12.572 1.567 12.485 L 6.393 7.66 L 11.219 12.485 C 11.391 12.651 11.621 12.743 11.86 12.741 C 12.099 12.739 12.328 12.643 12.497 12.474 C 12.666 12.305 12.762 12.077 12.764 11.837 C 12.766 11.598 12.674 11.368 12.508 11.196 L 7.682 6.371 L 12.508 1.545 C 12.674 1.373 12.766 1.143 12.764 0.904 C 12.762 0.665 12.666 0.436 12.497 0.267 C 12.328 0.098 12.099 0.002 11.86 0 C 11.621 -0.002 11.391 0.09 11.219 0.256 L 6.393 5.081 L 1.567 0.256 Z"></path></svg>
+              </div>
+            </sc-if>
+
+            <span style="position:absolute;left:25px;top:292px;font-weight:500;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">+ Add Accounts</span>
+
+            <div onClick="{{ tglFacebook }}" style="position:absolute;left:22px;top:326px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opFacebook }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:39px;top:14px;width:44.747px;height:44.747px;background:url('figma-cc/assets/2ae7294df113b3ec.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Facebook</span>
+            </div>
+            <div onClick="{{ tglIntagram }}" style="position:absolute;left:160px;top:326px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opIntagram }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:38.813px;top:13.813px;width:45.121px;height:45.121px;background:url('figma-cc/assets/67e34b1cbcffd45e.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Intagram</span>
+            </div>
+            <div onClick="{{ tglLinkedin }}" style="position:absolute;left:298px;top:326px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opLinkedin }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:38.381px;top:13.381px;width:45.984px;height:45.984px;background:url('figma-cc/assets/c04972125f72dbf7.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Linkedin</span>
+            </div>
+            <div onClick="{{ tglX }}" style="position:absolute;left:436px;top:326px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opX }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:42.639px;top:17.639px;width:37.469px;height:37.469px;background:url('figma-cc/assets/e17605bca7d7f32b.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">X</span>
+            </div>
+            <div onClick="{{ tglTiktok }}" style="position:absolute;left:22px;top:436px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opTiktok }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:39.373px;top:14.373px;width:44px;height:44px;background:url('figma-cc/assets/8dcaeadf3c2a801b.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Tiktok</span>
+            </div>
+            <div onClick="{{ tglYoutube }}" style="position:absolute;left:160px;top:436px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opYoutube }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:37.373px;top:12.373px;width:48px;height:48px;background:url('figma-cc/assets/649a98bc5482f9c0.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Youtube</span>
+            </div>
+            <div onClick="{{ tglPinterest }}" style="position:absolute;left:298px;top:436px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opPinterest }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:39.873px;top:14.873px;width:43px;height:43px;background:url('figma-cc/assets/04ebef6319dd43bc.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Pinterest</span>
+            </div>
+            <div onClick="{{ tglSora }}" style="position:absolute;left:436px;top:436px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opSora }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:40.746px;top:15.746px;width:41.254px;height:41.254px;background:url('figma-cc/assets/2b24e2b19061972e.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Sora</span>
+            </div>
+            <div onClick="{{ tglGoogle }}" style="position:absolute;left:22px;top:546px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opGoogle }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:41.373px;top:16.373px;width:40px;height:40px;background:url('figma-cc/assets/af1c42c0de0849d2.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Google Business</span>
+            </div>
+            <div onClick="{{ tglReddit }}" style="position:absolute;left:160px;top:546px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opReddit }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:41.873px;top:16.873px;width:39px;height:39px;background:url('figma-cc/assets/24a53206509fbcbd.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Reddit</span>
+            </div>
+            <div onClick="{{ tglMedium }}" style="position:absolute;left:298px;top:546px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opMedium }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:40.373px;top:18.373px;width:42px;height:42px;background:url('figma-cc/assets/57863ca26e1e0547.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Medium</span>
+            </div>
+            <div onClick="{{ tglWordpress }}" style="position:absolute;left:436px;top:546px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opWordpress }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:40.373px;top:15.373px;width:42px;height:42px;background:url('figma-cc/assets/b0f72847abd9b943.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Wordpress</span>
+            </div>
+            <div onClick="{{ tglShopify }}" style="position:absolute;left:22px;top:656px;width:123px;height:98px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;transition:opacity 0.2s;opacity:{{ opShopify }};" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:39.373px;top:14.373px;width:44px;height:44px;background:url('figma-cc/assets/f2d5d281477a36bd.png') center/contain no-repeat;"></div>
+              <span style="position:absolute;left:0;right:0;top:65px;font-weight:600;font-size:14px;text-align:center;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Shopify</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 5: autonomy ======== -->
+        <sc-if value="{{ isS5 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Step 5 — Autonomy &amp; Responsibility" style="position:absolute;left:59px;top:222px;width:920px;height:870px;">
+            <div style="position:absolute;left:0;top:0;width:920px;height:870px;background:linear-gradient(180deg, rgb(255,255,255) -0.73%, rgba(255,255,255,0) 100.05%);backdrop-filter:blur(41.304px);clip-path:path('M 1.593 43.038 C 1.593 26.469 15.025 13.038 31.593 13.038 L 416.563 13.038 C 419.505 13.038 422.431 12.605 425.248 11.753 L 455.348 2.649 C 461.056 0.922 467.15 0.936 472.851 2.69 L 502.191 11.712 C 505.048 12.591 508.02 13.038 511.009 13.038 L 890 13.038 C 906.569 13.038 920 26.469 920 43.038 L 920 840 C 920 856.569 906.568 870 890 870 L 30.064 870 C 13.471 870 0.029 856.529 0.064 839.936 L 1.593 126.285 L 1.593 96.264 L 1.593 67.104 L 1.593 43.038 Z');"></div>
+            <span style="position:absolute;left:25px;top:39px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1.43;color:rgb(131,131,131);">Autonomy &amp; Responsibility</span>
+            <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:238px;top:39px;width:21.563px;height:21.563px;"></x-import>
+            <span style="position:absolute;left:25px;top:85px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1.273;color:rgb(0,0,0);">How much responsibility do your agent have?</span>
+            <span style="position:absolute;left:25px;top:111px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1.43;color:rgb(131,131,131);">Control what your agent do independently, you can change anytime</span>
+            <span style="position:absolute;left:668px;top:111px;font-weight:500;font-size:20px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Timezone: UTC</span>
+            <span onClick="{{ noop }}" style="position:absolute;left:822px;top:111px;font-weight:500;font-size:20px;white-space:nowrap;line-height:1;color:rgb(163,65,255);cursor:pointer;" style-hover="opacity:0.7;">Change</span>
+
+            <!-- content responsibility -->
+            <div style="position:absolute;left:23px;top:161px;width:440px;height:289px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+              <span style="position:absolute;left:20px;top:15px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Content responsibility</span>
+              <span style="position:absolute;left:20px;top:38px;width:297px;font-weight:400;font-size:14px;line-height:1;color:rgb(131,131,131);display:inline-block;">Decide how your agents handles content creation and publishing</span>
+              <div style="position:absolute;left:20px;top:87px;width:398px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <span style="position:absolute;left:14px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Generate content draft</span>
+                <div onClick="{{ tglDraft }}" style="position:absolute;left:337px;top:14px;width:45px;height:24.324px;cursor:pointer;"><div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ draftTrack }};"></div><div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ draftKnob }};"></div></div>
+              </div>
+              <div style="position:absolute;left:20px;top:152px;width:396px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <span style="position:absolute;left:17px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Schedule post</span>
+                <div onClick="{{ tglSchedule }}" style="position:absolute;left:335px;top:14px;width:45px;height:24.324px;cursor:pointer;"><div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ scheduleTrack }};"></div><div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ scheduleKnob }};"></div></div>
+              </div>
+              <div style="position:absolute;left:20px;top:217px;width:399px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <span style="position:absolute;left:14px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Full Auto Mode</span>
+                <div onClick="{{ tglAuto }}" style="position:absolute;left:335px;top:14px;width:45px;height:24.324px;cursor:pointer;"><div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ autoTrack }};"></div><div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ autoKnob }};"></div></div>
+              </div>
+            </div>
+            <!-- optimization -->
+            <div style="position:absolute;left:480px;top:161px;width:420px;height:289px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+              <span style="position:absolute;left:22px;top:17px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Optimization &amp; Learning</span>
+              <span style="position:absolute;left:22px;top:40px;width:297px;font-weight:400;font-size:14px;line-height:1;color:rgb(131,131,131);display:inline-block;">Allow your agent to adapt based on performance</span>
+              <div style="position:absolute;left:23px;top:89px;width:377px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <span style="position:absolute;left:14px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Learn from performance automatically</span>
+                <div onClick="{{ tglLearn }}" style="position:absolute;left:322px;top:14px;width:45px;height:24.324px;cursor:pointer;"><div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ learnTrack }};"></div><div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ learnKnob }};"></div></div>
+              </div>
+              <div style="position:absolute;left:24px;top:154px;width:376px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+                <span style="position:absolute;left:13px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Adjust content mix automatically</span>
+                <div onClick="{{ tglMix }}" style="position:absolute;left:321px;top:14px;width:45px;height:24.324px;cursor:pointer;"><div style="position:absolute;left:0;top:0;width:45px;height:24.324px;border-radius:121.6px;box-shadow:0 0 0 0.608px rgb(255,255,255);transition:background 0.2s;background:{{ mixTrack }};"></div><div style="position:absolute;top:2.435px;width:19.459px;height:19.459px;border-radius:50%;background:rgb(255,255,255);transition:left 0.2s;left:{{ mixKnob }};"></div></div>
+              </div>
+            </div>
+            <!-- duration -->
+            <div style="position:absolute;left:23px;top:471px;width:440px;height:155px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+              <span style="position:absolute;left:23px;top:17px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Campaign Duration</span>
+              <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:177px;top:16px;width:21.563px;height:21.563px;"></x-import>
+              <span style="position:absolute;left:23px;top:44px;font-weight:400;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">How long should the campaign run for?</span>
+              <div onClick="{{ cycleDuration }}" style="position:absolute;left:20px;top:83px;width:399px;height:54px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);cursor:pointer;" style-hover="box-shadow:inset 0 0 0 1.4px rgba(12,12,12,0.25);">
+                <span style="position:absolute;left:17px;top:17px;font-weight:500;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">{{ durationLabel }}</span>
+                <x-import component="IconChevronR" from="./figma-cc/cc-icons.jsx" color="rgb(131,131,131)" hint-size="9px,17px" style="position:absolute;left:361px;top:19px;width:8.035px;height:16.069px;transform:rotate(90deg) scale(0.85);"></x-import>
+              </div>
+            </div>
+            <!-- frequency -->
+            <div style="position:absolute;left:482px;top:471px;width:418px;height:155px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);">
+              <span style="position:absolute;left:23px;top:17px;font-weight:600;font-size:16px;white-space:nowrap;line-height:1;color:rgb(0,0,0);">Campaign frequency</span>
+              <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:186px;top:16px;width:21.563px;height:21.563px;"></x-import>
+              <span style="position:absolute;left:23px;top:44px;font-weight:400;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">How much attention should this get?</span>
+              <div style="position:absolute;left:20px;top:84px;width:382px;height:51px;">
+                <div style="position:absolute;left:0;top:0;width:382px;height:20px;border-radius:10px;background:rgb(255,255,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);"></div>
+                <div style="position:absolute;left:0;top:0;height:20px;border-radius:10px;background:rgb(108,232,255);box-shadow:inset 0 0 0 1px rgba(12,12,12,0.1);transition:width 0.3s;width:{{ freqW }};"></div>
+                <div onClick="{{ setFreqLight }}" style="position:absolute;left:0;top:0;width:127px;height:20px;cursor:pointer;"></div>
+                <div onClick="{{ setFreqBalanced }}" style="position:absolute;left:127px;top:0;width:128px;height:20px;cursor:pointer;"></div>
+                <div onClick="{{ setFreqDominant }}" style="position:absolute;left:255px;top:0;width:127px;height:20px;cursor:pointer;"></div>
+                <span onClick="{{ setFreqLight }}" style="position:absolute;left:0;top:33px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);cursor:pointer;">Light</span>
+                <span onClick="{{ setFreqBalanced }}" style="position:absolute;left:161px;top:33px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);cursor:pointer;">Balanced</span>
+                <span onClick="{{ setFreqDominant }}" style="position:absolute;left:319px;top:33px;font-weight:500;font-size:14px;white-space:nowrap;line-height:1;color:rgb(131,131,131);cursor:pointer;">Dominant</span>
+              </div>
+            </div>
+            <!-- engagement (disabled) -->
+            <div style="position:absolute;left:23px;top:660px;width:877px;height:181px;opacity:0.3;">
+              <span style="position:absolute;left:2px;top:0;font-weight:600;font-size:18px;white-space:nowrap;line-height:1.273;color:rgb(0,0,0);">Engagement Responsibilities</span>
+              <x-import component="IconInfo" from="./figma-cc/cc-icons.jsx" hint-size="22px,22px" style="position:absolute;left:255px;top:0;width:21.563px;height:21.563px;"></x-import>
+              <span style="position:absolute;left:2px;top:26px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1.43;color:rgb(131,131,131);">Control how agent handles comments and DMs</span>
+              <div style="position:absolute;left:0;top:72px;width:211px;height:109px;border-radius:20px;background:rgb(255,255,255);">
+                <span style="position:absolute;left:16px;top:24px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Observe Only</span>
+                <span style="position:absolute;left:16px;top:53px;width:171px;font-weight:500;font-size:16px;line-height:0.9976;color:rgb(131,131,131);display:inline-block;">Read and categorize messages</span>
+                <span style="position:absolute;left:173px;top:12px;width:26px;height:26px;border-radius:50%;background:linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%);display:inline-block;"><svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:8.096px;top:7.748px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg></span>
+              </div>
+              <div style="position:absolute;left:222px;top:72px;width:211px;height:109px;border-radius:20px;background:rgb(255,255,255);">
+                <span style="position:absolute;left:16px;top:24px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Suggest Replies</span>
+                <span style="position:absolute;left:16px;top:53px;width:171px;font-weight:500;font-size:16px;line-height:0.9976;color:rgb(131,131,131);display:inline-block;">Draft Replies for approval</span>
+                <span style="position:absolute;left:173px;top:12px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </div>
+              <div style="position:absolute;left:444px;top:72px;width:211px;height:109px;border-radius:20px;background:rgb(255,255,255);">
+                <span style="position:absolute;left:16px;top:24px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Auto Reply (Safe)</span>
+                <span style="position:absolute;left:16px;top:53px;width:171px;font-weight:500;font-size:16px;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Handles simple conversations</span>
+                <span style="position:absolute;left:173px;top:12px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </div>
+              <div style="position:absolute;left:666px;top:72px;width:211px;height:109px;border-radius:20px;background:rgb(255,255,255);">
+                <span style="position:absolute;left:19px;top:29px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Sales Assits</span>
+                <span style="position:absolute;left:19px;top:58px;width:114px;font-weight:500;font-size:16px;line-height:0.9986;color:rgb(131,131,131);display:inline-block;">Qualifies leads in DMs</span>
+                <span style="position:absolute;left:175px;top:9px;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-block;"></span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ======== STEP 6: review & activate ======== -->
+        <sc-if value="{{ isS6 }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Step 6 — Review &amp; Activate" style="position:absolute;left:0;top:0;width:1036px;height:892px;">
+            <div style="position:absolute;left:0;top:0;width:52.472px;height:52.472px;transform:matrix(-0.983,0.182,-0.182,-0.983,243.075,509.398);transform-origin:0 0;background:url('figma-cc/assets/a0b56b723a726e33.png') center/contain no-repeat;box-shadow:-6.225px 11.562px 22.234px 0 rgba(0,0,0,0.14);"></div>
+            <div style="position:absolute;left:226px;top:156px;width:620.73px;height:633px;">
+              <div style="position:absolute;left:0;top:0;width:596px;height:633px;background:linear-gradient(180deg, rgb(172,242,255) 0%, rgb(253,225,255) 17.15%, rgb(255,239,217) 34.28%, rgba(255,255,255,0.6993) 56.66%, rgba(255,255,255,0) 100%);backdrop-filter:blur(41.304px);clip-path:path('M 1.032 30 C 1.032 13.431 14.463 0 31.032 0 L 256.338 0 L 309.275 0.001 L 343.379 0 L 566 0 C 582.569 0 596 13.431 596 30 L 596 603 C 596 619.569 582.569 633 566 633 L 30.058 633 C 13.467 633 0.026 619.533 0.059 602.942 L 1.032 102.969 L 1.032 75.673 L 1.032 49.16 L 1.032 30 Z');"></div>
+              <span style="position:absolute;left:31px;top:19px;font-weight:600;font-size:25px;white-space:nowrap;line-height:1.43;color:rgb(0,0,0);">Review &amp; Activate</span>
+              <span style="position:absolute;left:31px;top:57px;font-weight:400;font-size:18px;white-space:nowrap;line-height:0.9987;color:rgb(131,131,131);">Here's what <span style="font-weight:700;color:rgb(163,65,255);">{{ agentName }}</span> will do with this focus</span>
+              <div style="position:absolute;left:0;top:0;width:49.861px;height:49.861px;transform:matrix(0.969,-0.248,0.248,0.969,560.063,19.427);transform-origin:0 0;background:url('figma-cc/assets/a46817ad8bbfec2c.png') center/contain no-repeat;box-shadow:-6.717px 12.474px 23.989px 0 rgba(0,0,0,0.14);"></div>
+              <div style="position:absolute;left:31px;top:98px;width:523px;height:177px;border-radius:20px;background:rgb(255,255,255);"></div>
+              <div style="position:absolute;left:37px;top:104.721px;width:489px;height:163.557px;">
+                <div style="position:absolute;left:0;top:0;width:146px;height:163.557px;border-radius:18.481px;background:rgb(0,0,0);"></div>
+                <div style="position:absolute;left:20px;top:14.279px;width:103px;height:103px;border-radius:50%;background:url('figma-cc/assets/e7438c5cf2792b21.png') center/cover no-repeat, linear-gradient(rgb(255,212,184),rgb(255,212,184));"></div>
+                <span style="position:absolute;left:39px;top:129.279px;font-weight:600;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">{{ agentName }}</span>
+                <span style="position:absolute;left:180px;top:18.279px;font-weight:400;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">Goal -</span>
+                <span style="position:absolute;left:180px;top:46.279px;font-weight:400;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">Type -</span>
+                <span style="position:absolute;left:180px;top:74.279px;font-weight:400;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">Duration -</span>
+                <span style="position:absolute;left:180px;top:102.279px;font-weight:400;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">Weight -</span>
+                <span style="position:absolute;left:180px;top:130.279px;font-weight:400;font-size:16px;white-space:nowrap;line-height:0.9986;color:rgb(131,131,131);">Primary CTA -</span>
+                <span style="position:absolute;right:0;top:18.279px;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;line-height:1.273;color:rgb(12,12,12);">Get more leads</span>
+                <span style="position:absolute;right:0;top:46.279px;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;line-height:1.273;color:rgb(12,12,12);">Lead magnets</span>
+                <span style="position:absolute;right:0;top:74.279px;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;line-height:1.273;color:rgb(12,12,12);">{{ durationLabel }}</span>
+                <span style="position:absolute;right:0;top:102.279px;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;line-height:1.273;color:rgb(12,12,12);">{{ freqLabel }}</span>
+                <span style="position:absolute;right:0;top:130.279px;font-weight:600;font-size:14px;text-align:right;white-space:nowrap;line-height:1.273;color:rgb(36,116,237);text-decoration:underline;cursor:pointer;">Visit Opt-in page</span>
+              </div>
+              <span style="position:absolute;left:32px;top:292px;font-weight:600;font-size:18px;white-space:nowrap;line-height:1;color:rgb(12,12,12);">Here's what i'll do</span>
+              <div style="position:absolute;left:399px;top:290px;width:155px;height:27.532px;">
+                <div style="position:absolute;left:0;top:0;width:89px;height:27.532px;border-radius:5.809px;background:rgba(0,0,0,0.07);backdrop-filter:blur(18.731px);"></div>
+                <span style="position:absolute;left:8.258px;top:6.045px;font-weight:400;font-size:11.525px;white-space:nowrap;line-height:1;color:rgba(0,0,0,0.6);">Agent Status</span>
+                <span style="position:absolute;left:98px;top:7.771px;width:11.894px;height:11.894px;border-radius:50%;background:rgb(19,215,17);display:inline-block;"></span>
+                <span style="position:absolute;left:114px;top:4.287px;font-weight:400;font-size:14px;white-space:nowrap;line-height:1;color:rgba(0,0,0,0.6);">Active</span>
+              </div>
+              <div style="position:absolute;left:31px;top:339px;width:524px;height:41px;border-radius:10px;box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.1);">
+                <x-import component="IconSpinner" from="./figma-cc/cc-icons.jsx" hint-size="14px,14px" style="position:absolute;left:12px;top:13px;width:14px;height:14.001px;"></x-import>
+                <span style="position:absolute;left:34px;top:11px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Create campaign-focused posts across selected channels</span>
+              </div>
+              <div style="position:absolute;left:31px;top:394.5px;width:524px;height:41px;border-radius:10px;box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.1);">
+                <x-import component="IconSpinner" from="./figma-cc/cc-icons.jsx" hint-size="14px,14px" style="position:absolute;left:12px;top:13px;width:14px;height:14.001px;"></x-import>
+                <span style="position:absolute;left:34px;top:11px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Blend campaign content with baseline growth posts</span>
+              </div>
+              <div style="position:absolute;left:31px;top:450px;width:524px;height:41px;border-radius:10px;box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.1);">
+                <x-import component="IconSpinner" from="./figma-cc/cc-icons.jsx" hint-size="14px,14px" style="position:absolute;left:12px;top:13px;width:14px;height:14.001px;"></x-import>
+                <span style="position:absolute;left:34px;top:11px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Optimize posting times based on performance</span>
+              </div>
+              <div style="position:absolute;left:31px;top:505.5px;width:524px;height:41px;border-radius:10px;box-shadow:inset 0 0 0 1.276px rgba(12,12,12,0.1);">
+                <x-import component="IconSpinner" from="./figma-cc/cc-icons.jsx" hint-size="14px,14px" style="position:absolute;left:12px;top:13px;width:14px;height:14.001px;"></x-import>
+                <span style="position:absolute;left:34px;top:11px;font-weight:400;font-size:16px;white-space:nowrap;line-height:1;color:rgb(131,131,131);">Adjust CTA frequency to maximize leads</span>
+              </div>
+              <div onClick="{{ tglApprove }}" style="position:absolute;left:31px;top:546.5px;width:20px;height:20px;border-radius:4.878px;cursor:pointer;box-shadow:inset 0 0 0 1.5px rgba(12,12,12,0.2);background:{{ approveBg }};">
+                <sc-if value="{{ approveOn }}" hint-placeholder-val="{{ false }}">
+                  <svg width="10.157" height="10.163" viewBox="0 0 10.157 10.163" fill="rgb(255,255,255)" style="position:absolute;left:5px;top:5px;display:block;"><path d="M 9.821 0.425 C 9.935 0.551 10.024 0.699 10.081 0.859 C 10.139 1.02 10.164 1.19 10.156 1.36 C 10.147 1.53 10.106 1.697 10.033 1.851 C 9.96 2.005 9.857 2.143 9.731 2.257 C 8.559 3.32 7.766 4.196 7.113 5.216 C 6.452 6.246 5.899 7.477 5.267 9.293 C 5.194 9.502 5.069 9.689 4.904 9.836 C 4.738 9.983 4.538 10.085 4.322 10.132 C 4.106 10.18 3.881 10.172 3.669 10.108 C 3.458 10.044 3.266 9.927 3.112 9.768 L 0.359 6.931 C 0.122 6.683 -0.006 6.352 0 6.01 C 0.007 5.668 0.148 5.343 0.394 5.105 C 0.64 4.867 0.969 4.735 1.311 4.739 C 1.653 4.743 1.98 4.882 2.22 5.126 L 3.552 6.5 C 3.974 5.489 4.417 4.62 4.93 3.818 C 5.749 2.539 6.719 1.49 7.989 0.337 C 8.115 0.223 8.262 0.134 8.423 0.076 C 8.583 0.019 8.753 -0.007 8.923 0.001 C 9.093 0.01 9.26 0.051 9.414 0.124 C 9.568 0.197 9.706 0.299 9.821 0.425 Z"></path></svg>
+                </sc-if>
+              </div>
+              <span style="position:absolute;left:57px;top:547px;width:390px;font-weight:400;font-size:16px;line-height:1;color:rgb(131,131,131);display:inline-block;">Require approval for campaign posts Baseline posts will continue automatically.</span>
+            </div>
+            <!-- Activate button -->
+            <a href="SparkSocial Command Center.dc.html" style="position:absolute;left:381px;top:805px;width:273.302px;height:52px;border-radius:10.228px;background:rgb(12,12,12);backdrop-filter:blur(32.586px);cursor:pointer;display:block;text-decoration:none;" style-hover="background:rgb(40,40,40);" style-active="transform:scale(0.99);">
+              <span style="position:absolute;left:21.558px;top:13.021px;font-weight:500;font-size:19.349px;white-space:nowrap;line-height:1.269;color:rgb(255,255,255);">Activate Campaign</span>
+              <x-import component="IconChevronR" from="./figma-cc/cc-icons.jsx" color="rgb(255,255,255)" hint-size="8px,15px" style="position:absolute;left:245.488px;top:19.348px;width:7.256px;height:14.512px;transform:scale(0.903);transform-origin:top left;"></x-import>
+            </a>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- step 6 sticker outside modal -->
+      <sc-if value="{{ isS6 }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;left:0;top:0;width:57.49px;height:52.699px;transform:matrix(0.969,0.249,-0.249,0.969,1149.117,757.694);transform-origin:0 0;background:url('figma-cc/assets/f2352257b383e2e0.png') center/contain no-repeat;box-shadow:-6.188px 11.493px 22.101px 0 rgba(0,0,0,0.14);"></div>
+      </sc-if>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startScreen&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;popup&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;popup&quot;, &quot;step1&quot;, &quot;step2&quot;, &quot;step3&quot;, &quot;step4&quot;, &quot;step5&quot;, &quot;step6&quot;], &quot;section&quot;: &quot;Flow&quot; },
+  &quot;agentName&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Starlight&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Content&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    screen: null,
+    pageW: typeof window !== 'undefined' ? window.innerWidth : 1728,
+    s1Sel: 'leads',
+    s2Sel: 'launch',
+    ctaOn: false,
+    showIg: true,
+    showFb: true,
+    platforms: { facebook: true, intagram: true, linkedin: true, x: true, tiktok: true, youtube: true, pinterest: true, sora: true, google: false, reddit: false, medium: false, wordpress: false, shopify: false },
+    toggles: { draft: true, schedule: true, auto: true, learn: true, mix: true },
+    freq: 'light',
+    durationIdx: 1,
+    approve: false,
+  };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ pageW: window.innerWidth });
+    window.addEventListener('resize', this._onResize);
+    if (window.innerWidth !== this.state.pageW) this.setState({ pageW: window.innerWidth });
+    this._vwPoll = setInterval(() => { if (window.innerWidth > 0 && window.innerWidth !== this.state.pageW) this.setState({ pageW: window.innerWidth }); }, 500);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+  }
+
+  renderVals() {
+    const order = ['popup', 's1', 's2', 's3', 's4', 's5', 's6'];
+    const startProp = String(this.props.startScreen ?? 'popup').replace('step', 's');
+    const screen = this.state.screen ?? (order.includes(startProp) ? startProp : 'popup');
+    const idx = order.indexOf(screen);
+    const frameH = screen === 's5' ? 1184 : 1117;
+    const scale = (this.state.pageW > 0 ? this.state.pageW : 1728) / 1728;
+    const modalTops = { s1: 22, s2: 27, s3: 27, s4: 27, s5: 27, s6: 22 };
+    const modalHs = { s1: 892, s2: 892, s3: 1090, s4: 1024, s5: 1114, s6: 892 };
+    const progWs = { s1: 54, s2: 123, s3: 257, s4: 349, s5: 453, s6: 507 };
+    const lateHdr = screen === 's1' || screen === 's6';
+    const st = this.state;
+    const durations = ['7 Days', '14 Days', '30 Days'];
+    const freqWs = { light: '39px', balanced: '191px', dominant: '382px' };
+    const freqLabels = { light: 'Light', balanced: 'Balanced', dominant: 'Dominant' };
+    const toggleVals = (key) => ({
+      [key + 'Track']: st.toggles[key] ? 'rgb(62,195,50)' : 'rgba(131,131,131,0.3)',
+      [key + 'Knob']: st.toggles[key] ? '23.108px' : '3px',
+    });
+    const tglToggle = (key) => () => this.setState(s => ({ toggles: { ...s.toggles, [key]: !s.toggles[key] } }));
+    const cardVals = (group, key, sel) => ({
+      ['sel' + key]: sel,
+      ['un' + key]: !sel,
+      [group + 'Bg']: undefined,
+    });
+    const s1 = (k) => st.s1Sel === k;
+    const s2 = (k) => st.s2Sel === k;
+    const platformVals = {};
+    for (const p of Object.keys(st.platforms)) {
+      const K = p.charAt(0).toUpperCase() + p.slice(1);
+      platformVals['op' + K] = st.platforms[p] ? '1' : '0.3';
+      platformVals['tgl' + K] = () => this.setState(s => ({ platforms: { ...s.platforms, [p]: !s.platforms[p] } }));
+    }
+    return {
+      isPopup: screen === 'popup',
+      inSteps: screen !== 'popup',
+      isS1: screen === 's1', isS2: screen === 's2', isS3: screen === 's3',
+      isS4: screen === 's4', isS5: screen === 's5', isS6: screen === 's6',
+      notS6: screen !== 'popup' && screen !== 's6',
+      stepNo: Math.max(idx, 1),
+      frameH: frameH + 'px',
+      outerH: Math.round(frameH * scale) + 'px',
+      stageScale: 'scale(' + scale + ')',
+      modalTop: modalTops[screen] ? modalTops[screen] + 'px' : '22px',
+      modalH: (modalHs[screen] || 892) + 'px',
+      hdrTop: (lateHdr ? 51.262 : 46.262) + 'px',
+      progTop: (lateHdr ? 80.961 : 75.961) + 'px',
+      avTop: (screen === 's1' ? 109 : 104) + 'px',
+      progW: (progWs[screen] || 54) + 'px',
+      agentName: this.props.agentName ?? 'Starlight',
+      start: () => this.setState({ screen: 's1' }),
+      next: () => { if (screen === 's6') { window.location.href = 'SparkSocial Command Center.dc.html'; } else { this.setState({ screen: order[Math.min(idx + 1, 6)] }); } },
+      back: () => this.setState({ screen: order[Math.max(idx - 1, 0)] }),
+      noop: () => {},
+      // step 1
+      pickLeads: () => this.setState({ s1Sel: 'leads' }),
+      pickSales: () => this.setState({ s1Sel: 'sales' }),
+      pickTraffic: () => this.setState({ s1Sel: 'traffic' }),
+      pickAuthority: () => this.setState({ s1Sel: 'authority' }),
+      selLeads: s1('leads'), unLeads: !s1('leads'),
+      leadsBg: s1('leads') ? 'rgb(255,255,255)' : 'transparent',
+      leadsRing: s1('leads') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selSales: s1('sales'), unSales: !s1('sales'),
+      salesBg: s1('sales') ? 'rgb(255,255,255)' : 'transparent',
+      salesRing: s1('sales') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selTraffic: s1('traffic'), unTraffic: !s1('traffic'),
+      trafficBg: s1('traffic') ? 'rgb(255,255,255)' : 'transparent',
+      trafficRing: s1('traffic') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selAuthority: s1('authority'), unAuthority: !s1('authority'),
+      authorityBg: s1('authority') ? 'rgb(255,255,255)' : 'transparent',
+      authorityRing: s1('authority') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      // step 2
+      pickPromo: () => this.setState({ s2Sel: 'promo' }),
+      pickLeadMagnet: () => this.setState({ s2Sel: 'leadMagnet' }),
+      pickEducation: () => this.setState({ s2Sel: 'education' }),
+      pickLaunch: () => this.setState({ s2Sel: 'launch' }),
+      selPromo: s2('promo'), unPromo: !s2('promo'),
+      promoBg: s2('promo') ? 'rgb(255,255,255)' : 'transparent',
+      promoRing: s2('promo') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selLeadMagnet: s2('leadMagnet'), unLeadMagnet: !s2('leadMagnet'),
+      leadMagnetBg: s2('leadMagnet') ? 'rgb(255,255,255)' : 'transparent',
+      leadMagnetRing: s2('leadMagnet') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selEducation: s2('education'), unEducation: !s2('education'),
+      educationBg: s2('education') ? 'rgb(255,255,255)' : 'transparent',
+      educationRing: s2('education') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      selLaunch: s2('launch'), unLaunch: !s2('launch'),
+      launchBg: s2('launch') ? 'rgb(255,255,255)' : 'transparent',
+      launchRing: s2('launch') ? 'none' : 'inset 0 0 0 1.276px rgba(12,12,12,0.1)',
+      // step 3
+      tglCta: () => this.setState(s => ({ ctaOn: !s.ctaOn })),
+      ctaTrack: st.ctaOn ? 'rgb(62,195,50)' : 'rgba(131,131,131,0.3)',
+      ctaKnob: st.ctaOn ? '23.108px' : '3px',
+      ctaOpacity: st.ctaOn ? '1' : '0.4',
+      // step 4
+      showIg: st.showIg, showFb: st.showFb,
+      removeIg: () => this.setState({ showIg: false }),
+      removeFb: () => this.setState({ showFb: false }),
+      ...platformVals,
+      // step 5
+      ...toggleVals('draft'), tglDraft: tglToggle('draft'),
+      ...toggleVals('schedule'), tglSchedule: tglToggle('schedule'),
+      ...toggleVals('auto'), tglAuto: tglToggle('auto'),
+      ...toggleVals('learn'), tglLearn: tglToggle('learn'),
+      ...toggleVals('mix'), tglMix: tglToggle('mix'),
+      freqW: freqWs[st.freq],
+      freqLabel: freqLabels[st.freq] || 'Balanced',
+      setFreqLight: () => this.setState({ freq: 'light' }),
+      setFreqBalanced: () => this.setState({ freq: 'balanced' }),
+      setFreqDominant: () => this.setState({ freq: 'dominant' }),
+      durationLabel: durations[st.durationIdx],
+      cycleDuration: () => this.setState(s => ({ durationIdx: (s.durationIdx + 1) % durations.length })),
+      // step 6
+      tglApprove: () => this.setState(s => ({ approve: !s.approve })),
+      approveOn: st.approve,
+      approveBg: st.approve ? 'linear-gradient(90deg, rgb(108,232,255) 0%, rgb(245,107,255) 100%)' : 'transparent',
+    };
+  }
+}
+</script>
+</body>
+</html>

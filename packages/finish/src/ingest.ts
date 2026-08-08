@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
+import { PublicHttpUrl } from '@sparksocial/shared';
 import { checkMediaQuality, DEFAULT_THRESHOLDS, type QualityMetrics, type QualityThresholds } from './qualityCheck.js';
 import { buildFinishPipeline, type FinishPlan } from './pipeline.js';
 import type { AspectRatio, CaptionCue, HookOverlaySpec, MusicBedSpec } from './ffmpeg.js';
@@ -48,7 +49,9 @@ const MusicSchema = z.object({ trackPath: z.string(), volumeDb: z.number() });
 export const MediaIngestInput = z.object({
   genomeId: z.string(),
   briefId: z.string(),
-  mediaUrl: z.string().url(),
+  // Raw phone footage arrives as a URL (WhatsApp media, Blob SAS). Fetched
+  // server-side, so it goes through the SSRF guard like every other such field.
+  mediaUrl: PublicHttpUrl,
   aspects: z.array(AspectRatioSchema).min(1),
   captions: z.array(CaptionCueSchema).default([]),
   hook: HookSchema,
