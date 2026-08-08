@@ -9,6 +9,7 @@
     "@sparksocial/db": "*",
     "@sparksocial/playbooks": "*",
     "@sparksocial/shared": "*",
+    "@sparksocial/storage": "*",
     "@sparksocial/tools": "*",
     "zod": "^3.23.8"
   }

@@ -109,6 +109,14 @@ az role assignment create \
   --scope "$(az storage account show -g "$RG" -n "$STORAGE" --query id -o tsv)" \
   --output none 2>/dev/null || echo "  (blob role already assigned)"
 
+# The container `asset.upload_url` writes into. Private: every read goes through a
+# short-lived user-delegation SAS, so there is no anonymous URL to leak. Created
+# with --auth-mode login so this uses your `az login`, not an account key —
+# account keys are the credential CLAUDE.md forbids handling at all.
+az storage container create \
+  --account-name "$STORAGE" --name assets --auth-mode login \
+  --public-access off --output none 2>/dev/null || echo "  (assets container exists)"
+
 # ── 6. Key Vault — the only place the connection string lives ────────
 step "Key Vault"
 az keyvault create \

@@ -18,10 +18,12 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, leadingIcon, trailingSlot, invalid, ...props }, ref) => (
     <div
+      data-invalid={invalid ? 'true' : undefined}
       className={cn(
-        'flex h-[69px] w-full items-center gap-[15px] rounded-lg bg-input px-5',
-        'transition-shadow focus-within:shadow-[0_0_0_1.5px_var(--ss-ring)]',
-        invalid && 'shadow-[0_0_0_1.5px_var(--ss-danger)]',
+        // `ss-field` carries the focus/invalid ring — see the rule in tokens.css
+        // for why it is plain CSS rather than composed Tailwind variants.
+        'ss-field flex h-[69px] w-full items-center gap-[15px] rounded-lg bg-input px-5',
+        'transition-[outline-color]',
         className,
       )}
     >

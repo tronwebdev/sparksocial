@@ -116,6 +116,24 @@ clear.
 
 Note this keeps the plan's "do not reorder P2" rule intact: the capture loop stays in scope.
 
+## Frontend rules (`apps/web`)
+
+- **`apps/web` imports `@sparksocial/shared` and nothing else from `packages/`.** Every
+  capability is reached over HTTP through `POST /v1/tools/:name`. Importing
+  `@sparksocial/db` would let a component build a raw query and bypass the scoped layer;
+  `packages/db/test/isolation.test.ts` walks `.tsx` and fails the build if it happens.
+- **There is exactly one route handler: `src/app/api/tools/[name]/route.ts`.** It is a
+  transport proxy — attaches the Clerk token, forwards, streams back. A second handler
+  under `src/app/api/` means someone is building a capability outside the registry.
+- **`apps/web` is the one app with its own `tsconfig.json`.** `next dev` rewrites whatever
+  config it is pointed at, and it must not be allowed to mutate the root config governing
+  `packages/db`. Root `include` is narrowed to `apps/api` for the same reason. Note that
+  TypeScript's `extends` *replaces* `paths` rather than merging, so all aliases — including
+  `@/*` — stay in the root map.
+- **The `.dc.html` files in `ui build/` are the design source of truth**, not
+  `figma-system/fig-tokens.css` (generic Figma boilerplate that no screen references) and
+  not `BUILD_PLAN.md`'s prose, which is stale in the same way.
+
 ## Reference implementation
 
 `packages/genome/src/bootstrap.ts` (`genome.bootstrap_from_url`) is the shape every other

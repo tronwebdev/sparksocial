@@ -1,0 +1,12 @@
+{
+  "name": "@sparksocial/storage",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@azure/identity": "^4.13.0",
+    "@azure/storage-blob": "^12.30.0",
+    "@sparksocial/shared": "*"
+  }
+}

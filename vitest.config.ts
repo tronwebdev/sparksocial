@@ -41,6 +41,7 @@ export default defineConfig({
       "@sparksocial/guardrails": r("./packages/guardrails/src/index.ts"),
       "@sparksocial/finish": r("./packages/finish/src/index.ts"),
       "@sparksocial/spark": r("./packages/spark/src/index.ts"),
+      "@sparksocial/storage": r("./packages/storage/src/index.ts"),
     },
   },
 });

@@ -3,7 +3,8 @@ import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { genomeList } from '@sparksocial/genome/list';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
-import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
+import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl, makeAssetUploadUrl } from '@sparksocial/assetgraph';
+import { createAzureBlobStore, createMemoryBlobStore, type BlobStore } from '@sparksocial/storage';
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
@@ -30,6 +31,7 @@ export function registerAlphaTools(): void {
   register(playbookResolve);
 
   // Asset Graph (§4): grow it, query it, know what it's missing.
+  register(makeAssetUploadUrl(blobStore()));
   register(makeAssetIngestUrl({ ...devCaptionClient(), ...devEmbedClient() }));
   register(makeAssetRetrieve(devEmbedClient()));
   register(assetGaps);
@@ -43,4 +45,16 @@ export function registerAlphaTools(): void {
 
   // Finish pipeline (§6.3): raw phone footage in, publishable clips out.
   register(makeMediaIngest(devMediaIngestDeps()));
+}
+
+/**
+ * Azure Blob when the account is configured, in-memory otherwise. The sandbox
+ * cannot reach Azure (CLAUDE.md), so the memory store is what local development
+ * and the test suite exercise; the SAS signing path needs a real account and is
+ * smoke-tested from a developer machine after `infra/azure/bootstrap.sh`.
+ */
+function blobStore(): BlobStore {
+  const account = process.env.AZURE_STORAGE_ACCOUNT;
+  if (!account) return createMemoryBlobStore();
+  return createAzureBlobStore({ account, container: process.env.AZURE_STORAGE_CONTAINER ?? 'assets' });
 }

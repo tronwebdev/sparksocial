@@ -1,4 +1,10 @@
-# Status against the specs — 1 Aug 2026
+# Status against the specs — 8 Aug 2026
+
+> **Build order is now strictly P0 → P1 → P2 → …**, each phase complete and
+> verified before the next. The build had run backend-first and got ahead of
+> itself: P1 and most of P2's engine logic were done while P0 was still missing
+> auth, storage and the entire frontend. P0 is now closed — see
+> [`P0_VERIFICATION.md`](P0_VERIFICATION.md).
 
 Checked against `PRD.md`, `CONTENT_ENGINE_SPEC.md`, `CONTENT_OUTCOMES_AND_CAMPAIGN_FLOW.md`,
 `MASTER_BUILD_PLAN.md`, and the original voice note.
@@ -52,6 +58,9 @@ mutation through — and now uses the spec's literal.
 | Finish pipeline (trim/stabilize/caption/hook/music/export) | §6.3 | `packages/finish` |
 | SPARK runtime: agent loop, subagent scopes, prompt-injection containment | Plan §4 | `packages/spark` |
 | Postgres persistence — genomes/assets/content/tool_calls/agent_runs via Drizzle + pgvector | Plan §5 | `packages/db`; `apps/api` uses it automatically when `DATABASE_URL` is set, in-memory dev store otherwise |
+| **P0 frontend foundation** — design tokens from the prototype, nine restyled shadcn primitives, `AppShell` + `SidebarNav` | Plan §12 P0 | `apps/web`; measured 1:1 against the prototype at a 1728px viewport |
+| **P0 Clerk auth** — verified-session `resolveCtx`, five custom auth screens, single tool proxy | Plan §2.2 | `apps/api/src/clerk-auth.ts`, `apps/web/src/app/(auth)` |
+| **P0 Azure Blob storage** — presigned upload via user-delegation SAS, `asset.upload_url` | Plan §2.2 | `packages/storage`; bytes never transit the API container |
 
 ## Not built yet
 
@@ -59,21 +68,26 @@ Ordered by what blocks what.
 
 | Gap | Spec | Blocks |
 |---|---|---|
-| Clerk auth — dev resolver still trusts headers (`ALLOW_DEV_AUTH` refuses to boot this way in production) | Plan §2.2 | any real deployment |
-| Publishing adapters — `publish.*` tools don't exist as concrete implementations; only scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
-| Frontend — not started, deferred by design during backend-first build order | Plan §6 | any UI-facing demo |
+| **Assemble pipeline** — Playwright capture service, beat assembly, Remotion render. Retrieval works; nothing turns retrieved assets into a rendered video | §6.5, Plan §12 P2 | P2's exit criterion |
+| **WhatsApp delivery** — capture briefs are generated as data; nothing sends or receives them. `capture/src/session.ts` says so in its own comment | §6.3 | the capture loop, i.e. the moat |
+| Publishing adapters — `publish.*` tools don't exist as concrete implementations; only the scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
+| Onboarding UI (`ONB-01`→`ONB-06`) — the tools exist, the screens do not | Plan §12 P2 | first-run experience |
+| Budget policy — both resolvers hand out a hardcoded `budget` and `autopublish`; no `brands`/`autonomy_policies` tables, credits are P3 | Plan §9 | real spend limits |
+| `apps/web` deployment — needs a second Container App, Dockerfile and workflow job | Plan §2.2 | a live URL |
 
 ## Next
 
-**Clerk auth is the next blocker for any real deployment.** The dev resolver
-(`apps/api/src/dev-auth.ts`) trusts `x-org-id`/`x-genome-id`/etc. headers, which is a
-genome-isolation bypass by construction — `index.ts` already refuses to start this way
-in production unless `ALLOW_DEV_AUTH=true` is set explicitly for a throwaway
-environment.
+**P2 is where the build actually is**, and its two real gaps are the Assemble
+render and WhatsApp delivery. Without them the capture loop produces data but
+never reaches an owner's phone or becomes a video — which is the whole
+differentiator (`plan §12`: *"do not reorder P2"*).
 
-**Publishing adapters follow.** `packages/spark/src/agents.ts` already grants
-`publish.*`/`integration.*` to the `producer` agent, but no concrete `PlatformAdapter`
-(aggregator-class, per CLAUDE.md's Aug 29 scope) exists yet.
+**Needs you, not code:**
+- Clerk dashboard: create the six custom organization roles (`org:owner` …
+  `org:client`) matching `Role` in `packages/shared/src/types.ts`, and enable the
+  Google / Facebook / X OAuth providers.
+- Platform approvals — Meta, LinkedIn, Google, TikTok. Half of P0's stated exit
+  criterion and pure business work. LinkedIn is the long pole per CLAUDE.md.
 
 Two standing calls, unchanged:
 

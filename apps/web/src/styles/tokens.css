@@ -144,6 +144,31 @@
   --ss-primary-hover: var(--ss-surface-200);
 }
 
+/**
+ * Field focus ring, as plain longhands.
+ *
+ * Written here rather than composed from Tailwind variants on the component:
+ * `shadow-[…]` and `ring-*` both route through `--tw-shadow` / `--tw-ring-shadow`
+ * into a three-part `box-shadow`, and neither survived composition on this
+ * element — the custom properties computed correctly while the resulting
+ * `box-shadow` stayed transparent. An explicit rule with explicit longhands has
+ * no such indirection, and the prototype's focus treatment is a single fixed
+ * 1.5px ring on every field, so there is nothing here worth making configurable.
+ */
+.ss-field:focus-within {
+  outline-style: solid;
+  outline-width: 1.5px;
+  outline-color: var(--ss-ring);
+  outline-offset: -1.5px;
+}
+
+.ss-field[data-invalid='true'] {
+  outline-style: solid;
+  outline-width: 1.5px;
+  outline-color: var(--ss-danger);
+  outline-offset: -1.5px;
+}
+
 /* ── Keyframes lifted from the prototype. Reused across 60+ screens. ──── */
 
 @keyframes ss-float-a {
