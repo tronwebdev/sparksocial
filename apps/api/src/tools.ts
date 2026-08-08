@@ -5,7 +5,13 @@ import { genomeList } from '@sparksocial/genome/list';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl, makeAssetUploadUrl } from '@sparksocial/assetgraph';
 import { createAzureBlobStore, createMemoryBlobStore, type BlobStore } from '@sparksocial/storage';
-import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
+import {
+  makeBriefGenerate,
+  makeSessionBatch,
+  makeSessionSend,
+  fallbackDegrade,
+  createStubTransport,
+} from '@sparksocial/capture';
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
 import { makeAssemblePlan } from '@sparksocial/assemble';
@@ -45,6 +51,11 @@ export function registerAlphaTools(): void {
   // Capture loop (§6.2, §6.3): the moat.
   register(makeBriefGenerate(devBriefWriter()));
   register(makeSessionBatch(devBriefWriter()));
+  // The last hop. Stubbed until Meta business verification clears (plan §8) —
+  // the seam is real, only the WhatsApp client behind it is not.
+  register(makeSessionSend(createStubTransport()));
+  // "Fallbacks are mandatory" (§6.5): a missed week must not empty the calendar.
+  register(fallbackDegrade);
 
   // Guardrails (§10): report every check on a draft before it can be scheduled.
   register(makeEvaluateDraft(devEmbedClient()));

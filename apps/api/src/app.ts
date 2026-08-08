@@ -314,12 +314,32 @@ function errorBody(e: unknown, fallback: ToolError['code']) {
   return { error: { code: fallback, message: e instanceof Error ? e.message : String(e) } };
 }
 
-/** In-memory audit sink. Development and tests only — production writes Postgres. */
+/**
+ * In-memory audit sink. Development and tests only — production writes Postgres.
+ *
+ * `lookupIdempotent` is implemented here, not just `writeToolCall`, because
+ * `invokeTool` only replays a key when the dependency exists
+ * (`invoke.ts`: `if (req.idempotencyKey && deps.lookupIdempotent)`). Omitting it
+ * left development in a state where a non-idempotent tool *required* a key and
+ * then ignored it — so `direct.session.send` happily sent the same weekly
+ * capture session twice, which is precisely the nagging §6.3 says makes owners
+ * stop responding. The behaviour was correct under Postgres and wrong in dev,
+ * which is the worst combination: it cannot be found until it is live.
+ *
+ * Mirrors `createAuditRepository`: most recent row for the key, and only a
+ * `succeeded` one counts as a replay (a prior failure should be retryable).
+ */
 export function memoryInvokeDeps(over: Partial<InvokeDeps> = {}): InvokeDeps & { rows: ToolCallRecord[] } {
   const rows: ToolCallRecord[] = [];
   return {
     rows,
     writeToolCall: async (r) => void rows.push(r),
+    lookupIdempotent: async (key) => {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i]!.idempotencyKey === key) return rows[i];
+      }
+      return undefined;
+    },
     ...over,
   };
 }

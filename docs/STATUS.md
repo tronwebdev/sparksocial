@@ -65,6 +65,7 @@ mutation through — and now uses the spec's literal.
 | **P1 agent runtime over HTTP** — `POST /v1/agent/runs`, and SSE at `/v1/agent/runs/:id/events` | Plan §12 P1 | SPARK was a package with no way to reach it; 501 when no model key is configured |
 | **SSRF guard** on every server-fetched URL | — | `packages/shared/src/safeUrl.ts`; see the security pass below |
 | **P2 Assemble planner** — `assemble.plan`, beat resolution against the scoped Asset Graph | §6.5 | `packages/assemble`; the pure middle of the Assemble pipeline. Rendering is still absent |
+| **P2 capture loop closed** — `direct.session.send` behind a `MessageTransport` seam, `direct.fallback.degrade` | §6.3, §6.5 | every step of the §6.3 chain now exists; only the WhatsApp client behind the seam is stubbed |
 
 ## Security & scalability pass (8 Aug)
 
@@ -118,7 +119,7 @@ Ordered by what blocks what.
 | Gap | Spec | Blocks |
 |---|---|---|
 | **Assemble render** — beat assembly now exists (`assemble.plan` produces a fully-resolved plan), but nothing turns that plan into a video. Needs Remotion + the Playwright capture service; `crawl()` is still a stub | §6.5, Plan §12 P2 | P2's exit criterion |
-| **WhatsApp delivery** — capture briefs are generated as data; nothing sends or receives them. `capture/src/session.ts` says so in its own comment | §6.3 | the capture loop, i.e. the moat |
+| **WhatsApp client** — `direct.session.send` and its `MessageTransport` seam exist and the loop runs end to end on a stub. What is missing is the WhatsApp Cloud API implementation behind it, which needs Meta business verification, plus the inbound webhook that receives the owner's footage | §6.3, Plan §8 | real delivery; **blocked on Meta, not on code** |
 | Publishing adapters — `publish.*` tools don't exist as concrete implementations; only the scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
 | Onboarding UI (`ONB-01`→`ONB-06`) — the tools exist, the screens do not | Plan §12 P2 | first-run experience |
 | Budget policy — both resolvers hand out a hardcoded `budget` and `autopublish`; no `brands`/`autonomy_policies` tables, credits are P3 | Plan §9 | real spend limits |

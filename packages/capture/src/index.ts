@@ -3,3 +3,6 @@ export * from './validate.js';
 export * from './writer.js';
 export * from './generate.js';
 export * from './session.js';
+export * from './fallback.js';
+export * from './transport.js';
+export * from './send.js';
