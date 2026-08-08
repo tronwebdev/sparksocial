@@ -7,7 +7,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["packages/**/test/**/*.test.ts"],
+    // `apps/**` is included for the API only — its auth resolver is the tenancy
+    // boundary, and a manual curl is not a regression guard. `apps/web` has no
+    // test directory: a Next shell with no logic gains nothing from jsdom, and
+    // `npm run build:web` in CI catches what actually breaks there.
+    include: ["packages/**/test/**/*.test.ts", "apps/**/test/**/*.test.ts"],
     coverage: {
       provider: "v8",
       include: ["packages/tools/src/policy.ts", "packages/db/src/scoped.ts"],

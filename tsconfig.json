@@ -34,9 +34,10 @@
       "@sparksocial/finish": ["packages/finish/src/index.ts"],
       "@sparksocial/spark/*": ["packages/spark/src/*"],
       "@sparksocial/spark": ["packages/spark/src/index.ts"],
-      "@sparksocial/genome": ["packages/genome/src/index.ts"]
+      "@sparksocial/genome": ["packages/genome/src/index.ts"],
+      "@/*": ["apps/web/src/*"]
     }
   },
-  "include": ["packages/**/*.ts", "apps/**/*.ts"],
+  "include": ["packages/**/*.ts", "apps/api/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/dist"]
 }

@@ -1,0 +1,30 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* The prototype's inputs never show a native outline — focus is the purple
+     ring token instead, applied per-component. */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+  }
+}

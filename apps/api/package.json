@@ -9,17 +9,18 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@clerk/backend": "^3.16.1",
     "@hono/node-server": "^1.13.0",
+    "@sparksocial/assetgraph": "*",
+    "@sparksocial/capture": "*",
     "@sparksocial/db": "*",
+    "@sparksocial/finish": "*",
     "@sparksocial/genome": "*",
+    "@sparksocial/guardrails": "*",
+    "@sparksocial/playbooks": "*",
     "@sparksocial/shared": "*",
     "@sparksocial/tools": "*",
     "hono": "^4.6.0",
-    "zod": "^3.23.8",
-    "@sparksocial/playbooks": "*",
-    "@sparksocial/assetgraph": "*",
-    "@sparksocial/capture": "*",
-    "@sparksocial/guardrails": "*",
-    "@sparksocial/finish": "*"
+    "zod": "^3.23.8"
   }
 }

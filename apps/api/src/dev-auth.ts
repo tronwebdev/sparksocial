@@ -1,23 +1,22 @@
 import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
 import type { Role } from '@sparksocial/shared/types';
-import { createDevStore } from './dev-store.js';
 
 /**
- * DEVELOPMENT AUTH ONLY.
+ * DEVELOPMENT AUTH ONLY. The real one is `clerk-auth.ts`.
  *
- * Reads tenancy and role straight off request headers so the tool layer can be
- * exercised end to end before Clerk lands. This is forgeable by definition — any
- * caller can claim any `genomeId`, which is exactly the isolation bypass
- * `scoped.ts` exists to prevent — so `index.ts` refuses to boot with this in
- * production unless explicitly overridden for a throwaway environment.
+ * Reads tenancy and role straight off request headers, so it is forgeable by
+ * definition — any caller can claim any `genomeId`, which is precisely the
+ * isolation bypass `scoped.ts` exists to prevent. `index.ts` refuses to boot with
+ * this in production unless explicitly overridden for a throwaway environment.
  *
- * Replace with Clerk: Organizations → org, sub-orgs → brands, and read the role
- * from the membership claim.
+ * It survives Clerk landing because it is what makes local development work with
+ * no `CLERK_SECRET_KEY` and no `DATABASE_URL` — a `curl` against the tool surface
+ * shouldn't require a browser session. Delete it when the golden-set dev store
+ * goes (P3+).
  *
- * The header-trust problem is independent of which `ScopedDb` backs `ctx.db` —
- * a throwaway environment can run this resolver against real Postgres (to
- * exercise persistence) just as validly as against the in-memory dev store, so
- * the store is a parameter here rather than hardcoded.
+ * The header-trust problem is independent of which `ScopedDb` backs `ctx.db`, so
+ * the store is a parameter rather than a module-level singleton — that also keeps
+ * a second seeded store from being constructed when the caller already made one.
  */
 export function makeDevResolveCtx(db: ScopedDb) {
   return async function devResolveCtx(req: Request): Promise<ToolCtx & { caller: 'user' | 'agent' }> {
@@ -46,8 +45,6 @@ export function makeDevResolveCtx(db: ScopedDb) {
   };
 }
 
-/** One in-memory store per process, seeded with the golden set — the default for local dev. */
-export const devResolveCtx = makeDevResolveCtx(createDevStore());
 
 /** Permissive governance for local work. Real implementation reads `brands`/`autonomy_policies`. */
 export async function devBrandGovernance(_orgId: string, _brandId?: string) {

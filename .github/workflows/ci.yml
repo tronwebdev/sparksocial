@@ -38,6 +38,15 @@ jobs:
       - name: Test
         run: npm test
 
+      # `tsc --noEmit` does not catch a missing "use client", a server/client
+      # boundary violation, or a misused font loader — only a real Next build
+      # does, and all three fail at runtime rather than at typecheck.
+      - name: Build web
+        run: npm run build:web
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_placeholder
+          CLERK_SECRET_KEY: sk_test_ci_placeholder
+
   guardrails:
     name: Architecture invariants
     runs-on: ubuntu-latest

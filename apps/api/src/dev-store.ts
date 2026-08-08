@@ -182,6 +182,17 @@ export function createDevStore(orgId = 'org_dev'): ScopedDb & { seedCount: numbe
         // Scope mismatch reads as "not found", never as someone else's genome.
         return row && row.orgId === org ? row.genome : undefined;
       },
+
+      async listForOrg(org) {
+        return [...genomes.entries()]
+          .filter(([, row]) => row.orgId === org)
+          .map(([id, row]) => ({
+            id,
+            brandId: row.genome.workspace_id,
+            name: row.genome.identity.business_name,
+            updatedAt: new Date(),
+          }));
+      },
     },
 
     assets: {

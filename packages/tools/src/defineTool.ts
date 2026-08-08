@@ -58,6 +58,13 @@ export interface ScopedDb {
     }): Promise<{ id: string; version: number }>;
     /** Scoped read. Returns undefined rather than throwing when out of scope. */
     get(genomeId: string, orgId: string): Promise<Genome | undefined>;
+    /**
+     * Every genome in the org — the brand switcher's source, and the only way a
+     * caller discovers which `genomeId` values it is entitled to. Deliberately
+     * takes no `genomeId`: it answers "what may I ask for", so gating it on an
+     * already-chosen genome would be circular.
+     */
+    listForOrg(orgId: string): Promise<Array<{ id: string; brandId: string; name: string; updatedAt: Date }>>;
   };
   assets: {
     /**

@@ -2,7 +2,9 @@ import { serve } from '@hono/node-server';
 import { makeRunGuardrails } from '@sparksocial/guardrails';
 import { createApp, memoryInvokeDeps } from './app.js';
 import { registerAlphaTools } from './tools.js';
-import { devResolveCtx, makeDevResolveCtx, devBrandGovernance } from './dev-auth.js';
+import { makeDevResolveCtx, devBrandGovernance } from './dev-auth.js';
+import { makeClerkResolveCtx } from './clerk-auth.js';
+import { createDevStore } from './dev-store.js';
 import { devEmbedClient } from './dev-vendors.js';
 import { connectPostgresStore } from './pg-store.js';
 
@@ -20,25 +22,50 @@ const env = process.env.NODE_ENV ?? 'development';
 
 registerAlphaTools();
 
-if (env === 'production' && process.env.ALLOW_DEV_AUTH !== 'true') {
-  // The dev resolver trusts request headers for tenancy. Shipping that to
-  // production would make genome isolation forgeable by any caller, so refuse to
-  // start rather than serve something that looks like it works.
+const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
+
+if (env === 'production' && !clerkConfigured && process.env.ALLOW_DEV_AUTH !== 'true') {
+  // Without Clerk the only resolver left trusts request headers for tenancy,
+  // which makes genome isolation forgeable by any caller. Refuse to start rather
+  // than serve something that looks like it works.
   throw new Error(
-    'Refusing to start: production requires a real auth resolver (Clerk). ' +
-      'Set ALLOW_DEV_AUTH=true only for a throwaway environment.',
+    'Refusing to start: production requires a real auth resolver. Set CLERK_SECRET_KEY, ' +
+      'or ALLOW_DEV_AUTH=true for a throwaway environment.',
   );
 }
 
 // `DATABASE_URL` set → Postgres persists genomes/assets/content/tool_calls (plan
-// §5). Unset → the in-memory dev store, seeded with the golden set, same as
-// before this wiring existed. Independent of the auth-resolver guard above: a
-// throwaway environment can point at real Postgres while still trusting
-// headers for tenancy, or vice versa.
+// §5). Unset → the in-memory dev store, seeded with the golden set. Independent
+// of the auth choice below: a throwaway environment can point at real Postgres
+// while still trusting headers for tenancy, or vice versa.
 const pg = process.env.DATABASE_URL ? connectPostgresStore() : undefined;
 
+/**
+ * The dev store seeds the golden set under one org id. Locally that must be the
+ * *caller's* Clerk org, or every genome lookup 403s against a store that does
+ * contain the genome — a confusing failure that looks like a bug in the resolver.
+ */
+const scopedDb = pg?.scopedDb ?? createDevStore(process.env.DEV_SEED_ORG_ID ?? 'org_dev');
+
+const resolveCtx = clerkConfigured
+  ? makeClerkResolveCtx({
+      db: scopedDb,
+      authorizedParties: (process.env.CLERK_AUTHORIZED_PARTIES ?? 'http://localhost:3000')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    })
+  : makeDevResolveCtx(scopedDb);
+
+if (!clerkConfigured) {
+  console.warn('[warn] CLERK_SECRET_KEY unset — using the header-trusting dev resolver. Never do this in production.');
+}
+// Budget and approval mode are still placeholders in both resolvers: there are no
+// `brands` / `autonomy_policies` tables yet and credits land in P3, so the policy
+// engine's spend limits are effectively a no-op. Tracked in docs/STATUS.md.
+
 const app = createApp({
-  resolveCtx: pg ? makeDevResolveCtx(pg.scopedDb) : devResolveCtx,
+  resolveCtx,
   loadBrandGovernance: devBrandGovernance,
   // Wired now so the moment a tool declares `guardrails: [...]` on itself,
   // enforcement is live — no plumbing to add later.

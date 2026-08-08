@@ -183,6 +183,39 @@ describe('genome repository — real SQL', () => {
     });
     expect(await repo().get(id, 'org_OTHER')).toBeUndefined();
   });
+
+  /**
+   * `listForOrg` is what tells a client which genomes it may ask for, so a leak
+   * here hands an attacker the exact ids the auth resolver is meant to gate. It
+   * is also the one genome read that runs *before* a genome is selected, which
+   * means it cannot lean on any genome-scoped predicate — only on `orgId`.
+   */
+  it('listForOrg returns only the calling org\'s genomes, never another org\'s', async () => {
+    const mk = (orgId: string, name: string) =>
+      repo().createDraft({
+        brandId: `brand_${orgId}`, orgId,
+        identity: { business_name: name, category: 'x', one_liner: 'x', geography: { scope: 'global', locale: 'en', radius_km: null }, languages: ['en'], price_tier: 'mid' },
+        dimensions: { proof_asset: ['person'], capture_capability: ['screen'], objective: 'leads', secondary_objectives: [], talent_availability: 'yes_licensed' },
+        voice: { tone_vector: { formal: 0.5, playful: 0.5, technical: 0.5, bold: 0.5 }, pov_statements: [], banned_phrases: [], required_disclaimers: [], reading_level: 8 },
+        source: 'inference',
+      });
+
+    const mine = await mk('org_list_A', 'Mine One');
+    await mk('org_list_A', 'Mine Two');
+    const theirs = await mk('org_list_B', 'Theirs');
+
+    const listed = await repo().listForOrg('org_list_A');
+    const ids = listed.map((g) => g.id);
+
+    expect(ids).toContain(mine.id);
+    expect(ids).not.toContain(theirs.id);
+    expect(listed.map((g) => g.name).sort()).toEqual(['Mine One', 'Mine Two']);
+    expect(listed.every((g) => g.brandId === 'brand_org_list_A')).toBe(true);
+  });
+
+  it('listForOrg is empty for an org with no genomes rather than falling back to all', async () => {
+    expect(await repo().listForOrg('org_with_nothing')).toEqual([]);
+  });
 });
 
 describe('asset repository — cross-genome isolation on real SQL', () => {

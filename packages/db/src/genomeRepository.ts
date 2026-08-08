@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { ToolError } from '@sparksocial/shared/types';
 import {
   Genome,
@@ -98,6 +98,30 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
         learned: row.learned as GenomeT['learned'],
       };
       return Genome.parse(candidate);
+    },
+
+    async listForOrg(orgId) {
+      const rows = await db
+        .select({
+          id: genomes.id,
+          brandId: genomes.brandId,
+          identity: genomes.identity,
+          updatedAt: genomes.updatedAt,
+        })
+        .from(genomes)
+        .where(eq(genomes.orgId, orgId))
+        .orderBy(desc(genomes.updatedAt))
+        .limit(100);
+
+      // Only the display name is projected, not the whole genome: this feeds a
+      // switcher, and shipping every org genome's full identity/voice/learned
+      // payload to the client would leak far more than the list needs.
+      return rows.map((r) => ({
+        id: r.id,
+        brandId: r.brandId,
+        name: (r.identity as { business_name?: string } | null)?.business_name ?? 'Untitled brand',
+        updatedAt: r.updatedAt,
+      }));
     },
   };
 }

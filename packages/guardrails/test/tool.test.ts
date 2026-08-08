@@ -23,6 +23,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         createDraft: async () => ({ id: 'gen_draft' }),
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => lagosBarbershop.genome,
+        listForOrg: async () => [],
       },
       assets: {
         inventory: async () => ({}),

@@ -55,6 +55,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
         get: async () => undefined,
+        listForOrg: async () => [],
       },
       assets: {
         inventory: async () => ({}),

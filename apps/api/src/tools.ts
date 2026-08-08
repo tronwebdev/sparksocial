@@ -1,6 +1,7 @@
 import { register } from '@sparksocial/tools';
 import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
+import { genomeList } from '@sparksocial/genome/list';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { makeAssetRetrieve, assetGaps, makeAssetIngestUrl } from '@sparksocial/assetgraph';
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
@@ -22,6 +23,8 @@ export function registerAlphaTools(): void {
   // ONB-01 → ONB-06: the five-question onboarding.
   register(genomeBootstrapFromUrl);
   register(genomeDimensionsSet);
+  // Reads before a genome is selected — the brand switcher's source.
+  register(genomeList);
 
   // Content engine: rank what this brand can actually make.
   register(playbookResolve);
