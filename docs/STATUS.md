@@ -64,6 +64,7 @@ mutation through — and now uses the spec's literal.
 | **P1 Agent Timeline** — `agent.run.list` / `agent.run.get`, run+step read model, live UI at `/agents` | Plan §4.5 | the trust surface behind autopublish; brand-scoped, out-of-scope runs read as absent |
 | **P1 agent runtime over HTTP** — `POST /v1/agent/runs`, and SSE at `/v1/agent/runs/:id/events` | Plan §12 P1 | SPARK was a package with no way to reach it; 501 when no model key is configured |
 | **SSRF guard** on every server-fetched URL | — | `packages/shared/src/safeUrl.ts`; see the security pass below |
+| **P2 Assemble planner** — `assemble.plan`, beat resolution against the scoped Asset Graph | §6.5 | `packages/assemble`; the pure middle of the Assemble pipeline. Rendering is still absent |
 
 ## Security & scalability pass (8 Aug)
 
@@ -116,7 +117,7 @@ Ordered by what blocks what.
 
 | Gap | Spec | Blocks |
 |---|---|---|
-| **Assemble pipeline** — Playwright capture service, beat assembly, Remotion render. Retrieval works; nothing turns retrieved assets into a rendered video | §6.5, Plan §12 P2 | P2's exit criterion |
+| **Assemble render** — beat assembly now exists (`assemble.plan` produces a fully-resolved plan), but nothing turns that plan into a video. Needs Remotion + the Playwright capture service; `crawl()` is still a stub | §6.5, Plan §12 P2 | P2's exit criterion |
 | **WhatsApp delivery** — capture briefs are generated as data; nothing sends or receives them. `capture/src/session.ts` says so in its own comment | §6.3 | the capture loop, i.e. the moat |
 | Publishing adapters — `publish.*` tools don't exist as concrete implementations; only the scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
 | Onboarding UI (`ONB-01`→`ONB-06`) — the tools exist, the screens do not | Plan §12 P2 | first-run experience |

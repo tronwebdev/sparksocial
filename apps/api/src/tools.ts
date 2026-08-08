@@ -8,6 +8,7 @@ import { createAzureBlobStore, createMemoryBlobStore, type BlobStore } from '@sp
 import { makeBriefGenerate, makeSessionBatch } from '@sparksocial/capture';
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
+import { makeAssemblePlan } from '@sparksocial/assemble';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
@@ -36,6 +37,10 @@ export function registerAlphaTools(): void {
   register(makeAssetIngestUrl({ ...devCaptionClient(), ...devEmbedClient() }));
   register(makeAssetRetrieve(devEmbedClient()));
   register(assetGaps);
+
+  // Assemble (§6.5): build a post from what the brand already owns. The
+  // highest-value path for SaaS, agency, freelancer and e-commerce.
+  register(makeAssemblePlan(devEmbedClient()));
 
   // Capture loop (§6.2, §6.3): the moat.
   register(makeBriefGenerate(devBriefWriter()));

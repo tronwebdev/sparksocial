@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/backend": "^3.16.1",
     "@hono/node-server": "^1.13.0",
+    "@sparksocial/assemble": "*",
     "@sparksocial/assetgraph": "*",
     "@sparksocial/capture": "*",
     "@sparksocial/db": "*",
