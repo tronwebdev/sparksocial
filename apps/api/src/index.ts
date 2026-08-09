@@ -8,7 +8,7 @@ import {
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
 import { registerAlphaTools } from './tools.js';
-import { makeDevResolveCtx, devBrandGovernance } from './dev-auth.js';
+import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
 import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
@@ -100,7 +100,7 @@ const recorder = broadcastingRecorder(pg?.runRecorder ?? devRuns.recorder, bus);
 
 const app = createApp({
   resolveCtx,
-  loadBrandGovernance: devBrandGovernance,
+  loadBrandGovernance: makeBrandGovernance(scopedDb),
   // Wired now so the moment a tool declares `guardrails: [...]` on itself,
   // enforcement is live — no plumbing to add later.
   invokeDeps,

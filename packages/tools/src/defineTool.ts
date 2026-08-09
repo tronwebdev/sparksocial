@@ -140,6 +140,8 @@ export interface ScopedDb {
    * row itself carries no confidential material — see {@link CampaignStore}.
    */
   campaigns: CampaignStore;
+  /** The approval ladder's storage (PRD §7.1). */
+  brands: BrandGovernanceStore;
   runs: {
     /** Most recent runs for the brand, newest first. `limit` is enforced by the store. */
     list(brandId: string, limit: number): Promise<RunSummary[]>;
@@ -150,6 +152,33 @@ export interface ScopedDb {
      */
     get(runId: string, brandId: string): Promise<RunDetail | undefined>;
   };
+}
+
+export type ApprovalMode = 'autopublish' | 'review_first_week' | 'review_everything';
+
+export interface BrandGovernance {
+  brandId: string;
+  name: string;
+  approvalMode: ApprovalMode;
+  /** `review_first_week` graduates seven days after this. */
+  createdAt: Date;
+}
+
+/**
+ * Where the approval ladder actually lives (PRD §7.1, §9).
+ *
+ * `policy.ts` has implemented every rung from the start; until this existed
+ * there was nowhere to record which rung a brand was on, so both auth resolvers
+ * returned a hardcoded `autopublish` and the ladder was real in tests and inert
+ * in production.
+ *
+ * `get` upserts rather than returning undefined: a brand that has never had its
+ * mode set must still land somewhere defined, and the safe default is the
+ * conservative rung, not the permissive one.
+ */
+export interface BrandGovernanceStore {
+  get(brandId: string, orgId: string, name?: string): Promise<BrandGovernance>;
+  setApprovalMode(brandId: string, orgId: string, mode: ApprovalMode): Promise<BrandGovernance>;
 }
 
 /** A campaign as stored — the outcome unit of §6.8. */

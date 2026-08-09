@@ -32,6 +32,14 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         slots: async () => [],
         setStatus: async () => {},
       },
+      brands: {
+        get: async (brandId: string) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const, createdAt: new Date('2026-01-01T00:00:00Z'),
+        }),
+        setApprovalMode: async (brandId: string) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const, createdAt: new Date('2026-01-01T00:00:00Z'),
+        }),
+      },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },

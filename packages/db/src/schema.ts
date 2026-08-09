@@ -158,6 +158,37 @@ export const genomes = pgTable(
 );
 
 /**
+ * Brand governance — PRD §7.1/§9, engine spec §6.8 Step 5.
+ *
+ * The policy engine has implemented the full approval ladder from the start;
+ * what did not exist was anywhere to *store* which rung a brand is on, so both
+ * auth resolvers returned a hardcoded `autopublish`. That made the ladder real
+ * in tests and inert in production.
+ *
+ * `createdAt` is load-bearing, not bookkeeping: `review_first_week` graduates a
+ * brand to autopublish seven days after it was created, and the policy engine
+ * computes that from this column. Defaulting it to `now()` on insert is what
+ * makes the graduation date the brand's real age rather than the date someone
+ * happened to change a setting.
+ *
+ * Not in `SCOPED_TABLES` — a governance setting is configuration, not
+ * client-confidential material, same rationale as `genomes` and `campaigns`.
+ */
+export const brands = pgTable(
+  'brands',
+  {
+    id: text('id').primaryKey(), // Genome.workspace_id
+    orgId: text('org_id').notNull(),
+    name: text('name').notNull().default(''),
+    /** autopublish | review_first_week | review_everything */
+    approvalMode: text('approval_mode').notNull().default('review_first_week'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('brands_org_idx').on(t.orgId)],
+);
+
+/**
  * Campaigns — the outcome unit (§6.8, `CMP-01.*`).
  *
  * A campaign is an *objective over a window*, never a format or a channel: the

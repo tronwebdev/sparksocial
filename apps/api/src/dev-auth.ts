@@ -46,10 +46,27 @@ export function makeDevResolveCtx(db: ScopedDb) {
 }
 
 
-/** Permissive governance for local work. Real implementation reads `brands`/`autonomy_policies`. */
-export async function devBrandGovernance(_orgId: string, _brandId?: string) {
-  return {
-    createdAt: new Date('2026-01-01T00:00:00Z'),
-    approvalMode: 'autopublish' as const,
+/**
+ * Brand governance, read from the store rather than hardcoded.
+ *
+ * This used to return a constant `autopublish`, which meant the approval ladder
+ * in `policy.ts` was fully implemented, fully tested, and completely inert in a
+ * running system: no brand could actually *be* on `review_first_week`, so
+ * §6.8 Step 5's recommendation had nothing to set.
+ *
+ * A brand with no row upserts on first read at the schema's conservative
+ * default. Defaulting to the permissive rung would mean a misconfiguration
+ * silently grants unattended publishing — the wrong direction for the one
+ * setting that stands between the agent and someone's public feed.
+ */
+export function makeBrandGovernance(db: ScopedDb) {
+  return async function loadBrandGovernance(orgId: string, brandId?: string) {
+    if (!brandId) {
+      // No brand selected means nothing publish-effect can run anyway; the
+      // conservative answer costs nothing and avoids inventing a row.
+      return { createdAt: new Date(), approvalMode: 'review_everything' as const };
+    }
+    const governance = await db.brands.get(brandId, orgId);
+    return { createdAt: governance.createdAt, approvalMode: governance.approvalMode };
   };
 }

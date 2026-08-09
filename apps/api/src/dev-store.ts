@@ -4,7 +4,8 @@ import { GOLDEN_SET } from '@sparksocial/playbooks';
 import type { AssetRole, Genome } from '@sparksocial/shared';
 import { createDevRunStore, seedDevRuns, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
-import type { CampaignStore } from '@sparksocial/tools/defineTool';
+import { createDevBrandStore } from './dev-brands.js';
+import type { BrandGovernanceStore, CampaignStore } from '@sparksocial/tools/defineTool';
 
 /**
  * DEVELOPMENT STORE — in-memory, seeded with the golden set.
@@ -102,6 +103,7 @@ export function createDevStore(
    */
   runStore: DevRunStore = createDevRunStore(),
   campaignStore: CampaignStore = createDevCampaignStore(),
+  brandStore: BrandGovernanceStore = createDevBrandStore(),
 ): ScopedDb & { seedCount: number; runs: ScopedDb['runs'] } {
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -298,6 +300,7 @@ export function createDevStore(
     },
 
     campaigns: campaignStore,
+    brands: brandStore,
     runs: runStore.reader,
   };
 }

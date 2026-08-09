@@ -22,6 +22,13 @@
       "when": 1786236411963,
       "tag": "0002_deep_doorman",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786304277607,
+      "tag": "0003_sloppy_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

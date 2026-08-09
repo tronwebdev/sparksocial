@@ -20,6 +20,8 @@ import {
   campaignCreate,
   calendarGenerate,
   calendarGet,
+  approvalGet,
+  approvalSet,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { createStubAdapter, makePublishNow, makePublishStatus } from '@sparksocial/publish';
@@ -49,6 +51,11 @@ export function registerAlphaTools(): void {
   // Calendar (§6.8 Step 4, CAL-01→CAL-06): reviewed at mix level, not post by post.
   register(calendarGenerate);
   register(calendarGet);
+
+  // Approval ladder (§6.8 Step 5, PRD §7.1): the policy engine has always
+  // implemented all three rungs; these are what let a brand be on one.
+  register(approvalGet);
+  register(approvalSet);
 
   // Content engine: rank what this brand can actually make.
   register(playbookResolve);
