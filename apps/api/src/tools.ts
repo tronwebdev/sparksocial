@@ -22,6 +22,7 @@ import {
   calendarGet,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
+import { createStubAdapter, makePublishNow, makePublishStatus } from '@sparksocial/publish';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
 /**
@@ -76,6 +77,13 @@ export function registerAlphaTools(): void {
 
   // Finish pipeline (§6.3): raw phone footage in, publishable clips out.
   register(makeMediaIngest(devMediaIngestDeps()));
+
+  // Publishing (§8, P4): one PlatformAdapter, aggregator-first. Native
+  // adapters are prepended as approvals clear — LinkedIn will not clear by
+  // Aug 29, which is exactly why the aggregator ships first.
+  const adapters = [createStubAdapter({ name: 'aggregator:stub' })];
+  register(makePublishNow({ adapters }));
+  register(makePublishStatus({ adapters }));
 
   // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
   // that makes autopublish something a user can reasonably agree to.

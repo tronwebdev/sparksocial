@@ -68,6 +68,7 @@ mutation through — and now uses the spec's literal.
 | **P2 capture loop closed** — `direct.session.send` behind a `MessageTransport` seam, `direct.fallback.degrade` | §6.3, §6.5 | every step of the §6.3 chain now exists; only the WhatsApp client behind the seam is stubbed |
 | **P3 campaign planner** — `campaign.propose_plan`, volume + mix + honest gap report | §6.8 Steps 2–3 | `packages/campaign`; volume is capped by format variety (`saturation_risk`), which is what makes the gap a real number |
 | **P3 calendar** — `campaign.create`, `calendar.generate`, `calendar.get`, mix-level adjustment | §6.8 Step 4, `CAL-01`→`CAL-06` | `campaigns` table + scoped slot writes; regeneration replaces rather than stacks, and the promotional ceiling is re-applied to the placed calendar |
+| **P4 publishing** — one `PlatformAdapter`, aggregator-first routing, `publish.now` / `publish.status`, retry with jittered backoff, per-brand per-platform rate budgets | §8, Plan §12 P4 | `packages/publish`; native adapters prepend as approvals clear. LinkedIn will not clear by Aug 29, which is why aggregator-first ships |
 
 ## Security & scalability pass (8 Aug)
 

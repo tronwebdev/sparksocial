@@ -21,6 +21,7 @@
     "@sparksocial/genome": "*",
     "@sparksocial/guardrails": "*",
     "@sparksocial/playbooks": "*",
+    "@sparksocial/publish": "*",
     "@sparksocial/shared": "*",
     "@sparksocial/spark": "*",
     "@sparksocial/tools": "*",
