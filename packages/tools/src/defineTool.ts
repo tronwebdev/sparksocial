@@ -134,6 +134,12 @@ export interface ScopedDb {
    * agent did. The Timeline is the trust mechanism that makes autopublish
    * acceptable, so its history has to be append-only from every other angle.
    */
+  /**
+   * Campaigns and their calendars (§6.8). Reached through the same handle as
+   * everything else so a handler has one injection point, though the campaign
+   * row itself carries no confidential material — see {@link CampaignStore}.
+   */
+  campaigns: CampaignStore;
   runs: {
     /** Most recent runs for the brand, newest first. `limit` is enforced by the store. */
     list(brandId: string, limit: number): Promise<RunSummary[]>;
@@ -144,6 +150,71 @@ export interface ScopedDb {
      */
     get(runId: string, brandId: string): Promise<RunDetail | undefined>;
   };
+}
+
+/** A campaign as stored — the outcome unit of §6.8. */
+export interface CampaignRecord {
+  id: string;
+  genomeId: string;
+  name: string;
+  objective: string;
+  windowDays: number;
+  startAt: Date;
+  status: string;
+  /** The plan snapshot the owner approved. Deliberately opaque here. */
+  plan: unknown;
+}
+
+export interface CampaignSlotInput {
+  playbookId: string;
+  mode: string;
+  pillar: string;
+  scheduledAt: Date;
+}
+
+/**
+ * Campaign + calendar persistence (§6.8, `CMP-01.*`, `CAL-01`→`CAL-06`).
+ *
+ * Separate from `ScopedDb` on purpose: `ScopedDb` is the client-confidential
+ * surface that `scoped.ts` fences, and a campaign is an objective over a window
+ * — it holds no assets or copy. Its *slots* do, which is why `replaceSlots` and
+ * `slots` take a `genomeId` and route through the scoped layer underneath.
+ */
+export interface CampaignStore {
+  create(args: {
+    orgId: string;
+    genomeId: string;
+    name: string;
+    objective: string;
+    windowDays: number;
+    startAt: Date;
+    plan: unknown;
+  }): Promise<{ id: string }>;
+  /** Undefined rather than throwing when out of scope. */
+  get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
+  listForGenome(genomeId: string, orgId: string, limit: number): Promise<CampaignRecord[]>;
+  /** Replaces the campaign's unpublished slots. Regeneration is the normal path. */
+  replaceSlots(args: {
+    campaignId: string;
+    orgId: string;
+    genomeId: string;
+    slots: CampaignSlotInput[];
+  }): Promise<number>;
+  slots(
+    campaignId: string,
+    orgId: string,
+    genomeId: string,
+  ): Promise<
+    Array<{
+      id: string;
+      playbookId: string | null;
+      mode: string | null;
+      pillar: string | null;
+      status: string;
+      scheduledAt: Date | null;
+    }>
+  >;
+  setStatus(campaignId: string, orgId: string, status: string): Promise<void>;
 }
 
 /** One row in the Timeline's run list. */

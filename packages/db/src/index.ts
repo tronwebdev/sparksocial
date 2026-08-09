@@ -6,3 +6,4 @@ export * from './contentRepository.js';
 export * from './postgresScopedDb.js';
 export * from './auditRepository.js';
 export * from './runRecorderRepository.js';
+export * from './campaignRepository.js';

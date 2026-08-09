@@ -15,7 +15,12 @@ import {
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
 import { makeAssemblePlan } from '@sparksocial/assemble';
-import { campaignProposePlan } from '@sparksocial/campaign';
+import {
+  campaignProposePlan,
+  campaignCreate,
+  calendarGenerate,
+  calendarGet,
+} from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
@@ -38,6 +43,11 @@ export function registerAlphaTools(): void {
 
   // Campaign (§6.8): outcome in, a plan and an honest gap report out.
   register(campaignProposePlan);
+  register(campaignCreate);
+
+  // Calendar (§6.8 Step 4, CAL-01→CAL-06): reviewed at mix level, not post by post.
+  register(calendarGenerate);
+  register(calendarGet);
 
   // Content engine: rank what this brand can actually make.
   register(playbookResolve);

@@ -158,6 +158,41 @@ export const genomes = pgTable(
 );
 
 /**
+ * Campaigns — the outcome unit (§6.8, `CMP-01.*`).
+ *
+ * A campaign is an *objective over a window*, never a format or a channel: the
+ * whole flow is "outcome first, never format first". The plan it was approved
+ * with is stored as a snapshot rather than recomputed, because the resolver and
+ * the Asset Graph both move underneath it — reopening a campaign in week three
+ * must show the numbers the owner actually agreed to, not what those numbers
+ * would be today.
+ *
+ * Not in `SCOPED_TABLES`: a campaign is scoped by `genome_id` like everything
+ * else, but it carries no client-confidential material of its own — the assets
+ * and copy live in `content_items`, which is scoped. Kept out of the strict set
+ * for the same reason `genomes` is.
+ */
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    name: text('name').notNull(),
+    objective: text('objective').notNull(),
+    windowDays: integer('window_days').notNull(),
+    startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+    /** draft | active | done | cancelled */
+    status: text('status').notNull().default('draft'),
+    /** The approved plan: volume, mix, capture ask, reasoning. */
+    plan: jsonb('plan').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('campaigns_scope_idx').on(t.orgId, t.genomeId, t.startAt.desc())],
+);
+
+/**
  * THE AUDIT ROW — master plan §5 `tool_calls`, `packages/tools/src/invoke.ts`'s
  * `ToolCallRecord`.
  *

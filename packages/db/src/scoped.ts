@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
 import { assets, knowledgeChunks, memories, contentItems } from './schema.js';
@@ -283,6 +283,90 @@ export async function markContentPublished(
     .update(contentItems)
     .set({ status: 'published', publishedAt: args.publishedAt ?? new Date(), embedding: args.embedding })
     .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+export interface CalendarSlotRow {
+  campaignId: string;
+  playbookId: string;
+  mode: string;
+  pillar: string;
+  scheduledAt: Date;
+}
+
+/**
+ * §6.8 Step 4: writes a campaign's calendar as `content_items` slots.
+ *
+ * Replaces the campaign's existing *unpublished* slots rather than appending,
+ * because regeneration is the normal path — the user adjusts the mix and asks
+ * again, repeatedly. Appending would silently double the month.
+ *
+ * The delete is deliberately narrow: `status <> 'published'`. A published post
+ * is a fact about the world, not a plan, and no amount of re-planning may erase
+ * it — the guardrail layer's duplicate and saturation checks both read that
+ * history, so losing rows there would quietly weaken them.
+ */
+export async function replaceCampaignSlots(
+  db: Database,
+  scope: Scope,
+  campaignId: string,
+  slots: CalendarSlotRow[],
+): Promise<number> {
+  assertScope(scope);
+
+  await db
+    .delete(contentItems)
+    .where(
+      and(
+        scopePredicate('contentItems', scope),
+        eq(contentItems.campaignId, campaignId),
+        ne(contentItems.status, 'published'),
+      ),
+    );
+
+  if (slots.length === 0) return 0;
+
+  await db.insert(contentItems).values(
+    slots.map((s) => ({
+      orgId: scope.orgId,
+      genomeId: scope.genomeId,
+      campaignId: s.campaignId,
+      playbookId: s.playbookId,
+      mode: s.mode,
+      pillar: s.pillar,
+      status: 'scheduled',
+      scheduledAt: s.scheduledAt,
+    })),
+  );
+  return slots.length;
+}
+
+/** §6.8 Step 4's read side — the month view, ordered as it is rendered. */
+export async function campaignSlots(
+  db: Database,
+  scope: Scope,
+  campaignId: string,
+): Promise<
+  Array<{
+    id: string;
+    playbookId: string | null;
+    mode: string | null;
+    pillar: string | null;
+    status: string;
+    scheduledAt: Date | null;
+  }>
+> {
+  return db
+    .select({
+      id: contentItems.id,
+      playbookId: contentItems.playbookId,
+      mode: contentItems.mode,
+      pillar: contentItems.pillar,
+      status: contentItems.status,
+      scheduledAt: contentItems.scheduledAt,
+    })
+    .from(contentItems)
+    .where(and(scopePredicate('contentItems', scope), eq(contentItems.campaignId, campaignId)))
+    .orderBy(asc(contentItems.scheduledAt));
 }
 
 /** Read helper for {@link lookupIdempotentToolCall}-style lookups is intentionally absent here —

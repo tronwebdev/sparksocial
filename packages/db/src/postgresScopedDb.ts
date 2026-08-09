@@ -4,6 +4,7 @@ import { createGenomeRepository } from './genomeRepository.js';
 import { createAssetRepository } from './assetRepository.js';
 import { createContentRepository } from './contentRepository.js';
 import { createRunReadRepository } from './runRecorderRepository.js';
+import { createCampaignRepository } from './campaignRepository.js';
 
 /** The real `ScopedDb`, assembled from the Postgres-backed repositories. */
 export function createPostgresScopedDb(db: Database): ScopedDb {
@@ -11,6 +12,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     genomes: createGenomeRepository(db),
     assets: createAssetRepository(db),
     content: createContentRepository(db),
+    campaigns: createCampaignRepository(db),
     runs: createRunReadRepository(db),
   };
 }

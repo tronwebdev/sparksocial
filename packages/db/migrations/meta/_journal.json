@@ -15,6 +15,13 @@
       "when": 1786222366585,
       "tag": "0001_fresh_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786236411963,
+      "tag": "0002_deep_doorman",
+      "breakpoints": true
     }
   ]
 }
