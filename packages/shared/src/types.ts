@@ -66,6 +66,18 @@ export const CaptureCapability = z.enum(['screen', 'space', 'work_artifacts', 'p
 export const Objective = z.enum(['leads', 'bookings', 'trials', 'sales', 'audience', 'hiring']);
 export const TalentAvailability = z.enum(['yes_licensed', 'yes_unlicensed', 'no']);
 
+/**
+ * Inferred types alongside the schemas, matching `GenomeDimensions` below.
+ * These four are the routing key for the whole engine, so code that switches on
+ * them — the campaign planner, the resolver, the mix engine — wants the union,
+ * not the Zod object. Declaring them here keeps one definition rather than a
+ * `z.infer<typeof …>` repeated at each call site.
+ */
+export type ProofAsset = z.infer<typeof ProofAsset>;
+export type CaptureCapability = z.infer<typeof CaptureCapability>;
+export type Objective = z.infer<typeof Objective>;
+export type TalentAvailability = z.infer<typeof TalentAvailability>;
+
 export const GenomeDimensions = z.object({
   proof_asset: z.array(ProofAsset).min(1),
   capture_capability: z.array(CaptureCapability).min(1),

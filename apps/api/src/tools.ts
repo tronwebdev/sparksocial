@@ -15,6 +15,7 @@ import {
 import { makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
 import { makeAssemblePlan } from '@sparksocial/assemble';
+import { campaignProposePlan } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
 
@@ -34,6 +35,9 @@ export function registerAlphaTools(): void {
   register(genomeDimensionsSet);
   // Reads before a genome is selected — the brand switcher's source.
   register(genomeList);
+
+  // Campaign (§6.8): outcome in, a plan and an honest gap report out.
+  register(campaignProposePlan);
 
   // Content engine: rank what this brand can actually make.
   register(playbookResolve);

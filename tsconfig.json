@@ -28,6 +28,8 @@
       "@sparksocial/assemble": ["packages/assemble/src/index.ts"],
       "@sparksocial/assetgraph/*": ["packages/assetgraph/src/*"],
       "@sparksocial/assetgraph": ["packages/assetgraph/src/index.ts"],
+      "@sparksocial/campaign/*": ["packages/campaign/src/*"],
+      "@sparksocial/campaign": ["packages/campaign/src/index.ts"],
       "@sparksocial/capture/*": ["packages/capture/src/*"],
       "@sparksocial/capture": ["packages/capture/src/index.ts"],
       "@sparksocial/guardrails/*": ["packages/guardrails/src/*"],
