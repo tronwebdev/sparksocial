@@ -34,6 +34,7 @@ export default defineConfig({
       "@sparksocial/shared": r("./packages/shared/src/index.ts"),
       "@sparksocial/db": r("./packages/db/src/index.ts"),
       "@sparksocial/tools/defineTool": r("./packages/tools/src/defineTool.ts"),
+      "@sparksocial/trends": r("./packages/trends/src/index.ts"),
       "@sparksocial/tools": r("./packages/tools/src/index.ts"),
       "@sparksocial/genome": r("./packages/genome/src/index.ts"),
       "@sparksocial/publish": r("./packages/publish/src/index.ts"),

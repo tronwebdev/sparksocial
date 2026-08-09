@@ -72,6 +72,7 @@ mutation through — and now uses the spec's literal.
 | **`inferGenome` implemented** — the genome inference pass, behind an injected client | §1.2, Plan §11, `ONB-02` | was a `throw`, and a hard blocker on P2's exit criterion. Unevidenced routing dimensions come back as onboarding questions rather than guesses |
 | **P3 calendar UI** — mix bar as the review surface, month grid, relative adjustment | §6.8 Step 4, `CAL-01` | `apps/web/src/components/calendar` |
 | **Approval ladder is live** — `brands` table, `brand.approval.get` / `.set`, governance read from the store | PRD §7.1, §6.8 Step 5 | `policy.ts` always implemented all three rungs; both resolvers returned a hardcoded `autopublish`, so it was inert in a running system |
+| **P5 trend discovery** — `trend.rank`, ranking on remaining window not size, brand-safety as hard exclusion | PRD §8.9 `DISC-01` | `packages/trends`; sources are a credential-gated seam. **Out of the Aug 29 alpha scope** per CLAUDE.md — built on request |
 
 ## Security & scalability pass (8 Aug)
 

@@ -19,6 +19,8 @@
       "@sparksocial/shared": ["packages/shared/src/index.ts"],
       "@sparksocial/db/*": ["packages/db/src/*"],
       "@sparksocial/db": ["packages/db/src/index.ts"],
+      "@sparksocial/trends/*": ["packages/trends/src/*"],
+      "@sparksocial/trends": ["packages/trends/src/index.ts"],
       "@sparksocial/tools/*": ["packages/tools/src/*"],
       "@sparksocial/tools": ["packages/tools/src/index.ts"],
       "@sparksocial/genome/*": ["packages/genome/src/*"],

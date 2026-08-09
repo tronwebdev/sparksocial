@@ -25,6 +25,7 @@ import {
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { createStubAdapter, makePublishNow, makePublishStatus } from '@sparksocial/publish';
+import { createStubTrendSource, makeTrendRank } from '@sparksocial/trends';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps, devInferenceClient } from './dev-vendors.js';
 
 /**
@@ -91,6 +92,10 @@ export function registerAlphaTools(): void {
   const adapters = [createStubAdapter({ name: 'aggregator:stub' })];
   register(makePublishNow({ adapters }));
   register(makePublishStatus({ adapters }));
+
+  // Trend discovery (§8.9, DISC-01). Ranked on what is LEFT of a trend, not
+  // its size — the source behind this is a credential-gated seam.
+  register(makeTrendRank(createStubTrendSource()));
 
   // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
   // that makes autopublish something a user can reasonably agree to.
