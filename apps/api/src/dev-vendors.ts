@@ -164,3 +164,51 @@ export function devBriefWriter() {
     },
   };
 }
+
+/**
+ * Development genome inference.
+ *
+ * Returns a deterministic, deliberately *incomplete* profile: identity is
+ * filled, but only the dimensions a real crawl could plausibly evidence, and
+ * one chip sits under the confidence floor. That shape is the point — it
+ * exercises the path where `inferGenome` routes unresolved dimensions into
+ * onboarding questions instead of guessing, which is the behaviour §1.2 depends
+ * on and the one a happy-path fake would hide.
+ *
+ * Production swaps in an Opus-backed client; nothing else changes.
+ */
+export function devInferenceClient() {
+  return {
+    async infer({ sourceUrl }: { prompt: string; sourceUrl: string }) {
+      const host = (() => {
+        try {
+          return new URL(sourceUrl).hostname.replace(/^www\./, '');
+        } catch {
+          return 'example.com';
+        }
+      })();
+      const name = host.split('.')[0] ?? 'the business';
+
+      return {
+        identity: {
+          businessName: name.charAt(0).toUpperCase() + name.slice(1),
+          category: 'services',
+          oneLiner: `Inferred from ${host}`,
+          geography: { scope: 'local', locale: 'en-NG', radiusKm: 10 },
+          languages: ['en'],
+          priceTier: 'mid',
+        },
+        // `objective` and `talent_availability` are deliberately absent: a
+        // website rarely evidences either, and asking is cheaper than being
+        // wrong about the dimensions that route the whole engine.
+        dimensions: { proof_asset: ['physical_craft'], capture_capability: ['space'] },
+        voice: { tone: ['plain', 'warm'] },
+        chips: [
+          { field: 'identity.business_name', value: name, confidence: 0.95 },
+          { field: 'dimensions.proof_asset', value: 'physical_craft', confidence: 0.72 },
+          { field: 'identity.price_tier', value: 'mid', confidence: 0.41 },
+        ],
+      };
+    },
+  };
+}

@@ -1,5 +1,5 @@
 import { register } from '@sparksocial/tools';
-import { genomeBootstrapFromUrl } from '@sparksocial/genome/bootstrap';
+import { makeGenomeBootstrap } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { genomeList } from '@sparksocial/genome/list';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
@@ -23,7 +23,7 @@ import {
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { createStubAdapter, makePublishNow, makePublishStatus } from '@sparksocial/publish';
-import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } from './dev-vendors.js';
+import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps, devInferenceClient } from './dev-vendors.js';
 
 /**
  * Explicit registration of the tools in the Aug 29 alpha scope.
@@ -37,7 +37,7 @@ import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps } 
  */
 export function registerAlphaTools(): void {
   // ONB-01 → ONB-06: the five-question onboarding.
-  register(genomeBootstrapFromUrl);
+  register(makeGenomeBootstrap({ infer: devInferenceClient() }));
   register(genomeDimensionsSet);
   // Reads before a genome is selected — the brand switcher's source.
   register(genomeList);

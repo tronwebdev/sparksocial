@@ -69,6 +69,7 @@ mutation through — and now uses the spec's literal.
 | **P3 campaign planner** — `campaign.propose_plan`, volume + mix + honest gap report | §6.8 Steps 2–3 | `packages/campaign`; volume is capped by format variety (`saturation_risk`), which is what makes the gap a real number |
 | **P3 calendar** — `campaign.create`, `calendar.generate`, `calendar.get`, mix-level adjustment | §6.8 Step 4, `CAL-01`→`CAL-06` | `campaigns` table + scoped slot writes; regeneration replaces rather than stacks, and the promotional ceiling is re-applied to the placed calendar |
 | **P4 publishing** — one `PlatformAdapter`, aggregator-first routing, `publish.now` / `publish.status`, retry with jittered backoff, per-brand per-platform rate budgets | §8, Plan §12 P4 | `packages/publish`; native adapters prepend as approvals clear. LinkedIn will not clear by Aug 29, which is why aggregator-first ships |
+| **`inferGenome` implemented** — the genome inference pass, behind an injected client | §1.2, Plan §11, `ONB-02` | was a `throw`, and a hard blocker on P2's exit criterion. Unevidenced routing dimensions come back as onboarding questions rather than guesses |
 
 ## Security & scalability pass (8 Aug)
 
