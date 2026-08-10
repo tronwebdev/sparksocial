@@ -30,17 +30,43 @@ export default function VerifyPage() {
     setErrors({ fields: {}, form: undefined });
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
+
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.push('/meet-spark');
-      } else {
-        setErrors({ fields: {}, form: 'That code did not complete sign-up. Try again.' });
+        return;
       }
+
+      /**
+       * The code was accepted — `attemptEmailAddressVerification` would have
+       * thrown otherwise. `status` is `missing_requirements`, meaning the Clerk
+       * instance wants a field the sign-up form never collected (a required
+       * phone number is the usual one).
+       *
+       * This previously said "That code did not complete sign-up. Try again."
+       * which is both wrong and harmful: the code *had* worked, so retrying it
+       * hit "this verification has already been verified" and stranded the user
+       * with no way forward. Name the actual missing field instead.
+       */
+      const missing = result.missingFields ?? [];
+      setErrors({
+        fields: {},
+        form: missing.length
+          ? `Your email is verified, but this Clerk instance also requires: ${missing
+              .map(readableField)
+              .join(', ')}. Turn those off in Clerk → User & Authentication, or add them to the sign-up form.`
+          : `Your email is verified, but sign-up is still incomplete (status: ${result.status}).`,
+      });
     } catch (err) {
       setErrors(toFieldErrors(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  /** `phone_number` → "phone number". Clerk returns snake_case field ids. */
+  function readableField(field: string): string {
+    return field.replace(/_/g, ' ');
   }
 
   async function resend() {

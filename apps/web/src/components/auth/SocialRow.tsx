@@ -50,6 +50,26 @@ const PROVIDERS: Array<{ strategy: OAuthStrategy; label: string; icon: React.Rea
   },
 ];
 
+/**
+ * Which providers this Clerk instance can actually complete.
+ *
+ * Rendering a button for a provider the instance has not enabled produces a
+ * dead control: the click reaches Clerk and fails, and the user has no way to
+ * know it was never going to work. The prototype draws three; only the ones
+ * turned on in **Clerk → User & Authentication → Social Connections** function.
+ *
+ * Read from the environment rather than hardcoded so enabling Facebook or X in
+ * the Clerk dashboard is a one-line config change here, not a code change.
+ * Defaults to Google alone, which is the only provider a fresh Clerk
+ * development instance ships enabled.
+ */
+const ENABLED: ReadonlySet<string> = new Set(
+  (process.env.NEXT_PUBLIC_SOCIAL_PROVIDERS ?? 'google')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+);
+
 export function SocialRow({
   onSelect,
   disabled,
@@ -59,6 +79,12 @@ export function SocialRow({
   disabled?: boolean;
   className?: string;
 }) {
+  const providers = PROVIDERS.filter((p) => ENABLED.has(p.strategy.replace(/^oauth_/, '')));
+
+  // Nothing enabled: drop the whole row rather than leave a bare "Or continue
+  // with" divider above no buttons.
+  if (providers.length === 0) return null;
+
   return (
     <div className={cn('flex flex-col gap-4', className)}>
       <div className="flex items-center gap-3">
@@ -67,7 +93,7 @@ export function SocialRow({
         <span className="h-px flex-1 bg-border" />
       </div>
       <div className="flex gap-3">
-        {PROVIDERS.map((p) => (
+        {providers.map((p) => (
           <button
             key={p.strategy}
             type="button"
