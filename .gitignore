@@ -15,3 +15,4 @@ next-env.d.ts
 
 # Machine-local Claude Code permissions
 .claude/settings.local.json
+.next-build/
