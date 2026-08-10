@@ -2,22 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:web"],
-      "port": 3000
-    },
-    {
       "name": "api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start", "-w", "@sparksocial/api"],
+      "runtimeArgs": ["run", "start", "-w", "@sparksocial/api"],
       "port": 8080
     },
     {
-      "name": "prototype",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "ui build", "-l", "4000"],
-      "port": 4000
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@sparksocial/web"],
+      "port": 3000
     }
   ]
 }
