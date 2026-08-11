@@ -4,28 +4,27 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { Button } from '@/components/ui/button';
-import { useEnsureOrg } from '@/components/auth/useEnsureOrg';
 
 /**
  * Meet Spark — `Auth.dc.html` state 3. Full-bleed dark splash after sign-up.
  *
- * In the prototype this hands off to onboarding (ONB-01→ONB-06). Onboarding is
- * P2, so for now it ensures the session has an active organization — the API
- * rejects org-less sessions — and drops the user into the shell.
+ * In the prototype this hands off to onboarding (ONB-01→ONB-06), which is not
+ * built yet — so for now it drops the user straight into the shell.
  */
 export default function MeetSparkPage() {
   const router = useRouter();
-  const ensureOrg = useEnsureOrg();
   const [busy, setBusy] = useState(false);
 
-  async function begin() {
+  /**
+   * Just navigates. Selecting the organisation is `OrgGuard`'s job in the
+   * `(app)` layout — it has to be, because every other way into the shell (a
+   * deep link, a bookmark, a refresh) bypasses this screen. Doing it here too
+   * would be a second implementation of the same rule, free to drift from the
+   * one that actually covers all the entry points.
+   */
+  function begin() {
     setBusy(true);
-    try {
-      await ensureOrg();
-      router.push('/');
-    } finally {
-      setBusy(false);
-    }
+    router.push('/');
   }
 
   return (
