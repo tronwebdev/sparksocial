@@ -3,6 +3,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  uniqueIndex,
   text,
   timestamp,
   uuid,
@@ -186,6 +187,46 @@ export const brands = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('brands_org_idx').on(t.orgId)],
+);
+
+/**
+ * The Review queue — PRD §7.5 ("queues are first-class"), plan §4.4.
+ *
+ * A separate table rather than columns on `tool_calls`, because `tool_calls` is
+ * insert-only by design: `invokeTool` writes exactly one row per invocation and
+ * never touches it again, which is what makes it a trustworthy audit log. An
+ * approval has a *lifecycle* — requested, then decided — so it needs somewhere
+ * it is allowed to change.
+ *
+ * `call_id` points back at the `gated` audit row, which already holds the tool,
+ * the input, and the scope it was called in. That row is the replay source when
+ * a reviewer approves: nothing about the original call is copied here, so the
+ * two can never disagree about what is being approved.
+ */
+export const approvals = pgTable(
+  'approvals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id'),
+    /** The `tool_calls` row that was gated. */
+    callId: uuid('call_id').notNull(),
+    tool: text('tool').notNull(),
+    /** pending | approved | rejected */
+    status: text('status').notNull().default('pending'),
+    /** Why the policy engine held it — shown in the queue. */
+    ruleId: text('rule_id'),
+    reason: text('reason'),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: text('decided_by'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('approvals_queue_idx').on(t.orgId, t.brandId, t.status, t.requestedAt.desc()),
+    // One approval per gated call: a retry of the same held call must not
+    // enqueue a second review item for the same decision.
+    uniqueIndex('approvals_call_idx').on(t.callId),
+  ],
 );
 
 /**

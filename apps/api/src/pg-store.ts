@@ -1,5 +1,11 @@
-import { connect, createPostgresScopedDb, createAuditRepository, createRunRecorder } from '@sparksocial/db';
-import type { InvokeDeps } from '@sparksocial/tools';
+import {
+  connect,
+  createPostgresScopedDb,
+  createAuditRepository,
+  createRunRecorder,
+  lookupToolCall,
+} from '@sparksocial/db';
+import type { InvokeDeps, ToolCallRecord } from '@sparksocial/tools';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
 import type { RunRecorder } from '@sparksocial/spark';
 
@@ -17,6 +23,8 @@ export function connectPostgresStore(): {
   scopedDb: ScopedDb;
   auditDeps: Pick<InvokeDeps, 'writeToolCall' | 'lookupIdempotent'>;
   runRecorder: RunRecorder;
+  /** Replay source for the Review queue — see approval-wiring.ts. */
+  lookupCall: (callId: string, orgId: string) => Promise<ToolCallRecord | undefined>;
   close: () => Promise<void>;
 } {
   const { db, pool } = connect();
@@ -24,6 +32,7 @@ export function connectPostgresStore(): {
     scopedDb: createPostgresScopedDb(db),
     auditDeps: createAuditRepository(db),
     runRecorder: createRunRecorder(db),
+    lookupCall: (callId, orgId) => lookupToolCall(db, callId, orgId),
     close: () => pool.end(),
   };
 }

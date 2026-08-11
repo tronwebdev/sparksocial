@@ -7,4 +7,5 @@ export * from './postgresScopedDb.js';
 export * from './auditRepository.js';
 export * from './runRecorderRepository.js';
 export * from './campaignRepository.js';
+export * from './approvalRepository.js';
 export * from './brandRepository.js';

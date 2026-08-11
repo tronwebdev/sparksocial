@@ -60,6 +60,12 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
           brandId, name: '', approvalMode: 'autopublish' as const, createdAt: new Date('2026-01-01T00:00:00Z'),
         }),
       },
+      approvals: {
+        enqueue: async () => {},
+        pending: async () => [],
+        get: async () => undefined,
+        resolve: async () => {},
+      },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },

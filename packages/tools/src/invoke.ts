@@ -87,6 +87,14 @@ export interface InvokeRequest {
   ctx: ToolCtx;
   /** Required when the tool declares `idempotent: false`. */
   idempotencyKey?: string;
+  /**
+   * A human approval already granted for this call, replayed by
+   * `approval.decide`. Only `approval.decide` may set it, and only after
+   * reading a `gated` audit row it has scope-checked — a caller that could
+   * attach this to an arbitrary request would have found a way to approve its
+   * own actions.
+   */
+  approval?: { grantedBy: string; grantedAt: Date };
   /** Publish-effect context the policy engine reads (platform, content type, …). */
   subject?: {
     platform?: string;
@@ -206,6 +214,7 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
       estimatedCents,
     },
     ...(req.engagement ? { engagement: req.engagement } : {}),
+    ...(req.approval ? { approval: req.approval } : {}),
   });
 
   const base = skeleton(newId(), req, tool, at, input, estimatedCents);

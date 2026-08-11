@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { InvokeDeps, ToolCallRecord } from '@sparksocial/tools';
 import type { Database } from './client.js';
 import { toolCalls } from './schema.js';
@@ -83,4 +83,28 @@ function fromRow(row: typeof toolCalls.$inferSelect): ToolCallRecord {
     ...(row.why ? { why: row.why as ToolCallRecord['why'] } : {}),
     at: row.at,
   };
+}
+
+/**
+ * Reads one audit row by id, scoped to the org.
+ *
+ * The Review queue's replay source: `approval.decide` names a `callId` and
+ * everything about what runs is read back from here, so nothing about the held
+ * call can be supplied by the approver. Org-scoped, so a call id from another
+ * tenant reads as absent.
+ *
+ * Not part of `InvokeDeps` — that interface is what `invokeTool` needs to *run*
+ * a call, and this is a read for a different purpose.
+ */
+export async function lookupToolCall(
+  db: Database,
+  callId: string,
+  orgId: string,
+): Promise<ToolCallRecord | undefined> {
+  const [row] = await db
+    .select()
+    .from(toolCalls)
+    .where(and(eq(toolCalls.id, callId), eq(toolCalls.orgId, orgId)))
+    .limit(1);
+  return row ? fromRow(row) : undefined;
 }

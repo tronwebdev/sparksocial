@@ -24,6 +24,7 @@ import {
   approvalSet,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
+import { makeApprovalDecide, queueReviewList, type InvokeResult } from '@sparksocial/tools';
 import { createStubAdapter, makePublishNow, makePublishStatus } from '@sparksocial/publish';
 import { createStubTrendSource, makeTrendRank } from '@sparksocial/trends';
 import { devCaptionClient, devEmbedClient, devBriefWriter, devMediaIngestDeps, devInferenceClient } from './dev-vendors.js';
@@ -113,4 +114,17 @@ function blobStore(): BlobStore {
   const account = process.env.AZURE_STORAGE_ACCOUNT;
   if (!account) return createMemoryBlobStore();
   return createAzureBlobStore({ account, container: process.env.AZURE_STORAGE_CONTAINER ?? 'assets' });
+}
+
+/**
+ * The Review queue (PRD §7.5). Registered separately because `approval.decide`
+ * needs an executor that only `index.ts` can build — it replays a held call
+ * through the same `invokeDeps` the rest of the API uses, and those are
+ * assembled after the registry.
+ */
+export function registerApprovalTools(
+  execute: (args: { callId: string; grantedBy: string; ctx: unknown }) => Promise<InvokeResult>,
+): void {
+  register(queueReviewList);
+  register(makeApprovalDecide({ execute }));
 }

@@ -140,6 +140,8 @@ export interface ScopedDb {
    * row itself carries no confidential material — see {@link CampaignStore}.
    */
   campaigns: CampaignStore;
+  /** The Review queue. See {@link ApprovalStore}. */
+  approvals: ApprovalStore;
   /** The approval ladder's storage (PRD §7.1). */
   brands: BrandGovernanceStore;
   runs: {
@@ -179,6 +181,48 @@ export interface BrandGovernance {
 export interface BrandGovernanceStore {
   get(brandId: string, orgId: string, name?: string): Promise<BrandGovernance>;
   setApprovalMode(brandId: string, orgId: string, mode: ApprovalMode): Promise<BrandGovernance>;
+}
+
+/** One item in the Review queue. */
+export interface PendingApproval {
+  id: string;
+  /** The gated `tool_calls` row this is holding. */
+  callId: string;
+  tool: string;
+  /** The original input, replayed verbatim on approve. */
+  input: unknown;
+  requestedAt: Date;
+  ruleId?: string;
+  reason?: string;
+  genomeId?: string;
+  requestedBy?: string;
+  status?: string;
+  brandId?: string;
+}
+
+/**
+ * The Review queue (PRD §7.5, plan §4.4).
+ *
+ * Without this, `review_first_week` and `review_everything` gate calls into
+ * nothing: the audit row records that a decision was held and there is no way
+ * to act on it. The queue is what makes the approval ladder a product feature
+ * rather than a policy outcome.
+ */
+export interface ApprovalStore {
+  /** Called when a call is gated. Idempotent on `callId`. */
+  enqueue(args: {
+    callId: string;
+    orgId: string;
+    brandId?: string;
+    tool: string;
+    ruleId?: string;
+    reason?: string;
+  }): Promise<void>;
+  pending(orgId: string, brandId: string | undefined, limit: number): Promise<PendingApproval[]>;
+  /** Undefined rather than throwing when out of scope. */
+  get(callId: string, orgId: string): Promise<PendingApproval | undefined>;
+  /** Throws NOT_FOUND if it is not still pending — the concurrency guard. */
+  resolve(callId: string, orgId: string, outcome: 'approved' | 'rejected', decidedBy: string): Promise<void>;
 }
 
 /** A campaign as stored — the outcome unit of §6.8. */

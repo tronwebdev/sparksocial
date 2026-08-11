@@ -5,7 +5,8 @@ import type { AssetRole, Genome } from '@sparksocial/shared';
 import { createDevRunStore, seedDevRuns, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
 import { createDevBrandStore } from './dev-brands.js';
-import type { BrandGovernanceStore, CampaignStore } from '@sparksocial/tools/defineTool';
+import { createDevApprovalStore } from './dev-approvals.js';
+import type { ApprovalStore, BrandGovernanceStore, CampaignStore } from '@sparksocial/tools/defineTool';
 
 /**
  * DEVELOPMENT STORE — in-memory, seeded with the golden set.
@@ -104,6 +105,12 @@ export function createDevStore(
   runStore: DevRunStore = createDevRunStore(),
   campaignStore: CampaignStore = createDevCampaignStore(),
   brandStore: BrandGovernanceStore = createDevBrandStore(),
+  /**
+   * The queue reads inputs back from the audit rows rather than copying them,
+   * so it needs a way to reach them. `memoryInvokeDeps` owns that array, which
+   * is why this is injected from `index.ts` rather than constructed here.
+   */
+  approvalStore: ApprovalStore = createDevApprovalStore(() => undefined),
 ): ScopedDb & { seedCount: number; runs: ScopedDb['runs'] } {
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -300,6 +307,7 @@ export function createDevStore(
     },
 
     campaigns: campaignStore,
+    approvals: approvalStore,
     brands: brandStore,
     runs: runStore.reader,
   };

@@ -15,6 +15,9 @@ import { createDevRunStore } from './dev-runs.js';
 import { devEmbedClient } from './dev-vendors.js';
 import { connectPostgresStore } from './pg-store.js';
 import { createTelemetry } from './telemetry.js';
+import { createDevApprovalStore } from './dev-approvals.js';
+import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
+import { registerApprovalTools } from './tools.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -62,7 +65,25 @@ const pg = process.env.DATABASE_URL ? connectPostgresStore() : undefined;
 // One run store, both halves. The dev reader and the dev recorder must share
 // arrays or the Timeline renders empty while runs are being recorded beside it.
 const devRuns = createDevRunStore();
-const scopedDb = pg?.scopedDb ?? createDevStore(process.env.DEV_SEED_ORG_ID ?? 'org_dev', devRuns);
+
+/**
+ * Built before the store because the queue reads held inputs back out of the
+ * audit rows, and in the in-memory path those rows live in `memoryInvokeDeps`.
+ * Postgres joins `approvals` to `tool_calls` for the same reason — one copy of
+ * what was called, never two that can disagree.
+ */
+const memoryDeps = memoryInvokeDeps({ runGuardrails: makeRunGuardrails(devEmbedClient()) });
+const devApprovals = createDevApprovalStore((callId) => memoryDeps.rows.find((r) => r.id === callId));
+
+const scopedDb =
+  pg?.scopedDb ??
+  createDevStore(
+    process.env.DEV_SEED_ORG_ID ?? 'org_dev',
+    devRuns,
+    undefined,
+    undefined,
+    devApprovals,
+  );
 
 const resolveCtx = clerkConfigured
   ? makeClerkResolveCtx({
@@ -88,7 +109,7 @@ const telemetry = createTelemetry();
 
 const baseInvokeDeps = pg
   ? { ...pg.auditDeps, runGuardrails: makeRunGuardrails(devEmbedClient()) }
-  : memoryInvokeDeps({ runGuardrails: makeRunGuardrails(devEmbedClient()) });
+  : memoryDeps;
 
 /**
  * Telemetry rides on `writeToolCall` rather than being called from handlers.
@@ -101,13 +122,27 @@ const baseInvokeDeps = pg
  * The durable write happens first. A telemetry outage must never cost an audit
  * row, and `telemetry.toolCall` swallows its own failures.
  */
-const invokeDeps = {
+const withTelemetry = {
   ...baseInvokeDeps,
   writeToolCall: async (record: Parameters<typeof baseInvokeDeps.writeToolCall>[0]) => {
     await baseInvokeDeps.writeToolCall(record);
     telemetry.toolCall(record);
   },
 };
+
+// Held calls land in the Review queue. Without this, `review_first_week` and
+// `review_everything` gate work into nothing anyone can act on.
+const invokeDeps = withApprovalQueue(withTelemetry, (a) => scopedDb.approvals.enqueue(a));
+
+registerApprovalTools(
+  makeApprovalExecutor({
+    deps: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+    lookupCall: pg
+      ? pg.lookupCall
+      : async (callId, orgId) => memoryDeps.rows.find((r) => r.id === callId && r.orgId === orgId),
+  }),
+);
 
 // Anything that escapes the request path. `ToolError`s are decisions and are
 // already on the audit row, so they are deliberately not reported here.
