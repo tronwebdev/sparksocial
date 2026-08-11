@@ -36,6 +36,9 @@ export interface AppDeps {
   invokeDeps: InvokeDeps;
   /** Build/commit identifier surfaced on /health for deploy verification. */
   revision?: string;
+  /** Which telemetry sinks are live. Surfaced on /health so a misconfigured
+   *  deploy is visible without reading logs that are not being collected. */
+  telemetry?: Record<string, boolean>;
   /**
    * The SPARK runtime. Optional because the API is fully useful without it —
    * every tool is still reachable — and because wiring a live model client into
@@ -60,6 +63,7 @@ export function createApp(deps: AppDeps) {
       status: 'ok',
       revision: deps.revision ?? 'dev',
       tools: allTools().length,
+      ...(deps.telemetry ? { telemetry: deps.telemetry } : {}),
       at: new Date().toISOString(),
     }),
   );

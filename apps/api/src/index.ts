@@ -14,6 +14,7 @@ import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
 import { devEmbedClient } from './dev-vendors.js';
 import { connectPostgresStore } from './pg-store.js';
+import { createTelemetry } from './telemetry.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -83,9 +84,35 @@ if (!clerkConfigured) {
 // `brands` / `autonomy_policies` tables yet and credits land in P3, so the policy
 // engine's spend limits are effectively a no-op. Tracked in docs/STATUS.md.
 
-const invokeDeps = pg
+const telemetry = createTelemetry();
+
+const baseInvokeDeps = pg
   ? { ...pg.auditDeps, runGuardrails: makeRunGuardrails(devEmbedClient()) }
   : memoryInvokeDeps({ runGuardrails: makeRunGuardrails(devEmbedClient()) });
+
+/**
+ * Telemetry rides on `writeToolCall` rather than being called from handlers.
+ *
+ * `invokeTool` writes exactly one audit row per invocation, for every outcome
+ * including denials — so decorating it is the only place that sees all of them
+ * and cannot be forgotten by the author of the next tool. Instrumenting
+ * handlers instead would mean 26 call sites and a 27th that gets missed.
+ *
+ * The durable write happens first. A telemetry outage must never cost an audit
+ * row, and `telemetry.toolCall` swallows its own failures.
+ */
+const invokeDeps = {
+  ...baseInvokeDeps,
+  writeToolCall: async (record: Parameters<typeof baseInvokeDeps.writeToolCall>[0]) => {
+    await baseInvokeDeps.writeToolCall(record);
+    telemetry.toolCall(record);
+  },
+};
+
+// Anything that escapes the request path. `ToolError`s are decisions and are
+// already on the audit row, so they are deliberately not reported here.
+process.on('uncaughtException', (err) => telemetry.error(err, { kind: 'uncaughtException' }));
+process.on('unhandledRejection', (err) => telemetry.error(err, { kind: 'unhandledRejection' }));
 
 /**
  * The SPARK runtime is wired only when there is an API key to drive it. Without
@@ -104,6 +131,7 @@ const app = createApp({
   // Wired now so the moment a tool declares `guardrails: [...]` on itself,
   // enforcement is live — no plumbing to add later.
   invokeDeps,
+  telemetry: telemetry.status(),
   ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
   ...(agentConfigured
     ? {
@@ -126,6 +154,9 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
     server.close(async () => {
+      // Flush before exit: containers are killed without warning, and a
+      // dropped buffer is exactly the trace you wanted for the crash.
+      await telemetry.shutdown();
       await pg?.close();
       process.exit(0);
     });
