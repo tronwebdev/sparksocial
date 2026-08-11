@@ -20,12 +20,21 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     name: 'Emeka Cuts',
     approvalMode: 'review_first_week',
     createdAt: daysAgo(2),
+    agentPaused: false,
     ...initial,
   };
   return {
     get: async () => row,
     setApprovalMode: async (_b, _o, mode) => {
       row = { ...row, approvalMode: mode };
+      return row;
+    },
+    setAgentPaused: async ({ paused, by, reason }) => {
+      row = {
+        ...row,
+        agentPaused: paused,
+        ...(paused ? { pausedAt: new Date(), pausedBy: by, ...(reason ? { pauseReason: reason } : {}) } : {}),
+      };
       return row;
     },
   };

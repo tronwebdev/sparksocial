@@ -121,7 +121,20 @@ export async function runAgent(args: RunAgentArgs, deps: RunAgentDeps): Promise<
         messages,
         tools: exposed,
       });
-      await steps.record('think', { text: result.text, toolCalls: result.toolCalls.length }, Date.now() - startedAt);
+      // The model, the turn's own token usage and the tier are recorded on the
+      // step, not just aggregated onto the run. Langfuse needs them per-call to
+      // type this as a `generation` and attribute cost; a run-level total
+      // cannot say which turn was expensive.
+      await steps.record(
+        'think',
+        {
+          text: result.text,
+          toolCalls: result.toolCalls.length,
+          model: MODELS[AGENTS[args.agent].model],
+          ...(result.usage ? { usage: result.usage } : {}),
+        },
+        Date.now() - startedAt,
+      );
 
       if (result.refused) {
         await deps.recorder.finishRun(runId, {

@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { PostHog } from 'posthog-node';
 import { Langfuse } from 'langfuse';
 import type { ToolCallRecord } from '@sparksocial/tools';
+import { maskValue } from './langfuse-mask.js';
 
 /**
  * OBSERVABILITY — master plan §2.2, §11.
@@ -40,6 +41,8 @@ export interface Telemetry {
   error(err: unknown, context?: Record<string, unknown>): void;
   /** Which sinks are live, for /health. */
   status(): { sentry: boolean; posthog: boolean; langfuse: boolean };
+  /** The raw client, for tracing agent runs — see langfuse-recorder.ts. Null when unconfigured. */
+  langfuse: Langfuse | null;
   /** Flush before exit; serverless and containers both kill without warning. */
   shutdown(): Promise<void>;
 }
@@ -75,6 +78,8 @@ export function createTelemetry(env: NodeJS.ProcessEnv = process.env): Telemetry
       : null;
 
   return {
+    langfuse,
+
     toolCall(record) {
       // Guarded individually: one misconfigured sink must not stop the others,
       // and none of them may ever throw into the request path. Telemetry that
@@ -106,8 +111,11 @@ export function createTelemetry(env: NodeJS.ProcessEnv = process.env): Telemetry
           // per call.
           langfuse.trace({ id: record.runId, name: 'agent.run', userId: record.userId }).span({
             name: record.tool,
-            input: record.input,
-            output: record.output,
+            // Masked: tool inputs carry phone numbers, private captions and
+            // unpublished copy. `redactRecipient` keeps those out of the audit
+            // row; sending them to a vendor would undo that one layer up.
+            input: maskValue(record.input),
+            output: maskValue(record.output),
             metadata: {
               effect: record.effect,
               decision: record.decision,

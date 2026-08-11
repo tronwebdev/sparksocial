@@ -43,10 +43,16 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       },
       brands: {
         get: async (brandId: string) => ({
-          brandId, name: '', approvalMode: 'autopublish' as const, createdAt: new Date('2026-01-01T00:00:00Z'),
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
         }),
         setApprovalMode: async (brandId: string) => ({
-          brandId, name: '', approvalMode: 'autopublish' as const, createdAt: new Date('2026-01-01T00:00:00Z'),
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
+        }),
+        setAgentPaused: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
         }),
       },
       approvals: {

@@ -22,6 +22,9 @@ import {
   calendarGet,
   approvalGet,
   approvalSet,
+  agentStatus,
+  agentPause,
+  agentResume,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
 import { makeApprovalDecide, queueReviewList, type InvokeResult } from '@sparksocial/tools';
@@ -100,6 +103,12 @@ export function registerAlphaTools(): void {
 
   // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
   // that makes autopublish something a user can reasonably agree to.
+  // The kill switch (plan §4.4). `policy.ts` has denied paused agents since
+  // P1; until these landed nothing could set the flag.
+  register(agentStatus);
+  register(agentPause);
+  register(agentResume);
+
   register(agentRunList);
   register(agentRunGet);
 }

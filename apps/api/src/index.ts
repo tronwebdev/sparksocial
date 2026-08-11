@@ -15,6 +15,7 @@ import { createDevRunStore } from './dev-runs.js';
 import { devEmbedClient } from './dev-vendors.js';
 import { connectPostgresStore } from './pg-store.js';
 import { createTelemetry } from './telemetry.js';
+import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevApprovalStore } from './dev-approvals.js';
 import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
@@ -158,7 +159,17 @@ process.on('unhandledRejection', (err) => telemetry.error(err, { kind: 'unhandle
  */
 const agentConfigured = Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN);
 const bus = memoryRunEventBus();
-const recorder = broadcastingRecorder(pg?.runRecorder ?? devRuns.recorder, bus);
+/**
+ * Order matters. Langfuse wraps the durable recorder first, then the SSE
+ * broadcaster wraps that — so a trace is only emitted for a step that actually
+ * persisted, and the browser is only told about steps that both persisted and
+ * traced.
+ */
+const durableRecorder = pg?.runRecorder ?? devRuns.recorder;
+const tracedRecorder = telemetry.langfuse
+  ? langfuseRecorder(durableRecorder, telemetry.langfuse)
+  : durableRecorder;
+const recorder = broadcastingRecorder(tracedRecorder, bus);
 
 const app = createApp({
   resolveCtx,

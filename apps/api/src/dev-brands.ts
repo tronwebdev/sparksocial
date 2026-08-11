@@ -16,7 +16,7 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
   const upsert = (brandId: string, orgId: string, name?: string) => {
     const existing = rows.get(brandId);
     if (existing && existing.orgId === orgId) return existing;
-    const created = {
+    const created: BrandGovernance & { orgId: string } = {
       brandId,
       orgId,
       name: name ?? '',
@@ -25,6 +25,7 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       // side of the first week by default. A dev environment permanently stuck
       // on day one would make every publish look gated for the wrong reason.
       createdAt: new Date(Date.now() - 8 * 86_400_000),
+      agentPaused: false,
     };
     rows.set(brandId, created);
     return created;
@@ -38,6 +39,22 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
     async setApprovalMode(brandId, orgId, mode) {
       const row = upsert(brandId, orgId);
       row.approvalMode = mode;
+      return row;
+    },
+    async setAgentPaused({ brandId, orgId, paused, by, reason }) {
+      const row = upsert(brandId, orgId);
+      row.agentPaused = paused;
+      if (paused) {
+        row.pausedAt = new Date();
+        row.pausedBy = by;
+        if (reason) row.pauseReason = reason;
+      } else {
+        // Cleared on resume, so a stale "paused by X" never sits next to a
+        // running agent.
+        delete row.pausedAt;
+        delete row.pausedBy;
+        delete row.pauseReason;
+      }
       return row;
     },
   };

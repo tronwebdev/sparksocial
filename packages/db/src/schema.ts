@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -183,6 +184,18 @@ export const brands = pgTable(
     name: text('name').notNull().default(''),
     /** autopublish | review_first_week | review_everything */
     approvalMode: text('approval_mode').notNull().default('review_first_week'),
+    /**
+     * The kill switch (`policy.ts` rule 1, `agent.paused`).
+     *
+     * That rule has existed since P1 and there was no column behind it, so
+     * `agentPaused` was permanently undefined — the one control that stops a
+     * misbehaving agent was unreachable. Defaults false: a brand is not paused
+     * until somebody pauses it.
+     */
+    agentPaused: boolean('agent_paused').notNull().default(false),
+    pausedAt: timestamp('paused_at', { withTimezone: true }),
+    pausedBy: text('paused_by'),
+    pauseReason: text('pause_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -64,9 +64,16 @@ export function makeBrandGovernance(db: ScopedDb) {
     if (!brandId) {
       // No brand selected means nothing publish-effect can run anyway; the
       // conservative answer costs nothing and avoids inventing a row.
-      return { createdAt: new Date(), approvalMode: 'review_everything' as const };
+      return { createdAt: new Date(), approvalMode: 'review_everything' as const, agentPaused: false };
     }
     const governance = await db.brands.get(brandId, orgId);
-    return { createdAt: governance.createdAt, approvalMode: governance.approvalMode };
+    return {
+      createdAt: governance.createdAt,
+      approvalMode: governance.approvalMode,
+      // Without this the kill switch is inert: `policy.ts` rule 1 reads
+      // `brand.agentPaused`, and a loader that does not carry it leaves the
+      // field undefined however many times someone clicks Pause.
+      agentPaused: governance.agentPaused,
+    };
   };
 }

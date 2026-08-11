@@ -164,6 +164,11 @@ export interface BrandGovernance {
   approvalMode: ApprovalMode;
   /** `review_first_week` graduates seven days after this. */
   createdAt: Date;
+  /** The kill switch. `policy.ts` denies every non-read agent call when true. */
+  agentPaused: boolean;
+  pausedAt?: Date;
+  pausedBy?: string;
+  pauseReason?: string;
 }
 
 /**
@@ -181,6 +186,19 @@ export interface BrandGovernance {
 export interface BrandGovernanceStore {
   get(brandId: string, orgId: string, name?: string): Promise<BrandGovernance>;
   setApprovalMode(brandId: string, orgId: string, mode: ApprovalMode): Promise<BrandGovernance>;
+  /**
+   * Stops or restarts the agent for one brand.
+   *
+   * Scoped per brand rather than per org: in an agency workspace one client's
+   * agent going wrong is not a reason to freeze the other thirty-nine.
+   */
+  setAgentPaused(args: {
+    brandId: string;
+    orgId: string;
+    paused: boolean;
+    by: string;
+    reason?: string;
+  }): Promise<BrandGovernance>;
 }
 
 /** One item in the Review queue. */
