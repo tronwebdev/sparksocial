@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 /**
  * Meet Spark — `Auth.dc.html` state 3. Full-bleed dark splash after sign-up.
  *
- * In the prototype this hands off to onboarding (ONB-01→ONB-06), which is not
- * built yet — so for now it drops the user straight into the shell.
+ * Hands off to onboarding (ONB-01→ONB-06), as the prototype does. It used to
+ * drop straight into the shell because onboarding did not exist, which left a
+ * new account looking at a dashboard with no genome behind it.
  */
 export default function MeetSparkPage() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function MeetSparkPage() {
    */
   function begin() {
     setBusy(true);
-    router.push('/');
+    router.push('/onboarding');
   }
 
   return (

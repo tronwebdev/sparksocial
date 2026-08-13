@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { Explanation, ToolError } from '@sparksocial/shared';
 
 /**
  * THE KILL SWITCH — plan §4.4, PRD §6; `policy.ts` rule 1 (`agent.paused`).
@@ -171,4 +171,128 @@ export const agentResume = defineTool({
 function requireBrand(brandId: string | undefined): string {
   if (!brandId) throw new ToolError('INVALID_INPUT', 'A brand must be selected.');
   return brandId;
+}
+
+/* ── agent.frequency.set ─────────────────────────────────────────────── */
+
+/**
+ * The bounds on how loud an account can be.
+ *
+ * `1` because zero is not a frequency — an owner who wants nothing published
+ * wants `agent.pause`, and encoding "off" twice means the Command Center can
+ * show a running agent set to post nothing, which reads as a bug.
+ *
+ * `14` because twice a day is past the point where the mix engine can keep a
+ * week varied from a realistic Asset Graph: beyond it every additional slot is
+ * filled by repeating a format, which is the specific failure the calendar's
+ * spacing floor exists to prevent. An owner who genuinely wants more is telling
+ * us the capture loop is under-supplied, and the honest answer is the gap
+ * report, not a bigger number.
+ */
+const MIN_POSTS_PER_WEEK = 1;
+const MAX_POSTS_PER_WEEK = 14;
+
+const FrequencyOutput = z.object({
+  brandId: z.string(),
+  postsPerWeek: z.number(),
+  /** Plain-language reading of the cadence, for the control's caption. */
+  effect: z.string(),
+  why: Explanation,
+});
+
+export const agentFrequencySet = defineTool({
+  name: 'agent.frequency.set',
+  version: 1,
+
+  summary:
+    'Set how many posts a week SPARK aims to publish for this brand. Shapes every calendar ' +
+    'generated afterwards. Does not stop the agent — use agent.pause for that.',
+
+  input: z.object({
+    postsPerWeek: z.number().int().min(MIN_POSTS_PER_WEEK).max(MAX_POSTS_PER_WEEK),
+  }),
+  output: FrequencyOutput,
+
+  effect: 'write',
+  /**
+   * `auto`, unlike pause and resume.
+   *
+   * Frequency is a content decision, and SPARK lowering it because the Asset
+   * Graph cannot supply the current cadence is exactly the kind of judgement
+   * the product is for. The kill switch is `human_only` because it is a *safety*
+   * control; conflating the two would either make the agent unable to do its
+   * job or able to un-stop itself.
+   */
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  idempotent: true,
+  surfaces: ['CC-01'],
+
+  async handler(input, ctx) {
+    const brandId = requireBrand(ctx.brandId);
+    const before = await ctx.db.brands.get(brandId, ctx.orgId);
+
+    const g = await ctx.db.brands.setFrequency({
+      brandId,
+      orgId: ctx.orgId,
+      postsPerWeek: input.postsPerWeek,
+      by: ctx.userId ?? 'agent',
+    });
+
+    ctx.logger.info('frequency set', {
+      brandId,
+      from: before.postsPerWeek,
+      to: g.postsPerWeek,
+    });
+
+    return {
+      brandId,
+      postsPerWeek: g.postsPerWeek,
+      effect: describeFrequency(g.postsPerWeek),
+      why: explainFrequency(before.postsPerWeek, g.postsPerWeek),
+    };
+  },
+});
+
+function describeFrequency(n: number): string {
+  if (n === 1) return 'One post a week.';
+  if (n === 7) return 'One post a day.';
+  if (n > 7) return `${n} posts a week — more than one a day.`;
+  return `${n} posts a week.`;
+}
+
+/**
+ * Invariant 4: this is a decision a user sees SPARK make, so it carries a `why`.
+ *
+ * The alternative worth naming is the one people actually reach for — turning
+ * the number down when they mean stop. Those are different actions with
+ * different consequences (a quieter account still publishes; a paused one does
+ * not), and the Command Center puts them side by side.
+ */
+function explainFrequency(from: number, to: number): Explanation {
+  const direction = to > from ? 'more often' : to < from ? 'less often' : 'unchanged';
+
+  return {
+    summary:
+      to === from
+        ? `Still ${to} post${to === 1 ? '' : 's'} a week.`
+        : `Posting ${direction} — ${from} → ${to} a week.`,
+    factors: [
+      { label: 'was', detail: `${from}/week` },
+      { label: 'now', detail: `${to}/week` },
+      { label: 'applies to', detail: 'calendars generated from now on, not slots already scheduled' },
+    ],
+    evidence: [
+      { kind: 'rule', id: 'brand.posts_per_week', note: 'read by calendar generation' },
+    ],
+    alternatives:
+      to < from
+        ? [
+            {
+              option: 'Pause the agent',
+              rejectedBecause: 'you asked for fewer posts, not none — a quieter account still publishes',
+            },
+          ]
+        : [],
+  };
 }

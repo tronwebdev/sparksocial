@@ -27,26 +27,23 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      "@sparksocial/shared/types": r("./packages/shared/src/types.ts"),
-      "@sparksocial/shared/genome": r("./packages/shared/src/genome.ts"),
-      "@sparksocial/shared/untrustedRender": r("./packages/shared/src/untrustedRender.ts"),
-      "@sparksocial/shared": r("./packages/shared/src/index.ts"),
-      "@sparksocial/db": r("./packages/db/src/index.ts"),
-      "@sparksocial/tools/defineTool": r("./packages/tools/src/defineTool.ts"),
-      "@sparksocial/trends": r("./packages/trends/src/index.ts"),
-      "@sparksocial/tools": r("./packages/tools/src/index.ts"),
-      "@sparksocial/genome": r("./packages/genome/src/index.ts"),
-      "@sparksocial/publish": r("./packages/publish/src/index.ts"),
-      "@sparksocial/playbooks": r("./packages/playbooks/src/index.ts"),
-      "@sparksocial/assemble": r("./packages/assemble/src/index.ts"),
-      "@sparksocial/assetgraph": r("./packages/assetgraph/src/index.ts"),
-      "@sparksocial/campaign": r("./packages/campaign/src/index.ts"),
-      "@sparksocial/capture": r("./packages/capture/src/index.ts"),
-      "@sparksocial/guardrails": r("./packages/guardrails/src/index.ts"),
-      "@sparksocial/finish": r("./packages/finish/src/index.ts"),
-      "@sparksocial/spark": r("./packages/spark/src/index.ts"),
-      "@sparksocial/storage": r("./packages/storage/src/index.ts"),
-    },
+    /**
+     * Two rules, mirroring every package's `exports` map (`"." → src/index.ts`,
+     * `"./*" → src/*.ts`), rather than one entry per import path.
+     *
+     * The enumerated version drifted, and always in the same direction: an
+     * import that typechecks and resolves under Node fails only when a test
+     * happens to pull it in. `@sparksocial/shared/safeUrl` sat unlisted long
+     * enough for `crawl()` to be written against it, and the first test to
+     * touch it failed with "Cannot find module" — a missing config line
+     * presenting as broken source.
+     *
+     * Ordered subpath-first: Vite tries these in order and a bare-specifier
+     * pattern would otherwise swallow `@sparksocial/db/creditRepository`.
+     */
+    alias: [
+      { find: /^@sparksocial\/([^/]+)\/(.+)$/, replacement: r("./packages/$1/src/$2.ts") },
+      { find: /^@sparksocial\/([^/]+)$/, replacement: r("./packages/$1/src/index.ts") },
+    ],
   },
 });

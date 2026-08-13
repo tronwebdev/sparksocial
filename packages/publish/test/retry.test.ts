@@ -25,7 +25,7 @@ const req = (over: Partial<Parameters<typeof publishWithRetry>[0]> = {}) => ({
 const noSleep = async () => {};
 
 describe('backoffMs', () => {
-  it('grows exponentially and stays under the cap', () => {
+  it('grows exponentially and stays under the cap', async () => {
     const full = () => 1; // full jitter at its maximum
     expect(backoffMs(1, DEFAULT_RETRY, full)).toBe(1_000);
     expect(backoffMs(2, DEFAULT_RETRY, full)).toBe(2_000);
@@ -33,7 +33,7 @@ describe('backoffMs', () => {
     expect(backoffMs(20, DEFAULT_RETRY, full)).toBe(DEFAULT_RETRY.maxDelayMs);
   });
 
-  it('jitters, so a 09:00 cluster does not retry in lockstep', () => {
+  it('jitters, so a 09:00 cluster does not retry in lockstep', async () => {
     // Scheduled posts bunch on round times across every brand in a workspace.
     // A fixed backoff makes that whole cluster hit the platform together, which
     // is the pattern rate limiters punish.
@@ -136,56 +136,56 @@ describe('createRateLimiter', () => {
   const now = new Date('2026-09-01T09:00:00.000Z');
   const later = (ms: number) => new Date(now.getTime() + ms);
 
-  it('allows up to the platform budget and then refuses', () => {
+  it('allows up to the platform budget and then refuses', async () => {
     const limiter = createRateLimiter();
     const budget = DEFAULT_BUDGETS.youtube_shorts.perWindow;
 
     for (let i = 0; i < budget; i++) {
-      expect(limiter.tryConsume('brand_1', 'youtube_shorts', now), `post ${i}`).toBe(true);
+      expect(await limiter.tryConsume('brand_1', 'youtube_shorts', now), `post ${i}`).toBe(true);
     }
-    expect(limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
-    expect(limiter.remaining('brand_1', 'youtube_shorts', now)).toBe(0);
+    expect(await limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
+    expect(await limiter.remaining('brand_1', 'youtube_shorts', now)).toBe(0);
   });
 
-  it('counts per brand, so one client cannot starve another', () => {
+  it('counts per brand, so one client cannot starve another', async () => {
     // An agency workspace runs forty clients against separate connected
     // accounts; platform limits apply per account, not per workspace.
     const limiter = createRateLimiter();
     const budget = DEFAULT_BUDGETS.youtube_shorts.perWindow;
 
-    for (let i = 0; i < budget; i++) limiter.tryConsume('brand_busy', 'youtube_shorts', now);
+    for (let i = 0; i < budget; i++) await limiter.tryConsume('brand_busy', 'youtube_shorts', now);
 
-    expect(limiter.tryConsume('brand_busy', 'youtube_shorts', now)).toBe(false);
-    expect(limiter.tryConsume('brand_quiet', 'youtube_shorts', now)).toBe(true);
+    expect(await limiter.tryConsume('brand_busy', 'youtube_shorts', now)).toBe(false);
+    expect(await limiter.tryConsume('brand_quiet', 'youtube_shorts', now)).toBe(true);
   });
 
-  it('counts per platform, so a busy channel does not block a quiet one', () => {
+  it('counts per platform, so a busy channel does not block a quiet one', async () => {
     const limiter = createRateLimiter();
     for (let i = 0; i < DEFAULT_BUDGETS.youtube_shorts.perWindow; i++) {
-      limiter.tryConsume('brand_1', 'youtube_shorts', now);
+      await limiter.tryConsume('brand_1', 'youtube_shorts', now);
     }
-    expect(limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
-    expect(limiter.tryConsume('brand_1', 'x', now)).toBe(true);
+    expect(await limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
+    expect(await limiter.tryConsume('brand_1', 'x', now)).toBe(true);
   });
 
-  it('frees budget as the window slides', () => {
+  it('frees budget as the window slides', async () => {
     const limiter = createRateLimiter();
     const { perWindow, windowMs } = DEFAULT_BUDGETS.youtube_shorts;
 
-    for (let i = 0; i < perWindow; i++) limiter.tryConsume('brand_1', 'youtube_shorts', now);
-    expect(limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
+    for (let i = 0; i < perWindow; i++) await limiter.tryConsume('brand_1', 'youtube_shorts', now);
+    expect(await limiter.tryConsume('brand_1', 'youtube_shorts', now)).toBe(false);
 
     // Just inside the window: still refused. Past it: allowed again.
-    expect(limiter.tryConsume('brand_1', 'youtube_shorts', later(windowMs - 1_000))).toBe(false);
-    expect(limiter.tryConsume('brand_1', 'youtube_shorts', later(windowMs + 1_000))).toBe(true);
+    expect(await limiter.tryConsume('brand_1', 'youtube_shorts', later(windowMs - 1_000))).toBe(false);
+    expect(await limiter.tryConsume('brand_1', 'youtube_shorts', later(windowMs + 1_000))).toBe(true);
   });
 
-  it('reports remaining budget for the health surface', () => {
+  it('reports remaining budget for the health surface', async () => {
     const limiter = createRateLimiter();
     const budget = DEFAULT_BUDGETS.x.perWindow;
-    expect(limiter.remaining('brand_1', 'x', now)).toBe(budget);
-    limiter.tryConsume('brand_1', 'x', now);
-    expect(limiter.remaining('brand_1', 'x', now)).toBe(budget - 1);
+    expect(await limiter.remaining('brand_1', 'x', now)).toBe(budget);
+    await limiter.tryConsume('brand_1', 'x', now);
+    expect(await limiter.remaining('brand_1', 'x', now)).toBe(budget - 1);
   });
 });
 

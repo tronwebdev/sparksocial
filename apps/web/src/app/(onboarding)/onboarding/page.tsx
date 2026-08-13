@@ -1,0 +1,388 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { StepShell } from '@/components/onboarding/StepShell';
+import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
+import { QuestionStep } from '@/components/onboarding/QuestionStep';
+import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
+import { invoke } from '@/lib/tools';
+
+/**
+ * ONB-01 → ONB-06 — `Onboarding.dc.html`.
+ *
+ * Every tool behind this has existed since P2 and nothing called them: a new
+ * account reached a shell with no genome, and the only way to make one was
+ * curl. This is that path.
+ *
+ * ── Two tool calls, and nothing invented around them ───────────────────────
+ *
+ * The flow makes exactly two: `genome.bootstrap_from_url` (the crawl and
+ * inference) and `genome.dimensions.set` (the answers). Invariant 1 says every
+ * capability is a tool, and the corollary for a UI is that a screen may not
+ * collect something no tool accepts — the prototype's logo, brand-kit and
+ * agent-avatar steps have no tool behind them yet, so they are not drawn here
+ * pretending to save. Adding them means adding the tools first.
+ *
+ * The brand name is the exception worth naming: it is collected because it is
+ * the one thing a person expects to be asked first, and it is used *locally* to
+ * name the workspace on the completion screen. It is not persisted, because
+ * `brands.name` is set by Clerk's organisation and there is no tool to change
+ * it.
+ *
+ * ── Why the URL step is the slow one ───────────────────────────────────────
+ *
+ * `genome.bootstrap_from_url` crawls up to five pages with a real browser and
+ * runs an inference pass — measured at ~29 seconds. That is far past the point
+ * where a spinner reads as broken, so the step says what it is doing and why it
+ * is worth the wait, and the wait is the only place in onboarding that has one.
+ */
+
+/** Brand name · URL · chips · then one screen per unresolved dimension. */
+const FIXED_STEPS = 3;
+
+interface Draft {
+  genomeId: string;
+  chips: Chip[];
+  unresolved: string[];
+  businessName: string;
+}
+
+export default function OnboardingPage() {
+  const router = useRouter();
+  const { orgId } = useAuth();
+
+  const [step, setStep] = useState(0);
+  const [brandName, setBrandName] = useState('');
+  const [url, setUrl] = useState('');
+  const [draft, setDraft] = useState<Draft | undefined>();
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  // Set once the crawl has failed, so the manual path is offered rather than
+  // pre-empting the faster one before it has been tried.
+  const [crawlFailed, setCrawlFailed] = useState(false);
+
+  // Which dimensions still need asking depends on what the crawl resolved, so
+  // the flow's length is not known until step 1 has run.
+  const questions = useMemo<Question[]>(
+    () => (draft ? questionsFor(draft.unresolved) : QUESTIONS),
+    [draft],
+  );
+  const total = FIXED_STEPS + questions.length;
+
+  async function bootstrap() {
+    /**
+     * Guard rather than `orgId ?? ''`.
+     *
+     * `brandId` is `z.string()`, so an empty string validates cleanly and
+     * creates a genome keyed to no brand — a row that looks correct and is
+     * unreachable by every later query. `OrgGuard` should make this
+     * unreachable; if it ever is not, refusing beats writing a wrong value.
+     */
+    if (!orgId) {
+      setError('Your workspace is still opening. Give it a moment and try again.');
+      return;
+    }
+
+    setBusy(true);
+    setError(undefined);
+
+    const result = await invoke<{
+      draftGenomeId: string;
+      identity: { businessName: string };
+      chips: Chip[];
+      unresolved: string[];
+    }>('genome.bootstrap_from_url', {
+      url: url.trim(),
+      brandId: orgId,
+      // Five pages is the crawler's own budget. Asking for more here would
+      // stretch a wait that is already the longest in the product.
+      maxPages: 5,
+    });
+
+    setBusy(false);
+
+    if (result.status !== 'succeeded') {
+      setError(
+        result.status === 'gated'
+          ? 'That needs approval before it can run.'
+          : // The API's message names the actual cause — blocked, not found,
+            // unreachable — and each has a different next step, so it is shown
+            // rather than replaced with a generic failure.
+            result.error.message,
+      );
+      setCrawlFailed(true);
+      return;
+    }
+
+    setDraft({
+      genomeId: result.output.draftGenomeId,
+      chips: result.output.chips ?? [],
+      unresolved: result.output.unresolved ?? [],
+      businessName: result.output.identity?.businessName ?? brandName,
+    });
+    setStep(2);
+  }
+
+  /**
+   * Start without a crawl.
+   *
+   * The same shape as `bootstrap`, minus the wait: `genome.create` makes a thin
+   * draft from the brand name and leaves all four dimensions unresolved, so the
+   * questions that follow cover everything. It is the path for a site behind a
+   * firewall and for a business that has no site at all — which, for the SMB
+   * motion this product targets, is not the edge case it sounds like.
+   */
+  async function createManually() {
+    if (!orgId) {
+      setError('Your workspace is still opening. Give it a moment and try again.');
+      return;
+    }
+
+    setBusy(true);
+    setError(undefined);
+
+    const result = await invoke<{
+      draftGenomeId: string;
+      identity: { businessName: string };
+      unresolved: string[];
+    }>('genome.create', {
+      brandId: orgId,
+      businessName: brandName.trim(),
+      // Asked properly on a later pass; the brand name is what the owner has
+      // already given us and the category is display-only either way.
+      category: 'business',
+      locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+    });
+
+    setBusy(false);
+
+    if (result.status !== 'succeeded') {
+      setError(result.status === 'failed' ? result.error.message : 'That needs approval before it can run.');
+      return;
+    }
+
+    setDraft({
+      genomeId: result.output.draftGenomeId,
+      chips: [],
+      unresolved: result.output.unresolved ?? [],
+      businessName: result.output.identity?.businessName ?? brandName,
+    });
+    // Straight past chip review: there are no inferences to correct.
+    setStep(FIXED_STEPS);
+  }
+
+  async function finish() {
+    if (!draft) return;
+    setBusy(true);
+    setError(undefined);
+
+    const result = await invoke('genome.dimensions.set', {
+      genomeId: draft.genomeId,
+      proof_asset: answers.proof_asset ?? [],
+      capture_capability: answers.capture_capability ?? [],
+      objective: answers.objective?.[0],
+      secondary_objectives: [],
+      talent_availability: answers.talent_availability?.[0],
+    });
+
+    setBusy(false);
+
+    if (result.status !== 'succeeded') {
+      setError(result.status === 'failed' ? result.error.message : 'That needs approval before it can run.');
+      return;
+    }
+
+    // The cookie the tool proxy forwards as `x-genome-id`. Set here because
+    // this is the moment the workspace has a genome to be scoped to.
+    document.cookie = `spark_genome=${encodeURIComponent(draft.genomeId)}; path=/; samesite=lax`;
+    router.push('/');
+  }
+
+  const back = step > 0 ? () => { setError(undefined); setStep(step - 1); } : undefined;
+
+  /* ── 0 · Brand name ─────────────────────────────────────────────── */
+  if (step === 0) {
+    return (
+      <StepShell
+        step={0}
+        total={total}
+        eyebrow="Let’s set up your brand identity"
+        title="What is your brand called?"
+        footer={
+          <Button
+            className="w-full md:w-auto"
+            disabled={brandName.trim().length === 0}
+            onClick={() => setStep(1)}
+          >
+            Continue
+          </Button>
+        }
+      >
+        <Input
+          autoFocus
+          value={brandName}
+          onChange={(e) => setBrandName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && brandName.trim() && setStep(1)}
+          placeholder="Enter your brand name"
+          aria-label="Brand name"
+        />
+      </StepShell>
+    );
+  }
+
+  /* ── 1 · The URL. The expensive step. ───────────────────────────── */
+  if (step === 1) {
+    return (
+      <StepShell
+        step={1}
+        total={total}
+        onBack={back}
+        eyebrow="Now for your brand knowledge"
+        title="What’s your website?"
+        subtitle="SPARK reads a few pages to work out what you do, so you answer fewer questions."
+        footer={
+          <div className="flex flex-col gap-3">
+            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+            <Button className="w-full md:w-auto" disabled={!looksLikeUrl(url) || busy} onClick={bootstrap}>
+              {busy ? 'Reading your site…' : 'Continue'}
+            </Button>
+            {busy ? (
+              // Named, because thirty seconds of silence reads as a hang. The
+              // steps are the real ones the tool performs.
+              <p className="text-[14px] text-ink-muted">
+                Opening your pages, reading them, and drafting your profile. This takes about half a
+                minute and only happens once.
+              </p>
+            ) : null}
+
+            {/*
+              Always available, but worded differently once the crawl has
+              failed. Before: a quiet opt-out for someone with no site. After:
+              the obvious next action, because the alternative is retrying
+              something that just told us it will not work.
+            */}
+            {!busy ? (
+              <button
+                type="button"
+                onClick={() => void createManually()}
+                disabled={brandName.trim().length === 0}
+                className="self-start text-[14px] text-ink-muted underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
+              >
+                {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
+              </button>
+            ) : null}
+          </div>
+        }
+      >
+        <Input
+          autoFocus
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && looksLikeUrl(url) && !busy && void bootstrap()}
+          placeholder="Enter your website URL"
+          aria-label="Website URL"
+          inputMode="url"
+          disabled={busy}
+        />
+      </StepShell>
+    );
+  }
+
+  /* ── 2 · Chip playback (ONB-02) ─────────────────────────────────── */
+  if (step === 2 && draft) {
+    return (
+      <StepShell
+        step={2}
+        total={total}
+        onBack={back}
+        eyebrow={`Read from ${hostOf(url)}`}
+        title="Here’s what SPARK understood"
+        subtitle="Tap anything that’s wrong. Getting this right now saves a month of off-brand posts."
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(3)}>
+            Looks right
+          </Button>
+        }
+      >
+        <ChipReview chips={draft.chips} onChange={(chips) => setDraft({ ...draft, chips })} />
+      </StepShell>
+    );
+  }
+
+  /* ── 3+ · One question per unresolved dimension (ONB-03) ────────── */
+  const index = step - FIXED_STEPS;
+  const question = questions[index];
+
+  if (question) {
+    const selected = answers[question.id] ?? [];
+    const last = index === questions.length - 1;
+
+    return (
+      <StepShell
+        step={step}
+        total={total}
+        onBack={back}
+        eyebrow={draft ? `${draft.businessName}` : undefined}
+        title={question.prompt}
+        subtitle={question.help}
+        footer={
+          <div className="flex flex-col gap-3">
+            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+            <Button
+              className="w-full md:w-auto"
+              disabled={selected.length === 0 || busy}
+              onClick={() => (last ? void finish() : setStep(step + 1))}
+            >
+              {busy ? 'Saving…' : last ? 'Finish setup' : 'Continue'}
+            </Button>
+          </div>
+        }
+      >
+        <QuestionStep
+          question={question}
+          selected={selected}
+          onChange={(values) => setAnswers({ ...answers, [question.id]: values })}
+        />
+      </StepShell>
+    );
+  }
+
+  /* Reachable only if `draft` is missing at step 2 — a refresh mid-flow. */
+  return (
+    <StepShell
+      step={step}
+      total={total}
+      title="Let’s start again"
+      subtitle="That took longer than expected and the answers were lost. Nothing was saved."
+      footer={<Button onClick={() => setStep(0)}>Start over</Button>}
+    >
+      <span />
+    </StepShell>
+  );
+}
+
+/**
+ * Enough to catch a typo, not enough to reject a valid address.
+ *
+ * The real check is `PublicHttpUrl` in the tool's schema, which rejects
+ * `file://`, loopback and link-local. Duplicating that here would put a
+ * security rule in two places and let them drift; this only stops someone
+ * spending thirty seconds discovering they typed "emkacuts".
+ */
+function looksLikeUrl(value: string): boolean {
+  const trimmed = value.trim();
+  return /^https?:\/\/[^\s.]+\.[^\s]{2,}$/i.test(trimmed) || /^[^\s.]+\.[^\s]{2,}$/i.test(trimmed);
+}
+
+function hostOf(value: string): string {
+  try {
+    return new URL(value.startsWith('http') ? value : `https://${value}`).hostname.replace(/^www\./, '');
+  } catch {
+    return 'your site';
+  }
+}

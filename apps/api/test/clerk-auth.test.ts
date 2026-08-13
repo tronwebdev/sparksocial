@@ -69,6 +69,27 @@ describe('clerk resolveCtx — the tenancy boundary', () => {
     await expect(resolver({ sub: 'user_1' })(req())).rejects.toThrow(/organization/i);
   });
 
+  it('reports no-organization as its own code, not FORBIDDEN', async () => {
+    /**
+     * The distinction the UI acts on. Both failures are "you cannot call this",
+     * but the remedies are opposites: `FORBIDDEN` means sign in again, and
+     * doing that for a missing organization loops forever without fixing it.
+     *
+     * This was not hypothetical. A stuck Clerk `choose-organization` task made
+     * every panel report `401 Not signed in` to a user who was signed in, and
+     * the client had nothing in the response to tell it which recovery to
+     * offer — so it offered none and rendered the error.
+     */
+    await expect(resolver({ sub: 'user_1' })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+  });
+
+  it('still reports an unverifiable session as FORBIDDEN', async () => {
+    // The other side of the same fence — this one really does mean sign in.
+    await expect(resolver(null)(req())).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   it('takes orgId and userId from verified claims, never from headers', async () => {
     const ctx = await resolver({ sub: 'user_1', org_id: 'org_A', org_role: 'org:admin' })(
       req({ 'x-org-id': 'org_EVIL', 'x-user-id': 'user_EVIL' }),
@@ -163,5 +184,59 @@ describe('clerk resolveCtx — the tenancy boundary', () => {
     expect(authenticateRequest).toHaveBeenCalledWith(expect.anything(), {
       authorizedParties: ['https://app.example'],
     });
+  });
+});
+
+describe('both Clerk session-token versions', () => {
+  /**
+   * Clerk issues two shapes and which one an instance uses is a Clerk-side
+   * setting. v1 is flat (`org_id`, `org_role`); **v2 nests** under
+   * `o: { id, rol }` and types `org_id` as `never`.
+   *
+   * Reading only `org_id` made a v2 instance indistinguishable from a session
+   * with no organization: the user creates one, Clerk activates it, the client
+   * shows it, and every tool call returns `NO_ORGANIZATION`. It blocked
+   * onboarding completely, and every test here passed throughout — because they
+   * all hand-built v1 claims, which is the shape nothing was issuing.
+   */
+
+  it('reads the organization from a v2 token', async () => {
+    const ctx = await resolver({ sub: 'user_1', v: 2, o: { id: 'org_A', rol: 'admin' } })(req());
+
+    expect(ctx.orgId).toBe('org_A');
+    expect(ctx.role).toBe('admin');
+  });
+
+  it('still reads a v1 token', async () => {
+    const ctx = await resolver({ sub: 'user_1', org_id: 'org_A', org_role: 'org:admin' })(req());
+
+    expect(ctx.orgId).toBe('org_A');
+    expect(ctx.role).toBe('admin');
+  });
+
+  it('accepts a v2 role with no org: prefix', async () => {
+    // v1 sends `org:owner`, v2 sends `owner`. Both must reach `owner` — the
+    // difference between full access and read-only.
+    const v2 = await resolver({ sub: 'u', v: 2, o: { id: 'org_A', rol: 'owner' } })(req());
+    const v1 = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' })(req());
+
+    expect(v2.role).toBe('owner');
+    expect(v1.role).toBe('owner');
+  });
+
+  it('still rejects a v2 token with no active organization', async () => {
+    // The genuine no-org case must keep failing, or fixing this would have
+    // turned a blocked user into an unscoped one.
+    await expect(resolver({ sub: 'u', v: 2, o: {} })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+    await expect(resolver({ sub: 'u', v: 2 })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+  });
+
+  it('falls back to viewer for an unknown v2 role', async () => {
+    const ctx = await resolver({ sub: 'u', v: 2, o: { id: 'org_A', rol: 'something_new' } })(req());
+    expect(ctx.role).toBe('viewer');
   });
 });

@@ -60,6 +60,16 @@ export function devMediaIngestDeps() {
   };
 }
 
+/**
+ * Deterministic pseudo-embeddings at the **real** dimension.
+ *
+ * The dimension used to be 8 while `schema.ts` declared 1536, so this fake and
+ * production disagreed about the shape of the data. Now both read
+ * `EMBEDDING_DIM` from `@sparksocial/shared`.
+ *
+ * Superseded in production by `embedClient()` in `embed-client.ts`, which picks
+ * the real provider when a key is configured.
+ */
 export function devEmbedClient() {
   return {
     async embed(text: string): Promise<number[]> {

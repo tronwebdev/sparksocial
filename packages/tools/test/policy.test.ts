@@ -131,9 +131,44 @@ describe('4 — budget and spend permission', () => {
     expect(d.kind).toBe('allow');
   });
 
-  it('does not budget-check a non-spend tool', () => {
-    const d = evaluate(input({ tool: { effect: 'write' }, budget: { estimatedCents: 9_999, remainingCents: 0 } }));
+  it('does not budget-check a tool that costs nothing', () => {
+    // Free is free, whatever the effect. A read must not be gated by a drained
+    // budget — someone investigating why it drained needs the Timeline to load.
+    const d = evaluate(input({ tool: { effect: 'write' }, budget: { estimatedCents: 0, remainingCents: 0 } }));
     expect(d.kind).toBe('allow');
+  });
+
+  it('budget-checks any tool that costs money, whatever its effect', () => {
+    /**
+     * This test replaces one that asserted the opposite, and the old one was
+     * the bug: an `external` tool with a 9,999¢ estimate and nothing left was
+     * allowed through, because the rule keyed on `effect === 'spend'` and
+     * **no tool in the registry has ever declared that effect**. Every tool
+     * that costs money is `external`, because it is.
+     *
+     * Found by draining a 2¢ cap with 1¢ `whatsapp.send` calls against a
+     * running server and watching all of them succeed. No unit test could have
+     * found it: they all construct this input by hand and pass `effect:
+     * 'spend'`, a value nothing else in the codebase produces.
+     */
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: { estimatedCents: 9_999, remainingCents: 0 },
+    }));
+    expect(d.kind).toBe('deny');
+    expect(d.kind === 'deny' && d.ruleId).toBe('budget.exceeded');
+  });
+
+  it('honours the spend permission for a costed external tool too', () => {
+    // The permission is about money leaving the account, not about which
+    // category the tool was filed under.
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      brand: { permissions: { spendCredits: false } },
+      budget: { estimatedCents: 1, remainingCents: 10_000 },
+    }));
+    expect(d.kind).toBe('deny');
+    expect(d.kind === 'deny' && d.ruleId).toBe('permission.spend');
   });
 
   it('allows spend when the permission is explicitly enabled', () => {

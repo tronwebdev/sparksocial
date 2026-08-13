@@ -35,17 +35,31 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       brands: {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
-          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
-          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
-          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+        }),
+        setFrequency: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
         }),
       },
+      // Unused by these tests; present because ScopedDb requires them, which is
+      // the point of the interface being structural rather than partial.
+      humanLoop: {
+        create: async () => { throw new Error('humanLoop not stubbed in this test'); },
+        get: async () => undefined,
+        listPending: async () => [],
+        answer: async () => undefined,
+        markDelivered: async () => {},
+      },
+      toolCalls: { get: async () => undefined },
       approvals: {
         enqueue: async () => {},
         pending: async () => [],

@@ -2,11 +2,14 @@ import { randomUUID } from 'node:crypto';
 import type { ScopedDb } from '@sparksocial/tools';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
 import type { AssetRole, Genome } from '@sparksocial/shared';
+import { EMBEDDING_DIM, deterministicEmbedding } from '@sparksocial/shared/embedding';
 import { createDevRunStore, seedDevRuns, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
 import { createDevBrandStore } from './dev-brands.js';
 import { createDevApprovalStore } from './dev-approvals.js';
-import type { ApprovalStore, BrandGovernanceStore, CampaignStore } from '@sparksocial/tools/defineTool';
+import { createDevHumanLoopStore } from './dev-human-loop.js';
+import type { ApprovalStore, BrandGovernanceStore, CampaignStore, HumanLoopStore } from '@sparksocial/tools/defineTool';
+import type { ToolCallRecord } from '@sparksocial/tools';
 
 /**
  * DEVELOPMENT STORE — in-memory, seeded with the golden set.
@@ -56,20 +59,18 @@ interface ContentRow {
   publishedAt: Date;
 }
 
-/** Exported so dev-vendors.ts's fake embed client produces compatible vectors. */
-export const EMBED_DIM = 8;
-
-/** Deterministic pseudo-embedding so seeded rows retrieve consistently across runs. */
-export function deterministicEmbedding(seed: string): number[] {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  const out: number[] = [];
-  for (let i = 0; i < EMBED_DIM; i++) {
-    h = (h * 1103515245 + 12345) >>> 0;
-    out.push((h % 2000) / 1000 - 1); // [-1, 1]
-  }
-  return out;
-}
+/**
+ * Re-exported so existing importers keep working, but the values now come from
+ * `@sparksocial/shared` — the same constant `schema.ts` uses for its
+ * `vector(N)` columns.
+ *
+ * These were independent: 8 here, 1536 in the schema. Nothing compared them, so
+ * every test passed and the first insert against real Postgres would have
+ * failed with a dimension error. A fake whose *shape* differs from production
+ * is not a fake, it is a second implementation.
+ */
+export const EMBED_DIM = EMBEDDING_DIM;
+export { deterministicEmbedding };
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0,
@@ -94,24 +95,45 @@ function score(a: AssetRow, queryEmbedding: number[], now: Date, cooldownDays = 
   return similarity - recencyPenalty - diversityPenalty;
 }
 
-export function createDevStore(
-  orgId = 'org_dev',
+export interface DevStoreOptions {
+  orgId?: string;
   /**
    * The run store is injected rather than created here because the *recorder*
    * half of it belongs to the agent endpoint, and both halves must be the same
    * arrays — a timeline reading a different store than the loop writes to would
-   * always render empty. Defaulting keeps existing callers unchanged.
+   * always render empty.
    */
-  runStore: DevRunStore = createDevRunStore(),
-  campaignStore: CampaignStore = createDevCampaignStore(),
-  brandStore: BrandGovernanceStore = createDevBrandStore(),
+  runStore?: DevRunStore;
+  campaignStore?: CampaignStore;
+  brandStore?: BrandGovernanceStore;
   /**
    * The queue reads inputs back from the audit rows rather than copying them,
    * so it needs a way to reach them. `memoryInvokeDeps` owns that array, which
    * is why this is injected from `index.ts` rather than constructed here.
    */
-  approvalStore: ApprovalStore = createDevApprovalStore(() => undefined),
+  approvalStore?: ApprovalStore;
+  humanLoopStore?: HumanLoopStore;
+  /**
+   * How `agent.explain` reaches a recorded call. Same injection and same reason
+   * as `approvalStore`: the audit rows live in `memoryInvokeDeps`, and copying
+   * them into this store would create a second version of what happened that
+   * can disagree with the first.
+   */
+  findCall?: (callId: string) => ToolCallRecord | undefined;
+}
+
+export function createDevStore(
+  opts: DevStoreOptions = {},
 ): ScopedDb & { seedCount: number; runs: ScopedDb['runs'] } {
+  const {
+    orgId = 'org_dev',
+    runStore = createDevRunStore(),
+    campaignStore = createDevCampaignStore(),
+    brandStore = createDevBrandStore(),
+    approvalStore = createDevApprovalStore(() => undefined),
+    humanLoopStore = createDevHumanLoopStore(),
+    findCall = () => undefined,
+  } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
   const content: ContentRow[] = [];
@@ -309,6 +331,29 @@ export function createDevStore(
     campaigns: campaignStore,
     approvals: approvalStore,
     brands: brandStore,
+    humanLoop: humanLoopStore,
+
+    toolCalls: {
+      async get(callId, org) {
+        const row = findCall(callId);
+        // Out of scope reads as not found, so probing call ids leaks nothing —
+        // the same rule as `genomes.get`.
+        if (!row || row.orgId !== org) return undefined;
+        return {
+          id: row.id,
+          tool: row.tool,
+          caller: row.caller,
+          decision: row.decision,
+          status: row.status,
+          costCents: row.costCents,
+          at: row.at,
+          ...(row.ruleId ? { ruleId: row.ruleId } : {}),
+          ...(row.reason ? { reason: row.reason } : {}),
+          ...(row.runId ? { runId: row.runId } : {}),
+          ...(row.why ? { why: row.why } : {}),
+        };
+      },
+    },
     runs: runStore.reader,
   };
 }

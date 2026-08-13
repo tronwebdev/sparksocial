@@ -185,3 +185,60 @@ describe('inferGenome', () => {
     expect(out.alternatives[0]?.rejectedBecause).toMatch(/route every later decision/i);
   });
 });
+
+describe('chip values fit in a chip', () => {
+  /**
+   * ONB-02 renders each chip as a pill with a confidence dot. A real Opus run
+   * returned 180-character justifications in the `value` field, which is
+   * accurate and unrenderable. Caught live, not by a fake — `devInferenceClient`
+   * returns tidy one-word values and would never have shown this.
+   */
+  const chipped = async (value: string) => {
+    const result = await inferGenome(
+      { corpus: [untrusted('page text', 'crawl:x')], sourceUrl: 'https://x.example', logger },
+      client({
+        identity: {
+          businessName: 'X', category: 'c', oneLiner: 'o',
+          geography: { scope: 'global', locale: 'en-US', radiusKm: null },
+          languages: ['en'], priceTier: 'mid',
+        },
+        dimensions: { proof_asset: ['product_ui'], capture_capability: ['screen'], objective: 'audience', talent_availability: 'no' },
+        chips: [{ field: 'dimensions.proof_asset', value, confidence: 0.9 }],
+      }),
+    );
+    return result.chips[0]!.value;
+  };
+
+  it('keeps the value and drops the em-dash justification', async () => {
+    // The exact shape observed live.
+    expect(
+      await chipped('data_outcomes — build-time benchmarks vs Astro/Gatsby, 20.3M downloads, 19.8k stars'),
+    ).toBe('data_outcomes');
+  });
+
+  it('cuts at a parenthetical or a comma too', async () => {
+    expect(await chipped('Eleventy (11ty), part of Font Awesome since 2024')).toBe('Eleventy');
+    expect(await chipped('en-US, inferred from US spellings and date formats')).toBe('en-US');
+  });
+
+  it('leaves an already-short value exactly as it is', async () => {
+    // Including hyphenated ones — the split is on a *spaced* dash, so `en-GB`
+    // and `sign-in` survive. A naive /-/ split would mangle every locale.
+    expect(await chipped('premium')).toBe('premium');
+    expect(await chipped('en-GB')).toBe('en-GB');
+    expect(await chipped('yes_unlicensed')).toBe('yes_unlicensed');
+  });
+
+  it('truncates a long value that has nothing to cut at', async () => {
+    const out = await chipped('a'.repeat(200));
+    expect(out.length).toBeLessThanOrEqual(60);
+    expect(out.endsWith('…')).toBe(true);
+  });
+
+  it('falls back to the whole string when the first segment is itself too long', async () => {
+    // A 90-character clause followed by a dash: taking the head would still
+    // overflow, so it truncates rather than silently returning something long.
+    const out = await chipped(`${'word '.repeat(20)}— because reasons`);
+    expect(out.length).toBeLessThanOrEqual(60);
+  });
+});

@@ -45,6 +45,7 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
             approvalMode: 'review_first_week',
             createdAt: new Date(),
             agentPaused: false,
+            postsPerWeek: DEFAULT_POSTS_PER_WEEK,
           };
     },
 
@@ -98,8 +99,30 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
       return toGovernance(row);
     },
+
+    async setFrequency({ brandId, orgId, postsPerWeek }) {
+      await db
+        .insert(brands)
+        .values({ id: brandId, orgId, postsPerWeek })
+        .onConflictDoUpdate({
+          target: brands.id,
+          set: { postsPerWeek, updatedAt: new Date() },
+        });
+
+      const [row] = await db
+        .select()
+        .from(brands)
+        .where(and(eq(brands.id, brandId), eq(brands.orgId, orgId)))
+        .limit(1);
+
+      if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
+      return toGovernance(row);
+    },
   };
 }
+
+/** Mirrors the column default in `schema.ts`. */
+const DEFAULT_POSTS_PER_WEEK = 3;
 
 function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
   return {
@@ -108,6 +131,7 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     approvalMode: row.approvalMode as ApprovalMode,
     createdAt: row.createdAt,
     agentPaused: row.agentPaused,
+    postsPerWeek: row.postsPerWeek,
     ...(row.pausedAt ? { pausedAt: row.pausedAt } : {}),
     ...(row.pausedBy ? { pausedBy: row.pausedBy } : {}),
     ...(row.pauseReason ? { pauseReason: row.pauseReason } : {}),

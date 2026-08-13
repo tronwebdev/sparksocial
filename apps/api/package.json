@@ -28,6 +28,7 @@
     "@sparksocial/tools": "*",
     "@sparksocial/trends": "*",
     "hono": "^4.13.1",
+    "ioredis": "^6.0.0",
     "langfuse": "^3.38.20",
     "posthog-node": "^5.21.2",
     "zod": "^3.23.8"

@@ -112,7 +112,7 @@ export function makePublishNow(deps: PublishDeps) {
       }
 
       const now = new Date();
-      if (!limiter.tryConsume(brandId, input.platform, now)) {
+      if (!(await limiter.tryConsume(brandId, input.platform, now))) {
         // A budget refusal is not an error in the post — it is the throttle
         // working. RATE_LIMITED tells the caller to reschedule rather than to
         // fix and retry.
@@ -221,17 +221,23 @@ export function makePublishStatus(deps: PublishDeps) {
       const supported = new Set(router.supported());
 
       return {
-        platforms: Platform.options.map((platform) => {
-          const isSupported = supported.has(platform);
-          return {
-            platform,
-            supported: isSupported,
-            // Naming the adapter is what makes "LinkedIn is on the aggregator
-            // until approval clears" visible rather than folklore.
-            via: isSupported ? router.for(platform).name : null,
-            remainingToday: isSupported ? limiter.remaining(brandId, platform, now) : 0,
-          };
-        }),
+        // `Promise.all`, not a sequential loop: these are five independent
+        // reads against the same store and the health panel waits for all of
+        // them. Round-tripping in series would make the slowest surface in the
+        // product the one whose whole job is to load quickly.
+        platforms: await Promise.all(
+          Platform.options.map(async (platform) => {
+            const isSupported = supported.has(platform);
+            return {
+              platform,
+              supported: isSupported,
+              // Naming the adapter is what makes "LinkedIn is on the aggregator
+              // until approval clears" visible rather than folklore.
+              via: isSupported ? router.for(platform).name : null,
+              remainingToday: isSupported ? await limiter.remaining(brandId, platform, now) : 0,
+            };
+          }),
+        ),
       };
     },
   });

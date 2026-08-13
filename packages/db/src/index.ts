@@ -9,3 +9,6 @@ export * from './runRecorderRepository.js';
 export * from './campaignRepository.js';
 export * from './approvalRepository.js';
 export * from './brandRepository.js';
+export * from './humanLoopRepository.js';
+export * from './toolCallReadRepository.js';
+export * from './creditRepository.js';

@@ -10,6 +10,7 @@ import {
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
 
 /**
  * Drizzle schema — the subset the scoped query layer guards.
@@ -22,7 +23,7 @@ import {
  * Target: Azure Database for PostgreSQL Flexible Server. `pgvector` must be allow-listed
  * as a server parameter before `CREATE EXTENSION vector` will succeed.
  *
- * Embeddings are 1536-dim (`text-embedding-3-large`), mandated by the engine spec for
+ * Embeddings are `EMBEDDING_DIM`-dim (`text-embedding-3-large`), mandated by the engine spec for
  * ClientForce consistency.
  */
 
@@ -39,7 +40,7 @@ export const assets = pgTable(
     storagePath: text('storage_path').notNull(), // Azure Blob Storage
     muxId: text('mux_id'),
     caption: text('caption'),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     quality: jsonb('quality'),
     /** 'cleared' | 'pending' | 'restricted' — retrieval only ever returns 'cleared'. */
     rightsStatus: text('rights_status').notNull().default('pending'),
@@ -60,7 +61,7 @@ export const knowledgeChunks = pgTable(
     genomeId: text('genome_id').notNull(),
     docId: uuid('doc_id').notNull(),
     text: text('text').notNull(),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     citation: jsonb('citation'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -75,7 +76,7 @@ export const memories = pgTable(
     genomeId: text('genome_id').notNull(),
     kind: text('kind').notNull(),
     text: text('text').notNull(),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     confidence: integer('confidence'),
     sourceRunId: uuid('source_run_id'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
@@ -107,7 +108,7 @@ export const contentItems = pgTable(
      * calls where N is how much has been published recently, which grows
      * unboundedly with account age.
      */
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     /** The Explanation payload — PRD §7.3, rendered by <WhyPopover />. */
     why: jsonb('why'),
     runId: uuid('run_id'),
@@ -196,10 +197,125 @@ export const brands = pgTable(
     pausedAt: timestamp('paused_at', { withTimezone: true }),
     pausedBy: text('paused_by'),
     pauseReason: text('pause_reason'),
+    /**
+     * Target posts per week (`agent.frequency.set`) — how loud the account is.
+     *
+     * Orthogonal to the kill switch above: pausing stops the agent acting at
+     * all, frequency shapes what it does while running. Three is the cadence
+     * the calendar's mix engine was tuned against, so a brand nobody has
+     * configured still produces a well-shaped plan.
+     */
+    postsPerWeek: integer('posts_per_week').notNull().default(3),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('brands_org_idx').on(t.orgId)],
+);
+
+/**
+ * Per-organisation spend cap — plan §9.
+ *
+ * A row per org rather than a column on `brands`, because the cap is what an
+ * organisation *bought*: an agency on one plan with forty client brands has one
+ * budget, not forty. Putting it on `brands` would let a forty-brand workspace
+ * spend forty times the plan.
+ *
+ * Upserted at a conservative default on first read, same rule as `brands`: a
+ * missing row must not read as unlimited. The direction matters — the failure
+ * mode of guessing high is a bill nobody agreed to.
+ */
+export const orgBudgets = pgTable('org_budgets', {
+  orgId: text('org_id').primaryKey(),
+  /** Cents per calendar month, UTC. */
+  monthlyCapCents: integer('monthly_cap_cents').notNull().default(500_00),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * CREDIT LEDGER — plan §9, and what finally makes `policy.ts` rule 4 mean
+ * something.
+ *
+ * That rule has denied calls over budget since P1, reading `remainingCents`
+ * from `ToolCtx`. Both auth resolvers hardcoded `100_000`, so every
+ * `estimateCents` in the codebase was computed, recorded on the `tool_calls`
+ * row, and compared against a constant. The spend limit was fully implemented,
+ * fully tested, and could not be reached.
+ *
+ * **Append-only, and keyed on the call.** `callId` is unique, so the same tool
+ * call can never be billed twice. `invokeTool` already returns early on an
+ * idempotent replay before `recordCost` runs, so this is not the primary
+ * defence — it is the one that survives a retry introduced at some other layer
+ * later, like at-least-once delivery from a queue, where the primary defence
+ * does not apply.
+ *
+ * `costCents` is signed: positive is a spend, negative a refund or a goodwill
+ * credit. Balance is `cap - SUM(costCents)` over the period, so a correction is
+ * a new row rather than an edit — the ledger stays a record of what happened
+ * rather than a mutable current value.
+ */
+export const creditLedger = pgTable(
+  'credit_ledger',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id'),
+    /** The `tool_calls` row this bills. Null for manual adjustments. */
+    callId: uuid('call_id'),
+    tool: text('tool').notNull(),
+    /** Positive spends, negative refunds. */
+    costCents: integer('cost_cents').notNull(),
+    reason: text('reason').notNull().default('tool_call'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One charge per call, enforced by the database rather than by remembering.
+    uniqueIndex('credit_ledger_call_idx').on(t.callId),
+    // The balance query: one org, one period.
+    index('credit_ledger_org_at_idx').on(t.orgId, t.at),
+  ],
+);
+
+/**
+ * SPARK's questions to the owner and their answers (`human.ask`, `human.notify`).
+ *
+ * `answer` is the only column in this schema written from outside the
+ * workspace — it arrives over WhatsApp, which is an unauthenticated channel in
+ * the sense that matters: anyone who can reach the owner's number can put text
+ * in it. It is stored, displayed and fed to the model as *content*, and
+ * `whatsapp.receive` wraps it in `untrusted()` before it ever reaches a prompt.
+ * Nothing branches on its value to decide whether an action is permitted.
+ *
+ * `answeredAt` doubles as the write-once latch: `answer()` refuses a message
+ * that already has one, so a retried webhook cannot overwrite a decision SPARK
+ * has already acted on.
+ *
+ * Not in `SCOPED_TABLES` — a question is addressed to a brand, and the brand is
+ * the tenancy boundary here; every query filters on `orgId` regardless.
+ */
+export const humanMessages = pgTable(
+  'human_messages',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(),
+    /** ask | notify */
+    kind: text('kind').notNull(),
+    body: text('body').notNull(),
+    options: jsonb('options').$type<string[]>(),
+    /** low | normal | high */
+    urgency: text('urgency').notNull().default('normal'),
+    runId: text('run_id'),
+    answer: text('answer'),
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    answeredBy: text('answered_by'),
+    channel: text('channel'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The owner's inbox: unanswered questions for one brand, oldest first.
+    index('human_messages_brand_idx').on(t.orgId, t.brandId, t.answeredAt),
+  ],
 );
 
 /**

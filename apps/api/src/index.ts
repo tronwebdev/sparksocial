@@ -12,13 +12,15 @@ import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
 import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
-import { devEmbedClient } from './dev-vendors.js';
+import { embedClient } from './embed-client.js';
 import { connectPostgresStore } from './pg-store.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
+import { createDevCreditStore } from './dev-credits.js';
 import { createDevApprovalStore } from './dev-approvals.js';
 import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
+import { envList, envNum, envSet, envStr } from './env.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -29,8 +31,8 @@ import { registerApprovalTools } from './tools.js';
  * possible answer to "did the deploy land?".
  */
 
-const port = Number(process.env.PORT ?? 8080);
-const env = process.env.NODE_ENV ?? 'development';
+const port = envNum('PORT', 8080);
+const env = envStr('NODE_ENV', 'development');
 
 registerAlphaTools();
 
@@ -73,28 +75,32 @@ const devRuns = createDevRunStore();
  * Postgres joins `approvals` to `tool_calls` for the same reason — one copy of
  * what was called, never two that can disagree.
  */
-const memoryDeps = memoryInvokeDeps({ runGuardrails: makeRunGuardrails(devEmbedClient()) });
+const memoryDeps = memoryInvokeDeps({ runGuardrails: makeRunGuardrails(embedClient()) });
 const devApprovals = createDevApprovalStore((callId) => memoryDeps.rows.find((r) => r.id === callId));
 
 const scopedDb =
   pg?.scopedDb ??
-  createDevStore(
-    process.env.DEV_SEED_ORG_ID ?? 'org_dev',
-    devRuns,
-    undefined,
-    undefined,
-    devApprovals,
-  );
+  createDevStore({
+    orgId: envStr('DEV_SEED_ORG_ID', 'org_dev'),
+    runStore: devRuns,
+    approvalStore: devApprovals,
+    findCall: (callId) => memoryDeps.rows.find((r) => r.id === callId),
+  });
+
+/**
+ * The ledger behind `policy.ts` rule 4 (plan §9). Postgres when it is
+ * configured, in-memory otherwise — the same choice the scoped store makes, so
+ * spend is enforced in local development instead of only in production.
+ */
+const credits = pg?.credits ?? createDevCreditStore();
 
 const resolveCtx = clerkConfigured
   ? makeClerkResolveCtx({
       db: scopedDb,
-      authorizedParties: (process.env.CLERK_AUTHORIZED_PARTIES ?? 'http://localhost:3000')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
+      credits,
+      authorizedParties: envList('CLERK_AUTHORIZED_PARTIES', ['http://localhost:3000']),
     })
-  : makeDevResolveCtx(scopedDb);
+  : makeDevResolveCtx(scopedDb, credits);
 
 if (!clerkConfigured) {
   console.warn(
@@ -102,14 +108,15 @@ if (!clerkConfigured) {
       'Never do this in production.',
   );
 }
-// Budget and approval mode are still placeholders in both resolvers: there are no
-// `brands` / `autonomy_policies` tables yet and credits land in P3, so the policy
-// engine's spend limits are effectively a no-op. Tracked in docs/STATUS.md.
+// Approval mode, the kill switch and spend all now read from storage, so every
+// rung of `policy.ts` is reachable in a running system. What remains a
+// placeholder is the *cap*: `org_budgets` defaults every organisation to the
+// same figure because there is no billing integration to set it from.
 
 const telemetry = createTelemetry();
 
 const baseInvokeDeps = pg
-  ? { ...pg.auditDeps, runGuardrails: makeRunGuardrails(devEmbedClient()) }
+  ? { ...pg.auditDeps, runGuardrails: makeRunGuardrails(embedClient()) }
   : memoryDeps;
 
 /**
@@ -128,6 +135,41 @@ const withTelemetry = {
   writeToolCall: async (record: Parameters<typeof baseInvokeDeps.writeToolCall>[0]) => {
     await baseInvokeDeps.writeToolCall(record);
     telemetry.toolCall(record);
+  },
+
+  /**
+   * Spend, appended to the ledger (plan §9).
+   *
+   * `invokeTool` calls this only when a handler actually ran and only when the
+   * estimate was non-zero, and returns early on an idempotent replay before
+   * reaching it — so this fires once per real charge. The unique index on
+   * `call_id` is the backstop for retries introduced elsewhere later.
+   *
+   * Failures are swallowed for the same reason telemetry's are, but the
+   * trade-off is the opposite way round and worth stating: dropping a charge
+   * loses money, and throwing here would fail a call whose side effects already
+   * happened — a post is already public, a video already rendered. Reporting
+   * that as a failure invites a retry that does it all again. Losing the charge
+   * is the cheaper error, and it is logged loudly enough to reconcile.
+   */
+  recordCost: async (record: Parameters<typeof baseInvokeDeps.writeToolCall>[0]) => {
+    try {
+      await credits.record({
+        callId: record.id,
+        orgId: record.orgId,
+        tool: record.tool,
+        costCents: record.costCents,
+        at: record.at,
+        ...(record.brandId ? { brandId: record.brandId } : {}),
+      });
+    } catch (e) {
+      console.error('[error] credit ledger write failed — charge lost', {
+        callId: record.id,
+        orgId: record.orgId,
+        costCents: record.costCents,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   },
 };
 
@@ -157,7 +199,7 @@ process.on('unhandledRejection', (err) => telemetry.error(err, { kind: 'unhandle
  * The Timeline still works either way: it reads recorded runs, and 501 is not a
  * run.
  */
-const agentConfigured = Boolean(process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN);
+const agentConfigured = envSet('ANTHROPIC_API_KEY') || envSet('ANTHROPIC_AUTH_TOKEN');
 const bus = memoryRunEventBus();
 /**
  * Order matters. Langfuse wraps the durable recorder first, then the SSE
@@ -171,6 +213,48 @@ const tracedRecorder = telemetry.langfuse
   : durableRecorder;
 const recorder = broadcastingRecorder(tracedRecorder, bus);
 
+/**
+ * Inbound WhatsApp, only when Meta is actually configured.
+ *
+ * `resolveTenant` is the honest gap: Meta gives us a phone number and nothing
+ * else, and no table maps a number to a brand yet — `whatsapp.send` does not
+ * record which brand a recipient belongs to. Until it does, a single-tenant
+ * mapping via env makes the loop testable end to end without pretending the
+ * lookup exists. Multi-tenant inbound needs that column first.
+ */
+const whatsappWebhook = envSet('WHATSAPP_APP_SECRET')
+  ? {
+      invokeDeps,
+      loadBrandGovernance: makeBrandGovernance(scopedDb),
+      appSecret: envStr('WHATSAPP_APP_SECRET', ''),
+      verifyToken: envStr('WHATSAPP_VERIFY_TOKEN', ''),
+      async resolveTenant() {
+        const orgId = envStr('WHATSAPP_ORG_ID', '');
+        const brandId = envStr('WHATSAPP_BRAND_ID', '');
+        return orgId && brandId ? { orgId, brandId } : undefined;
+      },
+      async systemCtx({ orgId, brandId }: { orgId: string; brandId: string }) {
+        const base = await makeDevResolveCtx(scopedDb, credits)(
+          new Request('http://localhost/', {
+            headers: { 'x-org-id': orgId, 'x-brand-id': brandId, 'x-role': 'admin' },
+          }),
+        );
+        // No `userId`: nobody signed in. The tool attributes the answer to
+        // `whatsapp:<number>` instead, which is the truthful record — a person
+        // texted, they did not authenticate.
+        const { userId: _drop, caller: _caller, ...ctx } = base;
+        return ctx;
+      },
+    }
+  : undefined;
+
+if (!envSet('WHATSAPP_APP_SECRET')) {
+  console.warn(
+    '[warn] WHATSAPP_APP_SECRET unset — the inbound webhook is not registered. Owners can be sent ' +
+      'capture sessions but their replies cannot reach SPARK.',
+  );
+}
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -178,6 +262,7 @@ const app = createApp({
   // enforcement is live — no plumbing to add later.
   invokeDeps,
   telemetry: telemetry.status(),
+  ...(whatsappWebhook ? { whatsappWebhook } : {}),
   ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
   ...(agentConfigured
     ? {

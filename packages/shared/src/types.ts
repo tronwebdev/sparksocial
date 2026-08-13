@@ -148,7 +148,17 @@ export const isUntrusted = (v: unknown): v is Untrusted<unknown> =>
 export type ToolErrorCode =
   | 'FORBIDDEN' | 'NEEDS_APPROVAL' | 'NEEDS_CONFIRMATION' | 'GUARDRAIL_BLOCKED'
   | 'BUDGET_EXCEEDED' | 'RATE_LIMITED' | 'NOT_FOUND' | 'INVALID_INPUT'
-  | 'UPSTREAM_FAILED' | 'ISOLATION_VIOLATION';
+  | 'UPSTREAM_FAILED' | 'ISOLATION_VIOLATION'
+  /**
+   * Authenticated, but the session carries no organization.
+   *
+   * Distinct from `FORBIDDEN` because the remedy is different and only the
+   * caller can act on it: `FORBIDDEN` means sign in again, this means finish
+   * choosing a workspace. Collapsing the two is what made a stuck Clerk session
+   * task present as `401 Not signed in` to a user who was demonstrably signed
+   * in — the client could not tell which recovery to offer, so it offered none.
+   */
+  | 'NO_ORGANIZATION';
 
 export class ToolError extends Error {
   constructor(

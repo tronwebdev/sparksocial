@@ -122,8 +122,23 @@ function evaluateRules(input: PolicyInput): Decision {
     return { kind: 'deny', reason: 'This action must be taken by a person.', ruleId: 'autonomy.human_only' };
   }
 
-  /* 4 ── Budget. Checked before side effects, for both callers. */
-  if (tool.effect === 'spend') {
+  /* 4 ── Budget. Checked before side effects, for both callers.
+   *
+   * Keyed on **cost, not category**. This read `tool.effect === 'spend'` and no
+   * tool in the registry has ever declared that effect — every one that spends
+   * money (`genome.bootstrap_from_url`, `direct.media.ingest`,
+   * `whatsapp.send`, the brief writers) is `external`, because it is. So the
+   * rule was unreachable: correct, tested to 100% branches, and unable to fire.
+   *
+   * Found by draining a 2¢ cap with 1¢ calls and watching all of them succeed.
+   * The unit tests could not have found it — they build this input directly and
+   * pass `effect: 'spend'`, which nothing else in the codebase does.
+   *
+   * `estimatedCents > 0` is the honest signal, and it is a fact about the call
+   * rather than a label someone has to remember to attach. `effect === 'spend'`
+   * is kept so a tool declaring it is still permission-checked at a zero
+   * estimate. */
+  if (tool.effect === 'spend' || budget.estimatedCents > 0) {
     if (brand.permissions?.spendCredits === false) {
       return { kind: 'deny', reason: 'Credit spending is disabled for this workspace.', ruleId: 'permission.spend' };
     }

@@ -54,6 +54,37 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # ── Schema before code ────────────────────────────────────────────────
+      #
+      # Runs *before* the image is built and deployed, deliberately. The
+      # ordering is the whole point: new code against an old schema fails on
+      # every request touching the missing column, while old code against a new
+      # schema is fine — additive migrations are invisible to it. So migrate
+      # first and the worst case is a brief window where a column exists that
+      # nothing reads yet.
+      #
+      # This step did not exist. Seven migrations sat in `packages/db/migrations`
+      # and nothing had ever applied them, so a deploy shipped code against
+      # whatever the database happened to already have.
+      #
+      # `drizzle-kit migrate` is idempotent — it consults its own
+      # `__drizzle_migrations` journal — so re-running a deploy is safe and a
+      # deploy with no schema change is a no-op.
+      #
+      # DATABASE_URL comes from the environment's secrets rather than Key Vault
+      # because this runs on the GitHub runner, not inside the Container App,
+      # and therefore has no managed identity to authenticate with.
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set for this environment. Refusing to deploy code"
+            echo "::error::against an unmigrated database — set it in the environment's secrets."
+            exit 1
+          fi
+          npm run migrate -w @sparksocial/db
+
       - name: Build and push image to ACR
         run: |
           az acr build \

@@ -70,21 +70,30 @@ export const DEFAULT_BUDGETS: Record<Platform, RateBudget> = {
   youtube_shorts: { perWindow: 10, windowMs: 24 * 3_600_000 },
 };
 
+/**
+ * Async because the shared implementation is Redis.
+ *
+ * The in-memory one has no need of it, and paying that cost anyway is the
+ * point: a synchronous interface silently forbids every distributed
+ * implementation, and discovering that at the moment you add a second replica
+ * means changing every call site under time pressure.
+ */
 export interface RateLimiter {
-  /** Records an attempt and reports whether it is within budget. */
-  tryConsume(brandId: string, platform: Platform, now: Date): boolean;
+  /** Records an attempt and reports whether it was within budget. */
+  tryConsume(brandId: string, platform: Platform, now: Date): Promise<boolean>;
   /** Remaining posts in the current window, for the health surface. */
-  remaining(brandId: string, platform: Platform, now: Date): number;
+  remaining(brandId: string, platform: Platform, now: Date): Promise<number>;
 }
 
 /**
- * In-memory sliding-window limiter.
+ * In-memory sliding-window limiter — development, tests, single replica.
  *
- * Per-replica, like the run event bus, and for the same reason: correctness
- * does not depend on it being global. It is a *product* throttle sitting well
- * below the platform's own limit, so a brief overshoot across replicas stays
- * inside the real ceiling. Backing it with Redis is the swap when replica count
- * makes the drift material.
+ * Per-replica, so N replicas enforce N times the budget. That is survivable for
+ * a *product* throttle sitting well below the platform's own limit, and it is
+ * not survivable as a permanent answer: the budgets exist so that SparkSocial is
+ * never the reason an account got flagged, and "never" does not scale by
+ * replica count. `createRedisRateLimiter` is the shared one; this stays because
+ * local development and CI should not need a Redis.
  */
 export function createRateLimiter(budgets: Record<Platform, RateBudget> = DEFAULT_BUDGETS): RateLimiter {
   const hits = new Map<string, number[]>();
@@ -100,7 +109,7 @@ export function createRateLimiter(budgets: Record<Platform, RateBudget> = DEFAUL
   };
 
   return {
-    tryConsume(brandId, platform, now) {
+    async tryConsume(brandId, platform, now) {
       const budget = budgets[platform];
       const k = key(brandId, platform);
       const kept = prune(k, budget.windowMs, now.getTime());
@@ -109,7 +118,7 @@ export function createRateLimiter(budgets: Record<Platform, RateBudget> = DEFAUL
       return true;
     },
 
-    remaining(brandId, platform, now) {
+    async remaining(brandId, platform, now) {
       const budget = budgets[platform];
       const kept = prune(key(brandId, platform), budget.windowMs, now.getTime());
       return Math.max(0, budget.perWindow - kept.length);

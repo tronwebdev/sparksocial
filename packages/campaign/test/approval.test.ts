@@ -21,12 +21,17 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     approvalMode: 'review_first_week',
     createdAt: daysAgo(2),
     agentPaused: false,
+    postsPerWeek: 3,
     ...initial,
   };
   return {
     get: async () => row,
     setApprovalMode: async (_b, _o, mode) => {
       row = { ...row, approvalMode: mode };
+      return row;
+    },
+    setFrequency: async ({ postsPerWeek }) => {
+      row = { ...row, postsPerWeek };
       return row;
     },
     setAgentPaused: async ({ paused, by, reason }) => {
@@ -77,7 +82,7 @@ describe('remainingReviewDays', () => {
   });
 });
 
-describe('brand.approval.get', () => {
+describe('agent.approval_mode.get', () => {
   it('reports the mode and when a first-week review ends', async () => {
     const out = await approvalGet.handler({}, ctx(store({ createdAt: daysAgo(3) })));
     expect(out.approvalMode).toBe('review_first_week');
@@ -106,7 +111,7 @@ describe('brand.approval.get', () => {
   });
 });
 
-describe('brand.approval.set', () => {
+describe('agent.approval_mode.set', () => {
   it('persists the mode through the store', async () => {
     const s = store();
     const spy = vi.spyOn(s, 'setApprovalMode');

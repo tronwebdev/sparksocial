@@ -15,6 +15,12 @@ import { Explanation, ToolError } from '@sparksocial/shared';
  *
  * The policy engine (`policy.ts`) has implemented all three rungs from the
  * start. These tools are what let a brand *be* on one.
+ *
+ * Named `agent.approval_mode.*` rather than `brand.approval.*`: plan §3.2 lists
+ * this in the `agent.*` Command Center family, and the name is the surface SPARK
+ * reads when choosing a tool. A control that lives on the Command Center screen
+ * and is not called `agent.…` is one the agent is measurably less likely to
+ * find.
  */
 
 const ApprovalMode = z.enum(['autopublish', 'review_first_week', 'review_everything']);
@@ -34,7 +40,7 @@ export const ApprovalGetOutput = z.object({
 });
 
 export const approvalGet = defineTool({
-  name: 'brand.approval.get',
+  name: 'agent.approval_mode.get',
   version: 1,
 
   summary:
@@ -76,7 +82,7 @@ export const ApprovalSetOutput = z.object({
 });
 
 export const approvalSet = defineTool({
-  name: 'brand.approval.set',
+  name: 'agent.approval_mode.set',
   version: 1,
 
   summary:

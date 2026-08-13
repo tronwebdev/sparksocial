@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { GenomeDimensions, Explanation, untrusted, ToolError } from '@sparksocial/shared/types';
 import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
-import { crawl as defaultCrawl, type CrawledPage, type CrawlOptions } from './crawl.js';
+import { crawl as defaultCrawl, type CrawlFailure, type CrawlOptions, type CrawlResult } from './crawl.js';
 import { inferGenome, type GenomeInferenceClient } from './infer.js';
 
 /**
@@ -25,7 +25,40 @@ import { inferGenome, type GenomeInferenceClient } from './infer.js';
 export interface GenomeBootstrapDeps {
   infer: GenomeInferenceClient;
   /** Defaults to the real crawl service; injected in tests. */
-  crawl?: (url: string, opts: CrawlOptions) => Promise<CrawledPage[]>;
+  crawl?: (url: string, opts: CrawlOptions) => Promise<CrawlResult>;
+}
+
+/**
+ * Failure copy, written for the business owner rather than for a log.
+ *
+ * `blocked` is the one that matters most: it is common (Cloudflare and similar
+ * sit in front of a large share of small-business sites), it is not the owner's
+ * fault, and it is fixable — so the message names the cause and points at the
+ * way round it rather than implying the site is empty.
+ */
+export function explainCrawlFailure(url: string, failure: CrawlFailure | undefined): string {
+  const host = hostOf(url);
+
+  switch (failure) {
+    case 'blocked':
+      return `${host} blocked us from reading it — that is usually a firewall like Cloudflare, not anything you did. You can set your brand up by answering a few questions instead.`;
+    case 'not_found':
+      return `There is no page at ${url}. Check the address, or set your brand up by answering a few questions instead.`;
+    case 'server_error':
+      return `${host} returned an error. It may be down — try again shortly, or set your brand up by answering a few questions instead.`;
+    case 'unreachable':
+      return `We could not reach ${host}. Check the address is right, or set your brand up by answering a few questions instead.`;
+    default:
+      return `We reached ${host} but found no readable text — sites built entirely in images or video often read this way. You can set your brand up by answering a few questions instead.`;
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
 }
 
 export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
@@ -85,9 +118,21 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
 
     async handler(input, ctx) {
       return ctx.trace.span('genome.bootstrap_from_url', async () => {
-        const pages = await crawl(input.url, { maxPages: input.maxPages });
+        const { pages, failure } = await crawl(input.url, { maxPages: input.maxPages });
         if (pages.length === 0) {
-          throw new ToolError('UPSTREAM_FAILED', `Nothing readable at ${input.url}.`, { url: input.url });
+          /**
+           * Say which of the four things went wrong.
+           *
+           * This reported "Nothing readable at <url>" for every cause,
+           * including a 403 from a bot wall — telling a business its own
+           * website has no content, and offering nothing to do about it. Each
+           * of these has a different next step, and the message is the only
+           * place the user learns which one they are in.
+           */
+          throw new ToolError('UPSTREAM_FAILED', explainCrawlFailure(input.url, failure), {
+            url: input.url,
+            ...(failure ? { failure } : {}),
+          });
         }
 
         // Crawled content is attacker-controlled. It is DATA. A page saying

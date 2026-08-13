@@ -43,6 +43,13 @@
       "when": 1786448862077,
       "tag": "0005_broken_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786473545715,
+      "tag": "0006_sour_james_howlett",
+      "breakpoints": true
     }
   ]
 }

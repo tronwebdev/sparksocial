@@ -1,4 +1,5 @@
-import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
+import type { CreditStore, ScopedDb, ToolCtx } from '@sparksocial/tools';
+import { readBudget } from './budget.js';
 import type { Role } from '@sparksocial/shared/types';
 
 /**
@@ -18,7 +19,7 @@ import type { Role } from '@sparksocial/shared/types';
  * the store is a parameter rather than a module-level singleton — that also keeps
  * a second seeded store from being constructed when the caller already made one.
  */
-export function makeDevResolveCtx(db: ScopedDb) {
+export function makeDevResolveCtx(db: ScopedDb, credits?: CreditStore) {
   return async function devResolveCtx(req: Request): Promise<ToolCtx & { caller: 'user' | 'agent' }> {
     const h = req.headers;
     return {
@@ -30,7 +31,9 @@ export function makeDevResolveCtx(db: ScopedDb) {
       role: (h.get('x-role') ?? 'owner') as Role,
       caller: h.get('x-caller') === 'agent' ? 'agent' : 'user',
       approvalMode: 'autopublish',
-      budget: { remainingCents: 100_000, monthlyCapCents: 100_000 },
+      // Same ledger as production. A dev environment with an unreachable spend
+      // limit is how the limit stays untested until a customer hits it.
+      budget: await readBudget(credits, h.get('x-org-id') ?? 'org_dev'),
       db,
       logger: {
         info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),

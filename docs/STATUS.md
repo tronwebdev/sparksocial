@@ -71,7 +71,12 @@ mutation through — and now uses the spec's literal.
 | **P4 publishing** — one `PlatformAdapter`, aggregator-first routing, `publish.now` / `publish.status`, retry with jittered backoff, per-brand per-platform rate budgets | §8, Plan §12 P4 | `packages/publish`; native adapters prepend as approvals clear. LinkedIn will not clear by Aug 29, which is why aggregator-first ships |
 | **`inferGenome` implemented** — the genome inference pass, behind an injected client | §1.2, Plan §11, `ONB-02` | was a `throw`, and a hard blocker on P2's exit criterion. Unevidenced routing dimensions come back as onboarding questions rather than guesses |
 | **P3 calendar UI** — mix bar as the review surface, month grid, relative adjustment | §6.8 Step 4, `CAL-01` | `apps/web/src/components/calendar` |
-| **Approval ladder is live** — `brands` table, `brand.approval.get` / `.set`, governance read from the store | PRD §7.1, §6.8 Step 5 | `policy.ts` always implemented all three rungs; both resolvers returned a hardcoded `autopublish`, so it was inert in a running system |
+| **Approval ladder is live** — `brands` table, `agent.approval_mode.get` / `.set`, governance read from the store | PRD §7.1, §6.8 Step 5 | `policy.ts` always implemented all three rungs; both resolvers returned a hardcoded `autopublish`, so it was inert in a running system |
+| **P2 site crawl** — `crawl()` on Playwright, JS-rendered pages, same-origin link following, per-page and total budgets | `ONB-01`, §1.2 | was the last `throw` in the codebase. Every request is re-screened against the SSRF guard — including redirect hops, which `page.goto` follows transparently — and repeated nav chrome is deduplicated so the model sees the menu once, not five times |
+| **Real genome inference** — `anthropicInferenceClient`, Opus behind forced tool use | `ONB-02`, §1.2 | the crawl fed a fake: `devInferenceClient` derives a profile from the *hostname* and never reads the corpus, so a real crawl of a global project returned `en-NG, radiusKm 10`. Selected on `ANTHROPIC_API_KEY`, and the fallback now warns loudly |
+| **The `agent.*` / `human.*` family, all ten** — `agent.status` · `pause` · `resume` · `frequency.set` · `approval_mode.set` · `explain` · `human.ask` · `human.notify` · `whatsapp.send` · `whatsapp.receive` | Plan §3.2 | plus `human.pending` / `human.answer` so questions have a reader, and `agent.approval_mode.get`. `whatsapp.receive` is the alpha's one untrusted-input boundary and is `human_only` — SPARK must not be able to manufacture the owner's answer to its own question |
+| **Spend is enforced** — `org_budgets` + `credit_ledger`, real balance in `ToolCtx`, `recordCost` wired | Plan §9 | `policy.ts` rule 4 was doubly inert: both resolvers hardcoded `remainingCents: 100_000`, **and** the rule keyed on `effect: 'spend'`, which **no tool in the registry has ever declared**. Now keyed on `estimatedCents > 0`. Found by draining a 2¢ cap with 1¢ calls against a running server; no unit test could have caught it |
+| **Shared rate limits** — `createRedisRateLimiter`, atomic sliding window in Lua | Plan §2.2 | `RateLimiter` is async now. The in-memory one stays for dev/CI; without `REDIS_URL` the API warns that the budget multiplies by replica count |
 | **P5 trend discovery** — `trend.rank`, ranking on remaining window not size, brand-safety as hard exclusion | PRD §8.9 `DISC-01` | `packages/trends`; sources are a credential-gated seam. **Out of the Aug 29 alpha scope** per CLAUDE.md — built on request |
 
 ## Security & scalability pass (8 Aug)
@@ -125,11 +130,11 @@ Ordered by what blocks what.
 
 | Gap | Spec | Blocks |
 |---|---|---|
-| **Assemble render** — beat assembly now exists (`assemble.plan` produces a fully-resolved plan), but nothing turns that plan into a video. Needs Remotion + the Playwright capture service; `crawl()` is still a stub | §6.5, Plan §12 P2 | P2's exit criterion |
-| **WhatsApp client** — `direct.session.send` and its `MessageTransport` seam exist and the loop runs end to end on a stub. What is missing is the WhatsApp Cloud API implementation behind it, which needs Meta business verification, plus the inbound webhook that receives the owner's footage | §6.3, Plan §8 | real delivery; **blocked on Meta, not on code** |
+| **Assemble render** — beat assembly now exists (`assemble.plan` produces a fully-resolved plan), but nothing turns that plan into a video. Needs Remotion, plus a Playwright *capture* service distinct from the crawler | §6.5, Plan §12 P2 | P2's exit criterion |
+| **WhatsApp client** — `whatsapp.send` / `whatsapp.receive` / `direct.session.send` and the `MessageTransport` seam all exist, and the loop runs end to end on a stub. What is missing is only the Cloud API implementation behind the seam, and the HTTP webhook route that calls `whatsapp.receive` with a verified Meta signature | §6.3, Plan §8 | real delivery; **blocked on Meta, not on code** |
 | Publishing adapters — `publish.*` tools don't exist as concrete implementations; only the scope assignment (Producer agent) is in place | §8, Plan §3.2 | going live |
 | Onboarding UI (`ONB-01`→`ONB-06`) — the tools exist, the screens do not | Plan §12 P2 | first-run experience |
-| Budget policy — approval mode is now stored and enforced, but `budget` is still hardcoded in both resolvers and there is no credit ledger | Plan §9 | real spend limits |
+| Billing integration — the ledger and the cap are real, but every org gets the same default `monthly_cap_cents` because nothing sets it from a plan | Plan §9 | per-plan limits |
 | `apps/web` deployment — needs a second Container App, Dockerfile and workflow job | Plan §2.2 | a live URL |
 
 ## Next

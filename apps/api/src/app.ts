@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { registerWhatsappWebhook, type WhatsappWebhookDeps } from './whatsapp-webhook.js';
 import { streamSSE } from 'hono/streaming';
 import { ToolError } from '@sparksocial/shared/types';
 import {
@@ -29,6 +30,8 @@ import type { RunEvent, RunEventBus, RunAgentArgs, RunResult } from '@sparksocia
  */
 
 export interface AppDeps {
+  /** Meta's inbound webhook. Absent → the route does not exist. */
+  whatsappWebhook?: WhatsappWebhookDeps;
   /** Resolve the caller's tenancy + role from the request. Replaced by Clerk. */
   resolveCtx: (req: Request) => Promise<ToolCtx & { caller: 'user' | 'agent' }>;
   /** Brand governance state for the policy engine. */
@@ -68,6 +71,13 @@ export function createApp(deps: AppDeps) {
     }),
   );
 
+  /**
+   * Inbound WhatsApp. Registered only when an app secret is configured — see
+   * `whatsapp-webhook.ts`: an unsigned-write endpoint is worse than a missing
+   * one, because the missing one fails visibly during setup.
+   */
+  if (deps.whatsappWebhook) registerWhatsappWebhook(app, deps.whatsappWebhook);
+
   /* ── The tool manifest. SPARK's view and the UI's view are this one list. ── */
   app.get('/v1/tools', (c) => c.json({ tools: agentManifest() }));
 
@@ -95,7 +105,7 @@ export function createApp(deps: AppDeps) {
     try {
       ctx = await deps.resolveCtx(c.req.raw);
     } catch (e) {
-      return c.json(errorBody(e, 'FORBIDDEN'), 401);
+      return c.json(errorBody(e, 'FORBIDDEN'), authFailureStatus(e));
     }
 
     const body = await c.req.json().catch(() => ({}));
@@ -153,7 +163,7 @@ export function createApp(deps: AppDeps) {
     try {
       ctx = await deps.resolveCtx(c.req.raw);
     } catch (e) {
-      return c.json(errorBody(e, 'FORBIDDEN'), 401);
+      return c.json(errorBody(e, 'FORBIDDEN'), authFailureStatus(e));
     }
 
     if (!deps.agent) {
@@ -208,7 +218,7 @@ export function createApp(deps: AppDeps) {
     try {
       ctx = await deps.resolveCtx(c.req.raw);
     } catch (e) {
-      return c.json(errorBody(e, 'FORBIDDEN'), 401);
+      return c.json(errorBody(e, 'FORBIDDEN'), authFailureStatus(e));
     }
 
     if (!deps.agent) {
@@ -295,11 +305,27 @@ export function createApp(deps: AppDeps) {
   return app;
 }
 
+/**
+ * Status for a failure in `resolveCtx`, before any tool runs.
+ *
+ * Everything here used to be 401. That is right for an unverifiable session and
+ * wrong for a verified one that simply has no organization yet: the caller *is*
+ * authenticated, so 401 tells the browser to re-authenticate — which does not
+ * fix it, and loops. A stuck Clerk `choose-organization` task therefore
+ * presented as `401 Not signed in` to a signed-in user, on every panel at once.
+ *
+ * 403 says the right thing: your identity is fine, you may not do this yet.
+ */
+function authFailureStatus(e: unknown): 401 | 403 {
+  return e instanceof ToolError && e.code === 'NO_ORGANIZATION' ? 403 : 401;
+}
+
 function httpStatusFor(code: ToolError['code']): 400 | 403 | 404 | 429 | 502 {
   switch (code) {
     case 'INVALID_INPUT':
       return 400;
     case 'FORBIDDEN':
+    case 'NO_ORGANIZATION':
     case 'GUARDRAIL_BLOCKED':
     case 'ISOLATION_VIOLATION':
     case 'BUDGET_EXCEEDED':

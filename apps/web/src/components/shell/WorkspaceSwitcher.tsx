@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -84,10 +86,23 @@ export function WorkspaceSwitcher() {
   }
 
   if (genomes.length === 0) {
+    /**
+     * A link, not a sentence.
+     *
+     * This said "Onboarding creates your first one" while onboarding had no
+     * route to reach — a dead end that named its own exit. Every panel behind
+     * it needs a genome, so this is the only useful action on the screen and it
+     * should be the one thing that is clickable.
+     */
     return (
       <div>
         <p className="text-[26px] font-semibold text-ink">No brands yet</p>
-        <p className="mt-1 text-[18px] text-ink-muted">Onboarding creates your first one.</p>
+        <Link
+          href="/onboarding"
+          className="mt-1 inline-block text-[18px] text-[var(--ss-accent-purple)] underline-offset-4 hover:underline"
+        >
+          Set up your first brand
+        </Link>
       </div>
     );
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import { evaluate } from '@sparksocial/tools';
 import type { BrandGovernance, BrandGovernanceStore, ToolCtx } from '@sparksocial/tools';
-import { agentPause, agentResume, agentStatus } from '../src/agentControl.js';
+import { agentFrequencySet, agentPause, agentResume, agentStatus } from '../src/agentControl.js';
 
 /**
  * THE KILL SWITCH.
@@ -20,15 +20,17 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     approvalMode: 'autopublish',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     agentPaused: false,
+    postsPerWeek: 3,
     ...initial,
   };
   return {
     get: async () => row,
     setApprovalMode: async (_b, _o, mode) => ((row = { ...row, approvalMode: mode }), row),
+    setFrequency: async ({ postsPerWeek }) => ((row = { ...row, postsPerWeek }), row),
     setAgentPaused: async ({ paused, by, reason }) => {
       row = paused
         ? { ...row, agentPaused: true, pausedAt: new Date(), pausedBy: by, ...(reason ? { pauseReason: reason } : {}) }
-        : { brandId: row.brandId, name: row.name, approvalMode: row.approvalMode, createdAt: row.createdAt, agentPaused: false };
+        : { brandId: row.brandId, name: row.name, approvalMode: row.approvalMode, createdAt: row.createdAt, agentPaused: false, postsPerWeek: row.postsPerWeek };
       return row;
     },
   };
@@ -164,5 +166,74 @@ describe('the switch actually reaches the policy engine', () => {
     const g = await s.get('brand_1', 'org_1');
 
     expect(evaluate({ ...publishCall(g.agentPaused), caller: 'user' }).kind).not.toBe('deny');
+  });
+});
+
+describe('agent.frequency.set', () => {
+  /**
+   * Frequency is how loud the account is; pause is whether it speaks at all.
+   * Keeping them distinct is what lets an owner turn the volume down without
+   * discovering later that they also stopped the agent.
+   */
+  it('sets the cadence and reports the change', async () => {
+    const s = store({ postsPerWeek: 3 });
+    const out = await agentFrequencySet.handler({ postsPerWeek: 5 }, ctx(s));
+
+    expect(out.postsPerWeek).toBe(5);
+    expect(out.why.summary).toMatch(/3 → 5/);
+    expect(out.why.factors).toContainEqual({ label: 'was', detail: '3/week' });
+  });
+
+  it('names pausing as the rejected alternative when turning down', async () => {
+    // The mistake people actually make: turning the number down when they mean
+    // stop. Invariant 4 says name the option that was not taken.
+    const s = store({ postsPerWeek: 7 });
+    const out = await agentFrequencySet.handler({ postsPerWeek: 1 }, ctx(s));
+
+    expect(out.why.alternatives?.[0]?.option).toMatch(/pause/i);
+  });
+
+  it('offers no alternative when turning up — there is no confusion to resolve', async () => {
+    const s = store({ postsPerWeek: 2 });
+    const out = await agentFrequencySet.handler({ postsPerWeek: 6 }, ctx(s));
+    expect(out.why.alternatives).toEqual([]);
+  });
+
+  it('rejects zero — that is agent.pause, and encoding "off" twice is a bug source', () => {
+    // A running agent set to post nothing reads as broken on the Command Center.
+    expect(agentFrequencySet.input.safeParse({ postsPerWeek: 0 }).success).toBe(false);
+    expect(agentFrequencySet.input.safeParse({ postsPerWeek: 1 }).success).toBe(true);
+  });
+
+  it('caps at twice a day', () => {
+    // Past this the mix engine fills every extra slot by repeating a format —
+    // the exact failure the calendar's spacing floor exists to prevent.
+    expect(agentFrequencySet.input.safeParse({ postsPerWeek: 15 }).success).toBe(false);
+    expect(agentFrequencySet.input.safeParse({ postsPerWeek: 14 }).success).toBe(true);
+    expect(agentFrequencySet.input.safeParse({ postsPerWeek: 3.5 }).success).toBe(false);
+  });
+
+  it('is auto, unlike the kill switch', () => {
+    // SPARK lowering the cadence because the Asset Graph cannot supply the
+    // current one is the judgement the product exists to make. Pausing is a
+    // safety control and stays human_only.
+    expect(agentFrequencySet.autonomy).toBe('auto');
+    expect(agentPause.autonomy).toBe('human_only');
+  });
+
+  it('does not touch the pause state', async () => {
+    // The separation, asserted rather than assumed.
+    const s = store();
+    await agentPause.handler({ reason: 'checking' }, ctx(s));
+    await agentFrequencySet.handler({ postsPerWeek: 5 }, ctx(s));
+
+    const g = await s.get('brand_1', 'org_1');
+    expect(g.agentPaused).toBe(true);
+    expect(g.postsPerWeek).toBe(5);
+  });
+
+  it('needs a brand', async () => {
+    await expect(agentFrequencySet.handler({ postsPerWeek: 3 }, ctx(store(), { brandId: undefined })))
+      .rejects.toThrow(ToolError);
   });
 });

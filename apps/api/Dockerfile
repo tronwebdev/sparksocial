@@ -19,6 +19,13 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# ffmpeg + ffprobe for the Finish pipeline (§6.3). Installed here rather than
+# via `ffmpeg-static`, whose postinstall downloads a ~70MB binary from GitHub —
+# a dependency that fails on any restricted network, which is most CI.
+# Alpine's build is ~80MB; if image size becomes the constraint, the swap is a
+# separate ffmpeg sidecar, not a smaller ffmpeg.
+RUN apk add --no-cache ffmpeg
+
 RUN addgroup -S spark && adduser -S spark -G spark
 
 COPY --from=deps /app/node_modules ./node_modules

@@ -1,6 +1,6 @@
 import { z, ZodTypeAny } from 'zod';
 import type {
-  Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType,
+  Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
 import type { Genome } from '@sparksocial/shared/genome';
 
@@ -144,6 +144,23 @@ export interface ScopedDb {
   approvals: ApprovalStore;
   /** The approval ladder's storage (PRD §7.1). */
   brands: BrandGovernanceStore;
+  /** SPARK's questions to the owner and their answers. See {@link HumanLoopStore}. */
+  humanLoop: HumanLoopStore;
+  /**
+   * Read-only view of the audit trail, for `agent.explain`.
+   *
+   * Deliberately read-only and deliberately narrow: `writeToolCall` in
+   * `invoke.ts` is the only writer, and a tool able to rewrite the record of
+   * what the agent did would undo the Timeline's entire purpose.
+   */
+  toolCalls: {
+    /**
+     * One recorded call. Returns undefined rather than throwing when the row
+     * belongs to another org — the same "out of scope reads as not found" rule
+     * as `genomes.get`, so probing ids leaks nothing.
+     */
+    get(callId: string, orgId: string): Promise<RecordedCall | undefined>;
+  };
   runs: {
     /** Most recent runs for the brand, newest first. `limit` is enforced by the store. */
     list(brandId: string, limit: number): Promise<RunSummary[]>;
@@ -169,6 +186,12 @@ export interface BrandGovernance {
   pausedAt?: Date;
   pausedBy?: string;
   pauseReason?: string;
+  /**
+   * Target posts per week — how loud the account is, set by the owner and read
+   * by calendar generation. Distinct from the kill switch: pausing stops the
+   * agent, frequency shapes what it does while running.
+   */
+  postsPerWeek: number;
 }
 
 /**
@@ -199,6 +222,127 @@ export interface BrandGovernanceStore {
     by: string;
     reason?: string;
   }): Promise<BrandGovernance>;
+  /** Target posts per week. Range is enforced by the tool, not here. */
+  setFrequency(args: {
+    brandId: string;
+    orgId: string;
+    postsPerWeek: number;
+    by: string;
+  }): Promise<BrandGovernance>;
+}
+
+/**
+ * The subset of a `tool_calls` row `agent.explain` is allowed to return.
+ *
+ * Narrower than `ToolCallRecord` on purpose. That row carries `input` and
+ * `output` verbatim — a genome draft, a recipient phone number, a caption — and
+ * `agent.explain` answers "why did you do that", not "show me everything you
+ * held at the time". Widening this is how an explainability feature becomes a
+ * data-exfiltration one.
+ */
+export interface RecordedCall {
+  id: string;
+  tool: string;
+  caller: 'user' | 'agent';
+  decision: string;
+  status: string;
+  ruleId?: string;
+  reason?: string;
+  costCents: number;
+  at: Date;
+  runId?: string;
+  /** Absent when the tool makes no user-visible decision, or the call never ran. */
+  why?: Explanation;
+}
+
+/**
+ * SPARK's side of the conversation with the owner (plan §3.2 `human.*`).
+ *
+ * The asymmetry that matters is in the schema, not the handlers: `body` is
+ * written by us and `answer` comes from a person over WhatsApp, which is an
+ * untrusted channel. An answer is recorded, shown and used as *content*; it can
+ * never authorise a tool call. See `whatsapp.receive`.
+ */
+export interface HumanMessage {
+  id: string;
+  brandId: string;
+  /** `ask` expects a reply and parks the run; `notify` does not. */
+  kind: 'ask' | 'notify';
+  body: string;
+  /** Offered choices, for an `ask`. Free text is still accepted. */
+  options?: string[];
+  urgency: 'low' | 'normal' | 'high';
+  runId?: string;
+  createdAt: Date;
+  /** UNTRUSTED. The owner's words, verbatim. */
+  answer?: string;
+  answeredAt?: Date;
+  answeredBy?: string;
+  /** Where it was delivered, e.g. `whatsapp`. Absent until sent. */
+  channel?: string;
+}
+
+export interface HumanLoopStore {
+  create(args: {
+    brandId: string;
+    orgId: string;
+    kind: 'ask' | 'notify';
+    body: string;
+    options?: string[];
+    urgency: 'low' | 'normal' | 'high';
+    runId?: string;
+  }): Promise<HumanMessage>;
+  get(id: string, orgId: string): Promise<HumanMessage | undefined>;
+  /** Unanswered `ask` items, oldest first — the owner's inbox. */
+  listPending(brandId: string, orgId: string, limit: number): Promise<HumanMessage[]>;
+  /**
+   * Record the owner's reply. Returns undefined when the id is out of scope or
+   * already answered, so a replayed webhook cannot overwrite a decision.
+   */
+  answer(args: {
+    id: string;
+    orgId: string;
+    answer: string;
+    by: string;
+  }): Promise<HumanMessage | undefined>;
+  /** Note the delivery channel once a transport has accepted it. */
+  markDelivered(id: string, orgId: string, channel: string): Promise<void>;
+}
+
+/**
+ * SPEND — plan §9. What `policy.ts` rule 4 has always been asking about.
+ *
+ * Deliberately **not** on `ScopedDb`. Handlers must not be able to read or
+ * write the budget: spend is decided by the policy engine before a handler
+ * runs and recorded by `invokeTool` after it returns, and a tool that could
+ * touch its own balance mid-flight would make both meaningless. The resolver
+ * reads it into `ToolCtx.budget`; `InvokeDeps.recordCost` writes it. Two
+ * places, both outside the handler.
+ */
+export interface CreditStore {
+  /**
+   * Cap and spend for the current period, in one call.
+   *
+   * One call rather than two accessors because they are read together on every
+   * single request, and two round-trips on the hot path to compute one
+   * subtraction is a cost with no benefit.
+   */
+  budget(orgId: string, now: Date): Promise<{ monthlyCapCents: number; spentCents: number }>;
+
+  /**
+   * Append one charge. Idempotent on `callId` — a second write for the same
+   * call is silently ignored rather than raising, because the caller is
+   * `invokeTool` finishing a successful call and failing it *after* the work
+   * was done would be worse than a duplicate that never lands.
+   */
+  record(entry: {
+    callId: string;
+    orgId: string;
+    brandId?: string;
+    tool: string;
+    costCents: number;
+    at: Date;
+  }): Promise<void>;
 }
 
 /** One item in the Review queue. */

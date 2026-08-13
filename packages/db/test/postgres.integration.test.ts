@@ -1,4 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { getTableColumns, getTableName, is } from 'drizzle-orm';
+import { PgTable } from 'drizzle-orm/pg-core';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { Database } from '../src/client.js';
@@ -35,51 +40,58 @@ import * as schema from '../src/schema.js';
 let pg: PGlite;
 let db: Database;
 
-const TEST_SCHEMA_SQL = `
-  CREATE TABLE genomes (
-    id text PRIMARY KEY, org_id text NOT NULL, brand_id text NOT NULL,
-    version integer NOT NULL DEFAULT 1,
-    identity jsonb NOT NULL, dimensions jsonb NOT NULL, voice jsonb NOT NULL,
-    audience jsonb NOT NULL, offer jsonb NOT NULL, constraints jsonb NOT NULL, learned jsonb NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
-  );
-  CREATE TABLE assets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id text NOT NULL, genome_id text NOT NULL,
-    folder_id uuid, media_type text NOT NULL, asset_role text NOT NULL, storage_path text NOT NULL,
-    mux_id text, caption text, embedding text, quality jsonb,
-    rights_status text NOT NULL DEFAULT 'pending', usage_count integer NOT NULL DEFAULT 0,
-    last_used_at timestamptz, source text, provenance jsonb,
-    created_at timestamptz NOT NULL DEFAULT now()
-  );
-  CREATE TABLE content_items (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), org_id text NOT NULL, genome_id text NOT NULL,
-    campaign_id uuid, playbook_id text, mode text, pillar text, status text NOT NULL DEFAULT 'draft',
-    scheduled_at timestamptz, published_at timestamptz, platform text, copy jsonb, embedding text,
-    why jsonb, run_id uuid, created_at timestamptz NOT NULL DEFAULT now()
-  );
-  CREATE TABLE tool_calls (
-    id uuid PRIMARY KEY, run_id uuid, user_id text, tool text NOT NULL, version integer NOT NULL,
-    caller text NOT NULL, org_id text NOT NULL, brand_id text, genome_id text, role text NOT NULL,
-    input jsonb, output jsonb, effect text NOT NULL, decision text NOT NULL, rule_id text, reason text,
-    cost_cents integer NOT NULL DEFAULT 0, idempotency_key text, status text NOT NULL,
-    error jsonb, why jsonb, at timestamptz NOT NULL
-  );
-  CREATE TABLE agent_runs (
-    id uuid PRIMARY KEY, brand_id text NOT NULL, agent text NOT NULL, goal text NOT NULL,
-    trigger text NOT NULL, status text NOT NULL DEFAULT 'running',
-    cost_cents integer NOT NULL DEFAULT 0, input_tokens integer NOT NULL DEFAULT 0,
-    output_tokens integer NOT NULL DEFAULT 0, trace_id text, parent_run_id uuid,
-    started_at timestamptz NOT NULL, ended_at timestamptz, error jsonb
-  );
-  CREATE TABLE agent_steps (
-    run_id uuid NOT NULL, idx integer NOT NULL, type text NOT NULL, payload jsonb,
-    ms integer NOT NULL, at timestamptz NOT NULL
-  );
-`;
+/**
+ * Apply `packages/db/migrations` — the same SQL the deploy runs.
+ *
+ * This used to be a hand-written `CREATE TABLE` block, and that is exactly how
+ * the schema and the migrations drifted apart without a single test failing:
+ * `org_budgets`, `credit_ledger`, `human_messages` and `brands.posts_per_week`
+ * were added to `schema.ts` and never generated into a migration. The suite was
+ * green because it was building its own tables from a second source of truth.
+ *
+ * Applying the real files makes this a **conformance check**: a table or column
+ * that exists in `schema.ts` but in no migration now fails here rather than in
+ * production, where it presents as `column "posts_per_week" does not exist` on
+ * every request that touches it.
+ */
+async function applyMigrations(target: PGlite): Promise<string[]> {
+  const dir = fileURLToPath(new URL('../migrations/', import.meta.url));
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+
+  for (const file of files) {
+    // drizzle-kit separates statements with this marker rather than `;`,
+    // because a `;` inside a function body or a string literal is not a
+    // statement boundary and splitting on it corrupts them.
+    for (const raw of readFileSync(join(dir, file), 'utf8').split('--> statement-breakpoint')) {
+      const sql = forPglite(raw);
+      if (sql.trim()) await target.exec(sql);
+    }
+  }
+  return files;
+}
+
+/**
+ * The one substitution, kept narrow and visible.
+ *
+ * This pglite build ships no `pgvector`, so the extension and the four
+ * `vector(1536)` columns cannot be created verbatim. Everything else — every
+ * table, column, default, constraint and index — is applied exactly as the
+ * deploy will apply it.
+ *
+ * The cost is stated rather than hidden: cosine-distance ranking (`<=>`,
+ * `::vector`) is still not exercised here and needs a real pgvector-enabled
+ * Postgres. Its query shape is asserted in `scoped.test.ts`.
+ */
+function forPglite(sql: string): string {
+  if (/CREATE\s+EXTENSION[^;]*vector/i.test(sql)) return '';
+  return sql.replace(/\bvector\s*\(\s*\d+\s*\)/gi, 'text');
+}
+
+let migrationsApplied: string[] = [];
 
 beforeAll(async () => {
   pg = new PGlite();
-  await pg.exec(TEST_SCHEMA_SQL);
+  migrationsApplied = await applyMigrations(pg);
   db = drizzle(pg, { schema }) as unknown as Database;
 });
 
@@ -392,5 +404,77 @@ describe('run recorder — agent_runs / agent_steps', () => {
 
     const child = await getRun(db, '00000000-0000-0000-0000-0000000000bb', 'brand_1');
     expect(child?.parentRunId).toBe('00000000-0000-0000-0000-0000000000aa');
+  });
+});
+
+describe('migrations conform to schema.ts', () => {
+  /**
+   * The check that was missing, and the reason four objects reached `schema.ts`
+   * with no migration behind them.
+   *
+   * Drizzle's `generate` diffs the schema against the migration folder, so the
+   * two only agree if somebody remembered to run it. Nothing verified that they
+   * had. The symptom in production is `column "posts_per_week" does not exist`
+   * on every request that touches the column — which is to say, after deploy,
+   * on a Friday.
+   */
+  // `Object.values` gives a union of each table's *specific* generic type, and
+  // drizzle's `PgTable<TableConfig>` is not assignable from those — so the
+  // narrowing is done with `is()` and the widening stated separately.
+  const tables = Object.values(schema).flatMap((v) => (is(v, PgTable) ? [v as unknown as PgTable] : []));
+
+  it('applies every migration file in order', () => {
+    // A guard against the harness silently doing nothing: an empty folder, or a
+    // path that stopped resolving, would otherwise leave every table missing
+    // and every test failing for a reason that looks like a schema bug.
+    expect(migrationsApplied.length).toBeGreaterThan(0);
+    expect(migrationsApplied).toEqual([...migrationsApplied].sort());
+  });
+
+  it('declares at least one migration per table in schema.ts', async () => {
+    const live = await pg.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`,
+    );
+    const present = new Set(live.rows.map((r) => r.table_name));
+    const missing = tables.map(getTableName).filter((t) => !present.has(t));
+
+    expect(missing, `tables in schema.ts with no migration: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('declares every column too, not just the table', async () => {
+    /**
+     * Table-level checking alone would have passed while `brands.posts_per_week`
+     * was missing — `brands` already existed, and the new column arrived with a
+     * tool that read it. Column drift is the more common failure precisely
+     * because adding a column feels smaller than adding a table.
+     */
+    const live = await pg.query<{ table_name: string; column_name: string }>(
+      `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'`,
+    );
+    const present = new Set(live.rows.map((r) => `${r.table_name}.${r.column_name}`));
+
+    const missing: string[] = [];
+    for (const table of tables) {
+      const name = getTableName(table);
+      for (const column of Object.values(getTableColumns(table))) {
+        if (!present.has(`${name}.${column.name}`)) missing.push(`${name}.${column.name}`);
+      }
+    }
+
+    expect(missing, `columns in schema.ts with no migration: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('created the tables added most recently', async () => {
+    // Named explicitly rather than relying on the generic sweep above: these
+    // four are the ones that actually drifted, and a regression on them should
+    // fail with their names in the message.
+    const live = await pg.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`,
+    );
+    const present = new Set(live.rows.map((r) => r.table_name));
+
+    for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals']) {
+      expect(present.has(t), `${t} is missing`).toBe(true);
+    }
   });
 });

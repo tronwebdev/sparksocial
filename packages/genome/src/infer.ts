@@ -176,7 +176,7 @@ export async function inferGenome(
     // completes it from the owner's own answers.
     dimensions: stripUnresolved(dimensions, missing),
     voice,
-    chips: confident.map((c) => ({ ...c, editable: true })),
+    chips: confident.map((c) => ({ ...c, value: asChipValue(c.value), editable: true })),
     unresolved,
     factors: [
       { label: 'pages read', detail: String(args.corpus.length) },
@@ -227,6 +227,30 @@ export function buildPrompt(corpus: Untrusted<string>[], sourceUrl: string): str
     '',
     renderUntrustedCorpus(corpus),
   ].join('\n');
+}
+
+/** ONB-02 renders these as editable chips in a sidebar, not as prose. */
+const CHIP_MAX = 60;
+
+/**
+ * Reduce a chip to something that fits in a chip.
+ *
+ * Models answer the *field* accurately and then justify themselves in the same
+ * string — a real run returned `"data_outcomes — build-time benchmarks vs
+ * Astro/Gatsby/Next.js, 20.3M downloads, 19.8k stars…"` for a value the UI
+ * renders inside a pill next to a confidence dot. The schema asks for a bare
+ * value and a schema is advice, so this enforces it.
+ *
+ * Cutting at the em-dash rather than truncating is what keeps the *value* and
+ * discards the *reasoning*; a blind `slice` would keep the first 60 characters
+ * of an explanation and lose the answer. Truncation is the fallback for
+ * genuinely long values, and confidence already carries the doubt the prose was
+ * trying to express.
+ */
+function asChipValue(value: string): string {
+  const head = value.split(/\s+[—–-]\s+|[,;(]/)[0]!.trim();
+  const chosen = head.length > 0 && head.length <= CHIP_MAX ? head : value.trim();
+  return chosen.length <= CHIP_MAX ? chosen : `${chosen.slice(0, CHIP_MAX - 1).trimEnd()}…`;
 }
 
 function stripUnresolved(

@@ -1,6 +1,7 @@
 import { createClerkClient, type ClerkClient } from '@clerk/backend';
 import { ToolError, Role } from '@sparksocial/shared/types';
-import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
+import type { CreditStore, ScopedDb, ToolCtx } from '@sparksocial/tools';
+import { readBudget } from './budget.js';
 
 /**
  * CLERK → `ToolCtx`. This is the tenancy boundary.
@@ -24,6 +25,8 @@ import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
 
 export interface ClerkResolveDeps {
   db: ScopedDb;
+  /** Spend, per plan §9. Omitted in tests that only exercise identity. */
+  credits?: CreditStore;
   /** Injected for testing; defaults to a client built from `CLERK_SECRET_KEY`. */
   clerk?: ClerkClient;
   /**
@@ -61,11 +64,7 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
       throw new ToolError('FORBIDDEN', 'Not signed in.', { reason: state.reason });
     }
 
-    const claims = state.toAuth().sessionClaims as {
-      sub?: string;
-      org_id?: string;
-      org_role?: string;
-    };
+    const claims = state.toAuth().sessionClaims as SessionClaims;
 
     const userId = claims.sub;
     if (!userId) throw new ToolError('FORBIDDEN', 'Session has no subject.');
@@ -77,13 +76,16 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
     //    This `org_...` id is written into `genomes.org_id`, `assets.org_id` and
     //    `tool_calls.org_id`. It is a permanent external identifier from here on;
     //    changing identity providers later means migrating those columns.
-    const orgId = claims.org_id;
+    const { orgId, orgRole } = activeOrganization(claims);
     if (!orgId) {
-      throw new ToolError('FORBIDDEN', 'No active organization on this session. Select one and retry.');
+      throw new ToolError(
+        'NO_ORGANIZATION',
+        'No active organization on this session. Select one and retry.',
+      );
     }
 
     // 3. Role. Clerk custom organization roles carry an `org:` prefix.
-    const role = parseRole(claims.org_role);
+    const role = parseRole(orgRole);
 
     const ctx: ToolCtx & { caller: 'user' | 'agent' } = {
       orgId,
@@ -96,7 +98,19 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
       //    only difference between a UI action and an agent action.
       caller: 'user',
       approvalMode: 'autopublish',
-      budget: { remainingCents: 100_000, monthlyCapCents: 100_000 },
+      /**
+       * Real spend, read per request from the ledger (plan §9).
+       *
+       * This was `{ remainingCents: 100_000 }` hardcoded, which made
+       * `policy.ts` rule 4 — fully implemented and tested since P1 — impossible
+       * to trigger. Every `estimateCents` in the codebase was computed,
+       * recorded on the audit row, and compared against a constant.
+       *
+       * One extra query per request, deliberately not cached: a stale balance
+       * is a balance that permits a call the org cannot afford, and the cache
+       * invalidation story for "how much money is left" is the one nobody wins.
+       */
+      budget: await readBudget(deps.credits, orgId),
       db: deps.db,
       logger: {
         info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),
@@ -138,12 +152,50 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
 }
 
 /**
- * Clerk custom organization roles arrive as `org:<name>`. Anything unrecognised
- * becomes `viewer` — the least-privileged role — rather than throwing, so a role
- * added in the Clerk dashboard but not yet in `Role` degrades to read-only
- * instead of locking the user out entirely.
+ * Both shapes Clerk uses for the active organization.
  *
- * `owner` is only ever granted by an explicit `org:owner`. It is never inferred.
+ * `v1` (no `v` claim) puts it flat: `org_id`, `org_role`. **`v2` (`v: 2`) nests
+ * it** under `o: { id, rol }` and types `org_id` as `never`. Which one an
+ * instance issues is a Clerk-side setting, not something the app controls.
+ *
+ * Reading only `org_id` meant a v2 instance looked exactly like a session with
+ * no organization: the user creates one, Clerk activates it, `useAuth()`
+ * reports it client-side, and every tool call still comes back
+ * `NO_ORGANIZATION`. Nothing in the app is wrong and nothing in Clerk is wrong
+ * — the two are simply describing the same fact in different words.
+ *
+ * Both are read rather than picking one, because the version can change under
+ * us and this is not a difference worth a redeploy.
+ */
+interface SessionClaims {
+  sub?: string;
+  /** v1 */
+  org_id?: string;
+  org_role?: string;
+  /** v2 */
+  v?: number;
+  o?: { id?: string; rol?: string; slg?: string };
+}
+
+export function activeOrganization(claims: SessionClaims): { orgId?: string; orgRole?: string } {
+  const orgId = claims.o?.id ?? claims.org_id;
+  const orgRole = claims.o?.rol ?? claims.org_role;
+
+  return {
+    ...(orgId ? { orgId } : {}),
+    ...(orgRole ? { orgRole } : {}),
+  };
+}
+
+/**
+ * Clerk custom organization roles arrive as `org:<name>` in v1 and bare in v2
+ * (`admin`, not `org:admin`). Stripping an optional prefix handles both.
+ *
+ * Anything unrecognised becomes `viewer` — the least-privileged role — rather
+ * than throwing, so a role added in the Clerk dashboard but not yet in `Role`
+ * degrades to read-only instead of locking the user out entirely.
+ *
+ * `owner` is only ever granted by an explicit `owner` role. It is never inferred.
  */
 function parseRole(orgRole: string | undefined): Role {
   if (!orgRole) return 'viewer';

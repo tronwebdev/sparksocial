@@ -15,9 +15,37 @@ const isPublic = createRouteMatcher([
   '/sso-callback(.*)',
 ]);
 
+/**
+ * Where Clerk parks a session that still owes us an organization.
+ * Public by the matcher above (`/sign-in(.*)`), which it must be — a session
+ * with an incomplete task cannot satisfy `auth.protect()`.
+ */
+const TASKS_URL = '/sign-in/tasks';
+
 export default clerkMiddleware(
   async (auth, req) => {
-    if (!isPublic(req)) await auth.protect();
+    if (isPublic(req)) return;
+
+    const { sessionStatus } = await auth();
+
+    /**
+     * A `pending` session is signed in but has an incomplete task — for this
+     * instance, choosing an organization. `ClerkProvider`'s `taskUrls` is what
+     * normally routes them, and this is the backstop for the paths it cannot
+     * cover: a deep link, a bookmark, a refresh, or a session that went pending
+     * after the page had already loaded.
+     *
+     * It matters because the failure is silent rather than loud. Such a session
+     * has no `org_id` claim, so `auth.protect()` is satisfied — the user is
+     * signed in — and the shell renders in full while **every** tool call comes
+     * back 403 from `clerk-auth.ts`. Redirecting here converts a screen of
+     * unexplained errors into the one step that was actually missing.
+     */
+    if (sessionStatus === 'pending') {
+      return Response.redirect(new URL(TASKS_URL, req.url));
+    }
+
+    await auth.protect();
   },
   {
     // Middleware runs on the server and does not read ClerkProvider's props, so

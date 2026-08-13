@@ -46,6 +46,26 @@ export interface MessageTransport {
     briefs: CaptureBrief[];
     totalEffortSec: number;
   }): Promise<SendResult>;
+
+  /**
+   * Deliver one plain message — `human.ask`, `human.notify`, `whatsapp.send`.
+   *
+   * Separate from `sendSession` rather than a generalisation of it, because the
+   * two are different message *types* on the channel that matters: a capture
+   * session is a WhatsApp interactive list, a question is a text or reply-button
+   * message, and they have different templates, different approval requirements
+   * from Meta, and different length limits. Collapsing them into "send some
+   * text" would push that distinction into the caller, where it would be
+   * written once for WhatsApp and be wrong for push.
+   *
+   * `options` are offered choices; a transport with no notion of them renders
+   * them into the body and still accepts free-text replies.
+   */
+  sendText(args: {
+    to: string;
+    body: string;
+    options?: string[];
+  }): Promise<SendResult>;
 }
 
 /**
@@ -62,15 +82,26 @@ export interface MessageTransport {
  */
 export function createStubTransport(): MessageTransport & {
   sent: Array<{ to: string; genomeId: string; briefCount: number }>;
+  texts: Array<{ to: string; body: string; options?: string[] }>;
 } {
   const sent: Array<{ to: string; genomeId: string; briefCount: number }> = [];
+  const texts: Array<{ to: string; body: string; options?: string[] }> = [];
   let n = 0;
 
   return {
     channel: 'stub',
     sent,
+    texts,
     async sendSession({ to, genomeId, briefs }) {
       sent.push({ to, genomeId, briefCount: briefs.length });
+      return {
+        messageId: `stub_${++n}`,
+        channel: 'stub',
+        toRedacted: redactRecipient(to),
+      };
+    },
+    async sendText({ to, body, options }) {
+      texts.push({ to, body, ...(options?.length ? { options } : {}) });
       return {
         messageId: `stub_${++n}`,
         channel: 'stub',
