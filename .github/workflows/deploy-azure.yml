@@ -77,6 +77,15 @@ jobs:
       # DATABASE_URL comes from the environment's secrets rather than Key Vault
       # because this runs on the GitHub runner, not inside the Container App,
       # and therefore has no managed identity to authenticate with.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
       - name: Apply database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -126,9 +135,6 @@ jobs:
       # next restart, silently, which is a worse failure than refusing to boot.
       - name: Deploy to Container Apps
         run: |
-          # Upgrade Azure CLI to ensure registry flags are supported
-          az upgrade --yes
-          
           IDENTITY_ID=$(az containerapp show \
             --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
