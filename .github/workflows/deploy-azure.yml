@@ -140,12 +140,23 @@ jobs:
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --query 'identity.userAssignedIdentities | keys(@) | [0]' -o tsv)
 
+          if [ -z "$IDENTITY_ID" ]; then
+            echo "::error::No user-assigned managed identity found on the API Container App."
+            exit 1
+          fi
+
+          echo "Using managed identity: $IDENTITY_ID"
+
+          az containerapp registry set \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
+            --identity "$IDENTITY_ID"
+
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sparksocial-api:${{ github.sha }}" \
-            --registry-server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
-            --registry-identity "$IDENTITY_ID" \
             --set-env-vars \
               REVISION="${{ github.sha }}" \
               NODE_ENV=production \
@@ -237,12 +248,23 @@ jobs:
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --query 'identity.userAssignedIdentities | keys(@) | [0]' -o tsv)
 
+          if [ -z "$IDENTITY_ID" ]; then
+            echo "::error::No user-assigned managed identity found on the web Container App."
+            exit 1
+          fi
+
+          echo "Using managed identity: $IDENTITY_ID"
+
+          az containerapp registry set \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
+            --identity "$IDENTITY_ID"
+
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sparksocial-web:${{ github.sha }}" \
-            --registry-server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
-            --registry-identity "$IDENTITY_ID" \
             --set-env-vars \
               REVISION="${{ github.sha }}" \
               NODE_ENV=production \
