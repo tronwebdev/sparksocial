@@ -72,8 +72,9 @@ function genome(over: {
       avatar_enabled: over.avatar ?? false,
       max_posts_per_week: 12,
       approval_mode: 'review_first_week',
+      avatar_override: null,
     },
-    learned: { top_formats: [], best_post_times: [], mix_weights_override: null, confidence: 0 },
+    learned: { top_formats: [], best_post_times: [], mix_weights_override: null, confidence: 0, frozen: false },
   };
 }
 

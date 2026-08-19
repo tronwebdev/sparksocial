@@ -66,6 +66,18 @@ export const CaptureCapability = z.enum(['screen', 'space', 'work_artifacts', 'p
 export const Objective = z.enum(['leads', 'bookings', 'trials', 'sales', 'audience', 'hiring']);
 export const TalentAvailability = z.enum(['yes_licensed', 'yes_unlicensed', 'no']);
 
+/**
+ * Inferred types alongside the schemas, matching `GenomeDimensions` below.
+ * These four are the routing key for the whole engine, so code that switches on
+ * them — the campaign planner, the resolver, the mix engine — wants the union,
+ * not the Zod object. Declaring them here keeps one definition rather than a
+ * `z.infer<typeof …>` repeated at each call site.
+ */
+export type ProofAsset = z.infer<typeof ProofAsset>;
+export type CaptureCapability = z.infer<typeof CaptureCapability>;
+export type Objective = z.infer<typeof Objective>;
+export type TalentAvailability = z.infer<typeof TalentAvailability>;
+
 export const GenomeDimensions = z.object({
   proof_asset: z.array(ProofAsset).min(1),
   capture_capability: z.array(CaptureCapability).min(1),
@@ -88,6 +100,30 @@ export const ContentPillar = z.enum([
   'educational', 'product', 'proof', 'personality', 'community',
 ]);
 export type ContentPillar = z.infer<typeof ContentPillar>;
+
+/* ── Agent runs (plan §4.5 — the Agent Timeline) ───────────────────── */
+
+/**
+ * The run vocabulary lives here, not in `packages/spark`, because both ends of
+ * the Timeline need it and they sit on opposite sides of the build order:
+ * `packages/spark` *writes* runs through `RunRecorder`, `packages/tools` *reads*
+ * them through `ScopedDb.runs`, and tools is built long before spark. Declaring
+ * it twice would let the writer and the reader drift, which on a timeline shows
+ * up as steps that silently render in the wrong order or not at all.
+ */
+export const RunTrigger = z.enum(['user', 'schedule', 'event']);
+export type RunTrigger = z.infer<typeof RunTrigger>;
+
+export const RunStatus = z.enum(['running', 'succeeded', 'failed', 'cancelled']);
+export type RunStatus = z.infer<typeof RunStatus>;
+
+/**
+ * `think` and `wait` are the reason this is not derived from `tool_calls`: the
+ * reasoning between calls, and the time spent parked on a human, are exactly
+ * what answers "why is this here?".
+ */
+export const StepType = z.enum(['think', 'tool', 'delegate', 'wait']);
+export type StepType = z.infer<typeof StepType>;
 
 /* ── Untrusted input containment ───────────────────────────────────── */
 
@@ -112,7 +148,17 @@ export const isUntrusted = (v: unknown): v is Untrusted<unknown> =>
 export type ToolErrorCode =
   | 'FORBIDDEN' | 'NEEDS_APPROVAL' | 'NEEDS_CONFIRMATION' | 'GUARDRAIL_BLOCKED'
   | 'BUDGET_EXCEEDED' | 'RATE_LIMITED' | 'NOT_FOUND' | 'INVALID_INPUT'
-  | 'UPSTREAM_FAILED' | 'ISOLATION_VIOLATION';
+  | 'UPSTREAM_FAILED' | 'ISOLATION_VIOLATION'
+  /**
+   * Authenticated, but the session carries no organization.
+   *
+   * Distinct from `FORBIDDEN` because the remedy is different and only the
+   * caller can act on it: `FORBIDDEN` means sign in again, this means finish
+   * choosing a workspace. Collapsing the two is what made a stuck Clerk session
+   * task present as `401 Not signed in` to a user who was demonstrably signed
+   * in — the client could not tell which recovery to offer, so it offered none.
+   */
+  | 'NO_ORGANIZATION';
 
 export class ToolError extends Error {
   constructor(

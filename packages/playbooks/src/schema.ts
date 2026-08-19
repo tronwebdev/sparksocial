@@ -54,6 +54,9 @@ export const Beat = z.object({
   /** Reference into the Asset Graph or genome, e.g. "asset:product_screen". */
   source: z.string().optional(),
 });
+/** Exported alongside the schema, matching `Playbook` — the Assemble planner
+ *  consumes beats directly and needs the inferred shape, not the Zod object. */
+export type Beat = z.infer<typeof Beat>;
 
 export const Playbook = z.object({
   playbook_id: z.string(),

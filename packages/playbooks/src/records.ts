@@ -85,9 +85,17 @@ export const talkingHeadHotTake = definePlaybook({
   mode: 'synthesize',
   preconditions: {
     proof_asset_any: ['person'],
+    // Same `talent_likeness` asset `pb_avatar_pov`/`pb_avatar_explainer` clone
+    // from — this was missing `requires_likeness_license`, which is the exact
+    // gap §10 exists to close: a synthesize-mode video playbook that clones a
+    // real face with no consent gate on it. Not a content-strategy call, a
+    // compliance bug: caught while wiring `content.generate_avatar_video`,
+    // which would otherwise have generated this format without ever checking
+    // `genome.consent`.
     required_asset_roles: ['talent_likeness'],
     min_assets: 1,
     talent_required: true,
+    requires_likeness_license: true,
   },
   output: { media_type: 'video', aspect_ratios: ['9:16'], duration_sec: [15, 30], platforms: [...ALL_PLATFORMS] },
   structure: {
@@ -156,6 +164,61 @@ export const carouselTeaching = definePlaybook({
   },
   objective_fit: { audience: 0.7, leads: 0.65, trials: 0.45, bookings: 0.4, sales: 0.3 },
   content_pillar: 'educational',
+  saturation_risk: 'medium',
+  compliance_flags: [],
+});
+
+/**
+ * The library's only `media_type: 'text'` entry until this one — every other
+ * playbook produces a video, image or carousel, so "Text Post" in the Draft
+ * Panel (`DP text.dc.html`) had nothing to resolve to. A pure-copy update needs
+ * no capture, no image generation, no render pass — genuinely the cheapest
+ * thing SPARK can produce, which is exactly why it belongs in the library
+ * rather than being treated as a degraded version of something else.
+ */
+export const textUpdate = definePlaybook({
+  playbook_id: 'pb_text_update',
+  name: 'Text Update',
+  description: 'A short written post — an announcement, a lesson, a plain update. No image or video.',
+  mode: 'synthesize',
+  preconditions: { required_asset_roles: ['brand_kit'], min_assets: 0, talent_required: false },
+  output: { media_type: 'text', aspect_ratios: ['n/a'], platforms: ['linkedin', 'x'] },
+  structure: { beats: [{ id: 'copy', duration_sec: 0, prompt_ref: 'text.update' }] },
+  // High audience/leads fit at near-zero saturation risk — a text post cannot
+  // look like every other SparkSocial account the way a visual template can.
+  objective_fit: { audience: 0.55, leads: 0.5, hiring: 0.4, trials: 0.25, sales: 0.2, bookings: 0.15 },
+  content_pillar: 'personality',
+  saturation_risk: 'low',
+  compliance_flags: [],
+});
+
+/**
+ * A second carousel, deliberately in a different pillar and objective range
+ * than `carouselTeaching`. Carousels were the thinnest format in the library
+ * (one entry) despite being one of the four the Draft Panel treats as
+ * first-class — this is proof, not instruction, so it earns the `proof`
+ * pillar rather than duplicating the teaching angle.
+ */
+export const carouselProofPoints = definePlaybook({
+  playbook_id: 'pb_carousel_proof_points',
+  name: 'Proof-Points Carousel',
+  description: 'A multi-slide breakdown of results — numbers, before/after, named outcomes.',
+  mode: 'synthesize',
+  preconditions: { required_asset_roles: ['brand_kit', 'social_proof'], min_assets: 1, talent_required: false },
+  output: { media_type: 'carousel', aspect_ratios: ['4:5'], platforms: ['instagram', 'linkedin'] },
+  structure: {
+    beats: [
+      { id: 'cover', duration_sec: 0, prompt_ref: 'hook.result' },
+      // Synthesized, not sourced verbatim — like `carouselTeaching`'s `slides`
+      // beat, the social_proof asset required by `preconditions` grounds the
+      // generation (same role `assets.captionsByRole` plays for the
+      // `claim_grounding` guardrail) rather than being rendered as-is.
+      { id: 'slides', duration_sec: 0, prompt_ref: 'proof.data_points' },
+      { id: 'cta', duration_sec: 0, source: 'genome:offer.primary_cta' },
+    ],
+  },
+  objective_fit: { sales: 0.6, leads: 0.55, bookings: 0.45, trials: 0.4, audience: 0.35 },
+  content_pillar: 'proof',
   saturation_risk: 'medium',
   compliance_flags: [],
 });
@@ -526,6 +589,42 @@ export const craftCapture = definePlaybook({
   compliance_flags: [],
 });
 
+/**
+ * Every other `direct_finish` playbook asks for 15–25s of video — every one.
+ * That is a real bar for a first week: a business that would send one photo
+ * without hesitation may not yet trust SPARK enough to film anything. This
+ * asks for a single photo, still over WhatsApp, still finished by SPARK (crop,
+ * light correction, brand-kit overlay) — the lowest-effort brief the capture
+ * loop has, and the one most likely to get a reply from someone who has never
+ * used it before.
+ */
+export const finishedWorkPhoto = definePlaybook({
+  playbook_id: 'pb_finished_work_photo',
+  name: 'Finished Work Photo',
+  description: 'One photo of a completed job or product. No filming, no talking — just send a picture.',
+  mode: 'direct_finish',
+  preconditions: {
+    capture_capability_any: ['space', 'work_artifacts', 'product'],
+    proof_asset_any: ['physical_craft', 'finished_work', 'physical_product'],
+    required_asset_roles: ['physical_capture'],
+    min_assets: 1,
+    talent_required: false,
+  },
+  output: { media_type: 'image', aspect_ratios: ['1:1', '4:5'], platforms: [...ALL_PLATFORMS] },
+  structure: {
+    beats: [
+      { id: 'photo', duration_sec: 0, source: 'asset:physical_capture' },
+      { id: 'caption_overlay', duration_sec: 0, prompt_ref: 'hook.craft' },
+    ],
+  },
+  // Lower ceiling than Craft Capture — a still photo proves less than motion —
+  // but the point of this record is the low bar to entry, not the ceiling.
+  objective_fit: { bookings: 0.7, sales: 0.55, audience: 0.5, leads: 0.4, hiring: 0.2 },
+  content_pillar: 'proof',
+  saturation_risk: 'low',
+  compliance_flags: [],
+});
+
 export const staffPersonality = definePlaybook({
   playbook_id: 'pb_staff_personality',
   name: 'Staff Personality',
@@ -648,6 +747,8 @@ export const PLAYBOOKS: readonly Playbook[] = [
   generatedQuoteCard,
   voiceOverBroll,
   carouselTeaching,
+  textUpdate,
+  carouselProofPoints,
   aiUgcTestimonial,
   // Assemble
   workflowClip,
@@ -666,6 +767,7 @@ export const PLAYBOOKS: readonly Playbook[] = [
   seasonalLocalContext,
   // Direct + Finish
   craftCapture,
+  finishedWorkPhoto,
   staffPersonality,
   spaceAtmosphere,
   customerReaction,

@@ -46,6 +46,7 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
       estimatedCents: over.budget?.estimatedCents ?? 0,
     },
     ...(over.engagement ? { engagement: over.engagement } : {}),
+    ...(over.approval ? { approval: over.approval } : {}),
   } as PolicyInput;
 }
 
@@ -130,9 +131,44 @@ describe('4 — budget and spend permission', () => {
     expect(d.kind).toBe('allow');
   });
 
-  it('does not budget-check a non-spend tool', () => {
-    const d = evaluate(input({ tool: { effect: 'write' }, budget: { estimatedCents: 9_999, remainingCents: 0 } }));
+  it('does not budget-check a tool that costs nothing', () => {
+    // Free is free, whatever the effect. A read must not be gated by a drained
+    // budget — someone investigating why it drained needs the Timeline to load.
+    const d = evaluate(input({ tool: { effect: 'write' }, budget: { estimatedCents: 0, remainingCents: 0 } }));
     expect(d.kind).toBe('allow');
+  });
+
+  it('budget-checks any tool that costs money, whatever its effect', () => {
+    /**
+     * This test replaces one that asserted the opposite, and the old one was
+     * the bug: an `external` tool with a 9,999¢ estimate and nothing left was
+     * allowed through, because the rule keyed on `effect === 'spend'` and
+     * **no tool in the registry has ever declared that effect**. Every tool
+     * that costs money is `external`, because it is.
+     *
+     * Found by draining a 2¢ cap with 1¢ `whatsapp.send` calls against a
+     * running server and watching all of them succeed. No unit test could have
+     * found it: they all construct this input by hand and pass `effect:
+     * 'spend'`, a value nothing else in the codebase produces.
+     */
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: { estimatedCents: 9_999, remainingCents: 0 },
+    }));
+    expect(d.kind).toBe('deny');
+    expect(d.kind === 'deny' && d.ruleId).toBe('budget.exceeded');
+  });
+
+  it('honours the spend permission for a costed external tool too', () => {
+    // The permission is about money leaving the account, not about which
+    // category the tool was filed under.
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      brand: { permissions: { spendCredits: false } },
+      budget: { estimatedCents: 1, remainingCents: 10_000 },
+    }));
+    expect(d.kind).toBe('deny');
+    expect(d.kind === 'deny' && d.ruleId).toBe('permission.spend');
   });
 
   it('allows spend when the permission is explicitly enabled', () => {
@@ -415,5 +451,75 @@ describe('purity', () => {
     }));
     expect(gated.kind).toBe('approval');
     expect(graduated.kind).toBe('allow');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('9 — a granted approval', () => {
+  const GRANT = { grantedBy: 'user_reviewer', grantedAt: new Date('2026-08-15T11:00:00Z') };
+
+  it('turns an approval decision into allow', () => {
+    // The whole point of the Review queue: a human said yes, so the call that
+    // was held now runs.
+    const held = input({ tool: { autonomy: 'approval' } });
+    expect(ruleOf(evaluate(held))).toBe('autonomy.approval');
+    expect(evaluate({ ...held, approval: GRANT })).toEqual({ kind: 'allow' });
+  });
+
+  it('releases every rule that produces an approval, not just one', () => {
+    // Each of these reaches `approval` by a different route; a grant has to
+    // satisfy all of them or the queue would strand whichever it missed.
+    const cases: Array<[string, PolicyInput]> = [
+      ['effect.destructive', input({ tool: { effect: 'destructive' } })],
+      [
+        'approval_mode.review_everything',
+        input({ tool: { effect: 'publish' }, brand: { approvalMode: 'review_everything' } }),
+      ],
+      [
+        'approval_mode.review_first_week',
+        input({
+          tool: { effect: 'publish' },
+          brand: { approvalMode: 'review_first_week', createdAt: new Date('2026-08-13T00:00:00Z') },
+        }),
+      ],
+      ['autonomy.approval', input({ tool: { autonomy: 'approval' } })],
+    ];
+
+    for (const [ruleId, held] of cases) {
+      expect(ruleOf(evaluate(held)), ruleId).toBe(ruleId);
+      expect(evaluate({ ...held, approval: GRANT }), ruleId).toEqual({ kind: 'allow' });
+    }
+  });
+
+  it('does NOT turn a deny into allow', () => {
+    // The security property. A reviewer approving a post must not thereby
+    // approve a paused agent, a role that lacks the scope, or an exhausted
+    // budget — none of those are what they were shown.
+    const denials: Array<[string, PolicyInput]> = [
+      ['agent.paused', input({ brand: { agentPaused: true }, caller: 'agent', tool: { effect: 'publish' } })],
+      ['role.scope', input({ role: 'viewer' })],
+      ['budget.exceeded', input({ tool: { effect: 'spend' }, budget: { remainingCents: 10, estimatedCents: 500 } })],
+      ['autonomy.human_only', input({ tool: { autonomy: 'human_only' }, caller: 'agent' })],
+    ];
+
+    for (const [ruleId, denied] of denials) {
+      expect(ruleOf(evaluate(denied)), ruleId).toBe(ruleId);
+      const withGrant = evaluate({ ...denied, approval: GRANT });
+      expect(withGrant.kind, ruleId).toBe('deny');
+      expect(ruleOf(withGrant), ruleId).toBe(ruleId);
+    }
+  });
+
+  it('does NOT turn a confirm into allow', () => {
+    // Confirmation is a different question from approval — "are you sure?"
+    // asked of the actor, not "may this happen?" asked of a reviewer.
+    const held = input({ tool: { autonomy: 'confirm' }, caller: 'agent' });
+    expect(evaluate(held).kind).toBe('confirm');
+    expect(evaluate({ ...held, approval: GRANT }).kind).toBe('confirm');
+  });
+
+  it('leaves an already-allowed call allowed', () => {
+    expect(evaluate({ ...input(), approval: GRANT })).toEqual({ kind: 'allow' });
   });
 });

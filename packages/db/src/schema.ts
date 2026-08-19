@@ -1,13 +1,18 @@
 import {
+  boolean,
   index,
   integer,
   jsonb,
   pgTable,
+  real,
+  uniqueIndex,
   text,
   timestamp,
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
+import type { Autonomy } from '@sparksocial/shared/types';
 
 /**
  * Drizzle schema — the subset the scoped query layer guards.
@@ -20,7 +25,7 @@ import {
  * Target: Azure Database for PostgreSQL Flexible Server. `pgvector` must be allow-listed
  * as a server parameter before `CREATE EXTENSION vector` will succeed.
  *
- * Embeddings are 1536-dim (`text-embedding-3-large`), mandated by the engine spec for
+ * Embeddings are `EMBEDDING_DIM`-dim (`text-embedding-3-large`), mandated by the engine spec for
  * ClientForce consistency.
  */
 
@@ -37,7 +42,7 @@ export const assets = pgTable(
     storagePath: text('storage_path').notNull(), // Azure Blob Storage
     muxId: text('mux_id'),
     caption: text('caption'),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     quality: jsonb('quality'),
     /** 'cleared' | 'pending' | 'restricted' — retrieval only ever returns 'cleared'. */
     rightsStatus: text('rights_status').notNull().default('pending'),
@@ -50,15 +55,87 @@ export const assets = pgTable(
   (t) => [index('assets_scope_idx').on(t.orgId, t.genomeId)],
 );
 
+/**
+ * `asset_folders` — `asset.folder.create`'s only write, and what `assets.folderId`
+ * (above) has pointed at since before either the table or the tools existed:
+ * the column was there, nothing ever created a row it could reference or read
+ * it back. `name` isn't unique — two folders named "B-roll" in different
+ * genomes are unrelated, and even within one genome a duplicate name is a
+ * person's problem to notice, not this table's to prevent.
+ */
+export const assetFolders = pgTable(
+  'asset_folders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('asset_folders_scope_idx').on(t.orgId, t.genomeId)],
+);
+
+/**
+ * `content_links` — `link.shorten`'s CTA attribution, when called with a
+ * `contentItemId`. `link.shorten` itself is a pure passthrough to Dub with no
+ * storage of its own; this is what lets `analytics.cta_traffic` later ask
+ * "how many clicks did this post's link get" instead of the caller having to
+ * remember a Dub link id themselves. `dubLinkId` is Dub's own id (`link_...`),
+ * not the short URL — that's what `DubClient.getClicks` queries by.
+ */
+export const contentLinks = pgTable(
+  'content_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    contentItemId: uuid('content_item_id').notNull(),
+    dubLinkId: text('dub_link_id').notNull(),
+    shortUrl: text('short_url').notNull(),
+    destinationUrl: text('destination_url').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('content_links_scope_idx').on(t.orgId, t.genomeId, t.contentItemId)],
+);
+
+/**
+ * `renders` (§6.5, plan schema sketch: "id, content_item_id, aspect,
+ * storage_path, mux_id, engine, cost_cents") — the output of `compose.render`.
+ * Kept separate from `content_items` rather than a jsonb column on it because
+ * one content item renders to several aspect ratios (one row each), and a
+ * failed re-render must not clobber a previous good one — `compose.render`
+ * inserts, it never updates.
+ */
+export const renders = pgTable(
+  'renders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    contentItemId: uuid('content_item_id').notNull(),
+    aspect: text('aspect').notNull(),
+    storageUrl: text('storage_url').notNull(),
+    engine: text('engine').notNull(), // 'remotion' today; 'ffmpeg'/'satori' if compose grows other engines
+    costCents: integer('cost_cents').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('renders_scope_idx').on(t.orgId, t.genomeId),
+    // `compose.render`'s own read: "has this content item already been rendered?"
+    index('renders_content_item_idx').on(t.contentItemId),
+  ],
+);
+
 export const knowledgeChunks = pgTable(
   'knowledge_chunks',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     orgId: text('org_id').notNull(),
     genomeId: text('genome_id').notNull(),
-    docId: uuid('doc_id').notNull(),
+    /** A caller-chosen grouping key ("faq_1", a source URL) — not a database-generated id, so it isn't a `uuid` column. */
+    docId: text('doc_id').notNull(),
     text: text('text').notNull(),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     citation: jsonb('citation'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -73,7 +150,7 @@ export const memories = pgTable(
     genomeId: text('genome_id').notNull(),
     kind: text('kind').notNull(),
     text: text('text').notNull(),
-    embedding: vector('embedding', { dimensions: 1536 }),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     confidence: integer('confidence'),
     sourceRunId: uuid('source_run_id'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
@@ -94,12 +171,840 @@ export const contentItems = pgTable(
     pillar: text('pillar'),
     status: text('status').notNull().default('draft'),
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     platform: text('platform'),
+    /** The platform adapter's receipt (`PublishReceipt`), set once by `markPublished`. */
+    externalId: text('external_id'),
+    publishVia: text('publish_via'),
+    publishUrl: text('publish_url'),
+    /**
+     * Set only when `status: 'blocked'` — the scheduler's write when a
+     * guardrail hard-blocks a due item (`GUARDRAIL_BLOCKED`), since that will
+     * fail identically on every future tick with nothing to retry into. Holds
+     * the guardrail's own `fixAction`/message so a person opening the item
+     * sees why it stalled without re-deriving it.
+     */
+    blockedReason: text('blocked_reason'),
     copy: jsonb('copy'),
+    /**
+     * The copy's embedding at publish time — the guardrail layer's `duplicate`
+     * check (§10) compares a new draft against the trailing 90 days of these.
+     * Computed once, here, rather than re-embedding historical copy on every
+     * guardrail run: that would mean every duplicate check pays for N embedding
+     * calls where N is how much has been published recently, which grows
+     * unboundedly with account age.
+     */
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
     /** The Explanation payload — PRD §7.3, rendered by <WhyPopover />. */
     why: jsonb('why'),
     runId: uuid('run_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('content_items_scope_idx').on(t.orgId, t.genomeId)],
+  (t) => [
+    index('content_items_scope_idx').on(t.orgId, t.genomeId),
+    // The guardrail layer's trailing-window read (`recentContent`) filters
+    // scope *and* `published_at >= cutoff` on every draft evaluated. Carrying
+    // the date in the index keeps that from widening into a scan of the
+    // genome's entire publishing history as an account ages — which is exactly
+    // the account that most needs the duplicate check to stay fast.
+    index('content_items_published_idx').on(t.orgId, t.genomeId, t.publishedAt.desc()),
+  ],
+);
+
+/**
+ * A performance snapshot for one published post on one platform — `CC-04`'s
+ * `analytics.sync` (P4). One row per `(contentItemId, platform)`, upserted on
+ * every sync rather than appended: this is "what the platform reports right
+ * now", not a time series, and a caller wanting history has the `syncedAt` on
+ * each write plus the raw vendor response for anything a later pass needs to
+ * reconstruct trend data from.
+ *
+ * Scoped like `content_items` — post performance is exactly the kind of
+ * competitive detail invariant 2 exists to isolate, so this carries `org_id`/
+ * `genome_id` and goes through `scoped.ts` the same way.
+ */
+export const contentMetrics = pgTable(
+  'content_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    contentItemId: uuid('content_item_id').notNull(),
+    platform: text('platform').notNull(),
+    likes: integer('likes').notNull().default(0),
+    comments: integer('comments').notNull().default(0),
+    shares: integer('shares').notNull().default(0),
+    views: integer('views').notNull().default(0),
+    impressions: integer('impressions').notNull().default(0),
+    /** The vendor's unnormalized response — nothing is lost to normalization. */
+    raw: jsonb('raw'),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('content_metrics_scope_idx').on(t.orgId, t.genomeId),
+    // Upsert target: a re-sync of the same post/platform updates in place.
+    uniqueIndex('content_metrics_item_platform_idx').on(t.contentItemId, t.platform),
+  ],
+);
+
+/**
+ * The inbox — PRD §8.8 / `ENG-01`→`ENG-02.4`. One row per inbound comment,
+ * DM, or story reply from the audience. Distinct from `human_messages`, which
+ * is SPARK asking the *owner* a question; this is the audience reaching the
+ * brand, the thing `engage.classify` triages into the feed's four tabs
+ * (Needs Review / Suggested Replies / Auto-Handled / Sales Opportunities).
+ *
+ * `externalId` is the platform's own message/comment id — unique per
+ * `(orgId, genomeId, platform, externalId)`, so a webhook retry (every
+ * platform's inbound delivery is at-least-once) upserts rather than
+ * duplicating the same message in the feed twice.
+ */
+export const engagementMessages = pgTable(
+  'engagement_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    platform: text('platform').notNull(),
+    externalId: text('external_id').notNull(),
+    kind: text('kind').notNull(), // comment | dm | story_reply
+    authorHandle: text('author_handle').notNull(),
+    authorName: text('author_name'),
+    text: text('text').notNull(),
+    /** The post this is a reply to, when known — not every DM is. */
+    contentItemId: uuid('content_item_id'),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * new | classified | replied | auto_handled | escalated | dismissed |
+     * converted. Plain text, no DB CHECK constraint — adding a value here
+     * (as `converted` was) never needs a migration on its own.
+     * `engage.audit.query` (`packages/engage/src/auditQuery.ts`) treats
+     * `converted` as a resolved status alongside the rest, reserved for a
+     * future "this became a real sale" event; nothing sets it yet.
+     */
+    status: text('status').notNull().default('new'),
+    /** needs_review | suggested_reply | auto_handled | sales_opportunity — set by `engage.classify`. */
+    category: text('category'),
+    /** 0-1, the same scale `Explanation.factors[].weight` and the genome's own `confidence` use. */
+    intentScore: real('intent_score'),
+    suggestedReply: text('suggested_reply'),
+    /** The Explanation payload — PRD §7.3, same contract every agent-visible decision carries. */
+    why: jsonb('why'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('engagement_messages_scope_idx').on(t.orgId, t.genomeId),
+    // Feed queries filter scope + status/category, newest first — the shape
+    // `ENG-02`'s tabs read.
+    index('engagement_messages_feed_idx').on(t.orgId, t.genomeId, t.status, t.receivedAt.desc()),
+    uniqueIndex('engagement_messages_external_idx').on(t.orgId, t.genomeId, t.platform, t.externalId),
+  ],
+);
+
+/**
+ * Sales leads surfaced from the engagement inbox — the master plan's own
+ * schema sketch (§3.2: "inbox_item_id, temperature(hot|warm|cold),
+ * recommended_action, routed_to"). `engage.opportunity.create` inserts,
+ * `engage.opportunity.route` updates `routed_to`; there is no delete.
+ *
+ * Kept separate from `engagement_messages` rather than columns on it —
+ * same reasoning `renders` gets its own table apart from `content_items`:
+ * this is a decision made *about* a message (a human/SPARK judging it a real
+ * lead), not an attribute intrinsic to the message itself.
+ */
+export const opportunities = pgTable(
+  'opportunities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    inboxItemId: uuid('inbox_item_id').notNull(),
+    /** hot | warm | cold */
+    temperature: text('temperature').notNull(),
+    recommendedAction: text('recommended_action').notNull(),
+    /** Free text — a person's name, an email, a CRM reference. No CRM integration exists yet. */
+    routedTo: text('routed_to'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('opportunities_scope_idx').on(t.orgId, t.genomeId),
+    // `engage.opportunity.route`'s own lookup, and the eventual "opportunities
+    // for this message" read.
+    index('opportunities_inbox_item_idx').on(t.inboxItemId),
+  ],
+);
+
+/**
+ * THE BRAND GENOME — engine spec §3.2, `packages/shared/src/genome.ts`'s `Genome` type.
+ *
+ * `identity`/`voice`/`audience`/`offer`/`constraints`/`learned` are stored as JSONB
+ * rather than normalized: they are read and written as one unit by every caller
+ * (`ScopedDb.genomes.get` returns the whole `Genome`), and none of them are queried
+ * independently today. `dimensions` gets the same treatment for consistency, but is
+ * the one column worth a GIN index the moment the resolver needs to query across
+ * genomes by dimension rather than always loading one genome by id — CLAUDE.md's
+ * "index them" note for `dimensions` is aspirational until that query exists.
+ *
+ * NOT in `SCOPED_TABLES` (`scoped.ts`): a genome is looked up by its own id, which
+ * already pins it to one org/brand — there is no cross-genome genome query for the
+ * isolation predicate to guard.
+ */
+export const genomes = pgTable(
+  'genomes',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(), // Genome.workspace_id
+    version: integer('version').notNull().default(1),
+    identity: jsonb('identity').notNull(),
+    dimensions: jsonb('dimensions').notNull(),
+    voice: jsonb('voice').notNull(),
+    audience: jsonb('audience').notNull(),
+    offer: jsonb('offer').notNull(),
+    constraints: jsonb('constraints').notNull(),
+    learned: jsonb('learned').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('genomes_org_brand_idx').on(t.orgId, t.brandId)],
+);
+
+/**
+ * Brand governance — PRD §7.1/§9, engine spec §6.8 Step 5.
+ *
+ * The policy engine has implemented the full approval ladder from the start;
+ * what did not exist was anywhere to *store* which rung a brand is on, so both
+ * auth resolvers returned a hardcoded `autopublish`. That made the ladder real
+ * in tests and inert in production.
+ *
+ * `createdAt` is load-bearing, not bookkeeping: `review_first_week` graduates a
+ * brand to autopublish seven days after it was created, and the policy engine
+ * computes that from this column. Defaulting it to `now()` on insert is what
+ * makes the graduation date the brand's real age rather than the date someone
+ * happened to change a setting.
+ *
+ * Not in `SCOPED_TABLES` — a governance setting is configuration, not
+ * client-confidential material, same rationale as `genomes` and `campaigns`.
+ */
+export const brands = pgTable(
+  'brands',
+  {
+    id: text('id').primaryKey(), // Genome.workspace_id
+    orgId: text('org_id').notNull(),
+    name: text('name').notNull().default(''),
+    /** autopublish | review_first_week | review_everything */
+    approvalMode: text('approval_mode').notNull().default('review_first_week'),
+    /**
+     * The kill switch (`policy.ts` rule 1, `agent.paused`).
+     *
+     * That rule has existed since P1 and there was no column behind it, so
+     * `agentPaused` was permanently undefined — the one control that stops a
+     * misbehaving agent was unreachable. Defaults false: a brand is not paused
+     * until somebody pauses it.
+     */
+    agentPaused: boolean('agent_paused').notNull().default(false),
+    pausedAt: timestamp('paused_at', { withTimezone: true }),
+    pausedBy: text('paused_by'),
+    pauseReason: text('pause_reason'),
+    /**
+     * Target posts per week (`agent.frequency.set`) — how loud the account is.
+     *
+     * Orthogonal to the kill switch above: pausing stops the agent acting at
+     * all, frequency shapes what it does while running. Three is the cadence
+     * the calendar's mix engine was tuned against, so a brand nobody has
+     * configured still produces a well-shaped plan.
+     */
+    postsPerWeek: integer('posts_per_week').notNull().default(3),
+    /**
+     * `approval.policy.set` — the per-brand configurability `policy.ts` (§9)
+     * has read since P1 (`brand.familyOverrides`, `.restrictedPlatforms`,
+     * `.restrictedContentTypes`, `.quietWindows`, `.permissions`) but nothing
+     * ever wrote: `makeBrandGovernance` only ever populated `approvalMode` and
+     * `agentPaused`, so every branch in `evaluate()` that reads these five
+     * fields has been unreachable in production, tested only by unit tests
+     * that build a `PolicyInput` directly. Null/empty means "no override" —
+     * the same rung the fixed three-mode ladder already produced, so a brand
+     * nobody has configured behaves exactly as it did before this column existed.
+     */
+    familyOverrides: jsonb('family_overrides').$type<Partial<Record<string, Autonomy>>>(),
+    restrictedPlatforms: jsonb('restricted_platforms').$type<string[]>(),
+    restrictedContentTypes: jsonb('restricted_content_types').$type<string[]>(),
+    quietWindows: jsonb('quiet_windows').$type<Array<{ from: string; to: string; reason: string }>>(),
+    permissions: jsonb('permissions').$type<{ spendCredits?: boolean; automationAutoPublish?: boolean }>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('brands_org_idx').on(t.orgId)],
+);
+
+/**
+ * Per-organisation spend cap — plan §9.
+ *
+ * A row per org rather than a column on `brands`, because the cap is what an
+ * organisation *bought*: an agency on one plan with forty client brands has one
+ * budget, not forty. Putting it on `brands` would let a forty-brand workspace
+ * spend forty times the plan.
+ *
+ * Upserted at a conservative default on first read, same rule as `brands`: a
+ * missing row must not read as unlimited. The direction matters — the failure
+ * mode of guessing high is a bill nobody agreed to.
+ */
+export const orgBudgets = pgTable('org_budgets', {
+  orgId: text('org_id').primaryKey(),
+  /** Cents per calendar month, UTC. */
+  monthlyCapCents: integer('monthly_cap_cents').notNull().default(500_00),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * CREDIT LEDGER — plan §9, and what finally makes `policy.ts` rule 4 mean
+ * something.
+ *
+ * That rule has denied calls over budget since P1, reading `remainingCents`
+ * from `ToolCtx`. Both auth resolvers hardcoded `100_000`, so every
+ * `estimateCents` in the codebase was computed, recorded on the `tool_calls`
+ * row, and compared against a constant. The spend limit was fully implemented,
+ * fully tested, and could not be reached.
+ *
+ * **Append-only, and keyed on the call.** `callId` is unique, so the same tool
+ * call can never be billed twice. `invokeTool` already returns early on an
+ * idempotent replay before `recordCost` runs, so this is not the primary
+ * defence — it is the one that survives a retry introduced at some other layer
+ * later, like at-least-once delivery from a queue, where the primary defence
+ * does not apply.
+ *
+ * `costCents` is signed: positive is a spend, negative a refund or a goodwill
+ * credit. Balance is `cap - SUM(costCents)` over the period, so a correction is
+ * a new row rather than an edit — the ledger stays a record of what happened
+ * rather than a mutable current value.
+ */
+export const creditLedger = pgTable(
+  'credit_ledger',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id'),
+    /** The `tool_calls` row this bills. Null for manual adjustments. */
+    callId: uuid('call_id'),
+    tool: text('tool').notNull(),
+    /** Positive spends, negative refunds. */
+    costCents: integer('cost_cents').notNull(),
+    reason: text('reason').notNull().default('tool_call'),
+    at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One charge per call, enforced by the database rather than by remembering.
+    uniqueIndex('credit_ledger_call_idx').on(t.callId),
+    // The balance query: one org, one period.
+    index('credit_ledger_org_at_idx').on(t.orgId, t.at),
+  ],
+);
+
+/**
+ * SPARK's questions to the owner and their answers (`human.ask`, `human.notify`).
+ *
+ * `answer` is the only column in this schema written from outside the
+ * workspace — it arrives over WhatsApp, which is an unauthenticated channel in
+ * the sense that matters: anyone who can reach the owner's number can put text
+ * in it. It is stored, displayed and fed to the model as *content*, and
+ * `whatsapp.receive` wraps it in `untrusted()` before it ever reaches a prompt.
+ * Nothing branches on its value to decide whether an action is permitted.
+ *
+ * `answeredAt` doubles as the write-once latch: `answer()` refuses a message
+ * that already has one, so a retried webhook cannot overwrite a decision SPARK
+ * has already acted on.
+ *
+ * Not in `SCOPED_TABLES` — a question is addressed to a brand, and the brand is
+ * the tenancy boundary here; every query filters on `orgId` regardless.
+ */
+export const humanMessages = pgTable(
+  'human_messages',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(),
+    /** ask | notify */
+    kind: text('kind').notNull(),
+    body: text('body').notNull(),
+    options: jsonb('options').$type<string[]>(),
+    /** low | normal | high */
+    urgency: text('urgency').notNull().default('normal'),
+    runId: text('run_id'),
+    answer: text('answer'),
+    answeredAt: timestamp('answered_at', { withTimezone: true }),
+    answeredBy: text('answered_by'),
+    channel: text('channel'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The owner's inbox: unanswered questions for one brand, oldest first.
+    index('human_messages_brand_idx').on(t.orgId, t.brandId, t.answeredAt),
+  ],
+);
+
+/**
+ * CONSENT RECORDS — engine spec §10: *"likeness consent for cloning (store
+ * explicit consent record with timestamp and scope)."*
+ *
+ * Until this table existed, `genome.constraints.avatar_enabled` was a boolean
+ * derived purely from an onboarding answer (`proof_asset` includes `person` AND
+ * `talent_availability === 'yes_licensed'`) — a self-report with a timestamp
+ * nowhere and a scope nowhere. `guardrails/src/rights.ts` has refused to permit
+ * a likeness-cloning format without `avatarEnabled` since P2, checking against
+ * a flag that had no record behind it — the guardrail was real, the thing it
+ * verified was not.
+ *
+ * **Append-only, like `tool_calls` and `credit_ledger`.** A consent decision is
+ * a fact about a moment; revoking consent is a new row with `revokedAt` set, not
+ * an edit to the old one, so the record of "consent was granted on this date,
+ * by this person, for this scope, and later revoked on this date" survives
+ * intact. `hasActive` — the only read this table needs — is "the newest row for
+ * this subject has no `revokedAt`."
+ *
+ * `subject` and `kind` are separate: one genome can have consent on file for
+ * several distinct people or voices (an agency's genome might clone two
+ * different staff members), and `avatar_enabled` needs to know *whose* consent
+ * covers *which* clone a given format asks for — not just that consent exists
+ * somewhere for this genome.
+ */
+export const consentRecords = pgTable(
+  'consent_records',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    /** 'avatar_clone' | 'voice_clone'. Free text, not an enum — invariant 5's
+     *  spirit: a third clone kind should not need a migration to name. */
+    kind: text('kind').notNull(),
+    /** Who the likeness belongs to, in the owner's own words: "Emeka, owner". */
+    subject: text('subject').notNull(),
+    /** A signed form, a recorded verbal consent, whatever evidences it. */
+    evidenceUrl: text('evidence_url'),
+    grantedBy: text('granted_by').notNull(),
+    grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+    revokedBy: text('revoked_by'),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (t) => [
+    // `hasActive`'s query: newest row for this genome+kind+subject, filtered to
+    // ones still standing. Descending on `grantedAt` so "is there a live one"
+    // stops at the first match instead of scanning the whole history.
+    index('consent_records_lookup_idx').on(t.orgId, t.genomeId, t.kind, t.grantedAt.desc()),
+  ],
+);
+
+/**
+ * The Review queue — PRD §7.5 ("queues are first-class"), plan §4.4.
+ *
+ * A separate table rather than columns on `tool_calls`, because `tool_calls` is
+ * insert-only by design: `invokeTool` writes exactly one row per invocation and
+ * never touches it again, which is what makes it a trustworthy audit log. An
+ * approval has a *lifecycle* — requested, then decided — so it needs somewhere
+ * it is allowed to change.
+ *
+ * `call_id` points back at the `gated` audit row, which already holds the tool,
+ * the input, and the scope it was called in. That row is the replay source when
+ * a reviewer approves: nothing about the original call is copied here, so the
+ * two can never disagree about what is being approved.
+ */
+export const approvals = pgTable(
+  'approvals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id'),
+    /** The `tool_calls` row that was gated. */
+    callId: uuid('call_id').notNull(),
+    tool: text('tool').notNull(),
+    /** pending | approved | rejected */
+    status: text('status').notNull().default('pending'),
+    /** Why the policy engine held it — shown in the queue. */
+    ruleId: text('rule_id'),
+    reason: text('reason'),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: text('decided_by'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('approvals_queue_idx').on(t.orgId, t.brandId, t.status, t.requestedAt.desc()),
+    // One approval per gated call: a retry of the same held call must not
+    // enqueue a second review item for the same decision.
+    uniqueIndex('approvals_call_idx').on(t.callId),
+  ],
+);
+
+/**
+ * Campaigns — the outcome unit (§6.8, `CMP-01.*`).
+ *
+ * A campaign is an *objective over a window*, never a format or a channel: the
+ * whole flow is "outcome first, never format first". The plan it was approved
+ * with is stored as a snapshot rather than recomputed, because the resolver and
+ * the Asset Graph both move underneath it — reopening a campaign in week three
+ * must show the numbers the owner actually agreed to, not what those numbers
+ * would be today.
+ *
+ * Not in `SCOPED_TABLES`: a campaign is scoped by `genome_id` like everything
+ * else, but it carries no client-confidential material of its own — the assets
+ * and copy live in `content_items`, which is scoped. Kept out of the strict set
+ * for the same reason `genomes` is.
+ */
+export const campaigns = pgTable(
+  'campaigns',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    name: text('name').notNull(),
+    objective: text('objective').notNull(),
+    windowDays: integer('window_days').notNull(),
+    startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+    /**
+     * The Step 1 follow-up the campaign flow's own spec calls for ("target &
+     * window") but nothing ever captured — §6.8's "You wanted 40 bookings.
+     * You're at 27" example has no number to compare against without this.
+     * Nullable: a campaign proposed without a stated numeric target is normal
+     * (e.g. "grow audience" often isn't a count), and `campaign.report_vs_outcome`
+     * reports honestly against volume/mix/engagement alone when it's absent
+     * rather than inventing one.
+     */
+    targetCount: integer('target_count'),
+    /** What targetCount counts — "bookings", "trials", "signups". Free text like the objective preset itself. */
+    targetLabel: text('target_label'),
+    /** draft | active | done | cancelled */
+    status: text('status').notNull().default('draft'),
+    /** The approved plan: volume, mix, capture ask, reasoning. */
+    plan: jsonb('plan').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('campaigns_scope_idx').on(t.orgId, t.genomeId, t.startAt.desc())],
+);
+
+/**
+ * THE AUDIT ROW — master plan §5 `tool_calls`, `packages/tools/src/invoke.ts`'s
+ * `ToolCallRecord`.
+ *
+ * Written exactly once per invocation (`invoke.ts` never updates a row after
+ * writing it — gated/failed/succeeded are all terminal), so this is INSERT-only,
+ * never UPDATE. `idempotencyKey` is unique-indexed because it is the field
+ * `lookupIdempotent` filters on before a non-idempotent tool re-runs a side effect.
+ */
+export const toolCalls = pgTable(
+  'tool_calls',
+  {
+    id: uuid('id').primaryKey(),
+    runId: uuid('run_id'),
+    userId: text('user_id'),
+    tool: text('tool').notNull(),
+    version: integer('version').notNull(),
+    caller: text('caller').notNull(), // 'user' | 'agent'
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id'),
+    genomeId: text('genome_id'),
+    role: text('role').notNull(),
+    input: jsonb('input'),
+    output: jsonb('output'),
+    effect: text('effect').notNull(),
+    decision: text('decision').notNull(), // Decision['kind']
+    ruleId: text('rule_id'),
+    reason: text('reason'),
+    costCents: integer('cost_cents').notNull().default(0),
+    idempotencyKey: text('idempotency_key'),
+    status: text('status').notNull(),
+    error: jsonb('error'),
+    why: jsonb('why'),
+    at: timestamp('at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index('tool_calls_org_brand_idx').on(t.orgId, t.brandId),
+    index('tool_calls_run_idx').on(t.runId),
+    // Partial-unique would be ideal (NULLs excluded) but Drizzle's pgTable index
+    // builder doesn't expose a WHERE clause portably across drivers here — an
+    // ordinary index is enough for `lookupIdempotent`'s equality lookup; true
+    // uniqueness is enforced by the "replay if found" logic in invoke.ts, which
+    // only ever consults, never depends on the DB rejecting a duplicate insert.
+    index('tool_calls_idempotency_idx').on(t.idempotencyKey),
+  ],
+);
+
+/**
+ * `agent_runs` / `agent_steps` — master plan §5, §4.5's Agent Timeline,
+ * `packages/spark/src/run.ts`'s `AgentRun` / `AgentStep`.
+ *
+ * Unlike `tool_calls`, a run is INSERT-then-UPDATE: `startRun` inserts with
+ * `status: 'running'`, `finishRun` updates the same row to its terminal state.
+ * Steps are append-only, ordered by `idx` rather than `at` — see `StepSequence`
+ * in `run.ts` for why timestamp ordering isn't trustworthy enough on its own.
+ */
+export const agentRuns = pgTable(
+  'agent_runs',
+  {
+    id: uuid('id').primaryKey(),
+    brandId: text('brand_id').notNull(),
+    agent: text('agent').notNull(),
+    goal: text('goal').notNull(),
+    trigger: text('trigger').notNull(), // 'user' | 'schedule' | 'event'
+    status: text('status').notNull().default('running'),
+    costCents: integer('cost_cents').notNull().default(0),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    traceId: text('trace_id'),
+    parentRunId: uuid('parent_run_id'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    error: jsonb('error'),
+  },
+  (t) => [
+    // Composite, and descending on `started_at`, because the Agent Timeline's
+    // only list query is `WHERE brand_id = ? ORDER BY started_at DESC LIMIT n`.
+    // With an index on `brand_id` alone, Postgres filters by index and then
+    // sorts *every* run the brand has ever made to find the newest 25 — on the
+    // screen people open most. Matching the sort order lets it stop after n.
+    index('agent_runs_brand_started_idx').on(t.brandId, t.startedAt.desc()),
+    index('agent_runs_parent_idx').on(t.parentRunId),
+  ],
+);
+
+export const agentSteps = pgTable(
+  'agent_steps',
+  {
+    runId: uuid('run_id').notNull(),
+    idx: integer('idx').notNull(),
+    type: text('type').notNull(), // 'think' | 'tool' | 'delegate' | 'wait'
+    payload: jsonb('payload'),
+    ms: integer('ms').notNull(),
+    at: timestamp('at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('agent_steps_run_idx').on(t.runId, t.idx)],
+);
+
+/* ── P5: Trend Discovery + automation ─────────────────────────────── */
+
+/** `trend.watchlist` — a genome tracking a trend over time. Client-confidential (which trends a brand is watching), so genome-scoped like `memories`. */
+export const trendWatchlist = pgTable(
+  'trend_watchlist',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    trendId: text('trend_id').notNull(),
+    source: text('source').notNull(),
+    topic: text('topic').notNull(),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('trend_watchlist_scope_idx').on(t.orgId, t.genomeId),
+    uniqueIndex('trend_watchlist_unique_idx').on(t.genomeId, t.trendId),
+  ],
+);
+
+/**
+ * `recipe.*` — Automation Recipes (plan §12 P5, `AUTO-01`→`AUTO-04.4`).
+ *
+ * One table for every recipe kind (AutoTrend, Bulk Connector, RSS), not one
+ * table per kind — CLAUDE.md invariant 5 applied to recipes the same way
+ * playbooks apply it to content: `kind` plus a `config` payload is data, and
+ * adding a new recipe kind must not require a migration.
+ */
+export const recipes = pgTable(
+  'recipes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    kind: text('kind').notNull(), // 'auto_trend' | 'bulk_connector' | 'rss'
+    name: text('name').notNull(),
+    config: jsonb('config').notNull(),
+    status: text('status').notNull().default('active'), // 'active' | 'paused'
+    /** Minutes between runs. A recipe with no schedule only runs on `recipe.run`. */
+    intervalMinutes: integer('interval_minutes'),
+    lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('recipes_scope_idx').on(t.orgId, t.genomeId)],
+);
+
+export const recipeRuns = pgTable(
+  'recipe_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recipeId: uuid('recipe_id').notNull(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    status: text('status').notNull(), // 'succeeded' | 'failed'
+    outputCount: integer('output_count').notNull().default(0),
+    error: text('error'),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [index('recipe_runs_recipe_idx').on(t.recipeId, t.startedAt.desc())],
+);
+
+/** One proposed piece of output from a recipe run — the "output queue" (`AUTO-04.4`). */
+export const recipeOutputs = pgTable(
+  'recipe_outputs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    recipeId: uuid('recipe_id').notNull(),
+    runId: uuid('run_id').notNull(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    status: text('status').notNull().default('pending_review'), // 'pending_review' | 'approved' | 'rejected'
+    /** What would be posted — a preview, not yet a `content_items` row. */
+    preview: jsonb('preview').notNull(),
+    /** Set once approved and turned into a real draft. */
+    contentItemId: uuid('content_item_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+  },
+  (t) => [index('recipe_outputs_scope_idx').on(t.orgId, t.genomeId, t.status)],
+);
+
+/* ── P6: Learning loop + agency multi-tenancy ─────────────────────── */
+
+/**
+ * Thompson sampling arms — one row per (genome, pillar). `alpha`/`beta` are the
+ * Beta-distribution parameters plan §6.7 calls for: every outcome updates one of
+ * them, `learning.reweight` samples from the resulting distribution, and
+ * `confidence` is derived from how concentrated it has become. Genome-scoped:
+ * which pillars are winning for a specific client is exactly the kind of
+ * competitive detail `scoped.ts` exists to wall off.
+ */
+export const learningArms = pgTable(
+  'learning_arms',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    pillar: text('pillar').notNull(),
+    /** Beta(alpha, beta) prior/posterior. Start at 1,1 — uniform, no opinion yet. */
+    alpha: real('alpha').notNull().default(1),
+    beta: real('beta').notNull().default(1),
+    observations: integer('observations').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('learning_arms_unique_idx').on(t.genomeId, t.pillar)],
+);
+
+/** One ingested outcome — the write side that moves an arm's alpha/beta. */
+export const learningOutcomes = pgTable(
+  'learning_outcomes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    contentItemId: uuid('content_item_id').notNull(),
+    pillar: text('pillar').notNull(),
+    /** 0–1, normalised engagement against this genome's own recent baseline. */
+    reward: real('reward').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('learning_outcomes_scope_idx').on(t.orgId, t.genomeId),
+    // One outcome per content item — a re-ingested metric snapshot updates
+    // nothing twice, same non-double-billing reasoning as `credit_ledger`.
+    uniqueIndex('learning_outcomes_item_idx').on(t.contentItemId),
+  ],
+);
+
+/**
+ * Agency multi-tenancy (plan §6.9, §12 P6). One Clerk org can already hold many
+ * `brands` — this table adds *who on the team can see which client*, which is
+ * the actual isolation gap: without it, every org member sees every brand.
+ * Not genome-scoped (it grants access to a genome, so it cannot itself require
+ * the access it grants) — every query filters on `orgId` regardless.
+ */
+export const brandMembers = pgTable(
+  'brand_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(),
+    userId: text('user_id').notNull(),
+    role: text('role').notNull(), // mirrors Role in @sparksocial/shared
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('brand_members_org_idx').on(t.orgId),
+    uniqueIndex('brand_members_unique_idx').on(t.brandId, t.userId),
+  ],
+);
+
+/**
+ * `whitelabel.link.create` — a signed, expiring, unauthenticated review link
+ * for a client with no SparkSocial account. The token is the credential; the
+ * public route trusts it instead of a Clerk session, which is exactly why it
+ * carries its own expiry and revocation rather than living forever like an
+ * internal id would.
+ */
+export const reviewLinks = pgTable(
+  'review_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(),
+    token: text('token').notNull(),
+    scope: text('scope').notNull(), // 'calendar' | 'content_item'
+    targetId: text('target_id'),
+    createdBy: text('created_by').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('review_links_token_idx').on(t.token)],
+);
+
+/**
+ * Org-level governance/billing (`org.governance.set`, `org.billing.plan.set`,
+ * `org.security.sso.configure`). Separate from `org_budgets` on purpose — that
+ * table is specifically the spend cap `policy.ts` rule 4 reads; mixing plan
+ * tier and SSO policy into it would blur a table whose whole point is being
+ * one narrow, hot-path read.
+ */
+export const orgSettings = pgTable('org_settings', {
+  orgId: text('org_id').primaryKey(),
+  plan: text('plan').notNull().default('starter'), // 'starter' | 'growth' | 'agency'
+  defaultApprovalMode: text('default_approval_mode').notNull().default('review_first_week'),
+  ssoRequired: boolean('sso_required').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * `oauth_connections` — a brand's own connected third-party account (Canva,
+ * plus the native publishing platforms — `packages/publish/src/integration.ts`).
+ * Genome-scoped:
+ * an access token that can read one specific brand's private design library
+ * is exactly the kind of material `scoped.ts` exists to wall off — leaking
+ * Brand A's Canva token into a query run for Brand B would hand over their
+ * actual design library, not just a display bug.
+ *
+ * `refreshToken`/`expiresAt` are nullable because not every OAuth provider
+ * issues a refresh token (some access tokens are long-lived or non-expiring)
+ * — absence here means "nothing to refresh," not "broken."
+ */
+export const oauthConnections = pgTable(
+  'oauth_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    provider: text('provider').notNull(), // 'canva', or a native publishing platform
+    accessToken: text('access_token').notNull(),
+    refreshToken: text('refresh_token'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    connectedBy: text('connected_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // Nullable: not every provider's token response reports granted scopes,
+    // and not every provider has a cheap "who am I" call for a label.
+    scopes: text('scopes').array(),
+    accountLabel: text('account_label'),
+  },
+  (t) => [
+    index('oauth_connections_scope_idx').on(t.orgId, t.genomeId),
+    uniqueIndex('oauth_connections_unique_idx').on(t.genomeId, t.provider),
+  ],
 );

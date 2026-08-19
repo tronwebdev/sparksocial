@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Automation Recipes</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    @font-face { font-family: "CS Mollwish"; src: url("fonts/CS-Mollwish.otf") format("opentype"); font-weight: 400; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus { outline: none; }
+    input::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-modal-in { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes ss-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes ss-twinkle { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Automation Recipes" style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ wrapH }};">
+    <div style="position:absolute;top:0;width:1728px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;height:{{ stageH }};">
+
+      <!-- ============ SIDEBAR ============ -->
+      <span style="position:absolute;left:32px;top:40px;font-family:'CS Mollwish','Comfortaa',sans-serif;font-size:27.49px;line-height:1.13;color:#0C0C0C;white-space:nowrap;">Sparksocial</span>
+      <div style="position:absolute;left:18px;top:328px;width:300px;height:50px;border-radius:10px;background:linear-gradient(90deg, rgba(108,232,255,0.4) 0%, rgba(148,238,255,0.4) 32.85%, rgba(255,255,255,0) 100%);"></div>
+      <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="7">
+        <div onClick="{{ nav.click }}" style="position:absolute;left:36px;width:270px;height:27px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:15px;top:{{ nav.top }};">
+          <span style="width:26px;height:26px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:{{ nav.color }};" dangerouslySetInnerHTML="{{ nav.icon }}"></span>
+          <span style="font-size:{{ nav.fontSize }};font-weight:600;line-height:1;color:{{ nav.color }};white-space:nowrap;">{{ nav.label }}</span>
+        </div>
+      </sc-for>
+      <div style="position:absolute;left:21px;top:1560px;width:295px;height:77px;border-radius:10px;box-shadow:0 0 0 1px rgba(131,131,131,0.2);">
+        <div style="position:absolute;left:12px;top:10px;width:57px;height:57px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;box-shadow:inset 0 0 0 1.44px rgba(120,120,120,0.28);"></div>
+          <div style="position:absolute;left:40px;top:38px;width:17px;height:17px;border-radius:50%;background:#13D711;display:flex;align-items:center;justify-content:center;">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="display:block;"><path d="m1.2 4.2 2 2L6.9 1.9" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+        <span style="position:absolute;left:85px;top:11px;font-size:18px;font-weight:600;line-height:1.28;color:#0C0C0C;">Pro Plan</span>
+        <div style="position:absolute;left:85px;top:39px;width:112px;height:26px;border-radius:5px;background:#DCF2F6;">
+          <span style="position:absolute;left:9px;top:4px;font-size:14px;font-weight:600;line-height:1.28;color:#838383;white-space:nowrap;">1,200 credits</span>
+        </div>
+        <svg width="6" height="23" viewBox="0 0 6 23" fill="#838383" style="position:absolute;left:272px;top:27px;display:block;"><circle cx="3" cy="3" r="2.4"></circle><circle cx="3" cy="11.5" r="2.4"></circle><circle cx="3" cy="20" r="2.4"></circle></svg>
+      </div>
+
+      <!-- ============ MAIN AREA ============ -->
+      <div style="position:absolute;left:348px;top:18px;width:1362px;border-radius:30px;background:linear-gradient(155deg, rgba(245,107,255,0.14) 0%, rgba(255,255,255,0) 40%), linear-gradient(205deg, rgba(108,232,255,0.22) 3%, rgba(255,255,255,0) 55%), #F9F9FA;height:{{ mainH }};"></div>
+
+      <sc-if value="{{ isHome }}">
+      <!-- starry hero -->
+      <div style="position:absolute;left:370px;top:40px;width:1318px;height:230px;border-radius:24px;overflow:hidden;background:radial-gradient(560px 220px at 22% 10%, #241B33 0%, rgba(20,14,30,0) 70%), radial-gradient(620px 260px at 80% 90%, #1E1530 0%, rgba(18,12,28,0) 70%), #0D0B14;">
+        <div style="position:absolute;inset:0;background-image:radial-gradient(circle 1.6px at 8% 24%, rgba(108,232,255,0.9) 40%, transparent 41%),radial-gradient(circle 1.2px at 18% 72%, rgba(128,171,255,0.8) 40%, transparent 41%),radial-gradient(circle 1.8px at 27% 38%, rgba(255,255,255,0.75) 40%, transparent 41%),radial-gradient(circle 1.2px at 36% 84%, rgba(108,232,255,0.7) 40%, transparent 41%),radial-gradient(circle 1.6px at 47% 18%, rgba(128,171,255,0.85) 40%, transparent 41%),radial-gradient(circle 1.2px at 58% 66%, rgba(255,255,255,0.6) 40%, transparent 41%),radial-gradient(circle 1.8px at 67% 30%, rgba(108,232,255,0.75) 40%, transparent 41%),radial-gradient(circle 1.2px at 77% 78%, rgba(128,171,255,0.7) 40%, transparent 41%),radial-gradient(circle 1.6px at 88% 22%, rgba(255,255,255,0.7) 40%, transparent 41%),radial-gradient(circle 1.2px at 94% 58%, rgba(108,232,255,0.8) 40%, transparent 41%);animation:ss-twinkle 5s ease-in-out infinite;"></div>
+        <span style="position:absolute;left:0;right:0;top:38px;text-align:center;font-size:34px;font-weight:700;color:#7FE9FD;">Automation Recipes</span>
+        <span style="position:absolute;left:0;right:0;top:94px;text-align:center;font-size:17px;font-weight:400;line-height:1.4;color:rgba(255,255,255,0.85);">Set-and-forget content engines. Recipes generate posts on a schedule<br>and route them to your queue and calendar.</span>
+        <div onClick="{{ openChooser }}" style="position:absolute;left:50%;top:162px;transform:translateX(-50%);height:47px;padding:0 20px;border-radius:12px;background:rgba(20,16,28,0.9);box-shadow:0 0 0 1.6px rgba(196,107,245,0.8), 0 0 24px -4px rgba(140,120,255,0.6);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:11px;" style-hover="box-shadow:0 0 0 1.6px #C46BF5, 0 0 30px -2px rgba(140,120,255,0.85);">
+          <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          <span style="font-size:16.5px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Add New Recipe</span>
+        </div>
+        <!-- floating app icons -->
+        <div style="position:absolute;left:112px;top:104px;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+          <div style="width:34px;height:40px;border-radius:7px;background:#AFC6E9;position:relative;"><span style="position:absolute;left:0;right:0;bottom:5px;text-align:center;font-size:9px;font-weight:800;color:#3B5B8C;">CSV</span><span style="position:absolute;left:8px;top:7px;width:4px;height:4px;border-radius:50%;background:#3B5B8C;"></span><span style="position:absolute;left:20px;top:7px;width:4px;height:4px;border-radius:50%;background:#3B5B8C;"></span></div>
+        </div>
+        <div style="position:absolute;left:302px;top:26px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" style="display:block;"><path d="M11 20V7M11 7 5.5 12.5M11 7l5.5 5.5M3 2h16" stroke="#57D4E8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="position:absolute;left:420px;top:172px;width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg, #21C4C8 0%, #7A5FE0 100%);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:26px;font-weight:700;color:#FFFFFF;font-family:Georgia, serif;font-style:italic;">C</span>
+        </div>
+        <div style="position:absolute;right:388px;top:104px;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
+          <svg width="30" height="26" viewBox="0 0 30 26" fill="none" style="display:block;"><path d="M2 6.4A3.4 3.4 0 0 1 5.4 3h5.2l3 3.4h11A3.4 3.4 0 0 1 28 9.8v9.8a3.4 3.4 0 0 1-3.4 3.4H5.4A3.4 3.4 0 0 1 2 19.6V6.4Z" fill="#F0C987"></path><path d="m16 9-4.4 6h3l-1.2 4.6 4.8-6.4h-3L16 9Z" fill="#E8582B"></path></svg>
+        </div>
+        <div style="position:absolute;right:170px;top:190px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+          <svg width="26" height="24" viewBox="0 0 26 24" fill="none" style="display:block;"><path d="m9 2 8 .02L26 16l-4 7-9-15.5L9 2Z" fill="#FFCF3E"></path><path d="M9 2 0 16.5 4 23l9-15.5L9 2Z" fill="#34A853"></path><path d="M4.4 23h17.4l4-7H8.6l-4.2 7Z" fill="#4285F4"></path></svg>
+        </div>
+        <div style="position:absolute;right:64px;top:32px;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style="display:block;"><path d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23" stroke="#F49B33" stroke-width="2.6" stroke-linecap="round" fill="none"></path><circle cx="3.2" cy="20.8" r="2.4" fill="#F49B33"></circle></svg>
+        </div>
+      </div>
+
+      <!-- Needs attention -->
+      <div style="position:absolute;left:560px;top:296px;width:60px;height:60px;">
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+        <div style="position:absolute;left:17px;top:26px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+        <div style="position:absolute;left:35px;top:26px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+      </div>
+      <div style="position:absolute;left:634px;top:302px;width:1054px;height:51.5px;border-radius:15.6px;background:#FFF0DC;box-shadow:inset 0 0 0 1.04px #FFB453;">
+        <svg width="21.9" height="21.8" viewBox="0 0 22 22" fill="none" style="position:absolute;left:12px;top:14.5px;display:block;"><path d="M13.9 1.1C13 .4 12 0 10.9 0 9.9 0 8.8.4 7.9 1.1 5.4 3.2 3.1 5.5 1.1 8c-1.5 1.8-1.4 4-.1 5.8 2.1 2.6 4.4 5 7 7 1.8 1.4 4 1.4 5.8 0 2.6-2 4.9-4.4 7-6.9 1.4-1.8 1.4-4.1 0-5.9-2-2.5-4.3-4.9-6.9-6.9Z" fill="rgba(230,167,81,0.3)"></path><path d="M10.9 5.5v6.2M10.9 15.4v.6" stroke="#E6A751" stroke-width="2.3" stroke-linecap="round"></path></svg>
+        <span style="position:absolute;left:44px;top:14.6px;font-size:16.65px;line-height:1.28;white-space:nowrap;"><b style="font-weight:700;color:#E48915;">Needs Attention:</b><span style="font-weight:500;color:#E48915;"> Approval required for one queued post - campaign ending in 2 days</span></span>
+        <span onClick="{{ goReview }}" style="position:absolute;left:928px;top:15.6px;font-size:16.65px;font-weight:400;color:#0C0C0C;cursor:pointer;">Review</span>
+        <div onClick="{{ goReview }}" style="position:absolute;left:998px;top:13.5px;width:22.9px;height:22.9px;border-radius:50%;box-shadow:inset 0 0 0 0.8px #0C0C0C;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="5" height="9" viewBox="0 0 5 9" fill="none" style="display:block;"><path d="m1 1 3 3.5L1 8" stroke="#0C0C0C" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+      </div>
+
+      <!-- Recipe cards -->
+      <sc-for list="{{ recipes }}" as="rp" hint-placeholder-count="3">
+        <div style="position:absolute;top:388px;width:426px;height:250px;border-radius:20px;overflow:hidden;background:{{ rp.bg }};box-shadow:inset 0 0 0 1px rgba(131,131,131,0.12);left:{{ rp.left }};">
+          <div style="position:absolute;left:24px;top:24px;width:58px;height:58px;border-radius:14px;background:{{ rp.iconBg }};display:flex;align-items:center;justify-content:center;">
+            <span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:#FFFFFF;" dangerouslySetInnerHTML="{{ rp.icon }}"></span>
+          </div>
+          <div style="position:absolute;right:18px;top:20px;height:30px;padding:0 11px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.15);display:inline-flex;align-items:center;gap:7px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#13D711;"></span>
+            <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ rp.active }} active</span>
+          </div>
+          <span style="position:absolute;left:24px;top:102px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ rp.name }}</span>
+          <span style="position:absolute;left:24px;top:138px;width:378px;font-size:15.5px;font-weight:400;line-height:1.35;color:#5B5B5B;">{{ rp.desc }}</span>
+          <div onClick="{{ rp.manage }}" style="position:absolute;left:24px;top:192px;height:41px;padding:0 22px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+            <span style="font-size:15px;font-weight:600;color:#0C0C0C;">Manage</span>
+          </div>
+          <div onClick="{{ rp.addNew }}" style="position:absolute;left:146px;top:192px;height:41px;padding:0 16px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;border-radius:9px;" style-hover="background:rgba(255,255,255,0.6);">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Add New</span>
+          </div>
+        </div>
+      </sc-for>
+
+      <!-- Output queue -->
+      <div style="position:absolute;left:370px;top:672px;width:1318px;height:960px;border-radius:20px;background:#FFFFFF;">
+        <span style="position:absolute;left:28px;top:28px;font-size:22px;font-weight:700;color:#0C0C0C;">Automation output queue</span>
+        <span style="position:absolute;left:28px;top:64px;font-size:16px;font-weight:400;color:#838383;">All posts generated by recipes — review, edit, or let them ship.</span>
+        <div onClick="{{ toastAccount }}" style="position:absolute;left:1002px;top:32px;height:44px;padding:0 16px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:block;"><path d="M1.5 2h13L9.6 8.2v5.2l-3.2 1.4V8.2L1.5 2Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+          <span style="font-size:15px;font-weight:500;color:#5B5B5B;">Account</span>
+          <svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div onClick="{{ toastGovernance }}" style="position:absolute;left:1142px;top:32px;height:44px;padding:0 16px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(228,137,21,0.55);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="background:#FFF9F1;">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" style="display:block;"><circle cx="10" cy="10" r="3.4" stroke="#E48915" stroke-width="1.5"></circle><path d="M10 1.8v2.4M10 15.8v2.4M18.2 10h-2.4M4.2 10H1.8M16 4l-1.7 1.7M5.7 14.3 4 16M16 16l-1.7-1.7M5.7 5.7 4 4" stroke="#E48915" stroke-width="1.5" stroke-linecap="round"></path></svg>
+          <span style="font-size:15px;font-weight:500;color:#E48915;">Governance</span>
+        </div>
+        <!-- tabs -->
+        <div style="position:absolute;left:28px;top:112px;height:56px;padding:0 8px;border-radius:14px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);display:inline-flex;flex-direction:row;align-items:center;gap:6px;">
+          <sc-for list="{{ queueTabs }}" as="qt" hint-placeholder-count="6">
+            <div onClick="{{ qt.click }}" style="height:40px;padding:0 14px;border-radius:10px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;background:{{ qt.bg }};transition:background 0.2s ease;">
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ qt.label }}</span>
+              <span style="min-width:22px;height:22px;padding:0 6px;border-radius:6px;background:{{ qt.badgeBg }};display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#0C0C0C;">{{ qt.count }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="position:absolute;left:938px;top:118px;width:352px;height:46px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);">
+          <input type="text" placeholder="Search Queue" style="position:absolute;left:16px;top:0;width:290px;height:46px;border:none;background:transparent;font-size:15px;font-weight:500;color:#0C0C0C;">
+          <svg width="17" height="17" viewBox="0 0 26 26" fill="none" style="position:absolute;right:15px;top:15px;display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+        </div>
+        <!-- table -->
+        <span style="position:absolute;left:28px;top:206px;font-size:16.5px;font-weight:600;color:#5B5B5B;">Contents</span>
+        <span style="position:absolute;left:600px;top:206px;font-size:16.5px;font-weight:600;color:#5B5B5B;">Recipe</span>
+        <span style="position:absolute;left:952px;top:206px;font-size:16.5px;font-weight:600;color:#5B5B5B;">Account</span>
+        <span style="position:absolute;left:1090px;top:206px;font-size:16.5px;font-weight:600;color:#5B5B5B;">Status</span>
+        <span style="position:absolute;left:1226px;top:206px;font-size:16.5px;font-weight:600;color:#5B5B5B;">Action</span>
+        <div style="position:absolute;left:0;top:240px;width:1318px;height:1px;background:rgba(131,131,131,0.15);"></div>
+        <sc-for list="{{ queueRows }}" as="q" hint-placeholder-count="5">
+          <div style="position:absolute;left:0;width:1318px;height:118px;top:{{ q.top }};">
+            <span style="position:absolute;left:28px;top:28px;font-size:19px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">{{ q.title }}</span>
+            <div style="position:absolute;left:28px;top:66px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+              <svg width="18" height="19" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.7"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path></svg>
+              <span style="font-size:15.5px;font-weight:500;color:#838383;white-space:nowrap;">Tue 12 Apr, 10:00</span>
+            </div>
+            <div style="position:absolute;left:600px;top:34px;height:44px;padding:0 7px 0 13px;border-radius:11px;display:inline-flex;flex-direction:row;align-items:center;gap:9px;background:{{ q.recipeBg }};box-shadow:inset 0 0 0 1px {{ q.recipeRing }};">
+              <span style="width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;color:#0C0C0C;" dangerouslySetInnerHTML="{{ q.recipeIcon }}"></span>
+              <span style="font-size:14.5px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ q.recipe }}</span>
+              <sc-if value="{{ q.hasSub }}" hint-placeholder-val="{{ true }}">
+                <div style="height:32px;padding:0 10px;border-radius:8px;background:#FFFFFF;display:inline-flex;align-items:center;gap:6px;box-shadow:inset 0 0 0 0.8px rgba(12,12,12,0.12);">
+                  <span style="font-size:13px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ q.sub }}</span>
+                </div>
+              </sc-if>
+            </div>
+            <div style="position:absolute;left:952px;top:32px;width:46px;height:46px;border-radius:50%;background:#F8F8F8 url('assets/agent-avatar-photo.png') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+            <img src="assets/icons/fb-color.png" alt="" style="position:absolute;left:982px;top:62px;width:17px;height:17px;border-radius:50%;background:#FFFFFF;padding:1.5px;box-shadow:0 0 0 1px rgba(12,12,12,0.08);">
+            <span style="position:absolute;left:1010px;top:44px;font-size:16px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Joy walker</span>
+            <div style="position:absolute;left:1090px;top:36px;height:40px;padding:0 15px;border-radius:9px;background:{{ q.chipBg }};box-shadow:inset 0 0 0 1.06px {{ q.chipRing }};display:inline-flex;align-items:center;gap:8px;">
+              <sc-if value="{{ q.isRegen }}" hint-placeholder-val="{{ false }}">
+                <span style="width:14px;height:14px;display:inline-flex;"><svg width="14" height="14" viewBox="0 0 19 19" fill="none" style="display:block;"><path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#F56BFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+              </sc-if>
+              <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ q.chipColor }};">{{ q.status }}</span>
+            </div>
+            <div onClick="{{ q.preview }}" style="position:absolute;left:1226px;top:38px;width:37px;height:37px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+              <svg width="17" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#838383" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#838383" stroke-width="1.4"></circle></svg>
+            </div>
+            <div onClick="{{ q.remove }}" style="position:absolute;left:1271px;top:38px;width:37px;height:37px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.6);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.08);">
+              <svg width="13" height="15" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;bottom:0;width:1318px;height:1px;background:rgba(131,131,131,0.1);"></div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ queueEmpty }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;left:28px;top:290px;font-size:16px;color:#838383;">No posts in this state right now.</span>
+        </sc-if>
+        <span style="position:absolute;left:28px;top:900px;font-size:16px;font-weight:500;color:#838383;">Page 1 of 4</span>
+        <div style="position:absolute;left:1216px;top:892px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);display:flex;align-items:center;justify-content:center;opacity:0.45;">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;transform:scaleX(-1);"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div onClick="{{ toastPage }}" style="position:absolute;left:1258px;top:892px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+      </div>
+
+      </sc-if>
+
+      <!-- ============ AUTOTREND FULL-PAGE WIZARD ============ -->
+      <sc-if value="{{ atWizard }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="AutoTrend Wizard">
+          <!-- chrome -->
+          <div onClick="{{ atBack }}" style="position:absolute;left:378px;top:74px;width:112px;height:52px;border-radius:12px;background:rgba(255,255,255,0.7);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:13px;" style-hover="background:#FFFFFF;">
+            <svg width="8" height="15" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:17px;font-weight:500;color:#5B5B5B;">Back</span>
+          </div>
+          <span style="position:absolute;left:771px;top:80px;font-size:20px;line-height:1.3;color:#0C0C0C;white-space:nowrap;"><b style="font-weight:700;">Step {{ atStepNum }}</b> of {{ wzTotal }}</span>
+          <div style="position:absolute;left:974px;top:82px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+            <svg width="17" height="17" viewBox="0 0 19 19" fill="none" style="display:block;"><path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#838383" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:16px;color:#838383;white-space:nowrap;">Creating Automation for <b style="font-weight:700;color:#5B5B5B;">{{ wzRecipeLabel }}</b></span>
+          </div>
+          <div style="position:absolute;left:771px;top:118px;width:511px;height:10px;border-radius:8px;background:rgba(131,131,131,0.18);overflow:hidden;">
+            <div style="position:absolute;left:0;top:0;height:10px;border-radius:8px;background:linear-gradient(90deg,#6CE8FF 0%,#A341FF 55%,#F5A76B 100%);transition:width 0.4s cubic-bezier(0.22,1,0.36,1);width:{{ atProgress }};"></div>
+          </div>
+          <div onClick="{{ atNext }}" style="position:absolute;left:1552px;top:80px;height:44px;padding:0 8px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:16px;border-radius:10px;" style-hover="background:rgba(255,255,255,0.7);">
+            <span style="font-size:19px;font-weight:600;color:#0C0C0C;">Continue</span>
+            <svg width="9" height="16" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#0C0C0C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+          <div style="position:absolute;left:378px;top:150px;width:1310px;height:1px;background:rgba(131,131,131,0.2);"></div>
+          <!-- spark bubble -->
+          <sc-if value="{{ wzShowBubble }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:435px;top:206px;display:flex;flex-direction:row;gap:9px;">
+            <span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 8px rgba(12,12,12,0.15);margin-top:16px;"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 8px rgba(12,12,12,0.15);margin-top:16px;"></span>
+            <div style="margin-left:14px;max-width:470px;border-radius:18px;background:#FFFFFF;box-shadow:0 12px 30px -18px rgba(12,12,12,0.3);padding:16px 24px;">
+              <span style="font-size:16.5px;font-weight:500;line-height:1.4;color:#3B3B3B;">{{ atBubble }}</span>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- STEP 1: Name & accounts + recipe type -->
+          <sc-if value="{{ atS1 }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:375px;top:300px;width:812px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:34px 40px 44px;">
+              <div style="font-size:24px;font-weight:700;color:#0C0C0C;">Name &amp; accounts</div>
+              <div style="margin-top:26px;font-size:16.5px;font-weight:500;color:#5B5B5B;">Recipe name</div>
+              <input type="text" value="{{ wizName }}" onInput="{{ wizOnName }}" style="margin-top:10px;width:100%;height:62px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 22px;font-size:17px;font-weight:500;color:#0C0C0C;">
+              <div style="margin-top:24px;font-size:16.5px;font-weight:500;color:#5B5B5B;">Target account(s)</div>
+              <div style="margin-top:10px;display:flex;flex-direction:row;gap:13px;">
+                <div style="height:58px;padding:0 18px 0 9px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #0C0C0C;display:inline-flex;flex-direction:row;align-items:center;gap:11px;">
+                  <div style="position:relative;width:41px;height:41px;">
+                    <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/agent-avatar-photo.png') center / cover no-repeat;"></div>
+                    <img src="assets/icons/fb-color.png" alt="" style="position:absolute;right:-2px;bottom:-2px;width:16px;height:16px;border-radius:50%;background:#FFFFFF;padding:1.5px;box-shadow:0 0 0 1px rgba(12,12,12,0.08);">
+                  </div>
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Joy walker</span>
+                  <span style="width:17px;height:17px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </div>
+                <div onClick="{{ toastAddAccount }}" style="height:58px;padding:0 20px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="box-shadow:inset 0 0 0 1.5px #838383;">
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                  <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Add New</span>
+                </div>
+              </div>
+              <div style="margin-top:14px;font-size:15px;font-weight:400;color:#838383;">Posts will publish to these connected accounts below.</div>
+              <sc-if value="{{ atShowRecipeType }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-top:30px;font-size:19px;font-weight:700;color:#0C0C0C;">Choose Recipe Type</div>
+              <div style="margin-top:14px;display:flex;flex-direction:row;gap:18px;">
+                <sc-for list="{{ atRecipeTypes }}" as="rt" hint-placeholder-count="2">
+                  <div onClick="{{ rt.click }}" style="flex:1;height:120px;border-radius:16px;background:#FFFFFF;cursor:pointer;position:relative;box-shadow:{{ rt.ring }};" style-hover="box-shadow:inset 0 0 0 1.6px #838383;">
+                    <span style="position:absolute;left:24px;top:24px;font-size:18px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ rt.name }}</span>
+                    <span style="position:absolute;left:24px;top:58px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">{{ rt.desc }}</span>
+                    <sc-if value="{{ rt.selected }}" hint-placeholder-val="{{ true }}">
+                      <span style="position:absolute;right:16px;top:16px;width:21px;height:21px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="10" height="9" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <!-- STEP 2: starting query -->
+          <sc-if value="{{ atS2 }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:375px;top:300px;width:812px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:34px 40px 40px;">
+              <div style="font-size:24px;font-weight:700;color:#0C0C0C;">Set your starting query</div>
+              <div style="margin-top:22px;width:250px;height:52px;border-radius:12px;background:rgba(131,131,131,0.08);position:relative;">
+                <div style="position:absolute;top:4px;width:120px;height:44px;border-radius:9px;background:#9CEFFF;transition:left 0.25s ease;left:{{ atKwPillLeft }};"></div>
+                <div onClick="{{ atKwMode }}" style="position:absolute;left:4px;top:4px;width:120px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><span style="font-size:15.5px;font-weight:600;color:#0C0C0C;position:relative;">Keywords</span></div>
+                <div onClick="{{ atInfMode }}" style="position:absolute;left:126px;top:4px;width:120px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><span style="font-size:15.5px;font-weight:600;color:#0C0C0C;position:relative;">Influencers</span></div>
+              </div>
+              <input type="text" placeholder="#Hashtags, Ai, marketing, automation..." style="margin-top:16px;width:100%;height:60px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 22px;font-size:16.5px;font-weight:500;color:#0C0C0C;">
+              <div style="margin-top:14px;display:flex;flex-direction:row;gap:11px;flex-wrap:wrap;">
+                <sc-for list="{{ atKwChips }}" as="kc" hint-placeholder-count="2">
+                  <div style="height:44px;padding:0 15px;border-radius:10px;background:#D9F6FC;display:inline-flex;flex-direction:row;align-items:center;gap:12px;">
+                    <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ kc.label }}</span>
+                    <span onClick="{{ kc.remove }}" style="font-size:15px;color:#5B5B5B;cursor:pointer;line-height:1;">✕</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:34px;font-size:22px;font-weight:700;color:#0C0C0C;">Refine your query</div>
+              <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:22px 30px;">
+                <sc-for list="{{ atRefines }}" as="rf" hint-placeholder-count="6">
+                  <div>
+                    <div style="font-size:16.5px;font-weight:600;color:#0C0C0C;">{{ rf.label }}</div>
+                    <div onClick="{{ rf.click }}" style="margin-top:9px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                      <span style="font-size:16.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ rf.value }}</span>
+                      <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:30px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Exclude keywords</div>
+              <input type="text" placeholder="Crypto, nsfw" style="margin-top:10px;width:100%;height:58px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 22px;font-size:16.5px;font-weight:500;color:#0C0C0C;">
+              <div style="margin-top:13px;display:flex;flex-direction:row;gap:11px;flex-wrap:wrap;">
+                <sc-for list="{{ atExChips }}" as="xc" hint-placeholder-count="2">
+                  <div style="height:44px;padding:0 15px;border-radius:10px;background:#FBDEDE;display:inline-flex;flex-direction:row;align-items:center;gap:12px;">
+                    <span style="font-size:15.5px;font-weight:600;color:#B23A3A;white-space:nowrap;">{{ xc.label }}</span>
+                    <span onClick="{{ xc.remove }}" style="font-size:15px;color:#B23A3A;cursor:pointer;line-height:1;">✕</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:26px;height:70px;border-radius:14px;background:#D9F2FB;display:flex;flex-direction:row;align-items:center;padding:0 22px;gap:14px;">
+                <svg width="22" height="24" viewBox="0 0 20 22" fill="none" style="display:block;flex-shrink:0;"><path d="M10 1.6 18 4.7v5.5c0 4.8-3.1 9-8 10.5-4.9-1.5-8-5.7-8-10.5V4.7l8-3.1Z" stroke="#0C0C0C" stroke-width="1.7" stroke-linejoin="round"></path><path d="M10 6.8v4.4M10 14v.6" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                <div style="flex:1;">
+                  <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Enable Brand safety filter</div>
+                  <div style="margin-top:3px;font-size:14.5px;font-weight:400;color:#5B5B5B;">Flagged posts route to Needs Review</div>
+                </div>
+                <div onClick="{{ atToggleSafety }}" style="position:relative;width:50px;height:28px;border-radius:28px;cursor:pointer;transition:background 0.2s ease;background:{{ atSafetyBg }};">
+                  <div style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;transition:left 0.2s ease;left:{{ atSafetyKnob }};"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Posts Results rail -->
+            <div style="position:absolute;left:1216px;top:186px;width:470px;height:1470px;border-radius:20px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);overflow:hidden;">
+              <span style="position:absolute;left:26px;top:24px;font-size:19px;font-weight:700;color:#0C0C0C;">Posts Results</span>
+              <div style="position:absolute;left:0;top:66px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+              <div style="position:absolute;left:34px;top:88px;width:402px;text-align:center;font-size:15.5px;font-weight:400;line-height:1.45;color:#5B5B5B;">This automated campaign provides content customized to your interests. Choose the trends you want to feature in this recipe's foundation.</div>
+              <sc-for list="{{ atResults }}" as="ar" hint-placeholder-count="4">
+                <div style="position:absolute;left:22px;width:426px;height:250px;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);top:{{ ar.top }};">
+                  <div style="position:absolute;left:0;top:0;width:426px;height:42px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.15);display:flex;flex-direction:row;align-items:center;">
+                    <span style="flex:1;text-align:center;font-size:13px;font-weight:600;color:#0C0C0C;">Vol: 42k</span><div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                    <span style="flex:1.1;text-align:center;font-size:13px;font-weight:500;color:#0C0C0C;">🕐 7d +31%</span><div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                    <span style="flex:0.9;text-align:center;font-size:13px;font-weight:500;color:#0C0C0C;">Accel: <b style="color:#13D711;">↑</b></span><div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                    <span style="flex:1.3;text-align:center;font-size:13px;font-weight:500;color:#0C0C0C;">Saturation: Low</span>
+                  </div>
+                  <div style="position:absolute;left:18px;top:60px;width:96px;height:96px;border-radius:10px;background:rgba(131,131,131,0.08);overflow:hidden;">
+                    <div style="position:absolute;left:24px;top:5px;width:48px;height:86px;border-radius:5px;background:url('{{ ar.thumb }}') center / cover no-repeat;"></div>
+                    <sc-if value="{{ ar.hasPlay }}" hint-placeholder-val="{{ false }}">
+                      <svg width="11" height="12" viewBox="0 0 9 10" fill="none" style="position:absolute;left:43px;top:44px;display:block;filter:drop-shadow(0 0 4px rgba(0,0,0,0.7));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                    </sc-if>
+                  </div>
+                  <span style="position:absolute;left:134px;top:66px;font-size:16px;font-weight:500;color:#838383;white-space:nowrap;">{{ ar.kind }}</span>
+                  <span style="position:absolute;left:134px;top:96px;width:270px;font-size:17px;font-weight:700;line-height:1.3;color:#0C0C0C;">{{ ar.title }}</span>
+                  <div onClick="{{ ar.toggle }}" style="position:absolute;left:18px;top:200px;width:26px;height:26px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ ar.boxBg }};box-shadow:{{ ar.boxRing }};">
+                    <sc-if value="{{ ar.checked }}" hint-placeholder-val="{{ true }}"><svg width="12" height="10" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                  </div>
+                  <svg width="16" height="20" viewBox="0 0 15 19" fill="none" style="position:absolute;right:22px;top:202px;display:block;cursor:pointer;"><path d="M1 3.2A2.2 2.2 0 0 1 3.2 1h8.6A2.2 2.2 0 0 1 14 3.2V17.4a.6.6 0 0 1-.96.48L7.5 13.7l-5.54 4.18A.6.6 0 0 1 1 17.4V3.2Z" stroke="#5B5B5B" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- BULK STEP 2: choose a source type -->
+          <sc-if value="{{ bcSource }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:375px;top:300px;width:812px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:34px 40px 40px;">
+              <div style="font-size:24px;font-weight:700;color:#0C0C0C;">Choose a Source type</div>
+              <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <sc-for list="{{ bcSources }}" as="bs" hint-placeholder-count="4">
+                  <div onClick="{{ bs.click }}" style="position:relative;height:150px;border-radius:16px;background:{{ bs.cardBg }};cursor:pointer;box-shadow:{{ bs.ring }};" style-hover="box-shadow:inset 0 0 0 1.8px #0C0C0C;">
+                    <div style="position:absolute;left:28px;top:36px;width:76px;height:76px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:{{ bs.iconBg }};">
+                      <span style="display:inline-flex;" dangerouslySetInnerHTML="{{ bs.icon }}"></span>
+                    </div>
+                    <span style="position:absolute;left:124px;top:62px;font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ bs.name }}</span>
+                    <div style="position:absolute;right:16px;top:16px;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ bs.boxBg }};box-shadow:{{ bs.boxRing }};">
+                      <sc-if value="{{ bs.selected }}" hint-placeholder-val="{{ false }}"><svg width="12" height="10" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="position:absolute;left:375px;top:806px;width:812px;height:96px;border-radius:18px;background:rgba(255,255,255,0.85);border:1.6px dashed rgba(131,131,131,0.45);">
+              <span style="position:absolute;left:40px;top:34px;font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Canva — not connected</span>
+              <div onClick="{{ bcConnect }}" style="position:absolute;right:36px;top:24px;height:46px;padding:0 22px;border-radius:11px;background:linear-gradient(90deg, #8F7BFF 0%, #C46BF5 100%);cursor:pointer;display:inline-flex;align-items:center;gap:8px;" style-hover="opacity:0.92;">
+                <span style="font-size:16px;font-weight:600;color:#FFFFFF;white-space:nowrap;">+ Connect</span>
+              </div>
+            </div>
+            <div style="position:absolute;left:1216px;top:186px;width:470px;height:720px;border-radius:20px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);">
+              <span style="position:absolute;left:26px;top:24px;font-size:19px;font-weight:700;color:#0C0C0C;">Posts Summary</span>
+              <div style="position:absolute;left:0;top:66px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+              <div style="position:absolute;left:36px;top:96px;width:2px;height:560px;background:rgba(131,131,131,0.2);"></div>
+              <div style="position:absolute;left:26px;top:88px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #838383;display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="6.6" stroke="#838383" stroke-width="1.4"></circle><path d="M8 4.8V8l2.2 1.5" stroke="#838383" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+              <div style="position:absolute;left:26px;top:326px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #838383;display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="6.6" stroke="#838383" stroke-width="1.4"></circle><path d="M8 4.8V8l2.2 1.5" stroke="#838383" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+              <div style="position:absolute;left:64px;top:88px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px;">
+                <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Selected Account:</div>
+                <div style="margin-top:14px;display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;">
+                  <sc-for list="{{ atAccounts }}" as="ba" hint-placeholder-count="8">
+                    <div style="position:relative;width:46px;height:46px;">
+                      <div style="position:absolute;inset:0;border-radius:50%;background:{{ ba.bg }} url('{{ ba.img }}') center / cover no-repeat;"></div>
+                      <div style="position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:5px;background:#FFFFFF url('{{ ba.badge }}') center / 13px 13px no-repeat;box-shadow:0 0 0 1px rgba(12,12,12,0.08);"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="position:absolute;left:64px;top:326px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px;">
+                <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Selected Source:</div>
+                <div style="margin-top:14px;display:flex;flex-direction:row;align-items:flex-start;gap:13px;">
+                  <div style="width:44px;height:44px;border-radius:50%;background:#0C0C0C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span style="font-size:22px;font-weight:700;color:#FFFFFF;font-family:Georgia, serif;font-style:italic;">C</span>
+                  </div>
+                  <div>
+                    <div style="font-size:16px;font-weight:700;color:#0C0C0C;">Canva/folder/Micadass Brand Assets</div>
+                    <div style="margin-top:6px;font-size:14.5px;font-weight:500;color:#838383;">4 Files&nbsp;&nbsp;·&nbsp;&nbsp;74MB</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- BULK STEP 3: preview & validate -->
+          <sc-if value="{{ bcValidate }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:435px;top:206px;display:flex;flex-direction:row;gap:9px;">
+              <span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 8px rgba(12,12,12,0.15);margin-top:20px;"></span>
+              <span style="width:11px;height:11px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 8px rgba(12,12,12,0.15);margin-top:20px;"></span>
+              <div style="margin-left:14px;height:56px;border-radius:16px;background:rgba(255,255,255,0.8);box-shadow:inset 0 0 0 1.5px #C46BF5;display:inline-flex;flex-direction:row;align-items:center;padding:0 10px 0 20px;gap:18px;">
+                <span style="font-size:16.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;">🎉 <b style="font-weight:700;">Great Job, your files were uploaded:</b>&nbsp; 3 rows detected&nbsp;&nbsp;·&nbsp;&nbsp;2 valid&nbsp;&nbsp;·&nbsp;&nbsp;1 warning</span>
+                <div onClick="{{ bcRevalidate }}" style="height:38px;padding:0 15px;border-radius:10px;background:#FFFFFF;box-shadow:0 6px 16px -8px rgba(12,12,12,0.35);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="box-shadow:0 6px 16px -5px rgba(12,12,12,0.5);">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Re-validate</span>
+                  <svg width="6" height="10" viewBox="0 0 5 9" fill="none" style="display:block;"><path d="m1 1 3 3.5L1 8" stroke="#0C0C0C" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+            </div>
+            <div style="position:absolute;left:430px;top:306px;width:1256px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:36px 30px 30px;">
+              <div style="padding-left:4px;font-size:24px;font-weight:700;color:#0C0C0C;">Preview &amp; validate your files on:&nbsp; Micadass Brand CSV</div>
+              <div style="margin-top:28px;height:44px;display:flex;flex-direction:row;align-items:center;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.2);">
+                <div onClick="{{ bcToggleAll }}" style="width:60px;flex-shrink:0;display:flex;align-items:center;padding-left:4px;cursor:pointer;">
+                  <div style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ bcAllBg }};box-shadow:{{ bcAllRing }};">
+                    <sc-if value="{{ bcAllChecked }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                  </div>
+                </div>
+                <span style="flex:1;font-size:16.5px;font-weight:500;color:#5B5B5B;">Caption</span>
+                <span style="width:220px;font-size:16.5px;font-weight:500;color:#5B5B5B;">Media</span>
+                <span style="width:280px;font-size:16.5px;font-weight:500;color:#5B5B5B;">Link</span>
+                <span style="width:170px;font-size:16.5px;font-weight:500;color:#5B5B5B;">Preview</span>
+              </div>
+              <sc-for list="{{ bcRows }}" as="br" hint-placeholder-count="3">
+                <div style="height:102px;display:flex;flex-direction:row;align-items:center;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.12);">
+                  <div onClick="{{ br.toggle }}" style="width:60px;flex-shrink:0;display:flex;align-items:center;padding-left:4px;cursor:pointer;">
+                    <div style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ br.boxBg }};box-shadow:{{ br.boxRing }};">
+                      <sc-if value="{{ br.checked }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                    </div>
+                  </div>
+                  <div style="flex:1;display:flex;flex-direction:row;align-items:center;gap:12px;">
+                    <sc-if value="{{ br.valid }}" hint-placeholder-val="{{ true }}">
+                      <span style="width:22px;height:22px;border-radius:50%;background:#22B14C;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </sc-if>
+                    <sc-if value="{{ br.warning }}" hint-placeholder-val="{{ false }}">
+                      <svg width="22" height="20" viewBox="0 0 22 20" fill="none" style="display:block;flex-shrink:0;"><path d="M9.3 1.9a2 2 0 0 1 3.4 0l7.8 13.4a2 2 0 0 1-1.7 3H3.2a2 2 0 0 1-1.7-3L9.3 1.9Z" stroke="#E23B3B" stroke-width="1.7" stroke-linejoin="round"></path><path d="M11 7v4.4M11 14.6v.5" stroke="#E23B3B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    </sc-if>
+                    <span style="font-size:18px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ br.caption }}</span>
+                  </div>
+                  <span style="width:220px;font-size:16px;font-weight:500;color:#5B5B5B;">{{ br.media }}</span>
+                  <span style="width:280px;font-size:16px;font-weight:500;color:#5B5B5B;">{{ br.link }}</span>
+                  <div style="width:170px;display:flex;flex-direction:row;align-items:center;gap:16px;">
+                    <div style="width:62px;height:62px;border-radius:10px;background:rgba(131,131,131,0.1) url('{{ br.thumb }}') center / cover no-repeat;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.15);"></div>
+                    <div onClick="{{ br.preview }}" style="width:38px;height:38px;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+                      <svg width="17" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#838383" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#838383" stroke-width="1.4"></circle></svg>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- RSS STEP 2: feed url -->
+          <sc-if value="{{ rssFeed }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:375px;top:300px;width:812px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:34px 40px 40px;">
+              <div style="font-size:24px;font-weight:700;color:#0C0C0C;">RSS feed URL</div>
+              <div style="margin-top:26px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Connect your RSS Feed URL:</div>
+              <input type="text" value="Https://blog.brand.com/feed" style="margin-top:10px;width:100%;height:62px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 22px;font-size:17px;font-weight:500;color:#0C0C0C;">
+              <div style="margin-top:24px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Feed type</div>
+              <div style="margin-top:10px;display:flex;flex-direction:row;gap:12px;">
+                <sc-for list="{{ rssTypes }}" as="rt2" hint-placeholder-count="2">
+                  <div onClick="{{ rt2.click }}" style="height:48px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:9px;background:{{ rt2.bg }};box-shadow:{{ rt2.ring }};">
+                    <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ rt2.label }}</span>
+                    <sc-if value="{{ rt2.active }}" hint-placeholder-val="{{ false }}">
+                      <span style="width:16px;height:16px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:26px;border-radius:14px;background:#D9F2FB;padding:18px 22px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="display:block;flex-shrink:0;"><path d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23" stroke="#0C0C0C" stroke-width="2.2" stroke-linecap="round" fill="none"></path></svg>
+                <span style="font-size:15px;font-weight:500;line-height:1.4;color:#0C0C0C;">Streamline your content delivery with RSS feed automation, allowing you to effortlessly distribute updates, podcast and news to your audience in real-time.</span>
+              </div>
+            </div>
+            <!-- RSS Feed Results rail -->
+            <div style="position:absolute;left:1216px;top:186px;width:470px;height:800px;border-radius:20px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);">
+              <span style="position:absolute;left:26px;top:24px;font-size:19px;font-weight:700;color:#0C0C0C;">RSS Feed Results</span>
+              <div style="position:absolute;left:0;top:66px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+              <div style="position:absolute;left:34px;top:88px;width:402px;text-align:center;font-size:15.5px;font-weight:400;line-height:1.45;color:#5B5B5B;">This automated campaign delivers content tailored to your preferences. Select the feed you'd like to highlight in this recipe.</div>
+              <sc-for list="{{ rssResults }}" as="rr" hint-placeholder-count="3">
+                <div onClick="{{ rr.toggle }}" style="position:absolute;left:22px;width:426px;height:118px;border-radius:16px;cursor:pointer;box-shadow:{{ rr.ring }};top:{{ rr.top }};" style-hover="box-shadow:inset 0 0 0 1.6px #838383;">
+                  <div style="position:absolute;left:20px;top:24px;width:44px;height:44px;border-radius:11px;background:#FCEFDA;display:flex;align-items:center;justify-content:center;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="display:block;"><path d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23" stroke="#F49B33" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+                  </div>
+                  <span style="position:absolute;left:82px;top:26px;width:280px;font-size:16.5px;font-weight:700;line-height:1.3;color:#0C0C0C;">{{ rr.title }}</span>
+                  <span style="position:absolute;left:82px;top:78px;font-size:14px;font-weight:500;color:#838383;white-space:nowrap;">{{ rr.meta }}</span>
+                  <div style="position:absolute;right:18px;top:24px;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ rr.boxBg }};box-shadow:{{ rr.boxRing }};">
+                    <sc-if value="{{ rr.checked }}" hint-placeholder-val="{{ false }}"><svg width="12" height="10" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <!-- STEP 3: frequency -->
+          <sc-if value="{{ atS3 }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:375px;top:300px;width:812px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);padding:34px 40px 40px;">
+              <div style="font-size:24px;font-weight:700;color:#0C0C0C;">Set Frequency, CTA &amp; schedule</div>
+              <div style="margin-top:24px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Goal &amp; CTA URL</div>
+              <input type="text" value="Https://brand.com/loading" style="margin-top:10px;width:100%;height:62px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 22px;font-size:16.5px;font-weight:500;color:#0C0C0C;">
+              <div style="margin-top:9px;font-size:14.5px;font-weight:500;color:#2AA02A;">Appended to each post when relevant.</div>
+              <div style="margin-top:24px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;">
+                <div style="width:392px;height:56px;border-radius:12px;background:rgba(131,131,131,0.08);position:relative;">
+                  <div style="position:absolute;top:4px;width:190px;height:48px;border-radius:9px;background:#9CEFFF;transition:left 0.25s ease;left:{{ atFreqPillLeft }};"></div>
+                  <div onClick="{{ atFreqCustom }}" style="position:absolute;left:4px;top:4px;width:190px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#0C0C0C;position:relative;">Custom Time</span></div>
+                  <div onClick="{{ atFreqRegular }}" style="position:absolute;left:198px;top:4px;width:190px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:600;color:#0C0C0C;position:relative;">Regular Intervals</span></div>
+                </div>
+                <div onClick="{{ wizToggleToday }}" style="display:flex;flex-direction:row;align-items:center;gap:12px;cursor:pointer;">
+                  <svg width="22" height="19" viewBox="0 0 22 19" fill="none" style="display:block;"><path d="M1.5 8.2v2.6a1.8 1.8 0 0 0 1.8 1.8h1.9l5.3 4V4.2l-5.3 4H3.3a1.8 1.8 0 0 0-1.8 1.8Z" stroke="#0C0C0C" stroke-width="1.5" stroke-linejoin="round" transform="rotate(-14 10 10)"></path><path d="M14.5 6.5c2.6.8 4 2.2 4.4 4.4" stroke="#0C0C0C" stroke-width="1.5" stroke-linecap="round"></path></svg>
+                  <span style="font-size:16px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Run this campaign starting from today</span>
+                  <div style="width:23px;height:23px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ wizTodayBg }};box-shadow:{{ wizTodayRing }};">
+                    <sc-if value="{{ wizToday }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                  </div>
+                </div>
+              </div>
+              <sc-if value="{{ atModeCustom }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top:26px;display:grid;grid-template-columns:1fr 1fr;gap:22px 30px;">
+                  <div>
+                    <div style="font-size:16.5px;font-weight:600;color:#0C0C0C;">Frequency</div>
+                    <div style="margin-top:9px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;cursor:pointer;"><span style="font-size:16.5px;font-weight:500;color:#0C0C0C;">Daily</span><svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                  </div>
+                  <div>
+                    <div style="font-size:16.5px;font-weight:600;color:#0C0C0C;">Posting window</div>
+                    <div style="margin-top:9px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;cursor:pointer;"><span style="font-size:16.5px;font-weight:500;color:#0C0C0C;">Business Hours</span><svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                  </div>
+                  <div>
+                    <div style="font-size:16.5px;font-weight:600;color:#0C0C0C;">Start date</div>
+                    <div style="margin-top:9px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;cursor:pointer;"><span style="font-size:16.5px;font-weight:500;color:#838383;">DD/MM/YY</span><svg width="18" height="19" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path></svg></div>
+                  </div>
+                  <div>
+                    <div style="font-size:16.5px;font-weight:600;color:#0C0C0C;">End date</div>
+                    <div style="margin-top:9px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 20px;cursor:pointer;"><span style="font-size:16.5px;font-weight:500;color:#838383;">DD/MM/YY</span><svg width="18" height="19" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.8" stroke-linecap="round"></path></svg></div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ atModeRegular }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:26px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Post Every</div>
+                <div style="margin-top:9px;display:flex;flex-direction:row;gap:16px;">
+                  <div style="width:150px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;"><span style="font-size:16.5px;font-weight:600;color:#0C0C0C;">1</span><svg width="12" height="18" viewBox="0 0 12 18" fill="none" style="display:block;"><path d="m2 7 4-4 4 4M2 11l4 4 4-4" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                  <div style="width:190px;height:58px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 18px;"><span style="font-size:16.5px;font-weight:600;color:#0C0C0C;">Hour(s)</span><svg width="12" height="18" viewBox="0 0 12 18" fill="none" style="display:block;"><path d="m2 7 4-4 4 4M2 11l4 4 4-4" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                </div>
+              </sc-if>
+              <div style="margin-top:28px;border-radius:14px;background:rgba(131,131,131,0.07);padding:18px 22px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+                <div style="flex:1;">
+                  <div style="display:flex;flex-direction:row;align-items:center;gap:12px;">
+                    <span style="font-size:17px;font-weight:700;color:#0C0C0C;">Review before publish</span>
+                    <span style="height:24px;padding:0 9px;border-radius:6px;background:rgba(131,131,131,0.14);display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;color:#5B5B5B;">Optional</span>
+                  </div>
+                  <div style="margin-top:5px;font-size:15px;font-weight:400;color:#5B5B5B;">Route every output to <b style="font-weight:700;">Needs Review</b> instead of auto-publishing.</div>
+                </div>
+                <div onClick="{{ atToggleReview }}" style="position:relative;width:52px;height:29px;border-radius:29px;cursor:pointer;transition:background 0.2s ease;background:{{ atReviewBg }};">
+                  <div style="position:absolute;top:3px;width:23px;height:23px;border-radius:50%;background:#FFFFFF;transition:left 0.2s ease;left:{{ atReviewKnob }};"></div>
+                </div>
+              </div>
+              <div style="margin-top:16px;height:56px;border-radius:12px;background:#D9F2FB;display:flex;flex-direction:row;align-items:center;padding:0 20px;gap:12px;">
+                <svg width="18" height="19" viewBox="0 0 24 25" fill="none" style="display:block;flex-shrink:0;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#0C0C0C" stroke-width="1.7"></rect><path d="M2.9 9.9h18.2" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                <span style="font-size:15px;font-weight:500;color:#0C0C0C;">Governance is on. Flagged posts always route to Needs Review regardless of this setting.</span>
+              </div>
+            </div>
+            <!-- Posts Summary rail -->
+            <div style="position:absolute;left:1216px;top:186px;width:470px;height:1180px;border-radius:20px;background:#FFFFFF;box-shadow:0 24px 60px -40px rgba(12,12,12,0.25);">
+              <span style="position:absolute;left:26px;top:24px;font-size:19px;font-weight:700;color:#0C0C0C;">Posts Summary</span>
+              <div style="position:absolute;left:0;top:66px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+              <div style="position:absolute;left:36px;top:96px;width:2px;height:1010px;background:rgba(131,131,131,0.2);"></div>
+              <sc-for list="{{ atTimeDots }}" as="td" hint-placeholder-count="3">
+                <div style="position:absolute;left:26px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #838383;display:flex;align-items:center;justify-content:center;top:{{ td.top }};">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="6.6" stroke="#838383" stroke-width="1.4"></circle><path d="M8 4.8V8l2.2 1.5" stroke="#838383" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                </div>
+              </sc-for>
+              <div style="position:absolute;left:64px;top:88px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px;">
+                <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Selected Account:</div>
+                <div style="margin-top:14px;display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;">
+                  <sc-for list="{{ atAccounts }}" as="aa" hint-placeholder-count="8">
+                    <div style="position:relative;width:46px;height:46px;">
+                      <div style="position:absolute;inset:0;border-radius:50%;background:{{ aa.bg }} url('{{ aa.img }}') center / cover no-repeat;"></div>
+                      <div style="position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:5px;background:#FFFFFF url('{{ aa.badge }}') center / 13px 13px no-repeat;box-shadow:0 0 0 1px rgba(12,12,12,0.08);"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ wzRailFeed }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:64px;top:296px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px;">
+                  <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Feed Source:</div>
+                  <div style="margin-top:14px;display:flex;flex-direction:row;align-items:flex-start;gap:13px;">
+                    <div style="width:44px;height:44px;border-radius:11px;background:#FCEFDA;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="display:block;"><path d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23" stroke="#F49B33" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+                    </div>
+                    <div>
+                      <div style="font-size:15.5px;font-weight:700;color:#0C0C0C;word-break:break-all;">Https://podcast.brand.com/feed/podcast/episode-1</div>
+                      <div style="margin-top:6px;font-size:14.5px;font-weight:500;color:#838383;">News/Blogs</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ wzRailSource }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:64px;top:296px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px;">
+                  <div style="font-size:16.5px;font-weight:700;color:#0C0C0C;">Selected Source:</div>
+                  <div style="margin-top:14px;display:flex;flex-direction:row;align-items:flex-start;gap:13px;">
+                    <div style="width:44px;height:44px;border-radius:50%;background:#0C0C0C;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <span style="font-size:22px;font-weight:700;color:#FFFFFF;font-family:Georgia, serif;font-style:italic;">C</span>
+                    </div>
+                    <div>
+                      <div style="font-size:16px;font-weight:700;color:#0C0C0C;">Canva/folder/Micadass Brand Assets</div>
+                      <div style="margin-top:6px;font-size:14.5px;font-weight:500;color:#838383;">4 Files&nbsp;&nbsp;·&nbsp;&nbsp;74MB</div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ wzRailQuery }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute;left:64px;top:296px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px 22px;">
+                <div style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;">
+                  <span style="font-size:17px;font-weight:700;color:#0C0C0C;">Query Summary</span>
+                  <div style="height:34px;padding:0 12px;border-radius:9px;background:#FFFFFF;box-shadow:0 4px 12px -6px rgba(12,12,12,0.3);display:inline-flex;align-items:center;gap:7px;cursor:pointer;">
+                    <svg width="14" height="14" viewBox="0 0 20 19" fill="none" style="display:block;"><defs><linearGradient id="at-sp" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6CE8FF"></stop><stop offset="0.5" stop-color="#F56BFF"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient></defs><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#at-sp)"></path></svg>
+                    <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;">Re-purpose</span>
+                  </div>
+                </div>
+                <div style="margin-top:14px;font-size:15.5px;font-weight:700;color:#0C0C0C;">Keywords:</div>
+                <div style="margin-top:4px;font-size:15px;font-weight:400;color:#5B5B5B;">Marketing, Sales, Trending, AI Agents</div>
+                <div style="margin-top:14px;font-size:15.5px;font-weight:700;color:#0C0C0C;">Refined Queries:</div>
+                <div style="margin-top:9px;display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;">
+                  <sc-for list="{{ atRefChips }}" as="rq" hint-placeholder-count="6">
+                    <div style="height:32px;padding:0 11px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);display:inline-flex;align-items:center;">
+                      <span style="font-size:13.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ rq.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="margin-top:14px;font-size:15.5px;font-weight:700;color:#0C0C0C;">Exclude Keywords</div>
+                <div style="margin-top:4px;font-size:15px;font-weight:400;color:#5B5B5B;">Politics, NSFW</div>
+                <div style="margin-top:14px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+                  <svg width="17" height="19" viewBox="0 0 20 22" fill="none" style="display:block;"><path d="M10 1.6 18 4.7v5.5c0 4.8-3.1 9-8 10.5-4.9-1.5-8-5.7-8-10.5V4.7l8-3.1Z" stroke="#28B8DD" stroke-width="1.7" stroke-linejoin="round"></path><path d="M10 7v4" stroke="#28B8DD" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                  <span style="font-size:15.5px;font-weight:600;color:#28B8DD;">Brand Safety {{ atSafetyLabel }}</span>
+                </div>
+              </div>
+              </sc-if>
+              <div style="position:absolute;left:64px;top:790px;width:382px;border-radius:16px;background:rgba(131,131,131,0.07);padding:18px 22px 22px;">
+                <div style="font-size:17px;font-weight:700;color:#0C0C0C;">Frequency, CTA &amp; schedule</div>
+                <div style="margin-top:12px;font-size:15.5px;font-weight:700;color:#0C0C0C;">Goal &amp; CTA URL</div>
+                <div style="margin-top:3px;font-size:15px;font-weight:500;color:#A341FF;">Https://brand.com/loading</div>
+                <div style="margin-top:11px;font-size:15px;color:#5B5B5B;"><b style="font-weight:700;color:#0C0C0C;">Frequency:</b> Daily</div>
+                <div style="margin-top:7px;font-size:15px;color:#5B5B5B;"><b style="font-weight:700;color:#0C0C0C;">Posting window:</b> Business Hours</div>
+                <div style="margin-top:7px;font-size:15px;color:#5B5B5B;"><b style="font-weight:700;color:#0C0C0C;">Start date:</b> DD/MM/YY</div>
+                <div style="margin-top:7px;font-size:15px;color:#5B5B5B;"><b style="font-weight:700;color:#0C0C0C;">End date:</b> DD/MM/YY</div>
+                <div style="margin-top:7px;font-size:15px;color:#5B5B5B;"><b style="font-weight:700;color:#0C0C0C;">Review:</b> {{ atReviewLabel }}</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ AUTOTREND LAUNCH MODAL ============ -->
+      <sc-if value="{{ atReview }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ atReviewBack }}" style="position:absolute;inset:0;background:rgba(40,40,40,0.45);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+        <div data-screen-label="Campaign Launch Modal" style="position:absolute;left:430px;top:28px;width:870px;height:902px;border-radius:24px;background:#FFFFFF;box-shadow:0 60px 140px -40px rgba(0,0,0,0.5);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+          <!-- corner stickers -->
+          <div style="position:absolute;left:-26px;top:36px;width:62px;height:60px;background:#FFFFFF;border-radius:10px;transform:rotate(-8deg);box-shadow:0 10px 24px -12px rgba(12,12,12,0.3);display:flex;align-items:center;justify-content:center;">
+            <svg width="38" height="34" viewBox="0 0 38 34" fill="none" style="display:block;transform:rotate(-18deg);"><path d="M31 4 8 15l9 3 2 10 5-8 9-2L31 4Z" fill="#F98BD9"></path><path d="M31 4 17 18" stroke="#E560BE" stroke-width="2" stroke-linecap="round"></path></svg>
+          </div>
+          <div style="position:absolute;right:-24px;top:34px;width:60px;height:58px;background:#FFFFFF;border-radius:10px;transform:rotate(9deg);box-shadow:0 10px 24px -12px rgba(12,12,12,0.3);display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:36px;border-radius:10px;background:linear-gradient(135deg,#8F7BFF 0%,#C46BF5 100%);display:flex;align-items:center;justify-content:center;">
+              <svg width="18" height="18" viewBox="0 0 20 19" fill="none" style="display:block;"><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="#FFFFFF"></path></svg>
+            </div>
+          </div>
+          <div style="position:absolute;left:-22px;top:742px;width:52px;height:52px;background:#FFFFFF;border-radius:10px;transform:rotate(-12deg);box-shadow:0 10px 24px -12px rgba(12,12,12,0.3);display:flex;align-items:center;justify-content:center;">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="display:block;"><path d="M14 2l2.6 7.4L24 12l-7.4 2.6L14 22l-2.6-7.4L4 12l7.4-2.6L14 2Z" fill="#8F7BFF"></path><path d="m22.5 18 1.1 3 3 1.1-3 1.1-1.1 3-1.1-3-3-1.1 3-1.1 1.1-3Z" fill="#C46BF5"></path></svg>
+          </div>
+          <span style="position:absolute;right:-14px;top:748px;font-size:40px;transform:rotate(12deg);">🎉</span>
+
+          <div style="position:absolute;left:0;top:44px;width:100%;text-align:center;font-size:27px;font-weight:700;line-height:1.35;color:#0C0C0C;">🎉 Congratulations On Successfully<br>Launching Your Campaign!</div>
+
+          <!-- summary card -->
+          <div style="position:absolute;left:76px;top:156px;width:718px;height:228px;border-radius:16px;background:linear-gradient(120deg, #DCF1FE 0%, #E9F7FE 55%, #F4FBFF 100%);">
+            <div style="position:absolute;left:28px;top:-17px;height:34px;padding:0 12px;border-radius:8px;background:#C9F1FD;box-shadow:0 4px 12px -6px rgba(11,170,199,0.5);display:inline-flex;flex-direction:row;align-items:center;gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 30 30" fill="none" style="display:block;"><path d="m19 4 1.2 3.2L23.4 8.4 20.2 9.6 19 12.8 17.8 9.6 14.6 8.4l3.2-1.2L19 4Z" fill="#0C0C0C"></path><path d="M16.5 13.5 4 26" stroke="#0C0C0C" stroke-width="2.4" stroke-linecap="round"></path></svg>
+              <span style="font-size:14px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ wzRecipeLabel }}</span>
+            </div>
+            <span style="position:absolute;left:28px;top:42px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">AI &amp; Marketing trends</span>
+            <span style="position:absolute;left:28px;top:86px;font-size:15.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;"><b style="font-weight:700;">Start:</b> Today 9:00 AM&nbsp;&nbsp;<b style="font-weight:700;">Next:</b> Tomorrow 9:00 AM</span>
+            <span style="position:absolute;left:28px;top:126px;font-size:15.5px;font-weight:500;color:#838383;">Daily 9am</span>
+            <div style="position:absolute;left:112px;top:118px;height:30px;padding:0 11px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px #8F8FF0;display:inline-flex;align-items:center;">
+              <span style="font-size:13.5px;font-weight:600;color:#5E64F4;white-space:nowrap;">5 Posts</span>
+            </div>
+            <sc-if value="{{ wzIsBulk }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:186px;top:118px;height:30px;padding:0 11px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;align-items:center;">
+                <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">CSV Upload</span>
+              </div>
+            </sc-if>
+            <div style="position:absolute;left:28px;top:164px;display:flex;flex-direction:row;gap:6px;">
+              <sc-for list="{{ atAccountsSm }}" as="am" hint-placeholder-count="8">
+                <div style="position:relative;width:34px;height:34px;">
+                  <div style="position:absolute;inset:0;border-radius:50%;background:{{ am.bg }} url('{{ am.img }}') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+                  <div style="position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:4px;background:#FFFFFF url('{{ am.badge }}') center / 11px 11px no-repeat;box-shadow:0 0 0 1px rgba(12,12,12,0.08);"></div>
+                </div>
+              </sc-for>
+            </div>
+            <!-- ghost agent -->
+            <div style="position:absolute;right:0;top:0;width:260px;height:228px;border-radius:16px;overflow:hidden;pointer-events:none;">
+              <div style="position:absolute;right:36px;top:26px;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at 50% 42%, #E6F4FE 0%, #BBDDF8 70%, #A9D2F5 100%);filter:blur(0.5px);"></div>
+              <div style="position:absolute;right:118px;top:76px;width:15px;height:15px;border-radius:50%;background:#FFFFFF;"></div>
+              <div style="position:absolute;right:66px;top:76px;width:15px;height:15px;border-radius:50%;background:#FFFFFF;"></div>
+              <div style="position:absolute;right:-20px;top:150px;width:230px;height:150px;border-radius:50%;background:radial-gradient(circle at 50% 30%, #EAF6FE 0%, #C3E1F9 80%);"></div>
+            </div>
+          </div>
+
+          <span style="position:absolute;left:76px;top:410px;font-size:19px;font-weight:700;color:#0C0C0C;">Here’s what I’ll do</span>
+          <div style="position:absolute;right:76px;top:404px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+            <div style="height:30px;padding:0 11px;border-radius:7px;background:#EFEFEF;display:inline-flex;align-items:center;"><span style="font-size:14px;font-weight:600;color:#5B5B5B;">Status</span></div>
+            <span style="width:12px;height:12px;border-radius:50%;background:#13D711;"></span>
+            <span style="font-size:16px;font-weight:500;color:#0C0C0C;">Active</span>
+          </div>
+          <sc-for list="{{ atLaunchRows }}" as="lr" hint-placeholder-count="5">
+            <div style="position:absolute;left:76px;width:718px;height:54px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:flex;flex-direction:row;align-items:center;padding:0 22px;gap:14px;top:{{ lr.top }};">
+              <svg width="17" height="17" viewBox="0 0 19 19" fill="none" style="display:block;flex-shrink:0;"><path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span style="font-size:16.5px;font-weight:500;color:#3B3B3B;white-space:nowrap;">{{ lr.text }}</span>
+            </div>
+          </sc-for>
+          <div onClick="{{ atToggleApproval }}" style="position:absolute;left:96px;top:786px;display:flex;flex-direction:row;align-items:flex-start;gap:13px;cursor:pointer;">
+            <div style="width:22px;height:22px;border-radius:6px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ atApprovalBg }};box-shadow:{{ atApprovalRing }};">
+              <sc-if value="{{ atApproval }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+            </div>
+            <span style="width:500px;font-size:16.5px;font-weight:400;line-height:1.4;color:#5B5B5B;">Require approval for campaign posts Baseline posts will continue automatically.</span>
+          </div>
+          <div onClick="{{ atActivate }}" style="position:absolute;left:277px;top:846px;width:316px;height:56px;border-radius:14px;background:#0C0C0C;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:16px;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+            <span style="font-size:18px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Activate Campaign</span>
+            <svg width="8" height="14" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ AUTOTREND MANAGE ============ -->
+      <sc-if value="{{ atManage }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Campaign Automations" style="animation:ss-fade-in 0.25s ease;">
+          <div style="position:absolute;left:370px;top:40px;width:1318px;height:230px;border-radius:24px;overflow:hidden;background:radial-gradient(560px 220px at 22% 10%, #241B33 0%, rgba(20,14,30,0) 70%), radial-gradient(620px 260px at 80% 90%, #1E1530 0%, rgba(18,12,28,0) 70%), #0D0B14;">
+            <div style="position:absolute;inset:0;background-image:radial-gradient(circle 1.6px at 8% 24%, rgba(108,232,255,0.9) 40%, transparent 41%),radial-gradient(circle 1.2px at 18% 72%, rgba(128,171,255,0.8) 40%, transparent 41%),radial-gradient(circle 1.8px at 27% 38%, rgba(255,255,255,0.75) 40%, transparent 41%),radial-gradient(circle 1.6px at 47% 18%, rgba(128,171,255,0.85) 40%, transparent 41%),radial-gradient(circle 1.2px at 58% 66%, rgba(255,255,255,0.6) 40%, transparent 41%),radial-gradient(circle 1.8px at 67% 30%, rgba(108,232,255,0.75) 40%, transparent 41%),radial-gradient(circle 1.6px at 88% 22%, rgba(255,255,255,0.7) 40%, transparent 41%);animation:ss-twinkle 5s ease-in-out infinite;"></div>
+            <div style="position:absolute;left:512px;top:96px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+            <div style="position:absolute;left:568px;top:96px;width:9px;height:9px;border-radius:50%;background:#FFFFFF;"></div>
+            <div style="position:absolute;left:648px;top:52px;width:512px;border-radius:16px;background:rgba(40,36,52,0.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:20px 26px;">
+              <div style="font-size:19px;font-weight:700;color:#FFFFFF;">Hello,</div>
+              <div style="margin-top:6px;font-size:15.5px;font-weight:400;color:rgba(255,255,255,0.8);">These are all your campaigns, sent and in review</div>
+              <div style="margin-top:12px;display:flex;flex-direction:row;align-items:center;gap:10px;font-size:15px;font-weight:600;color:#C08CF6;">
+                <span>3 Post detected</span><span style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.4);"></span>
+                <span>2 Post Publish</span><span style="width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.4);"></span>
+                <span>1 warning</span>
+              </div>
+            </div>
+          </div>
+          <span style="position:absolute;left:392px;top:308px;font-size:27px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Campaign Automations for: AI &amp; Marketing trends</span>
+          <span style="position:absolute;left:392px;top:352px;font-size:16px;font-weight:400;color:#838383;">Created 12 April, 2026</span>
+          <div onClick="{{ atManageBack }}" style="position:absolute;left:1576px;top:306px;width:112px;height:48px;border-radius:12px;background:rgba(255,255,255,0.8);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:13px;" style-hover="background:#FFFFFF;">
+            <svg width="8" height="15" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:16px;font-weight:500;color:#5B5B5B;">Back</span>
+          </div>
+          <sc-for list="{{ atCampaigns }}" as="cp" hint-placeholder-count="3">
+            <div style="position:absolute;left:378px;width:1310px;border-radius:18px;background:#FFFFFF;box-shadow:0 16px 44px -34px rgba(12,12,12,0.3);top:{{ cp.top }};height:{{ cp.h }};overflow:hidden;">
+              <div style="position:absolute;left:20px;top:20px;width:132px;height:132px;border-radius:14px;background:rgba(131,131,131,0.08);overflow:hidden;">
+                <div style="position:absolute;left:33px;top:8px;width:66px;height:116px;border-radius:7px;background:url('{{ cp.thumb }}') center / cover no-repeat;"></div>
+                <sc-if value="{{ cp.hasPlay }}" hint-placeholder-val="{{ false }}">
+                  <svg width="13" height="14" viewBox="0 0 9 10" fill="none" style="position:absolute;left:60px;top:60px;display:block;filter:drop-shadow(0 0 4px rgba(0,0,0,0.7));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                </sc-if>
+              </div>
+              <span style="position:absolute;left:176px;top:24px;font-size:16px;font-weight:500;color:#838383;white-space:nowrap;">Created On {{ cp.date }}</span>
+              <span style="position:absolute;right:150px;top:26px;font-size:16px;font-weight:500;color:#5B5B5B;">Status:</span>
+              <div style="position:absolute;right:24px;top:16px;height:40px;padding:0 15px;border-radius:9px;display:inline-flex;align-items:center;background:{{ cp.chipBg }};box-shadow:inset 0 0 0 1.06px {{ cp.chipRing }};">
+                <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ cp.chipColor }};">{{ cp.status }}</span>
+              </div>
+              <span style="position:absolute;left:176px;top:58px;width:1090px;font-size:16.5px;font-weight:500;line-height:1.45;color:#3B3B3B;">{{ cp.caption }}</span>
+              <div style="position:absolute;left:176px;top:180px;display:flex;flex-direction:row;gap:10px;">
+                <sc-if value="{{ cp.hasApprove }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ cp.approve }}" style="width:38px;height:38px;border-radius:9px;background:#3EC332;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#34A82A;"><svg width="15" height="12" viewBox="0 0 15 12" fill="none" style="display:block;"><path d="m1.5 6 4 4L13.5 1.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                </sc-if>
+                <sc-if value="{{ cp.hasPause }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ cp.pause }}" style="width:38px;height:38px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);"><svg width="12" height="14" viewBox="0 0 12 14" fill="none" style="display:block;"><path d="M2.5 1.5v11M9.5 1.5v11" stroke="#5B5B5B" stroke-width="2.4" stroke-linecap="round"></path></svg></div>
+                </sc-if>
+                <div onClick="{{ cp.edit }}" style="width:38px;height:38px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+                <div onClick="{{ cp.remove }}" style="width:38px;height:38px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.6);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.08);"><svg width="13" height="15" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+                <div onClick="{{ cp.toggleOpen }}" style="width:38px;height:38px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:{{ cp.chevBg }};" style-hover="opacity:0.85;">
+                  <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;transform:{{ cp.chevFlip }};"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+              <sc-if value="{{ cp.open }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:0;top:238px;width:1310px;height:1px;background:rgba(131,131,131,0.15);"></div>
+                <span style="position:absolute;left:44px;top:262px;font-size:13.5px;font-weight:700;letter-spacing:0.08em;color:#838383;">ACCOUNT</span>
+                <span style="position:absolute;left:380px;top:262px;font-size:13.5px;font-weight:700;letter-spacing:0.08em;color:#838383;">STATUS</span>
+                <span style="position:absolute;left:1052px;top:262px;font-size:13.5px;font-weight:700;letter-spacing:0.08em;color:#838383;">ACTIONS</span>
+                <div style="position:absolute;left:44px;top:296px;width:52px;height:52px;">
+                  <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/agent-avatar-photo.png') center / cover no-repeat;"></div>
+                  <img src="assets/icons/fb-color.png" alt="" style="position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;padding:1.5px;box-shadow:0 0 0 1px rgba(12,12,12,0.08);">
+                </div>
+                <span style="position:absolute;left:108px;top:310px;font-size:17px;font-weight:500;color:#5B5B5B;">Joy walker</span>
+                <div style="position:absolute;left:380px;top:298px;height:38px;padding:0 14px;border-radius:9px;background:#FDECEC;box-shadow:inset 0 0 0 1px #F35525;display:inline-flex;align-items:center;">
+                  <span style="font-size:14px;font-weight:600;color:#F35525;">Failed</span>
+                </div>
+                <span style="position:absolute;left:496px;top:290px;width:420px;font-size:15.5px;font-weight:500;line-height:1.4;color:#3B3B3B;">The access token for this account has expired please click the “Refresh token” button next to this account on the settings page.</span>
+                <div onClick="{{ cp.publish }}" style="position:absolute;left:1052px;top:296px;height:46px;padding:0 18px;border-radius:11px;background:#9CEFFF;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="background:#6CE8FF;">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="M18.3 1.7 9.2 10.8M18.3 1.7 12.5 18.3l-3.3-7.5-7.5-3.3L18.3 1.7Z" stroke="#0C0C0C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span style="font-size:15px;font-weight:600;color:#0C0C0C;">Publish</span>
+                </div>
+                <div onClick="{{ cp.regen }}" style="position:absolute;left:1196px;top:296px;height:46px;padding:0 16px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                  <svg width="15" height="15" viewBox="0 0 20 19" fill="none" style="display:block;"><defs><linearGradient id="at-rg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6CE8FF"></stop><stop offset="0.5" stop-color="#F56BFF"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient></defs><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#at-rg)"></path></svg>
+                  <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Regenerate Post</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ============ WIZARD MODAL ============ -->
+      <sc-if value="{{ wizOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ wizClose }}" style="position:absolute;inset:0;background:rgba(40,40,40,0.45);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+        <div data-screen-label="Recipe Wizard" style="position:absolute;left:346px;top:80px;width:1035px;height:780px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+          <div onClick="{{ wizClose }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;" style-hover="opacity:0.6;">
+            <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          </div>
+
+          <!-- chooser -->
+          <sc-if value="{{ wizChooser }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:38px;top:36px;font-size:28px;font-weight:700;color:#0C0C0C;">Add New Recipe</span>
+            <span style="position:absolute;left:38px;top:84px;font-size:18px;font-weight:400;color:#838383;">Pick a content engine to configure</span>
+            <div style="position:absolute;left:0;top:124px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+            <sc-for list="{{ wizChoices }}" as="wc" hint-placeholder-count="3">
+              <div onClick="{{ wc.click }}" style="position:absolute;left:56px;width:923px;height:170px;border-radius:18px;cursor:pointer;background:{{ wc.bg }};box-shadow:inset 0 0 0 1px rgba(131,131,131,0.15);top:{{ wc.top }};" style-hover="box-shadow:inset 0 0 0 1.6px rgba(131,131,131,0.45);">
+                <div style="position:absolute;left:30px;top:42px;width:58px;height:58px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:{{ wc.iconBg }};">
+                  <span style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:#FFFFFF;" dangerouslySetInnerHTML="{{ wc.icon }}"></span>
+                </div>
+                <span style="position:absolute;left:114px;top:38px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ wc.name }}</span>
+                <span style="position:absolute;left:114px;top:78px;width:740px;font-size:16px;font-weight:400;line-height:1.4;color:#5B5B5B;">{{ wc.desc }}</span>
+                <svg width="9" height="16" viewBox="0 0 8 16" fill="none" style="position:absolute;right:30px;top:77px;display:block;"><path d="m1 1 6 7-6 7" stroke="#838383" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <!-- wizard steps -->
+          <sc-if value="{{ wizSteps }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;left:38px;top:36px;font-size:26px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Creating Automation for {{ wizRecipeName }}</span>
+            <span style="position:absolute;left:38px;top:82px;font-size:17px;font-weight:400;color:#838383;">Step {{ wizStepNum }} of {{ wizStepTotal }}</span>
+            <div style="position:absolute;left:38px;top:114px;width:520px;height:11px;border-radius:12px;background:rgba(12,12,12,0.05);">
+              <div style="position:absolute;left:1px;top:1px;height:9px;border-radius:18px;background:linear-gradient(90deg,#6CE8FF 0%,#F56BFF 27.26%,#A341FF 66.83%,#FEDEB5 100%);transition:width 0.4s cubic-bezier(0.22,1,0.36,1);width:{{ wizProgress }};"></div>
+            </div>
+            <div style="position:absolute;left:0;top:152px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+
+            <!-- step: name & accounts -->
+            <sc-if value="{{ wsName }}" hint-placeholder-val="{{ true }}">
+              <span style="position:absolute;left:38px;top:186px;font-size:20px;font-weight:700;color:#0C0C0C;">Name &amp; accounts</span>
+              <span style="position:absolute;left:38px;top:232px;font-size:17px;font-weight:500;color:#5B5B5B;">Recipe name</span>
+              <input type="text" value="{{ wizName }}" onInput="{{ wizOnName }}" style="position:absolute;left:38px;top:264px;width:920px;height:64px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 24px;font-size:17.5px;font-weight:500;color:#0C0C0C;">
+              <span style="position:absolute;left:38px;top:360px;font-size:17px;font-weight:500;color:#5B5B5B;">Target account(s)</span>
+              <div style="position:absolute;left:38px;top:394px;display:flex;flex-direction:row;gap:14px;">
+                <div style="height:62px;padding:0 20px 0 10px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1.4px #0C0C0C;display:inline-flex;flex-direction:row;align-items:center;gap:12px;">
+                  <div style="position:relative;width:44px;height:44px;">
+                    <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/agent-avatar-photo.png') center / cover no-repeat;"></div>
+                    <img src="assets/icons/fb-color.png" alt="" style="position:absolute;right:-2px;bottom:-2px;width:17px;height:17px;border-radius:50%;background:#FFFFFF;padding:1.5px;box-shadow:0 0 0 1px rgba(12,12,12,0.08);">
+                  </div>
+                  <span style="font-size:16.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Joy walker</span>
+                  <span style="width:18px;height:18px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </div>
+                <div onClick="{{ toastAddAccount }}" style="height:62px;padding:0 22px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="box-shadow:inset 0 0 0 1.5px #838383;">
+                  <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Add New</span>
+                </div>
+              </div>
+              <span style="position:absolute;left:38px;top:492px;font-size:15.5px;font-weight:400;color:#838383;">Posts will publish to these connected accounts below.</span>
+            </sc-if>
+
+            <!-- step: autotrend query -->
+            <sc-if value="{{ wsQuery }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;left:38px;top:186px;font-size:20px;font-weight:700;color:#0C0C0C;">Trend query &amp; sources</span>
+              <span style="position:absolute;left:38px;top:232px;font-size:17px;font-weight:500;color:#5B5B5B;">What should the Agent watch for?</span>
+              <input type="text" value="AI & Marketing trends" style="position:absolute;left:38px;top:264px;width:920px;height:64px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 24px;font-size:17.5px;font-weight:500;color:#0C0C0C;">
+              <span style="position:absolute;left:38px;top:360px;font-size:17px;font-weight:500;color:#5B5B5B;">Sources</span>
+              <div style="position:absolute;left:38px;top:394px;display:flex;flex-direction:row;gap:12px;flex-wrap:wrap;width:930px;">
+                <sc-for list="{{ wizSources }}" as="wsrc" hint-placeholder-count="5">
+                  <div onClick="{{ wsrc.click }}" style="height:48px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:9px;background:{{ wsrc.bg }};box-shadow:{{ wsrc.ring }};">
+                    <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ wsrc.label }}</span>
+                    <sc-if value="{{ wsrc.active }}" hint-placeholder-val="{{ false }}">
+                      <span style="width:16px;height:16px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="position:absolute;left:38px;top:492px;font-size:15.5px;font-weight:400;color:#838383;">Trends matching your query become on-brand post drafts.</span>
+            </sc-if>
+
+            <!-- step: bulk source -->
+            <sc-if value="{{ wsSource }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;left:38px;top:186px;font-size:20px;font-weight:700;color:#0C0C0C;">Choose a Source type</span>
+              <sc-for list="{{ wizBulkSources }}" as="wbs" hint-placeholder-count="3">
+                <div onClick="{{ wbs.click }}" style="position:absolute;width:295px;height:250px;border-radius:16px;cursor:pointer;background:#FFFFFF;top:238px;box-shadow:{{ wbs.ring }};left:{{ wbs.left }};" style-hover="box-shadow:inset 0 0 0 1.6px #838383;">
+                  <div style="position:absolute;left:24px;top:26px;width:54px;height:54px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:{{ wbs.iconBg }};">
+                    <span dangerouslySetInnerHTML="{{ wbs.icon }}" style="display:inline-flex;"></span>
+                  </div>
+                  <span style="position:absolute;left:24px;top:104px;font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ wbs.name }}</span>
+                  <span style="position:absolute;left:24px;top:138px;width:246px;font-size:15px;font-weight:400;line-height:1.4;color:#5B5B5B;">{{ wbs.desc }}</span>
+                  <sc-if value="{{ wbs.hasConnect }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:24px;top:192px;height:38px;padding:0 16px;border-radius:9px;background:#0C0C0C;display:inline-flex;align-items:center;">
+                      <span style="font-size:14.5px;font-weight:600;color:#FFFFFF;">Connect</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ wbs.selected }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;right:16px;top:16px;width:22px;height:22px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="10" height="9" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <span style="position:absolute;left:38px;top:522px;font-size:15.5px;font-weight:400;color:#838383;">Selected: <b style="font-weight:600;color:#0C0C0C;">Canva/folder/Micadass Brand Assets</b> · 4 Files · 74MB</span>
+            </sc-if>
+
+            <!-- step: rss feed -->
+            <sc-if value="{{ wsFeed }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;left:38px;top:186px;font-size:20px;font-weight:700;color:#0C0C0C;">Feed source</span>
+              <span style="position:absolute;left:38px;top:232px;font-size:17px;font-weight:500;color:#5B5B5B;">RSS or Podcast feed URL</span>
+              <input type="text" value="Https://podcast.brand.com/feed/podcast/episode-1" style="position:absolute;left:38px;top:264px;width:920px;height:64px;border-radius:13px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 24px;font-size:17px;font-weight:500;color:#0C0C0C;">
+              <span style="position:absolute;left:38px;top:360px;font-size:17px;font-weight:500;color:#5B5B5B;">Feed type</span>
+              <div style="position:absolute;left:38px;top:394px;display:flex;flex-direction:row;gap:12px;">
+                <sc-for list="{{ wizFeedTypes }}" as="wft" hint-placeholder-count="2">
+                  <div onClick="{{ wft.click }}" style="height:48px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;gap:9px;background:{{ wft.bg }};box-shadow:{{ wft.ring }};">
+                    <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ wft.label }}</span>
+                    <sc-if value="{{ wft.active }}" hint-placeholder-val="{{ false }}">
+                      <span style="width:16px;height:16px;border-radius:50%;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="position:absolute;left:38px;top:492px;font-size:15.5px;font-weight:400;color:#838383;">New feed items become posts with your CTA attached.</span>
+            </sc-if>
+
+            <!-- step: frequency -->
+            <sc-if value="{{ wsFreq }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;left:38px;top:186px;font-size:20px;font-weight:700;color:#0C0C0C;">Set Frequency, CTA &amp; schedule</span>
+              <span style="position:absolute;left:38px;top:230px;font-size:16px;font-weight:400;color:#838383;">Choose how often you want your campaign to run!</span>
+              <div style="position:absolute;left:38px;top:272px;width:394px;height:58px;border-radius:13px;background:rgba(131,131,131,0.08);">
+                <div style="position:absolute;top:5px;height:48px;border-radius:10px;background:#FFFFFF;box-shadow:0 4px 12px -6px rgba(12,12,12,0.25);transition:left 0.25s ease;left:{{ wizFreqPillLeft }};width:186px;"></div>
+                <div onClick="{{ wizFreqRegular }}" style="position:absolute;left:5px;top:5px;width:186px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;position:relative;">Regular Intervals</span>
+                </div>
+                <div onClick="{{ wizFreqCustom }}" style="position:absolute;left:196px;top:5px;width:186px;height:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;position:relative;">Custom Time</span>
+                </div>
+              </div>
+              <span style="position:absolute;left:38px;top:376px;font-size:17px;font-weight:500;color:#5B5B5B;">Post Every</span>
+              <div style="position:absolute;left:38px;top:410px;width:150px;height:58px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;align-items:center;justify-content:space-between;padding:0 18px;">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;">2</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <div style="position:absolute;left:202px;top:410px;width:190px;height:58px;border-radius:13px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;align-items:center;justify-content:space-between;padding:0 18px;">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;">Hour(s)</span>
+                <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <div onClick="{{ wizToggleToday }}" style="position:absolute;left:38px;top:510px;display:flex;flex-direction:row;align-items:center;gap:11px;cursor:pointer;">
+                <div style="width:21px;height:21px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ wizTodayBg }};box-shadow:{{ wizTodayRing }};">
+                  <sc-if value="{{ wizToday }}" hint-placeholder-val="{{ true }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                </div>
+                <span style="font-size:16.5px;font-weight:500;color:#0C0C0C;">Run this campaign starting from today</span>
+              </div>
+            </sc-if>
+
+            <!-- footer -->
+            <div style="position:absolute;left:0;bottom:0;width:100%;height:92px;box-shadow:0 -1px 0 rgba(131,131,131,0.15);">
+              <div onClick="{{ wizBack }}" style="position:absolute;left:38px;top:24px;height:46px;padding:0 26px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                <span style="font-size:16px;font-weight:600;color:#5B5B5B;">Back</span>
+              </div>
+              <div onClick="{{ wizNext }}" style="position:absolute;right:38px;top:24px;height:46px;padding:0 28px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+                <span style="font-size:16px;font-weight:600;color:#FFFFFF;white-space:nowrap;">{{ wizNextLabel }}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    vw: 1728,
+    view: "home",          // home | atWizard | atReview | atManage
+    wzRecipe: 0,
+    bcSel: 1,
+    bcChecks: [0, 1],
+    atStep: 0,
+    atRecipeType: 0,
+    atKwMode: 0,
+    atKwChips: ["Marketing", "Trending"],
+    atExChips: ["Politics", "NSFW"],
+    atSafety: false,
+    atFreqMode: 0,
+    atReviewOn: true,
+    atApproval: false,
+    atChecks: [0],
+    atOpen: [0],
+    queueTab: 0,
+    recipeFilter: null,
+    activeCounts: [2, 1, 2],
+    wiz: null,             // null | {recipe: -1 chooser | 0|1|2, step}
+    wizName: "AI & Marketing trends",
+    wizSources: ["X/Twitter", "Google Trends"],
+    wizFeedType: "News/Blogs",
+    wizBulkSel: 2,
+    wizFreqMode: 0,
+    wizToday: true,
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    const wzKindsAll = [["name", "query", "freq"], ["name", "source", "validate", "freq"], ["name", "feed", "freq"]];
+    const wzKinds = wzKindsAll[s.wzRecipe];
+    const wzKind = wzKinds[Math.min(s.atStep, wzKinds.length - 1)];
+    const wzNames = ["AutoTrend Engager", "Bulk Connector", "RSS Autopost"];
+    let stageH = 1680;
+    if (s.view === "atWizard") stageH = { name: 1150, query: 1740, source: 1000, validate: 850, feed: 1050, freq: 1440 }[wzKind];
+    if (s.view === "atReview") stageH = 1440;
+    if (s.view === "atManage") stageH = 480 + [0, 1, 2].reduce((acc, i) => acc + (s.atOpen.includes(i) ? 400 : 260), 0) + 60;
+
+    const icons = {
+      agents: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="2"></circle><path d="M4.4 15c1.6-1.6 3.5-2.4 5.6-2.4s4 .8 5.6 2.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M2.5 20h9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m19.5 13.5 1.1 3 3 1.1-3 1.1-1.1 3-1.1-3-3-1.1 3-1.1 1.1-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg>',
+      discovery: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"></circle><path d="m17 17 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m7.5 12.8 2.4-2.7 2 1.7 2.6-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      calendar: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="2.8" y="4.4" width="20.4" height="19" rx="4" stroke="currentColor" stroke-width="2"></rect><path d="M3 10.2h20M8.4 2v4M17.6 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m13 13.2.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3.9-1.9Z" fill="currentColor"></path></svg>',
+      automation: '<svg width="26" height="26" viewBox="0 0 27 27" fill="none"><path d="M14.5 12.5 22 5c1.4-1.4 3.6.8 2.2 2.2l-7.5 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M13 14 5.5 21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><rect x="11.4" y="11.4" width="4.6" height="4.6" rx="1.4" transform="rotate(45 13.7 13.7)" stroke="currentColor" stroke-width="1.8"></rect><path d="M5 3.5v3.4M3.3 5.2h3.4M22 18.5v3M20.5 20h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      engagement: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M21.6 13.5a8.6 8.6 0 1 1-2.5-6.1M21.9 3.5v4.2h-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="m12.6 9.4.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor"></path></svg>',
+      assets: '<svg width="26" height="26" viewBox="0 0 26 25" fill="none"><path d="M2.5 6.7c0-1.6 1.3-2.9 2.9-2.9h4.3l2.6 2.9h8.3c1.6 0 2.9 1.3 2.9 2.9v9.7c0 1.6-1.3 2.9-2.9 2.9H5.4a2.9 2.9 0 0 1-2.9-2.9V6.7Z" stroke="currentColor" stroke-width="2"></path><path d="M13 11v6M10 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+      settings: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4.4" stroke="currentColor" stroke-width="2"></circle><path d="M13 2v3.2M13 20.8V24M24 13h-3.2M5.2 13H2M20.8 5.2l-2.3 2.3M7.5 18.5l-2.3 2.3M20.8 20.8l-2.3-2.3M7.5 7.5 5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>'
+    };
+    const recipeIcons = [
+      '<svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="m19 4 1.2 3.2L23.4 8.4 20.2 9.6 19 12.8 17.8 9.6 14.6 8.4l3.2-1.2L19 4Z" fill="currentColor"></path><path d="M16.5 13.5 4 26" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path><path d="m24.5 14.5.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2ZM9.5 4.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" fill="currentColor"></path></svg>',
+      '<svg width="30" height="30" viewBox="0 0 30 28" fill="none"><path d="M2.5 7A3.5 3.5 0 0 1 6 3.5h5.4l3.2 3.7h9.4A3.5 3.5 0 0 1 27.5 10.7v10.1a3.5 3.5 0 0 1-3.5 3.5H6a3.5 3.5 0 0 1-3.5-3.5V7Z" stroke="currentColor" stroke-width="2.4"></path><path d="M15 12v8M11 16h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path></svg>',
+      '<svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M3 21a2.6 2.6 0 1 0 0-5.2A2.6 2.6 0 0 0 3 21ZM1 8.6A14.4 14.4 0 0 1 15.4 23M1 1.4A21.6 21.6 0 0 1 22.6 23" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"></path></svg>'
+    ];
+    const recipeNames = ["AutoTrend Engager", "Bulk Connector", "RSS Autopost"];
+
+    const navDefs = [
+      { label: "Agents", icon: icons.agents, top: 132, size: 18, link: "SparkSocial Dashboard.dc.html" },
+      { label: "Discovery", icon: icons.discovery, top: 197.9, size: 18, link: "SparkSocial Discovery.dc.html" },
+      { label: "Calendar", icon: icons.calendar, top: 262.9, size: 18, link: "SparkSocial Calendar.dc.html" },
+      { label: "Automation Recipes", icon: icons.automation, top: 340, size: 18, active: true },
+      { label: "Engagement Intelligence", icon: icons.engagement, top: 405, size: 17, link: "SparkSocial Command Center.dc.html" },
+      { label: "Assets Library", icon: icons.assets, top: 470, size: 18, link: "SparkSocial Assets Library.dc.html" },
+      { label: "Settings", icon: icons.settings, top: 535, size: 18, link: "SparkSocial Settings.dc.html" }
+    ];
+
+    const statusStyles = {
+      "Published": { bg: "#E9F9E7", ring: "#13D711", color: "#13A711" },
+      "Scheduled": { bg: "rgba(94,100,244,0.06)", ring: "#5E64F4", color: "#5E64F4" },
+      "Regenerating": { bg: "#FEF0FF", ring: "#F56BFF", color: "#F56BFF" },
+      "Waiting Approval": { bg: "#FFF6E9", ring: "#FFB453", color: "#E48915" },
+      "Failed": { bg: "#FDECEC", ring: "#F35525", color: "#F35525" }
+    };
+    const recipeChipStyles = [
+      { bg: "#D3F4FB", ring: "rgba(11,170,199,0.35)" },
+      { bg: "#FDF1DF", ring: "rgba(228,137,21,0.35)" },
+      { bg: "#EFE0FB", ring: "rgba(137,55,214,0.3)" }
+    ];
+    const rowDefs = [
+      { title: "5 AI tools every marketer needs in 2026 →", recipe: 1, sub: "CSV Upload", status: "Published", tab: 4 },
+      { title: "New blog: Designing for accessibility", recipe: 2, sub: "", status: "Scheduled", tab: 3 },
+      { title: "Spring collection drop — link in bio", recipe: 1, sub: "Spark folder", status: "Regenerating", tab: 1 },
+      { title: "Trending topic: remote work culture", recipe: 0, sub: "", status: "Waiting Approval", tab: 2 },
+      { title: "Product spotlight: Eco bottle 700ml", recipe: 1, sub: "Canva", status: "Failed", tab: 5 }
+    ];
+    const visibleRows = rowDefs.filter(r =>
+      (s.queueTab === 0 || r.tab === s.queueTab) &&
+      (s.recipeFilter === null || r.recipe === s.recipeFilter)
+    );
+
+    const wiz = s.wiz;
+    const stepDefsByRecipe = [
+      ["name", "query", "freq"],
+      ["name", "source", "freq"],
+      ["name", "feed", "freq"]
+    ];
+    const curSteps = wiz && wiz.recipe >= 0 ? stepDefsByRecipe[wiz.recipe] : [];
+    const curStepKind = wiz && wiz.recipe >= 0 ? curSteps[wiz.step] : "";
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(stageH * scale) + "px",
+      stageH: stageH + "px",
+      mainH: (stageH - 36) + "px",
+
+      navItems: navDefs.map((n) => ({
+        label: n.label,
+        icon: { __html: n.icon },
+        top: n.top + "px",
+        fontSize: n.size + "px",
+        color: n.active ? "#0C0C0C" : "#838383",
+        click: () => {
+          if (n.link) { window.location.href = n.link; return; }
+          if (!n.active) this.toast(n.label + " — coming in the next phase");
+        }
+      })),
+
+      goReview: () => { window.location.href = "SparkSocial Command Center.dc.html"; },
+      toastAccount: () => this.toast("Account filter — mock"),
+      toastGovernance: () => this.toast("Governance rules — mock"),
+      toastPage: () => this.toast("Pagination — mock"),
+      toastAddAccount: () => this.toast("Connect accounts in Settings — later phase"),
+
+      recipes: [
+        { name: "AutoTrend Engager", desc: "Surface trending topics from real-time queries and turn them into on-brand posts.", bg: "linear-gradient(140deg, #DFF7FD 0%, #F4FDFF 70%)", iconBg: "linear-gradient(140deg, #57D4E8 0%, #9CEFFF 100%)", left: "370px" },
+        { name: "Bulk Connector", desc: "Schedule a backlog of posts from CSV, Canva, Drive or a folder, on cycle.", bg: "linear-gradient(140deg, #FCEFDA 0%, #FEF9F0 70%)", iconBg: "linear-gradient(140deg, #F0A94F 0%, #F6C98A 100%)", left: "816px" },
+        { name: "RSS Autopost", desc: "Auto-publish from any RSS feed & Podcast Stations with CTA, scheduling, and optional review gate.", bg: "linear-gradient(140deg, #EFDFFB 0%, #FBF5FF 70%)", iconBg: "linear-gradient(140deg, #A341FF 0%, #C88AF6 100%)", left: "1262px" }
+      ].map((r, i) => ({
+        ...r,
+        icon: { __html: recipeIcons[i] },
+        active: s.activeCounts[i],
+        manage: () => {
+          if (i === 0) { this.setState({ view: "atManage" }); window.scrollTo(0, 0); return; }
+          this.setState({ recipeFilter: s.recipeFilter === i ? null : i, queueTab: 0 });
+          this.toast(s.recipeFilter === i ? "Showing all recipes" : "Queue filtered to " + r.name);
+        },
+        addNew: () => { this.setState({ view: "atWizard", wzRecipe: i, atStep: 0 }); window.scrollTo(0, 0); }
+      })),
+
+      queueTabs: ["All", "Drafts", "Needs Review", "Scheduled", "Published", "Failed"].map((label, i) => ({
+        label,
+        count: i === 0 ? rowDefs.length : rowDefs.filter(r => r.tab === i).length,
+        bg: s.queueTab === i ? "#9CEFFF" : "transparent",
+        badgeBg: s.queueTab === i ? "#FFFFFF" : "rgba(131,131,131,0.12)",
+        click: () => this.setState({ queueTab: i })
+      })),
+      queueRows: visibleRows.map((r, i) => ({
+        title: r.title,
+        recipe: recipeNames[r.recipe],
+        recipeIcon: { __html: recipeIcons[r.recipe].replace(/width="\d+" height="\d+"/, 'width="19" height="19"') },
+        recipeBg: recipeChipStyles[r.recipe].bg,
+        recipeRing: recipeChipStyles[r.recipe].ring,
+        hasSub: !!r.sub,
+        sub: r.sub,
+        status: r.status,
+        isRegen: r.status === "Regenerating",
+        chipBg: statusStyles[r.status].bg,
+        chipRing: statusStyles[r.status].ring,
+        chipColor: statusStyles[r.status].color,
+        top: (241 + i * 118) + "px",
+        preview: () => this.toast("Post preview — opens the Draft Panel in Command Center"),
+        remove: () => this.toast("Removed from queue (mock)")
+      })),
+      queueEmpty: visibleRows.length === 0,
+
+      // wizard
+      wizOpen: !!wiz,
+      wizChooser: wiz ? wiz.recipe === -1 : false,
+      wizSteps: wiz ? wiz.recipe >= 0 : false,
+      openChooser: () => this.setState({ wiz: { recipe: -1, step: 0 } }),
+      wizClose: () => this.setState({ wiz: null }),
+      wizChoices: [
+        { name: "AutoTrend Engager", desc: "Surface trending topics from real-time queries and turn them into on-brand posts.", bg: "linear-gradient(120deg, #DFF7FD 0%, #FFFFFF 65%)", iconBg: "linear-gradient(140deg, #57D4E8 0%, #9CEFFF 100%)", top: "158px" },
+        { name: "Bulk Connector", desc: "Schedule a backlog of posts from CSV, Canva, Drive or a folder, on cycle.", bg: "linear-gradient(120deg, #FCEFDA 0%, #FFFFFF 65%)", iconBg: "linear-gradient(140deg, #F0A94F 0%, #F6C98A 100%)", top: "348px" },
+        { name: "RSS Autopost", desc: "Auto-publish from any RSS feed & Podcast Stations with CTA, scheduling, and optional review gate.", bg: "linear-gradient(120deg, #EFDFFB 0%, #FFFFFF 65%)", iconBg: "linear-gradient(140deg, #A341FF 0%, #C88AF6 100%)", top: "538px" }
+      ].map((c, i) => ({
+        ...c,
+        icon: { __html: recipeIcons[i] },
+        click: () => { this.setState({ wiz: null, view: "atWizard", wzRecipe: i, atStep: 0 }); window.scrollTo(0, 0); }
+      })),
+      wizRecipeName: wiz && wiz.recipe >= 0 ? recipeNames[wiz.recipe] : "",
+      wizStepNum: wiz && wiz.recipe >= 0 ? wiz.step + 1 : 1,
+      wizStepTotal: curSteps.length || 3,
+      wizProgress: wiz && wiz.recipe >= 0 ? Math.round(((wiz.step + 1) / curSteps.length) * 100) + "%" : "0%",
+      wsName: curStepKind === "name",
+      wsQuery: curStepKind === "query",
+      wsSource: curStepKind === "source",
+      wsFeed: curStepKind === "feed",
+      wsFreq: curStepKind === "freq",
+      wizNextLabel: wiz && wiz.recipe >= 0 && wiz.step === curSteps.length - 1 ? "Launch Automation" : "Continue",
+      wizBack: () => {
+        const w = this.state.wiz;
+        if (!w) return;
+        if (w.step === 0) { this.setState({ wiz: { recipe: -1, step: 0 } }); return; }
+        this.setState({ wiz: { ...w, step: w.step - 1 } });
+      },
+      wizNext: () => {
+        const w = this.state.wiz;
+        if (!w || w.recipe < 0) return;
+        const steps = stepDefsByRecipe[w.recipe];
+        if (w.step === steps.length - 1) {
+          const counts = [...this.state.activeCounts];
+          counts[w.recipe] += 1;
+          this.setState({ wiz: null, activeCounts: counts });
+          this.toast(recipeNames[w.recipe] + " automation launched — now " + counts[w.recipe] + " active");
+          return;
+        }
+        this.setState({ wiz: { ...w, step: w.step + 1 } });
+      },
+      wizName: s.wizName,
+      wizOnName: (e) => this.setState({ wizName: e.target.value }),
+      wizSources: ["X/Twitter", "Tiktok", "Youtube", "Reddit", "Google Trends"].map(label => ({
+        label,
+        active: s.wizSources.includes(label),
+        bg: s.wizSources.includes(label) ? "#FFFFFF" : "rgba(131,131,131,0.06)",
+        ring: s.wizSources.includes(label) ? "inset 0 0 0 1.4px #0C0C0C" : "inset 0 0 0 1px rgba(12,12,12,0.12)",
+        click: () => this.setState(st => ({
+          wizSources: st.wizSources.includes(label) ? st.wizSources.filter(x => x !== label) : [...st.wizSources, label]
+        }))
+      })),
+      wizBulkSources: [
+        { name: "CSV upload", desc: "4 Files · 74MB uploaded and mapped.", iconBg: "#E3EDFB", icon: '<svg width="26" height="30" viewBox="0 0 26 30" fill="none"><path d="M3 4a3 3 0 0 1 3-3h10l7 7v18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V4Z" stroke="#3B5B8C" stroke-width="2"></path><path d="M16 1v7h7" stroke="#3B5B8C" stroke-width="2"></path><path d="M7 19h12M7 24h8" stroke="#3B5B8C" stroke-width="2" stroke-linecap="round"></path></svg>', left: "56px", hasConnect: false },
+        { name: "Canva — not connected", desc: "Connect Canva to pull designs on cycle.", iconBg: "linear-gradient(135deg, #21C4C8 0%, #7A5FE0 100%)", icon: '<span style="font-size:24px;font-weight:700;color:#FFFFFF;font-family:Georgia, serif;font-style:italic;">C</span>', left: "370px", hasConnect: true },
+        { name: "Spark folder", desc: "Canva/folder/Micadass Brand Assets", iconBg: "#FCEFDA", icon: '<svg width="28" height="24" viewBox="0 0 30 26" fill="none"><path d="M2 6.4A3.4 3.4 0 0 1 5.4 3h5.2l3 3.4h11A3.4 3.4 0 0 1 28 9.8v9.8a3.4 3.4 0 0 1-3.4 3.4H5.4A3.4 3.4 0 0 1 2 19.6V6.4Z" fill="#F0C987"></path><path d="m16 9-4.4 6h3l-1.2 4.6 4.8-6.4h-3L16 9Z" fill="#E8582B"></path></svg>', left: "684px", hasConnect: false }
+      ].map((b, i) => ({
+        ...b,
+        icon: { __html: b.icon },
+        selected: s.wizBulkSel === i,
+        ring: s.wizBulkSel === i ? "inset 0 0 0 1.8px #0C0C0C" : "inset 0 0 0 1px rgba(131,131,131,0.25)",
+        click: () => i === 1 ? this.toast("Canva OAuth — mock") : this.setState({ wizBulkSel: i })
+      })),
+      wizFeedTypes: ["News/Blogs", "Podcast Stations"].map(label => ({
+        label,
+        active: s.wizFeedType === label,
+        bg: s.wizFeedType === label ? "#FFFFFF" : "rgba(131,131,131,0.06)",
+        ring: s.wizFeedType === label ? "inset 0 0 0 1.4px #0C0C0C" : "inset 0 0 0 1px rgba(12,12,12,0.12)",
+        click: () => this.setState({ wizFeedType: label })
+      })),
+      wizFreqPillLeft: s.wizFreqMode === 0 ? "5px" : "196px",
+      wizFreqRegular: () => this.setState({ wizFreqMode: 0 }),
+      wizFreqCustom: () => this.setState({ wizFreqMode: 1 }),
+      wizToday: s.wizToday,
+      wizTodayBg: s.wizToday ? "#0C0C0C" : "#FFFFFF",
+      wizTodayRing: s.wizToday ? "none" : "inset 0 0 0 1.3px rgba(12,12,12,0.35)",
+      wizToggleToday: () => this.setState(st => ({ wizToday: !st.wizToday })),
+
+      // ---- AutoTrend full-page flow ----
+      isHome: s.view === "home",
+      atWizard: s.view === "atWizard" || s.view === "atReview",
+      atReview: s.view === "atReview",
+      atManage: s.view === "atManage",
+      atS1: wzKind === "name",
+      atS2: wzKind === "query",
+      atS3: wzKind === "freq",
+      bcSource: wzKind === "source",
+      bcValidate: wzKind === "validate",
+      rssFeed: wzKind === "feed",
+      wzRailFeed: s.wzRecipe === 2,
+      atShowRecipeType: s.wzRecipe === 0,
+      wzShowBubble: wzKind !== "validate",
+      wzTotal: wzKinds.length,
+      wzRecipeLabel: wzNames[s.wzRecipe],
+      wzIsBulk: s.wzRecipe === 1,
+      wzRailQuery: s.wzRecipe === 0,
+      wzRailSource: s.wzRecipe === 1,
+      wzShowCsvChip: s.wzRecipe === 1,
+      atStepNum: s.atStep + 1,
+      atProgress: Math.round(((s.atStep + 1) / wzKinds.length) * 100) + "%",
+      atBubble: {
+        name: "Name this recipe and pick where its posts should publish.",
+        query: "Search for trends globally by entering your keywords, selecting a language, and choosing a post age.",
+        source: "Select a file type to upload: CSV for a template, Canva folders, or Google Drive for access.",
+        feed: "Connect any RSS feed or Podcast Station and I'll turn new items into posts.",
+        freq: "Choose how often you want your campaign to run!"
+      }[wzKind] || "",
+      atBack: () => {
+        if (this.state.atStep === 0) { this.setState({ view: "home" }); return; }
+        this.setState(st => ({ atStep: st.atStep - 1 }));
+      },
+      atNext: () => {
+        if (this.state.atStep === wzKinds.length - 1) { this.setState({ view: "atReview" }); window.scrollTo(0, 0); return; }
+        this.setState(st => ({ atStep: st.atStep + 1 }));
+      },
+      bcSources: [
+        { name: "Spark folder", iconBg: "#7FE3F7", icon: '<svg width="36" height="30" viewBox="0 0 30 26" fill="none"><path d="M2 6.4A3.4 3.4 0 0 1 5.4 3h5.2l3 3.4h11A3.4 3.4 0 0 1 28 9.8v9.8a3.4 3.4 0 0 1-3.4 3.4H5.4A3.4 3.4 0 0 1 2 19.6V6.4Z" fill="#FFFFFF"></path><circle cx="11" cy="15" r="1.6" fill="#0C0C0C"></circle><circle cx="19" cy="15" r="1.6" fill="#0C0C0C"></circle></svg>', cardBg: "#FFFFFF" },
+        { name: "Canva", iconBg: "#0C0C0C", icon: '<span style="font-size:34px;font-weight:700;color:#FFFFFF;font-family:Georgia, serif;font-style:italic;">C</span>', cardBg: "#FFFFFF" },
+        { name: "Google Drive", iconBg: "#F6D9A8", icon: '<svg width="34" height="32" viewBox="0 0 26 24" fill="none"><path d="m9 2 8 .02L26 16l-4 7-9-15.5L9 2Z" fill="#0C0C0C" opacity="0.85"></path><path d="M9 2 0 16.5 4 23l9-15.5L9 2Z" fill="#0C0C0C" opacity="0.6"></path><path d="M4.4 23h17.4l4-7H8.6l-4.2 7Z" fill="#0C0C0C" opacity="0.72"></path></svg>', cardBg: "#FFFFFF" },
+        { name: "CSV upload", iconBg: "#F5C7EF", icon: '<svg width="30" height="36" viewBox="0 0 26 30" fill="none"><path d="M3 4a3 3 0 0 1 3-3h10l7 7v18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V4Z" fill="#FFFFFF"></path><path d="M16 1v7h7" fill="#E9A8E0"></path><text x="6" y="24" font-size="7" font-weight="800" fill="#0C0C0C" font-family="Arial">CSV</text></svg>', cardBg: "#FFFFFF" }
+      ].map((b, i) => ({
+        ...b,
+        icon: { __html: b.icon },
+        selected: s.bcSel === i,
+        ring: s.bcSel === i ? "inset 0 0 0 1.8px #0C0C0C, 0 14px 30px -22px rgba(12,12,12,0.4)" : "inset 0 0 0 1px rgba(131,131,131,0.22)",
+        boxBg: s.bcSel === i ? "#0C0C0C" : "#FFFFFF",
+        boxRing: s.bcSel === i ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.3)",
+        click: () => this.setState({ bcSel: i })
+      })),
+      bcConnect: () => this.toast("Canva OAuth — mock"),
+      rssTypes: ["News/Blogs", "Podcast Stations"].map(label => ({
+        label,
+        active: s.wizFeedType === label,
+        bg: s.wizFeedType === label ? "#FFFFFF" : "rgba(131,131,131,0.06)",
+        ring: s.wizFeedType === label ? "inset 0 0 0 1.4px #0C0C0C" : "inset 0 0 0 1px rgba(12,12,12,0.12)",
+        click: () => this.setState({ wizFeedType: label })
+      })),
+      rssResults: [
+        { title: "Designing for accessibility in 2026", meta: "blog.brand.com · 2h ago" },
+        { title: "Why short form video still works", meta: "blog.brand.com · 1d ago" },
+        { title: "Our team’s favorite tools", meta: "blog.brand.com · 3d ago" }
+      ].map((r, i) => ({
+        ...r,
+        top: (170 + i * 136) + "px",
+        checked: (s.rssChecks || [0]).includes(i),
+        ring: (s.rssChecks || [0]).includes(i) ? "inset 0 0 0 1.8px #0C0C0C" : "inset 0 0 0 1px rgba(131,131,131,0.22)",
+        boxBg: (s.rssChecks || [0]).includes(i) ? "#0C0C0C" : "#FFFFFF",
+        boxRing: (s.rssChecks || [0]).includes(i) ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.3)",
+        toggle: () => this.setState(st => {
+          const cur = st.rssChecks || [0];
+          return { rssChecks: cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i] };
+        })
+      })),
+      bcRevalidate: () => this.toast("Re-validating rows… 2 valid · 1 warning"),
+      bcAllChecked: s.bcChecks.length === 3,
+      bcAllBg: s.bcChecks.length === 3 ? "#0C0C0C" : "#FFFFFF",
+      bcAllRing: s.bcChecks.length === 3 ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.3)",
+      bcToggleAll: () => this.setState(st => ({ bcChecks: st.bcChecks.length === 3 ? [] : [0, 1, 2] })),
+      bcRows: [
+        { caption: "New spring drop is live 🌸", media: "spring1.jpg", link: "brand.com/spring", thumb: "assets/thumb-reel-girl.png", valid: true, warning: false },
+        { caption: "Eco bottle 700ml — now in 4 colors", media: "bottle.png", link: "brand.com/bottle", thumb: "assets/campaign-nature.png", valid: true, warning: false },
+        { caption: "Limited edition tote", media: "—", link: "brand.com/tote", thumb: "assets/thumb-linkedin.png", valid: false, warning: true }
+      ].map((r, i) => ({
+        ...r,
+        checked: s.bcChecks.includes(i),
+        boxBg: s.bcChecks.includes(i) ? "#0C0C0C" : "#FFFFFF",
+        boxRing: s.bcChecks.includes(i) ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.3)",
+        toggle: () => this.setState(st => ({
+          bcChecks: st.bcChecks.includes(i) ? st.bcChecks.filter(x => x !== i) : [...st.bcChecks, i]
+        })),
+        preview: () => this.toast("Row preview — mock")
+      })),
+      atRecipeTypes: [
+        { name: "Re-purpose Post", desc: "Transform this post for a new audience." },
+        { name: "Re-share Post", desc: "Share this post with your network!" }
+      ].map((t, i) => ({
+        ...t,
+        selected: s.atRecipeType === i,
+        ring: s.atRecipeType === i ? "inset 0 0 0 1.8px #0C0C0C" : "inset 0 0 0 1px rgba(131,131,131,0.28)",
+        click: () => this.setState({ atRecipeType: i })
+      })),
+      atKwPillLeft: s.atKwMode === 0 ? "4px" : "126px",
+      atKwMode: () => this.setState({ atKwMode: 0 }),
+      atInfMode: () => this.setState({ atKwMode: 1 }),
+      atKwChips: s.atKwChips.map(label => ({
+        label,
+        remove: () => this.setState(st => ({ atKwChips: st.atKwChips.filter(c => c !== label) }))
+      })),
+      atExChips: s.atExChips.map(label => ({
+        label,
+        remove: () => this.setState(st => ({ atExChips: st.atExChips.filter(c => c !== label) }))
+      })),
+      atRefines: [
+        { label: "Region", value: "Global" },
+        { label: "Language", value: "English" },
+        { label: "Max Post age", value: "Last 24 hours" },
+        { label: "Signal", value: "Velocity" },
+        { label: "Sources", value: "All" },
+        { label: "Saved Watchlist", value: "#AiAgents" }
+      ].map(f => ({ ...f, click: () => this.toast(f.label + " — mock") })),
+      atToggleSafety: () => this.setState(st => ({ atSafety: !st.atSafety })),
+      atSafetyBg: s.atSafety ? "#3EC332" : "rgba(12,12,12,0.18)",
+      atSafetyKnob: s.atSafety ? "25px" : "3px",
+      atSafetyLabel: s.atSafety ? "Enabled" : "Disabled",
+      atResults: [
+        { kind: "Carousel", title: "Stop losing Opportunities to tiny problems", thumb: "assets/thumb-linkedin.png", hasPlay: false },
+        { kind: "Image", title: "Scheduled a post: 3 step Ai workflow for agencies", thumb: "assets/thumb-reel-girl.png", hasPlay: false },
+        { kind: "Reels", title: "Stop losing Opportunities to tiny problems", thumb: "assets/thumb-reel.png", hasPlay: true },
+        { kind: "Image", title: "Scheduled a post: 3 step Ai workflow for agencies", thumb: "assets/thumb-carousel.png", hasPlay: false }
+      ].map((r, i) => ({
+        ...r,
+        top: (170 + i * 268) + "px",
+        checked: s.atChecks.includes(i),
+        boxBg: s.atChecks.includes(i) ? "#0C0C0C" : "#FFFFFF",
+        boxRing: s.atChecks.includes(i) ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.3)",
+        toggle: () => this.setState(st => ({
+          atChecks: st.atChecks.includes(i) ? st.atChecks.filter(x => x !== i) : [...st.atChecks, i]
+        }))
+      })),
+      atFreqPillLeft: s.atFreqMode === 0 ? "4px" : "198px",
+      atFreqCustom: () => this.setState({ atFreqMode: 0 }),
+      atFreqRegular: () => this.setState({ atFreqMode: 1 }),
+      atModeCustom: s.atFreqMode === 0,
+      atModeRegular: s.atFreqMode === 1,
+      atToggleReview: () => this.setState(st => ({ atReviewOn: !st.atReviewOn })),
+      atReviewBg: s.atReviewOn ? "#3EC332" : "rgba(12,12,12,0.18)",
+      atReviewKnob: s.atReviewOn ? "26px" : "3px",
+      atReviewLabel: s.atReviewOn ? "Active" : "Off",
+      atTimeDots: [{ top: "88px" }, { top: "296px" }, { top: "790px" }],
+      atAccounts: [
+        { img: "assets/agent-avatar-photo.png", bg: "#F3D1E8", badge: "assets/icons/ig-color.png" },
+        { img: "assets/pro-memoji.png", bg: "#F6E24B", badge: "assets/icons/linkedin.png" },
+        { img: "assets/avatar-2.png", bg: "#DCEAF6", badge: "assets/icons/fb-color.png" },
+        { img: "assets/agent-avatar-photo.png", bg: "#CBE4F2", badge: "assets/icons/x-white.png" },
+        { img: "assets/avatar-2.png", bg: "#E7DFF4", badge: "assets/icons/ig-color.png" },
+        { img: "assets/pro-memoji.png", bg: "#F4DFDC", badge: "assets/icons/fb-color.png" },
+        { img: "assets/agent-avatar-photo.png", bg: "#DDF0E2", badge: "assets/icons/fb-color.png" },
+        { img: "assets/avatar-2.png", bg: "#F4E9D9", badge: "assets/icons/ig-color.png" }
+      ],
+      atRefChips: ["Global", "English", "Last 24 hours", "Velocity", "All", "#AiAgents"].map(label => ({ label })),
+      atReviewBack: () => this.setState({ view: "atWizard", atStep: 2 }),
+      atApproval: s.atApproval,
+      atApprovalBg: s.atApproval ? "#0C0C0C" : "#FFFFFF",
+      atApprovalRing: s.atApproval ? "none" : "inset 0 0 0 1.4px rgba(12,12,12,0.35)",
+      atToggleApproval: () => this.setState(st => ({ atApproval: !st.atApproval })),
+      atLaunchRows: [
+        "Re-generate campaign-focused posts across selected channels",
+        "Scanning real-time trends matching \"your keywords\"",
+        "Picking the highest-momentum topics, and draft on-brand posts",
+        "Blend campaign content with selected queries",
+        "Optimize posting times based on performance"
+      ].map((text, i) => ({ text, top: (450 + i * 66) + "px" })),
+      atAccountsSm: [
+        { img: "assets/agent-avatar-photo.png", bg: "#F3D1E8", badge: "assets/icons/ig-color.png" },
+        { img: "assets/pro-memoji.png", bg: "#F6E24B", badge: "assets/icons/linkedin.png" },
+        { img: "assets/avatar-2.png", bg: "#DCEAF6", badge: "assets/icons/fb-color.png" },
+        { img: "assets/agent-avatar-photo.png", bg: "#CBE4F2", badge: "assets/icons/x-white.png" },
+        { img: "assets/avatar-2.png", bg: "#E7DFF4", badge: "assets/icons/fb-color.png" },
+        { img: "assets/pro-memoji.png", bg: "#F4DFDC", badge: "assets/icons/ig-color.png" },
+        { img: "assets/agent-avatar-photo.png", bg: "#DDF0E2", badge: "assets/icons/ig-color.png" },
+        { img: "assets/avatar-2.png", bg: "#F4E9D9", badge: "assets/icons/ig-color.png" }
+      ],
+      atActivate: () => {
+        const counts = [...this.state.activeCounts];
+        counts[this.state.wzRecipe] += 1;
+        if (this.state.wzRecipe === 0) {
+          this.setState({ view: "atManage", activeCounts: counts, atStep: 0 });
+        } else {
+          this.setState({ view: "home", activeCounts: counts, atStep: 0 });
+        }
+        window.scrollTo(0, 0);
+        this.toast(wzNames[this.state.wzRecipe] + " campaign activated");
+      },
+      atManageBack: () => this.setState({ view: "home" }),
+      atCampaigns: (() => {
+        const defs = [
+          { date: "26th April, 2026", status: "Failed", chipBg: "#FDECEC", chipRing: "#F35525", chipColor: "#F35525", thumb: "assets/thumb-linkedin.png", hasPlay: true, hasApprove: false, hasPause: false,
+            caption: "Exploring the latest trends in AI and marketing can unlock new opportunities for businesses. From personalized customer experiences to data-driven strategies, the integration of AI is transforming how brands connect with their audiences. Stay ahead of the curve by embracing these innovations!" },
+          { date: "25th April, 2026", status: "Waiting for approval", chipBg: "#FFF6E9", chipRing: "#FFB453", chipColor: "#E48915", thumb: "assets/thumb-reel-girl.png", hasPlay: false, hasApprove: true, hasPause: false,
+            caption: "Diving into the cutting-edge developments in artificial intelligence and marketing opens up fresh avenues for companies. With tailored customer interactions and analytics-based approaches, AI is reshaping the way brands engage with their customers. Keep your business at the forefront by adopting these exciting advancements!" },
+          { date: "23rd April, 2026", status: "Approved", chipBg: "#E9F9E7", chipRing: "#13D711", chipColor: "#13A711", thumb: "assets/campaign-nature.png", hasPlay: true, hasApprove: false, hasPause: true,
+            caption: "Exploring the latest innovations in artificial intelligence and marketing reveals new opportunities for businesses. By utilizing personalized customer interactions and data-driven strategies, AI is transforming how brands connect with their audiences. Stay ahead of the curve by embracing these thrilling advancements!" }
+        ];
+        let top = 420;
+        return defs.map((d, i) => {
+          const open = s.atOpen.includes(i);
+          const me = {
+            ...d,
+            open,
+            top: top + "px",
+            h: (open ? 380 : 240) + "px",
+            chevBg: open ? "#9CEFFF" : "#FFFFFF",
+            chevFlip: open ? "rotate(180deg)" : "none",
+            toggleOpen: () => this.setState(st => ({
+              atOpen: st.atOpen.includes(i) ? st.atOpen.filter(x => x !== i) : [...st.atOpen, i]
+            })),
+            approve: () => this.toast("Post approved"),
+            pause: () => this.toast("Campaign post paused"),
+            edit: () => this.toast("Edit — opens the Draft Panel in Command Center"),
+            remove: () => this.toast("Post removed (mock)"),
+            publish: () => this.toast("Refresh the token in Settings first (mock)"),
+            regen: () => this.toast("Regenerating post…")
+          };
+          top += (open ? 380 : 240) + 20;
+          return me;
+        });
+      })(),
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

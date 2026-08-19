@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Draft Panel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #FFFFFF; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 10% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+</helmet>
+<div style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;height:{{ outerH }};">
+  <div style="position:absolute;left:0;top:0;width:1728px;transform-origin:top left;transform:{{ stageScale }};height:{{ frameH }};">
+    <sc-if value="{{ isClosed }}" hint-placeholder-val="{{ false }}"><dc-import name="DP closed" nav="{{ nav }}" hint-size="1728px,1042px" style="position:absolute;left:0;top:0;width:1728px;height:1042px;"></dc-import></sc-if>
+    <sc-if value="{{ isImage }}" hint-placeholder-val="{{ true }}"><dc-import name="DP image" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isImage2 }}" hint-placeholder-val="{{ false }}"><dc-import name="DP image2" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isText }}" hint-placeholder-val="{{ false }}"><dc-import name="DP text" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isText2 }}" hint-placeholder-val="{{ false }}"><dc-import name="DP text2" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isVideo }}" hint-placeholder-val="{{ false }}"><dc-import name="DP video" nav="{{ nav }}" hint-size="1728px,2634px" style="position:absolute;left:0;top:0;width:1728px;height:2634px;"></dc-import></sc-if>
+    <sc-if value="{{ isVideo2 }}" hint-placeholder-val="{{ false }}"><dc-import name="DP video2" nav="{{ nav }}" hint-size="1728px,2634px" style="position:absolute;left:0;top:0;width:1728px;height:2634px;"></dc-import></sc-if>
+    <sc-if value="{{ isVoice }}" hint-placeholder-val="{{ false }}"><dc-import name="DP voice" nav="{{ nav }}" hint-size="1728px,2585px" style="position:absolute;left:0;top:0;width:1728px;height:2585px;"></dc-import></sc-if>
+    <sc-if value="{{ isCarousel }}" hint-placeholder-val="{{ false }}"><dc-import name="DP carousel" nav="{{ nav }}" hint-size="1728px,1881px" style="position:absolute;left:0;top:0;width:1728px;height:1881px;"></dc-import></sc-if>
+    <sc-if value="{{ isCarousel2 }}" hint-placeholder-val="{{ false }}"><dc-import name="DP carousel2" nav="{{ nav }}" hint-size="1728px,1881px" style="position:absolute;left:0;top:0;width:1728px;height:1881px;"></dc-import></sc-if>
+    <sc-if value="{{ isGenImage }}" hint-placeholder-val="{{ false }}"><dc-import name="DP genImage" nav="{{ nav }}" hint-size="1728px,1271px" style="position:absolute;left:0;top:0;width:1728px;height:1271px;"></dc-import></sc-if>
+    <sc-if value="{{ isGenText }}" hint-placeholder-val="{{ false }}"><dc-import name="DP genText" nav="{{ nav }}" hint-size="1728px,1110px" style="position:absolute;left:0;top:0;width:1728px;height:1110px;"></dc-import></sc-if>
+    <sc-if value="{{ isGenVideo }}" hint-placeholder-val="{{ false }}"><dc-import name="DP genVideo" nav="{{ nav }}" hint-size="1728px,1433px" style="position:absolute;left:0;top:0;width:1728px;height:1433px;"></dc-import></sc-if>
+    <sc-if value="{{ isGenCarousel }}" hint-placeholder-val="{{ false }}"><dc-import name="DP genCarousel" nav="{{ nav }}" hint-size="1728px,1355px" style="position:absolute;left:0;top:0;width:1728px;height:1355px;"></dc-import></sc-if>
+    <sc-if value="{{ isPrevImage }}" hint-placeholder-val="{{ false }}"><dc-import name="DP prevImage" nav="{{ nav }}" hint-size="1728px,1178px" style="position:absolute;left:0;top:0;width:1728px;height:1178px;"></dc-import></sc-if>
+    <sc-if value="{{ isPrevText }}" hint-placeholder-val="{{ false }}"><dc-import name="DP prevText" nav="{{ nav }}" hint-size="1728px,1107px" style="position:absolute;left:0;top:0;width:1728px;height:1107px;"></dc-import></sc-if>
+    <sc-if value="{{ isPrevVideo }}" hint-placeholder-val="{{ false }}"><dc-import name="DP prevVideo" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isPrevCarousel }}" hint-placeholder-val="{{ false }}"><dc-import name="DP prevCarousel" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}"><dc-import name="DP list" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}"><dc-import name="DP chat" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isSingle }}" hint-placeholder-val="{{ false }}"><dc-import name="DP single" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+    <sc-if value="{{ isSingleTrigger }}" hint-placeholder-val="{{ false }}"><dc-import name="DP singleTrigger" nav="{{ nav }}" hint-size="1728px,1117px" style="position:absolute;left:0;top:0;width:1728px;height:1117px;"></dc-import></sc-if>
+  </div>
+  <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;image&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;closed&quot;,&quot;image&quot;,&quot;image2&quot;,&quot;text&quot;,&quot;text2&quot;,&quot;video&quot;,&quot;video2&quot;,&quot;voice&quot;,&quot;carousel&quot;,&quot;carousel2&quot;,&quot;genImage&quot;,&quot;genText&quot;,&quot;genVideo&quot;,&quot;genCarousel&quot;,&quot;prevImage&quot;,&quot;prevText&quot;,&quot;prevVideo&quot;,&quot;prevCarousel&quot;,&quot;list&quot;,&quot;chat&quot;,&quot;single&quot;,&quot;singleTrigger&quot;],&quot;section&quot;:&quot;Flow&quot;}}">
+class Component extends DCLogic {
+  state = { sec: null, vw: typeof window !== 'undefined' ? window.innerWidth : 1728, toastMsg: '', toastN: 0 };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener('resize', this._onResize);
+    if (window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth });
+    this._vwPoll = setInterval(() => { if (window.innerWidth > 0 && window.innerWidth !== this.state.vw) this.setState({ vw: window.innerWidth }); }, 500);
+    const h = window.location.hash.replace('#', '');
+    if (h && ["closed","image","image2","text","text2","video","video2","voice","carousel","carousel2","genImage","genText","genVideo","genCarousel","prevImage","prevText","prevVideo","prevCarousel","list","chat","single","singleTrigger"].includes(h)) this.setState({ sec: h });
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    if (this._vwPoll) clearInterval(this._vwPoll);
+    if (this._toastT) clearTimeout(this._toastT);
+    if (this._genT) clearTimeout(this._genT);
+  }
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: '' }), 2200);
+  }
+  go(k, delayTo, ms) {
+    if (this._genT) clearTimeout(this._genT);
+    this.setState({ sec: k });
+    window.scrollTo(0, 0);
+    if (delayTo) this._genT = setTimeout(() => { this.setState({ sec: delayTo }); window.scrollTo(0, 0); }, ms || 3200);
+  }
+  renderVals() {
+    const s = this.state;
+    const heights = {"closed":1042,"image":1117,"image2":1117,"text":1117,"text2":1117,"video":2634,"video2":2634,"voice":2585,"carousel":1881,"carousel2":1881,"genImage":1271,"genText":1110,"genVideo":1433,"genCarousel":1355,"prevImage":1178,"prevText":1107,"prevVideo":1117,"prevCarousel":1117,"list":1117,"chat":1117,"single":1117,"singleTrigger":1117};
+    const sec = s.sec ?? (this.props.startState && heights[this.props.startState] ? this.props.startState : 'image');
+    const frameH = heights[sec] || 1117;
+    const vw = s.vw > 0 ? s.vw : 1728;
+    const scale = vw / 1728;
+    const nav = {};
+    for (const k of Object.keys(heights)) nav[k] = () => this.go(k);
+    nav.genImage = () => this.go('genImage', 'prevImage');
+    nav.genText = () => this.go('genText', 'prevText');
+    nav.genVideo = () => this.go('genVideo', 'prevVideo');
+    nav.genCarousel = () => this.go('genCarousel', 'prevCarousel');
+    nav.publish = () => { this.toast('Post published (mock)'); this.go('closed'); };
+    nav.mockT = () => this.toast('Mock action — not wired in this prototype');
+    const vals = {
+      nav,
+      frameH: frameH + 'px',
+      outerH: Math.round(frameH * scale) + 'px',
+      stageScale: 'scale(' + scale + ')',
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+    for (const k of Object.keys(heights)) vals['is' + k.charAt(0).toUpperCase() + k.slice(1)] = sec === k;
+    return vals;
+  }
+}
+</script>
+</body>
+</html>

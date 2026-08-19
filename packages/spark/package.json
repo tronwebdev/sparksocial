@@ -1,0 +1,17 @@
+{
+  "name": "@sparksocial/spark",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "@sparksocial/shared": "*",
+    "@sparksocial/tools": "*",
+    "zod": "^3.23.8"
+  }
+}

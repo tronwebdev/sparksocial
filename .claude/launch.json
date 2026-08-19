@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "@sparksocial/api"],
+      "port": 8080
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@sparksocial/web"],
+      "port": 3000
+    },
+    {
+      "name": "web-turbo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--turbopack", "-p", "3001"],
+      "port": 3001
+    }
+  ]
+}

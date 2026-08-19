@@ -4,3 +4,4 @@ export * from './resolver.js';
 export * from './mix.js';
 export * from './golden.js';
 export * from './tools.js';
+export * from './browse.js';

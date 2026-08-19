@@ -1,0 +1,5325 @@
+// figma node: 1044:6012 Account Settings (Workspace Settings)
+export function AccountSettingsWorkspaceSettings3(_p = {}) {
+  const props = _p;
+  return (
+    <div className={props.className} style={{
+      width: 1728,
+      height: 2662,
+      overflow: "hidden",
+      backgroundColor: "rgb(255,255,255)",
+      position: "relative",
+      ...props.style,
+    }}>
+      <div style={{
+        position: "absolute",
+        left: 15,
+        top: 18,
+        width: 1698,
+        height: 2644,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,1698,0)",
+          transformOrigin: "0 0",
+          width: 1698,
+          height: 2644,
+          borderRadius: 30,
+          background: "linear-gradient(167.886deg, rgba(245,107,255,0.2) 1.86%, rgba(255,255,255,0) 82.97%), linear-gradient(193.048deg, rgba(108,232,255,0.3) 0.82%, rgba(255,255,255,0) 87.42%), linear-gradient(rgb(247,247,247),rgb(247,247,247))",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 138,
+          top: 40.703,
+          width: 97,
+          height: 37.11,
+          fontFamily: "\"CS Mollwish Regular Demo\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 27.493083953857422,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Settings</span>
+        <div style={{
+          position: "absolute",
+          left: 26,
+          top: 35.914,
+          width: 92,
+          height: 43.565,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 92,
+            height: 43.565,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 92,
+              height: 43.565,
+              borderRadius: 7.07198429107666,
+              backdropFilter: "blur(22.532px)",
+              boxShadow: "0 0 0 0.707px rgb(131,131,131)",
+            }} />
+          </div>
+          <div style={{
+            position: "absolute",
+            left: 13.532,
+            top: 8.891,
+            width: 64.468,
+            height: 25.139,
+            overflow: "hidden",
+          }}>
+            <span style={{
+              position: "absolute",
+              left: 24.468,
+              top: 0,
+              width: 40,
+              height: 25.139,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 16.91486167907715,
+              textAlign: "center",
+              whiteSpace: "nowrap",
+              lineHeight: 1.2690074443817139,
+              color: "rgb(131,131,131)",
+            }}>Back</span>
+            <svg width={7.468} height={17.880} viewBox="0 0 7.468 17.880" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(-1,0,0,1,7.468,4.430)",
+              transformOrigin: "0 0",
+              width: 7.468,
+              height: 17.88,
+              borderRadius: 0.7861213684082031,
+              color: "rgb(131,131,131)",
+            }}>
+              <path d={"M 0.754 -0.63 C 0.406 -1.046 -0.213 -1.102 -0.63 -0.754 C -1.046 -0.406 -1.102 0.213 -0.754 0.63 L 0 0 L 0.754 -0.63 Z M 7.047 8.436 L 6.293 9.066 L 6.293 9.066 L 7.047 8.436 Z M 7.047 9.444 L 7.801 10.074 L 7.801 10.074 L 7.047 9.444 Z M -0.754 17.25 C -1.102 17.667 -1.046 18.287 -0.63 18.634 C -0.213 18.982 0.406 18.927 0.754 18.51 L 0 17.88 L -0.754 17.25 Z M 0 0 L -0.754 0.63 L 6.293 9.066 L 7.047 8.436 L 7.801 7.806 L 0.754 -0.63 L 0 0 Z M 7.047 9.444 L 6.293 8.814 L -0.754 17.25 L 0 17.88 L 0.754 18.51 L 7.801 10.074 L 7.047 9.444 Z M 7.047 8.436 L 6.293 9.066 C 6.232 8.993 6.232 8.887 6.293 8.814 L 7.047 9.444 L 7.801 10.074 C 8.35 9.418 8.35 8.463 7.801 7.806 L 7.047 8.436 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 377,
+          top: 413,
+          width: 994.773,
+          height: 470.462,
+          opacity: 0.4,
+          overflow: "hidden",
+        }}>
+          <svg width={427.556} height={470.462} viewBox="0 0 427.556 470.462" fill="none" style={{
+            position: "absolute",
+            left: 567.216,
+            top: 0,
+            width: 427.556,
+            height: 470.462,
+            borderRadius: 53.74359130859375,
+          }}>
+            <path d={"M 59.421 189.379 L 326.67 24.749 C 349.653 10.591 379.572 15.678 396.585 36.636 L 407.051 49.531 C 419.656 65.059 422.596 86.303 414.68 104.671 L 287.568 399.644 C 272.766 433.994 228.276 443.095 201.174 417.318 L 50.57 274.08 C 25.02 249.779 29.399 207.873 59.421 189.379 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={427.556} height={470.462} viewBox="0 0 427.556 470.462" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,427.556,0)",
+            transformOrigin: "0 0",
+            width: 427.556,
+            height: 470.462,
+            borderRadius: 53.74359130859375,
+          }}>
+            <path d={"M 59.421 189.379 L 326.67 24.749 C 349.653 10.591 379.572 15.678 396.585 36.636 L 407.051 49.531 C 419.656 65.059 422.596 86.303 414.68 104.671 L 287.568 399.644 C 272.766 433.994 228.276 443.095 201.174 417.318 L 50.57 274.08 C 25.02 249.779 29.399 207.873 59.421 189.379 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+      </div>
+      <svg width={1646} height={1} viewBox="0 -0.500 1646 1" fill="none" style={{
+        position: "absolute",
+        left: 41,
+        top: 117,
+        width: 1646,
+        height: 1,
+        color: "rgba(131,131,131,0.25)",
+      }}>
+        <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 1646 0.5 C 1646.276 0.5 1646.5 0.276 1646.5 0 C 1646.5 -0.276 1646.276 -0.5 1646 -0.5 L 1646 0 L 1646 0.5 Z M 0 0 L 0 0.5 L 1646 0.5 L 1646 0 L 1646 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+      </svg>
+      <div style={{
+        position: "absolute",
+        left: 338,
+        top: 143,
+        width: 1350,
+        height: 2519,
+        borderRadius: 20,
+        backgroundColor: "rgb(255,255,255)",
+      }} />
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 263,
+        width: 386,
+        height: 214,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 386,
+          height: 214,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(12,12,12)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 28,
+          top: 171.586,
+          width: 330,
+          height: 22.83,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 330,
+            height: 22.83,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 330,
+              height: 22.83,
+              borderRadius: 16.84255599975586,
+              backgroundColor: "rgba(255,255,255,0.2)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 1.038,
+              top: 1.039,
+              width: 92.358,
+              height: 20.755,
+              borderRadius: 24.13700294494629,
+              background: "linear-gradient(90deg, rgb(108,232,255) 0.00%, rgb(245,107,255) 27.26%, rgb(163,65,255) 66.83%, rgb(254,222,181) 100.00%)",
+            }} />
+          </div>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 29,
+          top: 56,
+          width: 155,
+          height: 63,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 49.230770111083984,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(255,255,255)",
+        }}>15,700</span>
+        <span style={{
+          position: "absolute",
+          left: 190,
+          top: 82,
+          width: 123,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgba(255,255,255,0.6)",
+        }}>/ 25,000 credits</span>
+        <span style={{
+          position: "absolute",
+          left: 30,
+          top: 129,
+          width: 255,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgba(255,255,255,0.6)",
+        }}>9,300 remaining · resets in 11 days</span>
+        <span style={{
+          position: "absolute",
+          left: 29,
+          top: 22,
+          width: 155,
+          height: 29,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.809999942779541,
+          color: "rgba(255,255,255,0.6)",
+        }}>Allocated this month</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 858,
+        width: 1292,
+        height: 452,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 1292,
+          height: 452,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 12,
+          top: 17,
+          width: 1266,
+          height: 410,
+          overflow: "hidden",
+          backgroundColor: "rgb(255,255,255)",
+        }}>
+          <svg width={372} height={1.240} viewBox="0 -0.620 372 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 362.102,
+            width: 372,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 372 0.62 L 372 0 L 372 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 311.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 260.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 210.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 160.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 109.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(219,222,228)",
+          }}>
+            <path d={"M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1195} height={1.240} viewBox="0 -0.620 1195 1.240" fill="none" style={{
+            position: "absolute",
+            left: 57.399,
+            top: 362.125,
+            width: 1195,
+            height: 1.2399998903274536,
+            color: "rgb(84,85,90)",
+          }}>
+            <path d={"M 0 -0.62 C -0.342 -0.62 -0.62 -0.342 -0.62 0 C -0.62 0.342 -0.342 0.62 0 0.62 L 0 0 L 0 -0.62 Z M 1195 0.62 C 1195.342 0.62 1195.62 0.342 1195.62 0 C 1195.62 -0.342 1195.342 -0.62 1195 -0.62 L 1195 0 L 1195 0.62 Z M 0 0 L 0 0.62 L 1195 0.62 L 1195 0 L 1195 -0.62 L 0 -0.62 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 37.56,
+            top: 352.805,
+            width: 10,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>0</span>
+          <span style={{
+            position: "absolute",
+            left: 28.88,
+            top: 302.211,
+            width: 19,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>50</span>
+          <span style={{
+            position: "absolute",
+            left: 18.44,
+            top: 251.617,
+            width: 29,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>400</span>
+          <span style={{
+            position: "absolute",
+            left: 19.44,
+            top: 201.023,
+            width: 28,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>800</span>
+          <span style={{
+            position: "absolute",
+            left: 16.96,
+            top: 150.422,
+            width: 30,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>1.2K</span>
+          <span style={{
+            position: "absolute",
+            left: 17.96,
+            top: 99.844,
+            width: 29,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>1.6K</span>
+          <span style={{
+            position: "absolute",
+            left: 63.611,
+            top: 368.914,
+            width: 40,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>12AM</span>
+          <span style={{
+            position: "absolute",
+            left: 247,
+            top: 368.914,
+            width: 33,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>3AM</span>
+          <span style={{
+            position: "absolute",
+            left: 424,
+            top: 368.914,
+            width: 33,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>9AM</span>
+          <span style={{
+            position: "absolute",
+            left: 605,
+            top: 368.914,
+            width: 39,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>12PM</span>
+          <span style={{
+            position: "absolute",
+            left: 839,
+            top: 368.914,
+            width: 33,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>3PM</span>
+          <span style={{
+            position: "absolute",
+            left: 1020,
+            top: 369,
+            width: 32,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>6PM</span>
+          <span style={{
+            position: "absolute",
+            left: 1197,
+            top: 368.914,
+            width: 32,
+            height: 18,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 14.880000114440918,
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(84,85,90)",
+          }}>9PM</span>
+          <svg width={40} height={121} viewBox="0 0 40 121" fill="none" style={{
+            position: "absolute",
+            left: 66.637,
+            top: 240,
+            width: 40,
+            height: 121,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 116.057 C 40 117.368 39.43 118.625 38.415 119.552 C 37.401 120.479 36.024 121 34.589 121 L 5.411 121 C 3.976 121 2.599 120.479 1.585 119.552 C 0.57 118.625 0 117.368 0 116.057 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={86} viewBox="0 0 40 86" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,67,326)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 86,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 82.487 C 40 83.419 39.43 84.312 38.415 84.971 C 37.401 85.63 36.024 86 34.589 86 L 5.411 86 C 3.976 86 2.599 85.63 1.585 84.971 C 0.57 84.312 0 83.419 0 82.487 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={121} viewBox="0 0 40 121" fill="none" style={{
+            position: "absolute",
+            left: 487,
+            top: 240,
+            width: 40,
+            height: 121,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 116.057 C 40 117.368 39.43 118.625 38.415 119.552 C 37.401 120.479 36.024 121 34.589 121 L 5.411 121 C 3.976 121 2.599 120.479 1.585 119.552 C 0.57 118.625 0 117.368 0 116.057 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={65} viewBox="0 0 40 65" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,487,307)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 65,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 62.345 C 40 63.049 39.43 63.724 38.415 64.222 C 37.401 64.72 36.024 65 34.589 65 L 5.411 65 C 3.976 65 2.599 64.72 1.585 64.222 C 0.57 63.724 0 63.049 0 62.345 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={121} viewBox="0 0 40 121" fill="none" style={{
+            position: "absolute",
+            left: 899,
+            top: 240,
+            width: 40,
+            height: 121,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 116.057 C 40 117.368 39.43 118.625 38.415 119.552 C 37.401 120.479 36.024 121 34.589 121 L 5.411 121 C 3.976 121 2.599 120.479 1.585 119.552 C 0.57 118.625 0 117.368 0 116.057 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={51} viewBox="0 0 40 51" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,899,291)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 51,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 48.917 C 40 49.469 39.43 49.999 38.415 50.39 C 37.401 50.781 36.024 51 34.589 51 L 5.411 51 C 3.976 51 2.599 50.781 1.585 50.39 C 0.57 49.999 0 49.469 0 48.917 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={121.421} viewBox="0 0 36.669 121.421" fill="none" style={{
+            position: "absolute",
+            left: 65.637,
+            top: 240.055,
+            width: 36.669,
+            height: 121.421,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 116.461 C 36.669 117.776 36.146 119.038 35.216 119.968 C 34.286 120.898 33.024 121.421 31.709 121.421 L 4.96 121.421 C 3.645 121.421 2.383 120.898 1.453 119.968 C 0.523 119.038 0 117.776 0 116.461 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={41} height={101} viewBox="0 0 41 101" fill="none" style={{
+            position: "absolute",
+            left: 124.637,
+            top: 260,
+            width: 41,
+            height: 101,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 96.049 C 41 97.362 40.416 98.621 39.376 99.55 C 38.336 100.478 36.925 101 35.454 101 L 5.546 101 C 4.075 101 2.664 100.478 1.624 99.55 C 0.584 98.621 0 97.362 0 96.049 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={59} viewBox="0 0 41 59" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,125,320)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 59,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 56.108 C 41 56.875 40.416 57.611 39.376 58.153 C 38.336 58.695 36.925 59 35.454 59 L 5.546 59 C 4.075 59 2.664 58.695 1.624 58.153 C 0.584 57.611 0 56.875 0 56.108 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={101} viewBox="0 0 41 101" fill="none" style={{
+            position: "absolute",
+            left: 545,
+            top: 260,
+            width: 41,
+            height: 101,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 96.049 C 41 97.362 40.416 98.621 39.376 99.55 C 38.336 100.478 36.925 101 35.454 101 L 5.546 101 C 4.075 101 2.664 100.478 1.624 99.55 C 0.584 98.621 0 97.362 0 96.049 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={60} viewBox="0 0 41 60" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,545,320)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 60,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 57.059 C 41 57.839 40.416 58.587 39.376 59.139 C 38.336 59.69 36.925 60 35.454 60 L 5.546 60 C 4.075 60 2.664 59.69 1.624 59.139 C 0.584 58.587 0 57.839 0 57.059 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={101} viewBox="0 0 41 101" fill="none" style={{
+            position: "absolute",
+            left: 957,
+            top: 260,
+            width: 41,
+            height: 101,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 96.049 C 41 97.362 40.416 98.621 39.376 99.55 C 38.336 100.478 36.925 101 35.454 101 L 5.546 101 C 4.075 101 2.664 100.478 1.624 99.55 C 0.584 98.621 0 97.362 0 96.049 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={58} viewBox="0 0 41 58" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,957,320)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 58,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 55.157 C 41 55.911 40.416 56.634 39.376 57.167 C 38.336 57.7 36.925 58 35.454 58 L 5.546 58 C 4.075 58 2.664 57.7 1.624 57.167 C 0.584 56.634 0 55.911 0 55.157 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={101.184} viewBox="0 0 36.669 101.184" fill="none" style={{
+            position: "absolute",
+            left: 118.78,
+            top: 260.289,
+            width: 36.669,
+            height: 101.184,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 96.224 C 36.669 97.539 36.146 98.801 35.216 99.731 C 34.286 100.661 33.024 101.184 31.709 101.184 L 4.96 101.184 C 3.645 101.184 2.383 100.661 1.453 99.731 C 0.523 98.801 0 97.539 0 96.224 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={41} height={141} viewBox="0 0 41 141" fill="none" style={{
+            position: "absolute",
+            left: 183.637,
+            top: 220,
+            width: 41,
+            height: 141,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 136.063 C 41 137.372 40.416 138.628 39.376 139.554 C 38.336 140.48 36.925 141 35.454 141 L 5.546 141 C 4.075 141 2.664 140.48 1.624 139.554 C 0.584 138.628 0 137.372 0 136.063 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={63} viewBox="0 0 41 63" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,184,283)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 63,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 60.794 C 41 61.379 40.416 61.94 39.376 62.354 C 38.336 62.768 36.925 63 35.454 63 L 5.546 63 C 4.075 63 2.664 62.768 1.624 62.354 C 0.584 61.94 0 61.379 0 60.794 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={141} viewBox="0 0 41 141" fill="none" style={{
+            position: "absolute",
+            left: 604,
+            top: 220,
+            width: 41,
+            height: 141,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 136.063 C 41 137.372 40.416 138.628 39.376 139.554 C 38.336 140.48 36.925 141 35.454 141 L 5.546 141 C 4.075 141 2.664 140.48 1.624 139.554 C 0.584 138.628 0 137.372 0 136.063 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={102} viewBox="0 0 41 102" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,604,322)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 102,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 98.429 C 41 99.376 40.416 100.284 39.376 100.954 C 38.336 101.624 36.925 102 35.454 102 L 5.546 102 C 4.075 102 2.664 101.624 1.624 100.954 C 0.584 100.284 0 99.376 0 98.429 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={141} viewBox="0 0 41 141" fill="none" style={{
+            position: "absolute",
+            left: 1016,
+            top: 220,
+            width: 41,
+            height: 141,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 136.063 C 41 137.372 40.416 138.628 39.376 139.554 C 38.336 140.48 36.925 141 35.454 141 L 5.546 141 C 4.075 141 2.664 140.48 1.624 139.554 C 0.584 138.628 0 137.372 0 136.063 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={41} viewBox="0 0 41 41" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,1016,261)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 41,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 39.564 C 41 39.945 40.416 40.31 39.376 40.58 C 38.336 40.849 36.925 41 35.454 41 L 5.546 41 C 4.075 41 2.664 40.849 1.624 40.58 C 0.584 40.31 0 39.945 0 39.564 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={141.658} viewBox="0 0 36.669 141.658" fill="none" style={{
+            position: "absolute",
+            left: 171.923,
+            top: 219.82,
+            width: 36.669,
+            height: 141.658,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 136.698 C 36.669 138.013 36.146 139.275 35.216 140.205 C 34.286 141.135 33.024 141.658 31.709 141.658 L 4.96 141.658 C 3.645 141.658 2.383 141.135 1.453 140.205 C 0.523 139.275 0 138.013 0 136.698 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={41} height={105} viewBox="0 0 41 105" fill="none" style={{
+            position: "absolute",
+            left: 243,
+            top: 256,
+            width: 41,
+            height: 105,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 100.051 C 41 101.363 40.416 102.622 39.376 103.55 C 38.336 104.479 36.925 105 35.454 105 L 5.546 105 C 4.075 105 2.664 104.479 1.624 103.55 C 0.584 102.622 0 101.363 0 100.051 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={66} viewBox="0 0 41 66" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,243,322)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 66,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 62.889 C 41 63.714 40.416 64.505 39.376 65.089 C 38.336 65.672 36.925 66 35.454 66 L 5.546 66 C 4.075 66 2.664 65.672 1.624 65.089 C 0.584 64.505 0 63.714 0 62.889 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={105} viewBox="0 0 41 105" fill="none" style={{
+            position: "absolute",
+            left: 663,
+            top: 256,
+            width: 41,
+            height: 105,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 100.051 C 41 101.363 40.416 102.622 39.376 103.55 C 38.336 104.479 36.925 105 35.454 105 L 5.546 105 C 4.075 105 2.664 104.479 1.624 103.55 C 0.584 102.622 0 101.363 0 100.051 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={19} viewBox="0 0 41 19" fill="none" style={{
+            position: "absolute",
+            left: 663,
+            top: 256,
+            width: 41,
+            height: 19,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 18.104 C 41 18.342 40.416 18.57 39.376 18.738 C 38.336 18.906 36.925 19 35.454 19 L 5.546 19 C 4.075 19 2.664 18.906 1.624 18.738 C 0.584 18.57 0 18.342 0 18.104 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={105} viewBox="0 0 41 105" fill="none" style={{
+            position: "absolute",
+            left: 1075,
+            top: 256,
+            width: 41,
+            height: 105,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 100.051 C 41 101.363 40.416 102.622 39.376 103.55 C 38.336 104.479 36.925 105 35.454 105 L 5.546 105 C 4.075 105 2.664 104.479 1.624 103.55 C 0.584 102.622 0 101.363 0 100.051 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={31} viewBox="0 0 41 31" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,1075,286)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 31,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 29.539 C 41 29.926 40.416 30.298 39.376 30.572 C 38.336 30.846 36.925 31 35.454 31 L 5.546 31 C 4.075 31 2.664 30.846 1.624 30.572 C 0.584 30.298 0 29.926 0 29.539 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={105.231} viewBox="0 0 36.669 105.231" fill="none" style={{
+            position: "absolute",
+            left: 225.065,
+            top: 256.242,
+            width: 36.669,
+            height: 105.231,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 100.271 C 36.669 101.587 36.146 102.848 35.216 103.779 C 34.286 104.709 33.024 105.231 31.709 105.231 L 4.96 105.231 C 3.645 105.231 2.383 104.709 1.453 103.779 C 0.523 102.848 0 101.587 0 100.271 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={40} height={113} viewBox="0 0 40 113" fill="none" style={{
+            position: "absolute",
+            left: 301.637,
+            top: 248,
+            width: 40,
+            height: 113,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 108.054 C 40 109.366 39.43 110.624 38.415 111.551 C 37.401 112.479 36.024 113 34.589 113 L 5.411 113 C 3.976 113 2.599 112.479 1.585 111.551 C 0.57 110.624 0 109.366 0 108.054 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={43} viewBox="0 0 40 43" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,302,291)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 43,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 41.118 C 40 41.617 39.43 42.096 38.415 42.449 C 37.401 42.802 36.024 43 34.589 43 L 5.411 43 C 3.976 43 2.599 42.802 1.585 42.449 C 0.57 42.096 0 41.617 0 41.118 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={113} viewBox="0 0 40 113" fill="none" style={{
+            position: "absolute",
+            left: 722,
+            top: 248,
+            width: 40,
+            height: 113,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 108.054 C 40 109.366 39.43 110.624 38.415 111.551 C 37.401 112.479 36.024 113 34.589 113 L 5.411 113 C 3.976 113 2.599 112.479 1.585 111.551 C 0.57 110.624 0 109.366 0 108.054 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={54} viewBox="0 0 40 54" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,722,303)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 54,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 51.637 C 40 52.263 39.43 52.865 38.415 53.308 C 37.401 53.751 36.024 54 34.589 54 L 5.411 54 C 3.976 54 2.599 53.751 1.585 53.308 C 0.57 52.865 0 52.263 0 51.637 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={113} viewBox="0 0 40 113" fill="none" style={{
+            position: "absolute",
+            left: 1134,
+            top: 248,
+            width: 40,
+            height: 113,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 108.054 C 40 109.366 39.43 110.624 38.415 111.551 C 37.401 112.479 36.024 113 34.589 113 L 5.411 113 C 3.976 113 2.599 112.479 1.585 111.551 C 0.57 110.624 0 109.366 0 108.054 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={66} viewBox="0 0 40 66" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,1134,314)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 66,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 63.111 C 40 63.877 39.43 64.612 38.415 65.154 C 37.401 65.696 36.024 66 34.589 66 L 5.411 66 C 3.976 66 2.599 65.696 1.585 65.154 C 0.57 64.612 0 63.877 0 63.111 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={113} viewBox="0 0 40 113" fill="none" style={{
+            position: "absolute",
+            left: 1192,
+            top: 248,
+            width: 40,
+            height: 113,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 108.054 C 40 109.366 39.43 110.624 38.415 111.551 C 37.401 112.479 36.024 113 34.589 113 L 5.411 113 C 3.976 113 2.599 112.479 1.585 111.551 C 0.57 110.624 0 109.366 0 108.054 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={43} viewBox="0 0 40 43" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,1192,291)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 43,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 41.118 C 40 41.617 39.43 42.096 38.415 42.449 C 37.401 42.802 36.024 43 34.589 43 L 5.411 43 C 3.976 43 2.599 42.802 1.585 42.449 C 0.57 42.096 0 41.617 0 41.118 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={113.326} viewBox="0 0 36.669 113.326" fill="none" style={{
+            position: "absolute",
+            left: 278.208,
+            top: 248.156,
+            width: 36.669,
+            height: 113.326,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 108.366 C 36.669 109.682 36.146 110.943 35.216 111.873 C 34.286 112.804 33.024 113.326 31.709 113.326 L 4.96 113.326 C 3.645 113.326 2.383 112.804 1.453 111.873 C 0.523 110.943 0 109.682 0 108.366 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={40} height={121} viewBox="0 0 40 121" fill="none" style={{
+            position: "absolute",
+            left: 360.637,
+            top: 240,
+            width: 40,
+            height: 121,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 116.057 C 40 117.368 39.43 118.625 38.415 119.552 C 37.401 120.479 36.024 121 34.589 121 L 5.411 121 C 3.976 121 2.599 120.479 1.585 119.552 C 0.57 118.625 0 117.368 0 116.057 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={35} viewBox="0 0 40 35" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,361,275)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 35,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 33.57 C 40 33.949 39.43 34.313 38.415 34.581 C 37.401 34.849 36.024 35 34.589 35 L 5.411 35 C 3.976 35 2.599 34.849 1.585 34.581 C 0.57 34.313 0 33.949 0 33.57 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={121} viewBox="0 0 40 121" fill="none" style={{
+            position: "absolute",
+            left: 781,
+            top: 240,
+            width: 40,
+            height: 121,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 116.057 C 40 117.368 39.43 118.625 38.415 119.552 C 37.401 120.479 36.024 121 34.589 121 L 5.411 121 C 3.976 121 2.599 120.479 1.585 119.552 C 0.57 118.625 0 117.368 0 116.057 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={51} viewBox="0 0 40 51" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,781,291)",
+            transformOrigin: "0 0",
+            width: 40,
+            height: 51,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 40 0 L 40 48.917 C 40 49.469 39.43 49.999 38.415 50.39 C 37.401 50.781 36.024 51 34.589 51 L 5.411 51 C 3.976 51 2.599 50.781 1.585 50.39 C 0.57 49.999 0 49.469 0 48.917 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={121.421} viewBox="0 0 36.669 121.421" fill="none" style={{
+            position: "absolute",
+            left: 331.352,
+            top: 240.055,
+            width: 36.669,
+            height: 121.421,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 116.461 C 36.669 117.776 36.146 119.038 35.216 119.968 C 34.286 120.898 33.024 121.421 31.709 121.421 L 4.96 121.421 C 3.645 121.421 2.383 120.898 1.453 119.968 C 0.523 119.038 0 117.776 0 116.461 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={41} height={100} viewBox="0 0 41 100" fill="none" style={{
+            position: "absolute",
+            left: 418.637,
+            top: 261,
+            width: 41,
+            height: 100,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 95.049 C 41 96.362 40.416 97.621 39.376 98.55 C 38.336 99.478 36.925 100 35.454 100 L 5.546 100 C 4.075 100 2.664 99.478 1.624 98.55 C 0.584 97.621 0 96.362 0 95.049 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={49} viewBox="0 0 41 49" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,419,311)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 49,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 46.574 C 41 47.217 40.416 47.834 39.376 48.289 C 38.336 48.744 36.925 49 35.454 49 L 5.546 49 C 4.075 49 2.664 48.744 1.624 48.289 C 0.584 47.834 0 47.217 0 46.574 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={100} viewBox="0 0 41 100" fill="none" style={{
+            position: "absolute",
+            left: 839,
+            top: 261,
+            width: 41,
+            height: 100,
+            color: "rgb(245,107,255)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 95.049 C 41 96.362 40.416 97.621 39.376 98.55 C 38.336 99.478 36.925 100 35.454 100 L 5.546 100 C 4.075 100 2.664 99.478 1.624 98.55 C 0.584 97.621 0 96.362 0 95.049 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={29} viewBox="0 0 41 29" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,839,287)",
+            transformOrigin: "0 0",
+            width: 41,
+            height: 29,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 0 0 L 41 0 L 41 27.564 C 41 27.945 40.416 28.31 39.376 28.579 C 38.336 28.849 36.925 29 35.454 29 L 5.546 29 C 4.075 29 2.664 28.849 1.624 28.579 C 0.584 28.31 0 27.945 0 27.564 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={36.669} height={100.172} viewBox="0 0 36.669 100.172" fill="none" style={{
+            position: "absolute",
+            left: 384.495,
+            top: 261.305,
+            width: 36.669,
+            height: 100.172,
+          }}>
+            <path d={"M 0 0 L 36.669 0 L 36.669 95.212 C 36.669 96.528 36.146 97.789 35.216 98.719 C 34.286 99.65 33.024 100.172 31.709 100.172 L 4.96 100.172 C 3.645 100.172 2.383 99.65 1.453 98.719 C 0.523 97.789 0 96.528 0 95.212 L 0 0 Z"} fill="currentColor" fillRule="evenodd" />
+          </svg>
+          <svg width={40} height={44} viewBox="0 0 40 44" fill="none" style={{
+            position: "absolute",
+            left: 66.637,
+            top: 196,
+            width: 40,
+            height: 44,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 44 L 0 44 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={44} viewBox="0 0 40 44" fill="none" style={{
+            position: "absolute",
+            left: 487,
+            top: 196,
+            width: 40,
+            height: 44,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 44 L 0 44 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={44} viewBox="0 0 40 44" fill="none" style={{
+            position: "absolute",
+            left: 899,
+            top: 196,
+            width: 40,
+            height: 44,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 44 L 0 44 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={79} viewBox="0 0 41 79" fill="none" style={{
+            position: "absolute",
+            left: 124.637,
+            top: 181,
+            width: 41,
+            height: 79,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.523 39.376 1.454 C 40.416 2.385 41 3.648 41 4.965 L 41 79 L 0 79 L 0 4.965 C 0 3.648 0.584 2.385 1.624 1.454 C 2.664 0.523 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={79} viewBox="0 0 41 79" fill="none" style={{
+            position: "absolute",
+            left: 545,
+            top: 181,
+            width: 41,
+            height: 79,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.523 39.376 1.454 C 40.416 2.385 41 3.648 41 4.965 L 41 79 L 0 79 L 0 4.965 C 0 3.648 0.584 2.385 1.624 1.454 C 2.664 0.523 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={79} viewBox="0 0 41 79" fill="none" style={{
+            position: "absolute",
+            left: 957,
+            top: 181,
+            width: 41,
+            height: 79,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.523 39.376 1.454 C 40.416 2.385 41 3.648 41 4.965 L 41 79 L 0 79 L 0 4.965 C 0 3.648 0.584 2.385 1.624 1.454 C 2.664 0.523 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={69} viewBox="0 0 41 69" fill="none" style={{
+            position: "absolute",
+            left: 183.637,
+            top: 151,
+            width: 41,
+            height: 69,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.524 39.376 1.457 C 40.416 2.39 41 3.655 41 4.974 L 41 69 L 0 69 L 0 4.974 C 0 3.655 0.584 2.39 1.624 1.457 C 2.664 0.524 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={69} viewBox="0 0 41 69" fill="none" style={{
+            position: "absolute",
+            left: 604,
+            top: 151,
+            width: 41,
+            height: 69,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.524 39.376 1.457 C 40.416 2.39 41 3.655 41 4.974 L 41 69 L 0 69 L 0 4.974 C 0 3.655 0.584 2.39 1.624 1.457 C 2.664 0.524 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={69} viewBox="0 0 41 69" fill="none" style={{
+            position: "absolute",
+            left: 1016,
+            top: 151,
+            width: 41,
+            height: 69,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.524 39.376 1.457 C 40.416 2.39 41 3.655 41 4.974 L 41 69 L 0 69 L 0 4.974 C 0 3.655 0.584 2.39 1.624 1.457 C 2.664 0.524 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={50} viewBox="0 0 41 50" fill="none" style={{
+            position: "absolute",
+            left: 242.637,
+            top: 206,
+            width: 41,
+            height: 50,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.516 39.376 1.436 C 40.416 2.355 41 3.602 41 4.902 L 41 50 L 0 50 L 0 4.902 C 0 3.602 0.584 2.355 1.624 1.436 C 2.664 0.516 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={50} viewBox="0 0 41 50" fill="none" style={{
+            position: "absolute",
+            left: 663,
+            top: 206,
+            width: 41,
+            height: 50,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.516 39.376 1.436 C 40.416 2.355 41 3.602 41 4.902 L 41 50 L 0 50 L 0 4.902 C 0 3.602 0.584 2.355 1.624 1.436 C 2.664 0.516 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={50} viewBox="0 0 41 50" fill="none" style={{
+            position: "absolute",
+            left: 1075,
+            top: 206,
+            width: 41,
+            height: 50,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.516 39.376 1.436 C 40.416 2.355 41 3.602 41 4.902 L 41 50 L 0 50 L 0 4.902 C 0 3.602 0.584 2.355 1.624 1.436 C 2.664 0.516 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={55} viewBox="0 0 40 55" fill="none" style={{
+            position: "absolute",
+            left: 301.637,
+            top: 193,
+            width: 40,
+            height: 55,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 55 L 0 55 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={55} viewBox="0 0 40 55" fill="none" style={{
+            position: "absolute",
+            left: 722,
+            top: 193,
+            width: 40,
+            height: 55,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 55 L 0 55 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={55} viewBox="0 0 40 55" fill="none" style={{
+            position: "absolute",
+            left: 1134,
+            top: 193,
+            width: 40,
+            height: 55,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 55 L 0 55 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={55} viewBox="0 0 40 55" fill="none" style={{
+            position: "absolute",
+            left: 1192,
+            top: 193,
+            width: 40,
+            height: 55,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 55 L 0 55 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={44} viewBox="0 0 40 44" fill="none" style={{
+            position: "absolute",
+            left: 360.637,
+            top: 196,
+            width: 40,
+            height: 44,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 44 L 0 44 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={40} height={44} viewBox="0 0 40 44" fill="none" style={{
+            position: "absolute",
+            left: 781,
+            top: 196,
+            width: 40,
+            height: 44,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.411 0 L 34.589 0 C 36.024 0 37.401 0.516 38.415 1.436 C 39.43 2.355 40 3.602 40 4.902 L 40 44 L 0 44 L 0 4.902 C 0 3.602 0.57 2.355 1.585 1.436 C 2.599 0.516 3.976 0 5.411 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={83} viewBox="0 0 41 83" fill="none" style={{
+            position: "absolute",
+            left: 418.637,
+            top: 178,
+            width: 41,
+            height: 83,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.523 39.376 1.453 C 40.416 2.384 41 3.646 41 4.962 L 41 83 L 0 83 L 0 4.962 C 0 3.646 0.584 2.384 1.624 1.453 C 2.664 0.523 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={41} height={83} viewBox="0 0 41 83" fill="none" style={{
+            position: "absolute",
+            left: 839,
+            top: 178,
+            width: 41,
+            height: 83,
+            color: "rgb(255,146,138)",
+          }}>
+            <path d={"M 5.546 0 L 35.454 0 C 36.925 0 38.336 0.523 39.376 1.453 C 40.416 2.384 41 3.646 41 4.962 L 41 83 L 0 83 L 0 4.962 C 0 3.646 0.584 2.384 1.624 1.453 C 2.664 0.523 4.075 0 5.546 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={9.920} height={9.920} viewBox="0 0 9.920 9.920" fill="none" style={{
+            position: "absolute",
+            left: 21,
+            top: 52.992,
+            width: 9.92,
+            height: 9.92,
+            color: "rgb(72,223,251)",
+          }}>
+            <path d={"M 9.92 4.96 L 11.16 4.96 L 11.16 4.96 L 9.92 4.96 Z M 9.92 4.96 L 8.68 4.96 C 8.68 5.947 8.288 6.893 7.59 7.591 L 8.467 8.467 L 9.344 9.344 C 10.507 8.182 11.16 6.605 11.16 4.96 L 9.92 4.96 Z M 8.467 8.467 L 7.59 7.591 C 6.893 8.288 5.946 8.68 4.96 8.68 L 4.96 9.92 L 4.96 11.16 C 6.604 11.16 8.181 10.507 9.344 9.344 L 8.467 8.467 Z M 4.96 9.92 L 4.96 8.68 C 3.973 8.68 3.027 8.288 2.33 7.59 L 1.453 8.467 L 0.576 9.344 C 1.739 10.507 3.316 11.16 4.96 11.16 L 4.96 9.92 Z M 1.453 8.467 L 2.33 7.59 C 1.632 6.893 1.24 5.947 1.24 4.96 L 0 4.96 L -1.24 4.96 C -1.24 6.604 -0.587 8.181 0.576 9.344 L 1.453 8.467 Z M 0 4.96 L 1.24 4.96 C 1.24 3.973 1.632 3.027 2.33 2.33 L 1.453 1.453 L 0.576 0.576 C -0.587 1.739 -1.24 3.316 -1.24 4.96 L 0 4.96 Z M 1.453 1.453 L 2.33 2.33 C 3.027 1.632 3.973 1.24 4.96 1.24 L 4.96 0 L 4.96 -1.24 C 3.316 -1.24 1.739 -0.587 0.576 0.576 L 1.453 1.453 Z M 4.96 0 L 4.96 1.24 C 5.946 1.24 6.893 1.632 7.59 2.329 L 8.467 1.453 L 9.344 0.576 C 8.181 -0.587 6.604 -1.24 4.96 -1.24 L 4.96 0 Z M 8.467 1.453 L 7.59 2.329 C 8.288 3.027 8.68 3.974 8.68 4.96 L 9.92 4.96 L 11.16 4.96 C 11.16 3.316 10.507 1.739 9.344 0.576 L 8.467 1.453 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 37.119,
+            top: 50,
+            width: 47,
+            height: 17,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 13.639999389648438,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(51,51,51)",
+          }}>Render</span>
+          <svg width={9.920} height={9.920} viewBox="0 0 9.920 9.920" fill="none" style={{
+            position: "absolute",
+            left: 98,
+            top: 52.992,
+            width: 9.92,
+            height: 9.92,
+            color: "rgb(255,255,255)",
+          }}>
+            <path d={"M 9.92 4.96 C 9.92 6.276 9.397 7.537 8.467 8.467 C 7.537 9.398 6.275 9.92 4.96 9.92 C 3.644 9.92 2.383 9.397 1.453 8.467 C 0.523 7.537 0 6.275 0 4.96 C 0 3.645 0.523 2.383 1.453 1.453 C 2.383 0.523 3.644 0 4.96 0 C 6.275 0 7.537 0.522 8.467 1.453 C 9.397 2.383 9.92 3.645 9.92 4.96 Z"} fill="rgb(255,255,255)" fillRule="nonzero" />
+            <path d={"M 9.92 4.96 L 11.16 4.96 L 11.16 4.96 L 9.92 4.96 Z M 9.92 4.96 L 8.68 4.96 C 8.68 5.947 8.288 6.893 7.59 7.591 L 8.467 8.467 L 9.344 9.344 C 10.507 8.182 11.16 6.605 11.16 4.96 L 9.92 4.96 Z M 8.467 8.467 L 7.59 7.591 C 6.893 8.288 5.946 8.68 4.96 8.68 L 4.96 9.92 L 4.96 11.16 C 6.604 11.16 8.181 10.507 9.344 9.344 L 8.467 8.467 Z M 4.96 9.92 L 4.96 8.68 C 3.973 8.68 3.027 8.288 2.33 7.59 L 1.453 8.467 L 0.576 9.344 C 1.739 10.507 3.316 11.16 4.96 11.16 L 4.96 9.92 Z M 1.453 8.467 L 2.33 7.59 C 1.632 6.893 1.24 5.947 1.24 4.96 L 0 4.96 L -1.24 4.96 C -1.24 6.604 -0.587 8.181 0.576 9.344 L 1.453 8.467 Z M 0 4.96 L 1.24 4.96 C 1.24 3.973 1.632 3.027 2.33 2.33 L 1.453 1.453 L 0.576 0.576 C -0.587 1.739 -1.24 3.316 -1.24 4.96 L 0 4.96 Z M 1.453 1.453 L 2.33 2.33 C 3.027 1.632 3.973 1.24 4.96 1.24 L 4.96 0 L 4.96 -1.24 C 3.316 -1.24 1.739 -0.587 0.576 0.576 L 1.453 1.453 Z M 4.96 0 L 4.96 1.24 C 5.946 1.24 6.893 1.632 7.59 2.329 L 8.467 1.453 L 9.344 0.576 C 8.181 -0.587 6.604 -1.24 4.96 -1.24 L 4.96 0 Z M 8.467 1.453 L 7.59 2.329 C 8.288 3.027 8.68 3.974 8.68 4.96 L 9.92 4.96 L 11.16 4.96 C 11.16 3.316 10.507 1.739 9.344 0.576 L 8.467 1.453 Z"} fill="rgb(245,107,255)" fillRule="nonzero" />
+          </svg>
+          <svg width={9.920} height={9.920} viewBox="0 0 9.920 9.920" fill="none" style={{
+            position: "absolute",
+            left: 213,
+            top: 52.992,
+            width: 9.92,
+            height: 9.92,
+            color: "rgb(255,255,255)",
+          }}>
+            <path d={"M 9.92 4.96 C 9.92 6.276 9.397 7.537 8.467 8.467 C 7.537 9.398 6.275 9.92 4.96 9.92 C 3.644 9.92 2.383 9.397 1.453 8.467 C 0.523 7.537 0 6.275 0 4.96 C 0 3.645 0.523 2.383 1.453 1.453 C 2.383 0.523 3.644 0 4.96 0 C 6.275 0 7.537 0.522 8.467 1.453 C 9.397 2.383 9.92 3.645 9.92 4.96 Z"} fill="rgb(255,255,255)" fillRule="nonzero" />
+            <path d={"M 9.92 4.96 L 11.16 4.96 L 11.16 4.96 L 9.92 4.96 Z M 9.92 4.96 L 8.68 4.96 C 8.68 5.947 8.288 6.893 7.59 7.591 L 8.467 8.467 L 9.344 9.344 C 10.507 8.182 11.16 6.605 11.16 4.96 L 9.92 4.96 Z M 8.467 8.467 L 7.59 7.591 C 6.893 8.288 5.946 8.68 4.96 8.68 L 4.96 9.92 L 4.96 11.16 C 6.604 11.16 8.181 10.507 9.344 9.344 L 8.467 8.467 Z M 4.96 9.92 L 4.96 8.68 C 3.973 8.68 3.027 8.288 2.33 7.59 L 1.453 8.467 L 0.576 9.344 C 1.739 10.507 3.316 11.16 4.96 11.16 L 4.96 9.92 Z M 1.453 8.467 L 2.33 7.59 C 1.632 6.893 1.24 5.947 1.24 4.96 L 0 4.96 L -1.24 4.96 C -1.24 6.604 -0.587 8.181 0.576 9.344 L 1.453 8.467 Z M 0 4.96 L 1.24 4.96 C 1.24 3.973 1.632 3.027 2.33 2.33 L 1.453 1.453 L 0.576 0.576 C -0.587 1.739 -1.24 3.316 -1.24 4.96 L 0 4.96 Z M 1.453 1.453 L 2.33 2.33 C 3.027 1.632 3.973 1.24 4.96 1.24 L 4.96 0 L 4.96 -1.24 C 3.316 -1.24 1.739 -0.587 0.576 0.576 L 1.453 1.453 Z M 4.96 0 L 4.96 1.24 C 5.946 1.24 6.893 1.632 7.59 2.329 L 8.467 1.453 L 9.344 0.576 C 8.181 -0.587 6.604 -1.24 4.96 -1.24 L 4.96 0 Z M 8.467 1.453 L 7.59 2.329 C 8.288 3.027 8.68 3.974 8.68 4.96 L 9.92 4.96 L 11.16 4.96 C 11.16 3.316 10.507 1.739 9.344 0.576 L 8.467 1.453 Z"} fill="rgb(255,146,138)" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 114.119,
+            top: 50,
+            width: 85,
+            height: 17,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 13.639999389648438,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(51,51,51)",
+          }}>Transcription</span>
+          <span style={{
+            position: "absolute",
+            left: 229.119,
+            top: 50,
+            width: 37,
+            height: 17,
+            fontFamily: "Inter, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 13.639999389648438,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(51,51,51)",
+          }}>Stock</span>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 895,
+          top: 17,
+          width: 251,
+          height: 50,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,251,0)",
+            transformOrigin: "0 0",
+            width: 251,
+            height: 50,
+            borderRadius: 10.828302383422852,
+            boxShadow: "inset 0 0 0 1.103px rgba(131,131,131,0.4)",
+          }} />
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,62,4)",
+            transformOrigin: "0 0",
+            width: 58,
+            height: 42,
+            borderRadius: 9.424633979797363,
+            backgroundColor: "rgb(72,223,251)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 19,
+            top: 14,
+            width: 31,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>1DY</span>
+          <span style={{
+            position: "absolute",
+            left: 71,
+            top: 14,
+            width: 33,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>7DY</span>
+          <span style={{
+            position: "absolute",
+            left: 125,
+            top: 14,
+            width: 42,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>14DY</span>
+          <span style={{
+            position: "absolute",
+            left: 188,
+            top: 14,
+            width: 46,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>30DY</span>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 1154,
+          top: 17,
+          width: 110,
+          height: 50,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,110,0)",
+            transformOrigin: "0 0",
+            width: 110,
+            height: 50,
+            borderRadius: 10.828302383422852,
+            boxShadow: "inset 0 0 0 1.103px rgba(131,131,131,0.4)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 47,
+            top: 14,
+            width: 43,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Filter</span>
+          <div style={{
+            position: "absolute",
+            left: 21,
+            top: 17,
+            width: 19.167,
+            height: 18.688,
+            overflow: "hidden",
+          }}>
+            <svg width={19.167} height={18.688} viewBox="0 0 19.167 18.688" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 19.167,
+              height: 18.688,
+              color: "rgb(12,12,12)",
+            }}>
+              <path d={"M 11.979 11.021 L 11.272 10.314 L 10.979 10.607 L 10.979 11.021 L 11.979 11.021 Z M 19.167 3.833 L 19.874 4.54 L 20.167 4.248 L 20.167 3.833 L 19.167 3.833 Z M 19.167 0 L 20.167 0 L 20.167 -1 L 19.167 -1 L 19.167 0 Z M 0 0 L 0 -1 L -1 -1 L -1 0 L 0 0 Z M 0 3.833 L -1 3.833 L -1 4.248 L -0.707 4.54 L 0 3.833 Z M 7.188 11.021 L 8.188 11.021 L 8.188 10.607 L 7.895 10.314 L 7.188 11.021 Z M 7.188 18.688 L 6.188 18.688 L 6.188 20.454 L 7.702 19.545 L 7.188 18.688 Z M 11.979 15.812 L 12.494 16.67 L 12.979 16.379 L 12.979 15.812 L 11.979 15.812 Z M 11.979 11.021 L 12.686 11.728 L 19.874 4.54 L 19.167 3.833 L 18.46 3.126 L 11.272 10.314 L 11.979 11.021 Z M 19.167 3.833 L 20.167 3.833 L 20.167 0 L 19.167 0 L 18.167 0 L 18.167 3.833 L 19.167 3.833 Z M 19.167 0 L 19.167 -1 L 0 -1 L 0 0 L 0 1 L 19.167 1 L 19.167 0 Z M 0 0 L -1 0 L -1 3.833 L 0 3.833 L 1 3.833 L 1 0 L 0 0 Z M 0 3.833 L -0.707 4.54 L 6.48 11.728 L 7.188 11.021 L 7.895 10.314 L 0.707 3.126 L 0 3.833 Z M 7.188 11.021 L 6.188 11.021 L 6.188 18.688 L 7.188 18.688 L 8.188 18.688 L 8.188 11.021 L 7.188 11.021 Z M 7.188 18.688 L 7.702 19.545 L 12.494 16.67 L 11.979 15.812 L 11.465 14.955 L 6.673 17.83 L 7.188 18.688 Z M 11.979 15.812 L 12.979 15.812 L 12.979 11.021 L 11.979 11.021 L 10.979 11.021 L 10.979 15.812 L 11.979 15.812 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 29,
+          top: 25,
+          width: 155,
+          height: 29,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.809999942779541,
+          color: "rgb(131,131,131)",
+        }}>Allocated this month</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 507,
+        width: 680,
+        height: 321,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 680,
+          height: 321,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 17,
+          width: 207,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Allocation breakdown</span>
+        <div style={{
+          position: "absolute",
+          left: 27,
+          top: 62,
+          width: 628,
+          height: 54.997,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 36.664,
+            width: 627,
+            height: 18.333,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 627,
+              height: 18.333,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 627,
+                height: 18.333,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 0.336,
+                width: 397,
+                height: 17,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(72,223,251)",
+              }} />
+            </div>
+          </div>
+          <span style={{
+            position: "absolute",
+            left: 1,
+            top: 0,
+            width: 55,
+            height: 28,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Render</span>
+          <span style={{
+            position: "absolute",
+            left: 541,
+            top: 0,
+            width: 87,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>21.2K / 30K</span>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 27,
+          top: 138,
+          width: 628,
+          height: 54.997,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 36.664,
+            width: 627,
+            height: 18.333,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 627,
+              height: 18.333,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 627,
+                height: 18.333,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 0.336,
+                width: 483,
+                height: 17,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(245,107,255)",
+              }} />
+            </div>
+          </div>
+          <span style={{
+            position: "absolute",
+            left: 1,
+            top: 0,
+            width: 99,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Transcription</span>
+          <span style={{
+            position: "absolute",
+            left: 549,
+            top: 0,
+            width: 79,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>12.1K / 15K</span>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 27,
+          top: 214,
+          width: 628,
+          height: 86,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 36.664,
+            width: 627,
+            height: 18.333,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 627,
+              height: 18.333,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 627,
+                height: 18.333,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 0.336,
+                width: 608,
+                height: 17,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(255,160,131)",
+              }} />
+            </div>
+          </div>
+          <span style={{
+            position: "absolute",
+            left: 1,
+            top: 0,
+            width: 44,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Stock</span>
+          <span style={{
+            position: "absolute",
+            left: 1,
+            top: 61,
+            width: 408,
+            height: 25,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 14,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(243,85,37)",
+          }}>Stock credits exceeded — usage paused pending reallocation.</span>
+          <span style={{
+            position: "absolute",
+            left: 560,
+            top: 0,
+            width: 68,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>5.1K / 5K</span>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 1340,
+        width: 527,
+        height: 475,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 527,
+          height: 475,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 16,
+          width: 118,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>By category</span>
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 46,
+          width: 123,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>vs. previous 30d</span>
+        <div style={{
+          position: "absolute",
+          left: 24,
+          top: 81,
+          width: 480,
+          height: 74,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 79,
+            top: 60,
+            width: 401,
+            height: 14,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 401,
+              height: 14,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 401,
+                height: 14,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 1,
+                width: 233,
+                height: 12,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(12,12,12)",
+              }} />
+            </div>
+          </div>
+          <svg width={20} height={9.630} viewBox="0 0 20 9.630" fill="none" style={{
+            position: "absolute",
+            left: 417,
+            top: 23,
+            width: 20,
+            height: 9.63,
+            color: "rgb(31,175,19)",
+          }}>
+            <path d={"M -0.524 9.106 C -0.813 9.395 -0.813 9.864 -0.524 10.153 C -0.235 10.443 0.235 10.443 0.524 10.153 L 0 9.63 L -0.524 9.106 Z M 5.926 3.704 L 6.45 3.18 L 5.926 2.656 L 5.402 3.18 L 5.926 3.704 Z M 11.111 8.889 L 10.587 9.413 L 11.111 9.936 L 11.635 9.413 L 11.111 8.889 Z M 20.741 0 C 20.741 -0.409 20.409 -0.741 20 -0.741 L 13.333 -0.741 C 12.924 -0.741 12.593 -0.409 12.593 0 C 12.593 0.409 12.924 0.741 13.333 0.741 L 19.259 0.741 L 19.259 6.667 C 19.259 7.076 19.591 7.407 20 7.407 C 20.409 7.407 20.741 7.076 20.741 6.667 L 20.741 0 Z M 0 9.63 L 0.524 10.153 L 6.45 4.227 L 5.926 3.704 L 5.402 3.18 L -0.524 9.106 L 0 9.63 Z M 5.926 3.704 L 5.402 4.227 L 10.587 9.413 L 11.111 8.889 L 11.635 8.365 L 6.45 3.18 L 5.926 3.704 Z M 11.111 8.889 L 11.635 9.413 L 20.524 0.524 L 20 0 L 19.476 -0.524 L 10.587 8.365 L 11.111 8.889 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 442,
+            top: 14,
+            width: 38,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>+12%</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 0,
+            width: 62,
+            height: 33,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>Render</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 28,
+            width: 110,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>8,420 cr · 54%</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 8,
+            width: 66,
+            height: 66,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 66,
+              height: 66,
+              borderRadius: 15.482787132263184,
+              backgroundColor: "rgb(255,255,255)",
+              boxShadow: "inset 0 0 0 1.032px rgba(12,12,12,0.4)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 18.664,
+              top: 20.672,
+              width: 27.336,
+              height: 27.336,
+              overflow: "hidden",
+            }}>
+              <svg width={27.336} height={27.336} viewBox="0 0 27.336 27.336" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 27.336,
+                height: 27.336,
+                color: "rgb(0,0,0)",
+              }}>
+                <path d={"M 11.565 15.771 L 12.522 15.336 C 12.417 15.104 12.232 14.919 12 14.814 L 11.565 15.771 Z M 0 10.514 L -0.377 9.533 C -0.773 9.685 -1.038 10.059 -1.051 10.483 C -1.064 10.906 -0.821 11.296 -0.435 11.471 L 0 10.514 Z M 27.336 0 L 28.317 0.377 C 28.466 -0.01 28.373 -0.45 28.079 -0.743 C 27.786 -1.037 27.346 -1.13 26.959 -0.981 L 27.336 0 Z M 16.822 27.336 L 15.865 27.771 C 16.04 28.157 16.43 28.399 16.853 28.387 C 17.277 28.374 17.651 28.109 17.803 27.713 L 16.822 27.336 Z M 11.565 15.771 L 12 14.814 L 0.435 9.557 L 0 10.514 L -0.435 11.471 L 11.13 16.728 L 11.565 15.771 Z M 0 10.514 L 0.377 11.495 L 27.713 0.981 L 27.336 0 L 26.959 -0.981 L -0.377 9.533 L 0 10.514 Z M 27.336 0 L 26.355 -0.377 L 15.841 26.959 L 16.822 27.336 L 17.803 27.713 L 28.317 0.377 L 27.336 0 Z M 16.822 27.336 L 17.779 26.901 L 12.522 15.336 L 11.565 15.771 L 10.608 16.206 L 15.865 27.771 L 16.822 27.336 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={6.308} height={6.308} viewBox="0 0 6.308 6.308" fill="none" style={{
+                position: "absolute",
+                left: 11.566,
+                top: 9.461,
+                width: 6.308,
+                height: 6.308,
+                color: "rgb(0,0,0)",
+              }}>
+                <path d={"M -0.743 5.565 C -1.154 5.975 -1.154 6.641 -0.743 7.052 C -0.333 7.462 0.333 7.462 0.743 7.052 L 0 6.308 L -0.743 5.565 Z M 7.052 0.743 C 7.462 0.333 7.462 -0.333 7.052 -0.743 C 6.641 -1.154 5.975 -1.154 5.565 -0.743 L 6.308 0 L 7.052 0.743 Z M 0 6.308 L 0.743 7.052 L 7.052 0.743 L 6.308 0 L 5.565 -0.743 L -0.743 5.565 L 0 6.308 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 24,
+          top: 173,
+          width: 480,
+          height: 74,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 79,
+            top: 60,
+            width: 401,
+            height: 14,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 401,
+              height: 14,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 401,
+                height: 14,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+            </div>
+          </div>
+          <svg width={20} height={9.630} viewBox="0 0 20 9.630" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(1,0,0,-1,417,32.633)",
+            transformOrigin: "0 0",
+            width: 20,
+            height: 9.63,
+            color: "rgb(243,85,37)",
+          }}>
+            <path d={"M -0.524 9.106 C -0.813 9.395 -0.813 9.864 -0.524 10.153 C -0.235 10.443 0.235 10.443 0.524 10.153 L 0 9.63 L -0.524 9.106 Z M 5.926 3.704 L 6.45 3.18 L 5.926 2.656 L 5.402 3.18 L 5.926 3.704 Z M 11.111 8.889 L 10.587 9.413 L 11.111 9.936 L 11.635 9.413 L 11.111 8.889 Z M 20.741 0 C 20.741 -0.409 20.409 -0.741 20 -0.741 L 13.333 -0.741 C 12.924 -0.741 12.593 -0.409 12.593 0 C 12.593 0.409 12.924 0.741 13.333 0.741 L 19.259 0.741 L 19.259 6.667 C 19.259 7.076 19.591 7.407 20 7.407 C 20.409 7.407 20.741 7.076 20.741 6.667 L 20.741 0 Z M 0 9.63 L 0.524 10.153 L 6.45 4.227 L 5.926 3.704 L 5.402 3.18 L -0.524 9.106 L 0 9.63 Z M 5.926 3.704 L 5.402 4.227 L 10.587 9.413 L 11.111 8.889 L 11.635 8.365 L 6.45 3.18 L 5.926 3.704 Z M 11.111 8.889 L 11.635 9.413 L 20.524 0.524 L 20 0 L 19.476 -0.524 L 10.587 8.365 L 11.111 8.889 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 449,
+            top: 14,
+            width: 31,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>-4%</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 0,
+            width: 111,
+            height: 33,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>Transcription</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 28,
+            width: 106,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>3,140 cr · 20%</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 8,
+            width: 66,
+            height: 66,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 66,
+              height: 66,
+              borderRadius: 15.482787132263184,
+              backgroundColor: "rgb(255,255,255)",
+              boxShadow: "inset 0 0 0 1.032px rgba(12,12,12,0.4)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 24,
+              top: 19,
+              width: 21.539,
+              height: 28.003,
+              overflow: "hidden",
+            }}>
+              <svg width={10.769} height={18.308} viewBox="0 0 10.769 18.308" fill="none" style={{
+                position: "absolute",
+                left: 5.385,
+                top: 0,
+                width: 10.769,
+                height: 18.308,
+                color: "rgb(0,0,0)",
+              }}>
+                <path d={"M 1.577 1.577 L 0.816 0.816 L 0.816 0.816 L 1.577 1.577 Z M 9.192 1.577 L 9.954 0.816 L 9.954 0.816 L 9.192 1.577 Z M 10.769 12.923 L 9.692 12.923 C 9.692 14.066 9.239 15.161 8.431 15.969 L 9.192 16.731 L 9.954 17.492 C 11.166 16.28 11.846 14.637 11.846 12.923 L 10.769 12.923 Z M 9.192 16.731 L 8.431 15.969 C 7.623 16.777 6.527 17.231 5.385 17.231 L 5.385 18.308 L 5.385 19.385 C 7.098 19.385 8.742 18.704 9.954 17.492 L 9.192 16.731 Z M 5.385 18.308 L 5.385 17.231 C 4.242 17.231 3.146 16.777 2.339 15.969 L 1.577 16.731 L 0.816 17.492 C 2.027 18.704 3.671 19.385 5.385 19.385 L 5.385 18.308 Z M 1.577 16.731 L 2.339 15.969 C 1.531 15.161 1.077 14.066 1.077 12.923 L 0 12.923 L -1.077 12.923 C -1.077 14.637 -0.396 16.28 0.816 17.492 L 1.577 16.731 Z M 0 12.923 L 1.077 12.923 L 1.077 5.385 L 0 5.385 L -1.077 5.385 L -1.077 12.923 L 0 12.923 Z M 0 5.385 L 1.077 5.385 C 1.077 4.242 1.531 3.146 2.339 2.339 L 1.577 1.577 L 0.816 0.816 C -0.396 2.027 -1.077 3.671 -1.077 5.385 L 0 5.385 Z M 1.577 1.577 L 2.339 2.339 C 3.146 1.531 4.242 1.077 5.385 1.077 L 5.385 0 L 5.385 -1.077 C 3.671 -1.077 2.027 -0.396 0.816 0.816 L 1.577 1.577 Z M 5.385 0 L 5.385 1.077 C 6.527 1.077 7.623 1.531 8.431 2.339 L 9.192 1.577 L 9.954 0.816 C 8.742 -0.396 7.098 -1.077 5.385 -1.077 L 5.385 0 Z M 9.192 1.577 L 8.431 2.339 C 9.239 3.146 9.692 4.242 9.692 5.385 L 10.769 5.385 L 11.846 5.385 C 11.846 3.671 11.166 2.027 9.954 0.816 L 9.192 1.577 Z M 10.769 5.385 L 9.692 5.385 L 9.692 12.923 L 10.769 12.923 L 11.846 12.923 L 11.846 5.385 L 10.769 5.385 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={21.539} height={9.692} viewBox="0 0 21.539 9.692" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 14,
+                width: 21.539,
+                height: 9.692,
+                color: "rgb(0,0,0)",
+              }}>
+                <path d={"M 22.616 -0.002 C 22.614 -0.597 22.131 -1.078 21.536 -1.077 C 20.942 -1.076 20.46 -0.592 20.462 0.002 L 21.539 0 L 22.616 -0.002 Z M 20.807 3.712 L 21.802 4.124 L 21.802 4.123 L 20.807 3.712 Z M 18.706 6.86 L 17.945 6.098 L 17.945 6.098 L 18.706 6.86 Z M 15.559 8.96 L 15.148 7.965 L 15.148 7.965 L 15.559 8.96 Z M 11.846 9.692 L 11.849 8.615 L 11.846 8.615 L 11.846 9.692 Z M 9.692 9.692 L 9.692 8.615 L 9.69 8.615 L 9.692 9.692 Z M 5.98 8.96 L 6.391 7.965 L 6.391 7.965 L 5.98 8.96 Z M 2.833 6.86 L 2.071 7.621 L 2.071 7.621 L 2.833 6.86 Z M 1.077 0.002 C 1.078 -0.592 0.597 -1.076 0.002 -1.077 C -0.592 -1.078 -1.076 -0.597 -1.077 -0.002 L 0 0 L 1.077 0.002 Z M 21.539 0 L 20.462 0.002 C 20.464 1.134 20.243 2.255 19.811 3.302 L 20.807 3.712 L 21.802 4.123 C 22.342 2.815 22.619 1.413 22.616 -0.002 L 21.539 0 Z M 20.807 3.712 L 19.811 3.301 C 19.379 4.348 18.745 5.298 17.945 6.098 L 18.706 6.86 L 19.468 7.621 C 20.469 6.621 21.262 5.432 21.802 4.124 L 20.807 3.712 Z M 18.706 6.86 L 17.945 6.098 C 17.144 6.899 16.194 7.533 15.148 7.965 L 15.559 8.96 L 15.97 9.956 C 17.278 9.416 18.467 8.622 19.468 7.621 L 18.706 6.86 Z M 15.559 8.96 L 15.148 7.965 C 14.102 8.397 12.98 8.618 11.849 8.615 L 11.846 9.692 L 11.844 10.769 C 13.259 10.772 14.661 10.496 15.97 9.956 L 15.559 8.96 Z M 11.846 9.692 L 11.846 8.615 L 9.692 8.615 L 9.692 9.692 L 9.692 10.769 L 11.846 10.769 L 11.846 9.692 Z M 9.692 9.692 L 9.69 8.615 C 8.558 8.618 7.437 8.397 6.391 7.965 L 5.98 8.96 L 5.569 9.956 C 6.877 10.496 8.279 10.772 9.695 10.769 L 9.692 9.692 Z M 5.98 8.96 L 6.391 7.965 C 5.345 7.533 4.394 6.899 3.594 6.098 L 2.833 6.86 L 2.071 7.621 C 3.072 8.622 4.261 9.416 5.569 9.956 L 5.98 8.96 Z M 2.833 6.86 L 3.594 6.098 C 2.794 5.298 2.159 4.348 1.727 3.301 L 0.732 3.712 L -0.263 4.123 C 0.277 5.432 1.07 6.621 2.071 7.621 L 2.833 6.86 Z M 0.732 3.712 L 1.727 3.301 C 1.295 2.255 1.074 1.134 1.077 0.002 L 0 0 L -1.077 -0.002 C -1.08 1.413 -0.804 2.815 -0.263 4.123 L 0.732 3.712 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={2.154} height={4.308} viewBox="-1.077 0 2.154 4.308" fill="none" style={{
+                position: "absolute",
+                left: 10.77,
+                top: 23.695,
+                width: 2.153869152069092,
+                height: 4.308,
+                color: "rgb(0,0,0)",
+              }}>
+                <path d={"M 1.077 0 C 1.077 -0.595 0.595 -1.077 0 -1.077 C -0.595 -1.077 -1.077 -0.595 -1.077 0 L 0 0 L 1.077 0 Z M -1.077 4.308 C -1.077 4.903 -0.595 5.385 0 5.385 C 0.595 5.385 1.077 4.903 1.077 4.308 L 0 4.308 L -1.077 4.308 Z M 0 0 L -1.077 0 L -1.077 4.308 L 0 4.308 L 1.077 4.308 L 1.077 0 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 24,
+          top: 265,
+          width: 480,
+          height: 74,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 79,
+            top: 60,
+            width: 401,
+            height: 14,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 401,
+              height: 14,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 401,
+                height: 14,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 1,
+                width: 52,
+                height: 12,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(12,12,12)",
+              }} />
+            </div>
+          </div>
+          <svg width={20} height={9.630} viewBox="0 0 20 9.630" fill="none" style={{
+            position: "absolute",
+            left: 417,
+            top: 23,
+            width: 20,
+            height: 9.63,
+            color: "rgb(31,175,19)",
+          }}>
+            <path d={"M -0.524 9.106 C -0.813 9.395 -0.813 9.864 -0.524 10.153 C -0.235 10.443 0.235 10.443 0.524 10.153 L 0 9.63 L -0.524 9.106 Z M 5.926 3.704 L 6.45 3.18 L 5.926 2.656 L 5.402 3.18 L 5.926 3.704 Z M 11.111 8.889 L 10.587 9.413 L 11.111 9.936 L 11.635 9.413 L 11.111 8.889 Z M 20.741 0 C 20.741 -0.409 20.409 -0.741 20 -0.741 L 13.333 -0.741 C 12.924 -0.741 12.593 -0.409 12.593 0 C 12.593 0.409 12.924 0.741 13.333 0.741 L 19.259 0.741 L 19.259 6.667 C 19.259 7.076 19.591 7.407 20 7.407 C 20.409 7.407 20.741 7.076 20.741 6.667 L 20.741 0 Z M 0 9.63 L 0.524 10.153 L 6.45 4.227 L 5.926 3.704 L 5.402 3.18 L -0.524 9.106 L 0 9.63 Z M 5.926 3.704 L 5.402 4.227 L 10.587 9.413 L 11.111 8.889 L 11.635 8.365 L 6.45 3.18 L 5.926 3.704 Z M 11.111 8.889 L 11.635 9.413 L 20.524 0.524 L 20 0 L 19.476 -0.524 L 10.587 8.365 L 11.111 8.889 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 438,
+            top: 14,
+            width: 42,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>+28%</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 0,
+            width: 110,
+            height: 33,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>Stock assets</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 28,
+            width: 106,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>2,280 cr · 15%</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 8,
+            width: 66,
+            height: 66,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 66,
+              height: 66,
+              borderRadius: 15.482787132263184,
+              backgroundColor: "rgb(255,255,255)",
+              boxShadow: "inset 0 0 0 1.032px rgba(12,12,12,0.4)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 20.172,
+              top: 19.219,
+              width: 25.782,
+              height: 25.781,
+              overflow: "hidden",
+            }}>
+              <svg width={25.781} height={25.781} viewBox="0 0 25.781 25.781" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 25.781,
+                height: 25.781,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 22.917 0 L 22.917 0.8 L 22.917 0.8 L 22.917 0 Z M 25.781 22.917 L 24.982 22.917 L 24.982 22.917 L 25.781 22.917 Z M 2.865 25.781 L 2.865 24.982 L 2.865 24.982 L 2.865 25.781 Z M 0 2.865 L 0.8 2.865 L 0.8 2.865 L 0 2.865 Z M 2.865 0 L 2.865 0.8 L 22.917 0.8 L 22.917 0 L 22.917 -0.8 L 2.865 -0.8 L 2.865 0 Z M 22.917 0 C 22.917 0.8 22.916 0.8 22.916 0.8 C 22.916 0.8 22.915 0.8 22.915 0.8 C 22.915 0.8 22.914 0.8 22.914 0.8 C 22.913 0.8 22.913 0.8 22.912 0.8 C 22.912 0.8 22.911 0.8 22.912 0.8 C 22.913 0.8 22.916 0.8 22.922 0.8 C 22.934 0.8 22.954 0.801 22.983 0.803 C 23.04 0.807 23.127 0.816 23.233 0.833 C 23.449 0.87 23.725 0.94 23.991 1.073 C 24.255 1.205 24.493 1.39 24.668 1.652 C 24.84 1.909 24.982 2.288 24.982 2.865 L 25.781 2.865 L 26.581 2.865 C 26.581 2.009 26.365 1.313 25.999 0.765 C 25.637 0.222 25.159 -0.131 24.707 -0.357 C 24.257 -0.582 23.817 -0.69 23.496 -0.744 C 23.333 -0.771 23.196 -0.785 23.097 -0.792 C 23.047 -0.796 23.006 -0.797 22.975 -0.798 C 22.96 -0.799 22.948 -0.799 22.938 -0.799 C 22.933 -0.799 22.929 -0.8 22.925 -0.8 C 22.923 -0.8 22.922 -0.8 22.92 -0.8 C 22.92 -0.8 22.919 -0.8 22.918 -0.8 C 22.918 -0.8 22.918 -0.8 22.917 -0.8 C 22.917 -0.8 22.917 -0.8 22.917 0 Z M 25.781 2.865 L 24.982 2.865 L 24.982 22.917 L 25.781 22.917 L 26.581 22.917 L 26.581 2.865 L 25.781 2.865 Z M 25.781 22.917 C 24.982 22.917 24.982 22.916 24.982 22.916 C 24.982 22.916 24.982 22.915 24.982 22.915 C 24.982 22.915 24.982 22.914 24.982 22.914 C 24.982 22.913 24.982 22.913 24.982 22.912 C 24.982 22.912 24.982 22.911 24.982 22.912 C 24.982 22.913 24.982 22.916 24.981 22.922 C 24.981 22.934 24.98 22.954 24.978 22.983 C 24.974 23.04 24.965 23.127 24.948 23.233 C 24.912 23.449 24.841 23.725 24.708 23.991 C 24.576 24.255 24.392 24.493 24.129 24.668 C 23.872 24.84 23.493 24.982 22.917 24.982 L 22.917 25.781 L 22.917 26.581 C 23.773 26.581 24.468 26.365 25.016 25.999 C 25.56 25.637 25.912 25.159 26.138 24.707 C 26.363 24.257 26.472 23.817 26.525 23.496 C 26.552 23.333 26.566 23.196 26.573 23.097 C 26.577 23.047 26.579 23.006 26.58 22.975 C 26.58 22.96 26.58 22.948 26.581 22.938 C 26.581 22.933 26.581 22.929 26.581 22.925 C 26.581 22.923 26.581 22.922 26.581 22.92 C 26.581 22.92 26.581 22.919 26.581 22.918 C 26.581 22.918 26.581 22.918 26.581 22.917 C 26.581 22.917 26.581 22.917 25.781 22.917 Z M 22.917 25.781 L 22.917 24.982 L 2.865 24.982 L 2.865 25.781 L 2.865 26.581 L 22.917 26.581 L 22.917 25.781 Z M 2.865 25.781 C 2.865 24.982 2.865 24.982 2.865 24.982 C 2.865 24.982 2.866 24.982 2.866 24.982 C 2.866 24.982 2.867 24.982 2.867 24.982 C 2.868 24.982 2.868 24.982 2.869 24.982 C 2.87 24.982 2.87 24.982 2.869 24.982 C 2.868 24.982 2.865 24.982 2.859 24.981 C 2.847 24.981 2.827 24.98 2.798 24.978 C 2.741 24.974 2.655 24.965 2.548 24.948 C 2.332 24.912 2.056 24.841 1.79 24.708 C 1.527 24.576 1.288 24.392 1.113 24.129 C 0.941 23.872 0.8 23.493 0.8 22.917 L 0 22.917 L -0.8 22.917 C -0.8 23.773 -0.583 24.468 -0.218 25.016 C 0.145 25.56 0.622 25.912 1.075 26.138 C 1.525 26.363 1.965 26.472 2.286 26.525 C 2.448 26.552 2.585 26.566 2.685 26.573 C 2.734 26.577 2.775 26.579 2.806 26.58 C 2.821 26.58 2.834 26.58 2.843 26.581 C 2.848 26.581 2.853 26.581 2.856 26.581 C 2.858 26.581 2.86 26.581 2.861 26.581 C 2.862 26.581 2.862 26.581 2.863 26.581 C 2.863 26.581 2.864 26.581 2.864 26.581 C 2.864 26.581 2.865 26.581 2.865 25.781 Z M 0 22.917 L 0.8 22.917 L 0.8 2.865 L 0 2.865 L -0.8 2.865 L -0.8 22.917 L 0 22.917 Z M 0 2.865 C 0.8 2.865 0.8 2.865 0.8 2.865 C 0.8 2.865 0.8 2.866 0.8 2.866 C 0.8 2.866 0.8 2.867 0.8 2.867 C 0.8 2.868 0.8 2.868 0.8 2.869 C 0.8 2.87 0.8 2.87 0.8 2.869 C 0.8 2.868 0.8 2.865 0.8 2.859 C 0.8 2.847 0.801 2.827 0.803 2.798 C 0.807 2.741 0.816 2.655 0.833 2.548 C 0.87 2.332 0.94 2.056 1.073 1.79 C 1.205 1.527 1.39 1.288 1.652 1.113 C 1.909 0.941 2.288 0.8 2.865 0.8 L 2.865 0 L 2.865 -0.8 C 2.009 -0.8 1.313 -0.583 0.765 -0.218 C 0.222 0.145 -0.131 0.622 -0.357 1.075 C -0.582 1.525 -0.69 1.965 -0.744 2.286 C -0.771 2.448 -0.785 2.585 -0.792 2.685 C -0.796 2.734 -0.797 2.775 -0.798 2.806 C -0.799 2.821 -0.799 2.834 -0.799 2.843 C -0.799 2.848 -0.8 2.853 -0.8 2.856 C -0.8 2.858 -0.8 2.86 -0.8 2.861 C -0.8 2.862 -0.8 2.862 -0.8 2.863 C -0.8 2.863 -0.8 2.864 -0.8 2.864 C -0.8 2.864 -0.8 2.865 0 2.865 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={5.729} height={5.729} viewBox="0 0 5.729 5.729" fill="none" style={{
+                position: "absolute",
+                left: 5.729,
+                top: 5.727,
+                width: 5.729,
+                height: 5.729,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 0 2.865 L 0.8 2.865 L 0.8 2.865 L 0 2.865 Z M 2.865 5.729 L 2.865 6.529 L 2.865 5.729 Z M 5.729 2.865 L 4.93 2.865 L 4.93 2.865 L 5.729 2.865 Z M 0 2.865 L -0.8 2.865 C -0.8 3.346 -0.705 3.822 -0.521 4.267 L 0.218 3.961 L 0.957 3.655 C 0.853 3.404 0.8 3.136 0.8 2.865 L 0 2.865 Z M 0.218 3.961 L -0.521 4.267 C -0.337 4.711 -0.067 5.115 0.274 5.456 L 0.839 4.89 L 1.404 4.325 C 1.213 4.133 1.061 3.905 0.957 3.655 L 0.218 3.961 Z M 0.839 4.89 L 0.274 5.456 C 0.614 5.796 1.018 6.066 1.462 6.25 L 1.768 5.511 L 2.074 4.772 C 1.824 4.669 1.596 4.517 1.404 4.325 L 0.839 4.89 Z M 1.768 5.511 L 1.462 6.25 C 1.907 6.434 2.383 6.529 2.865 6.529 L 2.865 5.729 L 2.865 4.93 C 2.593 4.93 2.325 4.876 2.074 4.772 L 1.768 5.511 Z M 2.865 5.729 L 2.865 6.529 C 3.346 6.529 3.822 6.434 4.267 6.25 L 3.961 5.511 L 3.655 4.772 C 3.404 4.876 3.136 4.93 2.865 4.93 L 2.865 5.729 Z M 3.961 5.511 L 4.267 6.25 C 4.711 6.066 5.115 5.796 5.456 5.456 L 4.89 4.89 L 4.325 4.325 C 4.133 4.517 3.905 4.669 3.655 4.772 L 3.961 5.511 Z M 4.89 4.89 L 5.456 5.456 C 5.796 5.115 6.066 4.711 6.25 4.267 L 5.511 3.961 L 4.772 3.655 C 4.669 3.905 4.517 4.133 4.325 4.325 L 4.89 4.89 Z M 5.511 3.961 L 6.25 4.267 C 6.434 3.822 6.529 3.346 6.529 2.865 L 5.729 2.865 L 4.93 2.865 C 4.93 3.136 4.876 3.404 4.772 3.655 L 5.511 3.961 Z M 5.729 2.865 L 6.529 2.865 C 6.529 2.383 6.434 1.907 6.25 1.462 L 5.511 1.768 L 4.772 2.074 C 4.876 2.325 4.93 2.593 4.93 2.865 L 5.729 2.865 Z M 5.511 1.768 L 6.25 1.462 C 6.066 1.018 5.796 0.614 5.456 0.274 L 4.89 0.839 L 4.325 1.404 C 4.517 1.596 4.669 1.824 4.772 2.074 L 5.511 1.768 Z M 4.89 0.839 L 5.456 0.274 C 5.115 -0.067 4.711 -0.337 4.267 -0.521 L 3.961 0.218 L 3.655 0.957 C 3.905 1.061 4.133 1.213 4.325 1.404 L 4.89 0.839 Z M 3.961 0.218 L 4.267 -0.521 C 3.822 -0.705 3.346 -0.8 2.865 -0.8 L 2.865 0 L 2.865 0.8 C 3.136 0.8 3.404 0.853 3.655 0.957 L 3.961 0.218 Z M 2.865 0 L 2.865 -0.8 C 2.383 -0.8 1.907 -0.705 1.462 -0.521 L 1.768 0.218 L 2.074 0.957 C 2.325 0.853 2.593 0.8 2.865 0.8 L 2.865 0 Z M 1.768 0.218 L 1.462 -0.521 C 1.018 -0.337 0.614 -0.067 0.274 0.274 L 0.839 0.839 L 1.404 1.404 C 1.596 1.213 1.824 1.061 2.074 0.957 L 1.768 0.218 Z M 0.839 0.839 L 0.274 0.274 C -0.067 0.614 -0.337 1.018 -0.521 1.462 L 0.218 1.768 L 0.957 2.074 C 1.061 1.824 1.213 1.596 1.404 1.404 L 0.839 0.839 Z M 0.218 1.768 L -0.521 1.462 C -0.705 1.907 -0.8 2.383 -0.8 2.865 L 0 2.865 L 0.8 2.865 C 0.8 2.593 0.853 2.325 0.957 2.074 L 0.218 1.768 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={21.484} height={13.853} viewBox="0 0 21.484 13.853" fill="none" style={{
+                position: "absolute",
+                left: 4.298,
+                top: 11.922,
+                width: 21.484,
+                height: 13.853,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 20.919 5.824 C 21.231 6.136 21.738 6.136 22.05 5.824 C 22.362 5.512 22.362 5.006 22.05 4.693 L 21.484 5.259 L 20.919 5.824 Z M 17.064 0.839 L 17.63 0.273 L 17.63 0.273 L 17.064 0.839 Z M 13.014 0.839 L 12.448 0.273 L 12.448 0.273 L 13.014 0.839 Z M -0.565 13.287 C -0.878 13.599 -0.878 14.106 -0.565 14.418 C -0.253 14.73 0.253 14.73 0.565 14.418 L 0 13.853 L -0.565 13.287 Z M 21.484 5.259 L 22.05 4.693 L 17.63 0.273 L 17.064 0.839 L 16.499 1.404 L 20.919 5.824 L 21.484 5.259 Z M 17.064 0.839 L 17.63 0.273 C 16.943 -0.414 16.011 -0.8 15.039 -0.8 L 15.039 0 L 15.039 0.8 C 15.587 0.8 16.112 1.017 16.499 1.404 L 17.064 0.839 Z M 15.039 0 L 15.039 -0.8 C 14.067 -0.8 13.136 -0.414 12.448 0.273 L 13.014 0.839 L 13.579 1.404 C 13.966 1.017 14.492 0.8 15.039 0.8 L 15.039 0 Z M 13.014 0.839 L 12.448 0.273 L -0.565 13.287 L 0 13.853 L 0.565 14.418 L 13.579 1.404 L 13.014 0.839 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 24,
+          top: 357,
+          width: 480,
+          height: 74,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 79,
+            top: 60,
+            width: 401,
+            height: 14,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 401,
+              height: 14,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 401,
+                height: 14,
+                borderRadius: 16.84255599975586,
+                backgroundColor: "rgba(12,12,12,0.1)",
+              }} />
+              <div style={{
+                position: "absolute",
+                left: 1,
+                top: 1,
+                width: 40,
+                height: 12,
+                borderRadius: 24.13700294494629,
+                backgroundColor: "rgb(12,12,12)",
+              }} />
+            </div>
+          </div>
+          <svg width={20} height={9.630} viewBox="0 0 20 9.630" fill="none" style={{
+            position: "absolute",
+            left: 417,
+            top: 23,
+            width: 20,
+            height: 9.63,
+            color: "rgb(31,175,19)",
+          }}>
+            <path d={"M -0.524 9.106 C -0.813 9.395 -0.813 9.864 -0.524 10.153 C -0.235 10.443 0.235 10.443 0.524 10.153 L 0 9.63 L -0.524 9.106 Z M 5.926 3.704 L 6.45 3.18 L 5.926 2.656 L 5.402 3.18 L 5.926 3.704 Z M 11.111 8.889 L 10.587 9.413 L 11.111 9.936 L 11.635 9.413 L 11.111 8.889 Z M 20.741 0 C 20.741 -0.409 20.409 -0.741 20 -0.741 L 13.333 -0.741 C 12.924 -0.741 12.593 -0.409 12.593 0 C 12.593 0.409 12.924 0.741 13.333 0.741 L 19.259 0.741 L 19.259 6.667 C 19.259 7.076 19.591 7.407 20 7.407 C 20.409 7.407 20.741 7.076 20.741 6.667 L 20.741 0 Z M 0 9.63 L 0.524 10.153 L 6.45 4.227 L 5.926 3.704 L 5.402 3.18 L -0.524 9.106 L 0 9.63 Z M 5.926 3.704 L 5.402 4.227 L 10.587 9.413 L 11.111 8.889 L 11.635 8.365 L 6.45 3.18 L 5.926 3.704 Z M 11.111 8.889 L 11.635 9.413 L 20.524 0.524 L 20 0 L 19.476 -0.524 L 10.587 8.365 L 11.111 8.889 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <span style={{
+            position: "absolute",
+            left: 447,
+            top: 14,
+            width: 33,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            textAlign: "right",
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>+6%</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 0,
+            width: 114,
+            height: 33,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>AI generation</span>
+          <span style={{
+            position: "absolute",
+            left: 79,
+            top: 28,
+            width: 102,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>1,860 cr · 12%</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 8,
+            width: 66,
+            height: 66,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 66,
+              height: 66,
+              borderRadius: 15.482787132263184,
+              backgroundColor: "rgb(255,255,255)",
+              boxShadow: "inset 0 0 0 1.032px rgba(12,12,12,0.4)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 20,
+              top: 20,
+              width: 27.336,
+              height: 27.339,
+              overflow: "hidden",
+            }}>
+              <svg width={3.417} height={2.103} viewBox="0 -1.051 3.417 2.103" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 17.844,
+                width: 3.417,
+                height: 2.102764368057251,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 3.417 1.051 C 3.998 1.051 4.468 0.581 4.468 0 C 4.468 -0.581 3.998 -1.051 3.417 -1.051 L 3.417 0 L 3.417 1.051 Z M 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 C -1.051 0.581 -0.581 1.051 0 1.051 L 0 0 L 0 -1.051 Z M 3.417 0 L 3.417 -1.051 L 0 -1.051 L 0 0 L 0 1.051 L 3.417 1.051 L 3.417 0 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={3.417} height={2.103} viewBox="0 -1.051 3.417 2.103" fill="none" style={{
+                position: "absolute",
+                left: 23.919,
+                top: 17.844,
+                width: 3.417,
+                height: 2.102764368057251,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 3.417 1.051 C 3.998 1.051 4.468 0.581 4.468 0 C 4.468 -0.581 3.998 -1.051 3.417 -1.051 L 3.417 0 L 3.417 1.051 Z M 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 C -1.051 0.581 -0.581 1.051 0 1.051 L 0 0 L 0 -1.051 Z M 3.417 0 L 3.417 -1.051 L 0 -1.051 L 0 0 L 0 1.051 L 3.417 1.051 L 3.417 0 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={3.417} height={2.103} viewBox="0 -1.051 3.417 2.103" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 9.5,
+                width: 3.417,
+                height: 2.102764368057251,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 3.417 1.051 C 3.998 1.051 4.468 0.581 4.468 0 C 4.468 -0.581 3.998 -1.051 3.417 -1.051 L 3.417 0 L 3.417 1.051 Z M 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 C -1.051 0.581 -0.581 1.051 0 1.051 L 0 0 L 0 -1.051 Z M 3.417 0 L 3.417 -1.051 L 0 -1.051 L 0 0 L 0 1.051 L 3.417 1.051 L 3.417 0 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={3.417} height={2.103} viewBox="0 -1.051 3.417 2.103" fill="none" style={{
+                position: "absolute",
+                left: 23.919,
+                top: 9.5,
+                width: 3.417,
+                height: 2.102764368057251,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 3.417 1.051 C 3.998 1.051 4.468 0.581 4.468 0 C 4.468 -0.581 3.998 -1.051 3.417 -1.051 L 3.417 0 L 3.417 1.051 Z M 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 C -1.051 0.581 -0.581 1.051 0 1.051 L 0 0 L 0 -1.051 Z M 3.417 0 L 3.417 -1.051 L 0 -1.051 L 0 0 L 0 1.051 L 3.417 1.051 L 3.417 0 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={2.103} height={3.417} viewBox="-1.051 0 2.103 3.417" fill="none" style={{
+                position: "absolute",
+                left: 9.491,
+                top: 0,
+                width: 2.102764368057251,
+                height: 3.417,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M -1.051 3.417 C -1.051 3.998 -0.581 4.468 0 4.468 C 0.581 4.468 1.051 3.998 1.051 3.417 L 0 3.417 L -1.051 3.417 Z M 1.051 0 C 1.051 -0.581 0.581 -1.051 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 L 0 0 L 1.051 0 Z M 0 3.417 L 1.051 3.417 L 1.051 0 L 0 0 L -1.051 0 L -1.051 3.417 L 0 3.417 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={2.103} height={3.417} viewBox="-1.051 0 2.103 3.417" fill="none" style={{
+                position: "absolute",
+                left: 9.491,
+                top: 23.922,
+                width: 2.102764368057251,
+                height: 3.417,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M -1.051 3.417 C -1.051 3.998 -0.581 4.468 0 4.468 C 0.581 4.468 1.051 3.998 1.051 3.417 L 0 3.417 L -1.051 3.417 Z M 1.051 0 C 1.051 -0.581 0.581 -1.051 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 L 0 0 L 1.051 0 Z M 0 3.417 L 1.051 3.417 L 1.051 0 L 0 0 L -1.051 0 L -1.051 3.417 L 0 3.417 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={2.103} height={3.417} viewBox="-1.051 0 2.103 3.417" fill="none" style={{
+                position: "absolute",
+                left: 17.845,
+                top: 0,
+                width: 2.102764368057251,
+                height: 3.417,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M -1.051 3.417 C -1.051 3.998 -0.581 4.468 0 4.468 C 0.581 4.468 1.051 3.998 1.051 3.417 L 0 3.417 L -1.051 3.417 Z M 1.051 0 C 1.051 -0.581 0.581 -1.051 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 L 0 0 L 1.051 0 Z M 0 3.417 L 1.051 3.417 L 1.051 0 L 0 0 L -1.051 0 L -1.051 3.417 L 0 3.417 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={2.103} height={3.417} viewBox="-1.051 0 2.103 3.417" fill="none" style={{
+                position: "absolute",
+                left: 17.845,
+                top: 23.922,
+                width: 2.102764368057251,
+                height: 3.417,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M -1.051 3.417 C -1.051 3.998 -0.581 4.468 0 4.468 C 0.581 4.468 1.051 3.998 1.051 3.417 L 0 3.417 L -1.051 3.417 Z M 1.051 0 C 1.051 -0.581 0.581 -1.051 0 -1.051 C -0.581 -1.051 -1.051 -0.581 -1.051 0 L 0 0 L 1.051 0 Z M 0 3.417 L 1.051 3.417 L 1.051 0 L 0 0 L -1.051 0 L -1.051 3.417 L 0 3.417 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={20.502} height={20.502} viewBox="0 0 20.502 20.502" fill="none" style={{
+                position: "absolute",
+                left: 3.417,
+                top: 3.422,
+                width: 20.502,
+                height: 20.502,
+                color: "rgb(131,131,131)",
+              }}>
+                <path d={"M 18.224 0 L 18.224 -1.051 L 2.278 -1.051 L 2.278 0 L 2.278 1.051 L 18.224 1.051 L 18.224 0 Z M 2.278 0 L 2.278 -1.051 C 0.439 -1.051 -1.051 0.439 -1.051 2.278 L 0 2.278 L 1.051 2.278 C 1.051 1.601 1.601 1.051 2.278 1.051 L 2.278 0 Z M 0 2.278 L -1.051 2.278 L -1.051 18.224 L 0 18.224 L 1.051 18.224 L 1.051 2.278 L 0 2.278 Z M 0 18.224 L -1.051 18.224 C -1.051 20.063 0.439 21.553 2.278 21.553 L 2.278 20.502 L 2.278 19.451 C 1.601 19.451 1.051 18.901 1.051 18.224 L 0 18.224 Z M 2.278 20.502 L 2.278 21.553 L 18.224 21.553 L 18.224 20.502 L 18.224 19.451 L 2.278 19.451 L 2.278 20.502 Z M 18.224 20.502 L 18.224 21.553 C 20.063 21.553 21.553 20.063 21.553 18.224 L 20.502 18.224 L 19.451 18.224 C 19.451 18.901 18.901 19.451 18.224 19.451 L 18.224 20.502 Z M 20.502 18.224 L 21.553 18.224 L 21.553 2.278 L 20.502 2.278 L 19.451 2.278 L 19.451 18.224 L 20.502 18.224 Z M 20.502 2.278 L 21.553 2.278 C 21.553 0.439 20.063 -1.051 18.224 -1.051 L 18.224 0 L 18.224 1.051 C 18.901 1.051 19.451 1.601 19.451 2.278 L 20.502 2.278 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={10.514} height={10.514} viewBox="0 0 10.514 10.514" fill="none" style={{
+                position: "absolute",
+                left: 8.411,
+                top: 8.414,
+                width: 10.514,
+                height: 10.514,
+                color: "rgb(12,12,12)",
+              }}>
+                <path d={"M 0.436 5.784 L 0.619 4.749 L 0.619 4.749 L 0.436 5.784 Z M 0.436 4.73 L 0.619 5.765 L 0.619 5.765 L 0.436 4.73 Z M 4.674 0.603 L 5.702 0.824 L 5.702 0.824 L 4.674 0.603 Z M 4.709 0.44 L 3.681 0.219 L 3.681 0.219 L 4.709 0.44 Z M 5.784 0.435 L 6.809 0.205 L 6.809 0.205 L 5.784 0.435 Z M 5.826 0.625 L 4.8 0.855 L 4.8 0.855 L 5.826 0.625 Z M 10.076 4.727 L 9.892 5.762 L 9.892 5.762 L 10.076 4.727 Z M 10.076 5.787 L 9.892 4.751 L 9.892 4.751 L 10.076 5.787 Z M 5.826 9.889 L 4.8 9.659 L 4.8 9.659 L 5.826 9.889 Z M 5.784 10.078 L 6.809 10.309 L 6.809 10.309 L 5.784 10.078 Z M 4.709 10.074 L 3.681 10.295 L 3.681 10.295 L 4.709 10.074 Z M 4.674 9.911 L 5.702 9.69 L 5.702 9.69 L 4.674 9.911 Z M 0.436 5.784 L 0.619 4.749 C 0.734 4.769 0.858 4.839 0.946 4.954 C 1.025 5.058 1.051 5.167 1.051 5.257 C 1.051 5.346 1.025 5.456 0.946 5.56 C 0.858 5.675 0.734 5.745 0.619 5.765 L 0.436 4.73 L 0.253 3.695 C -1.486 4.002 -1.486 6.512 0.253 6.819 L 0.436 5.784 Z M 0.436 4.73 L 0.619 5.765 C 3.154 5.317 5.157 3.357 5.702 0.824 L 4.674 0.603 L 3.646 0.382 C 3.277 2.096 1.929 3.398 0.253 3.695 L 0.436 4.73 Z M 4.674 0.603 L 5.702 0.824 L 5.737 0.661 L 4.709 0.44 L 3.681 0.219 L 3.646 0.382 L 4.674 0.603 Z M 4.709 0.44 L 5.737 0.661 C 5.626 1.178 4.874 1.183 4.758 0.665 L 5.784 0.435 L 6.809 0.205 C 6.432 -1.479 4.044 -1.466 3.681 0.219 L 4.709 0.44 Z M 5.784 0.435 L 4.758 0.665 L 4.8 0.855 L 5.826 0.625 L 6.852 0.395 L 6.809 0.205 L 5.784 0.435 Z M 5.826 0.625 L 4.8 0.855 C 5.365 3.374 7.366 5.316 9.892 5.762 L 10.076 4.727 L 10.259 3.692 C 8.585 3.396 7.235 2.103 6.852 0.395 L 5.826 0.625 Z M 10.076 4.727 L 9.892 5.762 C 9.779 5.742 9.654 5.673 9.567 5.558 C 9.489 5.455 9.462 5.346 9.462 5.257 C 9.462 5.168 9.489 5.059 9.567 4.956 C 9.654 4.841 9.779 4.772 9.892 4.751 L 10.076 5.787 L 10.259 6.822 C 12.001 6.514 12.001 4 10.259 3.692 L 10.076 4.727 Z M 10.076 5.787 L 9.892 4.751 C 7.366 5.198 5.365 7.14 4.8 9.659 L 5.826 9.889 L 6.852 10.119 C 7.235 8.411 8.585 7.118 10.259 6.822 L 10.076 5.787 Z M 5.826 9.889 L 4.8 9.659 L 4.758 9.848 L 5.784 10.078 L 6.809 10.309 L 6.852 10.119 L 5.826 9.889 Z M 5.784 10.078 L 4.758 9.848 C 4.874 9.331 5.626 9.336 5.737 9.852 L 4.709 10.074 L 3.681 10.295 C 4.044 11.98 6.432 11.992 6.809 10.309 L 5.784 10.078 Z M 4.709 10.074 L 5.737 9.852 L 5.702 9.69 L 4.674 9.911 L 3.646 10.132 L 3.681 10.295 L 4.709 10.074 Z M 4.674 9.911 L 5.702 9.69 C 5.157 7.157 3.154 5.197 0.619 4.749 L 0.436 5.784 L 0.253 6.819 C 1.929 7.116 3.277 8.418 3.646 10.132 L 4.674 9.911 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 1840,
+        width: 527,
+        height: 457,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 527,
+          height: 457,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 54,
+          top: 21,
+          width: 129,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Budget alerts</span>
+        <div style={{
+          position: "absolute",
+          left: 24,
+          top: 25,
+          width: 21.06,
+          height: 20.25,
+          overflow: "hidden",
+        }}>
+          <svg width={3.240} height={1.620} viewBox="0 -0.810 3.240 1.620" fill="none" style={{
+            position: "absolute",
+            left: 8.91,
+            top: 20.25,
+            width: 3.24,
+            height: 1.6200000047683716,
+            color: "rgb(0,0,0)",
+          }}>
+            <path d={"M 0 -0.81 C -0.447 -0.81 -0.81 -0.447 -0.81 0 C -0.81 0.447 -0.447 0.81 0 0.81 L 0 0 L 0 -0.81 Z M 3.24 0.81 C 3.687 0.81 4.05 0.447 4.05 0 C 4.05 -0.447 3.687 -0.81 3.24 -0.81 L 3.24 0 L 3.24 0.81 Z M 0 0 L 0 0.81 L 3.24 0.81 L 3.24 0 L 3.24 -0.81 L 0 -0.81 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={17.820} height={14.580} viewBox="0 0 17.820 14.580" fill="none" style={{
+            position: "absolute",
+            left: 1.62,
+            top: 1.617,
+            width: 17.82,
+            height: 14.58,
+            color: "rgb(0,0,0)",
+          }}>
+            <path d={"M 13.492 1.898 L 12.919 2.471 L 12.919 2.471 L 13.492 1.898 Z M 4.328 1.898 L 3.755 1.325 L 3.755 1.325 L 4.328 1.898 Z M 0 13.77 C -0.447 13.77 -0.81 14.133 -0.81 14.58 C -0.81 15.027 -0.447 15.39 0 15.39 L 0 14.58 L 0 13.77 Z M 17.82 15.39 C 18.267 15.39 18.63 15.027 18.63 14.58 C 18.63 14.133 18.267 13.77 17.82 13.77 L 17.82 14.58 L 17.82 15.39 Z M 15.39 6.48 L 16.2 6.48 C 16.2 4.547 15.432 2.692 14.065 1.325 L 13.492 1.898 L 12.919 2.471 C 13.983 3.534 14.58 4.976 14.58 6.48 L 15.39 6.48 Z M 13.492 1.898 L 14.065 1.325 C 12.698 -0.042 10.843 -0.81 8.91 -0.81 L 8.91 0 L 8.91 0.81 C 10.414 0.81 11.856 1.407 12.919 2.471 L 13.492 1.898 Z M 8.91 0 L 8.91 -0.81 C 6.977 -0.81 5.122 -0.042 3.755 1.325 L 4.328 1.898 L 4.901 2.471 C 5.964 1.407 7.406 0.81 8.91 0.81 L 8.91 0 Z M 4.328 1.898 L 3.755 1.325 C 2.388 2.692 1.62 4.547 1.62 6.48 L 2.43 6.48 L 3.24 6.48 C 3.24 4.976 3.837 3.534 4.901 2.471 L 4.328 1.898 Z M 2.43 6.48 L 1.62 6.48 L 1.62 12.15 L 2.43 12.15 L 3.24 12.15 L 3.24 6.48 L 2.43 6.48 Z M 2.43 12.15 L 1.62 12.15 C 1.62 12.58 1.449 12.992 1.146 13.296 L 1.718 13.868 L 2.291 14.441 C 2.899 13.833 3.24 13.009 3.24 12.15 L 2.43 12.15 Z M 1.718 13.868 L 1.146 13.296 C 0.842 13.599 0.43 13.77 0 13.77 L 0 14.58 L 0 15.39 C 0.859 15.39 1.683 15.049 2.291 14.441 L 1.718 13.868 Z M 0 14.58 L 0 15.39 L 17.82 15.39 L 17.82 14.58 L 17.82 13.77 L 0 13.77 L 0 14.58 Z M 17.82 14.58 L 17.82 13.77 C 17.39 13.77 16.978 13.599 16.674 13.296 L 16.102 13.868 L 15.529 14.441 C 16.137 15.049 16.961 15.39 17.82 15.39 L 17.82 14.58 Z M 16.102 13.868 L 16.674 13.296 C 16.371 12.992 16.2 12.58 16.2 12.15 L 15.39 12.15 L 14.58 12.15 C 14.58 13.009 14.921 13.833 15.529 14.441 L 16.102 13.868 Z M 15.39 12.15 L 16.2 12.15 L 16.2 6.48 L 15.39 6.48 L 14.58 6.48 L 14.58 12.15 L 15.39 12.15 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.050} height={7.889} viewBox="0 0 4.050 7.889" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 4.05,
+            height: 7.889,
+            color: "rgb(0,0,0)",
+          }}>
+            <path d={"M -0.81 7.889 C -0.81 8.336 -0.448 8.699 0 8.699 C 0.447 8.7 0.81 8.337 0.81 7.89 L 0 7.889 L -0.81 7.889 Z M 1.073 3.456 L 1.793 3.826 L 1.793 3.826 L 1.073 3.456 Z M 4.523 0.658 C 4.886 0.397 4.969 -0.109 4.708 -0.472 C 4.447 -0.836 3.941 -0.919 3.578 -0.658 L 4.05 0 L 4.523 0.658 Z M 0 7.889 L 0.81 7.89 C 0.811 6.476 1.148 5.083 1.793 3.826 L 1.073 3.456 L 0.352 3.086 C -0.411 4.572 -0.809 6.218 -0.81 7.889 L 0 7.889 Z M 1.073 3.456 L 1.793 3.826 C 2.439 2.568 3.374 1.482 4.523 0.658 L 4.05 0 L 3.578 -0.658 C 2.221 0.317 1.115 1.6 0.352 3.086 L 1.073 3.456 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.050} height={7.889} viewBox="0 0 4.050 7.889" fill="none" style={{
+            position: "absolute",
+            left: 17.01,
+            top: 0,
+            width: 4.05,
+            height: 7.889,
+            color: "rgb(0,0,0)",
+          }}>
+            <path d={"M 3.24 7.89 C 3.24 8.337 3.603 8.7 4.05 8.699 C 4.498 8.699 4.86 8.336 4.86 7.889 L 4.05 7.889 L 3.24 7.89 Z M 0.473 -0.658 C 0.109 -0.919 -0.397 -0.836 -0.658 -0.473 C -0.919 -0.109 -0.836 0.397 -0.473 0.658 L 0 0 L 0.473 -0.658 Z M 4.05 7.889 L 4.86 7.889 C 4.859 6.218 4.461 4.572 3.698 3.086 L 2.977 3.456 L 2.257 3.826 C 2.902 5.083 3.239 6.476 3.24 7.89 L 4.05 7.889 Z M 2.977 3.456 L 3.698 3.086 C 2.935 1.6 1.829 0.317 0.473 -0.658 L 0 0 L -0.473 0.658 C 0.676 1.482 1.611 2.568 2.257 3.826 L 2.977 3.456 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 57,
+          width: 411,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Notify workspace admins when thresholds are crossed</span>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 101,
+          width: 481,
+          height: 102,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 481,
+            height: 102,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 21,
+            width: 235,
+            height: 26,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 20,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Notify At 50% of budget</span>
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 53,
+            width: 213,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Half of monthly budget used</span>
+          <div style={{
+            position: "absolute",
+            left: 400,
+            top: 36,
+            width: 57,
+            height: 30.811,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 30.811,
+              borderRadius: 154.05404663085938,
+              backgroundColor: "rgb(62,195,50)",
+              boxShadow: "0 0 0 0.770px rgb(255,255,255)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 29.27,
+              top: 3.078,
+              width: 24.649,
+              height: 24.649,
+              borderRadius: 123.24324798583984,
+              backgroundColor: "rgb(255,255,255)",
+            }} />
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 215,
+          width: 481,
+          height: 102,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 481,
+            height: 102,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 21,
+            width: 235,
+            height: 26,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 20,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Notify At 80% of budget</span>
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 53,
+            width: 185,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Approaching budget cap</span>
+          <div style={{
+            position: "absolute",
+            left: 400,
+            top: 36,
+            width: 57,
+            height: 30.811,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 30.811,
+              borderRadius: 154.05404663085938,
+              backgroundColor: "rgb(62,195,50)",
+              boxShadow: "0 0 0 0.770px rgb(255,255,255)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 29.27,
+              top: 3.078,
+              width: 24.649,
+              height: 24.649,
+              borderRadius: 123.24324798583984,
+              backgroundColor: "rgb(255,255,255)",
+            }} />
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 329,
+          width: 481,
+          height: 102,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 481,
+            height: 102,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 21,
+            width: 244,
+            height: 26,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 20,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Notify At 100% of budget</span>
+          <span style={{
+            position: "absolute",
+            left: 23,
+            top: 53,
+            width: 132,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Budget exceeded</span>
+          <div style={{
+            position: "absolute",
+            left: 400,
+            top: 36,
+            width: 57,
+            height: 30.811,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 30.811,
+              borderRadius: 154.05404663085938,
+              backgroundColor: "rgb(62,195,50)",
+              boxShadow: "0 0 0 0.770px rgb(255,255,255)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 29.27,
+              top: 3.078,
+              width: 24.649,
+              height: 24.649,
+              borderRadius: 123.24324798583984,
+              backgroundColor: "rgb(255,255,255)",
+            }} />
+          </div>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 912,
+        top: 1840,
+        width: 748,
+        height: 457,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 748,
+          height: 457,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 21,
+          width: 205,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Budget alerts History</span>
+        <span style={{
+          position: "absolute",
+          left: 24,
+          top: 57,
+          width: 411,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Notify workspace admins when thresholds are crossed</span>
+        <span style={{
+          position: "absolute",
+          left: 29,
+          top: 407,
+          width: 304,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Alerts notify workspace admins via email</span>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 113,
+          width: 700,
+          height: 78,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 700,
+            height: 78,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "0 0 0 1px rgb(247,160,49)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 15,
+            width: 267,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Transcription at 80% threshold</span>
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 38,
+            width: 432,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Alert triggered Apr 27 · 12,100 of 15,000 credits consumed</span>
+          <div style={{
+            position: "absolute",
+            left: 21,
+            top: 26,
+            width: 27.866,
+            height: 24.516,
+            overflow: "hidden",
+          }}>
+            <svg width={27.866} height={24.516} viewBox="0 0 27.866 24.516" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 27.866,
+              height: 24.516,
+              color: "rgb(247,160,49)",
+            }}>
+              <path d={"M 12.011 1.104 L 11.05 0.543 L 11.05 0.543 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 L -0.655 20.608 L 0.307 21.169 Z M 27.56 21.169 L 28.521 20.608 L 28.521 20.608 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 L 16.817 0.543 L 15.856 1.104 Z M 12.011 1.104 L 11.05 0.543 L -0.655 20.608 L 0.307 21.169 L 1.268 21.729 L 12.972 1.665 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 C -1.953 22.833 -0.348 25.628 2.229 25.628 L 2.229 24.516 L 2.229 23.403 C 1.37 23.403 0.835 22.471 1.268 21.729 L 0.307 21.169 Z M 2.229 24.516 L 2.229 25.628 L 25.638 25.628 L 25.638 24.516 L 25.638 23.403 L 2.229 23.403 L 2.229 24.516 Z M 25.638 24.516 L 25.638 25.628 C 28.214 25.628 29.819 22.833 28.521 20.608 L 27.56 21.169 L 26.599 21.729 C 27.031 22.471 26.496 23.403 25.638 23.403 L 25.638 24.516 Z M 27.56 21.169 L 28.521 20.608 L 16.817 0.543 L 15.856 1.104 L 14.894 1.665 L 26.599 21.729 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 C 15.529 -1.665 12.338 -1.665 11.05 0.543 L 12.011 1.104 L 12.972 1.665 C 13.401 0.929 14.465 0.929 14.894 1.665 L 15.856 1.104 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={2.226} height={7.233} viewBox="-1.113 0 2.226 7.233" fill="none" style={{
+              position: "absolute",
+              left: 13.934,
+              top: 7.828,
+              width: 2.2255845069885254,
+              height: 7.233,
+              color: "rgb(247,160,49)",
+            }}>
+              <path d={"M 1.113 0 C 1.113 -0.615 0.615 -1.113 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 L 0 0 L 1.113 0 Z M -1.113 7.233 C -1.113 7.848 -0.615 8.346 0 8.346 C 0.615 8.346 1.113 7.848 1.113 7.233 L 0 7.233 L -1.113 7.233 Z M 0 0 L -1.113 0 L -1.113 7.233 L 0 7.233 L 1.113 7.233 L 1.113 0 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <div style={{
+              position: "absolute",
+              left: 13.377,
+              top: 18.953,
+              width: 1.113,
+              height: 1.113,
+              overflow: "hidden",
+            }}>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(247,160,49)",
+              }}>
+                <path d={"M 0.556 2.226 C 1.171 2.226 1.669 1.727 1.669 1.113 C 1.669 0.498 1.171 0 0.556 0 L 0.556 1.113 L 0.556 2.226 Z M 0.556 1.113 C 1.171 1.113 1.669 0.615 1.669 0 C 1.669 -0.615 1.171 -1.113 0.556 -1.113 L 0.556 0 L 0.556 1.113 Z M 0.556 1.113 L 0.556 0 C 0.864 0 1.113 0.249 1.113 0.556 L 0 0.556 L -1.113 0.556 C -1.113 1.478 -0.365 2.226 0.556 2.226 L 0.556 1.113 Z M 0 0.556 L 1.113 0.556 C 1.113 0.864 0.864 1.113 0.556 1.113 L 0.556 0 L 0.556 -1.113 C -0.365 -1.113 -1.113 -0.366 -1.113 0.556 L 0 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0.557,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(247,160,49)",
+              }}>
+                <path d={"M 0 0 C -0.615 0 -1.113 0.498 -1.113 1.113 C -1.113 1.727 -0.615 2.226 0 2.226 L 0 1.113 L 0 0 Z M 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 C -1.113 0.615 -0.615 1.113 0 1.113 L 0 0 L 0 -1.113 Z M 0 1.113 L 0 2.226 C 0.922 2.226 1.669 1.478 1.669 0.556 L 0.556 0.556 L -0.556 0.556 C -0.556 0.249 -0.307 0 0 0 L 0 1.113 Z M 0.556 0.556 L 1.669 0.556 C 1.669 -0.366 0.922 -1.113 0 -1.113 L 0 0 L 0 1.113 C -0.307 1.113 -0.556 0.864 -0.556 0.556 L 0.556 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 203,
+          width: 700,
+          height: 78,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 700,
+            height: 78,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "inset 0 0 0 1px rgb(243,37,37)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 15,
+            width: 205,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Stock credits exceeded</span>
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 38,
+            width: 408,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Alert triggered Apr 26 · Usage paused at 5,000 credits</span>
+          <div style={{
+            position: "absolute",
+            left: 21,
+            top: 26,
+            width: 27.866,
+            height: 24.516,
+            overflow: "hidden",
+          }}>
+            <svg width={27.866} height={24.516} viewBox="0 0 27.866 24.516" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 27.866,
+              height: 24.516,
+              color: "rgb(243,37,37)",
+            }}>
+              <path d={"M 12.011 1.104 L 11.05 0.543 L 11.05 0.543 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 L -0.655 20.608 L 0.307 21.169 Z M 27.56 21.169 L 28.521 20.608 L 28.521 20.608 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 L 16.817 0.543 L 15.856 1.104 Z M 12.011 1.104 L 11.05 0.543 L -0.655 20.608 L 0.307 21.169 L 1.268 21.729 L 12.972 1.665 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 C -1.953 22.833 -0.348 25.628 2.229 25.628 L 2.229 24.516 L 2.229 23.403 C 1.37 23.403 0.835 22.471 1.268 21.729 L 0.307 21.169 Z M 2.229 24.516 L 2.229 25.628 L 25.638 25.628 L 25.638 24.516 L 25.638 23.403 L 2.229 23.403 L 2.229 24.516 Z M 25.638 24.516 L 25.638 25.628 C 28.214 25.628 29.819 22.833 28.521 20.608 L 27.56 21.169 L 26.599 21.729 C 27.031 22.471 26.496 23.403 25.638 23.403 L 25.638 24.516 Z M 27.56 21.169 L 28.521 20.608 L 16.817 0.543 L 15.856 1.104 L 14.894 1.665 L 26.599 21.729 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 C 15.529 -1.665 12.338 -1.665 11.05 0.543 L 12.011 1.104 L 12.972 1.665 C 13.401 0.929 14.465 0.929 14.894 1.665 L 15.856 1.104 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={2.226} height={7.233} viewBox="-1.113 0 2.226 7.233" fill="none" style={{
+              position: "absolute",
+              left: 13.934,
+              top: 7.828,
+              width: 2.2255845069885254,
+              height: 7.233,
+              color: "rgb(243,37,37)",
+            }}>
+              <path d={"M 1.113 0 C 1.113 -0.615 0.615 -1.113 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 L 0 0 L 1.113 0 Z M -1.113 7.233 C -1.113 7.848 -0.615 8.346 0 8.346 C 0.615 8.346 1.113 7.848 1.113 7.233 L 0 7.233 L -1.113 7.233 Z M 0 0 L -1.113 0 L -1.113 7.233 L 0 7.233 L 1.113 7.233 L 1.113 0 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <div style={{
+              position: "absolute",
+              left: 13.377,
+              top: 18.953,
+              width: 1.113,
+              height: 1.113,
+              overflow: "hidden",
+            }}>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(243,37,37)",
+              }}>
+                <path d={"M 0.556 2.226 C 1.171 2.226 1.669 1.727 1.669 1.113 C 1.669 0.498 1.171 0 0.556 0 L 0.556 1.113 L 0.556 2.226 Z M 0.556 1.113 C 1.171 1.113 1.669 0.615 1.669 0 C 1.669 -0.615 1.171 -1.113 0.556 -1.113 L 0.556 0 L 0.556 1.113 Z M 0.556 1.113 L 0.556 0 C 0.864 0 1.113 0.249 1.113 0.556 L 0 0.556 L -1.113 0.556 C -1.113 1.478 -0.365 2.226 0.556 2.226 L 0.556 1.113 Z M 0 0.556 L 1.113 0.556 C 1.113 0.864 0.864 1.113 0.556 1.113 L 0.556 0 L 0.556 -1.113 C -0.365 -1.113 -1.113 -0.366 -1.113 0.556 L 0 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0.557,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(243,37,37)",
+              }}>
+                <path d={"M 0 0 C -0.615 0 -1.113 0.498 -1.113 1.113 C -1.113 1.727 -0.615 2.226 0 2.226 L 0 1.113 L 0 0 Z M 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 C -1.113 0.615 -0.615 1.113 0 1.113 L 0 0 L 0 -1.113 Z M 0 1.113 L 0 2.226 C 0.922 2.226 1.669 1.478 1.669 0.556 L 0.556 0.556 L -0.556 0.556 C -0.556 0.249 -0.307 0 0 0 L 0 1.113 Z M 0.556 0.556 L 1.669 0.556 C 1.669 -0.366 0.922 -1.113 0 -1.113 L 0 0 L 0 1.113 C -0.307 1.113 -0.556 0.864 -0.556 0.556 L 0.556 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 23,
+          top: 293,
+          width: 700,
+          height: 78,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 700,
+            height: 78,
+            borderRadius: 15.67835521697998,
+            backgroundColor: "rgb(255,255,255)",
+            boxShadow: "inset 0 0 0 1px rgb(16,90,218)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 15,
+            width: 261,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>75% overall threshold reached</span>
+          <span style={{
+            position: "absolute",
+            left: 66,
+            top: 38,
+            width: 445,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Alert triggered Apr 25 · 37,500 of 50,000 credits consumed</span>
+          <div style={{
+            position: "absolute",
+            left: 21,
+            top: 26,
+            width: 27.866,
+            height: 24.516,
+            overflow: "hidden",
+          }}>
+            <svg width={27.866} height={24.516} viewBox="0 0 27.866 24.516" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 27.866,
+              height: 24.516,
+              color: "rgb(16,90,218)",
+            }}>
+              <path d={"M 12.011 1.104 L 11.05 0.543 L 11.05 0.543 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 L -0.655 20.608 L 0.307 21.169 Z M 27.56 21.169 L 28.521 20.608 L 28.521 20.608 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 L 16.817 0.543 L 15.856 1.104 Z M 12.011 1.104 L 11.05 0.543 L -0.655 20.608 L 0.307 21.169 L 1.268 21.729 L 12.972 1.665 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 C -1.953 22.833 -0.348 25.628 2.229 25.628 L 2.229 24.516 L 2.229 23.403 C 1.37 23.403 0.835 22.471 1.268 21.729 L 0.307 21.169 Z M 2.229 24.516 L 2.229 25.628 L 25.638 25.628 L 25.638 24.516 L 25.638 23.403 L 2.229 23.403 L 2.229 24.516 Z M 25.638 24.516 L 25.638 25.628 C 28.214 25.628 29.819 22.833 28.521 20.608 L 27.56 21.169 L 26.599 21.729 C 27.031 22.471 26.496 23.403 25.638 23.403 L 25.638 24.516 Z M 27.56 21.169 L 28.521 20.608 L 16.817 0.543 L 15.856 1.104 L 14.894 1.665 L 26.599 21.729 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 C 15.529 -1.665 12.338 -1.665 11.05 0.543 L 12.011 1.104 L 12.972 1.665 C 13.401 0.929 14.465 0.929 14.894 1.665 L 15.856 1.104 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={2.226} height={7.233} viewBox="-1.113 0 2.226 7.233" fill="none" style={{
+              position: "absolute",
+              left: 13.934,
+              top: 7.828,
+              width: 2.2255845069885254,
+              height: 7.233,
+              color: "rgb(16,90,218)",
+            }}>
+              <path d={"M 1.113 0 C 1.113 -0.615 0.615 -1.113 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 L 0 0 L 1.113 0 Z M -1.113 7.233 C -1.113 7.848 -0.615 8.346 0 8.346 C 0.615 8.346 1.113 7.848 1.113 7.233 L 0 7.233 L -1.113 7.233 Z M 0 0 L -1.113 0 L -1.113 7.233 L 0 7.233 L 1.113 7.233 L 1.113 0 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <div style={{
+              position: "absolute",
+              left: 13.377,
+              top: 18.953,
+              width: 1.113,
+              height: 1.113,
+              overflow: "hidden",
+            }}>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(16,90,218)",
+              }}>
+                <path d={"M 0.556 2.226 C 1.171 2.226 1.669 1.727 1.669 1.113 C 1.669 0.498 1.171 0 0.556 0 L 0.556 1.113 L 0.556 2.226 Z M 0.556 1.113 C 1.171 1.113 1.669 0.615 1.669 0 C 1.669 -0.615 1.171 -1.113 0.556 -1.113 L 0.556 0 L 0.556 1.113 Z M 0.556 1.113 L 0.556 0 C 0.864 0 1.113 0.249 1.113 0.556 L 0 0.556 L -1.113 0.556 C -1.113 1.478 -0.365 2.226 0.556 2.226 L 0.556 1.113 Z M 0 0.556 L 1.113 0.556 C 1.113 0.864 0.864 1.113 0.556 1.113 L 0.556 0 L 0.556 -1.113 C -0.365 -1.113 -1.113 -0.366 -1.113 0.556 L 0 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+              <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+                position: "absolute",
+                left: 0.557,
+                top: 0,
+                width: 0.556,
+                height: 1.113,
+                color: "rgb(16,90,218)",
+              }}>
+                <path d={"M 0 0 C -0.615 0 -1.113 0.498 -1.113 1.113 C -1.113 1.727 -0.615 2.226 0 2.226 L 0 1.113 L 0 0 Z M 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 C -1.113 0.615 -0.615 1.113 0 1.113 L 0 0 L 0 -1.113 Z M 0 1.113 L 0 2.226 C 0.922 2.226 1.669 1.478 1.669 0.556 L 0.556 0.556 L -0.556 0.556 C -0.556 0.249 -0.307 0 0 0 L 0 1.113 Z M 0.556 0.556 L 1.669 0.556 C 1.669 -0.366 0.922 -1.113 0 -1.113 L 0 0 L 0 1.113 C -0.307 1.113 -0.556 0.864 -0.556 0.556 L 0.556 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1063,
+        top: 507,
+        width: 596,
+        height: 321,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 596,
+          height: 321,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 541,
+          top: 21,
+          width: 27.866,
+          height: 24.516,
+          overflow: "hidden",
+        }}>
+          <svg width={27.866} height={24.516} viewBox="0 0 27.866 24.516" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 27.866,
+            height: 24.516,
+            color: "rgb(243,85,37)",
+          }}>
+            <path d={"M 12.011 1.104 L 11.05 0.543 L 11.05 0.543 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 L -0.655 20.608 L 0.307 21.169 Z M 27.56 21.169 L 28.521 20.608 L 28.521 20.608 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 L 16.817 0.543 L 15.856 1.104 Z M 12.011 1.104 L 11.05 0.543 L -0.655 20.608 L 0.307 21.169 L 1.268 21.729 L 12.972 1.665 L 12.011 1.104 Z M 0.307 21.169 L -0.655 20.608 C -1.953 22.833 -0.348 25.628 2.229 25.628 L 2.229 24.516 L 2.229 23.403 C 1.37 23.403 0.835 22.471 1.268 21.729 L 0.307 21.169 Z M 2.229 24.516 L 2.229 25.628 L 25.638 25.628 L 25.638 24.516 L 25.638 23.403 L 2.229 23.403 L 2.229 24.516 Z M 25.638 24.516 L 25.638 25.628 C 28.214 25.628 29.819 22.833 28.521 20.608 L 27.56 21.169 L 26.599 21.729 C 27.031 22.471 26.496 23.403 25.638 23.403 L 25.638 24.516 Z M 27.56 21.169 L 28.521 20.608 L 16.817 0.543 L 15.856 1.104 L 14.894 1.665 L 26.599 21.729 L 27.56 21.169 Z M 15.856 1.104 L 16.817 0.543 C 15.529 -1.665 12.338 -1.665 11.05 0.543 L 12.011 1.104 L 12.972 1.665 C 13.401 0.929 14.465 0.929 14.894 1.665 L 15.856 1.104 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={2.226} height={7.233} viewBox="-1.113 0 2.226 7.233" fill="none" style={{
+            position: "absolute",
+            left: 13.934,
+            top: 7.828,
+            width: 2.2255845069885254,
+            height: 7.233,
+            color: "rgb(255,180,83)",
+          }}>
+            <path d={"M 1.113 0 C 1.113 -0.615 0.615 -1.113 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 L 0 0 L 1.113 0 Z M -1.113 7.233 C -1.113 7.848 -0.615 8.346 0 8.346 C 0.615 8.346 1.113 7.848 1.113 7.233 L 0 7.233 L -1.113 7.233 Z M 0 0 L -1.113 0 L -1.113 7.233 L 0 7.233 L 1.113 7.233 L 1.113 0 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 13.377,
+            top: 18.953,
+            width: 1.113,
+            height: 1.113,
+            overflow: "hidden",
+          }}>
+            <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 0.556,
+              height: 1.113,
+              color: "rgb(255,180,83)",
+            }}>
+              <path d={"M 0.556 2.226 C 1.171 2.226 1.669 1.727 1.669 1.113 C 1.669 0.498 1.171 0 0.556 0 L 0.556 1.113 L 0.556 2.226 Z M 0.556 1.113 C 1.171 1.113 1.669 0.615 1.669 0 C 1.669 -0.615 1.171 -1.113 0.556 -1.113 L 0.556 0 L 0.556 1.113 Z M 0.556 1.113 L 0.556 0 C 0.864 0 1.113 0.249 1.113 0.556 L 0 0.556 L -1.113 0.556 C -1.113 1.478 -0.365 2.226 0.556 2.226 L 0.556 1.113 Z M 0 0.556 L 1.113 0.556 C 1.113 0.864 0.864 1.113 0.556 1.113 L 0.556 0 L 0.556 -1.113 C -0.365 -1.113 -1.113 -0.366 -1.113 0.556 L 0 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={0.556} height={1.113} viewBox="0 0 0.556 1.113" fill="none" style={{
+              position: "absolute",
+              left: 0.557,
+              top: 0,
+              width: 0.556,
+              height: 1.113,
+              color: "rgb(255,180,83)",
+            }}>
+              <path d={"M 0 0 C -0.615 0 -1.113 0.498 -1.113 1.113 C -1.113 1.727 -0.615 2.226 0 2.226 L 0 1.113 L 0 0 Z M 0 -1.113 C -0.615 -1.113 -1.113 -0.615 -1.113 0 C -1.113 0.615 -0.615 1.113 0 1.113 L 0 0 L 0 -1.113 Z M 0 1.113 L 0 2.226 C 0.922 2.226 1.669 1.478 1.669 0.556 L 0.556 0.556 L -0.556 0.556 C -0.556 0.249 -0.307 0 0 0 L 0 1.113 Z M 0.556 0.556 L 1.669 0.556 C 1.669 -0.366 0.922 -1.113 0 -1.113 L 0 0 L 0 1.113 C -0.307 1.113 -0.556 0.864 -0.556 0.556 L 0.556 0.556 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 27,
+          top: 251,
+          width: 540,
+          height: 50,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,540,0)",
+            transformOrigin: "0 0",
+            width: 540,
+            height: 50,
+            borderRadius: 10.828302383422852,
+            backgroundColor: "rgba(131,131,131,0.2)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 187.563,
+            top: 13,
+            width: 182,
+            height: 22,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 17.643409729003906,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Request More Credits</span>
+          <svg width={12.500} height={12.911} viewBox="0 0 12.500 12.911" fill="none" style={{
+            position: "absolute",
+            left: 167,
+            top: 17.281,
+            width: 12.5,
+            height: 12.911,
+            color: "rgb(12,12,12)",
+          }}>
+            <path d={"M 4.747 12.911 L 4.747 7.943 L 0 7.943 L 0 4.968 L 4.747 4.968 L 4.747 0 L 7.722 0 L 7.722 4.968 L 12.5 4.968 L 12.5 7.943 L 7.722 7.943 L 7.722 12.911 L 4.747 12.911 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 27,
+          top: 41,
+          width: 160,
+          height: 63,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 49.230770111083984,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>27,400</span>
+        <span style={{
+          position: "absolute",
+          left: 28,
+          top: 140,
+          width: 133,
+          height: 93,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          lineHeight: 1.9500000476837158,
+          color: "rgb(131,131,131)",
+          whiteSpace: "pre-wrap",
+        }}>{"Daily avg\nTop contributor\nOrg pool available"}</span>
+        <span style={{
+          position: "absolute",
+          left: 28,
+          top: 104,
+          width: 319,
+          height: 19,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.2000000476837158,
+          color: "rgb(243,85,37)",
+        }}>Forecast exceeds budget by 2,400 credits</span>
+        <span style={{
+          position: "absolute",
+          left: 465,
+          top: 140,
+          width: 102,
+          height: 93,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          textAlign: "right",
+          lineHeight: 1.9500000476837158,
+          color: "rgb(131,131,131)",
+          whiteSpace: "pre-wrap",
+        }}>{"528 credits\nMaya O. · 31%\n142,300"}</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 912,
+        top: 1340,
+        width: 748,
+        height: 475,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 748,
+          height: 475,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <svg width={748} height={1} viewBox="0 -0.500 748 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 162,
+          width: 748,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 748 0.5 C 748.276 0.5 748.5 0.276 748.5 0 C 748.5 -0.276 748.276 -0.5 748 -0.5 L 748 0 L 748 0.5 Z M 0 0 L 0 0.5 L 748 0.5 L 748 0 L 748 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={748} height={1} viewBox="0 -0.500 748 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 240.234,
+          width: 748,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 748 0.5 C 748.276 0.5 748.5 0.276 748.5 0 C 748.5 -0.276 748.276 -0.5 748 -0.5 L 748 0 L 748 0.5 Z M 0 0 L 0 0.5 L 748 0.5 L 748 0 L 748 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={748} height={1} viewBox="0 -0.500 748 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 318.469,
+          width: 748,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 748 0.5 C 748.276 0.5 748.5 0.276 748.5 0 C 748.5 -0.276 748.276 -0.5 748 -0.5 L 748 0 L 748 0.5 Z M 0 0 L 0 0.5 L 748 0.5 L 748 0 L 748 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={748} height={1} viewBox="0 -0.500 748 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 396.703,
+          width: 748,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 748 0.5 C 748.276 0.5 748.5 0.276 748.5 0 C 748.5 -0.276 748.276 -0.5 748 -0.5 L 748 0 L 748 0.5 Z M 0 0 L 0 0.5 L 748 0.5 L 748 0 L 748 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={748} height={1} viewBox="0 -0.500 748 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 84,
+          width: 748,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 748 0.5 C 748.276 0.5 748.5 0.276 748.5 0 C 748.5 -0.276 748.276 -0.5 748 -0.5 L 748 0 L 748 0.5 Z M 0 0 L 0 0.5 L 748 0.5 L 748 0 L 748 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <div style={{
+          position: "absolute",
+          left: 21,
+          top: 92.766,
+          width: 708,
+          height: 60.234,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 5.234,
+            width: 266,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Q3 product launch · master cut</span>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 31.234,
+            width: 252,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Render  ·  Maya O.  ·      12 min ago</span>
+          <span style={{
+            position: "absolute",
+            left: 648,
+            top: 15.234,
+            width: 60,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>−480 cr</span>
+          <svg width={15} height={15} viewBox="0 0 15 15" fill="none" style={{
+            position: "absolute",
+            left: 225,
+            top: 37.734,
+            width: 15,
+            height: 15,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.438 15 C 5.368 15 3.611 14.267 2.167 12.802 C 0.722 11.337 0 9.563 0 7.479 L 1.25 7.479 C 1.25 9.215 1.847 10.694 3.042 11.917 C 4.236 13.139 5.701 13.75 7.438 13.75 C 9.201 13.75 10.694 13.132 11.917 11.896 C 13.139 10.66 13.75 9.16 13.75 7.396 C 13.75 5.674 13.132 4.219 11.896 3.031 C 10.66 1.844 9.174 1.25 7.438 1.25 C 6.493 1.25 5.608 1.465 4.781 1.896 C 3.955 2.326 3.236 2.896 2.625 3.604 L 4.812 3.604 L 4.812 4.854 L 0.458 4.854 L 0.458 0.521 L 1.708 0.521 L 1.708 2.729 C 2.431 1.882 3.288 1.215 4.281 0.729 C 5.274 0.243 6.326 0 7.438 0 C 8.479 0 9.458 0.194 10.375 0.583 C 11.292 0.972 12.094 1.503 12.781 2.177 C 13.469 2.851 14.01 3.639 14.406 4.542 C 14.802 5.444 15 6.417 15 7.458 C 15 8.5 14.802 9.479 14.406 10.396 C 14.01 11.313 13.469 12.111 12.781 12.792 C 12.094 13.472 11.292 14.01 10.375 14.406 C 9.458 14.802 8.479 15 7.438 15 Z M 10.104 10.896 L 6.896 7.729 L 6.896 3.271 L 8.146 3.271 L 8.146 7.208 L 11 10 L 10.104 10.896 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 57,
+            height: 57,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 57,
+              borderRadius: 13.37149715423584,
+              backgroundColor: "rgba(131,131,131,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 13.021,
+              top: 14.102,
+              width: 30,
+              height: 28,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 21.702980041503906,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(131,131,131)",
+            }}>Q3</span>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 21,
+          top: 171,
+          width: 707,
+          height: 60.234,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 5.234,
+            width: 284,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Interview — Founder series ep.07</span>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 31.234,
+            width: 305,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Transcription  ·  Devon K.  ·      47 min ago</span>
+          <span style={{
+            position: "absolute",
+            left: 648,
+            top: 15.234,
+            width: 59,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>−320 cr</span>
+          <svg width={15} height={15} viewBox="0 0 15 15" fill="none" style={{
+            position: "absolute",
+            left: 275,
+            top: 37.734,
+            width: 15,
+            height: 15,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.438 15 C 5.368 15 3.611 14.267 2.167 12.802 C 0.722 11.337 0 9.563 0 7.479 L 1.25 7.479 C 1.25 9.215 1.847 10.694 3.042 11.917 C 4.236 13.139 5.701 13.75 7.438 13.75 C 9.201 13.75 10.694 13.132 11.917 11.896 C 13.139 10.66 13.75 9.16 13.75 7.396 C 13.75 5.674 13.132 4.219 11.896 3.031 C 10.66 1.844 9.174 1.25 7.438 1.25 C 6.493 1.25 5.608 1.465 4.781 1.896 C 3.955 2.326 3.236 2.896 2.625 3.604 L 4.812 3.604 L 4.812 4.854 L 0.458 4.854 L 0.458 0.521 L 1.708 0.521 L 1.708 2.729 C 2.431 1.882 3.288 1.215 4.281 0.729 C 5.274 0.243 6.326 0 7.438 0 C 8.479 0 9.458 0.194 10.375 0.583 C 11.292 0.972 12.094 1.503 12.781 2.177 C 13.469 2.851 14.01 3.639 14.406 4.542 C 14.802 5.444 15 6.417 15 7.458 C 15 8.5 14.802 9.479 14.406 10.396 C 14.01 11.313 13.469 12.111 12.781 12.792 C 12.094 13.472 11.292 14.01 10.375 14.406 C 9.458 14.802 8.479 15 7.438 15 Z M 10.104 10.896 L 6.896 7.729 L 6.896 3.271 L 8.146 3.271 L 8.146 7.208 L 11 10 L 10.104 10.896 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 57,
+            height: 57,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 57,
+              borderRadius: 13.37149715423584,
+              backgroundColor: "rgba(131,131,131,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 13.021,
+              top: 14.102,
+              width: 30,
+              height: 28,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 21.702980041503906,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(131,131,131)",
+            }}>Q3</span>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 21,
+          top: 249.234,
+          width: 704,
+          height: 60.234,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 5.234,
+            width: 268,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Hero footage license · 4K aerial</span>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 31.234,
+            width: 253,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Stock  ·  Maya O.  ·       1h 20m ago</span>
+          <span style={{
+            position: "absolute",
+            left: 648,
+            top: 15.234,
+            width: 56,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>−144 cr</span>
+          <svg width={15} height={15} viewBox="0 0 15 15" fill="none" style={{
+            position: "absolute",
+            left: 220,
+            top: 37.734,
+            width: 15,
+            height: 15,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.438 15 C 5.368 15 3.611 14.267 2.167 12.802 C 0.722 11.337 0 9.563 0 7.479 L 1.25 7.479 C 1.25 9.215 1.847 10.694 3.042 11.917 C 4.236 13.139 5.701 13.75 7.438 13.75 C 9.201 13.75 10.694 13.132 11.917 11.896 C 13.139 10.66 13.75 9.16 13.75 7.396 C 13.75 5.674 13.132 4.219 11.896 3.031 C 10.66 1.844 9.174 1.25 7.438 1.25 C 6.493 1.25 5.608 1.465 4.781 1.896 C 3.955 2.326 3.236 2.896 2.625 3.604 L 4.812 3.604 L 4.812 4.854 L 0.458 4.854 L 0.458 0.521 L 1.708 0.521 L 1.708 2.729 C 2.431 1.882 3.288 1.215 4.281 0.729 C 5.274 0.243 6.326 0 7.438 0 C 8.479 0 9.458 0.194 10.375 0.583 C 11.292 0.972 12.094 1.503 12.781 2.177 C 13.469 2.851 14.01 3.639 14.406 4.542 C 14.802 5.444 15 6.417 15 7.458 C 15 8.5 14.802 9.479 14.406 10.396 C 14.01 11.313 13.469 12.111 12.781 12.792 C 12.094 13.472 11.292 14.01 10.375 14.406 C 9.458 14.802 8.479 15 7.438 15 Z M 10.104 10.896 L 6.896 7.729 L 6.896 3.271 L 8.146 3.271 L 8.146 7.208 L 11 10 L 10.104 10.896 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 57,
+            height: 57,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 57,
+              borderRadius: 13.37149715423584,
+              backgroundColor: "rgba(131,131,131,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 13.021,
+              top: 14.102,
+              width: 30,
+              height: 28,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 21.702980041503906,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(131,131,131)",
+            }}>Q3</span>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 21,
+          top: 327.469,
+          width: 703,
+          height: 60.234,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 5.234,
+            width: 199,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Thumbnail variants × 12</span>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 31.234,
+            width: 294,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>AI generation  ·  Sam P.  ·     2h 05m ago</span>
+          <span style={{
+            position: "absolute",
+            left: 648,
+            top: 15.234,
+            width: 55,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>−210 cr</span>
+          <svg width={15} height={15} viewBox="0 0 15 15" fill="none" style={{
+            position: "absolute",
+            left: 256,
+            top: 37.734,
+            width: 15,
+            height: 15,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.438 15 C 5.368 15 3.611 14.267 2.167 12.802 C 0.722 11.337 0 9.563 0 7.479 L 1.25 7.479 C 1.25 9.215 1.847 10.694 3.042 11.917 C 4.236 13.139 5.701 13.75 7.438 13.75 C 9.201 13.75 10.694 13.132 11.917 11.896 C 13.139 10.66 13.75 9.16 13.75 7.396 C 13.75 5.674 13.132 4.219 11.896 3.031 C 10.66 1.844 9.174 1.25 7.438 1.25 C 6.493 1.25 5.608 1.465 4.781 1.896 C 3.955 2.326 3.236 2.896 2.625 3.604 L 4.812 3.604 L 4.812 4.854 L 0.458 4.854 L 0.458 0.521 L 1.708 0.521 L 1.708 2.729 C 2.431 1.882 3.288 1.215 4.281 0.729 C 5.274 0.243 6.326 0 7.438 0 C 8.479 0 9.458 0.194 10.375 0.583 C 11.292 0.972 12.094 1.503 12.781 2.177 C 13.469 2.851 14.01 3.639 14.406 4.542 C 14.802 5.444 15 6.417 15 7.458 C 15 8.5 14.802 9.479 14.406 10.396 C 14.01 11.313 13.469 12.111 12.781 12.792 C 12.094 13.472 11.292 14.01 10.375 14.406 C 9.458 14.802 8.479 15 7.438 15 Z M 10.104 10.896 L 6.896 7.729 L 6.896 3.271 L 8.146 3.271 L 8.146 7.208 L 11 10 L 10.104 10.896 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 57,
+            height: 57,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 57,
+              borderRadius: 13.37149715423584,
+              backgroundColor: "rgba(131,131,131,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 13.021,
+              top: 14.102,
+              width: 30,
+              height: 28,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 21.702980041503906,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(131,131,131)",
+            }}>Q3</span>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 21,
+          top: 405.703,
+          width: 703,
+          height: 60.234,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 5.234,
+            width: 204,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>Webinar replay (47 min)</span>
+          <span style={{
+            position: "absolute",
+            left: 69,
+            top: 31.234,
+            width: 291,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(131,131,131)",
+          }}>Transcription  ·  Devon K.  ·    Yesterday</span>
+          <span style={{
+            position: "absolute",
+            left: 648,
+            top: 15.234,
+            width: 55,
+            height: 29,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: 1.809999942779541,
+            color: "rgb(12,12,12)",
+          }}>−188 cr</span>
+          <svg width={15} height={15} viewBox="0 0 15 15" fill="none" style={{
+            position: "absolute",
+            left: 268,
+            top: 37.734,
+            width: 15,
+            height: 15,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.438 15 C 5.368 15 3.611 14.267 2.167 12.802 C 0.722 11.337 0 9.563 0 7.479 L 1.25 7.479 C 1.25 9.215 1.847 10.694 3.042 11.917 C 4.236 13.139 5.701 13.75 7.438 13.75 C 9.201 13.75 10.694 13.132 11.917 11.896 C 13.139 10.66 13.75 9.16 13.75 7.396 C 13.75 5.674 13.132 4.219 11.896 3.031 C 10.66 1.844 9.174 1.25 7.438 1.25 C 6.493 1.25 5.608 1.465 4.781 1.896 C 3.955 2.326 3.236 2.896 2.625 3.604 L 4.812 3.604 L 4.812 4.854 L 0.458 4.854 L 0.458 0.521 L 1.708 0.521 L 1.708 2.729 C 2.431 1.882 3.288 1.215 4.281 0.729 C 5.274 0.243 6.326 0 7.438 0 C 8.479 0 9.458 0.194 10.375 0.583 C 11.292 0.972 12.094 1.503 12.781 2.177 C 13.469 2.851 14.01 3.639 14.406 4.542 C 14.802 5.444 15 6.417 15 7.458 C 15 8.5 14.802 9.479 14.406 10.396 C 14.01 11.313 13.469 12.111 12.781 12.792 C 12.094 13.472 11.292 14.01 10.375 14.406 C 9.458 14.802 8.479 15 7.438 15 Z M 10.104 10.896 L 6.896 7.729 L 6.896 3.271 L 8.146 3.271 L 8.146 7.208 L 11 10 L 10.104 10.896 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 57,
+            height: 57,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 57,
+              height: 57,
+              borderRadius: 13.37149715423584,
+              backgroundColor: "rgba(131,131,131,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 13.021,
+              top: 14.102,
+              width: 30,
+              height: 28,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 21.702980041503906,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(131,131,131)",
+            }}>Q3</span>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 631.25,
+          top: 17,
+          width: 97.5,
+          height: 39,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,97.500,0)",
+            transformOrigin: "0 0",
+            width: 97.5,
+            height: 39,
+            borderRadius: 9.597813606262207,
+            boxShadow: "inset 0 0 0 0.977px rgba(131,131,131,0.4)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 18.75,
+            top: 10,
+            width: 61,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>View All</span>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 21,
+          top: 14,
+          width: 147,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Recent activity</span>
+        <span style={{
+          position: "absolute",
+          left: 21,
+          top: 40,
+          width: 220,
+          height: 31,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 400,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.9500000476837158,
+          color: "rgb(131,131,131)",
+        }}>Latest credit-consuming jobs</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 368,
+        top: 2318,
+        width: 1292,
+        height: 318,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 1292,
+          height: 318,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <svg width={1292} height={1} viewBox="0 -0.500 1292 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 162,
+          width: 1292,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 1292 0.5 C 1292.276 0.5 1292.5 0.276 1292.5 0 C 1292.5 -0.276 1292.276 -0.5 1292 -0.5 L 1292 0 L 1292 0.5 Z M 0 0 L 0 0.5 L 1292 0.5 L 1292 0 L 1292 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={1292} height={1} viewBox="0 -0.500 1292 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 240,
+          width: 1292,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 1292 0.5 C 1292.276 0.5 1292.5 0.276 1292.5 0 C 1292.5 -0.276 1292.276 -0.5 1292 -0.5 L 1292 0 L 1292 0.5 Z M 0 0 L 0 0.5 L 1292 0.5 L 1292 0 L 1292 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={1292} height={1} viewBox="0 -0.500 1292 1" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 84,
+          width: 1292,
+          height: 1,
+          color: "rgba(131,131,131,0.25)",
+        }}>
+          <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 1292 0.5 C 1292.276 0.5 1292.5 0.276 1292.5 0 C 1292.5 -0.276 1292.276 -0.5 1292 -0.5 L 1292 0 L 1292 0.5 Z M 0 0 L 0 0.5 L 1292 0.5 L 1292 0 L 1292 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <div style={{
+          position: "absolute",
+          left: 26,
+          top: 102,
+          width: 1237,
+          height: 39,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 52,
+            top: 8,
+            width: 196,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>+10,000 render credits</span>
+          <span style={{
+            position: "absolute",
+            left: 552,
+            top: 9,
+            width: 159,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Requested by J. Park </span>
+          <span style={{
+            position: "absolute",
+            left: 858,
+            top: 9,
+            width: 97,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Apr 24, 2026</span>
+          <div style={{
+            position: "absolute",
+            left: 1096,
+            top: 2.836,
+            width: 141,
+            height: 33.327,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(-1,0,0,1,141,0.000)",
+              transformOrigin: "0 0",
+              width: 141,
+              height: 33.327,
+              borderRadius: 8.201767921447754,
+              backgroundColor: "rgba(243,152,36,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 12.818,
+              top: 8.546,
+              width: 114,
+              height: 17,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 13.67272663116455,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(243,152,36)",
+            }}>Pending Approval</span>
+          </div>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 39,
+            height: 39,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 39,
+              height: 39,
+              borderRadius: 9.148918151855469,
+              backgroundColor: "rgba(108,232,255,0.4)",
+            }} />
+            <svg width={19.426} height={13.775} viewBox="0 0 19.426 13.775" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(0.877,-0.480,0.480,0.877,7.345,17.820)",
+              transformOrigin: "0 0",
+              width: 19.426,
+              height: 13.775,
+              color: "rgb(12,12,12)",
+            }}>
+              <path d={"M 16.66 1.38 C 14.855 0.478 12.45 0 9.713 0 C 6.976 0 4.571 0.478 2.766 1.38 C 1.007 2.259 0 3.494 0 4.768 L 0 9.007 C 0 10.281 1.008 11.516 2.766 12.395 C 4.571 13.297 6.976 13.775 9.713 13.775 C 12.45 13.775 14.855 13.297 16.66 12.395 C 18.418 11.516 19.426 10.281 19.426 9.007 L 19.426 4.768 C 19.426 3.494 18.418 2.259 16.66 1.38 Z M 3.239 2.328 C 4.875 1.51 7.174 1.06 9.713 1.06 C 12.252 1.06 14.551 1.51 16.187 2.328 C 17.572 3.021 18.366 3.91 18.366 4.768 C 18.366 5.626 17.572 6.516 16.187 7.208 C 14.551 8.026 12.252 8.477 9.713 8.477 C 7.174 8.477 4.875 8.026 3.239 7.208 C 1.854 6.516 1.06 5.626 1.06 4.768 C 1.06 3.91 1.854 3.021 3.239 2.328 Z M 9.183 9.53 L 9.183 12.709 C 7.484 12.667 5.91 12.419 4.592 11.993 L 4.592 8.867 C 5.94 9.265 7.492 9.491 9.183 9.53 Z M 10.243 9.53 C 11.934 9.491 13.486 9.265 14.834 8.866 L 14.834 11.992 C 13.516 12.419 11.942 12.666 10.243 12.708 L 10.243 9.53 Z M 1.06 9.007 L 1.06 6.976 C 1.564 7.455 2.139 7.853 2.766 8.155 C 3.01 8.277 3.266 8.391 3.532 8.498 L 3.532 11.588 C 3.432 11.543 3.334 11.5 3.239 11.449 C 1.854 10.754 1.06 9.865 1.06 9.007 Z M 16.187 11.446 C 16.092 11.494 15.994 11.54 15.894 11.586 L 15.894 8.495 C 16.159 8.389 16.415 8.275 16.66 8.153 C 17.287 7.851 17.862 7.454 18.366 6.976 L 18.366 9.007 C 18.366 9.865 17.572 10.754 16.187 11.446 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 26,
+          top: 181,
+          width: 1237,
+          height: 39,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 52,
+            top: 8,
+            width: 196,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>+10,000 render credits</span>
+          <span style={{
+            position: "absolute",
+            left: 552,
+            top: 9,
+            width: 159,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Requested by J. Park </span>
+          <span style={{
+            position: "absolute",
+            left: 858,
+            top: 9,
+            width: 97,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Apr 24, 2026</span>
+          <div style={{
+            position: "absolute",
+            left: 1142,
+            top: 3.668,
+            width: 95,
+            height: 31.667,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(-1,0,0,1,95,-0.001)",
+              transformOrigin: "0 0",
+              width: 95,
+              height: 31.667,
+              borderRadius: 7.793096542358398,
+              backgroundColor: "rgba(31,175,19,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 17.863,
+              top: 7.121,
+              width: 60,
+              height: 17,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 12.991453170776367,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(31,175,19)",
+            }}>Approved</span>
+          </div>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 39,
+            height: 39,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 39,
+              height: 39,
+              borderRadius: 9.148918151855469,
+              backgroundColor: "rgba(108,232,255,0.4)",
+            }} />
+            <svg width={19.426} height={13.775} viewBox="0 0 19.426 13.775" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(0.877,-0.480,0.480,0.877,7.345,17.820)",
+              transformOrigin: "0 0",
+              width: 19.426,
+              height: 13.775,
+              color: "rgb(12,12,12)",
+            }}>
+              <path d={"M 16.66 1.38 C 14.855 0.478 12.45 0 9.713 0 C 6.976 0 4.571 0.478 2.766 1.38 C 1.007 2.259 0 3.494 0 4.768 L 0 9.007 C 0 10.281 1.008 11.516 2.766 12.395 C 4.571 13.297 6.976 13.775 9.713 13.775 C 12.45 13.775 14.855 13.297 16.66 12.395 C 18.418 11.516 19.426 10.281 19.426 9.007 L 19.426 4.768 C 19.426 3.494 18.418 2.259 16.66 1.38 Z M 3.239 2.328 C 4.875 1.51 7.174 1.06 9.713 1.06 C 12.252 1.06 14.551 1.51 16.187 2.328 C 17.572 3.021 18.366 3.91 18.366 4.768 C 18.366 5.626 17.572 6.516 16.187 7.208 C 14.551 8.026 12.252 8.477 9.713 8.477 C 7.174 8.477 4.875 8.026 3.239 7.208 C 1.854 6.516 1.06 5.626 1.06 4.768 C 1.06 3.91 1.854 3.021 3.239 2.328 Z M 9.183 9.53 L 9.183 12.709 C 7.484 12.667 5.91 12.419 4.592 11.993 L 4.592 8.867 C 5.94 9.265 7.492 9.491 9.183 9.53 Z M 10.243 9.53 C 11.934 9.491 13.486 9.265 14.834 8.866 L 14.834 11.992 C 13.516 12.419 11.942 12.666 10.243 12.708 L 10.243 9.53 Z M 1.06 9.007 L 1.06 6.976 C 1.564 7.455 2.139 7.853 2.766 8.155 C 3.01 8.277 3.266 8.391 3.532 8.498 L 3.532 11.588 C 3.432 11.543 3.334 11.5 3.239 11.449 C 1.854 10.754 1.06 9.865 1.06 9.007 Z M 16.187 11.446 C 16.092 11.494 15.994 11.54 15.894 11.586 L 15.894 8.495 C 16.159 8.389 16.415 8.275 16.66 8.153 C 17.287 7.851 17.862 7.454 18.366 6.976 L 18.366 9.007 C 18.366 9.865 17.572 10.754 16.187 11.446 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 26,
+          top: 260,
+          width: 1237,
+          height: 39,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 52,
+            top: 8,
+            width: 196,
+            height: 23,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 18,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(12,12,12)",
+          }}>+10,000 render credits</span>
+          <span style={{
+            position: "absolute",
+            left: 552,
+            top: 9,
+            width: 159,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Requested by J. Park </span>
+          <span style={{
+            position: "absolute",
+            left: 858,
+            top: 9,
+            width: 97,
+            height: 20,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 400,
+            fontSize: 16,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Apr 24, 2026</span>
+          <div style={{
+            position: "absolute",
+            left: 1142,
+            top: 3.668,
+            width: 95,
+            height: 31.667,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(-1,0,0,1,95,-0.001)",
+              transformOrigin: "0 0",
+              width: 95,
+              height: 31.667,
+              borderRadius: 7.793096542358398,
+              backgroundColor: "rgba(31,175,19,0.2)",
+            }} />
+            <span style={{
+              position: "absolute",
+              left: 17.863,
+              top: 7.121,
+              width: 60,
+              height: 17,
+              fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+              fontWeight: 500,
+              fontSize: 12.991453170776367,
+              whiteSpace: "nowrap",
+              lineHeight: "100%",
+              color: "rgb(31,175,19)",
+            }}>Approved</span>
+          </div>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 39,
+            height: 39,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 39,
+              height: 39,
+              borderRadius: 9.148918151855469,
+              backgroundColor: "rgba(108,232,255,0.4)",
+            }} />
+            <svg width={19.426} height={13.775} viewBox="0 0 19.426 13.775" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              transform: "matrix(0.877,-0.480,0.480,0.877,7.345,17.820)",
+              transformOrigin: "0 0",
+              width: 19.426,
+              height: 13.775,
+              color: "rgb(12,12,12)",
+            }}>
+              <path d={"M 16.66 1.38 C 14.855 0.478 12.45 0 9.713 0 C 6.976 0 4.571 0.478 2.766 1.38 C 1.007 2.259 0 3.494 0 4.768 L 0 9.007 C 0 10.281 1.008 11.516 2.766 12.395 C 4.571 13.297 6.976 13.775 9.713 13.775 C 12.45 13.775 14.855 13.297 16.66 12.395 C 18.418 11.516 19.426 10.281 19.426 9.007 L 19.426 4.768 C 19.426 3.494 18.418 2.259 16.66 1.38 Z M 3.239 2.328 C 4.875 1.51 7.174 1.06 9.713 1.06 C 12.252 1.06 14.551 1.51 16.187 2.328 C 17.572 3.021 18.366 3.91 18.366 4.768 C 18.366 5.626 17.572 6.516 16.187 7.208 C 14.551 8.026 12.252 8.477 9.713 8.477 C 7.174 8.477 4.875 8.026 3.239 7.208 C 1.854 6.516 1.06 5.626 1.06 4.768 C 1.06 3.91 1.854 3.021 3.239 2.328 Z M 9.183 9.53 L 9.183 12.709 C 7.484 12.667 5.91 12.419 4.592 11.993 L 4.592 8.867 C 5.94 9.265 7.492 9.491 9.183 9.53 Z M 10.243 9.53 C 11.934 9.491 13.486 9.265 14.834 8.866 L 14.834 11.992 C 13.516 12.419 11.942 12.666 10.243 12.708 L 10.243 9.53 Z M 1.06 9.007 L 1.06 6.976 C 1.564 7.455 2.139 7.853 2.766 8.155 C 3.01 8.277 3.266 8.391 3.532 8.498 L 3.532 11.588 C 3.432 11.543 3.334 11.5 3.239 11.449 C 1.854 10.754 1.06 9.865 1.06 9.007 Z M 16.187 11.446 C 16.092 11.494 15.994 11.54 15.894 11.586 L 15.894 8.495 C 16.159 8.389 16.415 8.275 16.66 8.153 C 17.287 7.851 17.862 7.454 18.366 6.976 L 18.366 9.007 C 18.366 9.865 17.572 10.754 16.187 11.446 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 1077,
+          top: 20.626,
+          width: 186,
+          height: 38.75,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            transform: "matrix(-1,0,0,1,186,0.001)",
+            transformOrigin: "0 0",
+            width: 186,
+            height: 38.75,
+            borderRadius: 8.391935348510742,
+            boxShadow: "inset 0 0 0 0.855px rgb(131,131,131)",
+          }} />
+          <span style={{
+            position: "absolute",
+            left: 37.895,
+            top: 9.347,
+            width: 127,
+            height: 21,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16.086637496948242,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Request  Credits</span>
+          <svg width={11.397} height={11.772} viewBox="0 0 11.397 11.772" fill="none" style={{
+            position: "absolute",
+            left: 19.147,
+            top: 13.249,
+            width: 11.397,
+            height: 11.772,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 4.328 11.772 L 4.328 7.242 L 0 7.242 L 0 4.53 L 4.328 4.53 L 4.328 0 L 7.04 0 L 7.04 4.53 L 11.397 4.53 L 11.397 7.242 L 7.04 7.242 L 7.04 11.772 L 4.328 11.772 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 23,
+          top: 28,
+          width: 149,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 20,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Credit requests</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 772,
+        top: 266,
+        width: 284,
+        height: 211,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 284,
+          height: 211,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 23,
+          top: 56,
+          width: 140,
+          height: 63,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 49.230770111083984,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>38.4K</span>
+        <span style={{
+          position: "absolute",
+          left: 23,
+          top: 129,
+          width: 87,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(243,85,37)",
+        }}>76.8% used</span>
+        <span style={{
+          position: "absolute",
+          left: 23,
+          top: 22,
+          width: 81,
+          height: 29,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.809999942779541,
+          color: "rgb(131,131,131)",
+        }}>Consumed</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1074,
+        top: 266,
+        width: 284,
+        height: 211,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 284,
+          height: 211,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 56,
+          width: 128,
+          height: 63,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 49.230770111083984,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>16.6K</span>
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 129,
+          width: 147,
+          height: 20,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>~9 days at cur. rate</span>
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 22,
+          width: 79,
+          height: 29,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.809999942779541,
+          color: "rgb(131,131,131)",
+        }}>Remaining</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1376,
+        top: 263,
+        width: 284,
+        height: 211,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 284,
+          height: 211,
+          borderRadius: 13.364087104797363,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "inset 0 0 0 1px rgba(12,12,12,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 56,
+          width: 126,
+          height: 63,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 700,
+          fontSize: 49.230770111083984,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>1.28K</span>
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 129,
+          width: 131,
+          height: 26,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.6100000143051147,
+          color: "rgb(31,175,19)",
+        }}>+4% vs last cycle</span>
+        <span style={{
+          position: "absolute",
+          left: 26,
+          top: 22,
+          width: 74,
+          height: 29,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 16,
+          whiteSpace: "nowrap",
+          lineHeight: 1.809999942779541,
+          color: "rgb(131,131,131)",
+        }}>Avg / day</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1240,
+        top: 166,
+        width: 165,
+        height: 50,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,165,0)",
+          transformOrigin: "0 0",
+          width: 165,
+          height: 50,
+          borderRadius: 10.828302383422852,
+          backgroundColor: "rgba(131,131,131,0.2)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 47,
+          top: 13,
+          width: 97,
+          height: 22,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 17.643409729003906,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Export CSV</span>
+        <svg width={16} height={18.910} viewBox="0 0 16 18.910" fill="none" style={{
+          position: "absolute",
+          left: 21,
+          top: 15.313,
+          width: 16,
+          height: 18.91,
+          color: "rgb(12,12,12)",
+        }}>
+          <path d={"M 16 8.728 L 16 17.455 C 16 18.258 15.349 18.91 14.545 18.91 L 1.455 18.91 C 0.651 18.91 0 18.258 0 17.455 L 0 8.728 C 0 7.924 0.651 7.273 1.455 7.273 L 3.636 7.273 C 4.196 7.273 4.546 7.879 4.266 8.364 C 4.136 8.589 3.896 8.728 3.636 8.728 L 1.455 8.728 L 1.455 17.455 L 14.545 17.455 L 14.545 8.728 L 12.364 8.728 C 11.804 8.728 11.454 8.122 11.734 7.637 C 11.864 7.412 12.104 7.273 12.364 7.273 L 14.545 7.273 C 15.349 7.273 16 7.924 16 8.728 Z M 4.878 4.879 L 7.273 2.483 L 7.273 10.91 C 7.273 11.47 7.879 11.819 8.364 11.54 C 8.589 11.41 8.727 11.169 8.727 10.91 L 8.727 2.483 L 11.122 4.879 C 11.518 5.275 12.194 5.094 12.339 4.553 C 12.407 4.301 12.335 4.033 12.151 3.85 L 8.515 0.213 C 8.23 -0.071 7.77 -0.071 7.485 0.213 L 3.849 3.85 C 3.453 4.246 3.634 4.922 4.175 5.067 C 4.426 5.134 4.694 5.063 4.878 4.879 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1419,
+        top: 166,
+        width: 240,
+        height: 50,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,240,0)",
+          transformOrigin: "0 0",
+          width: 240,
+          height: 50,
+          borderRadius: 10.828302383422852,
+          boxShadow: "inset 0 0 0 1.103px rgb(131,131,131)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 45.563,
+          top: 13,
+          width: 182,
+          height: 22,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 17.643409729003906,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Request More Credits</span>
+        <span style={{
+          position: "absolute",
+          left: 45.563,
+          top: 13,
+          width: 182,
+          height: 22,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 17.643409729003906,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Request More Credits</span>
+        <svg width={12.500} height={12.911} viewBox="0 0 12.500 12.911" fill="none" style={{
+          position: "absolute",
+          left: 25,
+          top: 17.281,
+          width: 12.5,
+          height: 12.911,
+          color: "rgb(131,131,131)",
+        }}>
+          <path d={"M 4.747 12.911 L 4.747 7.943 L 0 7.943 L 0 4.968 L 4.747 4.968 L 4.747 0 L 7.722 0 L 7.722 4.968 L 12.5 4.968 L 12.5 7.943 L 7.722 7.943 L 7.722 12.911 L 4.747 12.911 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <svg width={12.500} height={12.911} viewBox="0 0 12.500 12.911" fill="none" style={{
+          position: "absolute",
+          left: 25,
+          top: 17.281,
+          width: 12.5,
+          height: 12.911,
+          color: "rgb(131,131,131)",
+        }}>
+          <path d={"M 4.747 12.911 L 4.747 7.943 L 0 7.943 L 0 4.968 L 4.747 4.968 L 4.747 0 L 7.722 0 L 7.722 4.968 L 12.5 4.968 L 12.5 7.943 L 7.722 7.943 L 7.722 12.911 L 4.747 12.911 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+      </div>
+      <svg width={1350} height={1} viewBox="0 -0.500 1350 1" fill="none" style={{
+        position: "absolute",
+        left: 337,
+        top: 241,
+        width: 1350,
+        height: 1,
+        color: "rgba(131,131,131,0.25)",
+      }}>
+        <path d={"M 0 -0.5 C -0.276 -0.5 -0.5 -0.276 -0.5 0 C -0.5 0.276 -0.276 0.5 0 0.5 L 0 0 L 0 -0.5 Z M 1350 0.5 C 1350.276 0.5 1350.5 0.276 1350.5 0 C 1350.5 -0.276 1350.276 -0.5 1350 -0.5 L 1350 0 L 1350 0.5 Z M 0 0 L 0 0.5 L 1350 0.5 L 1350 0 L 1350 -0.5 L 0 -0.5 L 0 0 Z"} fill="currentColor" fillRule="nonzero" />
+      </svg>
+      <span style={{
+        position: "absolute",
+        left: 368,
+        top: 200,
+        width: 446,
+        height: 22,
+        fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        fontWeight: 400,
+        fontSize: 18,
+        whiteSpace: "nowrap",
+        lineHeight: 1.2000000476837158,
+        color: "rgb(131,131,131)",
+      }}>Overview of credits and usage within the workspace.</span>
+      <span style={{
+        position: "absolute",
+        left: 368,
+        top: 167,
+        width: 139,
+        height: 26,
+        fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        fontWeight: 600,
+        fontSize: 20,
+        whiteSpace: "nowrap",
+        lineHeight: "100%",
+        color: "rgb(12,12,12)",
+      }}>Credit &amp;Usage</span>
+      <span style={{
+        position: "absolute",
+        left: 1090,
+        top: 520,
+        width: 207,
+        height: 26,
+        fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        fontWeight: 600,
+        fontSize: 20,
+        whiteSpace: "nowrap",
+        lineHeight: "100%",
+        color: "rgb(12,12,12)",
+      }}>Allocation breakdown</span>
+      <div style={{
+        position: "absolute",
+        left: 41,
+        top: 144,
+        width: 285,
+        height: 420,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 285,
+          height: 420,
+          borderRadius: 15.55555534362793,
+          backgroundColor: "rgb(255,255,255)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,275,298)",
+          transformOrigin: "0 0",
+          width: 266,
+          height: 50,
+          borderRadius: 10,
+          background: "linear-gradient(90deg, rgba(255,255,255,0) 0.00%, rgba(148,238,255,0.4) 67.15%, rgba(108,232,255,0.4) 100.00%)",
+        }} />
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 23,
+          width: 81,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Overview</span>
+        <div style={{
+          position: "absolute",
+          left: 23.114,
+          top: 24,
+          width: 19,
+          height: 19.003,
+          overflow: "hidden",
+        }}>
+          <svg width={19} height={19} viewBox="0 0 19 19" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 19,
+            height: 19,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0.319 14.468 L 1.152 14.379 L 1.152 14.379 L 0.319 14.468 Z M 4.503 18.663 L 4.41 19.496 L 4.41 19.496 L 4.503 18.663 Z M 14.497 18.663 L 14.59 19.496 L 14.59 19.496 L 14.497 18.663 Z M 18.681 14.468 L 17.847 14.379 L 17.847 14.379 L 18.681 14.468 Z M 18.681 4.532 L 17.847 4.621 L 17.847 4.621 L 18.681 4.532 Z M 14.497 0.337 L 14.404 1.17 L 14.404 1.17 L 14.497 0.337 Z M 4.503 0.337 L 4.596 1.17 L 4.596 1.17 L 4.503 0.337 Z M 0.319 4.532 L 1.152 4.621 L 1.152 4.621 L 0.319 4.532 Z M 0.319 14.468 L -0.514 14.557 C -0.238 17.14 1.833 19.209 4.41 19.496 L 4.503 18.663 L 4.596 17.83 C 2.796 17.629 1.345 16.176 1.152 14.379 L 0.319 14.468 Z M 4.503 18.663 L 4.41 19.496 C 6.043 19.678 7.75 19.838 9.5 19.838 L 9.5 19 L 9.5 18.162 C 7.846 18.162 6.215 18.01 4.596 17.83 L 4.503 18.663 Z M 9.5 19 L 9.5 19.838 C 11.25 19.838 12.957 19.678 14.59 19.496 L 14.497 18.663 L 14.404 17.83 C 12.785 18.01 11.154 18.162 9.5 18.162 L 9.5 19 Z M 14.497 18.663 L 14.59 19.496 C 17.167 19.209 19.238 17.14 19.514 14.557 L 18.681 14.468 L 17.847 14.379 C 17.655 16.176 16.204 17.629 14.404 17.83 L 14.497 18.663 Z M 18.681 14.468 L 19.514 14.557 C 19.688 12.933 19.838 11.238 19.838 9.5 L 19 9.5 L 18.162 9.5 C 18.162 11.146 18.02 12.77 17.847 14.379 L 18.681 14.468 Z M 19 9.5 L 19.838 9.5 C 19.838 7.762 19.688 6.067 19.514 4.443 L 18.681 4.532 L 17.847 4.621 C 18.02 6.23 18.162 7.854 18.162 9.5 L 19 9.5 Z M 18.681 4.532 L 19.514 4.443 C 19.238 1.86 17.167 -0.209 14.59 -0.496 L 14.497 0.337 L 14.404 1.17 C 16.204 1.371 17.655 2.824 17.847 4.621 L 18.681 4.532 Z M 14.497 0.337 L 14.59 -0.496 C 12.957 -0.678 11.25 -0.838 9.5 -0.838 L 9.5 0 L 9.5 0.838 C 11.154 0.838 12.785 0.99 14.404 1.17 L 14.497 0.337 Z M 9.5 0 L 9.5 -0.838 C 7.75 -0.838 6.043 -0.678 4.41 -0.496 L 4.503 0.337 L 4.596 1.17 C 6.215 0.99 7.846 0.838 9.5 0.838 L 9.5 0 Z M 4.503 0.337 L 4.41 -0.496 C 1.833 -0.209 -0.238 1.86 -0.514 4.443 L 0.319 4.532 L 1.152 4.621 C 1.345 2.824 2.796 1.371 4.596 1.17 L 4.503 0.337 Z M 0.319 4.532 L -0.514 4.443 C -0.688 6.067 -0.838 7.762 -0.838 9.5 L 0 9.5 L 0.838 9.5 C 0.838 7.854 0.98 6.23 1.152 4.621 L 0.319 4.532 Z M 0 9.5 L -0.838 9.5 C -0.838 11.238 -0.688 12.933 -0.514 14.557 L 0.319 14.468 L 1.152 14.379 C 0.98 12.77 0.838 11.146 0.838 9.5 L 0 9.5 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={18.448} height={4.940} viewBox="0 0 18.448 4.940" fill="none" style={{
+            position: "absolute",
+            left: 0.276,
+            top: 0,
+            width: 18.448,
+            height: 4.94,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 18.448 4.94 L 18.448 5.778 C 18.685 5.778 18.911 5.678 19.07 5.501 C 19.229 5.325 19.306 5.09 19.282 4.854 L 18.448 4.94 Z M 0 4.94 L -0.834 4.854 C -0.858 5.09 -0.781 5.325 -0.622 5.501 C -0.463 5.678 -0.237 5.778 0 5.778 L 0 4.94 Z M 0.043 4.532 L 0.876 4.621 L 0.876 4.621 L 0.043 4.532 Z M 4.227 0.337 L 4.32 1.17 L 4.32 1.17 L 4.227 0.337 Z M 14.221 0.337 L 14.314 -0.496 L 14.314 -0.496 L 14.221 0.337 Z M 18.405 4.532 L 19.239 4.443 L 19.238 4.443 L 18.405 4.532 Z M 18.448 4.94 L 18.448 4.102 L 0 4.102 L 0 4.94 L 0 5.778 L 18.448 5.778 L 18.448 4.94 Z M 0 4.94 L 0.834 5.026 C 0.848 4.891 0.862 4.756 0.876 4.621 L 0.043 4.532 L -0.791 4.443 C -0.805 4.579 -0.82 4.716 -0.834 4.854 L 0 4.94 Z M 0.043 4.532 L 0.876 4.621 C 1.069 2.824 2.52 1.371 4.32 1.17 L 4.227 0.337 L 4.134 -0.496 C 1.557 -0.209 -0.514 1.86 -0.791 4.443 L 0.043 4.532 Z M 4.227 0.337 L 4.32 1.17 C 5.939 0.99 7.57 0.838 9.224 0.838 L 9.224 0 L 9.224 -0.838 C 7.474 -0.838 5.767 -0.678 4.134 -0.496 L 4.227 0.337 Z M 9.224 0 L 9.224 0.838 C 10.878 0.838 12.509 0.99 14.128 1.17 L 14.221 0.337 L 14.314 -0.496 C 12.681 -0.678 10.974 -0.838 9.224 -0.838 L 9.224 0 Z M 14.221 0.337 L 14.128 1.17 C 15.928 1.371 17.379 2.824 17.572 4.621 L 18.405 4.532 L 19.238 4.443 C 18.962 1.86 16.891 -0.209 14.314 -0.496 L 14.221 0.337 Z M 18.405 4.532 L 17.571 4.62 C 17.586 4.756 17.6 4.891 17.614 5.026 L 18.448 4.94 L 19.282 4.854 C 19.267 4.716 19.253 4.58 19.239 4.443 L 18.405 4.532 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={12.473} height={5.347} viewBox="0 0 12.473 5.347" fill="none" style={{
+            position: "absolute",
+            left: 3.262,
+            top: 13.656,
+            width: 12.473,
+            height: 5.347,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 12.473 4.696 L 12.788 5.473 C 13.185 5.312 13.397 4.877 13.278 4.465 L 12.473 4.696 Z M 0 4.696 L -0.806 4.465 C -0.924 4.877 -0.712 5.312 -0.315 5.473 L 0 4.696 Z M 1.24 5.01 L 1.332 4.177 L 1.332 4.177 L 1.24 5.01 Z M 11.233 5.01 L 11.14 4.177 L 11.14 4.177 L 11.233 5.01 Z M 12.473 4.696 L 13.278 4.465 C 12.401 1.403 9.581 -0.838 6.236 -0.838 L 6.236 0 L 6.236 0.838 C 8.814 0.838 10.99 2.565 11.667 4.927 L 12.473 4.696 Z M 6.236 0 L 6.236 -0.838 C 2.891 -0.838 0.072 1.403 -0.806 4.465 L 0 4.696 L 0.806 4.927 C 1.483 2.565 3.659 0.838 6.236 0.838 L 6.236 0 Z M 0 4.696 L -0.315 5.473 C 0.146 5.659 0.636 5.786 1.147 5.843 L 1.24 5.01 L 1.332 4.177 C 0.978 4.137 0.636 4.049 0.315 3.919 L 0 4.696 Z M 1.24 5.01 L 1.147 5.843 C 2.78 6.025 4.486 6.185 6.236 6.185 L 6.236 5.347 L 6.236 4.508 C 4.583 4.508 2.951 4.357 1.332 4.177 L 1.24 5.01 Z M 6.236 5.347 L 6.236 6.185 C 7.986 6.185 9.693 6.025 11.326 5.843 L 11.233 5.01 L 11.14 4.177 C 9.522 4.357 7.89 4.508 6.236 4.508 L 6.236 5.347 Z M 11.233 5.01 L 11.326 5.843 C 11.837 5.786 12.327 5.659 12.788 5.473 L 12.473 4.696 L 12.158 3.919 C 11.837 4.049 11.495 4.137 11.14 4.177 L 11.233 5.01 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={2.691} height={4.737} viewBox="0 0 2.691 4.737" fill="none" style={{
+            position: "absolute",
+            left: 10.758,
+            top: 9.04,
+            width: 2.691,
+            height: 4.737,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M -0.729 4.323 C -0.958 4.725 -0.817 5.237 -0.414 5.465 C -0.012 5.694 0.5 5.553 0.729 5.151 L 0 4.737 L -0.729 4.323 Z M 3.42 0.414 C 3.649 0.012 3.508 -0.5 3.105 -0.729 C 2.703 -0.958 2.191 -0.817 1.962 -0.414 L 2.691 0 L 3.42 0.414 Z M 0 4.737 L 0.729 5.151 L 3.42 0.414 L 2.691 0 L 1.962 -0.414 L -0.729 4.323 L 0 4.737 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 81,
+          width: 86,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Brand kits</span>
+        <div style={{
+          position: "absolute",
+          left: 23.114,
+          top: 81.809,
+          width: 19,
+          height: 19.384,
+          overflow: "hidden",
+        }}>
+          <svg width={2.982} height={2.982} viewBox="0 0 2.982 2.982" fill="none" style={{
+            position: "absolute",
+            left: 10.239,
+            top: 3.724,
+            width: 2.982,
+            height: 2.982,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 1.491 2.982 L 1.491 3.728 C 2.726 3.728 3.728 2.726 3.728 1.491 L 2.982 1.491 L 2.237 1.491 C 2.237 1.903 1.903 2.237 1.491 2.237 L 1.491 2.982 Z M 2.982 1.491 L 3.728 1.491 C 3.728 0.256 2.726 -0.746 1.491 -0.746 L 1.491 0 L 1.491 0.746 C 1.903 0.746 2.237 1.079 2.237 1.491 L 2.982 1.491 Z M 1.491 0 L 1.491 -0.746 C 0.256 -0.746 -0.746 0.256 -0.746 1.491 L 0 1.491 L 0.746 1.491 C 0.746 1.079 1.079 0.746 1.491 0.746 L 1.491 0 Z M 0 1.491 L -0.746 1.491 C -0.746 2.726 0.256 3.728 1.491 3.728 L 1.491 2.982 L 1.491 2.237 C 1.079 2.237 0.746 1.903 0.746 1.491 L 0 1.491 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={1.491} height={1.491} viewBox="0 0 1.491 1.491" fill="none" style={{
+            position: "absolute",
+            left: 5.021,
+            top: 12.675,
+            width: 1.491,
+            height: 1.491,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0.746 1.491 L 0.746 2.237 C 1.569 2.237 2.237 1.569 2.237 0.746 L 1.491 0.746 L 0.746 0.746 L 0.746 1.491 Z M 1.491 0.746 L 2.237 0.746 C 2.237 -0.078 1.569 -0.746 0.746 -0.746 L 0.746 0 L 0.746 0.746 L 1.491 0.746 Z M 0.746 0 L 0.746 -0.746 C -0.078 -0.746 -0.746 -0.078 -0.746 0.746 L 0 0.746 L 0.746 0.746 L 0.746 0 Z M 0 0.746 L -0.746 0.746 C -0.746 1.569 -0.078 2.237 0.746 2.237 L 0.746 1.491 L 0.746 0.746 L 0 0.746 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={2.982} height={2.982} viewBox="0 0 2.982 2.982" fill="none" style={{
+            position: "absolute",
+            left: 4.275,
+            top: 5.966,
+            width: 2.982,
+            height: 2.982,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 1.491 2.982 L 1.491 3.728 C 2.726 3.728 3.728 2.726 3.728 1.491 L 2.982 1.491 L 2.237 1.491 C 2.237 1.903 1.903 2.237 1.491 2.237 L 1.491 2.982 Z M 2.982 1.491 L 3.728 1.491 C 3.728 0.256 2.726 -0.746 1.491 -0.746 L 1.491 0 L 1.491 0.746 C 1.903 0.746 2.237 1.079 2.237 1.491 L 2.982 1.491 Z M 1.491 0 L 1.491 -0.746 C 0.256 -0.746 -0.746 0.256 -0.746 1.491 L 0 1.491 L 0.746 1.491 C 0.746 1.079 1.079 0.746 1.491 0.746 L 1.491 0 Z M 0 1.491 L -0.746 1.491 C -0.746 2.726 0.256 3.728 1.491 3.728 L 1.491 2.982 L 1.491 2.237 C 1.079 2.237 0.746 1.903 0.746 1.491 L 0 1.491 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={19} height={19.384} viewBox="0 0 19 19.384" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: -0.002,
+            width: 19,
+            height: 19.384,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 13.251 17.565 L 12.507 17.607 C 12.508 17.624 12.509 17.642 12.512 17.658 L 13.251 17.565 Z M 12.962 16.764 L 13.562 16.321 L 13.561 16.321 L 12.962 16.764 Z M 12.282 16.252 L 12.542 15.554 C 12.533 15.55 12.524 15.547 12.515 15.544 L 12.282 16.252 Z M 10.665 14.969 L 10.028 15.357 L 10.028 15.357 L 10.665 14.969 Z M 10.269 12.944 L 11.005 13.063 L 11.005 13.063 L 10.269 12.944 Z M 13.221 10.437 L 13.219 11.183 L 13.221 11.183 L 13.221 10.437 Z M 16.01 10.437 L 16.012 9.692 L 16.01 9.692 L 16.01 10.437 Z M 17.384 10.106 L 17.726 10.769 L 17.726 10.768 L 17.384 10.106 Z M 18.452 9.178 L 19.06 9.609 L 19.06 9.609 L 18.452 9.178 Z M 18.972 7.863 L 19.71 7.965 L 19.71 7.965 L 18.972 7.863 Z M 18.828 6.456 L 18.125 6.705 L 18.125 6.706 L 18.828 6.456 Z M 15.816 2.18 L 15.345 2.758 L 15.345 2.758 L 15.816 2.18 Z M 11.021 0.092 L 11.123 -0.647 L 11.123 -0.647 L 11.021 0.092 Z M 5.838 0.799 L 5.542 0.115 L 5.542 0.115 L 5.838 0.799 Z M 1.778 4.097 L 2.387 4.527 L 2.387 4.527 L 1.778 4.097 Z M 0.023 9.024 L -0.721 8.972 L -0.721 8.972 L 0.023 9.024 Z M 1.084 14.145 L 0.422 14.488 L 0.422 14.488 L 1.084 14.145 Z M 4.652 17.97 L 5.039 17.333 L 5.039 17.333 L 4.652 17.97 Z M 9.687 19.384 L 9.69 18.638 L 9.688 18.638 L 9.687 19.384 Z M 12.282 19.026 L 12.081 18.308 L 12.078 18.309 L 12.282 19.026 Z M 13.251 17.565 L 13.995 17.522 C 13.97 17.088 13.82 16.671 13.562 16.321 L 12.962 16.764 L 12.362 17.207 C 12.448 17.324 12.498 17.463 12.507 17.607 L 13.251 17.565 Z M 12.962 16.764 L 13.561 16.321 C 13.303 15.972 12.949 15.705 12.542 15.554 L 12.282 16.252 L 12.022 16.951 C 12.158 17.002 12.276 17.091 12.362 17.207 L 12.962 16.764 Z M 12.282 16.252 L 12.515 15.544 C 12.009 15.378 11.579 15.037 11.302 14.582 L 10.665 14.969 L 10.028 15.357 C 10.49 16.115 11.206 16.684 12.049 16.961 L 12.282 16.252 Z M 10.665 14.969 L 11.302 14.582 C 11.026 14.127 10.92 13.588 11.005 13.063 L 10.269 12.944 L 9.533 12.825 C 9.392 13.701 9.567 14.599 10.028 15.357 L 10.665 14.969 Z M 10.269 12.944 L 11.005 13.063 C 11.09 12.537 11.36 12.059 11.765 11.715 L 11.283 11.146 L 10.8 10.578 C 10.124 11.152 9.675 11.949 9.533 12.825 L 10.269 12.944 Z M 11.283 11.146 L 11.765 11.715 C 12.171 11.37 12.687 11.181 13.219 11.183 L 13.221 10.437 L 13.223 9.692 C 12.336 9.689 11.477 10.004 10.8 10.578 L 11.283 11.146 Z M 13.221 10.437 L 13.221 11.183 L 16.01 11.183 L 16.01 10.437 L 16.01 9.692 L 13.221 9.692 L 13.221 10.437 Z M 16.01 10.437 L 16.007 11.183 C 16.605 11.185 17.195 11.042 17.726 10.769 L 17.384 10.106 L 17.043 9.443 C 16.724 9.608 16.37 9.693 16.012 9.692 L 16.01 10.437 Z M 17.384 10.106 L 17.726 10.768 C 18.257 10.495 18.715 10.097 19.06 9.609 L 18.452 9.178 L 17.843 8.748 C 17.636 9.04 17.362 9.279 17.043 9.443 L 17.384 10.106 Z M 18.452 9.178 L 19.06 9.609 C 19.406 9.121 19.629 8.557 19.71 7.965 L 18.972 7.863 L 18.233 7.761 C 18.184 8.116 18.051 8.455 17.843 8.748 L 18.452 9.178 Z M 18.972 7.863 L 19.71 7.965 C 19.792 7.373 19.73 6.77 19.53 6.206 L 18.828 6.456 L 18.125 6.706 C 18.245 7.044 18.283 7.406 18.233 7.761 L 18.972 7.863 Z M 18.828 6.456 L 19.53 6.207 C 18.892 4.404 17.77 2.811 16.287 1.602 L 15.816 2.18 L 15.345 2.758 C 16.616 3.794 17.577 5.159 18.125 6.705 L 18.828 6.456 Z M 15.816 2.18 L 16.287 1.602 C 14.804 0.393 13.018 -0.385 11.123 -0.647 L 11.021 0.092 L 10.918 0.83 C 12.543 1.055 14.074 1.722 15.345 2.758 L 15.816 2.18 Z M 11.021 0.092 L 11.123 -0.647 C 9.228 -0.909 7.297 -0.646 5.542 0.115 L 5.838 0.799 L 6.135 1.483 C 7.639 0.831 9.294 0.605 10.918 0.83 L 11.021 0.092 Z M 5.838 0.799 L 5.542 0.115 C 3.786 0.876 2.274 2.104 1.169 3.666 L 1.778 4.097 L 2.387 4.527 C 3.334 3.188 4.63 2.135 6.135 1.483 L 5.838 0.799 Z M 1.778 4.097 L 1.169 3.666 C 0.065 5.228 -0.589 7.064 -0.721 8.972 L 0.023 9.024 L 0.767 9.075 C 0.88 7.439 1.44 5.866 2.387 4.527 L 1.778 4.097 Z M 0.023 9.024 L -0.721 8.972 C -0.853 10.881 -0.457 12.789 0.422 14.488 L 1.084 14.145 L 1.746 13.803 C 0.993 12.346 0.654 10.711 0.767 9.075 L 0.023 9.024 Z M 1.084 14.145 L 0.422 14.488 C 1.301 16.187 2.63 17.612 4.264 18.607 L 4.652 17.97 L 5.039 17.333 C 3.639 16.481 2.5 15.259 1.746 13.803 L 1.084 14.145 Z M 4.652 17.97 L 4.264 18.607 C 5.898 19.602 7.774 20.128 9.687 20.129 L 9.687 19.384 L 9.688 18.638 C 8.048 18.637 6.44 18.186 5.039 17.333 L 4.652 17.97 Z M 9.687 19.384 L 9.685 20.129 C 10.632 20.132 11.575 20.002 12.486 19.743 L 12.282 19.026 L 12.078 18.309 C 11.301 18.53 10.497 18.64 9.69 18.638 L 9.687 19.384 Z M 12.282 19.026 L 12.483 19.744 C 12.965 19.609 13.383 19.305 13.659 18.887 L 13.038 18.475 L 12.417 18.063 C 12.338 18.183 12.218 18.269 12.081 18.308 L 12.282 19.026 Z M 13.038 18.475 L 13.659 18.887 C 13.936 18.47 14.054 17.967 13.991 17.471 L 13.251 17.565 L 12.512 17.658 C 12.53 17.8 12.496 17.944 12.417 18.063 L 13.038 18.475 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 139,
+          width: 211,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Engagement Intelligence</span>
+        <svg width={19} height={19.915} viewBox="0 0 19 19.915" fill="none" style={{
+          position: "absolute",
+          left: 23,
+          top: 139.039,
+          width: 19,
+          height: 19.915,
+          color: "rgb(131,131,131)",
+        }}>
+          <path d={"M 8.116 11.501 L 8.165 12.248 C 8.178 12.351 8.217 12.435 8.284 12.5 C 8.352 12.564 8.434 12.596 8.532 12.596 L 9.338 12.596 C 9.436 12.596 9.519 12.564 9.587 12.5 C 9.656 12.435 9.696 12.351 9.709 12.248 L 9.759 11.501 C 9.958 11.468 10.144 11.398 10.318 11.291 C 10.492 11.183 10.645 11.063 10.779 10.929 L 11.526 11.177 C 11.609 11.211 11.692 11.211 11.775 11.177 C 11.858 11.144 11.923 11.087 11.969 11.007 L 12.352 10.352 C 12.399 10.272 12.418 10.19 12.41 10.107 C 12.401 10.024 12.358 9.948 12.281 9.879 L 11.775 9.485 C 11.858 9.252 11.899 9.012 11.899 8.763 C 11.899 8.514 11.858 8.273 11.775 8.041 L 12.281 7.647 C 12.358 7.578 12.401 7.501 12.41 7.418 C 12.418 7.335 12.399 7.254 12.352 7.173 L 11.969 6.519 C 11.923 6.438 11.858 6.381 11.775 6.348 C 11.692 6.315 11.609 6.315 11.526 6.348 L 10.779 6.597 C 10.641 6.469 10.482 6.354 10.302 6.252 C 10.122 6.15 9.941 6.074 9.759 6.024 L 9.709 5.278 C 9.696 5.174 9.657 5.09 9.59 5.026 C 9.523 4.961 9.44 4.929 9.342 4.929 L 8.536 4.929 C 8.438 4.929 8.355 4.961 8.287 5.026 C 8.218 5.09 8.178 5.174 8.165 5.278 L 8.116 6.024 C 7.933 6.074 7.752 6.15 7.572 6.252 C 7.392 6.354 7.233 6.469 7.095 6.597 L 6.348 6.348 C 6.265 6.315 6.182 6.315 6.099 6.348 C 6.016 6.381 5.951 6.438 5.905 6.519 L 5.522 7.173 C 5.475 7.254 5.456 7.335 5.464 7.418 C 5.473 7.501 5.516 7.578 5.593 7.647 L 6.099 8.041 C 6.016 8.273 5.975 8.514 5.975 8.763 C 5.975 9.012 6.016 9.252 6.099 9.485 L 5.593 9.879 C 5.516 9.948 5.473 10.024 5.464 10.107 C 5.456 10.19 5.475 10.272 5.522 10.352 L 5.905 11.007 C 5.951 11.087 6.016 11.144 6.099 11.177 C 6.182 11.211 6.265 11.211 6.348 11.177 L 7.095 10.929 C 7.229 11.063 7.382 11.183 7.556 11.291 C 7.73 11.398 7.916 11.468 8.116 11.501 Z M 8.94 10.505 C 8.457 10.505 8.045 10.336 7.705 9.998 C 7.365 9.66 7.194 9.249 7.194 8.766 C 7.194 8.282 7.364 7.871 7.702 7.53 C 8.04 7.19 8.451 7.02 8.934 7.02 C 9.417 7.02 9.829 7.189 10.169 7.528 C 10.509 7.866 10.68 8.276 10.68 8.76 C 10.68 9.243 10.51 9.655 10.172 9.995 C 9.834 10.335 9.423 10.505 8.94 10.505 Z M 2.987 15.634 C 2.041 14.771 1.307 13.762 0.784 12.609 C 0.261 11.455 0 10.24 0 8.962 C 0 6.472 0.871 4.356 2.614 2.614 C 4.356 0.871 6.472 0 8.962 0 C 11.036 0 12.874 0.61 14.476 1.83 C 16.078 3.05 17.119 4.639 17.6 6.597 L 18.969 12.024 C 19.036 12.256 18.994 12.468 18.845 12.659 C 18.696 12.85 18.496 12.945 18.247 12.945 L 15.932 12.945 L 15.932 16.43 C 15.932 16.841 15.786 17.193 15.494 17.485 C 15.201 17.778 14.849 17.924 14.439 17.924 L 11.949 17.924 L 11.949 19.169 C 11.949 19.38 11.877 19.557 11.733 19.701 C 11.589 19.844 11.411 19.915 11.198 19.915 C 10.985 19.915 10.808 19.844 10.667 19.701 C 10.526 19.557 10.456 19.38 10.456 19.169 L 10.456 17.177 C 10.456 16.965 10.527 16.788 10.67 16.645 C 10.813 16.502 10.991 16.43 11.202 16.43 L 14.439 16.43 L 14.439 12.198 C 14.439 11.987 14.51 11.809 14.653 11.666 C 14.797 11.523 14.974 11.451 15.185 11.451 L 17.277 11.451 L 16.156 6.97 C 15.758 5.361 14.887 4.045 13.542 3.025 C 12.198 2.004 10.671 1.494 8.962 1.494 C 6.887 1.494 5.124 2.211 3.672 3.647 C 2.22 5.083 1.494 6.834 1.494 8.901 C 1.494 9.97 1.712 10.985 2.149 11.947 C 2.586 12.91 3.206 13.765 4.008 14.513 L 4.481 14.961 L 4.481 19.169 C 4.481 19.38 4.409 19.557 4.265 19.701 C 4.121 19.844 3.943 19.915 3.73 19.915 C 3.517 19.915 3.34 19.844 3.199 19.701 C 3.058 19.557 2.987 19.38 2.987 19.169 L 2.987 15.634 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 197,
+          width: 175,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Account Connection</span>
+        <div style={{
+          position: "absolute",
+          left: 23.114,
+          top: 197.977,
+          width: 19,
+          height: 18.998,
+          overflow: "hidden",
+        }}>
+          <svg width={12.214} height={4.524} viewBox="0 0 12.214 4.524" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 10.412,
+            width: 12.214,
+            height: 4.524,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0 4.524 L -0.708 4.524 L -0.708 5.232 L 0 5.232 L 0 4.524 Z M 0 1.991 L -0.344 1.372 L -0.708 1.574 L -0.708 1.991 L 0 1.991 Z M 7.691 0 L 7.689 0.708 L 7.691 0.708 L 7.691 0 Z M 9.048 4.524 L 9.048 3.816 L 0 3.816 L 0 4.524 L 0 5.232 L 9.048 5.232 L 9.048 4.524 Z M 0 4.524 L 0.708 4.524 L 0.708 1.991 L 0 1.991 L -0.708 1.991 L -0.708 4.524 L 0 4.524 Z M 0 1.991 L 0.344 2.609 C 2.59 1.359 5.119 0.704 7.689 0.708 L 7.691 0 L 7.692 -0.708 C 4.879 -0.712 2.113 0.004 -0.344 1.372 L 0 1.991 Z M 7.691 0 L 7.691 0.708 C 9.193 0.708 10.644 0.927 12.012 1.335 L 12.214 0.656 L 12.417 -0.023 C 10.918 -0.469 9.331 -0.708 7.691 -0.708 L 7.691 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={7.691} height={7.691} viewBox="0 0 7.691 7.691" fill="none" style={{
+            position: "absolute",
+            left: 4.071,
+            top: 0,
+            width: 7.691,
+            height: 7.691,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0 3.845 L -0.708 3.845 L 0 3.845 Z M 3.845 0 L 3.845 -0.708 L 3.845 0 Z M 0 3.845 L -0.708 3.845 C -0.708 5.053 -0.228 6.211 0.626 7.065 L 1.126 6.564 L 1.627 6.064 C 1.039 5.475 0.708 4.677 0.708 3.845 L 0 3.845 Z M 1.126 6.564 L 0.626 7.065 C 1.479 7.919 2.638 8.399 3.845 8.399 L 3.845 7.691 L 3.845 6.982 C 3.013 6.982 2.215 6.652 1.627 6.064 L 1.126 6.564 Z M 3.845 7.691 L 3.845 8.399 C 5.053 8.399 6.211 7.919 7.065 7.065 L 6.564 6.564 L 6.064 6.064 C 5.475 6.652 4.677 6.982 3.845 6.982 L 3.845 7.691 Z M 6.564 6.564 L 7.065 7.065 C 7.919 6.211 8.399 5.053 8.399 3.845 L 7.691 3.845 L 6.982 3.845 C 6.982 4.677 6.652 5.475 6.064 6.064 L 6.564 6.564 Z M 7.691 3.845 L 8.399 3.845 C 8.399 2.638 7.919 1.479 7.065 0.626 L 6.564 1.126 L 6.064 1.627 C 6.652 2.215 6.982 3.013 6.982 3.845 L 7.691 3.845 Z M 6.564 1.126 L 7.065 0.626 C 6.211 -0.228 5.053 -0.708 3.845 -0.708 L 3.845 0 L 3.845 0.708 C 4.677 0.708 5.475 1.039 6.064 1.627 L 6.564 1.126 Z M 3.845 0 L 3.845 -0.708 C 2.638 -0.708 1.479 -0.228 0.626 0.626 L 1.126 1.126 L 1.627 1.627 C 2.215 1.039 3.013 0.708 3.845 0.708 L 3.845 0 Z M 1.126 1.126 L 0.626 0.626 C -0.228 1.479 -0.708 2.638 -0.708 3.845 L 0 3.845 L 0.708 3.845 C 0.708 3.013 1.039 2.215 1.627 1.627 L 1.126 1.126 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={8.143} height={8.143} viewBox="0 0 8.143 8.143" fill="none" style={{
+            position: "absolute",
+            left: 10.857,
+            top: 10.857,
+            width: 8.143,
+            height: 8.143,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 8.143 4.071 L 8.143 3.363 L 0 3.363 L 0 4.071 L 0 4.78 L 8.143 4.78 L 8.143 4.071 Z M 4.071 0 L 3.363 0 L 3.363 8.143 L 4.071 8.143 L 4.78 8.143 L 4.78 0 L 4.071 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 255,
+          width: 131,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Import / Export</span>
+        <div style={{
+          position: "absolute",
+          left: 23.114,
+          top: 256.742,
+          width: 19,
+          height: 17.782,
+          overflow: "hidden",
+        }}>
+          <svg width={19} height={4.071} viewBox="0 0 19 4.071" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 13.711,
+            width: 19,
+            height: 4.071,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 17.643 0 L 17.643 2.714 L 1.357 2.714 L 1.357 0 L 0 0 L 0 2.714 L 0.005 2.711 C 0.005 2.889 0.039 3.066 0.107 3.23 C 0.174 3.395 0.274 3.545 0.399 3.671 C 0.525 3.798 0.674 3.898 0.838 3.967 C 1.003 4.035 1.179 4.071 1.357 4.071 L 17.643 4.071 C 18.003 4.071 18.348 3.928 18.603 3.674 C 18.857 3.419 19 3.074 19 2.714 L 19 0 L 17.643 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={8.143} height={12.214} viewBox="0 0 8.143 12.214" fill="none" style={{
+            position: "absolute",
+            left: 9.821,
+            top: 0,
+            width: 8.143,
+            height: 12.214,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 7.193 7.193 L 4.75 9.636 L 4.75 0 L 3.393 0 L 3.393 9.636 L 0.95 7.193 L 0 8.143 L 4.071 12.214 L 8.143 8.143 L 7.193 7.193 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={8.143} height={12.214} viewBox="0 0 8.143 12.214" fill="none" style={{
+            position: "absolute",
+            left: 0.679,
+            top: 0,
+            width: 8.143,
+            height: 12.214,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 4.071 0 L 0 4.071 L 0.95 5.021 L 3.393 2.579 L 3.393 12.214 L 4.75 12.214 L 4.75 2.579 L 7.193 5.021 L 8.143 4.071 L 4.071 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 313,
+          width: 129,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Credit &amp; Usage</span>
+        <svg width={20.702} height={14.680} viewBox="0 0 20.702 14.680" fill="none" style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(0.859,-0.512,0.512,0.859,19.987,322.748)",
+          transformOrigin: "0 0",
+          width: 20.702,
+          height: 14.68,
+          color: "rgb(12,12,12)",
+        }}>
+          <path d={"M 17.755 1.471 C 15.831 0.509 13.268 0 10.351 0 C 7.434 0 4.872 0.509 2.947 1.471 C 1.074 2.407 0 3.724 0 5.081 L 0 9.598 C 0 10.956 1.074 12.273 2.947 13.209 C 4.872 14.171 7.434 14.68 10.351 14.68 C 13.268 14.68 15.831 14.171 17.755 13.209 C 19.629 12.273 20.702 10.956 20.702 9.598 L 20.702 5.081 C 20.702 3.724 19.629 2.407 17.755 1.471 Z M 3.452 2.481 C 5.195 1.609 7.646 1.129 10.351 1.129 C 13.057 1.129 15.507 1.609 17.251 2.481 C 18.726 3.219 19.573 4.167 19.573 5.081 C 19.573 5.996 18.726 6.944 17.251 7.681 C 15.507 8.554 13.057 9.034 10.351 9.034 C 7.646 9.034 5.195 8.554 3.452 7.681 C 1.976 6.944 1.129 5.996 1.129 5.081 C 1.129 4.167 1.976 3.219 3.452 2.481 Z M 9.787 10.156 L 9.787 13.544 C 7.976 13.499 6.298 13.235 4.893 12.781 L 4.893 9.45 C 6.33 9.874 7.984 10.115 9.787 10.156 Z M 10.916 10.156 C 12.718 10.115 14.372 9.874 15.809 9.449 L 15.809 12.78 C 14.404 13.234 12.726 13.498 10.916 13.543 L 10.916 10.156 Z M 1.129 9.598 L 1.129 7.434 C 1.666 7.945 2.28 8.369 2.947 8.691 C 3.208 8.821 3.48 8.943 3.764 9.056 L 3.764 12.35 C 3.658 12.301 3.553 12.256 3.452 12.201 C 1.976 11.461 1.129 10.513 1.129 9.598 Z M 17.251 12.198 C 17.149 12.249 17.045 12.298 16.938 12.347 L 16.938 9.053 C 17.221 8.94 17.493 8.818 17.755 8.688 C 18.422 8.367 19.036 7.944 19.573 7.434 L 19.573 9.598 C 19.573 10.513 18.726 11.461 17.251 12.198 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <span style={{
+          position: "absolute",
+          left: 52.114,
+          top: 371,
+          width: 97,
+          height: 23,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 500,
+          fontSize: 18,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(131,131,131)",
+        }}>Team Roles</span>
+        <div style={{
+          position: "absolute",
+          left: 23.114,
+          top: 372.5,
+          width: 19,
+          height: 19,
+          overflow: "hidden",
+        }}>
+          <svg width={4.750} height={4.750} viewBox="0 0 4.750 4.750" fill="none" style={{
+            position: "absolute",
+            left: 2.375,
+            top: 0,
+            width: 4.75,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 2.375 0 L 2.375 -0.792 L 2.375 0 Z M 0 2.375 L -0.792 2.375 C -0.792 3.215 -0.458 4.02 0.136 4.614 L 0.696 4.054 L 1.255 3.495 C 0.958 3.198 0.792 2.795 0.792 2.375 L 0 2.375 Z M 0.696 4.054 L 0.136 4.614 C 0.73 5.208 1.535 5.542 2.375 5.542 L 2.375 4.75 L 2.375 3.958 C 1.955 3.958 1.552 3.792 1.255 3.495 L 0.696 4.054 Z M 2.375 4.75 L 2.375 5.542 C 3.215 5.542 4.02 5.208 4.614 4.614 L 4.054 4.054 L 3.495 3.495 C 3.198 3.792 2.795 3.958 2.375 3.958 L 2.375 4.75 Z M 4.054 4.054 L 4.614 4.614 C 5.208 4.02 5.542 3.215 5.542 2.375 L 4.75 2.375 L 3.958 2.375 C 3.958 2.795 3.792 3.198 3.495 3.495 L 4.054 4.054 Z M 4.75 2.375 L 5.542 2.375 C 5.542 1.535 5.208 0.73 4.614 0.136 L 4.054 0.696 L 3.495 1.255 C 3.792 1.552 3.958 1.955 3.958 2.375 L 4.75 2.375 Z M 4.054 0.696 L 4.614 0.136 C 4.02 -0.458 3.215 -0.792 2.375 -0.792 L 2.375 0 L 2.375 0.792 C 2.795 0.792 3.198 0.958 3.495 1.255 L 4.054 0.696 Z M 2.375 0 L 2.375 -0.792 C 1.535 -0.792 0.73 -0.458 0.136 0.136 L 0.696 0.696 L 1.255 1.255 C 1.552 0.958 1.955 0.792 2.375 0.792 L 2.375 0 Z M 0.696 0.696 L 0.136 0.136 C -0.458 0.73 -0.792 1.535 -0.792 2.375 L 0 2.375 L 0.792 2.375 C 0.792 1.955 0.958 1.552 1.255 1.255 L 0.696 0.696 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.750} height={4.750} viewBox="0 0 4.750 4.750" fill="none" style={{
+            position: "absolute",
+            left: 0,
+            top: 7.125,
+            width: 4.75,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M -0.792 4.75 C -0.792 5.187 -0.437 5.542 0 5.542 C 0.437 5.542 0.792 5.187 0.792 4.75 L 0 4.75 L -0.792 4.75 Z M 4.75 0.792 C 5.187 0.792 5.542 0.437 5.542 0 C 5.542 -0.437 5.187 -0.792 4.75 -0.792 L 4.75 0 L 4.75 0.792 Z M 0 4.75 L 0.792 4.75 C 0.792 2.564 2.564 0.792 4.75 0.792 L 4.75 0 L 4.75 -0.792 C 1.689 -0.792 -0.792 1.689 -0.792 4.75 L 0 4.75 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.750} height={4.750} viewBox="0 0 4.750 4.750" fill="none" style={{
+            position: "absolute",
+            left: 14.25,
+            top: 7.125,
+            width: 4.75,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 3.958 4.75 C 3.958 5.187 4.313 5.542 4.75 5.542 C 5.187 5.542 5.542 5.187 5.542 4.75 L 4.75 4.75 L 3.958 4.75 Z M 0 -0.792 C -0.437 -0.792 -0.792 -0.437 -0.792 0 C -0.792 0.437 -0.437 0.792 0 0.792 L 0 0 L 0 -0.792 Z M 4.75 4.75 L 5.542 4.75 C 5.542 1.689 3.061 -0.792 0 -0.792 L 0 0 L 0 0.792 C 2.186 0.792 3.958 2.564 3.958 4.75 L 4.75 4.75 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.750} height={4.750} viewBox="0 0 4.750 4.750" fill="none" style={{
+            position: "absolute",
+            left: 11.875,
+            top: 0,
+            width: 4.75,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0 2.375 L -0.792 2.375 L 0 2.375 Z M 4.75 2.375 L 5.542 2.375 L 4.75 2.375 Z M 2.375 0 L 2.375 -0.792 L 2.375 0 Z M 0 2.375 L -0.792 2.375 C -0.792 3.215 -0.458 4.02 0.136 4.614 L 0.696 4.054 L 1.255 3.495 C 0.958 3.198 0.792 2.795 0.792 2.375 L 0 2.375 Z M 0.696 4.054 L 0.136 4.614 C 0.73 5.208 1.535 5.542 2.375 5.542 L 2.375 4.75 L 2.375 3.958 C 1.955 3.958 1.552 3.792 1.255 3.495 L 0.696 4.054 Z M 2.375 4.75 L 2.375 5.542 C 3.215 5.542 4.02 5.208 4.614 4.614 L 4.054 4.054 L 3.495 3.495 C 3.198 3.792 2.795 3.958 2.375 3.958 L 2.375 4.75 Z M 4.054 4.054 L 4.614 4.614 C 5.208 4.02 5.542 3.215 5.542 2.375 L 4.75 2.375 L 3.958 2.375 C 3.958 2.795 3.792 3.198 3.495 3.495 L 4.054 4.054 Z M 4.75 2.375 L 5.542 2.375 C 5.542 1.535 5.208 0.73 4.614 0.136 L 4.054 0.696 L 3.495 1.255 C 3.792 1.552 3.958 1.955 3.958 2.375 L 4.75 2.375 Z M 4.054 0.696 L 4.614 0.136 C 4.02 -0.458 3.215 -0.792 2.375 -0.792 L 2.375 0 L 2.375 0.792 C 2.795 0.792 3.198 0.958 3.495 1.255 L 4.054 0.696 Z M 2.375 0 L 2.375 -0.792 C 1.535 -0.792 0.73 -0.458 0.136 0.136 L 0.696 0.696 L 1.255 1.255 C 1.552 0.958 1.955 0.792 2.375 0.792 L 2.375 0 Z M 0.696 0.696 L 0.136 0.136 C -0.458 0.73 -0.792 1.535 -0.792 2.375 L 0 2.375 L 0.792 2.375 C 0.792 1.955 0.958 1.552 1.255 1.255 L 0.696 0.696 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={9.500} height={4.750} viewBox="0 0 9.500 4.750" fill="none" style={{
+            position: "absolute",
+            left: 4.75,
+            top: 14.25,
+            width: 9.5,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 8.708 4.75 C 8.708 5.187 9.063 5.542 9.5 5.542 C 9.937 5.542 10.292 5.187 10.292 4.75 L 9.5 4.75 L 8.708 4.75 Z M -0.792 4.75 C -0.792 5.187 -0.437 5.542 0 5.542 C 0.437 5.542 0.792 5.187 0.792 4.75 L 0 4.75 L -0.792 4.75 Z M 9.5 4.75 L 10.292 4.75 C 10.292 1.689 7.811 -0.792 4.75 -0.792 L 4.75 0 L 4.75 0.792 C 6.936 0.792 8.708 2.564 8.708 4.75 L 9.5 4.75 Z M 4.75 0 L 4.75 -0.792 C 1.689 -0.792 -0.792 1.689 -0.792 4.75 L 0 4.75 L 0.792 4.75 C 0.792 2.564 2.564 0.792 4.75 0.792 L 4.75 0 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+          <svg width={4.750} height={4.750} viewBox="0 0 4.750 4.750" fill="none" style={{
+            position: "absolute",
+            left: 7.125,
+            top: 7.125,
+            width: 4.75,
+            height: 4.75,
+            color: "rgb(131,131,131)",
+          }}>
+            <path d={"M 0 2.375 L 0.792 2.375 L 0.792 2.375 L 0 2.375 Z M 4.75 2.375 L 3.958 2.375 L 3.958 2.375 L 4.75 2.375 Z M 2.375 0 L 2.375 0.792 L 2.375 0 Z M 0 2.375 L -0.792 2.375 C -0.792 2.791 -0.71 3.203 -0.551 3.587 L 0.181 3.284 L 0.912 2.981 C 0.833 2.789 0.792 2.583 0.792 2.375 L 0 2.375 Z M 0.181 3.284 L -0.551 3.587 C -0.391 3.971 -0.158 4.32 0.136 4.614 L 0.696 4.054 L 1.255 3.495 C 1.108 3.348 0.992 3.173 0.912 2.981 L 0.181 3.284 Z M 0.696 4.054 L 0.136 4.614 C 0.43 4.908 0.779 5.141 1.163 5.301 L 1.466 4.569 L 1.769 3.838 C 1.577 3.758 1.402 3.642 1.255 3.495 L 0.696 4.054 Z M 1.466 4.569 L 1.163 5.301 C 1.547 5.46 1.959 5.542 2.375 5.542 L 2.375 4.75 L 2.375 3.958 C 2.167 3.958 1.961 3.917 1.769 3.838 L 1.466 4.569 Z M 2.375 4.75 L 2.375 5.542 C 2.791 5.542 3.203 5.46 3.587 5.301 L 3.284 4.569 L 2.981 3.838 C 2.789 3.917 2.583 3.958 2.375 3.958 L 2.375 4.75 Z M 3.284 4.569 L 3.587 5.301 C 3.971 5.141 4.32 4.908 4.614 4.614 L 4.054 4.054 L 3.495 3.495 C 3.348 3.642 3.173 3.758 2.981 3.838 L 3.284 4.569 Z M 4.054 4.054 L 4.614 4.614 C 4.908 4.32 5.141 3.971 5.301 3.587 L 4.569 3.284 L 3.838 2.981 C 3.758 3.173 3.642 3.348 3.495 3.495 L 4.054 4.054 Z M 4.569 3.284 L 5.301 3.587 C 5.46 3.203 5.542 2.791 5.542 2.375 L 4.75 2.375 L 3.958 2.375 C 3.958 2.583 3.917 2.789 3.838 2.981 L 4.569 3.284 Z M 4.75 2.375 L 5.542 2.375 C 5.542 1.959 5.46 1.547 5.301 1.163 L 4.569 1.466 L 3.838 1.769 C 3.917 1.961 3.958 2.167 3.958 2.375 L 4.75 2.375 Z M 4.569 1.466 L 5.301 1.163 C 5.141 0.779 4.908 0.43 4.614 0.136 L 4.054 0.696 L 3.495 1.255 C 3.642 1.402 3.758 1.577 3.838 1.769 L 4.569 1.466 Z M 4.054 0.696 L 4.614 0.136 C 4.32 -0.158 3.971 -0.391 3.587 -0.551 L 3.284 0.181 L 2.981 0.912 C 3.173 0.992 3.348 1.108 3.495 1.255 L 4.054 0.696 Z M 3.284 0.181 L 3.587 -0.551 C 3.203 -0.71 2.791 -0.792 2.375 -0.792 L 2.375 0 L 2.375 0.792 C 2.583 0.792 2.789 0.833 2.981 0.912 L 3.284 0.181 Z M 2.375 0 L 2.375 -0.792 C 1.959 -0.792 1.547 -0.71 1.163 -0.551 L 1.466 0.181 L 1.769 0.912 C 1.961 0.833 2.167 0.792 2.375 0.792 L 2.375 0 Z M 1.466 0.181 L 1.163 -0.551 C 0.779 -0.391 0.43 -0.158 0.136 0.136 L 0.696 0.696 L 1.255 1.255 C 1.402 1.108 1.577 0.992 1.769 0.912 L 1.466 0.181 Z M 0.696 0.696 L 0.136 0.136 C -0.158 0.43 -0.391 0.779 -0.551 1.163 L 0.181 1.466 L 0.912 1.769 C 0.992 1.577 1.108 1.402 1.255 1.255 L 0.696 0.696 Z M 0.181 1.466 L -0.551 1.163 C -0.71 1.547 -0.792 1.959 -0.792 2.375 L 0 2.375 L 0.792 2.375 C 0.792 2.167 0.833 1.961 0.912 1.769 L 0.181 1.466 Z"} fill="currentColor" fillRule="nonzero" />
+          </svg>
+        </div>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1491,
+        top: 33.969,
+        width: 196,
+        height: 70.216,
+        overflow: "hidden",
+      }}>
+        <svg width={126} height={47} viewBox="0 0 126 47" fill="none" style={{
+          position: "absolute",
+          left: 70,
+          top: 14.031,
+          width: 126,
+          height: 47,
+          borderRadius: 12.507452964782715,
+          backdropFilter: "blur(17.220px)",
+          color: "rgb(255,255,255)",
+        }}>
+          <path d={"M 9.159 7.596 C 9.159 3.401 12.56 0 16.755 0 L 113.493 0 C 120.4 0 126 5.6 126 12.507 L 126 34.493 C 126 41.4 120.4 47 113.493 47 L 20.305 47 C 14.181 47 9.246 41.979 9.353 35.856 L 9.361 35.382 C 9.408 32.652 8.322 30.025 6.36 28.126 C 2.742 24.623 2.345 18.956 5.439 14.982 L 7.557 12.262 C 8.596 10.929 9.159 9.286 9.159 7.596 Z"} fill="currentColor" fillRule="nonzero" />
+        </svg>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: 70.216,
+          height: 70.216,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: 70.216,
+            height: 70.216,
+            overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 70.216,
+              height: 70.216,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: 70.21607971191406,
+                height: 70.21607971191406,
+                clipPath: "ellipse(35.108px 35.108px at 35.108px 35.108px)",
+              }}>
+                <div style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: 70.216,
+                  height: 70.216,
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(108,232,255,0.2)",
+                  backdropFilter: "blur(33.686px)",
+                  boxShadow: "inset 0px 0px 10.731px 3.860px rgba(255,255,255,0.84)",
+                }} />
+                <div style={{
+                  position: "absolute",
+                  left: 14.322,
+                  top: 19.273,
+                  width: 41.803,
+                  height: 37.554,
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    left: 15.677,
+                    top: 0,
+                    width: 18.82,
+                    height: 18.82,
+                    borderRadius: "50%",
+                    backgroundColor: "rgb(245,107,255)",
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 2.852,
+                    width: 27.433,
+                    height: 27.433,
+                    borderRadius: "50%",
+                    backgroundColor: "rgb(108,232,255)",
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    left: 13.777,
+                    top: 21.852,
+                    width: 15.702,
+                    height: 15.702,
+                    borderRadius: "50%",
+                    backgroundColor: "rgb(163,65,255)",
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    left: 26.101,
+                    top: 11.977,
+                    width: 15.702,
+                    height: 15.702,
+                    borderRadius: "50%",
+                    backgroundColor: "rgb(255,255,255)",
+                  }} />
+                </div>
+                <div style={{
+                  position: "absolute",
+                  left: 13.989,
+                  top: 26,
+                  width: 42.881,
+                  height: 17.384,
+                  borderRadius: 12.974635124206543,
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  backdropFilter: "blur(11.718px)",
+                  boxShadow: "inset 0px 0px 6.530px -1.159px rgb(108,232,255)",
+                }} />
+              </div>
+            </div>
+            <div style={{
+              position: "absolute",
+              left: 20.363,
+              top: 31.203,
+              width: 7.022,
+              height: 7.022,
+              borderRadius: 14.043211936950684,
+              backgroundColor: "rgb(255,255,255)",
+            }} />
+            <div style={{
+              position: "absolute",
+              left: 44.236,
+              top: 31.203,
+              width: 7.022,
+              height: 7.022,
+              borderRadius: 14.043211936950684,
+              backgroundColor: "rgb(255,255,255)",
+            }} />
+          </div>
+        </div>
+        <span style={{
+          position: "absolute",
+          left: 102,
+          top: 28.031,
+          width: 75,
+          height: 18,
+          fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 14,
+          whiteSpace: "nowrap",
+          lineHeight: "100%",
+          color: "rgb(12,12,12)",
+        }}>Ask Spark?</span>
+      </div>
+      <div style={{
+        position: "absolute",
+        left: 1033,
+        top: 44,
+        width: 435,
+        height: 50,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,435,0)",
+          transformOrigin: "0 0",
+          width: 435,
+          height: 50,
+          borderRadius: 92.40505981445312,
+          backgroundColor: "rgb(255,255,255)",
+          boxShadow: "0px -100px 40px 0px rgba(0,0,0,0.1)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: "matrix(-1,0,0,1,229,4)",
+          transformOrigin: "0 0",
+          width: 224,
+          height: 42,
+          borderRadius: 76.38336181640625,
+          backgroundColor: "rgb(12,12,12)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: 25.255,
+          top: 14,
+          width: 183.496,
+          height: 21,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 24.496,
+            top: 0,
+            width: 159,
+            height: 21,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16.63400650024414,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(255,255,255)",
+          }}>Workspace Settings</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 1.473,
+            width: 18,
+            height: 16.996,
+            overflow: "hidden",
+          }}>
+            <svg width={18} height={13} viewBox="0 0 18 13" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 3.996,
+              width: 18,
+              height: 13,
+              color: "rgb(255,255,255)",
+            }}>
+              <path d={"M 0 2 L -1 2 L 0 2 Z M 2 0 L 2 -1 L 2 0 Z M 16 0 L 16 -1 L 16 0 Z M 0 11 L -1 11 L 0 11 Z M 0 2 L 1 2 C 1 1.735 1.105 1.48 1.293 1.293 L 0.586 0.586 L -0.121 -0.121 C -0.684 0.441 -1 1.204 -1 2 L 0 2 Z M 0.586 0.586 L 1.293 1.293 C 1.48 1.105 1.735 1 2 1 L 2 0 L 2 -1 C 1.204 -1 0.441 -0.684 -0.121 -0.121 L 0.586 0.586 Z M 2 0 L 2 1 L 16 1 L 16 0 L 16 -1 L 2 -1 L 2 0 Z M 16 0 L 16 1 C 16.265 1 16.52 1.105 16.707 1.293 L 17.414 0.586 L 18.121 -0.121 C 17.559 -0.684 16.796 -1 16 -1 L 16 0 Z M 17.414 0.586 L 16.707 1.293 C 16.895 1.48 17 1.735 17 2 L 18 2 L 19 2 C 19 1.204 18.684 0.441 18.121 -0.121 L 17.414 0.586 Z M 18 2 L 17 2 L 17 11 L 18 11 L 19 11 L 19 2 L 18 2 Z M 18 11 L 17 11 C 17 11.265 16.895 11.52 16.707 11.707 L 17.414 12.414 L 18.121 13.121 C 18.684 12.559 19 11.796 19 11 L 18 11 Z M 17.414 12.414 L 16.707 11.707 C 16.52 11.895 16.265 12 16 12 L 16 13 L 16 14 C 16.796 14 17.559 13.684 18.121 13.121 L 17.414 12.414 Z M 16 13 L 16 12 L 2 12 L 2 13 L 2 14 L 16 14 L 16 13 Z M 2 13 L 2 12 C 1.735 12 1.48 11.895 1.293 11.707 L 0.586 12.414 L -0.121 13.121 C 0.441 13.684 1.204 14 2 14 L 2 13 Z M 0.586 12.414 L 1.293 11.707 C 1.105 11.52 1 11.265 1 11 L 0 11 L -1 11 C -1 11.796 -0.684 12.559 -0.121 13.121 L 0.586 12.414 Z M 0 11 L 1 11 L 1 2 L 0 2 L -1 2 L -1 11 L 0 11 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={8} height={4} viewBox="0 0 8 4" fill="none" style={{
+              position: "absolute",
+              left: 5.001,
+              top: 0,
+              width: 8,
+              height: 4,
+              color: "rgb(255,255,255)",
+            }}>
+              <path d={"M -1 4 C -1 4.552 -0.552 5 0 5 C 0.552 5 1 4.552 1 4 L 0 4 L -1 4 Z M 2 0 L 2 -1 L 2 0 Z M 6 0 L 6 -1 L 6 0 Z M 8 2 L 7 2 L 8 2 Z M 7 4 C 7 4.552 7.448 5 8 5 C 8.552 5 9 4.552 9 4 L 8 4 L 7 4 Z M 0 4 L 1 4 L 1 2 L 0 2 L -1 2 L -1 4 L 0 4 Z M 0 2 L 1 2 C 1 1.735 1.105 1.48 1.293 1.293 L 0.586 0.586 L -0.121 -0.121 C -0.684 0.441 -1 1.204 -1 2 L 0 2 Z M 0.586 0.586 L 1.293 1.293 C 1.48 1.105 1.735 1 2 1 L 2 0 L 2 -1 C 1.204 -1 0.441 -0.684 -0.121 -0.121 L 0.586 0.586 Z M 2 0 L 2 1 L 6 1 L 6 0 L 6 -1 L 2 -1 L 2 0 Z M 6 0 L 6 1 C 6.265 1 6.52 1.105 6.707 1.293 L 7.414 0.586 L 8.121 -0.121 C 7.559 -0.684 6.796 -1 6 -1 L 6 0 Z M 7.414 0.586 L 6.707 1.293 C 6.895 1.48 7 1.735 7 2 L 8 2 L 9 2 C 9 1.204 8.684 0.441 8.121 -0.121 L 7.414 0.586 Z M 8 2 L 7 2 L 7 4 L 8 4 L 9 4 L 9 2 L 8 2 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+        <div style={{
+          position: "absolute",
+          left: 248.751,
+          top: 14,
+          width: 162.982,
+          height: 21,
+          overflow: "hidden",
+        }}>
+          <span style={{
+            position: "absolute",
+            left: 24.982,
+            top: 0,
+            width: 138,
+            height: 21,
+            fontFamily: "Onest, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+            fontWeight: 500,
+            fontSize: 16.63400650024414,
+            whiteSpace: "nowrap",
+            lineHeight: "100%",
+            color: "rgb(131,131,131)",
+          }}>Personal Settings</span>
+          <div style={{
+            position: "absolute",
+            left: 0,
+            top: 0.906,
+            width: 18.315,
+            height: 18.315,
+            overflow: "hidden",
+          }}>
+            <svg width={7.044} height={7.044} viewBox="0 0 7.044 7.044" fill="none" style={{
+              position: "absolute",
+              left: 5.636,
+              top: 3.52,
+              width: 7.044,
+              height: 7.044,
+              color: "rgb(131,131,131)",
+            }}>
+              <path d={"M 3.522 7.044 L 3.522 7.749 C 5.857 7.749 7.749 5.857 7.749 3.522 L 7.044 3.522 L 6.34 3.522 C 6.34 5.078 5.078 6.34 3.522 6.34 L 3.522 7.044 Z M 7.044 3.522 L 7.749 3.522 C 7.749 1.188 5.857 -0.704 3.522 -0.704 L 3.522 0 L 3.522 0.704 C 5.078 0.704 6.34 1.966 6.34 3.522 L 7.044 3.522 Z M 3.522 0 L 3.522 -0.704 C 1.188 -0.704 -0.704 1.188 -0.704 3.522 L 0 3.522 L 0.704 3.522 C 0.704 1.966 1.966 0.704 3.522 0.704 L 3.522 0 Z M 0 3.522 L -0.704 3.522 C -0.704 5.857 1.188 7.749 3.522 7.749 L 3.522 7.044 L 3.522 6.34 C 1.966 6.34 0.704 5.078 0.704 3.522 L 0 3.522 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={12.032} height={3.379} viewBox="0 0 12.032 3.379" fill="none" style={{
+              position: "absolute",
+              left: 3.141,
+              top: 12.68,
+              width: 12.032,
+              height: 3.379,
+              color: "rgb(131,131,131)",
+            }}>
+              <path d={"M -0.602 3.013 C -0.804 3.345 -0.699 3.779 -0.366 3.981 C -0.034 4.183 0.399 4.078 0.602 3.746 L 0 3.379 L -0.602 3.013 Z M 2.566 0.903 L 2.911 1.517 L 2.911 1.517 L 2.566 0.903 Z M 9.466 0.903 L 9.121 1.517 L 9.121 1.517 L 9.466 0.903 Z M 11.43 3.746 C 11.633 4.078 12.066 4.183 12.398 3.981 C 12.731 3.779 12.836 3.345 12.633 3.013 L 12.032 3.379 L 11.43 3.746 Z M 0 3.379 L 0.602 3.746 C 1.167 2.817 1.963 2.049 2.911 1.517 L 2.566 0.903 L 2.221 0.289 C 1.062 0.939 0.09 1.878 -0.602 3.013 L 0 3.379 Z M 2.566 0.903 L 2.911 1.517 C 3.859 0.984 4.928 0.704 6.016 0.704 L 6.016 0 L 6.016 -0.704 C 4.687 -0.704 3.38 -0.362 2.221 0.289 L 2.566 0.903 Z M 6.016 0 L 6.016 0.704 C 7.103 0.704 8.173 0.984 9.121 1.517 L 9.466 0.903 L 9.811 0.289 C 8.652 -0.362 7.345 -0.704 6.016 -0.704 L 6.016 0 Z M 9.466 0.903 L 9.121 1.517 C 10.069 2.049 10.864 2.817 11.43 3.746 L 12.032 3.379 L 12.633 3.013 C 11.942 1.878 10.97 0.939 9.811 0.289 L 9.466 0.903 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+            <svg width={18.315} height={18.315} viewBox="0 0 18.315 18.315" fill="none" style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 18.315,
+              height: 18.315,
+              color: "rgb(131,131,131)",
+            }}>
+              <path d={"M 9.158 18.315 L 9.158 19.02 C 14.605 19.02 19.02 14.605 19.02 9.158 L 18.315 9.158 L 17.611 9.158 C 17.611 13.826 13.826 17.611 9.158 17.611 L 9.158 18.315 Z M 18.315 9.158 L 19.02 9.158 C 19.02 3.711 14.605 -0.704 9.158 -0.704 L 9.158 0 L 9.158 0.704 C 13.826 0.704 17.611 4.489 17.611 9.158 L 18.315 9.158 Z M 9.158 0 L 9.158 -0.704 C 3.711 -0.704 -0.704 3.711 -0.704 9.158 L 0 9.158 L 0.704 9.158 C 0.704 4.489 4.489 0.704 9.158 0.704 L 9.158 0 Z M 0 9.158 L -0.704 9.158 C -0.704 14.605 3.711 19.02 9.158 19.02 L 9.158 18.315 L 9.158 17.611 C 4.489 17.611 0.704 13.826 0.704 9.158 L 0 9.158 Z"} fill="currentColor" fillRule="nonzero" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+export default AccountSettingsWorkspaceSettings3;

@@ -87,12 +87,33 @@ export interface InvokeRequest {
   ctx: ToolCtx;
   /** Required when the tool declares `idempotent: false`. */
   idempotencyKey?: string;
+  /**
+   * A human approval already granted for this call, replayed by
+   * `approval.decide`. Only `approval.decide` may set it, and only after
+   * reading a `gated` audit row it has scope-checked — a caller that could
+   * attach this to an arbitrary request would have found a way to approve its
+   * own actions.
+   */
+  approval?: { grantedBy: string; grantedAt: Date };
   /** Publish-effect context the policy engine reads (platform, content type, …). */
   subject?: {
     platform?: string;
     contentType?: string;
     isAutomationOutput?: boolean;
     reviewBeforePublish?: boolean;
+    /**
+     * Flags raised by the *caller* about this invocation's context, merged with
+     * whatever the tool's own declared guardrails produce.
+     *
+     * This exists because guardrail flags that describe the *situation* rather
+     * than the *content* — prompt-injection containment being the case that
+     * forced it (plan §10) — must not depend on the tool having declared a
+     * `guardrails` list. `runGuardrails` is only consulted when the tool
+     * declares one, so a `publish.now` whose author forgot the declaration would
+     * otherwise silently lose containment. Context-level risk belongs on the
+     * request, where no tool author can drop it.
+     */
+    guardrailFlags?: string[];
   };
   /** Engagement eligibility, for the `engage.*` family. */
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
@@ -156,8 +177,12 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
   const estimatedCents = tool.estimateCents?.(input) ?? 0;
 
   /* 4 ── Guardrails. Run before policy so a flag can escalate the decision, per
-   *      PRD §9 ("approval required when flagged by guardrails"). */
-  let guardrailFlags: string[] = [];
+   *      PRD §9 ("approval required when flagged by guardrails").
+   *
+   *      Caller-supplied flags seed the list: they describe this invocation's
+   *      *context* (see `subject.guardrailFlags`) and must apply whether or not
+   *      the tool declared any guardrails of its own. */
+  let guardrailFlags: string[] = [...(req.subject?.guardrailFlags ?? [])];
   if (tool.guardrails?.length && deps.runGuardrails) {
     const verdicts = await deps.runGuardrails(tool.guardrails, input, req.ctx);
     const blocked = verdicts.find((v) => v.verdict === 'block');
@@ -172,7 +197,7 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
         deps,
       );
     }
-    guardrailFlags = verdicts.filter((v) => v.verdict === 'flag').map((v) => v.guard);
+    guardrailFlags = [...guardrailFlags, ...verdicts.filter((v) => v.verdict === 'flag').map((v) => v.guard)];
   }
 
   /* 5 ── Policy. Role scope, autonomy, budget, quiet windows, approval mode —
@@ -189,6 +214,7 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
       estimatedCents,
     },
     ...(req.engagement ? { engagement: req.engagement } : {}),
+    ...(req.approval ? { approval: req.approval } : {}),
   });
 
   const base = skeleton(newId(), req, tool, at, input, estimatedCents);

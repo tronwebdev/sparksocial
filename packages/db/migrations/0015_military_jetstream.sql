@@ -1,0 +1,1 @@
+ALTER TABLE "knowledge_chunks" ALTER COLUMN "doc_id" SET DATA TYPE text;

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Trend Discovery</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    @font-face { font-family: "CS Mollwish"; src: url("fonts/CS-Mollwish.otf") format("opentype"); font-weight: 400; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus { outline: none; }
+    input::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-modal-in { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes ss-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Trend Discovery" style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ wrapH }};">
+    <div style="position:absolute;top:0;width:1728px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;height:{{ stageH }};">
+      <div style="position:absolute;left:15px;top:18px;width:1698px;border-radius:30px;overflow:hidden;background:linear-gradient(151.005deg, rgba(245,107,255,0.2) 3.02%, rgba(255,255,255,0) 63.11%), linear-gradient(210.896deg, rgba(108,232,255,0.3) 3.17%, rgba(255,255,255,0) 67.52%), #F7F7F7;transform:scaleX(-1);height:{{ bgH }};"></div>
+
+      <!-- ============ FEED ============ -->
+      <sc-if value="{{ isFeed }}" hint-placeholder-val="{{ true }}">
+        <span style="position:absolute;left:52px;top:44px;font-size:28px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Trend Discovery</span>
+        <div onClick="{{ goBack }}" style="position:absolute;left:290px;top:44px;width:92px;height:38px;border-radius:8px;background:rgba(255,255,255,0.6);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:11px;" style-hover="background:#FFFFFF;">
+          <svg width="8" height="15" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span style="font-size:16px;font-weight:500;color:#5B5B5B;">Back</span>
+        </div>
+        <span style="position:absolute;left:52px;top:96px;font-size:17px;font-weight:400;color:#838383;white-space:nowrap;">Easily uncover the latest trends with our intuitive Trend Discovery feature.</span>
+        <div style="position:absolute;left:1490px;top:36px;width:60px;height:60px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+          <div style="position:absolute;left:17px;top:25px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+          <div style="position:absolute;left:35px;top:25px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+        </div>
+        <div onClick="{{ toastSpark }}" style="position:absolute;left:1560px;top:44px;height:44px;padding:0 19px;border-radius:22px;background:#FFFFFF;box-shadow:0 10px 26px -14px rgba(12,12,12,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:0 10px 26px -10px rgba(12,12,12,0.45);">
+          <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Ask Spark?</span>
+        </div>
+
+        <!-- container card -->
+        <div style="position:absolute;left:48px;top:140px;width:1632px;border-radius:20px;background:#FFFFFF;height:{{ feedCardH }};">
+          <!-- tabs -->
+          <sc-for list="{{ feedTabs }}" as="ft" hint-placeholder-count="6">
+            <div onClick="{{ ft.click }}" style="position:absolute;top:22px;height:42px;padding:0 15px;border-radius:9px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;background:{{ ft.bg }};box-shadow:{{ ft.ring }};left:{{ ft.left }};">
+              <span style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:{{ ft.color }};" dangerouslySetInnerHTML="{{ ft.icon }}"></span>
+              <span style="font-size:15.5px;font-weight:600;white-space:nowrap;color:{{ ft.color }};">{{ ft.label }}</span>
+            </div>
+          </sc-for>
+          <sc-for list="{{ feedSorts }}" as="fs" hint-placeholder-count="4">
+            <div onClick="{{ fs.click }}" style="position:absolute;top:24px;height:38px;padding:0 13px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;left:{{ fs.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ fs.label }}</span>
+              <svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-for>
+          <div style="position:absolute;left:20px;top:76px;width:120px;height:4px;border-radius:4px;background:linear-gradient(90deg,#6CE8FF 0%,#F56BFF 40%,#A341FF 80%,#FEDEB5 100%);"></div>
+
+          <!-- sidebar -->
+          <span style="position:absolute;left:28px;top:104px;font-size:19px;font-weight:700;color:#0C0C0C;">Filters</span>
+          <div style="position:absolute;left:20px;top:140px;width:300px;display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ filterSections }}" as="sec" hint-placeholder-count="6">
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <div onClick="{{ sec.toggle }}" style="height:48px;border-radius:12px;background:rgba(131,131,131,0.07);display:flex;flex-direction:row;align-items:center;padding:0 16px;gap:11px;cursor:pointer;" style-hover="background:rgba(131,131,131,0.12);">
+                  <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;color:#0C0C0C;" dangerouslySetInnerHTML="{{ sec.icon }}"></span>
+                  <span style="flex:1;font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ sec.label }}</span>
+                  <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;transition:transform 0.2s ease;transform:{{ sec.chevron }};"><path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <sc-if value="{{ sec.open }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="4">
+                  <div onClick="{{ it.click }}" style="height:38px;display:flex;flex-direction:row;align-items:center;gap:12px;padding:0 16px;cursor:pointer;border-radius:9px;" style-hover="background:rgba(131,131,131,0.05);">
+                    <div style="width:19px;height:19px;border-radius:5.5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ it.boxBg }};box-shadow:{{ it.boxRing }};">
+                      <sc-if value="{{ it.checked }}" hint-placeholder-val="{{ false }}"><svg width="10" height="8" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                    </div>
+                    <span style="font-size:16px;font-weight:500;color:#3B3B3B;white-space:nowrap;">{{ it.label }}</span>
+                  </div>
+                </sc-for>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- main header -->
+          <div style="position:absolute;left:352px;top:106px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+            <svg width="20" height="26" viewBox="0 0 22 28" fill="none" style="display:block;"><path d="M11 1.5c.2 2.6-.9 4.4-2.8 6.5C6.2 10.2 3.6 12.4 2.4 15.5a9.3 9.3 0 0 0 5.2 11.9 9.6 9.6 0 0 0 12-4.2c1.5-3 .8-6.5-.8-9.3-1.2-2-2.8-3.7-3.6-5.9-.5-1.4-.7-3-.4-4.9" fill="rgba(245,107,255,0.25)" stroke="#F56BFF" stroke-width="1.7" stroke-linejoin="round"></path><path d="M8.6 20.3c-.5 2 .6 4.1 2.5 4.8 2 .7 4.2-.2 5-2.1.7-1.6.2-3.4-.9-4.8-.8-1-1.9-1.9-2.3-3.1-.9 1.9-3.7 3-4.3 5.2Z" fill="#F56BFF"></path></svg>
+            <span style="font-size:21px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Trending Now</span>
+          </div>
+          <div style="position:absolute;left:1110px;top:98px;width:378px;height:46px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);">
+            <input type="text" value="{{ searchVal }}" onChange="{{ onSearch }}" placeholder="Search topics, #hashtags, keywords, sounds..." style="position:absolute;left:16px;top:0;width:320px;height:46px;border:none;background:transparent;font-size:15px;font-weight:500;color:#0C0C0C;">
+            <svg width="17" height="17" viewBox="0 0 26 26" fill="none" style="position:absolute;right:15px;top:15px;display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+          </div>
+          <div onClick="{{ toastInsights }}" style="position:absolute;left:1512px;top:108px;display:flex;flex-direction:row;align-items:center;gap:9px;cursor:pointer;" style-hover="opacity:0.7;">
+            <svg width="21" height="19" viewBox="0 0 21 19" fill="none" style="display:block;"><path d="M1 12.5 6 7l4 3.6L15.5 4" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M16 1h4v4" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M1 18h19" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            <span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Insights</span>
+          </div>
+
+          <!-- trend cards grid -->
+          <div style="position:absolute;left:352px;top:158px;width:1256px;display:grid;grid-template-columns:repeat(3, 1fr);gap:18px;">
+            <sc-for list="{{ trends }}" as="t" hint-placeholder-count="6">
+              <div style="position:relative;border-radius:18px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);height:470px;overflow:hidden;">
+                <span style="position:absolute;left:20px;top:22px;font-size:21px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ t.title }}</span>
+                <div style="position:absolute;right:16px;top:16px;height:36px;padding:0 12px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;align-items:center;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Velocity: {{ t.velocity }}</span>
+                </div>
+                <div style="position:absolute;left:0;top:66px;width:100%;height:44px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.15), inset 0 1px 0 rgba(131,131,131,0.15);display:flex;flex-direction:row;align-items:center;">
+                  <span style="flex:1.05;text-align:center;font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Vol: {{ t.vol }}</span>
+                  <div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                  <span style="flex:1.15;text-align:center;font-size:14.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:-2px;margin-right:5px;"><circle cx="7" cy="7" r="5.6" stroke="#838383" stroke-width="1.4"></circle><path d="M7 4v3l2 1.4" stroke="#838383" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>{{ t.window }}</span>
+                  <div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                  <span style="flex:0.95;text-align:center;font-size:14.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Accel: <b style="color:{{ t.accelColor }};font-weight:700;">{{ t.accel }}</b></span>
+                  <div style="width:1px;height:100%;background:rgba(131,131,131,0.15);"></div>
+                  <span style="flex:1.35;text-align:center;font-size:14.5px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Saturation: {{ t.saturation }}</span>
+                </div>
+                <!-- media -->
+                <div style="position:absolute;left:16px;top:126px;right:16px;height:270px;border-radius:12px;overflow:hidden;">
+                  <sc-if value="{{ t.isPair }}" hint-placeholder-val="{{ true }}">
+                    <img src="assets/trend-hiring.png" alt="" style="position:absolute;left:0;top:0;width:48.5%;height:100%;object-fit:cover;border-radius:10px;">
+                    <img src="assets/trend-culture.png" alt="" style="position:absolute;right:0;top:0;width:48.5%;height:100%;object-fit:cover;border-radius:10px;">
+                  </sc-if>
+                  <sc-if value="{{ t.isVideo }}" hint-placeholder-val="{{ false }}">
+                    <img src="assets/trend-finance-girl.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;">
+                      <svg width="15" height="17" viewBox="0 0 9 10" fill="none" style="display:block;margin-left:2px;"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#0C0C0C"></path></svg>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ t.isTiles }}" hint-placeholder-val="{{ false }}">
+                    <img src="assets/trend-money-tiles.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;">
+                  </sc-if>
+                  <sc-if value="{{ t.isBanner }}" hint-placeholder-val="{{ false }}">
+                    <img src="assets/trend-collage.png" alt="" style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:100%;height:64%;object-fit:cover;border-radius:10px;">
+                  </sc-if>
+                  <sc-if value="{{ t.isText }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;inset:0;padding:6px 4px;font-size:14.5px;line-height:1.4;color:#3B3B3B;overflow:hidden;">
+                      <div style="font-size:18px;font-weight:700;color:#0C0C0C;line-height:1.3;">How to be a great copywriter in 5 simple steps</div>
+                      <div style="margin-top:10px;">1. Understand Your Audience: Research who you’re writing for to tailor your message effectively.</div>
+                      <div style="margin-top:8px;">2. Master the Basics: Learn grammar, punctuation, and style to ensure clarity in your writing.</div>
+                      <div style="margin-top:8px;">3. Practice Regularly: Write daily to hone your skills and develop your unique voice.</div>
+                      <div style="margin-top:8px;">4. Seek Feedback: Share your work with others to gain insights and improve your craft. 5. Stay Updated: Keep up with industry trends....</div>
+                    </div>
+                  </sc-if>
+                </div>
+                <!-- footer -->
+                <div style="position:absolute;left:16px;bottom:16px;right:16px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+                  <div onClick="{{ t.openDetail }}" style="height:42px;padding:0 14px;border-radius:10px;background:#0C0C0C;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="background:#242424;">
+                    <svg width="17" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#FFFFFF" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#FFFFFF" stroke-width="1.4"></circle></svg>
+                    <span style="font-size:14.5px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Open Detail</span>
+                  </div>
+                  <div onClick="{{ t.repurpose }}" style="height:42px;padding:0 13px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:8px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                    <svg width="16" height="16" viewBox="0 0 20 19" fill="none" style="display:block;"><defs><linearGradient id="dv-sp{{ t.i }}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6CE8FF"></stop><stop offset="0.5" stop-color="#F56BFF"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient></defs><path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#dv-sp{{ t.i }})"></path><path d="m16.6 12.2.9 2.6 2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9Z" fill="url(#dv-sp{{ t.i }})"></path></svg>
+                    <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Re-purpose</span>
+                  </div>
+                  <div onClick="{{ t.reshare }}" style="height:42px;padding:0 13px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:8px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                    <svg width="16" height="15" viewBox="0 0 17 16" fill="none" style="display:block;"><path d="M12.5 1 16 4.5 12.5 8M16 4.5H5.4A4.4 4.4 0 0 0 1 8.9v.4M4.5 15 1 11.5 4.5 8M1 11.5h10.6a4.4 4.4 0 0 0 4.4-4.4v-.4" stroke="#0C0C0C" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Re-share</span>
+                  </div>
+                  <div onClick="{{ t.save }}" style="width:42px;height:42px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;margin-left:auto;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                    <svg width="15" height="19" viewBox="0 0 15 19" fill="none" style="display:block;"><path d="M1 3.2A2.2 2.2 0 0 1 3.2 1h8.6A2.2 2.2 0 0 1 14 3.2V17.4a.6.6 0 0 1-.96.48L7.5 13.7l-5.54 4.18A.6.6 0 0 1 1 17.4V3.2Z" stroke="#0C0C0C" stroke-width="1.5" stroke-linejoin="round" fill="{{ t.savedFill }}"></path></svg>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ noTrends }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:352px;top:240px;width:1256px;text-align:center;font-size:17px;font-weight:500;color:#838383;">No trends match your search or filters.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- ============ TREND DETAIL ============ -->
+      <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ backToFeed }}" style="position:absolute;left:36px;top:42px;height:42px;padding:0 16px;border-radius:9px;background:rgba(255,255,255,0.6);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:11px;" style-hover="background:#FFFFFF;">
+          <svg width="8" height="15" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span style="font-size:16px;font-weight:600;color:#5B5B5B;white-space:nowrap;">Back to Discovery</span>
+        </div>
+        <div style="position:absolute;left:1490px;top:36px;width:60px;height:60px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+          <div style="position:absolute;left:17px;top:25px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+          <div style="position:absolute;left:35px;top:25px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+        </div>
+        <div onClick="{{ toastSpark }}" style="position:absolute;left:1560px;top:44px;height:44px;padding:0 19px;border-radius:22px;background:#FFFFFF;box-shadow:0 10px 26px -14px rgba(12,12,12,0.3);cursor:pointer;display:inline-flex;align-items:center;">
+          <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Ask Spark?</span>
+        </div>
+
+        <div style="position:absolute;left:40px;top:118px;width:1648px;height:1560px;border-radius:20px;background:#FFFFFF;">
+          <span style="position:absolute;left:28px;top:32px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Finance Ads Video (Keywords, Sounds, Hashtags)</span>
+          <sc-for list="{{ detailDrops }}" as="dd" hint-placeholder-count="4">
+            <div onClick="{{ dd.click }}" style="position:absolute;top:26px;height:40px;padding:0 13px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;left:{{ dd.left }};" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ dd.label }}</span>
+              <svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-for>
+          <div onClick="{{ createDraft }}" style="position:absolute;left:1494px;top:26px;height:40px;padding:0 15px;border-radius:8px;background:#6CE8FF;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#57E0FB;">
+            <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">+ Create Draft</span>
+          </div>
+          <div style="position:absolute;left:0;top:88px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+
+          <!-- left column -->
+          <div style="position:absolute;left:28px;top:114px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+            <span style="font-size:19px;font-weight:700;color:#0C0C0C;">Trend Metrics</span>
+            <svg width="20" height="20" viewBox="0 0 22 22" fill="none" style="display:block;"><circle cx="11" cy="11" r="9.8" stroke="#838383" stroke-width="1.5"></circle><path d="M11 10v5.4" stroke="#838383" stroke-width="1.6" stroke-linecap="round"></path><circle cx="11" cy="6.8" r="1.05" fill="#838383"></circle></svg>
+          </div>
+          <sc-for list="{{ metricTiles }}" as="mt" hint-placeholder-count="5">
+            <div style="position:absolute;top:152px;width:136px;height:82px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);left:{{ mt.left }};">
+              <span style="position:absolute;left:14px;top:12px;font-size:14px;font-weight:500;color:#838383;white-space:nowrap;">{{ mt.label }}</span>
+              <span style="position:absolute;left:14px;top:40px;font-size:19px;font-weight:700;white-space:nowrap;color:{{ mt.color }};">{{ mt.value }}</span>
+              <sc-if value="{{ mt.hasArrow }}" hint-placeholder-val="{{ false }}">
+                <svg width="13" height="16" viewBox="0 0 13 16" fill="none" style="position:absolute;right:14px;top:42px;display:block;"><path d="M6.5 15V1.8M6.5 1.8 1.5 7M6.5 1.8l5 5.2" stroke="#13D711" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+          </sc-for>
+
+          <!-- Time series -->
+          <div style="position:absolute;left:28px;top:262px;width:706px;height:420px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.22);">
+            <span style="position:absolute;left:22px;top:20px;font-size:18px;font-weight:700;color:#0C0C0C;">Time Series</span>
+            <div style="position:absolute;right:20px;top:14px;height:36px;padding:0 12px;border-radius:8px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;flex-direction:row;align-items:center;gap:9px;cursor:pointer;">
+              <svg width="15" height="16" viewBox="0 0 24 25" fill="none" style="display:block;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#5B5B5B" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <span style="font-size:14px;font-weight:500;color:#5B5B5B;">This week</span>
+              <svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:22px;top:66px;right:22px;bottom:56px;border-radius:12px;background:#FCFCFC;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.12);overflow:hidden;">
+              <svg width="662" height="298" viewBox="0 0 662 298" preserveAspectRatio="none" style="position:absolute;inset:0;display:block;width:100%;height:100%;">
+                <defs>
+                  <linearGradient id="dv-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(108,232,255,0.65)"></stop><stop offset="1" stop-color="rgba(108,232,255,0.05)"></stop></linearGradient>
+                  <linearGradient id="dv-line" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6CE8FF"></stop><stop offset="0.5" stop-color="#F56BFF"></stop><stop offset="1" stop-color="#A341FF"></stop></linearGradient>
+                </defs>
+                <g stroke="rgba(131,131,131,0.25)" stroke-width="1" stroke-dasharray="4 5">
+                  <path d="M60 12V286"></path><path d="M134 12V286"></path><path d="M208 12V286"></path><path d="M282 12V286"></path><path d="M356 12V286"></path><path d="M430 12V286"></path><path d="M504 12V286"></path><path d="M578 12V286"></path><path d="M645 12V286"></path>
+                </g>
+                <path d="M20 210 C50 120 70 78 105 84 C150 92 165 150 200 158 C230 165 245 140 275 122 C305 104 325 96 356 104 C390 113 400 150 430 158 C465 167 490 130 520 128 C550 126 580 160 610 178 C630 190 645 196 662 200 L662 298 L20 298 Z" fill="url(#dv-area)"></path>
+                <path d="M20 210 C50 120 70 78 105 84 C150 92 165 150 200 158 C230 165 245 140 275 122 C305 104 325 96 356 104 C390 113 400 150 430 158 C465 167 490 130 520 128 C550 126 580 160 610 178 C630 190 645 196 662 200" fill="none" stroke="url(#dv-line)" stroke-width="3"></path>
+              </svg>
+              <div style="position:absolute;left:335px;top:0;width:46px;height:100%;border-radius:10px;background:linear-gradient(180deg, #1B1B1B 0%, rgba(27,27,27,0.55) 100%);display:flex;justify-content:center;padding-top:10px;">
+                <span style="font-size:15px;font-weight:600;color:#FFFFFF;">9,500</span>
+              </div>
+              <div style="position:absolute;left:350px;top:104px;width:16px;height:16px;border-radius:50%;background:#A341FF;box-shadow:0 0 0 3.5px #FFFFFF;"></div>
+            </div>
+            <div style="position:absolute;left:22px;bottom:18px;right:22px;display:flex;flex-direction:row;justify-content:space-between;">
+              <sc-for list="{{ chartDays }}" as="cd" hint-placeholder-count="9">
+                <span style="font-size:13.5px;font-weight:500;color:#838383;">{{ cd.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Geo & Audience + Top Segments -->
+          <div style="position:absolute;left:28px;top:706px;width:400px;height:400px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.22);">
+            <span style="position:absolute;left:22px;top:20px;font-size:18px;font-weight:700;color:#0C0C0C;">Geo &amp; Audience</span>
+            <div style="position:absolute;left:22px;top:60px;right:22px;height:250px;border-radius:12px;background-image:radial-gradient(rgba(12,12,12,0.28) 1.3px, transparent 1.5px);background-size:9px 9px;background-position:2px 2px;-webkit-mask-image:radial-gradient(ellipse 62% 46% at 30% 34%, #000 0%, #000 58%, transparent 74%), radial-gradient(ellipse 55% 60% at 78% 55%, #000 0%, #000 55%, transparent 72%);mask-image:radial-gradient(ellipse 62% 46% at 30% 34%, #000 0%, #000 58%, transparent 74%), radial-gradient(ellipse 55% 60% at 78% 55%, #000 0%, #000 55%, transparent 72%);"></div>
+            <sc-for list="{{ geoBadges }}" as="gb" hint-placeholder-count="5">
+              <div style="position:absolute;height:28px;padding:0 10px;border-radius:14px;background:#FFFFFF;box-shadow:0 4px 12px -4px rgba(12,12,12,0.35), inset 0 0 0 1px rgba(131,131,131,0.2);display:inline-flex;flex-direction:row;align-items:center;gap:6px;left:{{ gb.left }};top:{{ gb.top }};">
+                <span style="font-size:13px;">{{ gb.flag }}</span>
+                <span style="font-size:13px;font-weight:600;color:#0C0C0C;">{{ gb.label }}</span>
+              </div>
+            </sc-for>
+            <div style="position:absolute;left:22px;bottom:22px;display:flex;flex-direction:row;align-items:center;gap:12px;">
+              <span style="font-size:16px;font-weight:600;color:#0C0C0C;">Top Geo Location:</span>
+              <div style="height:34px;padding:0 13px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;align-items:center;gap:8px;">
+                <span style="font-size:14px;">🇺🇸</span><span style="font-size:15px;font-weight:700;color:#0C0C0C;">+12k</span>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:452px;top:706px;width:282px;height:400px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.22);">
+            <span style="position:absolute;left:22px;top:20px;font-size:18px;font-weight:700;color:#0C0C0C;">Top Segments</span>
+            <div style="position:absolute;left:22px;top:64px;right:22px;display:flex;flex-direction:column;gap:14px;">
+              <sc-for list="{{ segments }}" as="sgm" hint-placeholder-count="4">
+                <div style="height:52px;border-radius:11px;display:flex;align-items:center;padding:0 18px;background:{{ sgm.bg }};">
+                  <span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ sgm.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <!-- Related topics -->
+          <span style="position:absolute;left:28px;top:1140px;font-size:19px;font-weight:700;color:#0C0C0C;">Related Topics &amp; Entities</span>
+          <div style="position:absolute;left:28px;top:1182px;width:710px;display:flex;flex-direction:row;flex-wrap:wrap;gap:12px;">
+            <sc-for list="{{ relatedChips }}" as="rc" hint-placeholder-count="5">
+              <div onClick="{{ rc.click }}" style="height:44px;padding:0 17px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                <span style="font-size:15.5px;font-weight:500;color:#3B3B3B;white-space:nowrap;">{{ rc.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- right column -->
+          <span style="position:absolute;left:772px;top:118px;font-size:19px;font-weight:700;color:#0C0C0C;">Samples &amp; Content Pack</span>
+          <div style="position:absolute;left:772px;top:156px;width:848px;height:526px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.22);">
+            <span style="position:absolute;left:24px;top:24px;font-size:18px;font-weight:700;color:#0C0C0C;">Top Examples</span>
+            <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="4">
+              <div style="position:absolute;left:24px;width:800px;height:106px;top:{{ ex.top }};">
+                <div style="position:absolute;left:0;top:8px;width:60px;height:90px;border-radius:8px;background:#EAF2FB;overflow:hidden;">
+                  <sc-if value="{{ ex.hasThumb }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;inset:0;background:url('{{ ex.thumb }}') center / cover no-repeat;"></div></sc-if>
+                  <svg width="10" height="11" viewBox="0 0 9 10" fill="none" style="position:absolute;left:25px;top:40px;display:block;filter:drop-shadow(0 0 3px rgba(0,0,0,0.5));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                </div>
+                <div style="position:absolute;left:88px;top:14px;height:32px;padding:0 12px;border-radius:16px;background:#FBDFFB;display:inline-flex;flex-direction:row;align-items:center;gap:8px;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Reels</span>
+                  <span style="width:4px;height:4px;border-radius:50%;background:#838383;"></span>
+                  <span style="font-size:14px;font-weight:500;color:#0C0C0C;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:block;"><circle cx="7" cy="7" r="5.6" stroke="#838383" stroke-width="1.4"></circle><path d="M7 4v3l2 1.4" stroke="#838383" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>20s</span>
+                </div>
+                <span style="position:absolute;left:246px;top:19px;font-size:17px;font-weight:700;color:#13A711;white-space:nowrap;">ER: {{ ex.er }}</span>
+                <span style="position:absolute;left:88px;top:62px;font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Hook: {{ ex.hook }}</span>
+                <div style="position:absolute;left:-24px;bottom:0;width:848px;height:1px;background:rgba(131,131,131,0.12);"></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:772px;top:718px;width:848px;height:520px;border-radius:15px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.22);">
+            <div style="position:absolute;left:24px;top:24px;display:flex;flex-direction:row;align-items:center;gap:10px;">
+              <span style="font-size:18px;font-weight:700;color:#0C0C0C;">Recommendations</span>
+              <svg width="20" height="20" viewBox="0 0 22 22" fill="none" style="display:block;"><circle cx="11" cy="11" r="9.8" stroke="#838383" stroke-width="1.5"></circle><path d="M11 10v5.4" stroke="#838383" stroke-width="1.6" stroke-linecap="round"></path><circle cx="11" cy="6.8" r="1.05" fill="#838383"></circle></svg>
+            </div>
+            <sc-for list="{{ recos }}" as="rec" hint-placeholder-count="3">
+              <div style="position:absolute;left:24px;width:800px;height:118px;border-radius:14px;top:{{ rec.top }};background:{{ rec.bg }};box-shadow:inset 0 0 0 1px {{ rec.ring }};">
+                <div style="position:absolute;left:24px;top:22px;display:flex;flex-direction:row;align-items:baseline;gap:14px;">
+                  <span style="font-size:19px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ rec.kind }}</span>
+                  <span style="width:5px;height:5px;border-radius:50%;background:#838383;position:relative;top:-4px;"></span>
+                  <span style="font-size:17px;font-weight:700;color:#13A711;white-space:nowrap;">{{ rec.expected }}</span>
+                </div>
+                <span style="position:absolute;left:24px;top:66px;font-size:17px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ rec.desc }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ RE-PURPOSE MODAL ============ -->
+      <sc-if value="{{ mRepurpose }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeModal }}" style="position:absolute;inset:0;background:rgba(40,40,40,0.45);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+        <div data-screen-label="Re-purpose Modal" style="position:absolute;left:346px;top:60px;width:1035px;height:900px;border-radius:24px;background:linear-gradient(160deg, #FDFBFF 0%, #F4F7FD 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.45);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+          <span style="position:absolute;left:38px;top:34px;font-size:28px;font-weight:700;color:#0C0C0C;">Re-purpose</span>
+          <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:26px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+            <svg width="18" height="18" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+          </div>
+          <div style="position:absolute;left:38px;top:88px;display:flex;flex-direction:row;align-items:center;gap:12px;">
+            <div style="position:relative;width:30px;height:30px;flex-shrink:0;">
+              <div style="position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 0 1.3px #838383;"></div>
+              <div style="position:absolute;left:6px;top:11px;width:18px;height:8px;border-radius:6px;box-shadow:inset 0 0 0 1px #838383;"></div>
+              <div style="position:absolute;left:9.6px;top:14px;width:2.4px;height:2.4px;border-radius:50%;background:#838383;"></div>
+              <div style="position:absolute;left:18px;top:14px;width:2.4px;height:2.4px;border-radius:50%;background:#838383;"></div>
+            </div>
+            <span style="font-size:18px;font-weight:500;color:#5B5B5B;">Hey, I’m going to create a new post based on this trend.</span>
+          </div>
+          <div style="position:absolute;left:0;top:140px;width:100%;height:1px;background:rgba(131,131,131,0.18);"></div>
+
+          <span style="position:absolute;left:40px;top:166px;font-size:20px;font-weight:700;color:#0C0C0C;">Finance Ads Video</span>
+          <div style="position:absolute;right:56px;top:158px;height:36px;padding:0 12px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:inline-flex;align-items:center;">
+            <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Velocity: +74%</span>
+          </div>
+          <span style="position:absolute;left:40px;top:206px;font-size:15px;font-weight:500;color:#838383;">Media Preview</span>
+          <div style="position:absolute;left:40px;top:236px;width:236px;height:300px;border-radius:14px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);">
+            <img src="assets/trend-finance-girl.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.9);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="15" viewBox="0 0 9 10" fill="none" style="display:block;margin-left:2px;"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#0C0C0C"></path></svg>
+            </div>
+          </div>
+          <div style="position:absolute;left:308px;top:236px;display:flex;flex-direction:row;gap:11px;flex-wrap:wrap;width:660px;">
+            <sc-for list="{{ rpStats }}" as="rs" hint-placeholder-count="4">
+              <div style="height:38px;padding:0 14px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);display:inline-flex;align-items:center;">
+                <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ rs.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:308px;top:296px;width:660px;height:110px;border-radius:14px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:20px 26px;">
+            <span style="font-size:15px;font-weight:700;color:#A341FF;">Hook Idea 1</span>
+            <div style="margin-top:8px;font-size:17px;font-weight:600;color:#0C0C0C;">"Unlock Your Financial Future Today!"</div>
+          </div>
+          <div style="position:absolute;left:308px;top:426px;width:660px;height:110px;border-radius:14px;background:#FFFFFF;box-shadow:0 12px 30px -24px rgba(12,12,12,0.25);padding:20px 26px;">
+            <span style="font-size:15px;font-weight:700;color:#A341FF;">Hook Idea 2</span>
+            <div style="margin-top:8px;font-size:17px;font-weight:600;color:#0C0C0C;">"Invest Smart, Live Rich: Your Path to Wealth!"</div>
+          </div>
+          <span style="position:absolute;left:40px;top:576px;font-size:18px;font-weight:700;color:#0C0C0C;">Related Topics &amp; Entities</span>
+          <div style="position:absolute;left:40px;top:614px;width:930px;display:flex;flex-direction:row;flex-wrap:wrap;gap:11px;">
+            <sc-for list="{{ relatedChips }}" as="rc" hint-placeholder-count="5">
+              <div style="height:40px;padding:0 15px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:inline-flex;align-items:center;">
+                <span style="font-size:14.5px;font-weight:500;color:#3B3B3B;white-space:nowrap;">{{ rc.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <span style="position:absolute;left:40px;top:688px;font-size:18px;font-weight:700;color:#0C0C0C;">Recommendations</span>
+          <div style="position:absolute;left:40px;top:726px;width:930px;height:76px;border-radius:14px;background:#FBE6FA;box-shadow:inset 0 0 0 1px rgba(245,107,255,0.4);display:flex;flex-direction:row;align-items:center;padding:0 24px;gap:14px;">
+            <span style="font-size:17px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Time Shift</span>
+            <span style="width:5px;height:5px;border-radius:50%;background:#838383;"></span>
+            <span style="font-size:16px;font-weight:700;color:#13A711;white-space:nowrap;">Expected +59% ER</span>
+            <span style="font-size:16px;font-weight:500;color:#5B5B5B;white-space:nowrap;">— Schedule Tuesday 09/11</span>
+          </div>
+          <div onClick="{{ generateDraft }}" style="position:absolute;right:56px;top:824px;height:52px;padding:0 26px;border-radius:12px;background:linear-gradient(90deg, #C46BF5 0%, #8F7BFF 45%, #6CD5FF 100%);cursor:pointer;display:inline-flex;align-items:center;" style-hover="opacity:0.92;" style-active="transform:scale(0.985);">
+            <span style="font-size:17px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Generate Draft</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    
+    <sc-if value="{{ sparkOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;right:24px;top:78px;width:541px;height:982px;z-index:120;transform:scale(0.82);transform-origin:top right;">
+        <dc-import name="Spark Chat" on-close="{{ closeSpark }}" on-toast="{{ sparkToast }}" hint-size="541px,982px" style="position:absolute;left:0;top:0;width:541px;height:982px;"></dc-import>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startPage&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;feed&quot;, &quot;detail&quot;], &quot;default&quot;: &quot;feed&quot;, &quot;tsType&quot;: &quot;'feed'|'detail'&quot;, &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    sparkOpen: false,
+    vw: 1728,
+    page: "feed",
+    modal: null,
+    tab: 0,
+    search: "",
+    saved: [],
+    collapsedSecs: [],
+    checks: ["Velocity", "Hide NSFW", "#SaaS"],
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    if (this.props.startPage === "detail") this.setState({ page: "detail" });
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    const stageH = s.page === "feed" ? 1830 : 1740;
+
+    const tabIcons = [
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="5.4" r="3.4" stroke="currentColor" stroke-width="1.7"></circle><path d="M2.6 16c.5-3.6 3.2-6 6.4-6s5.9 2.4 6.4 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.6" stroke="currentColor" stroke-width="1.6"></circle><path d="M1.6 9h14.8M9 1.4c2 2.2 3 4.7 3 7.6s-1 5.4-3 7.6c-2-2.2-3-4.7-3-7.6s1-5.4 3-7.6Z" stroke="currentColor" stroke-width="1.6"></path></svg>',
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3.4 16.6V2.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path><path d="M3.8 3c3.2-1.7 5.7 1.5 8.8.3.8-.3 1.6.3 1.6 1.1v5c0 .6-.4 1.2-1 1.3-3.4.9-5.9-2.1-9.4-.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>',
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 7v4M5.5 4.5v9M9 2v14M12.5 5.5v7M16 7.5v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>',
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.6" stroke="currentColor" stroke-width="1.6"></circle><path d="M6 6.6h6.4M5.6 11h6.4M7.8 4 6.6 14M11.4 4l-1.2 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
+      '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M12.6 2.2c.9 2.5-.2 3.9-1.6 5.5-1.5 1.7-3.4 3.2-4.3 5.4a5.8 5.8 0 0 0 3.2 7.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" transform="scale(0.82) translate(2,-1)"></path><path d="M6.5 12.7c-.4 1.5.4 3 1.9 3.6 1.5.5 3.1-.2 3.7-1.6.5-1.2.1-2.5-.7-3.5-.6-.8-1.4-1.5-1.7-2.3-.7 1.4-2.7 2.2-3.2 3.8Z" fill="currentColor"></path></svg>'
+    ];
+    const secIcons = {
+      Sources: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"></circle><path d="m7 10 2 2 4-4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      Signal: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M1.6 10h3.2l2.2-5.4 3.6 10.8 2.4-5.4h5.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      Language: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.6"></circle><path d="M2.2 10h15.6M10 2.2c2.2 2.4 3.3 5.1 3.3 7.8s-1.1 5.4-3.3 7.8c-2.2-2.4-3.3-5.1-3.3-7.8S7.8 4.6 10 2.2Z" stroke="currentColor" stroke-width="1.5"></path></svg>',
+      "Brand Safety": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 1.6 17 4.3v5c0 4.4-2.8 8.2-7 9.6-4.2-1.4-7-5.2-7-9.6v-5L10 1.6Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg>',
+      "Saved Watchlist": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 3.4A2.4 2.4 0 0 1 6.4 1h7.2A2.4 2.4 0 0 1 16 3.4v14.8a.6.6 0 0 1-.95.49L10 15l-5.05 3.7A.6.6 0 0 1 4 18.2V3.4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg>',
+      Influencers: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="m10 1.8 2.4 5 5.4.6-4 3.7 1.1 5.4L10 13.7l-4.9 2.8 1.1-5.4-4-3.7 5.4-.6 2.4-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg>'
+    };
+
+    const mkTrend = (i, def) => ({
+      i,
+      ...def,
+      accelColor: def.accel === "↑" ? "#13D711" : "#F35525",
+      savedFill: s.saved.includes(i) ? "#0C0C0C" : "none",
+      openDetail: () => { this.setState({ page: "detail", modal: null }); window.scrollTo(0, 0); },
+      repurpose: () => this.setState({ modal: "repurpose" }),
+      reshare: () => this.toast("Re-share composer — mock"),
+      save: () => {
+        this.setState(st => ({ saved: st.saved.includes(i) ? st.saved.filter(x => x !== i) : [...st.saved, i] }));
+        this.toast(s.saved.includes(i) ? "Removed from Watchlist" : "Saved to Watchlist");
+      }
+    });
+    const trendDefs = [
+      { title: "#We’reHiring", velocity: "+74%", vol: "42k", window: "7d +31%", accel: "↑", saturation: "Low", isPair: true, isVideo: false, isTiles: false, isBanner: false, isText: false },
+      { title: "Finance Ads Video", velocity: "+74%", vol: "42k", window: "7d +31%", accel: "↑", saturation: "Low", isPair: false, isVideo: true, isTiles: false, isBanner: false, isText: false },
+      { title: "#Making money", velocity: "+74%", vol: "92k", window: "8d +41%", accel: "↑", saturation: "HIGH", isPair: false, isVideo: false, isTiles: true, isBanner: false, isText: false },
+      { title: "#HowtoCopyWrite", velocity: "+44%", vol: "12k", window: "3d +31%", accel: "↓", saturation: "Low", isPair: false, isVideo: false, isTiles: false, isBanner: false, isText: true },
+      { title: "Linkedin Strategies", velocity: "+74%", vol: "92k", window: "8d +41%", accel: "↑", saturation: "HIGH", isPair: false, isVideo: false, isTiles: false, isBanner: true, isText: false },
+      { title: "#Storyforstories", velocity: "+74%", vol: "42k", window: "7d +31%", accel: "↑", saturation: "Low", isPair: false, isVideo: true, isTiles: false, isBanner: false, isText: false }
+    ];
+
+    const filterTrends = () => {
+      let list = trendDefs.map((d, i) => ({ ...d, _i: i }));
+      if (s.tab === 1) list = list.slice().reverse();
+      else if (s.tab === 2) list = list.filter(d => d.saturation === "HIGH" || /linkedin/i.test(d.title));
+      else if (s.tab === 3) list = list.filter(d => d.isVideo);
+      else if (s.tab === 4) list = list.filter(d => d.title.trim().startsWith("#"));
+      else if (s.tab === 5) list = list.filter(d => d.isText || /strateg|hiring|hook/i.test(d.title));
+      const q = (s.search || "").trim().toLowerCase();
+      if (q) list = list.filter(d => d.title.toLowerCase().includes(q));
+      return list;
+    };
+    const visibleTrends = filterTrends();
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(stageH * scale) + "px",
+      stageH: stageH + "px",
+      bgH: (stageH - 36) + "px",
+
+      isFeed: s.page === "feed",
+      isDetail: s.page === "detail",
+      feedCardH: "1630px",
+      goBack: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+      backToFeed: () => this.setState({ page: "feed" }),
+      toastSpark: () => this.setState({ sparkOpen: true }),
+      sparkOpen: this.state.sparkOpen,
+      closeSpark: () => this.setState({ sparkOpen: false }),
+      sparkToast: (m) => this.toast(m),
+      toastInsights: () => this.toast("Insights digest — mock"),
+
+      feedTabs: ["For you", "Global", "Competitors", "Sounds", "Hashtags", "Hooks"].map((label, i) => ({
+        label,
+        left: (20 + [0, 122, 222, 356, 468, 596][i]) + "px",
+        icon: { __html: tabIcons[i] },
+        bg: s.tab === i ? "#6CE8FF" : "#FFFFFF",
+        ring: s.tab === i ? "none" : "inset 0 0 0 1px rgba(131,131,131,0.25)",
+        color: "#0C0C0C",
+        click: () => this.setState({ tab: i })
+      })),
+      feedSorts: [
+        { label: "Sort: Velocity", left: "1066px" },
+        { label: "Time frame", left: "1210px" },
+        { label: "Region: Global", left: "1330px" },
+        { label: "Industry: SaaS", left: "1470px" }
+      ].map(f => ({ ...f, click: () => this.toast(f.label + " — mock") })),
+
+      filterSections: [
+        { label: "Sources", items: ["X/Twitter", "Tiktok", "Youtube", "Reddit", "Google Trends"] },
+        { label: "Signal", items: ["Velocity", "Acceleration", "Novelty", "Saturation"] },
+        { label: "Language", items: ["English", "French", "Spanish", "Arabic"] },
+        { label: "Brand Safety", items: ["Hide NSFW", "Hide Politics", "Hide Competitors"] },
+        { label: "Saved Watchlist", items: ["#Onboarding", "#SaaS", "Ai Agents", "Drew Tutorial", "Ecommerce"] },
+        { label: "Influencers", items: ["Taylor Jenkins Reid", "Delia Owens", "Brit Bennett"] }
+      ].map(sec => ({
+        label: sec.label,
+        icon: { __html: secIcons[sec.label] },
+        open: !s.collapsedSecs.includes(sec.label),
+        chevron: s.collapsedSecs.includes(sec.label) ? "rotate(0deg)" : "rotate(180deg)",
+        toggle: () => this.setState(st => ({ collapsedSecs: st.collapsedSecs.includes(sec.label) ? st.collapsedSecs.filter(x => x !== sec.label) : [...st.collapsedSecs, sec.label] })),
+        items: sec.items.map(label => ({
+          label,
+          checked: s.checks.includes(label),
+          boxBg: s.checks.includes(label) ? "#0C0C0C" : "#FFFFFF",
+          boxRing: s.checks.includes(label) ? "none" : "inset 0 0 0 1.2px rgba(12,12,12,0.3)",
+          click: () => this.setState(st => ({
+            checks: st.checks.includes(label) ? st.checks.filter(c => c !== label) : [...st.checks, label]
+          }))
+        }))
+      })),
+
+      trends: visibleTrends.map(d => mkTrend(d._i, d)),
+      searchVal: s.search,
+      onSearch: (e) => this.setState({ search: e.target.value }),
+      noTrends: visibleTrends.length === 0,
+
+      detailDrops: [
+        { label: "Timeframe: 7d", left: "1010px" },
+        { label: "Region: Global", left: "1148px" },
+        { label: "Industry: SaaS", left: "1286px" },
+        { label: "Mute Source", left: "1422px" }
+      ].map(f => ({ ...f, click: () => this.toast(f.label + " — mock") })),
+      createDraft: () => { this.toast("Opening Draft Panel…"); setTimeout(() => { window.location.href = "SparkSocial Draft Panel.dc.html"; }, 700); },
+
+      metricTiles: [
+        { label: "Volume", value: "42K Posts", color: "#13A711", left: "28px", hasArrow: false },
+        { label: "7d", value: "+31%", color: "#F56BFF", left: "176px", hasArrow: false },
+        { label: "Velocity", value: "+31%", color: "#A341FF", left: "324px", hasArrow: false },
+        { label: "Saturation", value: "Low", color: "#F35525", left: "472px", hasArrow: false },
+        { label: "Relevance", value: "High", color: "#0C0C0C", left: "620px", hasArrow: true }
+      ],
+      chartDays: ["Apr 3", "Apr 4", "Apr 5", "Apr 6", "Apr 7", "Apr 8", "Apr 9", "Apr 10", "Apr 12"].map(label => ({ label })),
+      geoBadges: [
+        { flag: "🇺🇸", label: "+12k", left: "40px", top: "112px" },
+        { flag: "🇬🇧", label: "+7k", left: "112px", top: "138px" },
+        { flag: "🇫🇷", label: "+3k", left: "58px", top: "168px" },
+        { flag: "🇿🇦", label: "+8k", left: "196px", top: "212px" },
+        { flag: "🇮🇳", label: "+11k", left: "150px", top: "84px" }
+      ],
+      segments: [
+        { label: "Founder / CEO", bg: "#C9EFF9" },
+        { label: "PM / PPM", bg: "#FCEBD4" },
+        { label: "Creators", bg: "#FBE0F7" },
+        { label: "Ecommerce Owners", bg: "#DFF5E1" }
+      ],
+      relatedChips: ["#Finance", "Digital Marketing", "#AdCampaigns", "Financial Services", "Target Audience"].map(label => ({
+        label, click: () => this.toast(label + " — mock")
+      })),
+      examples: [
+        { top: "64px", er: "+62%", hook: "\"Unlock Your Financial Future Today!\"", thumb: "assets/trend-finance-girl.png", hasThumb: true },
+        { top: "172px", er: "+59%", hook: "\"Invest Smart, Live Rich: Your Path to Wealth!\"", thumb: "assets/trend-money-tiles.png", hasThumb: true },
+        { top: "280px", er: "+76%", hook: "\"Transform Your Savings into Success!\"", thumb: "assets/trend-collage.png", hasThumb: true },
+        { top: "388px", er: "+76%", hook: "\"Transform Your Savings into Success!\"", thumb: "", hasThumb: false }
+      ],
+      recos: [
+        { top: "72px", kind: "Time Shift", expected: "Expected +59% ER", desc: "Schedule Tuesday 09/11", bg: "#FBE6FA", ring: "rgba(245,107,255,0.35)" },
+        { top: "212px", kind: "Format", expected: "Expected +7% ER", desc: "20 Reels with Caption and end-card CTA", bg: "#FCEBD4", ring: "rgba(228,137,21,0.3)" },
+        { top: "352px", kind: "Hook", expected: "Expected +5% CTR", desc: "Time Shift", bg: "#DDEBFB", ring: "rgba(36,116,237,0.3)" }
+      ],
+
+      mRepurpose: s.modal === "repurpose",
+      closeModal: () => this.setState({ modal: null }),
+      rpStats: [
+        { label: "Vol: 42k" }, { label: "7d +31%" }, { label: "Accel: ↑" }, { label: "Saturation: Low" }
+      ],
+      generateDraft: () => { this.setState({ modal: null }); this.toast("Draft generating — opening Draft Panel"); setTimeout(() => { window.location.href = "SparkSocial Draft Panel.dc.html"; }, 900); },
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

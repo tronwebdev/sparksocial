@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Settings</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus, textarea:focus { outline: none; }
+    input::placeholder, textarea::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Settings" style="position:relative;width:100%;overflow:hidden;height:{{ wrapH }};background:#F4F7FB;">
+    <div style="position:absolute;top:0;width:1728px;height:1120px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;background:linear-gradient(120deg, #D9EEFB 0%, #E8F1FA 30%, #EFE9F8 68%, #E9DFF6 100%);">
+
+      <!-- ============ WORKSPACE / PERSONAL SHELL ============ -->
+      <sc-if value="{{ inWsShell }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ goDashboard }}" style="position:absolute;left:42px;top:46px;width:90px;height:46px;border-radius:11px;background:rgba(255,255,255,0.65);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;" style-hover="background:#FFFFFF;">
+          <svg width="8" height="14" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#838383" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <span style="font-size:15.5px;font-weight:500;color:#838383;">Back</span>
+        </div>
+        <span style="position:absolute;left:152px;top:50px;font-size:28px;font-weight:700;color:#0C0C0C;">Settings</span>
+        <div style="position:absolute;left:1038px;top:45px;width:424px;height:48px;border-radius:26px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.3);">
+          <div onClick="{{ showWorkspace }}" style="position:absolute;left:4px;top:4px;height:40px;padding:0 16px;border-radius:22px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;transition:background 0.2s ease;background:{{ wsPillBg }};">
+            <svg width="16" height="15" viewBox="0 0 16 15" fill="none" style="display:block;"><rect x="1" y="4" width="14" height="10" rx="2.4" stroke="{{ wsPillIcon }}" stroke-width="1.4"></rect><path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke="{{ wsPillIcon }}" stroke-width="1.4"></path></svg>
+            <span style="font-size:15px;font-weight:600;white-space:nowrap;color:{{ wsPillColor }};">Workspace Settings</span>
+          </div>
+          <div onClick="{{ showPersonal }}" style="position:absolute;left:212px;top:4px;height:40px;padding:0 16px;border-radius:22px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;transition:background 0.2s ease;background:{{ psPillBg }};">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="7" stroke="{{ psPillIcon }}" stroke-width="1.4"></circle><circle cx="8" cy="6.4" r="2.1" stroke="{{ psPillIcon }}" stroke-width="1.3"></circle><path d="M3.8 13c.9-2 2.4-3 4.2-3s3.3 1 4.2 3" stroke="{{ psPillIcon }}" stroke-width="1.3"></path></svg>
+            <span style="font-size:15px;font-weight:600;white-space:nowrap;color:{{ psPillColor }};">Personal Settings</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:1490px;top:38px;width:62px;height:62px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+          <div style="position:absolute;left:18px;top:27px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+          <div style="position:absolute;left:36px;top:27px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+        </div>
+        <div onClick="{{ toastSpark }}" style="position:absolute;left:1562px;top:46px;height:44px;padding:0 18px;border-radius:22px;background:#FFFFFF;box-shadow:0 10px 26px -14px rgba(12,12,12,0.3);cursor:pointer;display:inline-flex;align-items:center;">
+          <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Ask Spark?</span>
+        </div>
+        <div style="position:absolute;left:42px;top:114px;width:1644px;height:1px;background:rgba(131,131,131,0.25);"></div>
+
+        <!-- sidebar -->
+        <div style="position:absolute;left:42px;top:144px;width:284px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);padding:10px;">
+          <sc-for list="{{ shellTabs }}" as="t" hint-placeholder-count="7">
+            <div onClick="{{ t.click }}" style="position:relative;height:56px;border-radius:12px;cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 16px;gap:13px;background:{{ t.bg }};" style-hover="background:rgba(108,232,255,0.12);">
+              <span style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;color:{{ t.color }};" dangerouslySetInnerHTML="{{ t.icon }}"></span>
+              <span style="font-size:16.5px;font-weight:600;white-space:nowrap;color:{{ t.color }};">{{ t.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- ============ WORKSPACE OVERVIEW ============ -->
+        <sc-if value="{{ wsIsOverview }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Workspace Settings" style="position:absolute;left:342px;top:144px;width:1344px;height:700px;border-radius:22px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);">
+            <div style="position:absolute;left:10px;top:10px;right:10px;height:196px;border-radius:16px;background:linear-gradient(180deg, #A6ECF9 0%, #C2F2FC 100%);"></div>
+            <div onClick="{{ toastEditWs }}" style="position:absolute;right:28px;top:28px;width:44px;height:44px;border-radius:12px;background:#FFFFFF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:0 6px 16px -8px rgba(12,12,12,0.4);">
+              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:40px;top:76px;width:182px;height:182px;border-radius:50%;background:#FFFFFF;box-shadow:0 14px 34px -20px rgba(12,12,12,0.35);display:flex;align-items:center;justify-content:center;">
+              <div style="position:relative;width:132px;height:132px;border-radius:30px;background:linear-gradient(180deg, #2FA7F2 0%, #0B7FE4 100%);overflow:hidden;">
+                <div style="position:absolute;left:-20px;top:38px;width:172px;height:150px;border-radius:50%;background:linear-gradient(180deg, #EAF7FF 0%, #BFE3FB 100%);"></div>
+                <div style="position:absolute;left:34px;top:64px;width:22px;height:30px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 -3px 6px rgba(11,127,228,0.25);"></div>
+                <div style="position:absolute;left:76px;top:64px;width:22px;height:30px;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 -3px 6px rgba(11,127,228,0.25);"></div>
+              </div>
+            </div>
+            <span style="position:absolute;left:44px;top:288px;font-size:33px;font-weight:700;color:#0C0C0C;white-space:nowrap;">My Marketing WSP</span>
+            <div style="position:absolute;left:44px;top:348px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+              <div style="position:relative;width:92px;height:38px;">
+                <div style="position:absolute;left:0;top:0;width:38px;height:38px;border-radius:50%;background:#F8F8F8 url('assets/agent-avatar-photo.png') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+                <div style="position:absolute;left:27px;top:0;width:38px;height:38px;border-radius:50%;background:#F8F8F8 url('assets/avatar-2.png') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+                <div style="position:absolute;left:54px;top:0;width:38px;height:38px;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;box-shadow:0 0 0 2px #FFFFFF;"></div>
+              </div>
+              <div style="height:38px;padding:0 15px;border-radius:19px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);display:inline-flex;align-items:center;">
+                <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Created Mar 5, 2026</span>
+              </div>
+            </div>
+            <div style="position:absolute;left:770px;top:280px;display:flex;flex-direction:column;gap:15px;">
+              <div style="display:flex;flex-direction:row;align-items:baseline;gap:26px;">
+                <span style="font-size:17px;font-weight:500;color:#838383;">Purpose:</span>
+                <span style="font-size:17px;font-weight:500;color:#5B5B5B;white-space:nowrap;">To foster collaboration among design teams</span>
+              </div>
+              <div style="display:flex;flex-direction:row;align-items:center;gap:16px;">
+                <span style="font-size:17px;font-weight:500;color:#838383;white-space:nowrap;">Brand Compliance Status:</span>
+                <div style="height:34px;padding:0 13px;border-radius:17px;background:#9CEFFF;display:inline-flex;align-items:center;gap:8px;">
+                  <span style="width:17px;height:17px;border-radius:50%;background:#22B14C;display:inline-flex;align-items:center;justify-content:center;"><svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                  <span style="font-size:15px;font-weight:600;color:#0C0C0C;">Compliant</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:row;align-items:baseline;gap:14px;">
+                <span style="font-size:17px;font-weight:500;color:#838383;white-space:nowrap;">Publishing Connections Health:</span>
+                <span style="font-size:17px;font-weight:500;color:#5B5B5B;white-space:nowrap;">All systems operational.</span>
+              </div>
+            </div>
+            <span style="position:absolute;left:44px;top:440px;font-size:18px;font-weight:600;color:#0C0C0C;">Work Name</span>
+            <div style="position:absolute;left:44px;top:474px;width:620px;height:60px;border-radius:12px;background:#F4F4F6;display:flex;flex-direction:row;align-items:center;padding:0 20px;gap:13px;">
+              <svg width="18" height="17" viewBox="0 0 16 15" fill="none" style="display:block;flex-shrink:0;"><rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#838383" stroke-width="1.4"></rect><path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke="#838383" stroke-width="1.4"></path></svg>
+              <input type="text" value="{{ wsName }}" onInput="{{ onWsName }}" style="flex:1;border:none;background:transparent;font-size:16.5px;font-weight:500;color:#3B3B3B;min-width:0;">
+            </div>
+            <span style="position:absolute;left:44px;top:562px;font-size:18px;font-weight:600;color:#0C0C0C;">Workspace URL</span>
+            <div style="position:absolute;left:44px;top:596px;width:620px;height:60px;border-radius:12px;background:#F4F4F6;display:flex;flex-direction:row;align-items:center;padding:0 20px;gap:13px;">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" style="display:block;flex-shrink:0;"><path d="M7 10a3.8 3.8 0 0 0 5.4.4l2.4-2.4a3.8 3.8 0 0 0-5.4-5.4L8.1 3.9M10 7a3.8 3.8 0 0 0-5.4-.4L2.2 9a3.8 3.8 0 0 0 5.4 5.4l1.3-1.3" stroke="#838383" stroke-width="1.5" stroke-linecap="round"></path></svg>
+              <input type="text" placeholder="Enter your website URL" style="flex:1;border:none;background:transparent;font-size:16.5px;font-weight:500;color:#3B3B3B;min-width:0;">
+            </div>
+            <span style="position:absolute;left:770px;top:440px;font-size:18px;font-weight:600;color:#0C0C0C;">Description (Optional)</span>
+            <textarea placeholder="Enter short description" style="position:absolute;left:770px;top:474px;width:534px;height:182px;border-radius:12px;background:#F4F4F6;border:none;resize:none;padding:20px;font-size:16.5px;font-weight:500;color:#3B3B3B;"></textarea>
+          </div>
+        </sc-if>
+
+        <!-- ============ WORKSPACE GENERIC TAB ============ -->
+        <sc-if value="{{ wsGeneric }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Workspace Settings Tab" style="position:absolute;left:342px;top:144px;width:1344px;border-radius:22px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);padding:32px 36px 44px 36px;">
+            <div style="display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;gap:20px;">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <span style="font-size:26px;font-weight:700;color:#0C0C0C;">{{ wsTitle }}</span>
+                <span style="font-size:15.5px;font-weight:400;color:#838383;">{{ wsSub }}</span>
+              </div>
+              <sc-if value="{{ wsHasHeaderBtn }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ wsHeaderClick }}" style="height:46px;padding:0 20px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;flex-shrink:0;" style-hover="background:#242424;">
+                  <span style="font-size:15px;font-weight:600;color:#FFFFFF;white-space:nowrap;">{{ wsHeaderBtn }}</span>
+                </div>
+              </sc-if>
+            </div>
+            <div style="margin:24px -36px 0 -36px;height:1px;background:rgba(131,131,131,0.15);"></div>
+            <sc-for list="{{ wsBlocks }}" as="b" hint-placeholder-count="3">
+              <sc-if value="{{ b.isTabs }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:26px;display:inline-flex;flex-direction:row;background:#F1F2F4;border-radius:12px;padding:4px;gap:2px;">
+                  <sc-for list="{{ b.items }}" as="ti" hint-placeholder-count="3">
+                    <div onClick="{{ ti.click }}" style="height:42px;padding:0 18px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;transition:background 0.2s ease;background:{{ ti.bg }};box-shadow:{{ ti.shadow }};">
+                      <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ ti.color }};">{{ ti.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isHeading }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:34px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px;">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <span style="font-size:19px;font-weight:700;color:#0C0C0C;">{{ b.title }}</span>
+                    <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:15px;font-weight:400;color:#838383;">{{ b.sub }}</span></sc-if>
+                  </div>
+                  <sc-if value="{{ b.hasBtn }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ b.onBtn }}" style="height:42px;padding:0 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;flex-shrink:0;background:{{ b.btnBg }};" style-hover="opacity:0.85;">
+                      <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ b.btnColor }};">{{ b.btn }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isUpload }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:16px;display:flex;flex-direction:row;gap:16px;align-items:stretch;">
+                  <div onClick="{{ b.onBrowse }}" style="flex:1;min-height:130px;border-radius:14px;border:1.6px dashed rgba(131,131,131,0.45);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:18px;" style-hover="background:rgba(108,232,255,0.06);border-color:#57D9F2;">
+                    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" style="display:block;"><path d="M13 17V5m0 0-4.5 4.5M13 5l4.5 4.5" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 16v3.4A2.6 2.6 0 0 0 6.6 22h12.8a2.6 2.6 0 0 0 2.6-2.6V16" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                    <span style="font-size:16px;font-weight:600;color:#0C0C0C;text-align:center;">{{ b.title }}</span>
+                    <span style="font-size:13.5px;font-weight:400;color:#838383;text-align:center;">{{ b.note }}</span>
+                    <div style="margin-top:4px;height:36px;padding:0 15px;border-radius:9px;background:#0C0C0C;display:inline-flex;align-items:center;"><span style="font-size:13.5px;font-weight:600;color:#FFFFFF;">Browse files</span></div>
+                  </div>
+                  <sc-if value="{{ b.hasPreview }}" hint-placeholder-val="{{ false }}">
+                    <div style="width:300px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;">
+                      <span style="font-size:14px;font-weight:600;color:#5B5B5B;">{{ b.preview }}</span>
+                      <div style="width:190px;height:56px;border-radius:9px;background:#F2F3F5;display:flex;align-items:center;justify-content:center;">
+                        <span style="font-size:13px;font-weight:500;color:#9B9B9B;">{{ b.previewNote }}</span>
+                      </div>
+                      <sc-if value="{{ b.hasExtraBtn }}" hint-placeholder-val="{{ false }}">
+                        <div onClick="{{ b.onExtra }}" style="height:36px;padding:0 15px;border-radius:9px;background:#EDEDEF;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#E2E2E5;"><span style="font-size:13.5px;font-weight:600;color:#3B3B3B;white-space:nowrap;">{{ b.extraBtn }}</span></div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.isRows }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top:16px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);">
+                  <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3">
+                    <div onClick="{{ r.onRow }}" style="position:relative;display:flex;flex-direction:row;align-items:center;padding:18px 22px;gap:16px;box-shadow:{{ r.divider }};cursor:{{ r.cursor }};">
+                      <sc-if value="{{ r.hasAvatar }}" hint-placeholder-val="{{ false }}">
+                        <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+                          <div style="position:absolute;inset:0;border-radius:50%;background:#EFEFEF url('{{ r.avatar }}') center / cover no-repeat;"></div>
+                          <span style="position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;box-shadow:0 0 0 2px #FFFFFF;background:{{ r.dot }};"></span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ r.hasIcon }}" hint-placeholder-val="{{ false }}">
+                        <span style="width:46px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;background:{{ r.iconBg }};" dangerouslySetInnerHTML="{{ r.icon }}"></span>
+                      </sc-if>
+                      <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;">
+                        <span style="font-size:17px;font-weight:700;color:{{ r.titleColor }};">{{ r.title }}</span>
+                        <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:14.5px;font-weight:400;color:#838383;">{{ r.sub }}</span></sc-if>
+                      </div>
+                      <sc-for list="{{ r.rights }}" as="c" hint-placeholder-count="1">
+                        <sc-if value="{{ c.isText }}" hint-placeholder-val="{{ false }}"><span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ c.v }}</span></sc-if>
+                        <sc-if value="{{ c.isChip }}" hint-placeholder-val="{{ false }}"><div style="height:34px;padding:0 13px;border-radius:17px;display:inline-flex;align-items:center;background:{{ c.bg }};"><span style="font-size:14px;font-weight:600;white-space:nowrap;color:{{ c.color }};">{{ c.v }}</span></div></sc-if>
+                        <sc-if value="{{ c.isBtn }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="height:38px;padding:0 15px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;background:{{ c.bg }};" style-hover="opacity:0.82;"><span style="font-size:14px;font-weight:600;white-space:nowrap;color:{{ c.color }};">{{ c.v }}</span></div></sc-if>
+                        <sc-if value="{{ c.isToggle }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="width:52px;height:30px;border-radius:16px;cursor:pointer;position:relative;flex-shrink:0;transition:background 0.2s ease;background:{{ c.bg }};"><span style="position:absolute;top:3px;width:24px;height:24px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:left 0.2s ease;left:{{ c.knob }};"></span></div></sc-if>
+                        <sc-if value="{{ c.isInput }}" hint-placeholder-val="{{ false }}"><input type="text" placeholder="{{ c.ph }}" defaultValue="{{ c.v }}" style="height:44px;border-radius:10px;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);padding:0 14px;font-size:15px;font-weight:500;color:#0C0C0C;background:#FFFFFF;width:{{ c.w }};"></sc-if>
+                        <sc-if value="{{ c.isSelect }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="height:44px;padding:0 16px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:12px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><span style="font-size:15px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ c.v }}</span><svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+                        <sc-if value="{{ c.isRadio }}" hint-placeholder-val="{{ false }}"><span style="width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;box-shadow:{{ c.ring }};"><span style="width:12px;height:12px;border-radius:50%;background:{{ c.dotBg }};"></span></span></sc-if>
+                        <sc-if value="{{ c.isBar }}" hint-placeholder-val="{{ false }}"><div style="width:280px;height:9px;border-radius:6px;background:rgba(131,131,131,0.16);overflow:hidden;position:relative;flex-shrink:0;"><span style="position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:{{ c.color }};width:{{ c.v }};"></span></div><span style="font-size:14.5px;font-weight:600;color:#5B5B5B;width:44px;text-align:right;">{{ c.v }}</span></sc-if>
+                        <sc-if value="{{ c.isSwatches }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;flex-direction:row;gap:8px;align-items:center;">
+                            <span style="width:26px;height:26px;border-radius:7px;background:#076FFF;"></span>
+                            <span style="width:26px;height:26px;border-radius:7px;background:#2BC4EE;"></span>
+                            <span style="width:26px;height:26px;border-radius:7px;background:#A5ECFA;"></span>
+                            <span onClick="{{ c.on }}" style="margin-left:10px;font-size:14px;font-weight:600;color:#A341FF;cursor:pointer;">Colors templates</span>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ c.isDots }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="width:38px;height:38px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);"><svg width="4" height="17" viewBox="0 0 4 17" fill="#5B5B5B" style="display:block;"><circle cx="2" cy="2" r="1.8"></circle><circle cx="2" cy="8.5" r="1.8"></circle><circle cx="2" cy="15" r="1.8"></circle></svg></div></sc-if>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+
+          <!-- workspace modals -->
+          <sc-if value="{{ wsModalOpen }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ wsModalClose }}" style="position:fixed;inset:0;background:rgba(30,34,40,0.5);z-index:80;animation:ss-toast-none 0s;"></div>
+            <div style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:620px;max-height:86vh;overflow:auto;border-radius:22px;background:#FFFFFF;box-shadow:0 60px 140px -40px rgba(0,0,0,0.55);z-index:81;padding:30px 32px;">
+              <div onClick="{{ wsModalClose }}" style="position:absolute;right:22px;top:22px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+                <svg width="17" height="17" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+              </div>
+              <span style="font-size:23px;font-weight:700;color:#0C0C0C;">{{ wsModalTitle }}</span>
+              <div style="margin-top:6px;font-size:15px;font-weight:400;color:#838383;">{{ wsModalSub }}</div>
+
+              <sc-if value="{{ wsModalIsMember }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top:22px;display:flex;flex-direction:row;gap:14px;">
+                  <div style="flex:1;">
+                    <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Full Name</span>
+                    <input type="text" placeholder="Enter name" style="margin-top:8px;width:100%;height:52px;border-radius:11px;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 16px;font-size:15px;font-weight:500;color:#0C0C0C;">
+                  </div>
+                  <div style="flex:1;">
+                    <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Email Address</span>
+                    <input type="text" placeholder="name@company.com" style="margin-top:8px;width:100%;height:52px;border-radius:11px;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 16px;font-size:15px;font-weight:500;color:#0C0C0C;">
+                  </div>
+                </div>
+                <div style="margin-top:18px;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Role</span>
+                  <div style="margin-top:8px;display:flex;flex-direction:row;gap:10px;">
+                    <sc-for list="{{ wsRoleChips }}" as="rc" hint-placeholder-count="3">
+                      <div onClick="{{ rc.click }}" style="height:44px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;align-items:center;transition:all 0.15s ease;background:{{ rc.bg }};box-shadow:{{ rc.ring }};">
+                        <span style="font-size:14.5px;font-weight:600;color:{{ rc.color }};">{{ rc.label }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="margin-top:18px;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Add to Group (optional)</span>
+                  <div onClick="{{ wsToastSelect }}" style="margin-top:8px;height:52px;border-radius:11px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 16px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                    <span style="font-size:15px;font-weight:500;color:#3B3B3B;">Design Team</span>
+                    <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </div>
+                <sc-if value="{{ wsRoleIsClient }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:20px;border-radius:14px;background:#F6F1FC;padding:18px;">
+                    <div style="display:flex;flex-direction:row;gap:14px;">
+                      <div style="flex:1;">
+                        <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Payment Type</span>
+                        <div onClick="{{ wsToastSelect }}" style="margin-top:8px;height:48px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 15px;">
+                          <span style="font-size:14.5px;font-weight:500;color:#3B3B3B;">Paypal</span>
+                          <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                        </div>
+                      </div>
+                      <div style="flex:1;">
+                        <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Timeline</span>
+                        <div onClick="{{ wsToastSelect }}" style="margin-top:8px;height:48px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:0 15px;">
+                          <span style="font-size:14.5px;font-weight:500;color:#3B3B3B;">Monthly</span>
+                          <svg width="12" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                      <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Payment Link:</span>
+                      <div style="margin-top:8px;height:48px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);display:flex;flex-direction:row;align-items:center;padding:0 15px;gap:10px;">
+                        <span style="flex:1;font-size:13.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">https://buy.stripe.com/test_4gwcNf2aB0aB1aQdQQ</span>
+                        <div style="width:26px;height:26px;border-radius:7px;background:#635BFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:14px;font-weight:700;color:#FFFFFF;">S</span></div>
+                        <svg onClick="{{ wsCopyLink }}" width="15" height="17" viewBox="0 0 15 17" fill="none" style="display:block;cursor:pointer;flex-shrink:0;"><rect x="4" y="4" width="10" height="12" rx="2" stroke="#5B5B5B" stroke-width="1.4"></rect><path d="M11 4V3a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1" stroke="#5B5B5B" stroke-width="1.4"></path></svg>
+                      </div>
+                      <div style="margin-top:8px;font-size:13px;font-weight:400;color:#838383;">Payment will be sent automatically to client's email address</div>
+                    </div>
+                  </div>
+                </sc-if>
+              </sc-if>
+
+              <sc-if value="{{ wsModalIsGroup }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:22px;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Group Name</span>
+                  <input type="text" defaultValue="Design Group" style="margin-top:8px;width:100%;height:52px;border-radius:11px;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 16px;font-size:15px;font-weight:500;color:#0C0C0C;">
+                </div>
+                <div style="margin-top:18px;">
+                  <span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Add Team Members</span>
+                  <div style="margin-top:8px;min-height:52px;border-radius:11px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px 10px;gap:8px;">
+                    <sc-for list="{{ wsGroupMembers }}" as="gm" hint-placeholder-count="3">
+                      <div style="height:36px;padding:0 6px 0 6px;border-radius:18px;background:#F1F2F4;display:inline-flex;flex-direction:row;align-items:center;gap:8px;">
+                        <span style="width:26px;height:26px;border-radius:50%;background:#DDD url('{{ gm.img }}') center / cover no-repeat;"></span>
+                        <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ gm.name }}</span>
+                        <svg onClick="{{ gm.remove }}" width="10" height="10" viewBox="0 0 15 15" fill="none" style="display:block;cursor:pointer;margin-right:6px;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="2" stroke-linecap="round"></path></svg>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="margin-top:18px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;">
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <span style="font-size:15.5px;font-weight:700;color:#0C0C0C;">Permissions</span>
+                    <span style="font-size:13.5px;font-weight:400;color:#838383;">Publish</span>
+                  </div>
+                  <div onClick="{{ wsGroupPubToggle }}" style="width:52px;height:30px;border-radius:16px;cursor:pointer;position:relative;transition:background 0.2s ease;background:{{ wsGroupPubBg }};">
+                    <span style="position:absolute;top:3px;width:24px;height:24px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:left 0.2s ease;left:{{ wsGroupPubKnob }};"></span>
+                  </div>
+                </div>
+              </sc-if>
+
+              <div style="margin-top:26px;display:flex;flex-direction:row;justify-content:flex-end;gap:12px;">
+                <div onClick="{{ wsModalClose }}" style="height:48px;padding:0 24px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.5px #838383;">
+                  <span style="font-size:15px;font-weight:500;color:#5B5B5B;">Cancel</span>
+                </div>
+                <div onClick="{{ wsModalSubmit }}" style="height:48px;padding:0 24px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+                  <span style="font-size:15px;font-weight:600;color:#FFFFFF;white-space:nowrap;">{{ wsModalCta }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-if>
+
+        <!-- ============ PERSONAL / PROFILE ============ -->
+        <sc-if value="{{ psIsProfile }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Personal Settings" style="position:absolute;left:342px;top:144px;width:1344px;height:880px;border-radius:22px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);">
+            <div style="position:absolute;left:44px;top:44px;width:118px;height:118px;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;box-shadow:inset 0 0 0 1.5px rgba(120,120,120,0.25);"></div>
+            <div onClick="{{ toastUpload }}" style="position:absolute;left:190px;top:72px;height:46px;padding:0 22px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;">
+              <span style="font-size:15.5px;font-weight:600;color:#FFFFFF;">Upload</span>
+            </div>
+            <span style="position:absolute;left:190px;top:132px;font-size:14.5px;font-weight:400;color:#838383;">PNG, JPG up to 4MB. Square images work best.</span>
+            <sc-for list="{{ profileFields }}" as="pf" hint-placeholder-count="6">
+              <div style="position:absolute;width:620px;left:{{ pf.left }};top:{{ pf.top }};">
+                <span style="font-size:16.5px;font-weight:600;color:#0C0C0C;">{{ pf.label }}</span>
+                <div style="margin-top:9px;height:58px;border-radius:12px;background:#F4F4F6;display:flex;flex-direction:row;align-items:center;padding:0 20px;">
+                  <input type="text" value="{{ pf.value }}" placeholder="{{ pf.ph }}" style="flex:1;border:none;background:transparent;font-size:16px;font-weight:500;color:#3B3B3B;min-width:0;">
+                  <sc-if value="{{ pf.hasChevron }}" hint-placeholder-val="{{ false }}">
+                    <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ pf.hasNote }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:8px;font-size:14px;font-weight:400;color:#838383;"><b style="font-weight:600;color:#5B5B5B;">Local time:</b> 2:47 PM — used for deadlines, schedules, and digests.</div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <span style="position:absolute;left:44px;top:646px;font-size:16.5px;font-weight:600;color:#0C0C0C;">Bio (Optional)</span>
+            <textarea placeholder="Tell your team a little about yourself" style="position:absolute;left:44px;top:680px;width:1256px;height:96px;border-radius:12px;background:#F4F4F6;border:none;resize:none;padding:18px 20px;font-size:16px;font-weight:500;color:#3B3B3B;"></textarea>
+            <div style="position:absolute;right:44px;bottom:32px;display:flex;flex-direction:row;gap:16px;">
+              <div onClick="{{ toastCancel }}" style="height:50px;padding:0 28px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1.2px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.5px #838383;">
+                <span style="font-size:16px;font-weight:500;color:#5B5B5B;">Cancel</span>
+              </div>
+              <div onClick="{{ saveProfile }}" style="height:50px;padding:0 26px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+                <span style="font-size:16px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Save Changes</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ ORGANIZATION SETTINGS ============ -->
+      <sc-if value="{{ isOrg }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Organization Settings">
+          <div style="position:absolute;left:48px;top:34px;width:62px;height:62px;">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;"></div>
+            <div style="position:absolute;right:-1px;bottom:-1px;width:19px;height:19px;border-radius:50%;background:#13D711;box-shadow:0 0 0 2px #FFFFFF;display:flex;align-items:center;justify-content:center;">
+              <svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+          <span style="position:absolute;left:126px;top:40px;font-size:20px;font-weight:700;color:#0C0C0C;white-space:nowrap;">My Account Name</span>
+          <div style="position:absolute;left:126px;top:72px;height:26px;padding:0 9px;border-radius:6px;background:rgba(255,255,255,0.7);display:inline-flex;align-items:center;">
+            <span style="font-size:13.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Organization Settings</span>
+          </div>
+          <div onClick="{{ backFromOrg }}" style="position:absolute;left:1168px;top:44px;height:46px;padding:0 18px;border-radius:11px;background:rgba(255,255,255,0.75);box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:11px;" style-hover="background:#FFFFFF;">
+            <svg width="8" height="14" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="M7 1 1 8l6 7" stroke="#3B3B3B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:15.5px;font-weight:500;color:#3B3B3B;white-space:nowrap;">Back to Dashboard</span>
+          </div>
+          <div style="position:absolute;left:1382px;top:52px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+            <svg width="17" height="19" viewBox="0 0 20 22" fill="none" style="display:block;"><path d="M10 1.6 18 4.7v5.5c0 4.8-3.1 9-8 10.5-4.9-1.5-8-5.7-8-10.5V4.7l8-3.1Z" stroke="#3B3B3B" stroke-width="1.6" stroke-linejoin="round"></path><path d="m6.8 10.6 2.2 2.2 4.2-4.6" stroke="#3B3B3B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:15.5px;font-weight:500;color:#3B3B3B;white-space:nowrap;">Org Admin</span>
+          </div>
+          <div onClick="{{ toastViewMember }}" style="position:absolute;left:1508px;top:44px;height:46px;padding:0 18px;border-radius:23px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="box-shadow:0 10px 26px -12px rgba(12,12,12,0.45);">
+            <svg width="18" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#0C0C0C" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#0C0C0C" stroke-width="1.4"></circle></svg>
+            <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">View as member</span>
+          </div>
+
+          <!-- org sidebar -->
+          <div style="position:absolute;left:42px;top:124px;width:314px;height:952px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);padding:18px 14px;">
+            <div style="height:48px;border-radius:11px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);display:flex;flex-direction:row;align-items:center;padding:0 15px;gap:11px;">
+              <svg width="16" height="16" viewBox="0 0 26 26" fill="none" style="display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+              <input type="text" placeholder="Search Settings" style="flex:1;border:none;background:transparent;font-size:15px;font-weight:500;color:#0C0C0C;min-width:0;">
+            </div>
+            <sc-for list="{{ orgSections }}" as="os" hint-placeholder-count="4">
+              <div style="margin-top:22px;padding-left:14px;font-size:12.5px;font-weight:700;letter-spacing:0.1em;color:#9B9B9B;">{{ os.label }}</div>
+              <sc-for list="{{ os.items }}" as="oi" hint-placeholder-count="3">
+                <div onClick="{{ oi.click }}" style="margin-top:6px;height:50px;border-radius:11px;cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 14px;gap:12px;background:{{ oi.bg }};" style-hover="background:rgba(108,232,255,0.12);">
+                  <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;color:{{ oi.color }};" dangerouslySetInnerHTML="{{ oi.icon }}"></span>
+                  <span style="font-size:15.5px;font-weight:600;white-space:nowrap;color:{{ oi.color }};">{{ oi.label }}</span>
+                </div>
+              </sc-for>
+            </sc-for>
+          </div>
+
+          <!-- org main -->
+          <div style="position:absolute;left:372px;top:124px;width:1314px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 50px -40px rgba(12,12,12,0.4);height:{{ orgMainH }};">
+            <sc-if value="{{ orgIsOverview }}" hint-placeholder-val="{{ true }}">
+            <span style="position:absolute;left:34px;top:32px;font-size:27px;font-weight:700;color:#12B7D8;white-space:nowrap;">Organization Overview</span>
+            <span style="position:absolute;left:34px;top:74px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">A snapshot of your plan, usage, and the people accountable for this account.</span>
+            <div onClick="{{ toastExport }}" style="position:absolute;left:940px;top:38px;height:46px;padding:0 17px;border-radius:11px;background:#EDEDEF;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:10px;" style-hover="background:#E2E2E5;">
+              <svg width="15" height="16" viewBox="0 0 15 16" fill="none" style="display:block;"><path d="M7.5 10.5V1.5m0 0L4 5m3.5-3.5L11 5" stroke="#5B5B5B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M1.5 10v2.6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10" stroke="#5B5B5B" stroke-width="1.5" stroke-linecap="round"></path></svg>
+              <span style="font-size:15px;font-weight:500;color:#5B5B5B;white-space:nowrap;">Export summary</span>
+            </div>
+            <div onClick="{{ toastPlans }}" style="position:absolute;left:1128px;top:38px;height:46px;padding:0 20px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#242424;">
+              <span style="font-size:15px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Manage Plans</span>
+            </div>
+            <div style="position:absolute;left:0;top:110px;width:100%;height:1px;background:rgba(131,131,131,0.15);"></div>
+            <sc-for list="{{ orgStats }}" as="st" hint-placeholder-count="4">
+              <div style="position:absolute;top:140px;width:296px;height:166px;border-radius:16px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.14);overflow:hidden;left:{{ st.left }};background:{{ st.bg }};">
+                <span style="position:absolute;left:22px;top:20px;font-size:13px;font-weight:700;letter-spacing:0.08em;color:#3B3B3B;">{{ st.label }}</span>
+                <span style="position:absolute;right:20px;top:16px;width:22px;height:22px;display:inline-flex;color:#3B3B3B;" dangerouslySetInnerHTML="{{ st.icon }}"></span>
+                <span style="position:absolute;left:22px;top:48px;font-size:31px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ st.value }}</span>
+                <span style="position:absolute;left:22px;top:100px;font-size:14.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">{{ st.sub }}</span>
+                <sc-if value="{{ st.hasBar }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:absolute;left:22px;right:22px;bottom:22px;height:8px;border-radius:6px;background:rgba(131,131,131,0.18);overflow:hidden;">
+                    <div style="position:absolute;left:0;top:0;height:8px;border-radius:6px;background:{{ st.barColor }};width:{{ st.barW }};"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <span style="position:absolute;left:34px;top:342px;font-size:19px;font-weight:700;color:#0C0C0C;">Plan &amp; contract</span>
+            <span style="position:absolute;left:34px;top:374px;font-size:15px;font-weight:400;color:#838383;">Current subscription and key dates.</span>
+            <div style="position:absolute;left:34px;top:408px;width:1246px;height:258px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);">
+              <span style="position:absolute;left:24px;top:20px;font-size:17.5px;font-weight:700;color:#0C0C0C;">Plan</span>
+              <span style="position:absolute;left:24px;top:50px;font-size:15px;font-weight:500;color:#838383;">Business · Annual · 50 seats</span>
+              <div style="position:absolute;right:22px;top:24px;height:36px;padding:0 14px;border-radius:18px;background:#C86BF5;display:inline-flex;align-items:center;gap:7px;">
+                <svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <span style="font-size:14.5px;font-weight:600;color:#FFFFFF;">Active</span>
+              </div>
+              <div style="position:absolute;left:0;top:86px;width:100%;height:1px;background:rgba(131,131,131,0.12);"></div>
+              <span style="position:absolute;left:24px;top:106px;font-size:17.5px;font-weight:700;color:#0C0C0C;">Contract period</span>
+              <span style="position:absolute;left:24px;top:136px;font-size:15px;font-weight:500;color:#838383;">Mar 14, 2025 — Mar 14, 2026</span>
+              <div onClick="{{ toastContract }}" style="position:absolute;right:22px;top:108px;height:38px;padding:0 15px;border-radius:10px;background:#EDEDEF;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#E2E2E5;">
+                <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;white-space:nowrap;">View contract</span>
+              </div>
+              <div style="position:absolute;left:0;top:172px;width:100%;height:1px;background:rgba(131,131,131,0.12);"></div>
+              <span style="position:absolute;left:24px;top:192px;font-size:17.5px;font-weight:700;color:#0C0C0C;">Trailing 30-day spend</span>
+              <span style="position:absolute;left:24px;top:222px;font-size:15px;font-weight:500;color:#838383;">Includes credit overages and add-ons</span>
+              <span style="position:absolute;right:24px;top:200px;font-size:18px;font-weight:700;color:#0C0C0C;">$4,218.40</span>
+            </div>
+            <span style="position:absolute;left:34px;top:696px;font-size:19px;font-weight:700;color:#0C0C0C;">Primary contacts</span>
+            <span style="position:absolute;left:34px;top:728px;font-size:15px;font-weight:400;color:#838383;">Used for billing, security, and legal notices.</span>
+            <div style="position:absolute;left:34px;top:762px;width:1246px;height:168px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);overflow:hidden;">
+              <sc-for list="{{ orgContacts }}" as="oc" hint-placeholder-count="4">
+                <div style="position:relative;height:42px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.1);">
+                  <span style="position:absolute;left:24px;top:11px;font-size:15.5px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ oc.role }}</span>
+                  <span style="position:absolute;left:210px;top:12px;font-size:14.5px;font-weight:500;color:#838383;white-space:nowrap;">{{ oc.who }}</span>
+                  <div onClick="{{ oc.change }}" style="position:absolute;right:18px;top:6px;height:30px;padding:0 13px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;background:{{ oc.btnBg }};" style-hover="opacity:0.8;">
+                    <span style="font-size:13.5px;font-weight:600;color:#0C0C0C;">Change</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            </sc-if>
+
+            <!-- generic org section renderer -->
+            <sc-if value="{{ orgGeneric }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:32px 34px 44px 34px;">
+                <div style="display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;gap:20px;">
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <span style="font-size:27px;font-weight:700;color:#12B7D8;">{{ orgTitle }}</span>
+                    <span style="font-size:16px;font-weight:400;color:#838383;">{{ orgSub }}</span>
+                  </div>
+                  <sc-if value="{{ orgHasHeaderBtn }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ orgHeaderClick }}" style="height:46px;padding:0 20px;border-radius:11px;background:#0C0C0C;cursor:pointer;display:inline-flex;align-items:center;flex-shrink:0;" style-hover="background:#242424;">
+                      <span style="font-size:15px;font-weight:600;color:#FFFFFF;white-space:nowrap;">{{ orgHeaderBtn }}</span>
+                    </div>
+                  </sc-if>
+                </div>
+                <div style="margin:26px -34px 0 -34px;height:1px;background:rgba(131,131,131,0.15);"></div>
+                <sc-for list="{{ orgBlocks }}" as="b" hint-placeholder-count="3">
+                  <sc-if value="{{ b.isPlan }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:28px;border-radius:16px;background:linear-gradient(120deg, #DFF7FC 0%, #ECFBFD 100%);box-shadow:inset 0 0 0 1px rgba(18,183,216,0.35);padding:24px;position:relative;">
+                      <div style="height:26px;padding:0 10px;border-radius:6px;background:rgba(131,131,131,0.16);display:inline-flex;align-items:center;"><span style="font-size:12.5px;font-weight:600;color:#5B5B5B;">Current plan</span></div>
+                      <div style="margin-top:12px;font-size:22px;font-weight:700;color:#0C0C0C;">Business · Annual</div>
+                      <div style="margin-top:8px;font-size:15.5px;font-weight:500;color:#5B5B5B;">50 seats · 120,000 credits/mo · 1 TB storage</div>
+                      <div style="margin-top:18px;display:flex;flex-direction:row;gap:10px;">
+                        <div onClick="{{ orgPlanChip1 }}" style="height:38px;padding:0 16px;border-radius:19px;background:#9CEFFF;cursor:pointer;display:inline-flex;align-items:center;" style-hover="background:#6CE8FF;"><span style="font-size:14.5px;font-weight:600;color:#0C0C0C;">Change plan</span></div>
+                        <div onClick="{{ orgPlanChip2 }}" style="height:38px;padding:0 16px;border-radius:19px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><span style="font-size:14.5px;font-weight:600;color:#3B3B3B;">Add-ons</span></div>
+                        <div onClick="{{ orgPlanChip3 }}" style="height:38px;padding:0 16px;border-radius:19px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><span style="font-size:14.5px;font-weight:500;color:#5B5B5B;">Cancel</span></div>
+                      </div>
+                      <div style="position:absolute;right:24px;top:24px;width:238px;height:118px;border-radius:12px;background:linear-gradient(120deg, #ACE8FA 0%, #D9C6F8 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;">
+                        <span style="font-size:34px;font-weight:700;color:#0C0C0C;">$2,400</span>
+                        <span style="font-size:13.5px;font-weight:500;color:#3B3B3B;">per month, billed annually</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ b.isUsage }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:16px;width:432px;border-radius:14px;background:#0C0C0C;padding:20px 22px;">
+                      <span style="font-size:20px;font-weight:700;color:#FFFFFF;">68,420 / 120,000 used</span>
+                      <div style="margin-top:7px;font-size:14px;font-weight:500;color:rgba(255,255,255,0.6);">57% · resets Mar 1</div>
+                      <div style="margin-top:15px;height:10px;border-radius:6px;background:rgba(255,255,255,0.22);overflow:hidden;position:relative;">
+                        <span style="position:absolute;left:0;top:0;bottom:0;width:57%;border-radius:6px;background:linear-gradient(90deg, #6CE8FF 0%, #A341FF 60%, #F5A76B 100%);"></span>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ b.isHeading }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:36px;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:16px;">
+                      <div style="display:flex;flex-direction:column;gap:6px;">
+                        <span style="font-size:19px;font-weight:700;color:#0C0C0C;">{{ b.title }}</span>
+                        <sc-if value="{{ b.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:15px;font-weight:400;color:#838383;">{{ b.sub }}</span></sc-if>
+                      </div>
+                      <sc-if value="{{ b.hasBtn }}" hint-placeholder-val="{{ false }}">
+                        <div onClick="{{ b.onBtn }}" style="height:42px;padding:0 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;flex-shrink:0;background:{{ b.btnBg }};box-shadow:{{ b.btnRing }};" style-hover="opacity:0.85;">
+                          <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ b.btnColor }};">{{ b.btn }}</span>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ b.isRows }}" hint-placeholder-val="{{ true }}">
+                    <div style="margin-top:16px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.18);">
+                      <sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="3">
+                        <div style="position:relative;display:flex;flex-direction:row;align-items:center;padding:19px 22px;gap:16px;box-shadow:{{ r.divider }};">
+                          <sc-if value="{{ r.hasIcon }}" hint-placeholder-val="{{ false }}">
+                            <span style="width:46px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0;background:{{ r.iconBg }};" dangerouslySetInnerHTML="{{ r.icon }}"></span>
+                          </sc-if>
+                          <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;">
+                            <span style="font-size:17px;font-weight:700;color:{{ r.titleColor }};">{{ r.title }}</span>
+                            <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:14.5px;font-weight:400;color:#838383;">{{ r.sub }}</span></sc-if>
+                          </div>
+                          <sc-for list="{{ r.rights }}" as="c" hint-placeholder-count="1">
+                            <sc-if value="{{ c.isText }}" hint-placeholder-val="{{ false }}"><span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ c.v }}</span></sc-if>
+                            <sc-if value="{{ c.isChip }}" hint-placeholder-val="{{ false }}"><div style="height:34px;padding:0 13px;border-radius:17px;display:inline-flex;align-items:center;background:{{ c.bg }};"><span style="font-size:14px;font-weight:600;white-space:nowrap;color:{{ c.color }};">{{ c.v }}</span></div></sc-if>
+                            <sc-if value="{{ c.isBtn }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="height:38px;padding:0 15px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;background:{{ c.bg }};box-shadow:{{ c.ring }};" style-hover="opacity:0.82;"><span style="font-size:14px;font-weight:600;white-space:nowrap;color:{{ c.color }};">{{ c.v }}</span></div></sc-if>
+                            <sc-if value="{{ c.isToggle }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="width:52px;height:30px;border-radius:16px;cursor:pointer;position:relative;flex-shrink:0;transition:background 0.2s ease;background:{{ c.bg }};"><span style="position:absolute;top:3px;width:24px;height:24px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:left 0.2s ease;left:{{ c.knob }};"></span></div></sc-if>
+                            <sc-if value="{{ c.isInput }}" hint-placeholder-val="{{ false }}"><input type="text" defaultValue="{{ c.v }}" style="height:44px;border-radius:10px;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);padding:0 14px;font-size:15px;font-weight:500;color:#0C0C0C;background:#FFFFFF;text-align:right;width:{{ c.w }};"></sc-if>
+                            <sc-if value="{{ c.isSuffix }}" hint-placeholder-val="{{ false }}"><span style="font-size:15px;font-weight:500;color:#838383;white-space:nowrap;">{{ c.v }}</span></sc-if>
+                            <sc-if value="{{ c.isSelect }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="height:44px;padding:0 16px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:12px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;"><span style="font-size:15px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ c.v }}</span><svg width="11" height="7" viewBox="0 0 13 8" fill="none" style="display:block;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+                            <sc-if value="{{ c.isDl }}" hint-placeholder-val="{{ false }}"><div onClick="{{ c.on }}" style="width:38px;height:38px;border-radius:9px;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.06);"><svg width="14" height="15" viewBox="0 0 14 15" fill="none" style="display:block;"><path d="M7 1v8.5m0 0L3.5 6M7 9.5 10.5 6M1.5 12.5h11" stroke="#5B5B5B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></sc-if>
+                          </sc-for>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ b.isDelete }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:16px;border-radius:14px;box-shadow:inset 0 0 0 1.4px rgba(229,72,77,0.5);padding:22px;display:flex;flex-direction:row;align-items:center;gap:16px;">
+                      <div style="display:flex;flex-direction:column;gap:5px;flex:1;">
+                        <span style="font-size:17px;font-weight:700;color:#E5484D;">Delete organization</span>
+                        <span style="font-size:14.5px;font-weight:400;color:#838383;">Type <b style="font-weight:700;color:#3B3B3B;">DELETE NORTHWIND</b> to confirm. This cannot be undone.</span>
+                      </div>
+                      <input type="text" placeholder="DELETE NORTHWIND" value="{{ orgDelText }}" onInput="{{ orgDelInput }}" style="width:280px;height:46px;border-radius:10px;border:none;box-shadow:inset 0 0 0 1px rgba(229,72,77,0.4);padding:0 16px;font-size:15px;font-weight:600;color:#E5484D;background:#FFFFFF;">
+                      <div onClick="{{ orgDelClick }}" style="height:46px;padding:0 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;background:{{ orgDelBg }};" style-hover="opacity:0.9;">
+                        <span style="font-size:15px;font-weight:700;color:#FFFFFF;white-space:nowrap;">Delete organization</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startView&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;workspace&quot;, &quot;personal&quot;, &quot;organization&quot;], &quot;default&quot;: &quot;workspace&quot;, &quot;tsType&quot;: &quot;'workspace'|'personal'|'organization'&quot;, &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    vw: 1728,
+    view: "workspace",     // workspace | personal | organization
+    wsTab: 0,
+    psTab: 0,
+    orgTab: 0,
+    orgT: {},
+    orgDelText: "",
+    wsT: {},
+    wsModal: "",
+    wsRole: 0,
+    eiMode: 0,
+    eiDone: false,
+    ioTab: 0,
+    trTab: 0,
+    grpPub: true,
+    grpMembers: [0, 1, 2],
+    psDeliv: 0,
+    wsName: "My Marketing WSP",
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    const m = window.location.hash.match(/^#org(?:-(\d))?$/);
+    if (m) this.setState({ view: "organization", orgTab: m[1] ? parseInt(m[1], 10) : 0 });
+    else if (window.location.hash === "#personal") this.setState({ view: "personal" });
+    else if (this.props.startView) this.setState({ view: this.props.startView });
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  wsTabVals() {
+    const s = this.state;
+    const isWsTab = s.view === "workspace" && s.wsTab > 0;
+    const isPsTab = s.view === "personal" && s.psTab > 0;
+    if (!isWsTab && !isPsTab) {
+      return { wsModalOpen: false, wsBlocks: [], wsTitle: "", wsSub: "", wsHasHeaderBtn: false, wsHeaderBtn: "", wsHeaderClick: () => {}, wsModalTitle: "", wsModalSub: "", wsModalCta: "", wsModalIsMember: false, wsModalIsGroup: false, wsModalClose: () => {}, wsModalSubmit: () => {}, wsRoleChips: [], wsRoleIsClient: false, wsGroupMembers: [], wsGroupPubBg: "", wsGroupPubKnob: "", wsGroupPubToggle: () => {}, wsCopyLink: () => {}, wsToastSelect: () => {} };
+    }
+    const T = (id, def) => (id in s.wsT ? s.wsT[id] : def);
+    const tog = (id, def) => ({ isToggle: true, bg: T(id, def) ? "#22C55E" : "rgba(131,131,131,0.32)", knob: T(id, def) ? "25px" : "3px", on: (e) => { e.stopPropagation(); this.setState(st => ({ wsT: { ...st.wsT, [id]: !(id in st.wsT ? st.wsT[id] : def) } })); } });
+    const btn = (v, kind, onClick) => ({ isBtn: true, v, bg: kind === "dark" ? "#0C0C0C" : kind === "cyan" ? "#9CEFFF" : kind === "red" ? "#FCE9E5" : "#EDEDEF", color: kind === "dark" ? "#FFFFFF" : kind === "cyan" ? "#0C0C0C" : kind === "red" ? "#D93A2B" : "#5B5B5B", on: (e) => { e.stopPropagation(); (onClick || (() => this.toast(v + " — mock")))(); } });
+    const chip = (v, kind) => ({ isChip: true, v, bg: kind === "green" ? "#DCF6E3" : kind === "purple" ? "#EFE3FB" : kind === "orange" ? "#FBE4C2" : "#9CEFFF", color: kind === "green" ? "#26A344" : kind === "purple" ? "#8C4BD9" : kind === "orange" ? "#B26205" : "#0C0C0C" });
+    const txt = (v) => ({ isText: true, v });
+    const inp = (v, w, ph) => ({ isInput: true, v, w: (w || 200) + "px", ph: ph || "" });
+    const sel = (v) => ({ isSelect: true, v, on: (e) => { e.stopPropagation(); this.toast("Select — mock"); } });
+    const bar = (pct, color) => ({ isBar: true, v: pct + "%", color });
+    const sw = () => ({ isSwatches: true, on: (e) => { e.stopPropagation(); this.toast("Colors templates — mock"); } });
+    const dots = () => ({ isDots: true, on: (e) => { e.stopPropagation(); this.toast("Member actions — mock"); } });
+    const radio = (active, onPick) => ({ isRadio: true, ring: active ? "inset 0 0 0 7px #0C0C0C" : "inset 0 0 0 1.6px rgba(131,131,131,0.5)", dotBg: active ? "#FFFFFF" : "transparent", on: onPick });
+    const row = (title, sub, rights, opts) => ({
+      title, sub: sub || "", hasSub: !!sub, rights: rights || [],
+      titleColor: "#0C0C0C",
+      hasIcon: !!(opts && opts.icon), icon: opts && opts.icon ? { __html: opts.icon.svg } : { __html: "" }, iconBg: opts && opts.icon ? opts.icon.bg : "transparent",
+      hasAvatar: !!(opts && opts.avatar), avatar: (opts && opts.avatar) || "", dot: opts && opts.online === false ? "#B0B0B0" : "#13D711",
+      onRow: (opts && opts.onRow) || (() => {}), cursor: opts && opts.onRow ? "pointer" : "default",
+      divider: "inset 0 -1px 0 rgba(131,131,131,0.1)"
+    });
+    const rows = (arr) => { if (arr.length) arr[arr.length - 1].divider = "none"; return { isRows: true, rows: arr }; };
+    const heading = (title, sub, btnLabel, btnKind, onBtn) => ({ isHeading: true, title, sub: sub || "", hasSub: !!sub, hasBtn: !!btnLabel, btn: btnLabel || "", btnBg: btnKind === "dark" ? "#0C0C0C" : "#EDEDEF", btnColor: btnKind === "dark" ? "#FFFFFF" : "#5B5B5B", onBtn: onBtn || (() => this.toast((btnLabel || "") + " — mock")) });
+    const upload = (title, note, opts) => ({ isUpload: true, title, note, hasPreview: !!(opts && opts.preview), preview: (opts && opts.preview) || "", previewNote: (opts && opts.previewNote) || "Nothing uploaded yet", hasExtraBtn: !!(opts && opts.extraBtn), extraBtn: (opts && opts.extraBtn) || "", onExtra: () => this.toast(((opts && opts.extraBtn) || "") + " — mock"), onBrowse: () => this.toast("File browser — mock") });
+    const tabsBlock = (items, active, onPick) => ({ isTabs: true, items: items.map((label, i) => ({ label, bg: i === active ? "#FFFFFF" : "transparent", shadow: i === active ? "0 4px 12px -6px rgba(12,12,12,0.3)" : "none", color: i === active ? "#0C0C0C" : "#838383", click: () => onPick(i) })) });
+    const letterIcon = (letter, bg) => ({ svg: '<svg width="24" height="18"><text x="5" y="14" font-size="13" font-weight="800" fill="#FFFFFF" font-family="Arial">' + letter + '</text></svg>', bg });
+
+    const t = isPsTab ? -1 : s.wsTab;
+    let title = "", sub = "", headerBtn = "", headerClick = null, blocks = [];
+
+    if (isPsTab) {
+      const p = s.psTab;
+      if (p === 1) {
+        title = "Notifications";
+        sub = "Channels and delivery preferences.";
+        blocks = [
+          heading("Channels"),
+          rows([
+            row("In-app", "Notifications inside SparkSocial", [tog("nInApp", true)]),
+            row("Email", "Admin@mayenrocket.com", [tog("nEmail", true)])
+          ]),
+          heading("Delivery"),
+          rows([
+            row("Real-time", "Notify me as events happen", [radio(s.psDeliv === 0, () => this.setState({ psDeliv: 0 }))], { onRow: () => this.setState({ psDeliv: 0 }) }),
+            row("Daily digest", "One summary at 9:00 AM local", [radio(s.psDeliv === 1, () => this.setState({ psDeliv: 1 }))], { onRow: () => this.setState({ psDeliv: 1 }) })
+          ])
+        ];
+      } else if (p === 2) {
+        title = "Password & Security";
+        sub = "Manage your password settings.";
+        headerBtn = "Save Changes";
+        headerClick = () => this.toast("Password updated (mock)");
+        blocks = [
+          rows([
+            row("Email Address", "", [inp("Admin@mayenrocket.com", 280)]),
+            row("Password", "", [inp("••••••••", 280)]),
+            row("New Password", "", [inp("", 280, "Enter new password")]),
+            row("Confirm Password", "", [inp("", 280, "Re-enter new password")])
+          ]),
+          heading("Password requirements"),
+          rows([
+            row("At least 1 Upper Case", "", [chip("✓", "green")]),
+            row("At least 1 Number", "", [chip("✓", "green")]),
+            row("At least 8 Character", "", [chip("✓", "green")])
+          ])
+        ];
+      } else if (p === 3) {
+        title = "Connected Accounts";
+        sub = "Identity providers, calendar & personal storage, and API tokens.";
+        blocks = [
+          heading("Identity providers"),
+          rows([
+            row("Google", "maya@northwind.studio", [chip("Primary", "cyan"), btn("Disconnect")], { icon: letterIcon("G", "#4285F4") }),
+            row("Facebook", "", [btn("Disconnect")], { icon: letterIcon("f", "#1877F2") }),
+            row("Apple", "Not connected", [btn("Connect", "dark")], { icon: letterIcon("A", "#0C0C0C") }),
+            row("X", "Not connected", [btn("Connect", "dark")], { icon: letterIcon("X", "#0C0C0C") })
+          ]),
+          heading("Calendar & personal storage"),
+          rows([
+            row("Google Calendar", "Sync deadlines and approvals", [chip("Connected", "green"), btn("Manage")], { icon: letterIcon("C", "#4285F4") }),
+            row("Google Drive", "Personal storage for drafts", [chip("Connected", "green"), btn("Manage")], { icon: letterIcon("D", "#0F9D58") }),
+            row("Dropbox", "Personal storage", [btn("Connect", "dark")], { icon: letterIcon("Dx", "#0061FF") })
+          ]),
+          heading("Personal API tokens", "Org-scoped tokens are managed in Organization Settings."),
+          rows([
+            row("CLI on MacBook Pro", "read, write · created Dec 12 · used 2 min ago", [btn("Revoke", "red")]),
+            row("Zapier automation", "read: projects · created Jan 04 · used Yesterday", [btn("Revoke", "red")])
+          ])
+        ];
+      } else if (p === 4) {
+        title = "Accessibility & editor";
+        sub = "Motion, shortcuts, and editor behavior.";
+        blocks = [
+          rows([
+            row("Reduced motion", "Minimize transitions, parallax, and auto-playing previews.", [tog("reduceMotion", false)]),
+            row("Keyboard shortcuts", "View and customize editor shortcuts.", [btn("View Sheet")]),
+            row("Timeline zoom & scroll", "", [sel("Select")]),
+            row("Preview", "Unleash the power of size with our Large collection!", [])
+          ]),
+          heading("Keyboard shortcuts", "Editor and global shortcuts"),
+          rows([
+            row("Command palette", "", [txt("⌘ K")]),
+            row("Play / pause timeline", "", [txt("Spacebar")]),
+            row("Shuttle reverse / pause / forward", "", [txt("J · K · L")])
+          ])
+        ];
+      } else {
+        title = "Privacy";
+        sub = "Control your data, sessions, and account.";
+        blocks = [
+          rows([
+            row("Download my data", "Everything tied to your personal account", [btn("Request Export")]),
+            row("Revoke all tokens & sessions", "Signs you out everywhere", [btn("Revoke all")]),
+            row("Delete account", "This cannot be undone", [btn("Delete Account", "red")])
+          ])
+        ];
+      }
+    } else if (t === 1) {
+      title = "Brand kits";
+      sub = "Logos, colors, fonts, brand samples, and compliance guardrails for this workspace.";
+      headerBtn = "Use This Brand Preset";
+      blocks = [
+        heading("Workspace logo"),
+        upload("Drop files here or browse", "Png, Jpeg up to 500MB", { preview: "Logo Preview", extraBtn: "Generate logo" }),
+        rows([
+          row("Color Theme", "Selected Colors", [sw()]),
+          row("Typography Style", "Selected Font", [sel("Asgard")])
+        ]),
+        heading("Brand samples", "Train the agent on your real materials."),
+        upload("Upload company Docs (PDF) sample pdf guideline", "PDF, Docs up to 500MB"),
+        upload("Upload Brand Asset sample guide", "PDF, Docs, jpeg, png up to 100MB", { preview: "File Preview", previewNote: "file 10mb" }),
+        heading("Compliance & guardrails"),
+        rows([
+          row("Restricted Topics and phrases", "Input your topics/phrases", [btn("Suggestions")]),
+          row("Sensitive Data", "", [tog("sensitive", true)]),
+          row("Confidential information", "", [tog("confidential", true)]),
+          row("Claims to Avoid?", "Input your claims to be avoided", [btn("Suggestions")]),
+          row("Enable Strict Compliance", "", [tog("strict", false)]),
+          row("Activate Watermark", "", [tog("watermark", false)])
+        ])
+      ];
+    } else if (t === 2) {
+      title = "Engagement Intelligence";
+      sub = "Configure how your agent engages, escalates, and qualifies conversations.";
+      headerBtn = s.eiDone ? "Configured ✓" : "Finish Setup";
+      headerClick = () => { this.setState({ eiDone: true }); this.toast("Engagement Intelligence configured"); };
+      const modes = [
+        ["Suggest Replies", "Draft replies for approval; escalate sensitive conversations"],
+        ["Answer common questions", "Auto-reply to FAQs; review leads and risky messages"],
+        ["Reply freely", "Respond automatically; flag uncertain or sensitive message"]
+      ];
+      blocks = [
+        heading("Configure Engagement Intelligence"),
+        rows([
+          row("Instagram", "Respond to activity from your connected Instagram account", [chip(s.eiDone ? "Configured" : "Not configured", s.eiDone ? "green" : "orange"), btn("Edit Configuration")], { icon: letterIcon("IG", "#E1306C") })
+        ]),
+        heading("Reply mode"),
+        rows(modes.map((m, i) => row(m[0], m[1], [radio(s.eiMode === i, () => this.setState({ eiMode: i }))], { onRow: () => this.setState({ eiMode: i }) }))),
+        heading("Set boundaries for your Agent", "Your agent will never cross this lines."),
+        rows([
+          row("Hard rules", "Never discuss pricing details", [chip("Active", "green")]),
+          row("Escalation behavior", "", [sel("Hold for review")]),
+          row("Sensitive keywords", "Messages containing these will always be escalated.", [inp("", 240, "Add keywords")])
+        ]),
+        heading("Sales Assist Configuration"),
+        rows([
+          row("Ask qualifying questions", "", [tog("qualify", true)]),
+          row("Lead Qualification Options", "Decide how your agents qualifies leads.", [sel("Select")]),
+          row("Handoff Rules", "", [sel("Select")]),
+          row("Destination", "", [sel("ClientForceAI")])
+        ])
+      ];
+    } else if (t === 3) {
+      title = "Account Connection";
+      sub = "Connected profiles and preselected publishing accounts.";
+      blocks = [
+        heading("Preselected Accounts"),
+        rows([
+          row("Glitex Agency", "Preselected Accounts", [chip("Connected", "green")], { avatar: "assets/ws-avatar-1.jpg" })
+        ]),
+        heading("Social Accounts"),
+        rows([
+          row("Reddit", "", [btn("Connect", "dark")], { icon: letterIcon("R", "#FF4500") }),
+          row("Medium", "", [btn("Connect", "dark")], { icon: letterIcon("M", "#0C0C0C") }),
+          row("Google drive", "", [btn("Connect", "dark")], { icon: letterIcon("G", "#0F9D58") }),
+          row("Wordpress", "", [btn("Connect", "dark")], { icon: letterIcon("W", "#21759B") })
+        ])
+      ];
+    } else if (t === 4) {
+      title = "Import & Export Workspace";
+      sub = "Move content in and out of this workspace.";
+      const io = s.ioTab;
+      blocks = [tabsBlock(["Export", "Import", "Clone Workspace", "History", "Documentation"], io, (i) => this.setState({ ioTab: i }))];
+      if (io === 0) {
+        blocks.push(
+          heading("Export workspace bundle", "Choose what goes into the bundle.", "Generate export", "dark"),
+          rows([
+            row("Media assets", "", [tog("exMedia", true)]),
+            row("Workspace settings", "", [tog("exSettings", true)]),
+            row("Templates", "", [tog("exTemplates", true)]),
+            row("Database & Content", "", [tog("exDb", false)]),
+            row("Estimated bundle size", "", [txt("2.4 GB")])
+          ])
+        );
+      } else if (io === 1) {
+        blocks.push(
+          heading("Import", "", "Start Import", "dark"),
+          upload("Drop a .SPKSWPS file here", "Browse files"),
+          rows([
+            row("Import from another workspace", "Pull from a workspace", [sel("Select")]),
+            row("Merge with existing items (skip duplicates)", "", [tog("merge", true)])
+          ])
+        );
+      } else if (io === 2) {
+        blocks.push(
+          heading("Clone Workspace"),
+          rows([row("Clone this workspace", "Creates a copy with settings and templates", [btn("Clone", "dark")])])
+        );
+      } else if (io === 3) {
+        blocks.push(
+          heading("Recent activity", "", "View all history"),
+          rows([row("Recent activity", "Latest imports, exports, and clones", [btn("View all history")])])
+        );
+      } else {
+        blocks.push(
+          heading("Documentation"),
+          rows([row("Read the migration guide", "", [btn("Open")])])
+        );
+      }
+    } else if (t === 5) {
+      title = "Credit & Usage";
+      sub = "Allocation, alerts, and credit requests for this workspace.";
+      headerBtn = "Request More Credits";
+      blocks = [
+        heading("Allocation breakdown"),
+        rows([
+          row("Render", "", [bar(62, "#57D9F2")]),
+          row("Transcription", "", [bar(34, "#9B4DE8")])
+        ]),
+        heading("Budget alerts"),
+        rows([
+          row("Budget alerts", "Notify workspace admins when thresholds are crossed", [tog("budget", true)])
+        ]),
+        heading("Credit requests", "", "Export CSV"),
+        rows([
+          row("Request Credits", "Ask your org admin for a larger allocation", [btn("Request More Credits", "dark")])
+        ]),
+        heading("Recent activity", "Latest credit-consuming jobs", "View All"),
+        rows([
+          row("Recent activity", "Latest credit-consuming jobs", [btn("View All")])
+        ])
+      ];
+    } else if (t === 6) {
+      title = "Team Roles";
+      sub = "Members, groups, and approval flows.";
+      headerBtn = s.trTab === 0 ? "Add New User" : "Create Group";
+      headerClick = () => this.setState({ wsModal: s.trTab === 0 ? "member" : "group", wsRole: 0 });
+      const members = [
+        { name: "Joy walker", role: "Editor", online: true, img: "assets/ws-avatar-1.jpg" },
+        { name: "Jake Thompson", role: "Viewer", online: true, img: "assets/ws-avatar-2.jpg" },
+        { name: "Godswill Okoyomon", role: "Editor", online: true, img: "assets/portal-52d66b.png" },
+        { name: "Glitex Agency", role: "Client", online: false, img: "assets/portal-avatar-photo.jpg" }
+      ];
+      blocks = [tabsBlock(["Team Roles", "Groups"], s.trTab, (i) => this.setState({ trTab: i }))];
+      if (s.trTab === 0) {
+        blocks.push(rows(members.map(m => row(m.name, "", [chip(m.role, m.role === "Client" ? "purple" : m.role === "Editor" ? "cyan" : "green"), txt(m.online ? "Online" : "Offline"), dots()], { avatar: m.img, online: m.online }))));
+      } else {
+        blocks.push(rows([
+          row("Design Group", "3 members · Publish enabled", [btn("Manage", "dark", () => this.setState({ wsModal: "group" }))], { avatar: "assets/ws-icon-2.png" })
+        ]));
+      }
+      blocks.push(
+        heading("Approval flows"),
+        rows([
+          row("Publishing requires Approver review", "Applies to: Social Team, Design Team", [tog("apprPublish", true)]),
+          row("Spending >100 requires Admin approval", "Applies to: All Teams", [tog("apprSpend", true)])
+        ])
+      );
+    }
+
+    const groupPool = [{ name: "Joy walker", img: "assets/ws-avatar-1.jpg" }, { name: "Jake Thompson", img: "assets/ws-avatar-2.jpg" }, { name: "Nebula Works", img: "assets/ws-icon-1.png" }];
+    return {
+      wsTitle: title,
+      wsSub: sub,
+      wsHasHeaderBtn: !!headerBtn,
+      wsHeaderBtn: headerBtn,
+      wsHeaderClick: headerClick || (() => this.toast(headerBtn + " — mock")),
+      wsBlocks: this.normBlocks(blocks),
+      wsModalOpen: !!s.wsModal,
+      wsModalTitle: s.wsModal === "group" ? "Create Group" : "Add New Team member",
+      wsModalSub: s.wsModal === "group" ? "Group members and permissions." : "Invite a new member to join the team.",
+      wsModalCta: s.wsModal === "group" ? "Save Changes" : "Add member",
+      wsModalIsMember: s.wsModal === "member",
+      wsModalIsGroup: s.wsModal === "group",
+      wsModalClose: () => this.setState({ wsModal: "" }),
+      wsModalSubmit: () => { this.setState({ wsModal: "" }); this.toast(s.wsModal === "group" ? "Group saved (mock)" : "Invite sent (mock)"); },
+      wsRoleChips: ["Editor", "Viewer", "Client"].map((label, i) => ({
+        label,
+        bg: s.wsRole === i ? "#0C0C0C" : "#FFFFFF",
+        color: s.wsRole === i ? "#FFFFFF" : "#5B5B5B",
+        ring: s.wsRole === i ? "none" : "inset 0 0 0 1.2px rgba(131,131,131,0.4)",
+        click: () => this.setState({ wsRole: i })
+      })),
+      wsRoleIsClient: s.wsRole === 2,
+      wsGroupMembers: s.grpMembers.map(i => ({
+        name: groupPool[i].name, img: groupPool[i].img,
+        remove: () => this.setState(st => ({ grpMembers: st.grpMembers.filter(x => x !== i) }))
+      })),
+      wsGroupPubBg: s.grpPub ? "#22C55E" : "rgba(131,131,131,0.32)",
+      wsGroupPubKnob: s.grpPub ? "25px" : "3px",
+      wsGroupPubToggle: () => this.setState(st => ({ grpPub: !st.grpPub })),
+      wsCopyLink: () => this.toast("Payment link copied"),
+      wsToastSelect: () => this.toast("Select — mock")
+    };
+  }
+
+  normBlocks(blocks) {
+    const noop = () => {};
+    return blocks.map(b => {
+      const nb = Object.assign({ isPlan: false, isUsage: false, isHeading: false, isRows: false, isDelete: false, isTabs: false, isUpload: false, title: "", sub: "", hasSub: false, hasBtn: false, btn: "", btnBg: "#EDEDEF", btnRing: "none", btnColor: "#5B5B5B", onBtn: noop, rows: [], items: [], note: "", hasPreview: false, preview: "", previewNote: "", hasExtraBtn: false, extraBtn: "", onExtra: noop, onBrowse: noop }, b);
+      nb.rows = (nb.rows || []).map(r => {
+        const nr = Object.assign({ title: "", sub: "", hasSub: false, rights: [], titleColor: "#0C0C0C", hasIcon: false, icon: { __html: "" }, iconBg: "transparent", hasAvatar: false, avatar: "", dot: "#13D711", onRow: noop, cursor: "default", divider: "none" }, r);
+        nr.rights = (nr.rights || []).map(c => Object.assign({ isText: false, isChip: false, isBtn: false, isToggle: false, isInput: false, isSuffix: false, isSelect: false, isDl: false, isBar: false, isSwatches: false, isDots: false, isRadio: false, v: "", w: "110px", ph: "", bg: "transparent", color: "#0C0C0C", ring: "none", knob: "3px", dotBg: "transparent", on: noop }, c));
+        return nr;
+      });
+      nb.items = (nb.items || []).map(it => Object.assign({ label: "", bg: "transparent", shadow: "none", color: "#838383", click: noop }, it));
+      return nb;
+    });
+  }
+
+  orgTabVals() {
+    const s = this.state;
+    const tabs = ["Overview", "Billing & Plans", "Security & Identity", "Data Governance", "Legal & Compliance", "Analytics & Integrations", "Affiliate & Referrals", "Gamification & Points", "API & Developer", "Danger Zone"];
+    const T = (id, def) => (id in s.orgT ? s.orgT[id] : def);
+    const tog = (id, def) => ({ isToggle: true, bg: T(id, def) ? "#22C55E" : "rgba(131,131,131,0.32)", knob: T(id, def) ? "25px" : "3px", on: () => this.setState(st => ({ orgT: { ...st.orgT, [id]: !(id in st.orgT ? st.orgT[id] : def) } })) });
+    const btn = (v, kind) => ({ isBtn: true, v, bg: kind === "dark" ? "#0C0C0C" : kind === "red" ? "#FCE9E5" : kind === "cyan" ? "#9CEFFF" : "#EDEDEF", ring: "none", color: kind === "dark" ? "#FFFFFF" : kind === "red" ? "#D93A2B" : kind === "cyan" ? "#0C0C0C" : "#5B5B5B", on: () => this.toast(v + " — mock") });
+    const chip = (v, kind) => ({ isChip: true, v, bg: kind === "green" ? "#DCF6E3" : kind === "purple" ? "#EFE3FB" : "#9CEFFF", color: kind === "green" ? "#26A344" : kind === "purple" ? "#8C4BD9" : "#0C0C0C" });
+    const txt = (v) => ({ isText: true, v });
+    const inp = (v, w) => ({ isInput: true, v, w: (w || 110) + "px" });
+    const sfx = (v) => ({ isSuffix: true, v });
+    const sel = (v) => ({ isSelect: true, v, on: () => this.toast("Select — mock") });
+    const dl = () => ({ isDl: true, on: () => this.toast("Downloaded (mock)") });
+    const icons = {
+      visa: { icon: { __html: '<svg width="34" height="12" viewBox="0 0 34 12"><text x="1" y="10.5" font-size="11.5" font-weight="800" font-style="italic" fill="#1A34C8" font-family="Arial">VISA</text></svg>' }, iconBg: "#F2F3F7" },
+      mc: { icon: { __html: '<svg width="30" height="20" viewBox="0 0 30 20"><circle cx="11" cy="10" r="8" fill="#EB001B"></circle><circle cx="19" cy="10" r="8" fill="#F79E1B" fill-opacity="0.9"></circle></svg>' }, iconBg: "#F2F3F7" },
+      bq: { icon: { __html: '<svg width="24" height="16"><text x="1" y="13" font-size="12" font-weight="800" fill="#FFFFFF" font-family="Arial">BQ</text></svg>' }, iconBg: "#4285F4" },
+      s3: { icon: { __html: '<svg width="24" height="16"><text x="2" y="13" font-size="12" font-weight="800" fill="#FFFFFF" font-family="Arial">S3</text></svg>' }, iconBg: "#E8890C" },
+      sf: { icon: { __html: '<svg width="24" height="16"><text x="2" y="13" font-size="12" font-weight="800" fill="#FFFFFF" font-family="Arial">SF</text></svg>' }, iconBg: "#29B5E8" },
+      slack: { icon: { __html: '<svg width="24" height="16"><text x="6" y="13" font-size="13" font-weight="800" fill="#FFFFFF" font-family="Arial">S</text></svg>' }, iconBg: "#611F69" },
+      teams: { icon: { __html: '<svg width="24" height="16"><text x="6" y="13" font-size="13" font-weight="800" fill="#FFFFFF" font-family="Arial">T</text></svg>' }, iconBg: "#6264A7" },
+      getty: { icon: { __html: '<svg width="24" height="16"><text x="4" y="13" font-size="12" font-weight="800" fill="#FFFFFF" font-family="Arial">gi</text></svg>' }, iconBg: "#0C0C0C" }
+    };
+    const row = (title, sub, rights, opts) => ({
+      title, sub: sub || "", hasSub: !!sub,
+      rights: rights || [],
+      titleColor: opts && opts.red ? "#E5484D" : "#0C0C0C",
+      hasIcon: !!(opts && opts.icon), icon: opts && opts.icon ? opts.icon.icon : { __html: "" }, iconBg: opts && opts.icon ? opts.icon.iconBg : "transparent",
+      divider: "inset 0 -1px 0 rgba(131,131,131,0.1)"
+    });
+    const rows = (arr) => { arr[arr.length - 1].divider = "none"; return { isRows: true, rows: arr }; };
+    const heading = (title, sub, btnLabel, btnKind) => ({ isHeading: true, title, sub: sub || "", hasSub: !!sub, hasBtn: !!btnLabel, btn: btnLabel || "", btnBg: btnKind === "dark" ? "#0C0C0C" : "#EDEDEF", btnRing: "none", btnColor: btnKind === "dark" ? "#FFFFFF" : "#5B5B5B", onBtn: () => this.toast((btnLabel || "") + " — mock") });
+
+    const blocksByTab = {
+      1: [
+        { isPlan: true },
+        heading("Credits & Overage", "Monthly bucket and overage controls."),
+        { isUsage: true },
+        rows([
+          row("Soft cap alert", "Notify billing admins when usage crosses threshold", [inp("80", 90), sfx("%"), tog("softcap", false)]),
+          row("Hard cap", "Block usage past the limit until approved", [inp("150,000", 130), tog("hardcap", true)]),
+          row("Cost forecast", "Based on trailing 30-day usage", [sfx("~ $2,840 next cycle")]),
+          row("Top-up credits", "One-time pack, charged immediately", [btn("+ Buy top-up")])
+        ]),
+        heading("Payment methods", "Cards on file for renewals and overages.", "+ Add method"),
+        rows([
+          row("Visa •••• 4242", "Expires 08/27", [chip("Primary", "cyan")], { icon: icons.visa }),
+          row("Amex •••• 1006", "Expires 11/26", [txt("$4,218.40")], { icon: icons.mc })
+        ]),
+        heading("Tax & business details"),
+        rows([
+          row("Billing email", "Receipts and invoices sent here", [inp("billing@northwind.co", 230)]),
+          row("Tax ID / VAT", "Applied to all future invoices", [inp("EU-VAT 1234 5678", 200)])
+        ]),
+        heading("Invoices", "Latest billing history.", "View all ›"),
+        rows([
+          row("INV-2026-002", "Feb 14, 2026", [txt("$2,400.00"), chip("Paid", "green"), dl()]),
+          row("INV-2026-001", "Jan 14, 2026", [txt("$2,400.00"), chip("Paid", "green"), dl()]),
+          row("INV-2025-012", "Dec 14, 2025", [txt("$2,400.00"), chip("Paid", "green"), dl()])
+        ])
+      ],
+      2: [
+        heading("Single sign-on"),
+        rows([
+          row("SAML 2.0", "okta.northwind.com · last sync 2 min ago", [chip("Connected", "green")]),
+          row("SCIM provisioning", "Auto-create and deactivate accounts", [tog("scim", true)]),
+          row("Enforce SSO for all members", "Members can't sign in with email/password", [tog("ssoforce", false)])
+        ]),
+        heading("Authentication"),
+        rows([
+          row("Two-factor authentication", "Required for all members", [sel("Required for admins on..")]),
+          row("Password policy", "Min 12 chars · symbol · 90-day rotation", [btn("Configure")]),
+          row("Session duration", "Sign members out after inactivity", [sel("Select")]),
+          row("Device approvals", "Require admin approval for new devices", [tog("device", true)])
+        ]),
+        heading("Access"),
+        rows([
+          row("Custom roles", "", [btn("Manage Role")]),
+          row("Least-privilege presets", "Apply recommended scope to new members", [tog("leastpriv", true)]),
+          row("IP allowlist", "", [btn("Edit List")])
+        ]),
+        heading("Audit log", "Showing latest 4 of 18,492 events", "View all"),
+        rows([
+          row("Audit events", "Showing latest 4 of 18,492 events", [btn("Filter")]),
+          row("SIEM webhook", "Stream audit events to your SIEM", [tog("siem", false)])
+        ])
+      ],
+      3: [
+        heading("Data residency & retention"),
+        rows([
+          row("Data residency", "Where assets and metadata are stored", [sel("United States (Virginia)")]),
+          row("Drafts retention", "Auto-delete inactive drafts", [sel("Select")]),
+          row("Renders retention", "", [sel("Select")]),
+          row("Logs retention", "", [sel("Select")])
+        ]),
+        heading("Privacy"),
+        rows([
+          row("PII redaction in logs", "Strip emails, names, IPs from server logs", [tog("pii", true)]),
+          row("Customer data export", "Self-service GDPR export for end users", [tog("gdpr", true)]),
+          row("Right-to-erasure SLA", "Maximum days to fulfill deletion requests", [inp("30", 90), sfx("days")]),
+          row("Data Processing Agreement", "Signed Sep 2, 2025", [btn("View DPA")])
+        ]),
+        heading("Content moderation"),
+        rows([
+          row("Default moderation level", "", [sel("Strict")]),
+          row("Block copyrighted material", "Scan uploads against rights database", [tog("copyright", true)]),
+          row("Require disclosure on AI content", "Auto-attach \"AI-generated\" badge", [tog("aidisclose", true)])
+        ])
+      ],
+      4: [
+        heading("Stock & media licenses", "Linked accounts that grant your org commercial usage rights.", "Add license", "dark"),
+        rows([
+          row("Getty Images", "10 seats · expires Aug 14, 2026", [chip("Active", "green")], { icon: icons.getty }),
+          row("Getty Images", "25 seats · expires Apr 1, 2026", [chip("Active", "green")], { icon: icons.getty })
+        ]),
+        heading("Trademarks & disclosures"),
+        rows([
+          row("Protected trademarks", "12 marks · auto-flagged on uploads", [btn("Manage list")]),
+          row("Default ad disclosure tag", "Appended to sponsored content", [inp("#ad", 110)]),
+          row("Show platform badge on published assets", "", [tog("platbadge", true)])
+        ])
+      ],
+      5: [
+        heading("Payments", "Connect Payment for your agency.", "+ Add method"),
+        rows([
+          row("Visa •••• 4242", "Expires 08/27", [chip("Primary", "cyan")], { icon: icons.visa }),
+          row("Amex •••• 1006", "Expires 11/26", [txt("$4,218.40")], { icon: icons.mc })
+        ]),
+        heading("Workspace insights"),
+        rows([
+          row("Workspace directory", "", [btn("Open directory")]),
+          row("Cross-workspace analytics", "Aggregate renders, publishes, and credits", [tog("crossws", true)]),
+          row("Weekly executive digest", "Sent every Monday 9:00 to org admins", [tog("digest", true)])
+        ]),
+        heading("Data destinations", "", "New destination", "dark"),
+        rows([
+          row("BigQuery", "northwind-prod.events · daily", [chip("Streaming", "purple")], { icon: icons.bq }),
+          row("Amazon S3", "s3://nw-analytics/raw · hourly", [chip("Streaming", "purple")], { icon: icons.s3 }),
+          row("Snowflake", "Not configured", [btn("Configure")], { icon: icons.sf })
+        ]),
+        heading("Comms & webhooks"),
+        rows([
+          row("Slack admin app", "Approvals, audit alerts, billing notices", [chip("Installed", "green")], { icon: icons.slack }),
+          row("Microsoft Teams", "Same controls in your Teams workspace", [btn("Install", "dark")], { icon: icons.teams }),
+          row("Outgoing webhooks", "", [btn("Manage")])
+        ])
+      ],
+      6: [
+        rows([
+          row("Active referral link", "northwind.lovable.app/r/marta-c", [btn("Copy", "cyan")]),
+          row("Commission tier", "Gold · 20% · upgrades to Platinum at 50 conversions", [chip("Gold", "cyan")]),
+          row("Cookie window", "Days a referral remains attributed", [sel("30 days")]),
+          row("Payout method", "Wise · marta@northwind.co", [btn("Change")]),
+          row("Tax forms", "W-8BEN on file · expires Dec 2027", [chip("On file", "green")]),
+          row("Fraud checks", "Auto-decline self-referrals and burst sign-ups", [tog("fraud", true)])
+        ]),
+        heading("Program status"),
+        rows([
+          row("Program status", "", [chip("Active", "green")]),
+          row("Recent payouts", "Payouts", [btn("View all")])
+        ])
+      ],
+      7: [
+        rows([
+          row("Enable points program", "Org-wide master switch", [tog("points", true)]),
+          row("Allow per-workspace overrides", "Workspace admins can tune their own rules", [tog("override", true)]),
+          row("Public leaderboards", "Visible to all members in the org", [tog("leader", false)])
+        ]),
+        heading("Reporting"),
+        rows([
+          row("Monthly points report", "Sent to org admins", [tog("pointsreport", true)]),
+          row("Export points ledger", "", [btn("Download CSV")])
+        ])
+      ],
+      8: [
+        heading("API keys", "Org-scoped tokens. Workspace tokens are managed in personal settings."),
+        rows([
+          row("Production key", "Scopes: read, write · Last used 2 min ago", [chip("Active", "green"), btn("Manage")])
+        ]),
+        heading("Rate limits"),
+        rows([
+          row("Requests per minute", "Burst limit per API key", [inp("600", 100)]),
+          row("Concurrent renders", "Max parallel jobs across the org", [inp("25", 100)]),
+          row("Sandbox mode", "Free tier · capped at 100 req/min, no billable usage", [tog("sandbox", false)])
+        ]),
+        heading("Webhooks"),
+        rows([
+          row("https://hooks.northwind.co/lv/render", "Events: render.*", [chip("Healthy", "green")]),
+          row("https://hooks.northwind.co/lv/billing", "Events: billing.*", [chip("Healthy", "green")])
+        ]),
+        heading("Docs & SDKs"),
+        rows([
+          row("API reference", "REST + GraphQL · v2026-01", [btn("Open Docs")]),
+          row("SDKs", "JavaScript, Python, Go, Ruby", [btn("View on GitHub")])
+        ])
+      ],
+      9: [
+        rows([
+          row("Transfer ownership", "", [btn("Start transfer", "red")], { red: true }),
+          row("Claim or release a domain", "", [btn("Manage domain", "red")], { red: true }),
+          row("Purge all data", "", [btn("Schedule purge", "red")], { red: true })
+        ]),
+        { isDelete: true }
+      ]
+    };
+    const subs = {
+      1: "Manage your subscription, seats, credits, and payment details.",
+      2: "Authentication, access, and audit controls.",
+      3: "Residency, retention, and privacy controls.",
+      4: "Agreements, licenses, and disclosures applied across all workspaces.",
+      5: "Directories, analytics pipelines, and admin integrations.",
+      6: "Refer customers, track commissions, and manage payouts.",
+      7: "Org-wide governance for points programs across workspaces.",
+      8: "Org-level API keys, webhooks, rate limits, and sandbox controls.",
+      9: "Irreversible actions. Proceed with caution."
+    };
+    const headerBtns = { 1: "+ Add Seats", 6: "Copy referral link", 8: "Create API key" };
+    const t = s.orgTab;
+    const canDelete = s.orgDelText.trim() === "DELETE NORTHWIND";
+    return {
+      orgIsOverview: t === 0,
+      orgGeneric: t > 0,
+      orgMainH: t === 0 ? "952px" : "auto",
+      orgTitle: tabs[t],
+      orgSub: subs[t] || "",
+      orgHasHeaderBtn: !!headerBtns[t],
+      orgHeaderBtn: headerBtns[t] || "",
+      orgHeaderClick: () => this.toast((headerBtns[t] || "") + " — mock"),
+      orgBlocks: this.normBlocks(blocksByTab[t] || []),
+      orgPlanChip1: () => this.toast("Change plan — mock"),
+      orgPlanChip2: () => this.toast("Add-ons — mock"),
+      orgPlanChip3: () => this.toast("Cancel plan — mock"),
+      orgDelText: s.orgDelText,
+      orgDelInput: (e) => this.setState({ orgDelText: e.target.value }),
+      orgDelBg: canDelete ? "#E5484D" : "rgba(229,72,77,0.4)",
+      orgDelClick: () => this.toast(canDelete ? "Organization scheduled for deletion (mock)" : "Type DELETE NORTHWIND to confirm")
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+    const orgTabHs = [1110, 2520, 2360, 2040, 1420, 2060, 1780, 1260, 1900, 1330];
+    const wsTabHs = [1060, 2360, 2080, 1160, 1500, 1340, 1660];
+    const psTabHs = [1060, 1140, 1420, 1720, 1420, 1050];
+    let stageH = 1060;
+    if (s.view === "organization") stageH = Math.max(1110, orgTabHs[s.orgTab]);
+    else if (s.view === "workspace") stageH = Math.max(1060, wsTabHs[s.wsTab]);
+    else if (s.view === "personal") stageH = Math.max(1060, psTabHs[s.psTab] || 1060);
+
+    const wsIcons = {
+      overview: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2" y="2" width="18" height="18" rx="4.5" stroke="currentColor" stroke-width="1.7"></rect><path d="m5.5 14 3.4-3.6 2.6 2.2 4.6-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      brand: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2.5a8.5 8.5 0 1 0 0 17c1.3 0 2.1-1 2.1-2.1 0-.6-.3-1.1-.65-1.55-.38-.45-.65-.95-.65-1.55 0-1.15.95-2.1 2.1-2.1h2.1c2.3 0 3.5-1.5 3.5-3.4A8.5 8.5 0 0 0 11 2.5Z" stroke="currentColor" stroke-width="1.6"></path><circle cx="7" cy="10" r="1.25" fill="currentColor"></circle><circle cx="10" cy="6.6" r="1.25" fill="currentColor"></circle><circle cx="14.4" cy="7.2" r="1.25" fill="currentColor"></circle></svg>',
+      ei: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2.4a6.8 6.8 0 0 1 4 12.3c-.7.5-1.2 1.3-1.2 2.2v.4H8.2v-.4c0-.9-.5-1.7-1.2-2.2A6.8 6.8 0 0 1 11 2.4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M8.4 19.6h5.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>',
+      account: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9" cy="7.4" r="3.2" stroke="currentColor" stroke-width="1.7"></circle><path d="M3 17.6c1-2.8 3.2-4.4 6-4.4 1 0 2 .2 2.8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path><path d="M16.4 12.8v6M13.4 15.8h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      impexp: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M7 3v10m0 0L3.6 9.6M7 13l3.4-3.4M15 19V9m0 0 3.4 3.4M15 9l-3.4 3.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      credit: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><ellipse cx="11" cy="6.5" rx="7.5" ry="3.4" stroke="currentColor" stroke-width="1.6"></ellipse><path d="M3.5 6.5v9c0 1.9 3.4 3.4 7.5 3.4s7.5-1.5 7.5-3.4v-9M3.5 11c0 1.9 3.4 3.4 7.5 3.4s7.5-1.5 7.5-3.4" stroke="currentColor" stroke-width="1.6"></path></svg>',
+      team: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="8" cy="8" r="2.8" stroke="currentColor" stroke-width="1.6"></circle><circle cx="15.4" cy="9.4" r="2.2" stroke="currentColor" stroke-width="1.5"></circle><path d="M2.8 17.4c.8-2.6 2.8-4.1 5.2-4.1s4.4 1.5 5.2 4.1M13.6 13.8c2 .1 3.6 1.3 4.4 3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>',
+      profile: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="currentColor" stroke-width="1.6"></circle><circle cx="11" cy="8.8" r="2.7" stroke="currentColor" stroke-width="1.5"></circle><path d="M5.4 17.6c1.2-2.6 3.2-4 5.6-4s4.4 1.4 5.6 4" stroke="currentColor" stroke-width="1.5"></path></svg>',
+      bell: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3a5.6 5.6 0 0 1 5.6 5.6c0 3 .8 4.8 1.6 5.9.3.4 0 1-.5 1H4.3c-.5 0-.8-.6-.5-1 .8-1.1 1.6-2.9 1.6-5.9A5.6 5.6 0 0 1 11 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><path d="M9 18.6a2.1 2.1 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>',
+      lock: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="4" y="9.4" width="14" height="10" rx="3" stroke="currentColor" stroke-width="1.6"></rect><path d="M7.4 9V6.8a3.6 3.6 0 0 1 7.2 0V9" stroke="currentColor" stroke-width="1.6"></path><circle cx="11" cy="14.2" r="1.4" fill="currentColor"></circle></svg>',
+      connected: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M9 13a4 4 0 0 0 5.7.4l2.5-2.5a4 4 0 0 0-5.7-5.7L10.2 6.5M13 9a4 4 0 0 0-5.7-.4L4.8 11a4 4 0 0 0 5.7 5.7l1.3-1.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>',
+      access: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="5" r="2.2" stroke="currentColor" stroke-width="1.6"></circle><path d="M3.5 8.6c2.4.8 4.9 1.2 7.5 1.2s5.1-.4 7.5-1.2M11 9.8v3.4m0 0-2.8 5.4M11 13.2l2.8 5.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      privacy: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2 19 5v5.4c0 4.7-3 8.9-8 10.6-5-1.7-8-5.9-8-10.6V5l8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path><circle cx="11" cy="10" r="2" stroke="currentColor" stroke-width="1.4"></circle><path d="M11 12v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>'
+    };
+    const orgIcons = {
+      overview: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2.4" y="2.4" width="15.2" height="15.2" rx="3" stroke="currentColor" stroke-width="1.5"></rect><path d="M6.4 6h7.2M6.4 9.4h7.2M6.4 12.8h4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
+      billing: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="1.8" y="4" width="16.4" height="12" rx="2.6" stroke="currentColor" stroke-width="1.5"></rect><path d="M2 8h16" stroke="currentColor" stroke-width="1.5"></path><path d="M5 12.6h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
+      security: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 1.8 17 4.5v4.8c0 4.2-2.7 7.9-7 9.3-4.3-1.4-7-5.1-7-9.3V4.5l7-2.7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path><path d="m7 9.6 2 2 4-4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      data: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><ellipse cx="10" cy="5.4" rx="7" ry="3" stroke="currentColor" stroke-width="1.5"></ellipse><path d="M3 5.4v9.2c0 1.7 3.1 3 7 3s7-1.3 7-3V5.4M3 10c0 1.7 3.1 3 7 3s7-1.3 7-3" stroke="currentColor" stroke-width="1.5"></path></svg>',
+      legal: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2v16M5.4 18h9.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path><path d="M4.6 5 2 10.6a2.8 2.8 0 0 0 5.2 0L4.6 5h10.8L12.8 10.6a2.8 2.8 0 0 0 5.2 0L15.4 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>',
+      analytics: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 17V9M8 17V4M13 17v-6M18 17V7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      affiliate: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2.4" y="6" width="15.2" height="11.4" rx="2.6" stroke="currentColor" stroke-width="1.5"></rect><path d="M2.6 10h14.8M10 6v11.2M6.4 6a2.4 2.4 0 1 1 3.6-2 2.4 2.4 0 1 1 3.6 2" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg>',
+      gamification: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5.6 2.6h8.8V8a4.4 4.4 0 0 1-8.8 0V2.6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path><path d="M5.6 4.4H3a3.2 3.2 0 0 0 3.2 4M14.4 4.4H17a3.2 3.2 0 0 1-3.2 4M10 12.4v2.8M6.8 17.6h6.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      api: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="m7 6-4 4 4 4M13 6l4 4-4 4M11.4 3.6 8.6 16.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      danger: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M8.4 3.2a1.85 1.85 0 0 1 3.2 0l6.6 11.4a1.85 1.85 0 0 1-1.6 2.8H3.4a1.85 1.85 0 0 1-1.6-2.8L8.4 3.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path><path d="M10 7.4v3.8M10 14v.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>'
+    };
+    const statIcons = {
+      seats: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="8" cy="8" r="2.6" stroke="currentColor" stroke-width="1.5"></circle><circle cx="15" cy="9.4" r="2" stroke="currentColor" stroke-width="1.4"></circle><path d="M3 17c.8-2.4 2.7-3.8 5-3.8s4.2 1.4 5 3.8M13.4 13.4c1.9.1 3.4 1.2 4.2 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>',
+      credits: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><ellipse cx="11" cy="11" rx="8" ry="5.4" transform="rotate(-18 11 11)" stroke="currentColor" stroke-width="1.5"></ellipse><ellipse cx="11" cy="11" rx="3.2" ry="2.2" transform="rotate(-18 11 11)" stroke="currentColor" stroke-width="1.3"></ellipse></svg>',
+      storage: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2.6" y="4.6" width="16.8" height="6" rx="2" stroke="currentColor" stroke-width="1.5"></rect><rect x="2.6" y="11.8" width="16.8" height="6" rx="2" stroke="currentColor" stroke-width="1.5"></rect><circle cx="6.2" cy="7.6" r="0.9" fill="currentColor"></circle><circle cx="6.2" cy="14.8" r="0.9" fill="currentColor"></circle></svg>',
+      renews: '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2.6" y="3.8" width="16.8" height="15" rx="3" stroke="currentColor" stroke-width="1.5"></rect><path d="M2.8 8.4h16.4M7 2v3.6M15 2v3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>'
+    };
+
+    const wsTabs = ["Overview", "Brand kits", "Engagement Intelligence", "Account Connection", "Import / Export", "Credit & Usage", "Team Roles"];
+    const wsTabIcons = [wsIcons.overview, wsIcons.brand, wsIcons.ei, wsIcons.account, wsIcons.impexp, wsIcons.credit, wsIcons.team];
+    const psTabs = ["Profile", "Notifications", "Password & Security", "Connected Accounts", "Accessibility & Editor", "Privacy"];
+    const psTabIcons = [wsIcons.profile, wsIcons.bell, wsIcons.lock, wsIcons.connected, wsIcons.access, wsIcons.privacy];
+    const isWs = s.view === "workspace";
+    const shellTabs = (isWs ? wsTabs : psTabs).map((label, i) => ({
+      label,
+      icon: { __html: (isWs ? wsTabIcons : psTabIcons)[i] },
+      bg: i === (isWs ? s.wsTab : s.psTab) ? "linear-gradient(90deg, rgba(108,232,255,0.45) 0%, rgba(148,238,255,0.2) 100%)" : "transparent",
+      color: i === (isWs ? s.wsTab : s.psTab) ? "#0C0C0C" : "#838383",
+      click: () => {
+        this.setState(isWs ? { wsTab: i } : { psTab: i });
+        window.scrollTo(0, 0);
+      }
+    }));
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(stageH * scale) + "px",
+
+      inWsShell: s.view !== "organization",
+      isWorkspace: s.view === "workspace",
+      wsIsOverview: s.view === "workspace" && s.wsTab === 0,
+      wsGeneric: (s.view === "workspace" && s.wsTab > 0) || (s.view === "personal" && s.psTab > 0),
+      psIsProfile: s.view === "personal" && s.psTab === 0,
+      ...this.wsTabVals(),
+      isPersonal: s.view === "personal",
+      isOrg: s.view === "organization",
+      showWorkspace: () => this.setState({ view: "workspace" }),
+      showPersonal: () => this.setState({ view: "personal" }),
+      wsPillBg: s.view === "workspace" ? "#0C0C0C" : "transparent",
+      wsPillColor: s.view === "workspace" ? "#FFFFFF" : "#5B5B5B",
+      wsPillIcon: s.view === "workspace" ? "#FFFFFF" : "#5B5B5B",
+      psPillBg: s.view === "personal" ? "#0C0C0C" : "transparent",
+      psPillColor: s.view === "personal" ? "#FFFFFF" : "#5B5B5B",
+      psPillIcon: s.view === "personal" ? "#FFFFFF" : "#5B5B5B",
+      goDashboard: () => { window.location.href = "SparkSocial Dashboard.dc.html"; },
+      backFromOrg: () => { window.location.href = "SparkSocial Account Home.dc.html"; },
+      toastSpark: () => this.toast("SPARK chat lives in the Command Center"),
+      shellTabs,
+
+      wsName: s.wsName,
+      onWsName: (e) => this.setState({ wsName: e.target.value }),
+      toastEditWs: () => this.toast("Edit workspace banner — mock"),
+      toastUpload: () => this.toast("Avatar upload — mock"),
+      toastCancel: () => this.toast("Changes discarded"),
+      saveProfile: () => this.toast("Profile saved"),
+
+      profileFields: [
+        { label: "First Name", value: "Mayen", ph: "", left: 44, top: 208 },
+        { label: "Last Name", value: "Mayfer", ph: "", left: 680, top: 208 },
+        { label: "Email Address", value: "Admin@mayenrocket.com", ph: "", left: 44, top: 318 },
+        { label: "Title", value: "", ph: "Enter title", left: 680, top: 318 },
+        { label: "Pronouns", value: "She/Her", ph: "", left: 44, top: 428, hasChevron: true },
+        { label: "Timezone", value: "Pacific — Los Angeles (UTC−8)", ph: "", left: 680, top: 428, hasChevron: true, hasNote: true },
+        { label: "Website URL", value: "", ph: "https://", left: 44, top: 538 }
+      ].map(f => ({ ...f, left: f.left + "px", top: f.top + "px", hasChevron: !!f.hasChevron, hasNote: !!f.hasNote })),
+
+      orgSections: [
+        { label: "GENERAL", items: [{ label: "Overview", icon: orgIcons.overview }, { label: "Billing & Plans", icon: orgIcons.billing }] },
+        { label: "TRUST", items: [{ label: "Security & Identity", icon: orgIcons.security }, { label: "Data Governance", icon: orgIcons.data }, { label: "Legal & Compliance", icon: orgIcons.legal }] },
+        { label: "GROWTH", items: [{ label: "Analytics & Integrations", icon: orgIcons.analytics }, { label: "Affiliate & Referrals", icon: orgIcons.affiliate }, { label: "Gamification", icon: orgIcons.gamification }] },
+        { label: "DEVELOPER", items: [{ label: "API & Developer", icon: orgIcons.api }, { label: "Danger Zone", icon: orgIcons.danger }] }
+      ].map(sec => ({
+        label: sec.label,
+        items: sec.items.map(it => {
+          const idx = ["Overview", "Billing & Plans", "Security & Identity", "Data Governance", "Legal & Compliance", "Analytics & Integrations", "Affiliate & Referrals", "Gamification", "API & Developer", "Danger Zone"].indexOf(it.label);
+          const active = s.orgTab === idx;
+          return {
+            label: it.label,
+            icon: { __html: it.icon },
+            bg: active ? "linear-gradient(90deg, rgba(108,232,255,0.45) 0%, rgba(148,238,255,0.2) 100%)" : "transparent",
+            color: active ? "#0C0C0C" : "#838383",
+            click: () => { this.setState({ orgTab: idx }); window.scrollTo(0, 0); }
+          };
+        })
+      })),
+      ...this.orgTabVals(),
+      orgStats: [
+        { label: "SEATS", value: "38 / 50", sub: "12 seats available", bg: "linear-gradient(180deg, #BEF0FA 0%, #FFFFFF 100%)", icon: { __html: statIcons.seats }, hasBar: true, barColor: "#57D9F2", barW: "76%", left: "34px" },
+        { label: "CREDITS", value: "68,420", sub: "of 120k monthly", bg: "linear-gradient(180deg, #F7DEBB 0%, #FFFFFF 100%)", icon: { __html: statIcons.credits }, hasBar: true, barColor: "#EDAF5C", barW: "57%", left: "350px" },
+        { label: "STORAGE", value: "412 GB", sub: "of 1 TB", bg: "linear-gradient(180deg, #D8B5F7 0%, #FFFFFF 100%)", icon: { __html: statIcons.storage }, hasBar: true, barColor: "#9B4DE8", barW: "41%", left: "666px" },
+        { label: "RENEWS", value: "Mar 14", sub: "Auto-renew · annual", bg: "linear-gradient(180deg, #E7E7E9 0%, #FFFFFF 100%)", icon: { __html: statIcons.renews }, hasBar: false, barColor: "", barW: "0%", left: "982px" }
+      ],
+      orgContacts: [
+        { role: "Owner", who: "Godswill Okoyomon · marta@northwind.co", btnBg: "#9CEFFF" },
+        { role: "Billing admin", who: "Diego Ruiz · billing@northwind.co", btnBg: "#EDEDEF" },
+        { role: "Security admin", who: "Priya Patel · security@northwind.co", btnBg: "#EDEDEF" },
+        { role: "Legal", who: "Theo Klein · legal@northwind.co", btnBg: "#EDEDEF" }
+      ].map(c => ({ ...c, change: () => this.toast("Change " + c.role.toLowerCase() + " — mock") })),
+      toastExport: () => this.toast("Summary exported (mock)"),
+      toastPlans: () => this.toast("Plan management — mock"),
+      toastContract: () => this.toast("Contract PDF — mock"),
+      toastViewMember: () => this.toast("Viewing as member (mock)"),
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

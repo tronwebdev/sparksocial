@@ -99,6 +99,31 @@ export const GenomeConstraints = z.object({
   avatar_enabled: z.boolean().default(false),
   max_posts_per_week: z.number().int().min(1).max(50).default(12),
   approval_mode: z.enum(['autopublish', 'review_first_week', 'review_everything']).default('review_first_week'),
+  /**
+   * Which trained vendor avatar/voice this genome generates from — set once,
+   * manually, after the out-of-band HeyGen/ElevenLabs training step
+   * (uploading the consented `talent_likeness` reference, waiting for the
+   * vendor to process it) completes. `content.generate_avatar_video` /
+   * `content.generate_voiceover` read these; neither tool trains one itself,
+   * the same way `PLAYWRIGHT_SERVICE_URL` names a service this app calls
+   * rather than one it stands up. Absent, not defaulted to a stock
+   * avatar/voice — generating from a genome nobody has registered one for
+   * would silently produce someone else's likeness, not this brand's.
+   */
+  heygen_avatar_id: z.string().optional(),
+  elevenlabs_voice_id: z.string().optional(),
+  /**
+   * Set only by `genome.avatar_override.set` — a person's explicit call to
+   * enable avatar for a genome `avatarDefault()` would otherwise leave off
+   * (founder-POV for a SaaS/agency whose proof asset is the product, not a
+   * person). Null means `avatar_enabled` is still the plain derived default.
+   * Recorded so the Why panel can say "explicitly turned on by X", not just
+   * show a bare boolean that looks like a bug next to a non-person proof asset.
+   */
+  avatar_override: z
+    .object({ reason: z.string(), set_by: z.string(), set_at: z.string() })
+    .nullable()
+    .default(null),
 });
 export type GenomeConstraints = z.infer<typeof GenomeConstraints>;
 
@@ -127,6 +152,16 @@ export const GenomeLearned = z.object({
    * resolver's `learned_performance_multiplier` is 1.0 below that threshold.
    */
   confidence: z.number().min(0).max(1).default(0),
+  /**
+   * `learning.freeze` — locks the mix at whatever `mix_weights_override`
+   * currently holds (cold-start defaults if nothing has qualified yet) and
+   * stops `learning.reweight`/`learning.record_outcome` from moving it
+   * further, without discarding the arms' accumulated data the way
+   * `learning.reset` does. The learning-loop equivalent of `agent.pause`:
+   * an owner who disagrees with a shift SPARK made can lock it in place to
+   * investigate, then unfreeze rather than losing everything learned so far.
+   */
+  frozen: z.boolean().default(false),
 });
 export type GenomeLearned = z.infer<typeof GenomeLearned>;
 

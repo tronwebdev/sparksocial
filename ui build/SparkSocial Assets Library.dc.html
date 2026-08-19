@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Assets Library</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    @font-face { font-family: "CS Mollwish"; src: url("fonts/CS-Mollwish.otf") format("opentype"); font-weight: 400; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    input:focus { outline: none; }
+    input::placeholder { color: #B0B0B0; opacity: 1; }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-modal-in { 0% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes ss-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes ss-upload { 0% { width: 6%; } 100% { width: 96%; } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Assets Library" style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ wrapH }};">
+    <div style="position:absolute;top:0;width:1728px;height:1120px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;">
+
+      <!-- ============ SIDEBAR ============ -->
+      <span style="position:absolute;left:32px;top:40px;font-family:'CS Mollwish','Comfortaa',sans-serif;font-size:27.49px;line-height:1.13;color:#0C0C0C;white-space:nowrap;">Sparksocial</span>
+      <div style="position:absolute;left:14px;top:446px;width:296px;height:50px;border-radius:10px;background:linear-gradient(90deg, rgba(108,232,255,0.4) 0%, rgba(148,238,255,0.4) 32.85%, rgba(255,255,255,0) 100%);"></div>
+      <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="7">
+        <div onClick="{{ nav.click }}" style="position:absolute;left:36px;width:270px;height:27px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:15px;top:{{ nav.top }};">
+          <span style="width:26px;height:26px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:{{ nav.color }};" dangerouslySetInnerHTML="{{ nav.icon }}"></span>
+          <span style="font-size:{{ nav.fontSize }};font-weight:600;line-height:1;color:{{ nav.color }};white-space:nowrap;">{{ nav.label }}</span>
+        </div>
+      </sc-for>
+      <div style="position:absolute;left:21px;top:1000px;width:290px;height:77px;border-radius:10px;box-shadow:0 0 0 1px rgba(131,131,131,0.2);">
+        <div style="position:absolute;left:12px;top:10px;width:57px;height:57px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;box-shadow:inset 0 0 0 1.44px rgba(120,120,120,0.28);"></div>
+          <div style="position:absolute;left:40px;top:38px;width:17px;height:17px;border-radius:50%;background:#13D711;display:flex;align-items:center;justify-content:center;">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="display:block;"><path d="m1.2 4.2 2 2L6.9 1.9" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+        <span style="position:absolute;left:85px;top:11px;font-size:18px;font-weight:600;line-height:1.28;color:#0C0C0C;">Pro Plan</span>
+        <div style="position:absolute;left:85px;top:39px;width:112px;height:26px;border-radius:5px;background:#DCF2F6;">
+          <span style="position:absolute;left:9px;top:4px;font-size:14px;font-weight:600;line-height:1.28;color:#838383;white-space:nowrap;">1,200 credits</span>
+        </div>
+        <svg width="6" height="23" viewBox="0 0 6 23" fill="#838383" style="position:absolute;left:266px;top:27px;display:block;"><circle cx="3" cy="3" r="2.4"></circle><circle cx="3" cy="11.5" r="2.4"></circle><circle cx="3" cy="20" r="2.4"></circle></svg>
+      </div>
+
+      <!-- ============ MAIN CARD ============ -->
+      <div style="position:absolute;left:324px;top:18px;width:1386px;height:1084px;border-radius:30px;overflow:hidden;background:linear-gradient(115deg, rgba(108,232,255,0.35) 0%, rgba(238,251,253,0.3) 28%, rgba(255,255,255,0) 52%), linear-gradient(245deg, rgba(245,107,255,0.3) 0%, rgba(252,238,252,0.3) 28%, rgba(255,255,255,0) 52%), #F7F7F7;"></div>
+
+      <!-- Ask Spark -->
+      <div style="position:absolute;left:1478px;top:44px;width:60px;height:60px;">
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%);box-shadow:0 8px 22px -10px rgba(36,116,237,0.5);"></div>
+        <div style="position:absolute;left:17px;top:26px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+        <div style="position:absolute;left:35px;top:26px;width:8px;height:8px;border-radius:50%;background:#FFFFFF;"></div>
+      </div>
+      <div onClick="{{ toastSpark }}" style="position:absolute;left:1548px;top:52px;height:44px;padding:0 19px;border-radius:22px;background:#FFFFFF;box-shadow:0 10px 26px -14px rgba(12,12,12,0.3);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:0 10px 26px -10px rgba(12,12,12,0.45);">
+        <span style="font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Ask Spark?</span>
+      </div>
+
+      <!-- ============ FOLDERS / EMPTY HEADER ============ -->
+      <sc-if value="{{ inFolders }}" hint-placeholder-val="{{ true }}">
+        <span style="position:absolute;left:352px;top:52px;font-size:26px;font-weight:700;line-height:1.27;color:#0C0C0C;white-space:nowrap;">Assets Library</span>
+        <span style="position:absolute;left:352px;top:96px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">A centralized hub for managing and accessing all your digital assets.</span>
+        <sc-if value="{{ hasFolders }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ openCreate }}" style="position:absolute;left:1226px;top:50px;width:226px;height:52px;border-radius:12px;background:#0C0C0C;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:10px;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+            <span style="font-size:19px;font-weight:600;color:#C46BF5;line-height:1;">+</span>
+            <span style="font-size:16px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Create A New Folder</span>
+          </div>
+        </sc-if>
+        <div style="position:absolute;left:352px;top:150px;width:1300px;height:1px;background:rgba(131,131,131,0.2);"></div>
+
+        <!-- Empty state -->
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Assets Empty State">
+            <!-- ghosted preview -->
+            <div style="position:absolute;left:750px;top:190px;width:530px;height:560px;border-radius:20px;background:rgba(131,131,131,0.06);filter:blur(2px);"></div>
+            <div style="position:absolute;left:930px;top:330px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,0.75);filter:blur(1px);"></div>
+            <div style="position:absolute;left:975px;top:392px;width:12px;height:5px;border-radius:3px;background:#FFFFFF;box-shadow:0 0 0 1px rgba(131,131,131,0.2);"></div>
+            <div style="position:absolute;left:1043px;top:392px;width:12px;height:5px;border-radius:3px;background:#FFFFFF;box-shadow:0 0 0 1px rgba(131,131,131,0.2);"></div>
+            <div style="position:absolute;left:765px;top:520px;width:500px;height:210px;border-radius:20px;background:#FFFFFF;box-shadow:0 30px 70px -40px rgba(12,12,12,0.3);">
+              <div style="position:absolute;left:50%;top:-11px;transform:translateX(-50%) rotate(45deg);width:22px;height:22px;background:#FFFFFF;border-radius:4px;"></div>
+              <div style="position:absolute;left:0;top:40px;width:100%;text-align:center;font-size:24px;font-weight:700;line-height:1.35;color:#0C0C0C;">Opps!, You don’t have<br>any folder currently.</div>
+              <div onClick="{{ openCreate }}" style="position:absolute;left:50%;top:132px;transform:translateX(-50%);height:48px;padding:0 20px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:9px;" style-hover="box-shadow:inset 0 0 0 1.5px #838383;">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                <span style="font-size:16px;font-weight:600;color:#5B5B5B;white-space:nowrap;">Create A New Folder</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Folders grid -->
+        <sc-if value="{{ hasFolders }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="My Folders">
+            <span style="position:absolute;left:352px;top:196px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">My Folders</span>
+            <div onClick="{{ toastDate }}" style="position:absolute;left:1160px;top:184px;width:190px;height:52px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 18px;gap:12px;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+              <svg width="19" height="20" viewBox="0 0 24 25" fill="none" style="display:block;flex-shrink:0;"><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#5B5B5B" stroke-width="1.8"></rect><path d="M2.9 9.9h18.2" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#5B5B5B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              <span style="flex:1;font-size:16px;font-weight:500;color:#5B5B5B;">Date</span>
+              <svg width="13" height="8" viewBox="0 0 13 8" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:1366px;top:184px;width:286px;height:52px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.25);">
+              <input type="text" placeholder="Search folder" style="position:absolute;left:16px;top:0;width:220px;height:52px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+              <svg width="18" height="18" viewBox="0 0 26 26" fill="none" style="position:absolute;right:16px;top:17px;display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+            </div>
+            <sc-for list="{{ folders }}" as="f" hint-placeholder-count="4">
+              <div style="position:absolute;top:262px;width:248px;height:266px;border-radius:18px;background:#FFFFFF;box-shadow:0 16px 40px -32px rgba(12,12,12,0.35);left:{{ f.left }};">
+                <div onClick="{{ f.open }}" style="position:absolute;left:12px;top:12px;width:224px;height:132px;border-radius:12px;background:#F3F4F6;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#EDF6F8;">
+                  <div style="position:relative;width:96px;height:76px;">
+                    <div style="position:absolute;left:0;top:0;width:42px;height:18px;border-radius:6px 6px 0 0;background:#8FE3F2;"></div>
+                    <div style="position:absolute;left:0;top:8px;width:96px;height:68px;border-radius:8px;background:linear-gradient(180deg, #A9ECF8 0%, #7ADCEF 100%);"></div>
+                    <div style="position:absolute;left:0;top:20px;width:96px;height:56px;border-radius:8px;background:linear-gradient(180deg, #CDF4FC 0%, #94E5F3 100%);box-shadow:inset 0 1px 2px rgba(255,255,255,0.8);"></div>
+                  </div>
+                </div>
+                <div onClick="{{ f.check }}" style="position:absolute;left:22px;top:22px;width:24px;height:24px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s ease;background:{{ f.boxBg }};box-shadow:{{ f.boxRing }};">
+                  <sc-if value="{{ f.checked }}" hint-placeholder-val="{{ false }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none" style="display:block;"><path d="m1 4.5 3 3L10 1" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+                </div>
+                <div onClick="{{ f.menu }}" style="position:absolute;right:16px;top:18px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;" style-hover="background:rgba(131,131,131,0.1);">
+                  <svg width="5" height="19" viewBox="0 0 5 20" fill="#0C0C0C" style="display:block;"><circle cx="2.5" cy="2.5" r="2.2"></circle><circle cx="2.5" cy="10" r="2.2"></circle><circle cx="2.5" cy="17.5" r="2.2"></circle></svg>
+                </div>
+                <div onClick="{{ f.open }}" style="position:absolute;left:0;top:158px;width:100%;text-align:center;font-size:16.5px;font-weight:700;color:#0C0C0C;cursor:pointer;white-space:nowrap;">{{ f.name }}</div>
+                <div style="position:absolute;left:0;top:190px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:11px;">
+                  <span style="font-size:14px;font-weight:500;color:#5B5B5B;">12 Files</span>
+                  <span style="width:4px;height:4px;border-radius:50%;background:#838383;"></span>
+                  <span style="font-size:14px;font-weight:500;color:#5B5B5B;">134MB</span>
+                </div>
+                <div style="position:absolute;left:0;top:220px;width:100%;text-align:center;font-size:14px;font-weight:400;color:#838383;">Created: Oct 2, 2026</div>
+              </div>
+            </sc-for>
+            <div style="position:absolute;top:262px;width:248px;height:266px;border-radius:18px;background:rgba(255,255,255,0.55);left:{{ createCardLeft }};">
+              <div style="position:absolute;inset:10px;border-radius:14px;border:1.8px dashed rgba(131,131,131,0.45);display:flex;align-items:center;justify-content:center;">
+                <div onClick="{{ openCreate }}" style="height:44px;padding:0 14px;border-radius:10px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.4);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:8px;" style-hover="box-shadow:0 10px 26px -10px rgba(12,12,12,0.5);">
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1v12M1 7h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+                  <span style="font-size:14px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Create A New Folder</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ FOLDER CONTENTS ============ -->
+      <sc-if value="{{ inAssets }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Folder Assets">
+          <span style="position:absolute;left:352px;top:46px;font-size:26px;font-weight:700;line-height:1.27;color:#0C0C0C;white-space:nowrap;">{{ folderTitle }}</span>
+          <div style="position:absolute;left:352px;top:94px;display:flex;flex-direction:row;align-items:center;gap:14px;">
+            <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;">12 Files</span>
+            <span style="width:5px;height:5px;border-radius:50%;background:#838383;"></span>
+            <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;">134MB</span>
+            <span style="width:5px;height:5px;border-radius:50%;background:#838383;"></span>
+            <span style="font-size:15.5px;font-weight:500;color:#5B5B5B;">Created: Oct 2, 2026</span>
+          </div>
+          <div onClick="{{ openUpload }}" style="position:absolute;left:1276px;top:50px;width:176px;height:52px;border-radius:12px;background:#0C0C0C;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:11px;" style-hover="background:#242424;" style-active="transform:scale(0.985);">
+            <svg width="21" height="18" viewBox="0 0 21 18" fill="none" style="display:block;"><path d="M5.4 14.5H4.8A3.8 3.8 0 0 1 4 7a5.4 5.4 0 0 1 10.6-1.2A4.3 4.3 0 0 1 16 14.4h-.9" stroke="#6CE8FF" stroke-width="1.6" stroke-linecap="round"></path><path d="M10.5 16.6V9.2m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#6CE8FF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:16px;font-weight:600;color:#FFFFFF;white-space:nowrap;">Upload File</span>
+          </div>
+          <div style="position:absolute;left:352px;top:130px;width:1300px;height:1px;background:rgba(131,131,131,0.2);"></div>
+
+          <div onClick="{{ backToFolders }}" style="position:absolute;left:352px;top:170px;height:40px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:13px;" style-hover="opacity:0.7;">
+            <span style="width:29px;height:29px;border-radius:50%;box-shadow:inset 0 0 0 1.2px rgba(12,12,12,0.5);display:inline-flex;align-items:center;justify-content:center;"><svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="M6 1 1 6l5 5" stroke="#0C0C0C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+            <span style="font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Back To Folders</span>
+          </div>
+
+          <!-- view toggle + search -->
+          <div style="position:absolute;left:907px;top:162px;width:272px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 28px -18px rgba(12,12,12,0.28);">
+            <div onClick="{{ listView }}" style="position:absolute;left:5px;top:5px;width:126px;height:46px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;background:{{ listBg }};transition:background 0.2s ease;">
+              <svg width="18" height="15" viewBox="0 0 19 16" fill="none" style="display:block;"><path d="M6 2h12M6 8h12M6 14h12" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path><circle cx="1.6" cy="2" r="1.5" fill="#0C0C0C"></circle><circle cx="1.6" cy="8" r="1.5" fill="#0C0C0C"></circle><circle cx="1.6" cy="14" r="1.5" fill="#0C0C0C"></circle></svg>
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">List View</span>
+            </div>
+            <div onClick="{{ gridView }}" style="position:absolute;left:135px;top:5px;width:132px;height:46px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;background:{{ gridBg }};transition:background 0.2s ease;">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" style="display:block;"><rect x="1" y="1" width="6" height="6" rx="1.6" stroke="#0C0C0C" stroke-width="1.5"></rect><rect x="10" y="1" width="6" height="6" rx="1.6" stroke="#0C0C0C" stroke-width="1.5"></rect><rect x="1" y="10" width="6" height="6" rx="1.6" stroke="#0C0C0C" stroke-width="1.5"></rect><rect x="10" y="10" width="6" height="6" rx="1.6" stroke="#0C0C0C" stroke-width="1.5"></rect></svg>
+              <span style="font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Grid View</span>
+            </div>
+          </div>
+          <div style="position:absolute;left:1195px;top:162px;width:457px;height:56px;border-radius:14px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.2);">
+            <input type="text" placeholder="{{ searchPh }}" style="position:absolute;left:18px;top:0;width:380px;height:56px;border:none;background:transparent;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+            <svg width="19" height="19" viewBox="0 0 26 26" fill="none" style="position:absolute;right:18px;top:18px;display:block;"><circle cx="11" cy="11" r="8" stroke="#838383" stroke-width="2"></circle><path d="m17 17 6 6" stroke="#838383" stroke-width="2" stroke-linecap="round"></path></svg>
+          </div>
+
+          <!-- GRID VIEW -->
+          <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ assets }}" as="a" hint-placeholder-count="4">
+              <div style="position:absolute;top:242px;width:316px;height:338px;border-radius:18px;background:#FFFFFF;box-shadow:0 16px 40px -32px rgba(12,12,12,0.35);left:{{ a.left }};">
+                <div style="position:absolute;left:14px;top:14px;width:288px;height:186px;border-radius:12px;background:#EFEFEF;overflow:hidden;">
+                  <sc-if value="{{ a.isCover }}" hint-placeholder-val="{{ true }}">
+                    <div style="position:absolute;inset:0;background:url('{{ a.img }}') center / cover no-repeat;"></div>
+                  </sc-if>
+                  <sc-if value="{{ a.isPoster }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:92px;height:162px;border-radius:6px;background:url('{{ a.img }}') center / cover no-repeat;box-shadow:0 4px 14px -6px rgba(12,12,12,0.3);"></div>
+                  </sc-if>
+                  <sc-if value="{{ a.isCircle }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:150px;height:150px;border-radius:50%;background:#151515 url('{{ a.img }}') center / 78% no-repeat;"></div>
+                  </sc-if>
+                  <sc-if value="{{ a.isVideo }}" hint-placeholder-val="{{ true }}">
+                    <svg width="30" height="32" viewBox="0 0 9 10" fill="none" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 8px rgba(0,0,0,0.6));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                  </sc-if>
+                </div>
+                <div style="position:absolute;left:22px;top:216px;height:36px;padding:0 13px;border-radius:9px;display:inline-flex;flex-direction:row;align-items:center;gap:8px;background:{{ a.chipBg }};">
+                  <span style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:{{ a.chipColor }};" dangerouslySetInnerHTML="{{ a.chipIcon }}"></span>
+                  <span style="font-size:14.5px;font-weight:600;white-space:nowrap;color:{{ a.chipColor }};">{{ a.kind }}</span>
+                </div>
+                <div onClick="{{ a.preview }}" style="position:absolute;right:74px;top:212px;width:44px;height:44px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                  <svg width="19" height="15" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#5B5B5B" stroke-width="1.4"></circle></svg>
+                </div>
+                <div onClick="{{ a.remove }}" style="position:absolute;right:20px;top:212px;width:44px;height:44px;border-radius:11px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.55);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.06);">
+                  <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                </div>
+                <span style="position:absolute;left:22px;top:272px;font-size:18px;font-weight:600;color:#0C0C0C;white-space:nowrap;">{{ a.name }}</span>
+                <span style="position:absolute;left:22px;top:302px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">Oct 2, 2024 - 12:45PM</span>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <!-- LIST VIEW -->
+          <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:352px;top:242px;width:1300px;border-radius:18px;background:#FFFFFF;box-shadow:0 16px 40px -32px rgba(12,12,12,0.35);padding-bottom:10px;">
+              <div style="position:relative;height:60px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.15);">
+                <span style="position:absolute;left:26px;top:19px;font-size:16px;font-weight:500;color:#838383;">Assets</span>
+                <span style="position:absolute;left:468px;top:19px;font-size:16px;font-weight:500;color:#838383;">Meta Description</span>
+                <span style="position:absolute;left:860px;top:19px;font-size:16px;font-weight:500;color:#838383;">Type</span>
+                <span style="position:absolute;left:1000px;top:19px;font-size:16px;font-weight:500;color:#838383;">Date Uploaded</span>
+                <span style="position:absolute;left:1226px;top:19px;font-size:16px;font-weight:500;color:#838383;">Action</span>
+              </div>
+              <sc-for list="{{ assets }}" as="a" hint-placeholder-count="4">
+                <div style="position:relative;height:114px;box-shadow:inset 0 -1px 0 rgba(131,131,131,0.1);">
+                  <div style="position:absolute;left:20px;top:19px;width:140px;height:76px;border-radius:10px;background:#F1F1F3;overflow:hidden;">
+                    <sc-if value="{{ a.isCover }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;inset:0;background:url('{{ a.img }}') center / cover no-repeat;"></div></sc-if>
+                    <sc-if value="{{ a.isPoster }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:50%;top:6px;transform:translateX(-50%);width:38px;height:64px;border-radius:3px;background:url('{{ a.img }}') center / cover no-repeat;box-shadow:0 2px 8px -3px rgba(12,12,12,0.35);"></div></sc-if>
+                    <sc-if value="{{ a.isCircle }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:#151515 url('{{ a.img }}') center / 78% no-repeat;"></div></sc-if>
+                    <sc-if value="{{ a.isVideo }}" hint-placeholder-val="{{ true }}"><svg width="14" height="15" viewBox="0 0 9 10" fill="none" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:block;filter:drop-shadow(0 0 5px rgba(0,0,0,0.6));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg></sc-if>
+                  </div>
+                  <span style="position:absolute;left:184px;top:46px;font-size:17px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ a.name }}</span>
+                  <span style="position:absolute;left:468px;top:46px;font-size:17px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ a.meta }}</span>
+                  <div style="position:absolute;left:848px;top:39px;height:36px;padding:0 12px;border-radius:9px;display:inline-flex;flex-direction:row;align-items:center;gap:8px;background:{{ a.chipBg }};">
+                    <span style="width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;color:{{ a.chipColor }};" dangerouslySetInnerHTML="{{ a.chipIcon }}"></span>
+                    <span style="font-size:14px;font-weight:600;white-space:nowrap;color:{{ a.chipColor }};">{{ a.kind }}</span>
+                  </div>
+                  <span style="position:absolute;left:1000px;top:46px;font-size:16px;font-weight:500;color:#0C0C0C;white-space:nowrap;">Oct 2, 2024 - 12:45PM</span>
+                  <div onClick="{{ a.preview }}" style="position:absolute;left:1220px;top:37px;width:40px;height:40px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                    <svg width="17" height="13" viewBox="0 0 19 15" fill="none" style="display:block;"><path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path><circle cx="9.5" cy="7.5" r="2.4" stroke="#5B5B5B" stroke-width="1.4"></circle></svg>
+                  </div>
+                  <div onClick="{{ a.remove }}" style="position:absolute;left:1270px;top:37px;width:40px;height:40px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.55);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.06);">
+                    <svg width="13" height="15" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <span style="position:absolute;left:352px;top:1006px;font-size:16px;font-weight:500;color:#5B5B5B;">Page 1 of 4</span>
+          <div style="position:absolute;left:1568px;top:998px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);display:flex;align-items:center;justify-content:center;opacity:0.45;">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;transform:scaleX(-1);"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+          <div onClick="{{ toastPage }}" style="position:absolute;left:1612px;top:998px;width:34px;height:34px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.35);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(131,131,131,0.08);">
+            <svg width="7" height="12" viewBox="0 0 7 12" fill="none" style="display:block;"><path d="m1 1 5 5-5 5" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ MODALS ============ -->
+      <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeModal }}" style="position:absolute;inset:0;background:rgba(40,40,40,0.45);z-index:80;animation:ss-fade-in 0.2s ease;"></div>
+
+        <!-- Create New Folder -->
+        <sc-if value="{{ mCreate }}" hint-placeholder-val="{{ true }}">
+          <div data-screen-label="Create Folder Modal" style="position:absolute;left:509px;top:255px;width:710px;height:560px;border-radius:28px;background:linear-gradient(180deg, #FCFCFD 0%, #F3F4F7 100%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.5);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <div onClick="{{ closeModal }}" style="position:absolute;right:30px;top:30px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="20" height="20" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#B0B0B0" stroke-width="1.7" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:74px;width:100%;text-align:center;font-size:30px;font-weight:700;color:#0C0C0C;">Create New Folder</div>
+            <span style="position:absolute;left:120px;top:168px;font-size:18px;font-weight:500;color:#0C0C0C;">Folder Name</span>
+            <input type="text" placeholder="My New Folder" value="{{ folderName }}" onInput="{{ onFolderName }}" style="position:absolute;left:120px;top:202px;width:470px;height:72px;border-radius:14px;background:#FFFFFF;border:none;box-shadow:0 10px 30px -22px rgba(12,12,12,0.35), inset 0 0 0 1px rgba(131,131,131,0.12);padding:0 26px;font-size:18px;font-weight:500;color:#0C0C0C;">
+            <span style="position:absolute;left:120px;top:306px;font-size:18px;font-weight:500;color:#0C0C0C;">Assign Team members</span>
+            <div onClick="{{ toastMember }}" style="position:absolute;left:120px;top:340px;width:470px;height:72px;border-radius:14px;background:#FFFFFF;box-shadow:0 10px 30px -22px rgba(12,12,12,0.35), inset 0 0 0 1px rgba(131,131,131,0.12);cursor:pointer;display:flex;flex-direction:row;align-items:center;padding:0 24px 0 16px;gap:14px;" style-hover="box-shadow:0 10px 30px -18px rgba(12,12,12,0.45), inset 0 0 0 1px rgba(131,131,131,0.2);">
+              <div style="width:44px;height:44px;border-radius:50%;background:#F8F8F8 url('assets/avatar-2.png') center / cover no-repeat;flex-shrink:0;"></div>
+              <span style="flex:1;font-size:18px;font-weight:700;color:#0C0C0C;white-space:nowrap;">Jane_Daian</span>
+              <svg width="17" height="10" viewBox="0 0 13 8" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:0;top:474px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:26px;">
+              <div onClick="{{ closeModal }}" style="height:52px;padding:0 22px;border-radius:11px;background:rgba(255,255,255,0.6);box-shadow:inset 0 0 0 1.2px rgba(131,131,131,0.4);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:11px;" style-hover="background:#FFFFFF;">
+                <svg width="14" height="14" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                <span style="font-size:17px;font-weight:500;color:#838383;">Cancel</span>
+              </div>
+              <div onClick="{{ saveFolder }}" style="height:52px;padding:0 18px;border-radius:11px;cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:22px;" style-hover="background:rgba(255,255,255,0.7);" style-active="transform:scale(0.985);">
+                <span style="font-size:18px;font-weight:600;color:#0C0C0C;">Save</span>
+                <svg width="9" height="16" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Upload Files -->
+        <sc-if value="{{ mUpload }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="Upload Files Modal" style="position:absolute;left:464px;top:50px;width:800px;height:1020px;border-radius:28px;background:linear-gradient(180deg, #7FE5F8 0%, #B9EFFA 12%, #EAFAFD 30%, #FFFFFF 52%);box-shadow:0 60px 140px -40px rgba(0,0,0,0.5);z-index:81;overflow:hidden;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:32px;top:38px;font-size:23px;font-weight:700;color:#0C0C0C;">Upload Files</span>
+            <span style="position:absolute;left:32px;top:76px;font-size:18px;font-weight:400;color:#5B5B5B;">Drag &amp; Drop to upload files instantly</span>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:30px;top:36px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="20" height="20" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#5B5B5B" stroke-width="1.7" stroke-linecap="round"></path></svg>
+            </div>
+            <div onClick="{{ startUpload }}" style="position:absolute;left:30px;top:140px;width:740px;height:340px;border-radius:8px;border:1.6px dashed rgba(90,90,90,0.55);background:rgba(255,255,255,0.92);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;" style-hover="background:#FFFFFF;">
+              <div style="width:96px;height:96px;border-radius:50%;background:#FFFFFF;box-shadow:0 8px 24px -12px rgba(12,12,12,0.25);display:flex;align-items:center;justify-content:center;">
+                <div style="width:76px;height:76px;border-radius:50%;background:#63DEF5;display:flex;align-items:center;justify-content:center;">
+                  <svg width="36" height="31" viewBox="0 0 21 18" fill="none" style="display:block;"><path d="M5.4 14.5H4.8A3.8 3.8 0 0 1 4 7a5.4 5.4 0 0 1 10.6-1.2A4.3 4.3 0 0 1 16 14.4h-.9" stroke="#0C0C0C" stroke-width="1.4" stroke-linecap="round"></path><path d="M10.5 16.6V9.2m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#0C0C0C" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+              <span style="font-size:19px;font-weight:600;color:#0C0C0C;margin-top:6px;">Drag &amp; Drop files here or</span>
+              <div style="height:46px;padding:0 20px;border-radius:9px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(12,12,12,0.3);display:inline-flex;align-items:center;">
+                <span style="font-size:16px;font-weight:500;color:#3B3B3B;">Browse files</span>
+              </div>
+              <span style="font-size:15px;font-weight:500;color:#3B3B3B;margin-top:8px;">File formats: JPEG, PNG, PDF, WAV, MP3, MOV, MP4, PDF</span>
+              <span style="font-size:15px;font-weight:500;color:#3B3B3B;">Max Size: 500MB</span>
+            </div>
+            <sc-if value="{{ uploadingRow }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:30px;top:508px;width:740px;height:96px;border-radius:14px;background:#F2F2F4;">
+                <div style="position:absolute;left:16px;top:22px;width:40px;height:40px;border-radius:9px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;">
+                  <svg width="18" height="22" viewBox="0 0 16 20" fill="none" style="display:block;"><path d="M1.5 3A2 2 0 0 1 3.5 1h6l5 5v11a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V3Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path><path d="M9.5 1v5h5" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+                </div>
+                <span style="position:absolute;left:70px;top:16px;font-size:17px;font-weight:600;color:#0C0C0C;">My Logo 1.jpeg</span>
+                <div style="position:absolute;left:70px;top:44px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+                  <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;">2kb of 7MB</span>
+                  <span style="width:4px;height:4px;border-radius:50%;background:#838383;"></span>
+                  <span style="width:11px;height:11px;border-radius:50%;background:#A341FF;"></span>
+                  <span style="font-size:14.5px;font-weight:500;color:#3B3B3B;">Uploading</span>
+                </div>
+                <div style="position:absolute;left:70px;right:22px;bottom:16px;height:6px;border-radius:6px;background:#0C0C0C;overflow:hidden;">
+                  <div style="position:absolute;left:0;top:0;height:6px;border-radius:6px;background:linear-gradient(90deg,#6CE8FF 0%,#A341FF 60%,#FEDEB5 100%);width:{{ uploadPct }};transition:width 1.6s linear;"></div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ uploadedRow }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:30px;top:508px;width:740px;height:80px;border-radius:14px;background:#F2F2F4;">
+                <div style="position:absolute;left:16px;top:14px;width:40px;height:40px;border-radius:9px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;">
+                  <svg width="18" height="22" viewBox="0 0 16 20" fill="none" style="display:block;"><path d="M1.5 3A2 2 0 0 1 3.5 1h6l5 5v11a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V3Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path><path d="M9.5 1v5h5" stroke="#5B5B5B" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+                </div>
+                <span style="position:absolute;left:70px;top:14px;font-size:17px;font-weight:600;color:#0C0C0C;">My Logo 1.jpeg</span>
+                <div style="position:absolute;left:70px;top:42px;display:flex;flex-direction:row;align-items:center;gap:9px;">
+                  <span style="font-size:14.5px;font-weight:500;color:#5B5B5B;">7MB</span>
+                  <span style="width:17px;height:17px;border-radius:50%;background:#22B14C;display:inline-flex;align-items:center;justify-content:center;"><svg width="9" height="8" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                </div>
+                <div onClick="{{ uploadEdit }}" style="position:absolute;right:74px;top:18px;width:44px;height:44px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="box-shadow:inset 0 0 0 1.4px #838383;">
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="#5B5B5B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+                <div onClick="{{ uploadRemove }}" style="position:absolute;right:20px;top:18px;width:44px;height:44px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(243,85,37,0.55);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(243,85,37,0.06);">
+                  <svg width="14" height="16" viewBox="0 0 14 16" fill="none" style="display:block;"><path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5.6 6.8v4.6M8.4 6.8v4.6" stroke="#F35525" stroke-width="1.4" stroke-linecap="round"></path></svg>
+                </div>
+              </div>
+            </sc-if>
+            <!-- edit uploads: side file list + per-file meta editor -->
+            <sc-if value="{{ uploadEditView }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:30px;top:508px;width:322px;display:flex;flex-direction:column;gap:12px;">
+                <sc-for list="{{ uploadFiles }}" as="uf" hint-placeholder-count="2">
+                  <div onClick="{{ uf.select }}" style="position:relative;height:76px;border-radius:14px;background:#F2F2F4;cursor:pointer;transition:box-shadow 0.15s ease;box-shadow:{{ uf.ring }};" style-hover="box-shadow:inset 0 0 0 1.6px #63DEF5;">
+                    <div style="position:absolute;left:14px;top:14px;width:48px;height:48px;border-radius:9px;background:#FFFFFF url('{{ uf.img }}') center / cover no-repeat;"></div>
+                    <span style="position:absolute;left:74px;top:14px;width:200px;font-size:15.5px;font-weight:600;color:#0C0C0C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ uf.name }}</span>
+                    <div style="position:absolute;left:74px;top:41px;display:flex;flex-direction:row;align-items:center;gap:8px;">
+                      <span style="font-size:13.5px;font-weight:500;color:#5B5B5B;">{{ uf.size }}</span>
+                      <span style="width:15px;height:15px;border-radius:50%;background:#22B14C;display:inline-flex;align-items:center;justify-content:center;"><svg width="8" height="7" viewBox="0 0 9 8" fill="none" style="display:block;"><path d="m1 4 2.2 2.2L8 1" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                    </div>
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="position:absolute;right:16px;top:30px;display:block;"><path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="{{ uf.pencilColor }}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:absolute;left:382px;top:508px;width:388px;height:200px;border-radius:14px;background:#F2F2F4;overflow:hidden;">
+                <div style="position:absolute;inset:12px;border-radius:10px;background:#FFFFFF url('{{ uploadSelImg }}') center / contain no-repeat;"></div>
+                <div style="position:absolute;left:22px;top:22px;height:28px;padding:0 10px;border-radius:7px;background:rgba(12,12,12,0.75);display:inline-flex;align-items:center;">
+                  <span style="font-size:12.5px;font-weight:600;color:#FFFFFF;">{{ uploadSelSize }}</span>
+                </div>
+              </div>
+              <span style="position:absolute;left:382px;top:724px;font-size:15.5px;font-weight:600;color:#0C0C0C;">File Name</span>
+              <input type="text" value="{{ uploadSelName }}" onInput="{{ uploadOnName }}" style="position:absolute;left:382px;top:752px;width:388px;height:54px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 18px;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+              <span style="position:absolute;left:382px;top:824px;font-size:15.5px;font-weight:600;color:#0C0C0C;">Meta Description</span>
+              <input type="text" placeholder="Enter text" value="{{ uploadSelMeta }}" onInput="{{ uploadOnMeta }}" style="position:absolute;left:382px;top:852px;width:388px;height:54px;border-radius:12px;background:#FFFFFF;border:none;box-shadow:inset 0 0 0 1px rgba(131,131,131,0.28);padding:0 18px;font-size:15.5px;font-weight:500;color:#0C0C0C;">
+            </sc-if>
+            <div style="position:absolute;left:0;bottom:44px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:22px;">
+              <div onClick="{{ closeModal }}" style="height:54px;padding:0 34px;border-radius:12px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:0 10px 26px -12px rgba(12,12,12,0.5), inset 0 0 0 1px rgba(131,131,131,0.3);">
+                <span style="font-size:17px;font-weight:500;color:#5B5B5B;">Cancel</span>
+              </div>
+              <div onClick="{{ uploadContinue }}" style="height:54px;padding:0 26px;border-radius:12px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:18px;transition:opacity 0.2s ease;opacity:{{ uploadContinueOp }};" style-active="transform:scale(0.985);">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;">Continue</span>
+                <svg width="9" height="16" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- View / edit asset -->
+        <sc-if value="{{ mPreview }}" hint-placeholder-val="{{ false }}">
+          <div data-screen-label="View Asset Modal" style="position:absolute;left:474px;top:170px;width:780px;height:700px;border-radius:24px;background:#FFFFFF;box-shadow:0 60px 140px -40px rgba(0,0,0,0.5);z-index:81;animation:ss-modal-in 0.25s cubic-bezier(0.22,1,0.36,1);">
+            <span style="position:absolute;left:40px;top:34px;font-size:22px;font-weight:700;color:#0C0C0C;white-space:nowrap;">{{ previewName }}</span>
+            <div style="position:absolute;left:40px;top:70px;height:30px;padding:0 11px;border-radius:8px;background:rgba(131,131,131,0.1);display:inline-flex;align-items:center;">
+              <span style="font-size:13.5px;font-weight:600;color:#5B5B5B;">10MB</span>
+            </div>
+            <div onClick="{{ closeModal }}" style="position:absolute;right:26px;top:28px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="opacity:0.6;">
+              <svg width="17" height="17" viewBox="0 0 15 15" fill="none" style="display:block;"><path d="m1.5 1.5 12 12m0-12-12 12" stroke="#9B9B9B" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <div style="position:absolute;left:40px;top:118px;width:700px;height:436px;border-radius:16px;background:#F1F1F3;overflow:hidden;">
+              <div style="position:absolute;inset:0;background:url('{{ previewImg }}') center / contain no-repeat;"></div>
+              <sc-if value="{{ previewIsVideo }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.92);display:flex;align-items:center;justify-content:center;">
+                  <svg width="20" height="22" viewBox="0 0 9 10" fill="none" style="display:block;margin-left:3px;"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#0C0C0C"></path></svg>
+                </div>
+              </sc-if>
+            </div>
+            <div style="position:absolute;left:0;top:588px;width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:22px;">
+              <div onClick="{{ closeModal }}" style="height:54px;padding:0 34px;border-radius:12px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15);cursor:pointer;display:inline-flex;align-items:center;" style-hover="box-shadow:0 10px 26px -12px rgba(12,12,12,0.5), inset 0 0 0 1px rgba(131,131,131,0.3);">
+                <span style="font-size:17px;font-weight:500;color:#5B5B5B;">Cancel</span>
+              </div>
+              <div onClick="{{ previewContinue }}" style="height:54px;padding:0 26px;border-radius:12px;background:#FFFFFF;box-shadow:0 10px 26px -16px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15);cursor:pointer;display:inline-flex;flex-direction:row;align-items:center;gap:18px;" style-active="transform:scale(0.985);">
+                <span style="font-size:17px;font-weight:600;color:#0C0C0C;">Continue</span>
+                <svg width="9" height="16" viewBox="0 0 8 16" fill="none" style="display:block;"><path d="m1 1 6 7-6 7" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+    </div>
+
+    
+    <sc-if value="{{ sparkOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;right:24px;top:78px;width:541px;height:982px;z-index:120;transform:scale(0.82);transform-origin:top right;">
+        <dc-import name="Spark Chat" on-close="{{ closeSpark }}" on-toast="{{ sparkToast }}" hint-size="541px,982px" style="position:absolute;left:0;top:0;width:541px;height:982px;"></dc-import>
+      </div>
+    </sc-if>
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startEmpty&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Flow&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    sparkOpen: false,
+    vw: 1728,
+    page: "folders",         // folders | assets
+    assetView: "grid",
+    folders: ["Micadass Brand Assets", "Micadass Brand Assets", "Micadass Brand Assets", "Micadass Brand Assets"],
+    checkedFolders: [],
+    openFolder: "Micadass Brand Assets",
+    removedAssets: [],
+    uploadedAssets: [],
+    folderName: "",
+    modal: null,             // null | create | upload | preview
+    uploadStage: 0,          // 0 drop, 1 uploading, 2 done, 3 edit metas
+    uploadFiles: [
+      { id: "f1", name: "My Logo 1.jpeg", size: "7MB", meta: "", img: "assets/gradient-blob.png" },
+      { id: "f2", name: "My Image type 1.jpeg", size: "10MB", meta: "", img: "assets/asset-newsong.png" }
+    ],
+    selUpload: 0,
+    previewId: null,
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    if (this.props.startEmpty) this.setState({ folders: [] });
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+    if (this._upT) clearTimeout(this._upT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+
+    const icons = {
+      agents: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="2"></circle><path d="M4.4 15c1.6-1.6 3.5-2.4 5.6-2.4s4 .8 5.6 2.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M2.5 20h9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m19.5 13.5 1.1 3 3 1.1-3 1.1-1.1 3-1.1-3-3-1.1 3-1.1 1.1-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg>',
+      discovery: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"></circle><path d="m17 17 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m7.5 12.8 2.4-2.7 2 1.7 2.6-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      calendar: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="2.8" y="4.4" width="20.4" height="19" rx="4" stroke="currentColor" stroke-width="2"></rect><path d="M3 10.2h20M8.4 2v4M17.6 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m13 13.2.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3.9-1.9Z" fill="currentColor"></path></svg>',
+      automation: '<svg width="26" height="26" viewBox="0 0 27 27" fill="none"><path d="M14.5 12.5 22 5c1.4-1.4 3.6.8 2.2 2.2l-7.5 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M13 14 5.5 21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><rect x="11.4" y="11.4" width="4.6" height="4.6" rx="1.4" transform="rotate(45 13.7 13.7)" stroke="currentColor" stroke-width="1.8"></rect><path d="M5 3.5v3.4M3.3 5.2h3.4M22 18.5v3M20.5 20h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      engagement: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M21.6 13.5a8.6 8.6 0 1 1-2.5-6.1M21.9 3.5v4.2h-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="m12.6 9.4.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor"></path></svg>',
+      assets: '<svg width="26" height="26" viewBox="0 0 26 25" fill="none"><path d="M2.5 6.7c0-1.6 1.3-2.9 2.9-2.9h4.3l2.6 2.9h8.3c1.6 0 2.9 1.3 2.9 2.9v9.7c0 1.6-1.3 2.9-2.9 2.9H5.4a2.9 2.9 0 0 1-2.9-2.9V6.7Z" stroke="currentColor" stroke-width="2"></path><path d="M13 11v6M10 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+      settings: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4.4" stroke="currentColor" stroke-width="2"></circle><path d="M13 2v3.2M13 20.8V24M24 13h-3.2M5.2 13H2M20.8 5.2l-2.3 2.3M7.5 18.5l-2.3 2.3M20.8 20.8l-2.3-2.3M7.5 7.5 5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>'
+    };
+    const navDefs = [
+      { label: "Agents", icon: icons.agents, top: 132, size: 18, link: "SparkSocial Dashboard.dc.html" },
+      { label: "Discovery", icon: icons.discovery, top: 197.9, size: 18, link: "SparkSocial Discovery.dc.html" },
+      { label: "Calendar", icon: icons.calendar, top: 262.9, size: 18, link: "SparkSocial Calendar.dc.html" },
+      { label: "Automation Recipes", icon: icons.automation, top: 327.9, size: 18, link: "SparkSocial Automation.dc.html" },
+      { label: "Engagement Intelligence", icon: icons.engagement, top: 392.9, size: 17, link: "SparkSocial Command Center.dc.html" },
+      { label: "Assets Library", icon: icons.assets, top: 457.9, size: 18, active: true },
+      { label: "Settings", icon: icons.settings, top: 522.9, size: 18, link: "SparkSocial Settings.dc.html" }
+    ];
+
+    const chipStyles = {
+      Video: { bg: "rgba(245,107,255,0.14)", color: "#D24ED9", icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="10" height="10" rx="2.6" stroke="currentColor" stroke-width="1.5"></rect><path d="m11 7 3.4-2.1a.5.5 0 0 1 .76.43v5.34a.5.5 0 0 1-.76.43L11 9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"></path></svg>' },
+      Image: { bg: "rgba(163,65,255,0.12)", color: "#A341FF", icon: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.2" y="2.2" width="13.6" height="11.6" rx="2.6" stroke="currentColor" stroke-width="1.5"></rect><circle cx="5.6" cy="6.4" r="1.4" stroke="currentColor" stroke-width="1.3"></circle><path d="m2.5 12 3.4-3.4a1.5 1.5 0 0 1 2.1 0l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>' }
+    };
+    const baseAssets = [
+      { id: "a1", name: "Invideo Final Cut.mp4", kind: "Video", img: "assets/asset-surfers.png", mode: "cover", video: true, meta: "Video captured for Marketing" },
+      { id: "a2", name: "Final Cut.jpeg", kind: "Image", img: "assets/asset-newsong.png", mode: "poster", video: false, meta: "My Ad Campaign final image" },
+      { id: "a3", name: "Avatar 1.png", kind: "Image", img: "assets/pro-memoji.png", mode: "circle", video: false, meta: "Ai StarSocial Agent DP" },
+      { id: "a4", name: "Mockup.jpeg", kind: "Image", img: "assets/agent-avatar-glow.png", mode: "cover", video: false, meta: "Product mockup for Ads" }
+    ];
+    const allAssets = [...s.uploadedAssets, ...baseAssets].filter(a => !s.removedAssets.includes(a.id));
+    const assets = allAssets.slice(0, 4).map((a, i) => ({
+      ...a,
+      left: (352 + i * 328) + "px",
+      isCover: a.mode === "cover",
+      isPoster: a.mode === "poster",
+      isCircle: a.mode === "circle",
+      isVideo: a.video,
+      chipBg: chipStyles[a.kind].bg,
+      chipColor: chipStyles[a.kind].color,
+      chipIcon: { __html: chipStyles[a.kind].icon },
+      preview: () => this.setState({ modal: "preview", previewId: a.id }),
+      remove: () => { this.setState(st => ({ removedAssets: [...st.removedAssets, a.id] })); this.toast(a.name + " deleted"); }
+    }));
+
+    const previewAsset = allAssets.find(a => a.id === s.previewId) || baseAssets[1];
+    const uploadPcts = ["6%", "38%", "100%"];
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(1120 * scale) + "px",
+
+      navItems: navDefs.map(n => ({
+        label: n.label,
+        icon: { __html: n.icon },
+        top: n.top + "px",
+        fontSize: n.size + "px",
+        color: n.active ? "#0C0C0C" : "#838383",
+        click: () => {
+          if (n.link) { window.location.href = n.link; return; }
+          if (!n.active) this.toast(n.label + " — coming in the next phase");
+        }
+      })),
+      toastSpark: () => this.setState({ sparkOpen: true }),
+      sparkOpen: this.state.sparkOpen,
+      closeSpark: () => this.setState({ sparkOpen: false }),
+      sparkToast: (m) => this.toast(m),
+      toastDate: () => this.toast("Date filter — mock"),
+      toastPage: () => this.toast("Pagination — mock"),
+      toastMember: () => this.toast("Team members — mock"),
+
+      inFolders: s.page === "folders",
+      inAssets: s.page === "assets",
+      hasFolders: s.folders.length > 0,
+      isEmpty: s.folders.length === 0,
+      folders: s.folders.slice(0, 4).map((name, i) => ({
+        name,
+        left: (352 + i * 270) + "px",
+        checked: s.checkedFolders.includes(i),
+        boxBg: s.checkedFolders.includes(i) ? "#0C0C0C" : "#FFFFFF",
+        boxRing: s.checkedFolders.includes(i) ? "none" : "inset 0 0 0 1.3px rgba(12,12,12,0.25)",
+        check: () => this.setState(st => ({
+          checkedFolders: st.checkedFolders.includes(i) ? st.checkedFolders.filter(x => x !== i) : [...st.checkedFolders, i]
+        })),
+        menu: () => this.toast("Folder options — rename, share, delete (mock)"),
+        open: () => { this.setState({ page: "assets", openFolder: name }); window.scrollTo(0, 0); }
+      })),
+      createCardLeft: (352 + Math.min(s.folders.length, 4) * 270) + "px",
+      searchPh: s.assetView === "grid" ? "Search files" : "Search folder",
+      folderTitle: s.openFolder,
+      backToFolders: () => this.setState({ page: "folders" }),
+
+      assetView: s.assetView,
+      isGrid: s.assetView === "grid",
+      isList: s.assetView === "list",
+      gridBg: s.assetView === "grid" ? "#9CEFFF" : "#FFFFFF",
+      listBg: s.assetView === "list" ? "#9CEFFF" : "#FFFFFF",
+      gridView: () => this.setState({ assetView: "grid" }),
+      listView: () => this.setState({ assetView: "list" }),
+      assets,
+
+      modalOpen: !!s.modal,
+      mCreate: s.modal === "create",
+      mUpload: s.modal === "upload",
+      mPreview: s.modal === "preview",
+      closeModal: () => { if (this._upT) clearTimeout(this._upT); this.setState({ modal: null, uploadStage: 0 }); },
+      openCreate: () => this.setState({ modal: "create" }),
+      openUpload: () => this.setState({ modal: "upload", uploadStage: 0 }),
+
+      folderName: s.folderName,
+      onFolderName: (e) => this.setState({ folderName: e.target.value }),
+      saveFolder: () => {
+        const name = (s.folderName || "").trim() || "My New Folder";
+        this.setState(st => ({ folders: [...st.folders, name], modal: null }));
+        this.toast("Folder \u201C" + name + "\u201D created");
+      },
+
+      uploadingRow: s.uploadStage === 1,
+      uploadedRow: s.uploadStage === 2,
+      uploadEditView: s.uploadStage === 3,
+      uploadPct: uploadPcts[Math.min(s.uploadStage, 2)],
+      uploadContinueOp: s.uploadStage >= 2 ? "1" : "0.5",
+      uploadEdit: () => this.setState({ uploadStage: 3, selUpload: 0 }),
+      uploadRemove: () => { this.setState({ uploadStage: 0 }); this.toast("Upload removed"); },
+      startUpload: () => {
+        if (this.state.uploadStage !== 0) return;
+        this.setState({ uploadStage: 1 });
+        this._upT = setTimeout(() => this.setState({ uploadStage: 2 }), 2000);
+      },
+      uploadFiles: s.uploadFiles.map((f, i) => ({
+        ...f,
+        ring: i === s.selUpload ? "inset 0 0 0 1.8px #63DEF5" : "none",
+        pencilColor: i === s.selUpload ? "#0C0C0C" : "#838383",
+        select: () => this.setState({ selUpload: i })
+      })),
+      uploadSelImg: s.uploadFiles[s.selUpload].img,
+      uploadSelSize: s.uploadFiles[s.selUpload].size,
+      uploadSelName: s.uploadFiles[s.selUpload].name,
+      uploadSelMeta: s.uploadFiles[s.selUpload].meta,
+      uploadOnName: (e) => {
+        const files = this.state.uploadFiles.map((f, i) => i === this.state.selUpload ? { ...f, name: e.target.value } : f);
+        this.setState({ uploadFiles: files });
+      },
+      uploadOnMeta: (e) => {
+        const files = this.state.uploadFiles.map((f, i) => i === this.state.selUpload ? { ...f, meta: e.target.value } : f);
+        this.setState({ uploadFiles: files });
+      },
+      uploadContinue: () => {
+        const st0 = this.state;
+        if (st0.uploadStage < 2) { this.toast("Wait for the upload to finish"); return; }
+        if (st0.uploadStage === 2) { this.setState({ uploadStage: 3, selUpload: 0 }); return; }
+        this.setState(st => ({
+          modal: null, uploadStage: 0,
+          uploadedAssets: [...st.uploadedAssets, ...st.uploadFiles.map(f => ({
+            id: "u" + f.id + Date.now(), name: f.name, kind: "Image", img: f.img, mode: f.img.indexOf("newsong") >= 0 ? "poster" : "cover", video: false,
+            meta: f.meta || "Uploaded from my device"
+          }))]
+        }));
+        this.toast(st0.uploadFiles.length + " files added to " + st0.openFolder);
+      },
+
+      previewName: previewAsset.name,
+      previewImg: previewAsset.img,
+      previewIsVideo: previewAsset.video,
+      previewContinue: () => { this.setState({ modal: null }); this.toast("Asset ready to use in the Draft Panel"); },
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

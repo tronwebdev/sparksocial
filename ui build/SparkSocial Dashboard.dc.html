@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>SparkSocial — Dashboard</title>
+  <style>
+    @font-face { font-family: "Onest"; src: url("fonts/Onest-Variable.ttf") format("truetype-variations"), url("fonts/Onest-Variable.ttf") format("truetype"); font-weight: 100 1000; font-display: swap; }
+    @font-face { font-family: "CS Mollwish"; src: url("fonts/CS-Mollwish.otf") format("opentype"); font-weight: 400; font-display: swap; }
+    html, body { margin: 0; padding: 0; background: #FFFFFF; }
+    * { box-sizing: border-box; }
+    input, button, textarea { font-family: inherit; }
+    @keyframes ss-breathe { 0%,100% { opacity: 0.75; } 50% { opacity: 1; } }
+    @keyframes ss-toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12% { opacity: 1; transform: translate(-50%, 0); } 88% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 8px); } }
+    @keyframes ss-spin { to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="font-family:'Onest',-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;width:100%;">
+  <div data-screen-label="Brand Home Dashboard" style="position:relative;width:100%;overflow:hidden;background:#FFFFFF;height:{{ wrapH }};">
+    <div style="position:absolute;top:0;width:1728px;height:1409px;left:{{ stageLeft }};transform:{{ stageScale }};transform-origin:top left;background:#FFFFFF;">
+
+      <!-- ============ MAIN BG CARD ============ -->
+      <div style="position:absolute;left:322px;top:18px;width:1391px;height:1391px;border-radius:30px;overflow:hidden;background:linear-gradient(157.442deg, rgba(245,107,255,0.2) 2.42%, rgba(255,255,255,0) 42.66%), linear-gradient(198.502deg, rgba(108,232,255,0.2) 4.4%, rgba(255,255,255,0) 38.06%), #F7F7F7;transform:scaleX(-1);"></div>
+
+      <!-- ============ SIDEBAR ============ -->
+      <div style="position:absolute;left:22px;top:30.8px;width:203px;height:53.6px;">
+        <div style="position:absolute;left:0;top:0;width:53.57px;height:53.57px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 2.68px #000000;"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#FBFBFB;box-shadow:inset 0 0 5.36px -1.07px #E9EFF5;"></div>
+          <div style="position:absolute;left:9.38px;top:11.16px;width:35.08px;height:31.52px;overflow:hidden;">
+            <div style="position:absolute;left:0;top:8.3px;width:15.8px;height:15.8px;border-radius:50%;background:#F56BFF;"></div>
+            <div style="position:absolute;left:17.2px;top:0;width:15.8px;height:15.8px;border-radius:50%;background:#A341FF;"></div>
+            <div style="position:absolute;left:18.6px;top:14.9px;width:15.8px;height:15.8px;border-radius:50%;background:#F56BFF;"></div>
+            <div style="position:absolute;left:6.7px;top:0.7px;width:12.9px;height:12.9px;border-radius:50%;background:#6CE8FF;"></div>
+          </div>
+          <div style="position:absolute;left:10.68px;top:19.83px;width:32.71px;height:13.26px;border-radius:9.9px;background:rgba(255,255,255,0.07);backdrop-filter:blur(8.94px);-webkit-backdrop-filter:blur(8.94px);box-shadow:inset 0 0 4.98px -0.88px #6CE8FF;"></div>
+          <div style="position:absolute;left:15.54px;top:23.8px;width:5.36px;height:5.36px;border-radius:50%;background:#FFFFFF;"></div>
+          <div style="position:absolute;left:33.75px;top:23.8px;width:5.36px;height:5.36px;border-radius:50%;background:#FFFFFF;"></div>
+        </div>
+        <span style="position:absolute;left:61.7px;top:14.3px;font-family:'CS Mollwish','Comfortaa',sans-serif;font-size:27.49px;line-height:1.13;color:#0C0C0C;white-space:nowrap;">Sparksocial</span>
+      </div>
+
+      <!-- active nav glow -->
+      <div style="position:absolute;left:18px;top:120px;width:278px;height:50px;border-radius:10px;background:linear-gradient(90deg, rgba(108,232,255,0.4) 0%, rgba(148,238,255,0.4) 32.85%, rgba(255,255,255,0) 100%);top:{{ navGlowTop }};transition:top 0.25s cubic-bezier(0.22,1,0.36,1);"></div>
+
+      <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="7">
+        <div onClick="{{ nav.click }}" style="position:absolute;left:36px;width:250px;height:27px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:15px;top:{{ nav.top }};">
+          <span style="width:26px;height:26px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:{{ nav.color }};" dangerouslySetInnerHTML="{{ nav.icon }}"></span>
+          <span style="font-size:{{ nav.fontSize }};font-weight:600;line-height:1;color:{{ nav.color }};white-space:nowrap;">{{ nav.label }}</span>
+        </div>
+      </sc-for>
+
+      <!-- Pro plan card -->
+      <div style="position:absolute;left:21px;top:1023px;width:282px;height:77px;border-radius:10px;box-shadow:0 0 0 1px rgba(131,131,131,0.2);">
+        <div style="position:absolute;left:12px;top:10px;width:57px;height:57px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#F8F8F8 url('assets/pro-memoji.png') center / cover no-repeat;box-shadow:inset 0 0 0 1.44px rgba(120,120,120,0.28);"></div>
+          <div style="position:absolute;left:40px;top:38px;width:17px;height:17px;border-radius:50%;background:#13D711;display:flex;align-items:center;justify-content:center;">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="display:block;"><path d="m1.2 4.2 2 2L6.9 1.9" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+        <span style="position:absolute;left:85px;top:11px;font-size:18px;font-weight:600;line-height:1.28;color:#0C0C0C;">Pro Plan</span>
+        <div style="position:absolute;left:85px;top:39px;width:112px;height:26px;border-radius:5px;background:#DCF2F6;">
+          <span style="position:absolute;left:9px;top:4px;font-size:14px;font-weight:600;line-height:1.28;color:#838383;white-space:nowrap;">1,200 credits</span>
+        </div>
+        <svg width="6" height="23" viewBox="0 0 6 23" fill="#838383" style="position:absolute;left:262px;top:27px;display:block;"><circle cx="3" cy="3" r="2.4"></circle><circle cx="3" cy="11.5" r="2.4"></circle><circle cx="3" cy="20" r="2.4"></circle></svg>
+      </div>
+
+      <!-- ============ HEADER ============ -->
+      <div onClick="{{ toggleWs }}" style="position:absolute;left:347px;top:30px;height:44px;padding:0 16px 0 10px;border-radius:12px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:13px;z-index:31;" style-hover="background:rgba(12,12,12,0.04);">
+        <span style="font-size:26px;font-weight:600;line-height:1.27;color:#000000;white-space:nowrap;">{{ wsName }}</span>
+        <svg width="14" height="9" viewBox="0 0 13 8" fill="none" style="display:block;transition:transform 0.2s;transform:{{ wsChevron }};"><path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </div>
+      <sc-if value="{{ wsOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeWs }}" style="position:fixed;left:0;top:0;right:0;bottom:0;z-index:29;"></div>
+        <div style="position:absolute;left:347px;top:82px;width:348px;border-radius:14px;background:#FFFFFF;box-shadow:0 0 0 1px rgba(131,131,131,0.2), 0 24px 60px -24px rgba(0,0,0,0.35);padding:8px;z-index:32;">
+          <span style="display:block;padding:8px 12px 6px;font-size:12.5px;font-weight:600;letter-spacing:0.6px;color:#838383;">WORKSPACES</span>
+          <sc-for list="{{ wsItems }}" as="w" hint-placeholder-count="5">
+            <div onClick="{{ w.pick }}" style="height:46px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:12px;padding:0 12px;" style-hover="background:#F5F5F5;">
+              <span style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:{{ w.bg }} url('{{ w.icon }}') center/62% no-repeat;"></span>
+              <span style="flex:1;font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ w.name }}</span>
+              <sc-if value="{{ w.current }}" hint-placeholder-val="{{ false }}">
+                <svg width="14" height="11" viewBox="0 0 12 10" fill="none" style="display:block;flex-shrink:0;"><path d="m1 5 3.2 3.2L11 1" stroke="#0C0C0C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}">
+            <div style="height:1px;background:rgba(131,131,131,0.2);margin:8px 4px;"></div>
+            <div onClick="{{ goAccountHome }}" style="height:52px;border-radius:10px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:12px;padding:0 12px;" style-hover="background:#F5F5F5;">
+              <span style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:#0C0C0C;display:inline-flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1.4" stroke="#FFFFFF" stroke-width="1.5"></rect><rect x="8" y="1" width="5" height="5" rx="1.4" stroke="#FFFFFF" stroke-width="1.5"></rect><rect x="1" y="8" width="5" height="5" rx="1.4" stroke="#FFFFFF" stroke-width="1.5"></rect><rect x="8" y="8" width="5" height="5" rx="1.4" stroke="#FFFFFF" stroke-width="1.5"></rect></svg></span>
+              <span style="flex:1;display:flex;flex-direction:column;gap:2px;"><span style="font-size:16px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Account Home</span><span style="font-size:13px;font-weight:400;color:#838383;white-space:nowrap;">All workspaces &amp; organization</span></span>
+              <svg width="7" height="12" viewBox="0 0 8 16" fill="none" style="display:block;flex-shrink:0;"><path d="m1 1 6 7-6 7" stroke="#838383" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <span style="position:absolute;left:357px;top:77px;font-size:18px;font-weight:400;line-height:1.28;color:#838383;white-space:nowrap;">Your Ai Agents are running campaigns</span>
+      <div style="position:absolute;left:356px;top:119.5px;width:1323.5px;height:1px;background:rgba(131,131,131,0.25);"></div>
+
+      <!-- Brand kit setup chip -->
+      <sc-if value="{{ showBrandKit }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;left:975px;top:30px;width:288px;height:72px;border-radius:15px;background:#FFFFFF;box-shadow:0 0 0 1px rgba(131,131,131,0.15);">
+          <div style="position:absolute;left:12px;top:13px;width:46px;height:46px;border-radius:50%;background:conic-gradient(#A341FF 0%, #F56BFF 30%, #6CE8FF 50%, rgba(12,12,12,0.08) 50%, rgba(12,12,12,0.08) 100%);display:flex;align-items:center;justify-content:center;">
+            <div style="width:34px;height:34px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:11.5px;font-weight:600;color:#0C0C0C;">50%</span>
+            </div>
+          </div>
+          <span style="position:absolute;left:70px;top:12px;font-size:15px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Brand Kit Setup loading...</span>
+          <div onClick="{{ goBrandKit }}" style="position:absolute;left:70px;top:36px;height:24px;padding:0 10px;border-radius:6px;background:#D3F4FB;display:inline-flex;align-items:center;cursor:pointer;" style-hover="background:#BFEFF9;">
+            <span style="font-size:13px;font-weight:500;color:#0BAAC7;white-space:nowrap;">Complete Brandkit</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- Create Campaign -->
+      <div onClick="{{ toastCampaign }}" style="position:absolute;left:1275px;top:42px;width:192px;height:48px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(12,12,12,0.35);display:flex;flex-direction:row;align-items:center;justify-content:center;gap:9px;cursor:pointer;" style-hover="box-shadow:inset 0 0 0 1.5px #0C0C0C;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:block;"><path d="M8 1.5v13M1.5 8h13" stroke="#0C0C0C" stroke-width="1.8" stroke-linecap="round"></path></svg>
+        <span style="font-size:16px;font-weight:500;color:#0C0C0C;">Create Campaign</span>
+      </div>
+
+      <!-- Ask Spark -->
+      <div onClick="{{ toastSpark }}" style="position:absolute;left:1484px;top:30px;width:196px;height:70.2px;cursor:pointer;">
+        <svg width="126" height="47" viewBox="0 0 126 47" style="position:absolute;left:70px;top:12px;display:block;"><path d="M 9.159 7.596 C 9.159 3.401 12.56 0 16.755 0 L 113.493 0 C 120.4 0 126 5.6 126 12.507 L 126 34.493 C 126 41.4 120.4 47 113.493 47 L 20.305 47 C 14.181 47 9.246 41.979 9.353 35.856 L 9.361 35.382 C 9.408 32.652 8.322 30.025 6.36 28.126 C 2.742 24.623 2.345 18.956 5.439 14.982 L 7.557 12.262 C 8.596 10.929 9.159 9.286 9.159 7.596 Z" fill="#FFFFFF"></path></svg>
+        <div style="position:absolute;left:0;top:0;width:70.2px;height:70.2px;">
+          <div style="position:absolute;inset:0;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 3.51px #000000;"></div>
+          <div style="position:absolute;left:14.32px;top:19.27px;width:41.8px;height:37.55px;overflow:hidden;">
+            <div style="position:absolute;left:0;top:9.9px;width:18.8px;height:18.8px;border-radius:50%;background:#F56BFF;"></div>
+            <div style="position:absolute;left:20.5px;top:0;width:18.8px;height:18.8px;border-radius:50%;background:#A341FF;"></div>
+            <div style="position:absolute;left:22.2px;top:17.8px;width:18.8px;height:18.8px;border-radius:50%;background:#F56BFF;"></div>
+            <div style="position:absolute;left:8px;top:0.9px;width:15.4px;height:15.4px;border-radius:50%;background:#6CE8FF;"></div>
+          </div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:rgba(108,232,255,0.2);backdrop-filter:blur(33.69px);-webkit-backdrop-filter:blur(33.69px);box-shadow:inset 0 0 10.73px 3.86px rgba(255,255,255,0.84);"></div>
+          <div style="position:absolute;left:13.99px;top:26px;width:42.88px;height:17.38px;border-radius:12.97px;background:rgba(255,255,255,0.07);backdrop-filter:blur(11.72px);-webkit-backdrop-filter:blur(11.72px);box-shadow:inset 0 0 6.53px -1.16px #6CE8FF;"></div>
+          <div style="position:absolute;left:20.36px;top:31.2px;width:7.02px;height:7.02px;border-radius:50%;background:#FFFFFF;"></div>
+          <div style="position:absolute;left:44.24px;top:31.2px;width:7.02px;height:7.02px;border-radius:50%;background:#FFFFFF;"></div>
+        </div>
+        <span style="position:absolute;left:102px;top:26px;font-size:14px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Ask Spark?</span>
+      </div>
+
+      <!-- ============ AGENT BANNER ============ -->
+      <div style="position:absolute;left:357px;top:141px;width:1323px;height:177px;border-radius:30px;overflow:hidden;background:linear-gradient(117.732deg, rgba(65,139,153,0) 83.25%, rgba(92,197,216,0.37) 92.13%, rgba(245,107,255,0.5) 99.02%), radial-gradient(661.5px 88.5px at 50% 50%, #044956 0%, #0C0C0C 100%);">
+        <!-- left: agent identity -->
+        <div style="position:absolute;left:39px;top:28.6px;width:318px;height:119px;">
+          <div style="position:absolute;left:0;top:0;width:118.94px;height:118.94px;">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#FFFFFF;box-shadow:inset 0 0 0 5.95px #000000;"></div>
+            <div style="position:absolute;left:24.26px;top:32.64px;width:70.81px;height:63.61px;overflow:hidden;">
+              <div style="position:absolute;left:0;top:16.8px;width:31.9px;height:31.9px;border-radius:50%;background:#F56BFF;"></div>
+              <div style="position:absolute;left:34.7px;top:0;width:31.9px;height:31.9px;border-radius:50%;background:#A341FF;"></div>
+              <div style="position:absolute;left:37.6px;top:30.1px;width:31.9px;height:31.9px;border-radius:50%;background:#F56BFF;"></div>
+              <div style="position:absolute;left:13.6px;top:1.4px;width:26px;height:26px;border-radius:50%;background:#6CE8FF;"></div>
+            </div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:rgba(108,232,255,0.2);backdrop-filter:blur(57.06px);-webkit-backdrop-filter:blur(57.06px);box-shadow:inset 0 0 18.18px 6.54px #0A1C20;"></div>
+            <div style="position:absolute;left:23.7px;top:44.04px;width:72.63px;height:29.45px;border-radius:21.98px;background:rgba(255,255,255,0.07);backdrop-filter:blur(19.85px);-webkit-backdrop-filter:blur(19.85px);box-shadow:inset 0 0 11.06px -1.96px #6CE8FF;animation:ss-breathe 4s ease-in-out infinite;"></div>
+            <div style="position:absolute;left:34.49px;top:52.85px;width:11.89px;height:11.89px;border-radius:50%;background:#FFFFFF;"></div>
+            <div style="position:absolute;left:74.93px;top:52.85px;width:11.89px;height:11.89px;border-radius:50%;background:#FFFFFF;"></div>
+          </div>
+          <span style="position:absolute;left:139px;top:6.4px;font-size:30px;font-weight:600;line-height:1.27;color:#FFFFFF;white-space:nowrap;">Starsocial</span>
+          <div style="position:absolute;left:139px;top:71.4px;width:179px;height:35px;">
+            <div style="position:absolute;left:0;top:0;width:113px;height:35px;border-radius:7.38px;background:rgba(255,255,255,0.07);backdrop-filter:blur(23.78px);-webkit-backdrop-filter:blur(23.78px);"></div>
+            <span style="position:absolute;left:10.6px;top:7.7px;font-size:14.63px;font-weight:400;line-height:1.36;color:rgba(255,255,255,0.6);white-space:nowrap;">Agent Status</span>
+            <div style="position:absolute;left:122px;top:11.5px;width:11.89px;height:11.89px;border-radius:50%;background:{{ statusDotColor }};"></div>
+            <span style="position:absolute;left:138px;top:8px;font-size:14px;font-weight:400;line-height:1.28;color:rgba(255,255,255,0.6);white-space:nowrap;">{{ statusLabel }}</span>
+          </div>
+        </div>
+        <div style="position:absolute;left:410px;top:19.5px;width:1px;height:134.5px;background:rgba(255,255,255,0.15);"></div>
+        <!-- right: status + actions -->
+        <div style="position:absolute;left:464px;top:44px;width:1000px;height:91px;">
+          <div style="position:absolute;left:0;top:0;display:flex;flex-direction:row;align-items:center;gap:28px;">
+            <sc-for list="{{ agentStatuses }}" as="st" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:row;align-items:center;gap:10px;">
+                <span style="width:19px;height:19px;display:inline-flex;animation:ss-spin 6s linear infinite;"><svg width="19" height="19" viewBox="0 0 19 19" fill="none" style="display:block;"><path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="rgba(255,255,255,0.75)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+                <span style="font-size:16px;font-weight:400;color:rgba(255,255,255,0.75);white-space:nowrap;">{{ st.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ togglePause }}" style="position:absolute;left:0;top:54px;width:150px;height:36.6px;border-radius:7.43px;cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;" style-hover="background:rgba(255,255,255,0.08);">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:block;"><circle cx="8" cy="8" r="7" stroke="#FFFFFF" stroke-width="1.3"></circle><path d="M6.2 5.5v5M9.8 5.5v5" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round"></path></svg>
+            <span style="font-size:13.53px;font-weight:500;color:#FFFFFF;white-space:nowrap;">{{ pauseLabel }}</span>
+          </div>
+          <div onClick="{{ toastFrequency }}" style="position:absolute;left:165px;top:54px;width:150px;height:36.6px;border-radius:7.43px;background:rgba(255,255,255,0.15);box-shadow:inset 0 0 0 0.57px rgba(255,255,255,0.4);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(255,255,255,0.22);">
+            <span style="font-size:13.53px;font-weight:500;color:#FFFFFF;white-space:nowrap;">Adjust Frequency</span>
+          </div>
+          <div onClick="{{ goCommandCenter }}" style="position:absolute;left:330px;top:54px;width:159px;height:37px;border-radius:7.43px;background:rgba(255,255,255,0.15);box-shadow:0 0 24.79px 0 rgba(108,232,255,0.32);cursor:pointer;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;" style-hover="background:rgba(255,255,255,0.25);">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="display:block;"><path d="M1 5V3.4A2.4 2.4 0 0 1 3.4 1H5M13 1h1.6A2.4 2.4 0 0 1 17 3.4V5M17 13v1.6a2.4 2.4 0 0 1-2.4 2.4H13M5 17H3.4A2.4 2.4 0 0 1 1 14.6V13" stroke="#6CE8FF" stroke-width="1.4" stroke-linecap="round"></path><circle cx="9" cy="9" r="3.2" stroke="#6CE8FF" stroke-width="1.4"></circle></svg>
+            <span style="font-size:13.53px;font-weight:600;color:#6CE8FF;white-space:nowrap;">Command Center</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ KPI CARDS ============ -->
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="3">
+        <div style="position:absolute;top:354px;width:270px;height:107px;border-radius:15px;background:{{ k.bg }};left:{{ k.left }};">
+          <span style="position:absolute;left:21px;top:15px;font-size:18px;font-weight:500;line-height:1.28;color:#838383;white-space:nowrap;">{{ k.label }}</span>
+          <span style="position:absolute;left:21px;top:50px;font-size:35px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">{{ k.value }}</span>
+          <div style="position:absolute;left:163px;top:52px;width:90px;height:36px;border-radius:11.59px;background:#FFFFFF;box-shadow:inset 0 0 0 0.77px rgba(12,12,12,0.1);">
+            <span style="position:absolute;left:9px;top:7px;font-size:17px;font-weight:500;color:{{ k.signColor }};">{{ k.sign }}</span>
+            <span style="position:absolute;left:26.9px;top:7px;font-size:18px;font-weight:500;line-height:1.28;color:#0C0C0C;">{{ k.pct }}</span>
+            <svg width="14" height="15" viewBox="0 0 14 15" fill="none" style="position:absolute;left:66px;top:10.7px;display:block;"><path d="M2 13 12 3M12 3H4.5M12 3v7.5" stroke="#13D711" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+      </sc-for>
+
+      <!-- ============ AGENT ACTIVITY ============ -->
+      <span style="position:absolute;left:356px;top:492px;font-size:18px;font-weight:600;line-height:1.28;color:#838383;white-space:nowrap;">Agent Activity</span>
+      <svg width="21.6" height="21.6" viewBox="0 0 22 22" fill="none" style="position:absolute;left:488px;top:492px;display:block;"><circle cx="11" cy="11" r="9.8" stroke="#838383" stroke-width="1.5"></circle><path d="M11 10v5.4" stroke="#838383" stroke-width="1.6" stroke-linecap="round"></path><circle cx="11" cy="6.8" r="1.05" fill="#838383"></circle></svg>
+
+      <div style="position:absolute;left:356px;top:533px;width:846px;height:361px;border-radius:15px;background:#FFFFFF;">
+        <!-- row 1 -->
+        <div style="position:absolute;left:16px;top:22px;width:814px;height:28px;">
+          <svg width="21.5" height="28" viewBox="0 0 22 28" fill="none" style="position:absolute;left:0;top:0;display:block;"><path d="M11.6 1.2c.3 2.9-.7 4.6-2.6 6.7C7 10.2 4.6 12 3.1 15a10.5 10.5 0 0 0 5 14... " stroke="none"></path><path d="M11 1.5c.2 2.6-.9 4.4-2.8 6.5C6.2 10.2 3.6 12.4 2.4 15.5a9.3 9.3 0 0 0 5.2 11.9 9.6 9.6 0 0 0 12-4.2c1.5-3 .8-6.5-.8-9.3-1.2-2-2.8-3.7-3.6-5.9-.5-1.4-.7-3-.4-4.9" fill="rgba(245,107,255,0.2)" stroke="#F56BFF" stroke-width="1.6" stroke-linejoin="round" transform="scale(0.98) translate(1,0)"></path><path d="M8.6 20.3c-.5 2 .6 4.1 2.5 4.8 2 .7 4.2-.2 5-2.1.7-1.6.2-3.4-.9-4.8-.8-1-1.9-1.9-2.3-3.1-.9 1.9-3.7 3-4.3 5.2Z" fill="#F56BFF"></path></svg>
+          <span style="position:absolute;left:34px;top:1px;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Trending topic detected “AI Automation”</span>
+          <span style="position:absolute;left:661px;top:4px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">2 minutes ago</span>
+        </div>
+        <div style="position:absolute;left:0;top:72px;width:846px;height:1px;background:rgba(131,131,131,0.3);"></div>
+        <!-- row 2 -->
+        <div onClick="{{ toastCalendar }}" style="position:absolute;left:17px;top:97px;width:812px;height:61px;cursor:pointer;">
+          <svg width="23" height="24" viewBox="0 0 24 25" fill="none" style="position:absolute;left:0;top:1.5px;display:block;"><path d="M3 6.5A3.5 3.5 0 0 1 6.5 3h11A3.5 3.5 0 0 1 21 6.5v-.4c.1.9.2 1.9.3 2.9H2.7c.1-1 .2-2 .3-2.9Z" fill="rgba(94,100,244,0.3)"></path><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#5E64F4" stroke-width="1.9"></rect><path d="M2.9 9.9h18.2" stroke="#5E64F4" stroke-width="1.9" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#5E64F4" stroke-width="1.9" stroke-linecap="round"></path></svg>
+          <span style="position:absolute;left:33px;top:0;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Scheduled 7 posts for next week</span>
+          <span style="position:absolute;left:33px;top:41px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">Confidence: High</span>
+          <span style="position:absolute;left:653px;top:9px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">15 minutes ago</span>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style="position:absolute;left:798px;top:14px;display:block;"><path d="m1 1 6 6-6 6" stroke="#838383" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="position:absolute;left:0;top:177px;width:846px;height:1px;background:rgba(131,131,131,0.3);"></div>
+        <!-- row 3 -->
+        <div style="position:absolute;left:19px;top:202px;width:810px;height:28px;">
+          <svg width="19" height="26" viewBox="0 0 19 26" fill="none" style="position:absolute;left:0;top:0;display:block;"><path d="M2 1.5v23" stroke="#F35525" stroke-width="2.2" stroke-linecap="round"></path><path d="M2.5 3.2c4.6-2.4 8.2 2.2 12.6.4 1.2-.5 2.3.4 2.3 1.6v7.2c0 .9-.6 1.7-1.5 1.9-4.9 1.3-8.4-3-13.4-.6" fill="#F35525" fill-opacity="0.25" stroke="#F35525" stroke-width="1.8" stroke-linejoin="round"></path></svg>
+          <span style="position:absolute;left:31px;top:1.6px;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">6 intent leads flagged</span>
+          <span style="position:absolute;left:686px;top:4.6px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">1 hour ago</span>
+        </div>
+        <div style="position:absolute;left:0;top:252.5px;width:846px;height:1px;background:rgba(131,131,131,0.3);"></div>
+        <!-- row 4 -->
+        <div onClick="{{ goCommandCenter }}" style="position:absolute;left:17px;top:277.6px;width:812px;height:61px;cursor:pointer;">
+          <svg width="21" height="21" viewBox="0 0 21 21" fill="none" style="position:absolute;left:0;top:2.8px;display:block;"><rect x="1" y="1" width="19" height="16" rx="4" fill="rgba(163,65,255,0.2)" stroke="#A341FF" stroke-width="1.7"></rect><path d="m5.5 17 .1 2.6a.6.6 0 0 0 1 .5L10 17" stroke="#A341FF" stroke-width="1.7" stroke-linejoin="round"></path><path d="M5.7 6.6h9.6M5.7 11h6.2" stroke="#A341FF" stroke-width="1.7" stroke-linecap="round"></path></svg>
+          <span style="position:absolute;left:33px;top:0;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">Replied to 8 comments</span>
+          <span style="position:absolute;left:33px;top:41px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">Confidence: High</span>
+          <span style="position:absolute;left:677px;top:9px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">1 day ago</span>
+          <svg width="8" height="14" viewBox="0 0 8 14" fill="none" style="position:absolute;left:779px;top:14.4px;display:block;"><path d="m1 1 6 6-6 6" stroke="#838383" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+      </div>
+
+      <!-- ============ UPCOMING CONTENTS CARD ============ -->
+      <div style="position:absolute;left:356px;top:919px;width:846px;height:454px;border-radius:15px;background:#FFFFFF;">
+        <div style="position:absolute;left:11px;top:14px;width:202px;height:51px;border-radius:10px;background:#F7F7F7;box-shadow:inset 0 0 0 1.28px rgba(12,12,12,0.1);left:{{ tabChipLeft }};width:{{ tabChipWidth }};transition:left 0.25s ease, width 0.25s ease;"></div>
+        <div style="position:absolute;left:28px;top:29px;display:flex;flex-direction:row;align-items:center;gap:44px;">
+          <sc-for list="{{ contentTabs }}" as="tab" hint-placeholder-count="3">
+            <span onClick="{{ tab.click }}" style="font-size:18px;font-weight:500;line-height:1.28;color:{{ tab.color }};white-space:nowrap;cursor:pointer;position:relative;z-index:2;">{{ tab.label }}</span>
+          </sc-for>
+        </div>
+        <svg width="21.6" height="21.6" viewBox="0 0 22 22" fill="none" style="position:absolute;left:803px;top:30px;display:block;"><circle cx="11" cy="11" r="9.8" stroke="#838383" stroke-width="1.5"></circle><path d="M11 10v5.4" stroke="#838383" stroke-width="1.6" stroke-linecap="round"></path><circle cx="11" cy="6.8" r="1.05" fill="#838383"></circle></svg>
+        <div style="position:absolute;left:0;top:80px;width:846px;height:1px;background:rgba(131,131,131,0.2);"></div>
+
+        <sc-if value="{{ tabIsUpcoming }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ upcomingRows }}" as="row" hint-placeholder-count="3">
+            <div style="position:absolute;left:0;width:846px;height:89px;top:{{ row.top }};">
+              <div style="position:absolute;left:17px;top:0;width:804px;height:80px;">
+                <svg width="23" height="24" viewBox="0 0 24 25" fill="none" style="position:absolute;left:0;top:12px;display:block;"><path d="M3 6.5A3.5 3.5 0 0 1 6.5 3h11A3.5 3.5 0 0 1 21 6.5v-.4c.1.9.2 1.9.3 2.9H2.7c.1-1 .2-2 .3-2.9Z" fill="rgba(131,131,131,0.3)"></path><rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" stroke-width="1.7"></rect><path d="M2.9 9.9h18.2" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path><path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" stroke-width="1.7" stroke-linecap="round"></path></svg>
+                <span style="position:absolute;left:35px;top:11px;font-size:20px;font-weight:600;line-height:1.28;color:#0C0C0C;white-space:nowrap;">{{ row.when }}</span>
+                <span style="position:absolute;left:35px;top:47px;font-size:16px;font-weight:400;color:#838383;white-space:nowrap;">Confidence: High</span>
+                <div style="position:absolute;left:225px;top:0;width:127px;height:80px;border-radius:10px;background:rgba(131,131,131,0.1);overflow:hidden;">
+                  {{ row.thumbEl }}
+                  <svg width="9" height="9.5" viewBox="0 0 9 10" fill="none" style="position:absolute;left:59px;top:35px;display:block;filter:drop-shadow(0 0 4px rgba(0,0,0,0.8));"><path d="M8.2 3.5c1 .5 1 2 0 2.5L2.2 9.3C1.2 9.8 0 9.1 0 8V1.4C0 .3 1.2-.3 2.2.2l6 3.3Z" fill="#FFFFFF"></path></svg>
+                </div>
+                {{ row.icon1El }}
+                <sc-if value="{{ row.hasIcon2 }}" hint-placeholder-val="{{ true }}"><img src="assets/icons/fb-color.png" alt="" style="position:absolute;left:406.5px;top:27px;width:26.5px;height:26.5px;object-fit:contain;"></sc-if>
+                <span style="position:absolute;left:450px;top:30px;font-size:18px;font-weight:500;color:#0C0C0C;white-space:nowrap;">{{ row.kind }}</span>
+                <div onClick="{{ row.view }}" style="position:absolute;left:748px;top:30px;width:60px;height:20px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:11px;" style-hover="opacity:0.7;">
+                  <span style="font-size:16px;font-weight:500;color:#838383;">View</span>
+                  <svg width="7" height="13" viewBox="0 0 7 13" fill="none" style="display:block;"><path d="m1 1 5 5.5L1 12" stroke="#838383" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </div>
+              </div>
+              <div style="position:absolute;left:0;bottom:0;width:846px;height:1px;background:rgba(131,131,131,0.1);"></div>
+            </div>
+          </sc-for>
+          <div onClick="{{ toastCalendar }}" style="position:absolute;left:687px;top:399px;width:134.3px;height:39px;border-radius:8.29px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1.06px #A341FF;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(163,65,255,0.18);">
+            <span style="font-size:14.92px;font-weight:500;color:#A341FF;white-space:nowrap;">Open Calendar</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ tabIsInsights }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;left:28px;top:100px;font-size:16px;font-weight:500;color:#838383;white-space:nowrap;">Impressions · last 7 days</span>
+          <span style="position:absolute;left:28px;top:122px;font-size:32px;font-weight:600;color:#0C0C0C;white-space:nowrap;">3.27M</span>
+          <div style="position:absolute;left:152px;top:132px;height:26px;padding:0 9px;border-radius:8px;background:#E7FAE7;display:flex;flex-direction:row;align-items:center;gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:14px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+16%</span>
+          </div>
+          <svg width="500" height="200" viewBox="0 0 500 200" fill="none" style="position:absolute;left:28px;top:176px;display:block;overflow:visible;">
+            <defs>
+              <linearGradient id="ssPerfArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A341FF" stop-opacity="0.28"></stop><stop offset="1" stop-color="#A341FF" stop-opacity="0"></stop></linearGradient>
+              <linearGradient id="ssPerfLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6CE8FF"></stop><stop offset="0.6" stop-color="#A341FF"></stop><stop offset="1" stop-color="#F56BFF"></stop></linearGradient>
+            </defs>
+            <line x1="0" y1="8" x2="500" y2="8" stroke="rgba(131,131,131,0.14)"></line>
+            <line x1="0" y1="72" x2="500" y2="72" stroke="rgba(131,131,131,0.14)"></line>
+            <line x1="0" y1="136" x2="500" y2="136" stroke="rgba(131,131,131,0.14)"></line>
+            <line x1="0" y1="199" x2="500" y2="199" stroke="rgba(131,131,131,0.14)"></line>
+            <path d="M0,140 C41.6,140 41.6,95 83.3,95 C125,95 125,110 166.6,110 C208.3,110 208.3,40 250,40 C291.6,40 291.6,65 333.3,65 C375,65 375,15 416.6,15 C458.3,15 458.3,30 500,30 L500,200 L0,200 Z" fill="url(#ssPerfArea)"></path>
+            <path d="M0,140 C41.6,140 41.6,95 83.3,95 C125,95 125,110 166.6,110 C208.3,110 208.3,40 250,40 C291.6,40 291.6,65 333.3,65 C375,65 375,15 416.6,15 C458.3,15 458.3,30 500,30" stroke="url(#ssPerfLine)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <circle cx="0" cy="140" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+            <circle cx="83.3" cy="95" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+            <circle cx="166.6" cy="110" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+            <circle cx="250" cy="40" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+            <circle cx="333.3" cy="65" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+            <circle cx="416.6" cy="15" r="5" fill="#A341FF" stroke="#FFFFFF" stroke-width="2.5"></circle>
+            <circle cx="500" cy="30" r="3.5" fill="#FFFFFF" stroke="#A341FF" stroke-width="2"></circle>
+          </svg>
+          <div style="position:absolute;left:404px;top:150px;height:24px;padding:0 9px;border-radius:8px;background:#0C0C0C;display:flex;align-items:center;box-shadow:0 6px 16px -6px rgba(0,0,0,0.4);"><span style="font-size:12px;font-weight:600;color:#FFFFFF;white-space:nowrap;">612k</span></div>
+          <div style="position:absolute;left:28px;top:384px;width:500px;display:flex;flex-direction:row;justify-content:space-between;">
+            <span style="font-size:13px;color:#838383;">Mon</span><span style="font-size:13px;color:#838383;">Tue</span><span style="font-size:13px;color:#838383;">Wed</span><span style="font-size:13px;color:#838383;">Thu</span><span style="font-size:13px;color:#838383;">Fri</span><span style="font-size:13px;color:#838383;">Sat</span><span style="font-size:13px;color:#838383;">Sun</span>
+          </div>
+          <span style="position:absolute;left:560px;top:100px;font-size:16px;font-weight:600;color:#0C0C0C;">By platform</span>
+          <div style="position:absolute;left:560px;top:146px;width:262px;height:44px;">
+            <img src="assets/icons/ig-color.png" alt="" style="position:absolute;left:0;top:0;width:24px;height:24px;object-fit:contain;">
+            <span style="position:absolute;left:34px;top:2px;font-size:15px;font-weight:500;color:#0C0C0C;">Instagram</span>
+            <span style="position:absolute;right:0;top:1px;font-size:15px;font-weight:600;color:#0C0C0C;">1.31M</span>
+            <div style="position:absolute;left:34px;top:28px;width:228px;height:6px;border-radius:3px;background:#EFEFEF;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:6px;width:62%;border-radius:3px;background:linear-gradient(90deg,#6CE8FF,#A341FF);"></div></div>
+          </div>
+          <div style="position:absolute;left:560px;top:201px;width:262px;height:44px;">
+            <img src="assets/icons/fb-color.png" alt="" style="position:absolute;left:0;top:0;width:24px;height:24px;object-fit:contain;">
+            <span style="position:absolute;left:34px;top:2px;font-size:15px;font-weight:500;color:#0C0C0C;">Facebook</span>
+            <span style="position:absolute;right:0;top:1px;font-size:15px;font-weight:600;color:#0C0C0C;">780k</span>
+            <div style="position:absolute;left:34px;top:28px;width:228px;height:6px;border-radius:3px;background:#EFEFEF;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:6px;width:37%;border-radius:3px;background:linear-gradient(90deg,#6CE8FF,#A341FF);"></div></div>
+          </div>
+          <div style="position:absolute;left:560px;top:256px;width:262px;height:44px;">
+            <img src="assets/icons/linkedin.png" alt="" style="position:absolute;left:0;top:0;width:24px;height:24px;object-fit:contain;">
+            <span style="position:absolute;left:34px;top:2px;font-size:15px;font-weight:500;color:#0C0C0C;">LinkedIn</span>
+            <span style="position:absolute;right:0;top:1px;font-size:15px;font-weight:600;color:#0C0C0C;">640k</span>
+            <div style="position:absolute;left:34px;top:28px;width:228px;height:6px;border-radius:3px;background:#EFEFEF;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:6px;width:30%;border-radius:3px;background:linear-gradient(90deg,#6CE8FF,#A341FF);"></div></div>
+          </div>
+          <div style="position:absolute;left:560px;top:311px;width:262px;height:44px;">
+            <img src="assets/icons/x-logo.svg" alt="" style="position:absolute;left:0;top:0;width:22px;height:22px;object-fit:contain;">
+            <span style="position:absolute;left:34px;top:2px;font-size:15px;font-weight:500;color:#0C0C0C;">X</span>
+            <span style="position:absolute;right:0;top:1px;font-size:15px;font-weight:600;color:#0C0C0C;">540k</span>
+            <div style="position:absolute;left:34px;top:28px;width:228px;height:6px;border-radius:3px;background:#EFEFEF;overflow:hidden;"><div style="position:absolute;left:0;top:0;height:6px;width:26%;border-radius:3px;background:linear-gradient(90deg,#6CE8FF,#A341FF);"></div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ tabIsSales }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;left:28px;top:100px;font-size:20px;font-weight:600;color:#0C0C0C;white-space:nowrap;">6 sales opportunities</span>
+          <span style="position:absolute;left:28px;top:130px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">Leads showing buying intent, flagged by your agent this week</span>
+          <div style="position:absolute;left:28px;top:164px;width:790px;height:52px;">
+            <div style="position:absolute;left:0;top:2px;width:46px;height:46px;border-radius:50%;background:rgba(245,107,255,0.16);display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#C23BD6;">JB</span></div>
+            <div style="position:absolute;left:30px;top:28px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 2px #FFFFFF;display:flex;align-items:center;justify-content:center;"><img src="assets/icons/ig-color.png" alt="" style="width:16px;height:16px;object-fit:contain;"></div>
+            <div style="position:absolute;left:62px;top:1px;display:flex;flex-direction:row;align-items:baseline;gap:8px;"><span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Jordan Blake</span><span style="font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">@jblake</span></div>
+            <span style="position:absolute;left:62px;top:27px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">“Where can I buy this?” — comment on your Reel</span>
+            <div style="position:absolute;left:556px;top:4px;height:24px;padding:0 10px;border-radius:12px;background:#E7FAE7;display:flex;align-items:center;"><span style="font-size:13px;font-weight:600;color:#0E9E0C;white-space:nowrap;">High intent</span></div>
+            <span style="position:absolute;left:556px;top:32px;font-size:13px;font-weight:400;color:#838383;white-space:nowrap;">2h ago</span>
+            <div onClick="{{ goCommandCenter }}" style="position:absolute;left:702px;top:8px;width:88px;height:36px;border-radius:9px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;cursor:pointer;" style-hover="opacity:0.85;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;">Engage</span></div>
+            <div style="position:absolute;left:0;top:52px;width:790px;height:1px;background:rgba(131,131,131,0.12);"></div>
+          </div>
+          <div style="position:absolute;left:28px;top:224px;width:790px;height:52px;">
+            <div style="position:absolute;left:0;top:2px;width:46px;height:46px;border-radius:50%;background:rgba(108,232,255,0.22);display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#1596B0;">ML</span></div>
+            <div style="position:absolute;left:30px;top:28px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 2px #FFFFFF;display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fb-color.png" alt="" style="width:16px;height:16px;object-fit:contain;"></div>
+            <div style="position:absolute;left:62px;top:1px;display:flex;flex-direction:row;align-items:baseline;gap:8px;"><span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Mara Lin</span><span style="font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">@maralin</span></div>
+            <span style="position:absolute;left:62px;top:27px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">DM’d asking about bulk pricing &amp; lead times</span>
+            <div style="position:absolute;left:556px;top:4px;height:24px;padding:0 10px;border-radius:12px;background:#E7FAE7;display:flex;align-items:center;"><span style="font-size:13px;font-weight:600;color:#0E9E0C;white-space:nowrap;">High intent</span></div>
+            <span style="position:absolute;left:556px;top:32px;font-size:13px;font-weight:400;color:#838383;white-space:nowrap;">5h ago</span>
+            <div onClick="{{ goCommandCenter }}" style="position:absolute;left:702px;top:8px;width:88px;height:36px;border-radius:9px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;cursor:pointer;" style-hover="opacity:0.85;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;">Engage</span></div>
+            <div style="position:absolute;left:0;top:52px;width:790px;height:1px;background:rgba(131,131,131,0.12);"></div>
+          </div>
+          <div style="position:absolute;left:28px;top:284px;width:790px;height:52px;">
+            <div style="position:absolute;left:0;top:2px;width:46px;height:46px;border-radius:50%;background:rgba(163,65,255,0.16);display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#8B33D6;">DC</span></div>
+            <div style="position:absolute;left:30px;top:28px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 2px #FFFFFF;display:flex;align-items:center;justify-content:center;"><img src="assets/icons/linkedin.png" alt="" style="width:16px;height:16px;object-fit:contain;"></div>
+            <div style="position:absolute;left:62px;top:1px;display:flex;flex-direction:row;align-items:baseline;gap:8px;"><span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Devon Cole</span><span style="font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">@devcole</span></div>
+            <span style="position:absolute;left:62px;top:27px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">Saved your last 3 posts &amp; viewed your profile</span>
+            <div style="position:absolute;left:556px;top:4px;height:24px;padding:0 10px;border-radius:12px;background:#FDE9E2;display:flex;align-items:center;"><span style="font-size:13px;font-weight:600;color:#D2470F;white-space:nowrap;">Warm</span></div>
+            <span style="position:absolute;left:556px;top:32px;font-size:13px;font-weight:400;color:#838383;white-space:nowrap;">1 day ago</span>
+            <div onClick="{{ goCommandCenter }}" style="position:absolute;left:702px;top:8px;width:88px;height:36px;border-radius:9px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;cursor:pointer;" style-hover="opacity:0.85;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;">Engage</span></div>
+            <div style="position:absolute;left:0;top:52px;width:790px;height:1px;background:rgba(131,131,131,0.12);"></div>
+          </div>
+          <div style="position:absolute;left:28px;top:344px;width:790px;height:52px;">
+            <div style="position:absolute;left:0;top:2px;width:46px;height:46px;border-radius:50%;background:rgba(243,85,37,0.14);display:flex;align-items:center;justify-content:center;"><span style="font-size:15px;font-weight:600;color:#C4451A;">PN</span></div>
+            <div style="position:absolute;left:30px;top:28px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 2px #FFFFFF;display:flex;align-items:center;justify-content:center;"><img src="assets/icons/x-logo.svg" alt="" style="width:15px;height:15px;object-fit:contain;"></div>
+            <div style="position:absolute;left:62px;top:1px;display:flex;flex-direction:row;align-items:baseline;gap:8px;"><span style="font-size:17px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Priya Nair</span><span style="font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">@priyan</span></div>
+            <span style="position:absolute;left:62px;top:27px;font-size:15px;font-weight:400;color:#838383;white-space:nowrap;">Clicked your bio link twice · viewed pricing</span>
+            <div style="position:absolute;left:556px;top:4px;height:24px;padding:0 10px;border-radius:12px;background:#FDE9E2;display:flex;align-items:center;"><span style="font-size:13px;font-weight:600;color:#D2470F;white-space:nowrap;">Warm</span></div>
+            <span style="position:absolute;left:556px;top:32px;font-size:13px;font-weight:400;color:#838383;white-space:nowrap;">1 day ago</span>
+            <div onClick="{{ goCommandCenter }}" style="position:absolute;left:702px;top:8px;width:88px;height:36px;border-radius:9px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;cursor:pointer;" style-hover="opacity:0.85;"><span style="font-size:14px;font-weight:600;color:#FFFFFF;">Engage</span></div>
+          </div>
+          <div onClick="{{ goCommandCenter }}" style="position:absolute;left:28px;top:414px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:7px;" style-hover="opacity:0.7;"><span style="font-size:15px;font-weight:600;color:#A341FF;">View all opportunities</span><svg width="7" height="12" viewBox="0 0 8 14" fill="none" style="display:block;"><path d="m1 1 6 6-6 6" stroke="#A341FF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+        </sc-if>
+      </div>
+
+      <!-- ============ RIGHT RAIL (Card 4) ============ -->
+      <div style="position:absolute;left:1233px;top:354px;width:446px;height:1019px;border-radius:15px;background:#FFFFFF;overflow:hidden;">
+        <!-- segmented toggle -->
+        <div style="position:absolute;left:9px;top:10px;width:427px;height:63px;border-radius:10px;background:#EAEAEA;">
+          <div style="position:absolute;top:8px;width:196px;height:47px;border-radius:10px;background:#FFFFFF;left:{{ railSegLeft }};transition:left 0.25s cubic-bezier(0.22,1,0.36,1);"></div>
+          <div onClick="{{ railPublished }}" style="position:absolute;left:25px;top:21px;width:160px;height:23px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:10px;">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="display:block;flex-shrink:0;"><path d="M18.3 1.7 9.2 10.8M18.3 1.7 12.5 18.3l-3.3-7.5-7.5-3.3L18.3 1.7Z" stroke="{{ railPubIconColor }}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-size:18px;font-weight:500;line-height:1;color:{{ railPubColor }};white-space:nowrap;">Post published</span>
+          </div>
+          <div onClick="{{ railTrending }}" style="position:absolute;left:240px;top:15px;width:170px;height:29px;cursor:pointer;display:flex;flex-direction:row;align-items:center;gap:2px;">
+            <img src="assets/icons/fire.png" alt="" style="width:27px;height:27px;object-fit:cover;flex-shrink:0;">
+            <span style="font-size:18px;font-weight:500;line-height:1;color:{{ railTrendColor }};white-space:nowrap;">Trending Topics</span>
+          </div>
+        </div>
+
+        <sc-if value="{{ railIsPublished }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ posts }}" as="p" hint-placeholder-count="3">
+            <div style="position:absolute;left:39px;width:369px;height:395px;border-radius:36.34px;background:linear-gradient(218.668deg, rgba(131,131,131,0.11) 7.52%, rgba(12,12,12,0.11) 92.4%);top:{{ p.top }};">
+              <div style="position:absolute;left:20.8px;top:13.6px;width:31.4px;height:31.4px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(7.85px);-webkit-backdrop-filter:blur(7.85px);">
+                {{ p.icon1El }}
+              </div>
+              <sc-if value="{{ p.hasIcon2 }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute;left:45.5px;top:13.6px;width:31.4px;height:31.4px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(7.85px);-webkit-backdrop-filter:blur(7.85px);">
+                  <img src="assets/icons/ig-color.png" alt="" style="position:absolute;left:3.7px;top:3.7px;width:24px;height:24px;object-fit:contain;">
+                </div>
+              </sc-if>
+              <span style="position:absolute;top:19.9px;font-size:16.28px;font-weight:500;line-height:1.28;color:#838383;white-space:nowrap;left:{{ p.titleLeft }};">{{ p.title }}</span>
+              <span style="position:absolute;left:25.3px;top:55.5px;font-size:12.72px;color:#838383;">Today</span>
+              <div style="position:absolute;left:67.4px;top:62.3px;width:4.1px;height:4.1px;border-radius:50%;background:#838383;"></div>
+              <span style="position:absolute;left:75.4px;top:55.5px;font-size:12.72px;color:#838383;">{{ p.time }}</span>
+              <div onClick="{{ p.open }}" style="position:absolute;left:313px;top:18.1px;width:36.2px;height:36.2px;border-radius:50%;background:rgba(255,255,255,0.6);backdrop-filter:blur(9.05px);-webkit-backdrop-filter:blur(9.05px);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(255,255,255,0.85);">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M1 11 11 1M11 1H3.5M11 1v7.5" stroke="#838383" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <!-- media -->
+              <sc-if value="{{ p.isSingle }}" hint-placeholder-val="{{ true }}">
+                <div style="position:absolute;left:83.5px;top:87px;width:201px;height:201px;border-radius:17.74px;overflow:hidden;box-shadow:inset 0 0 0 0.58px rgba(12,12,12,0.2);">
+                  <img src="assets/post-genstars.png" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+                  <div style="position:absolute;inset:0;background:radial-gradient(100.5px 100.5px at 50% 50%, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);"></div>
+                  <svg width="19.8" height="20.8" viewBox="0 0 20 21" fill="none" style="position:absolute;left:91px;top:90px;display:block;filter:drop-shadow(0 0 6px rgba(0,0,0,0.8));"><path d="M18.1 7.7c2.2 1.2 2.2 4.3 0 5.5L4.8 20.4c-2.2 1.2-4.8-.3-4.8-2.7V3.2C0 .8 2.6-.8 4.8.4l13.3 7.3Z" fill="#FFFFFF"></path></svg>
+                </div>
+              </sc-if>
+              <sc-if value="{{ p.isCarousel }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:14.7px;top:86.7px;width:338px;height:191px;overflow:hidden;display:flex;flex-direction:row;gap:8px;">
+                  <img src="assets/thumb-carousel-tile.png" alt="" style="width:120.55px;height:157.95px;border-radius:10.83px;object-fit:cover;flex-shrink:0;">
+                  <img src="assets/thumb-carousel.png" alt="" style="width:120.55px;height:157.95px;border-radius:10.83px;object-fit:cover;flex-shrink:0;">
+                  <img src="assets/thumb-reel.png" alt="" style="width:120.55px;height:157.95px;border-radius:10.83px;object-fit:cover;flex-shrink:0;">
+                </div>
+              </sc-if>
+              <!-- footer -->
+              <div style="position:absolute;left:0;top:305px;width:369px;height:90px;border-radius:18.09px 18.09px 36.34px 36.34px;background:rgba(255,255,255,0.4);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);"></div>
+              <span style="position:absolute;left:25.3px;top:315.1px;font-size:16.28px;font-weight:500;line-height:1.28;color:#000000;white-space:nowrap;">Shine Bright with Gen Stars Today!</span>
+              <span style="position:absolute;left:25.3px;top:341.3px;width:299.5px;font-size:14.48px;font-weight:500;line-height:1.25;color:#838383;">Brighten your day with Gen Stars! Discover how our innovative solutions can lig...</span>
+            </div>
+          </sc-for>
+        </sc-if>
+        <sc-if value="{{ railIsTrending }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:19px;top:88px;width:408px;height:160px;border-radius:24px;background:linear-gradient(218.668deg, rgba(131,131,131,0.10) 7.52%, rgba(12,12,12,0.09) 92.4%);">
+            <div style="position:absolute;left:20px;top:20px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fire.png" alt="" style="width:22px;height:22px;object-fit:cover;"></div>
+            <span style="position:absolute;left:72px;top:20px;font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">AI Automation</span>
+            <div style="position:absolute;left:72px;top:48px;height:22px;padding:0 9px;border-radius:11px;background:rgba(163,65,255,0.12);display:flex;align-items:center;"><span style="font-size:12px;font-weight:500;color:#A341FF;white-space:nowrap;">Technology</span></div>
+            <div style="position:absolute;right:20px;top:22px;display:flex;flex-direction:row;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:16px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+240%</span></div>
+            <span style="position:absolute;right:20px;top:47px;font-size:12px;font-weight:400;color:#838383;white-space:nowrap;">vs last week</span>
+            <svg width="200" height="40" viewBox="0 0 200 40" fill="none" style="position:absolute;left:20px;top:92px;display:block;overflow:visible;"><path d="M0,34 L28,30 L57,32 L85,22 L114,24 L142,12 L171,14 L200,4" stroke="#6CE8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute;left:20px;top:130px;font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">48.2k posts</span>
+            <div onClick="{{ createPost }}" style="position:absolute;right:20px;bottom:18px;height:36px;padding:0 16px;border-radius:10px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1px #A341FF;display:flex;flex-direction:row;align-items:center;gap:7px;cursor:pointer;" style-hover="background:rgba(163,65,255,0.18);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1.5v11M1.5 7h11" stroke="#A341FF" stroke-width="1.8" stroke-linecap="round"></path></svg><span style="font-size:14px;font-weight:600;color:#A341FF;white-space:nowrap;">Create post</span></div>
+          </div>
+          <div style="position:absolute;left:19px;top:266px;width:408px;height:160px;border-radius:24px;background:linear-gradient(218.668deg, rgba(131,131,131,0.10) 7.52%, rgba(12,12,12,0.09) 92.4%);">
+            <div style="position:absolute;left:20px;top:20px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fire.png" alt="" style="width:22px;height:22px;object-fit:cover;"></div>
+            <span style="position:absolute;left:72px;top:20px;font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Sustainable Brands</span>
+            <div style="position:absolute;left:72px;top:48px;height:22px;padding:0 9px;border-radius:11px;background:rgba(19,215,17,0.12);display:flex;align-items:center;"><span style="font-size:12px;font-weight:500;color:#0E9E0C;white-space:nowrap;">Lifestyle</span></div>
+            <div style="position:absolute;right:20px;top:22px;display:flex;flex-direction:row;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:16px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+180%</span></div>
+            <span style="position:absolute;right:20px;top:47px;font-size:12px;font-weight:400;color:#838383;white-space:nowrap;">vs last week</span>
+            <svg width="200" height="40" viewBox="0 0 200 40" fill="none" style="position:absolute;left:20px;top:92px;display:block;overflow:visible;"><path d="M0,32 L28,28 L57,29 L85,24 L114,20 L142,18 L171,10 L200,8" stroke="#6CE8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute;left:20px;top:130px;font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">32.1k posts</span>
+            <div onClick="{{ createPost }}" style="position:absolute;right:20px;bottom:18px;height:36px;padding:0 16px;border-radius:10px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1px #A341FF;display:flex;flex-direction:row;align-items:center;gap:7px;cursor:pointer;" style-hover="background:rgba(163,65,255,0.18);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1.5v11M1.5 7h11" stroke="#A341FF" stroke-width="1.8" stroke-linecap="round"></path></svg><span style="font-size:14px;font-weight:600;color:#A341FF;white-space:nowrap;">Create post</span></div>
+          </div>
+          <div style="position:absolute;left:19px;top:444px;width:408px;height:160px;border-radius:24px;background:linear-gradient(218.668deg, rgba(131,131,131,0.10) 7.52%, rgba(12,12,12,0.09) 92.4%);">
+            <div style="position:absolute;left:20px;top:20px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fire.png" alt="" style="width:22px;height:22px;object-fit:cover;"></div>
+            <span style="position:absolute;left:72px;top:20px;font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Creator Economy</span>
+            <div style="position:absolute;left:72px;top:48px;height:22px;padding:0 9px;border-radius:11px;background:rgba(108,232,255,0.22);display:flex;align-items:center;"><span style="font-size:12px;font-weight:500;color:#0E8FA6;white-space:nowrap;">Business</span></div>
+            <div style="position:absolute;right:20px;top:22px;display:flex;flex-direction:row;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:16px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+95%</span></div>
+            <span style="position:absolute;right:20px;top:47px;font-size:12px;font-weight:400;color:#838383;white-space:nowrap;">vs last week</span>
+            <svg width="200" height="40" viewBox="0 0 200 40" fill="none" style="position:absolute;left:20px;top:92px;display:block;overflow:visible;"><path d="M0,30 L28,31 L57,26 L85,27 L114,20 L142,22 L171,15 L200,12" stroke="#6CE8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute;left:20px;top:130px;font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">21.7k posts</span>
+            <div onClick="{{ createPost }}" style="position:absolute;right:20px;bottom:18px;height:36px;padding:0 16px;border-radius:10px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1px #A341FF;display:flex;flex-direction:row;align-items:center;gap:7px;cursor:pointer;" style-hover="background:rgba(163,65,255,0.18);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1.5v11M1.5 7h11" stroke="#A341FF" stroke-width="1.8" stroke-linecap="round"></path></svg><span style="font-size:14px;font-weight:600;color:#A341FF;white-space:nowrap;">Create post</span></div>
+          </div>
+          <div style="position:absolute;left:19px;top:622px;width:408px;height:160px;border-radius:24px;background:linear-gradient(218.668deg, rgba(131,131,131,0.10) 7.52%, rgba(12,12,12,0.09) 92.4%);">
+            <div style="position:absolute;left:20px;top:20px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fire.png" alt="" style="width:22px;height:22px;object-fit:cover;"></div>
+            <span style="position:absolute;left:72px;top:20px;font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Short-form Video</span>
+            <div style="position:absolute;left:72px;top:48px;height:22px;padding:0 9px;border-radius:11px;background:rgba(245,107,255,0.14);display:flex;align-items:center;"><span style="font-size:12px;font-weight:500;color:#C23BD6;white-space:nowrap;">Media</span></div>
+            <div style="position:absolute;right:20px;top:22px;display:flex;flex-direction:row;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:16px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+76%</span></div>
+            <span style="position:absolute;right:20px;top:47px;font-size:12px;font-weight:400;color:#838383;white-space:nowrap;">vs last week</span>
+            <svg width="200" height="40" viewBox="0 0 200 40" fill="none" style="position:absolute;left:20px;top:92px;display:block;overflow:visible;"><path d="M0,28 L28,24 L57,26 L85,18 L114,20 L142,14 L171,13 L200,6" stroke="#6CE8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute;left:20px;top:130px;font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">65.9k posts</span>
+            <div onClick="{{ createPost }}" style="position:absolute;right:20px;bottom:18px;height:36px;padding:0 16px;border-radius:10px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1px #A341FF;display:flex;flex-direction:row;align-items:center;gap:7px;cursor:pointer;" style-hover="background:rgba(163,65,255,0.18);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1.5v11M1.5 7h11" stroke="#A341FF" stroke-width="1.8" stroke-linecap="round"></path></svg><span style="font-size:14px;font-weight:600;color:#A341FF;white-space:nowrap;">Create post</span></div>
+          </div>
+          <div style="position:absolute;left:19px;top:800px;width:408px;height:160px;border-radius:24px;background:linear-gradient(218.668deg, rgba(131,131,131,0.10) 7.52%, rgba(12,12,12,0.09) 92.4%);">
+            <div style="position:absolute;left:20px;top:20px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;"><img src="assets/icons/fire.png" alt="" style="width:22px;height:22px;object-fit:cover;"></div>
+            <span style="position:absolute;left:72px;top:20px;font-size:19px;font-weight:600;color:#0C0C0C;white-space:nowrap;">Personal Branding</span>
+            <div style="position:absolute;left:72px;top:48px;height:22px;padding:0 9px;border-radius:11px;background:rgba(254,222,181,0.6);display:flex;align-items:center;"><span style="font-size:12px;font-weight:500;color:#B0791F;white-space:nowrap;">Career</span></div>
+            <div style="position:absolute;right:20px;top:22px;display:flex;flex-direction:row;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:block;"><path d="M2 10 10 2M10 2H4.5M10 2v5.5" stroke="#0E9E0C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="font-size:16px;font-weight:600;color:#0E9E0C;white-space:nowrap;">+54%</span></div>
+            <span style="position:absolute;right:20px;top:47px;font-size:12px;font-weight:400;color:#838383;white-space:nowrap;">vs last week</span>
+            <svg width="200" height="40" viewBox="0 0 200 40" fill="none" style="position:absolute;left:20px;top:92px;display:block;overflow:visible;"><path d="M0,33 L28,29 L57,30 L85,25 L114,26 L142,19 L171,20 L200,14" stroke="#6CE8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute;left:20px;top:130px;font-size:14px;font-weight:400;color:#838383;white-space:nowrap;">18.3k posts</span>
+            <div onClick="{{ createPost }}" style="position:absolute;right:20px;bottom:18px;height:36px;padding:0 16px;border-radius:10px;background:rgba(163,65,255,0.1);box-shadow:inset 0 0 0 1px #A341FF;display:flex;flex-direction:row;align-items:center;gap:7px;cursor:pointer;" style-hover="background:rgba(163,65,255,0.18);"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block;"><path d="M7 1.5v11M1.5 7h11" stroke="#A341FF" stroke-width="1.8" stroke-linecap="round"></path></svg><span style="font-size:14px;font-weight:600;color:#A341FF;white-space:nowrap;">Create post</span></div>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ sparkOpen }}" hint-placeholder-val="{{ false }}">
+        <dc-import name="Spark Chat" on-close="{{ closeSpark }}" on-toast="{{ sparkToast }}" hint-size="541px,982px" style="position:absolute;left:1140px;top:103px;width:541px;height:982px;z-index:80;"></dc-import>
+      </sc-if>
+    </div>
+    <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#0C0C0C;color:#FFFFFF;font-size:15px;font-weight:500;padding:13px 22px;border-radius:12px;box-shadow:0 12px 32px -8px rgba(0,0,0,0.4);z-index:100;animation:ss-toast 2.2s ease forwards;white-space:nowrap;">{{ toastMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;showBrandKit&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Header&quot; },
+  &quot;isOrgOwner&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Header&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    vw: 1728,
+    wsOpen: false,
+    sparkOpen: false,
+    wsName: "Starsocial Marketing Workspace",
+    paused: false,
+    activeTab: 0,
+    railSeg: 0,
+    toastMsg: "",
+    toastN: 0
+  };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener("resize", this._onResize);
+    this._onResize();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
+    if (this._toastT) clearTimeout(this._toastT);
+  }
+
+  toast(msg) {
+    if (this._toastT) clearTimeout(this._toastT);
+    this.setState(s => ({ toastMsg: msg, toastN: s.toastN + 1 }));
+    this._toastT = setTimeout(() => this.setState({ toastMsg: "" }), 2300);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scale = Math.min(1, s.vw / 1728);
+
+    const icons = {
+      agents: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="2"></circle><path d="M4.4 15c1.6-1.6 3.5-2.4 5.6-2.4s4 .8 5.6 2.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M2.5 20h9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m19.5 13.5 1.1 3 3 1.1-3 1.1-1.1 3-1.1-3-3-1.1 3-1.1 1.1-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg>',
+      discovery: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"></circle><path d="m17 17 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m7.5 12.8 2.4-2.7 2 1.7 2.6-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.5 8.8h1.6v1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>',
+      calendar: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="2.8" y="4.4" width="20.4" height="19" rx="4" stroke="currentColor" stroke-width="2"></rect><path d="M3 10.2h20M8.4 2v4M17.6 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="m13 13.2.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3.9-1.9Z" fill="currentColor"></path></svg>',
+      automation: '<svg width="26" height="26" viewBox="0 0 27 27" fill="none"><path d="M14.5 12.5 22 5c1.4-1.4 3.6.8 2.2 2.2l-7.5 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><path d="M13 14 5.5 21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path><rect x="11.4" y="11.4" width="4.6" height="4.6" rx="1.4" transform="rotate(45 13.7 13.7)" stroke="currentColor" stroke-width="1.8"></rect><path d="M5 3.5v3.4M3.3 5.2h3.4M22 18.5v3M20.5 20h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>',
+      engagement: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M21.6 13.5a8.6 8.6 0 1 1-2.5-6.1M21.9 3.5v4.2h-4.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="m12.6 9.4.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" fill="currentColor"></path></svg>',
+      assets: '<svg width="26" height="26" viewBox="0 0 26 25" fill="none"><path d="M2.5 6.7c0-1.6 1.3-2.9 2.9-2.9h4.3l2.6 2.9h8.3c1.6 0 2.9 1.3 2.9 2.9v9.7c0 1.6-1.3 2.9-2.9 2.9H5.4a2.9 2.9 0 0 1-2.9-2.9V6.7Z" stroke="currentColor" stroke-width="2"></path><path d="M13 11v6M10 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>',
+      settings: '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4.4" stroke="currentColor" stroke-width="2"></circle><path d="M13 2v3.2M13 20.8V24M24 13h-3.2M5.2 13H2M20.8 5.2l-2.3 2.3M7.5 18.5l-2.3 2.3M20.8 20.8l-2.3-2.3M7.5 7.5 5.2 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>'
+    };
+
+    const navDefs = [
+      { label: "Agents", icon: icons.agents, top: 132, size: 18 },
+      { label: "Discovery", icon: icons.discovery, top: 197.9, size: 18 },
+      { label: "Calendar", icon: icons.calendar, top: 262.9, size: 18 },
+      { label: "Automation Recipes", icon: icons.automation, top: 327.9, size: 18 },
+      { label: "Engagement Intelligence", icon: icons.engagement, top: 392.9, size: 17 },
+      { label: "Assets Library", icon: icons.assets, top: 457.9, size: 18 },
+      { label: "Settings", icon: icons.settings, top: 522.9, size: 18 }
+    ];
+
+    const tabs = ["Upcoming Contents", "Performance Insights", "Sales Opportunities"];
+    const tabChipGeom = [
+      { left: 11, width: 202 },
+      { left: 218, width: 216 },
+      { left: 438, width: 206 }
+    ];
+
+    return {
+      stageLeft: Math.max(0, Math.round((s.vw - 1728 * scale) / 2)) + "px",
+      stageScale: "scale(" + scale + ")",
+      wrapH: Math.round(1409 * scale) + "px",
+
+      navGlowTop: "120px",
+      navItems: navDefs.map((n, i) => ({
+        label: n.label,
+        icon: { __html: n.icon },
+        top: n.top + "px",
+        fontSize: n.size + "px",
+        color: i === 0 ? "#0C0C0C" : "#838383",
+        click: () => {
+          if (n.label === "Discovery") { window.location.href = "SparkSocial Discovery.dc.html"; return; }
+          if (n.label === "Calendar") { window.location.href = "SparkSocial Calendar.dc.html"; return; }
+          if (n.label === "Automation Recipes") { window.location.href = "SparkSocial Automation.dc.html"; return; }
+          if (n.label === "Engagement Intelligence") { window.location.href = "SparkSocial Command Center.dc.html"; return; }
+          if (n.label === "Assets Library") { window.location.href = "SparkSocial Assets Library.dc.html"; return; }
+          if (n.label === "Settings") { window.location.href = "SparkSocial Settings.dc.html"; return; }
+          if (i !== 0) this.toast(n.label + " — coming in the next phase");
+        }
+      })),
+
+      wsName: s.wsName,
+      wsOpen: s.wsOpen,
+      wsChevron: s.wsOpen ? "rotate(180deg)" : "rotate(0deg)",
+      toggleWs: () => this.setState(st => ({ wsOpen: !st.wsOpen })),
+      closeWs: () => this.setState({ wsOpen: false }),
+      isOwner: this.props.isOrgOwner ?? true,
+      goAccountHome: () => { window.location.href = "SparkSocial Account Home.dc.html"; },
+      wsItems: [
+        { name: "Starsocial Marketing Workspace", bg: "#C9F0FA", icon: "assets/ws-icon-3.png" },
+        { name: "Galactic Hub 365", bg: "#D9F4DC", icon: "assets/ws-icon-2.png" },
+        { name: "Strategic Marketing Hub", bg: "#FBDCD4", icon: "assets/ws-icon-1.png" },
+        { name: "Innovative Space", bg: "#FBF0D4", icon: "assets/ws-icon-4.png" },
+        { name: "Creative Hub 2026", bg: "#EDDBF8", icon: "assets/ws-icon-5.png" }
+      ].map(w => ({
+        name: w.name, bg: w.bg, icon: w.icon,
+        current: w.name === s.wsName,
+        pick: () => { const prev = this.state.wsName; this.setState({ wsOpen: false, wsName: w.name }); if (w.name !== prev) this.toast("Switched to " + w.name); }
+      })),
+
+      showBrandKit: this.props.showBrandKit ?? true,
+      goBrandKit: () => { window.location.href = "SparkSocial Settings.dc.html#brand-kits"; },
+      toastCampaign: () => { window.location.href = "SparkSocial Create Campaign.dc.html"; },
+      toastSpark: () => this.setState({ sparkOpen: true }),
+      sparkOpen: s.sparkOpen,
+      closeSpark: () => this.setState({ sparkOpen: false }),
+      sparkToast: (m) => this.toast(m),
+      toastFrequency: () => this.toast("Frequency controls — coming with Command Center"),
+      toastCalendar: () => { window.location.href = "SparkSocial Calendar.dc.html"; },
+      goCommandCenter: () => { window.location.href = "SparkSocial Command Center.dc.html"; },
+
+      paused: s.paused,
+      pauseLabel: s.paused ? "Resume Agent" : "Pause Agent",
+      statusLabel: s.paused ? "Paused" : "Active",
+      statusDotColor: s.paused ? "#F35525" : "#13D711",
+      togglePause: () => this.setState(st => ({ paused: !st.paused })),
+      agentStatuses: [
+        { label: "Running 2 Campaigns" },
+        { label: "Planning contents for next week" },
+        { label: "Analyzing engagement signals" }
+      ],
+
+      kpis: [
+        { label: "Impressions", value: "2.6M", sign: "+", signColor: "#13D711", pct: "16%", bg: "rgba(108,232,255,0.3)", left: "356px" },
+        { label: "CTA Clicks", value: "128k", sign: "−", signColor: "#F35525", pct: "9%", bg: "rgba(163,65,255,0.2)", left: "644px" },
+        { label: "Engagements", value: "40k", sign: "+", signColor: "#13D711", pct: "14%", bg: "rgba(254,222,181,0.5)", left: "932px" }
+      ],
+
+      contentTabs: tabs.map((label, i) => ({
+        label,
+        color: i === s.activeTab ? "#0C0C0C" : "#838383",
+        click: () => this.setState({ activeTab: i })
+      })),
+      tabChipLeft: tabChipGeom[s.activeTab].left + "px",
+      tabChipWidth: tabChipGeom[s.activeTab].width + "px",
+      tabIsUpcoming: s.activeTab === 0,
+      tabIsInsights: s.activeTab === 1,
+      tabIsSales: s.activeTab === 2,
+      activeTabLabel: tabs[s.activeTab],
+      createPost: () => { window.location.href = "SparkSocial Draft Panel.dc.html"; },
+
+      upcomingRows: [
+        { when: "Tue 12 Apr, 10:00", kind: "Instagram Reel", thumb: "assets/thumb-reel.png", icon1: "assets/icons/ig-color.png", hasIcon2: true, top: "94px" },
+        { when: "Wed 13 Apr, 12:00", kind: "Carousel", thumb: "assets/thumb-carousel.png", icon1: "assets/icons/ig-color.png", hasIcon2: true, top: "183px" },
+        { when: "Thur 14 Apr, 14:00", kind: "Linkedin Post", thumb: "assets/thumb-linkedin.png", icon1: "assets/icons/linkedin.png", hasIcon2: false, top: "272px" }
+      ].map(r => ({ ...r,
+        view: () => { window.location.href = "SparkSocial Draft Panel.dc.html"; },
+        thumbEl: React.createElement("img", { src: r.thumb, alt: "", style: { position: "absolute", left: "40px", top: "4px", width: "47px", height: "71px", borderRadius: "5px", objectFit: "cover" } }),
+        icon1El: React.createElement("img", { src: r.icon1, alt: "", style: { position: "absolute", left: "376px", top: "27px", width: "26.5px", height: "26.5px", objectFit: "contain" } })
+      })),
+
+      railSeg: s.railSeg,
+      railSegLeft: s.railSeg === 0 ? "10px" : "221px",
+      railIsPublished: s.railSeg === 0,
+      railIsTrending: s.railSeg === 1,
+      railPubColor: s.railSeg === 0 ? "#000000" : "#838383",
+      railPubIconColor: s.railSeg === 0 ? "#0C0C0C" : "#838383",
+      railTrendColor: s.railSeg === 1 ? "#000000" : "#838383",
+      railPublished: () => this.setState({ railSeg: 0 }),
+      railTrending: () => this.setState({ railSeg: 1 }),
+
+      posts: [
+        { title: "Instagram post", titleLeft: "84.1px", time: "13:00", icon1: "assets/icons/fb-color.png", hasIcon2: true, isSingle: true, isCarousel: false, top: "98px" },
+        { title: "Carousel", titleLeft: "84.1px", time: "09 :00", icon1: "assets/icons/fb-color.png", hasIcon2: true, isSingle: false, isCarousel: true, top: "513px" },
+        { title: "X Post", titleLeft: "62px", time: "07 :00", icon1: "assets/icons/x-white.png", hasIcon2: false, isSingle: false, isCarousel: true, top: "928px" }
+      ].map(p => ({ ...p,
+        open: () => this.toast("Post detail — external link in production"),
+        icon1El: React.createElement("img", { src: p.icon1, alt: "", style: { position: "absolute", left: "4.7px", top: "4.7px", width: "22px", height: "22px", objectFit: "contain" } })
+      })),
+
+      toastVisible: !!s.toastMsg,
+      toastMsg: s.toastMsg
+    };
+  }
+}
+</script>
+</body>
+</html>

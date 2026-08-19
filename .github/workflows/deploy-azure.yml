@@ -1,13 +1,13 @@
 name: Deploy to Azure
 
-# Builds the API image, pushes it to Azure Container Registry, and rolls it out
-# to Azure Container Apps.
+# Builds the API and web images, pushes them to Azure Container Registry, and
+# rolls both out to their own Azure Container Apps.
 #
 # Auth is OIDC federated credentials — GitHub mints a short-lived token per run
 # and Azure trusts it. There is deliberately no AZURE_CREDENTIALS secret and no
 # service-principal password anywhere in this repo (CLAUDE.md: never commit
 # tokens or connection strings). Run `infra/azure/bootstrap.sh` once to create
-# the federation.
+# the federation and both Container Apps.
 
 on:
   push:
@@ -29,16 +29,14 @@ concurrency:
   cancel-in-progress: false # never cancel a deploy mid-rollout
 
 jobs:
-  deploy:
-    name: Build & deploy API
+  # Gate both deploys on the same invariants CI enforces, once — a green
+  # deploy of a build that leaks genome-scoped data would be worse than no
+  # deploy, and there is no reason to pay for that check twice in one run.
+  verify:
+    name: Typecheck & test
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'staging' }}
-
     steps:
       - uses: actions/checkout@v4
-
-      # Gate the deploy on the same invariants CI enforces. A green deploy of a
-      # build that leaks genome-scoped data would be worse than no deploy.
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -47,12 +45,48 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  deploy-api:
+    name: Build & deploy API
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Schema before code ────────────────────────────────────────────────
+      #
+      # Runs *before* the image is built and deployed, deliberately. The
+      # ordering is the whole point: new code against an old schema fails on
+      # every request touching the missing column, while old code against a new
+      # schema is fine — additive migrations are invisible to it. So migrate
+      # first and the worst case is a brief window where a column exists that
+      # nothing reads yet.
+      #
+      # `drizzle-kit migrate` is idempotent — it consults its own
+      # `__drizzle_migrations` journal — so re-running a deploy is safe and a
+      # deploy with no schema change is a no-op.
+      #
+      # DATABASE_URL comes from the environment's secrets rather than Key Vault
+      # because this runs on the GitHub runner, not inside the Container App,
+      # and therefore has no managed identity to authenticate with.
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL is not set for this environment. Refusing to deploy code"
+            echo "::error::against an unmigrated database — set it in the environment's secrets."
+            exit 1
+          fi
+          npm run migrate -w @sparksocial/db
 
       - name: Build and push image to ACR
         run: |
@@ -63,13 +97,61 @@ jobs:
             --file apps/api/Dockerfile \
             .
 
+      # `CLERK_AUTHORIZED_PARTIES` is the audience check that decides whether a
+      # token minted for the real web app is even accepted — index.ts defaults
+      # it to `http://localhost:3000` when unset, which doesn't throw, it just
+      # silently rejects every sign-in from the actual deployed origin. The web
+      # Container App already exists with ingress enabled from Phase 7 of the
+      # provisioning runbook regardless of which image it's currently running,
+      # so its FQDN is resolvable here independent of the deploy-web job below —
+      # no job dependency needed, no hand-maintained GitHub variable to drift
+      # the moment the web app's hostname changes.
+      - name: Resolve the web app's URL
+        id: web-url
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$FQDN" >> "$GITHUB_OUTPUT"
+
+      # This is the step that was missing entirely before: the API previously
+      # deployed with only REVISION/NODE_ENV set, which is enough to build and
+      # push an image successfully but not enough for the container to boot —
+      # `index.ts` refuses to start in production without real Clerk keys
+      # (apps/api/src/index.ts:54), so a fresh Container App with nothing else
+      # wired would crash-loop on every single deploy. `DATABASE_URL` reuses
+      # the same secret the migration step above already required — unset, the
+      # app falls back to an in-memory store that forgets everything on the
+      # next restart, silently, which is a worse failure than refusing to boot.
       - name: Deploy to Container Apps
         run: |
+          # `az containerapp update` does not carry forward the registry-identity
+          # that `az containerapp create` set during bootstrap — it must be
+          # re-specified on every update or the pull is attempted without
+          # credentials and fails UNAUTHORIZED even though the managed identity
+          # still has AcrPull on the registry.
+          IDENTITY_ID=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query 'identity.userAssignedIdentities | keys(@) | [0]' -o tsv)
+
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sparksocial-api:${{ github.sha }}" \
-            --set-env-vars REVISION="${{ github.sha }}" NODE_ENV=production
+            --registry-server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
+            --registry-identity "$IDENTITY_ID" \
+            --set-env-vars \
+              REVISION="${{ github.sha }}" \
+              NODE_ENV=production \
+              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
+              CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
+              CLERK_AUTHORIZED_PARTIES="${{ steps.web-url.outputs.url }}" \
+              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              AZURE_STORAGE_ACCOUNT="${{ vars.AZURE_STORAGE_ACCOUNT }}" \
+              AZURE_STORAGE_CONTAINER="${{ vars.AZURE_STORAGE_CONTAINER || 'assets' }}" \
+              ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
 
       # The cheapest possible answer to "did the deploy actually land?" — read
       # the commit SHA back off the running service rather than trusting that
@@ -93,4 +175,97 @@ jobs:
           done
 
           echo "::error::Deploy did not converge — /health never reported ${{ github.sha }}."
+          exit 1
+
+  deploy-web:
+    name: Build & deploy web
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # `SPARK_API_URL` (apps/web/src/app/api/tools/[name]/route.ts's proxy
+      # target) is a server-only runtime env var, not a `NEXT_PUBLIC_*` one —
+      # it never touches the client bundle, so it's read here off the API
+      # Container App's own FQDN rather than hand-maintained as a GitHub
+      # variable that would drift the moment the API's ingress hostname
+      # changes.
+      - name: Resolve the API's URL
+        id: api-url
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          echo "url=https://$FQDN" >> "$GITHUB_OUTPUT"
+
+      # NEXT_PUBLIC_* values are inlined into the client bundle at build time
+      # (apps/web/Dockerfile's own comment on this) — they have to be real
+      # build args here, or the deployed app ships an empty Clerk key baked
+      # into every page it serves, unfixable by any env var set afterward.
+      - name: Build and push image to ACR
+        run: |
+          az acr build \
+            --registry "${{ vars.AZURE_ACR_NAME }}" \
+            --image "sparksocial-web:${{ github.sha }}" \
+            --image "sparksocial-web:latest" \
+            --file apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg NEXT_PUBLIC_SOCIAL_PROVIDERS="${{ vars.NEXT_PUBLIC_SOCIAL_PROVIDERS || 'google' }}" \
+            --build-arg NEXT_PUBLIC_SENTRY_DSN="${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_KEY="${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}" \
+            --build-arg NEXT_PUBLIC_POSTHOG_HOST="${{ vars.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com' }}" \
+            .
+
+      - name: Deploy to Container Apps
+        run: |
+          IDENTITY_ID=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query 'identity.userAssignedIdentities | keys(@) | [0]' -o tsv)
+
+          az containerapp update \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.AZURE_ACR_NAME }}.azurecr.io/sparksocial-web:${{ github.sha }}" \
+            --registry-server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
+            --registry-identity "$IDENTITY_ID" \
+            --set-env-vars \
+              REVISION="${{ github.sha }}" \
+              NODE_ENV=production \
+              SPARK_API_URL="${{ steps.api-url.outputs.url }}" \
+              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}"
+
+      # apps/web has no /health endpoint reporting its own commit SHA the way
+      # the API does, so this checks reachability rather than convergence —
+      # a weaker guarantee, worth tightening later the same way the API's
+      # check already works if a `/health`-style route gets added here too.
+      - name: Verify the app is reachable
+        run: |
+          FQDN=$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+
+          echo "Probing https://$FQDN/sign-in"
+          for attempt in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://$FQDN/sign-in" || true)
+            if [ "$CODE" = "200" ]; then
+              echo "Web app is serving traffic."
+              exit 0
+            fi
+            echo "attempt $attempt: got '${CODE:-<unreachable>}', waiting…"
+            sleep 10
+          done
+
+          echo "::error::Deploy did not converge — /sign-in never returned 200."
           exit 1

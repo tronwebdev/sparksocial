@@ -1,0 +1,307 @@
+import { describe, it, expect, vi } from 'vitest';
+import type { ClerkClient } from '@clerk/backend';
+import { ToolError } from '@sparksocial/shared/types';
+import type { ScopedDb } from '@sparksocial/tools';
+import { makeClerkResolveCtx } from '../src/clerk-auth.js';
+
+/**
+ * These tests guard the tenancy boundary. Every one of them describes a way a
+ * caller could try to obtain data belonging to another organisation, and asserts
+ * that the resolver refuses.
+ *
+ * The Clerk client is faked rather than mocked at the network level: what is
+ * under test is what the resolver *does with verified claims*, not Clerk's own
+ * JWT verification, which is their code and already tested.
+ */
+
+const GENOME_IN_ORG_A = 'gen_a';
+const GENOME_IN_ORG_B = 'gen_b';
+const GENOME_BRAND_A2 = 'gen_a2';
+
+/**
+ * `brandMemberships` seeds `brand_members` rows for the "agency isolation"
+ * tests below — a second brand in org_A (`brand_A2`) that only some org_A
+ * members are assigned to, mirroring `team.permission.set`'s real effect.
+ */
+function fakeDb(brandMemberships: { userId: string; brandId: string }[] = []): ScopedDb {
+  const genomes: Record<string, { orgId: string; workspace_id: string }> = {
+    [GENOME_IN_ORG_A]: { orgId: 'org_A', workspace_id: 'brand_A' },
+    [GENOME_IN_ORG_B]: { orgId: 'org_B', workspace_id: 'brand_B' },
+    [GENOME_BRAND_A2]: { orgId: 'org_A', workspace_id: 'brand_A2' },
+  };
+  return {
+    genomes: {
+      createDraft: async () => ({ id: 'x' }),
+      patchDimensions: async () => ({ id: 'x', version: 1 }),
+      // Mirrors the real repository: a scope mismatch is indistinguishable from
+      // a missing row.
+      get: async (genomeId: string, orgId: string) => {
+        const g = genomes[genomeId];
+        if (!g || g.orgId !== orgId) return undefined;
+        return { workspace_id: g.workspace_id } as never;
+      },
+      listForOrg: async () => [],
+    },
+    assets: {
+      inventory: async () => ({}),
+      retrieve: async () => [],
+      create: async () => ({ id: 'a' }),
+      captionsByRole: async () => [],
+      info: async () => ({}),
+    },
+    content: { recent: async () => [] },
+    brandMembers: {
+      set: async () => {
+        throw new Error('not used in these tests');
+      },
+      remove: async () => {},
+      listForBrand: async () => [],
+      listForUser: async (_orgId: string, userId: string) =>
+        brandMemberships
+          .filter((m) => m.userId === userId)
+          .map((m) => ({ userId: m.userId, brandId: m.brandId, role: 'editor', createdAt: new Date() })) as never,
+    },
+  } as unknown as ScopedDb;
+}
+
+function fakeClerk(claims: Record<string, unknown> | null): ClerkClient {
+  return {
+    authenticateRequest: async () =>
+      claims
+        ? { isSignedIn: true, toAuth: () => ({ sessionClaims: claims }) }
+        : { isSignedIn: false, reason: 'no-session' },
+  } as unknown as ClerkClient;
+}
+
+const resolver = (
+  claims: Record<string, unknown> | null,
+  brandMemberships: { userId: string; brandId: string }[] = [],
+) =>
+  makeClerkResolveCtx({
+    db: fakeDb(brandMemberships),
+    clerk: fakeClerk(claims),
+    authorizedParties: ['http://localhost:3000'],
+  });
+
+const req = (headers: Record<string, string> = {}) => new Request('http://api.test/v1/tools/x', { headers });
+
+describe('clerk resolveCtx — the tenancy boundary', () => {
+  it('rejects an unauthenticated request', async () => {
+    await expect(resolver(null)(req())).rejects.toThrow(ToolError);
+  });
+
+  it('rejects a session with no active organization', async () => {
+    await expect(resolver({ sub: 'user_1' })(req())).rejects.toThrow(/organization/i);
+  });
+
+  it('reports no-organization as its own code, not FORBIDDEN', async () => {
+    /**
+     * The distinction the UI acts on. Both failures are "you cannot call this",
+     * but the remedies are opposites: `FORBIDDEN` means sign in again, and
+     * doing that for a missing organization loops forever without fixing it.
+     *
+     * This was not hypothetical. A stuck Clerk `choose-organization` task made
+     * every panel report `401 Not signed in` to a user who was signed in, and
+     * the client had nothing in the response to tell it which recovery to
+     * offer — so it offered none and rendered the error.
+     */
+    await expect(resolver({ sub: 'user_1' })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+  });
+
+  it('still reports an unverifiable session as FORBIDDEN', async () => {
+    // The other side of the same fence — this one really does mean sign in.
+    await expect(resolver(null)(req())).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('takes orgId and userId from verified claims, never from headers', async () => {
+    const ctx = await resolver({ sub: 'user_1', org_id: 'org_A', org_role: 'org:admin' })(
+      req({ 'x-org-id': 'org_EVIL', 'x-user-id': 'user_EVIL' }),
+    );
+    expect(ctx.orgId).toBe('org_A');
+    expect(ctx.userId).toBe('user_1');
+  });
+
+  /* ── The core isolation assertion ───────────────────────────────────── */
+
+  it('refuses a genome belonging to another org', async () => {
+    const resolve = resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' });
+    await expect(resolve(req({ 'x-genome-id': GENOME_IN_ORG_B }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it('refuses a genome that does not exist, with the same error as one out of scope', async () => {
+    const resolve = resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' });
+    await expect(resolve(req({ 'x-genome-id': 'gen_nope' }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it('accepts a genome inside the org and derives brandId from the row, ignoring x-brand-id', async () => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' })(
+      req({ 'x-genome-id': GENOME_IN_ORG_A, 'x-brand-id': 'brand_EVIL' }),
+    );
+    expect(ctx.genomeId).toBe(GENOME_IN_ORG_A);
+    expect(ctx.brandId).toBe('brand_A');
+  });
+
+  it('leaves genomeId unset when no genome is claimed, so org-scoped reads still work', async () => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:viewer' })(req());
+    expect(ctx.genomeId).toBeUndefined();
+    expect(ctx.orgId).toBe('org_A');
+  });
+
+  /* ── Brand-level access (agency isolation, docs/GAPS.md) ──────────────
+   * Being in the org is not being scoped to every brand in it. org_A has two
+   * brands: `brand_A` (GENOME_IN_ORG_A) and `brand_A2` (GENOME_BRAND_A2).
+   */
+
+  it('refuses a non-admin org member reaching a brand they have no brand_members row for', async () => {
+    const resolve = resolver({ sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' }, []);
+    await expect(resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it('admits a non-admin org member to a brand they are assigned to via team.permission.set', async () => {
+    const resolve = resolver(
+      { sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' },
+      [{ userId: 'staffer', brandId: 'brand_A2' }],
+    );
+    const ctx = await resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }));
+    expect(ctx.brandId).toBe('brand_A2');
+  });
+
+  it('does not let an assignment to one brand leak access to a sibling brand in the same org', async () => {
+    const resolve = resolver(
+      { sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' },
+      [{ userId: 'staffer', brandId: 'brand_A' }],
+    );
+    await expect(resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it.each([['org:owner', 'owner'], ['org:admin', 'admin']])(
+    '%s administers every brand in the org with no brand_members row needed',
+    async (orgRole) => {
+      const resolve = resolver({ sub: 'boss', org_id: 'org_A', org_role: orgRole }, []);
+      const ctx = await resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }));
+      expect(ctx.brandId).toBe('brand_A2');
+    },
+  );
+
+  /* ── Role mapping ───────────────────────────────────────────────────── */
+
+  it.each([
+    ['org:owner', 'owner'],
+    ['org:admin', 'admin'],
+    ['org:editor', 'editor'],
+    ['org:approver', 'approver'],
+    ['org:viewer', 'viewer'],
+    ['org:client', 'client'],
+  ])('maps %s to %s', async (orgRole, expected) => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: orgRole })(req());
+    expect(ctx.role).toBe(expected);
+  });
+
+  it('degrades an unknown role to viewer rather than owner or an error', async () => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:something_new' })(req());
+    expect(ctx.role).toBe('viewer');
+  });
+
+  it('degrades a missing role to viewer', async () => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A' })(req());
+    expect(ctx.role).toBe('viewer');
+  });
+
+  it('never lets a header escalate the role', async () => {
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:viewer' })(req({ 'x-role': 'owner' }));
+    expect(ctx.role).toBe('viewer');
+  });
+
+  /* ── Caller identity ────────────────────────────────────────────────── */
+
+  it("reports caller 'user' even when the request claims to be an agent", async () => {
+    // The P1 exit criterion says `caller` is the only field distinguishing a UI
+    // action from a SPARK action. If a browser could set it, that distinction —
+    // and every autonomy rule keyed on it — becomes meaningless.
+    const ctx = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' })(req({ 'x-caller': 'agent' }));
+    expect(ctx.caller).toBe('user');
+  });
+
+  /* ── Configuration safety ───────────────────────────────────────────── */
+
+  it('refuses to construct without authorizedParties', () => {
+    expect(() => makeClerkResolveCtx({ db: fakeDb(), clerk: fakeClerk(null), authorizedParties: [] })).toThrow(
+      /authorizedParties/,
+    );
+  });
+
+  it('passes authorizedParties through to Clerk so the audience is actually checked', async () => {
+    const authenticateRequest = vi
+      .fn()
+      .mockResolvedValue({ isSignedIn: true, toAuth: () => ({ sessionClaims: { sub: 'u', org_id: 'org_A' } }) });
+    const clerk = { authenticateRequest } as unknown as ClerkClient;
+    await makeClerkResolveCtx({ db: fakeDb(), clerk, authorizedParties: ['https://app.example'] })(req());
+    expect(authenticateRequest).toHaveBeenCalledWith(expect.anything(), {
+      authorizedParties: ['https://app.example'],
+    });
+  });
+});
+
+describe('both Clerk session-token versions', () => {
+  /**
+   * Clerk issues two shapes and which one an instance uses is a Clerk-side
+   * setting. v1 is flat (`org_id`, `org_role`); **v2 nests** under
+   * `o: { id, rol }` and types `org_id` as `never`.
+   *
+   * Reading only `org_id` made a v2 instance indistinguishable from a session
+   * with no organization: the user creates one, Clerk activates it, the client
+   * shows it, and every tool call returns `NO_ORGANIZATION`. It blocked
+   * onboarding completely, and every test here passed throughout — because they
+   * all hand-built v1 claims, which is the shape nothing was issuing.
+   */
+
+  it('reads the organization from a v2 token', async () => {
+    const ctx = await resolver({ sub: 'user_1', v: 2, o: { id: 'org_A', rol: 'admin' } })(req());
+
+    expect(ctx.orgId).toBe('org_A');
+    expect(ctx.role).toBe('admin');
+  });
+
+  it('still reads a v1 token', async () => {
+    const ctx = await resolver({ sub: 'user_1', org_id: 'org_A', org_role: 'org:admin' })(req());
+
+    expect(ctx.orgId).toBe('org_A');
+    expect(ctx.role).toBe('admin');
+  });
+
+  it('accepts a v2 role with no org: prefix', async () => {
+    // v1 sends `org:owner`, v2 sends `owner`. Both must reach `owner` — the
+    // difference between full access and read-only.
+    const v2 = await resolver({ sub: 'u', v: 2, o: { id: 'org_A', rol: 'owner' } })(req());
+    const v1 = await resolver({ sub: 'u', org_id: 'org_A', org_role: 'org:owner' })(req());
+
+    expect(v2.role).toBe('owner');
+    expect(v1.role).toBe('owner');
+  });
+
+  it('still rejects a v2 token with no active organization', async () => {
+    // The genuine no-org case must keep failing, or fixing this would have
+    // turned a blocked user into an unscoped one.
+    await expect(resolver({ sub: 'u', v: 2, o: {} })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+    await expect(resolver({ sub: 'u', v: 2 })(req())).rejects.toMatchObject({
+      code: 'NO_ORGANIZATION',
+    });
+  });
+
+  it('falls back to viewer for an unknown v2 role', async () => {
+    const ctx = await resolver({ sub: 'u', v: 2, o: { id: 'org_A', rol: 'something_new' } })(req());
+    expect(ctx.role).toBe('viewer');
+  });
+});

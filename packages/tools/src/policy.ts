@@ -53,6 +53,19 @@ export interface PolicyInput {
 
   /** Engagement replies are gated until the campaign clears the eligibility rule. */
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
+
+  /**
+   * A human approval already granted for this exact call, replayed by
+   * `approval.decide`.
+   *
+   * It is applied at the very end of `evaluate`, as a post-filter that can only
+   * turn `approval` into `allow`. It is deliberately not consulted anywhere
+   * earlier: `deny` outcomes — a paused agent, a role that lacks the scope, an
+   * exhausted budget, a quiet window — are not things a reviewer is being asked
+   * to override, and a grant that could reach them would turn "approve this
+   * post" into "approve this post and also bypass every other rule".
+   */
+  approval?: { grantedBy: string; grantedAt: Date };
 }
 
 const REVIEW_FIRST_WEEK_DAYS = 7;
@@ -63,7 +76,29 @@ const daysBetween = (a: Date, b: Date) =>
 const inWindow = (now: Date, w: { from: Date; to: Date }) =>
   now >= w.from && now <= w.to;
 
+/**
+ * The policy engine's entry point (CLAUDE.md invariant 3).
+ *
+ * Deliberately a thin wrapper over {@link evaluateRules} rather than a check
+ * spliced into the rule body. The rules stay exactly as they were, and the one
+ * thing an approval grant is allowed to do — turn `approval` into `allow` — is
+ * visible in three lines instead of being distributed across eight rules that
+ * each have to remember it.
+ *
+ * The narrowing is the point. `deny` and `confirm` fall through untouched, so a
+ * reviewer approving a post cannot also be approving a paused agent, a missing
+ * role scope, or an exhausted budget.
+ */
 export function evaluate(input: PolicyInput): Decision {
+  const decision = evaluateRules(input);
+
+  if (decision.kind === 'approval' && input.approval) {
+    return { kind: 'allow' };
+  }
+  return decision;
+}
+
+function evaluateRules(input: PolicyInput): Decision {
   const { tool, caller, role, now, brand, subject, budget, engagement } = input;
   const family = toolFamily(tool.name);
 
@@ -87,8 +122,23 @@ export function evaluate(input: PolicyInput): Decision {
     return { kind: 'deny', reason: 'This action must be taken by a person.', ruleId: 'autonomy.human_only' };
   }
 
-  /* 4 ── Budget. Checked before side effects, for both callers. */
-  if (tool.effect === 'spend') {
+  /* 4 ── Budget. Checked before side effects, for both callers.
+   *
+   * Keyed on **cost, not category**. This read `tool.effect === 'spend'` and no
+   * tool in the registry has ever declared that effect — every one that spends
+   * money (`genome.bootstrap_from_url`, `direct.media.ingest`,
+   * `whatsapp.send`, the brief writers) is `external`, because it is. So the
+   * rule was unreachable: correct, tested to 100% branches, and unable to fire.
+   *
+   * Found by draining a 2¢ cap with 1¢ calls and watching all of them succeed.
+   * The unit tests could not have found it — they build this input directly and
+   * pass `effect: 'spend'`, which nothing else in the codebase does.
+   *
+   * `estimatedCents > 0` is the honest signal, and it is a fact about the call
+   * rather than a label someone has to remember to attach. `effect === 'spend'`
+   * is kept so a tool declaring it is still permission-checked at a zero
+   * estimate. */
+  if (tool.effect === 'spend' || budget.estimatedCents > 0) {
     if (brand.permissions?.spendCredits === false) {
       return { kind: 'deny', reason: 'Credit spending is disabled for this workspace.', ruleId: 'permission.spend' };
     }

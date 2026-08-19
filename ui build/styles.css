@@ -1,0 +1,4 @@
+/* SparkSocial — global design-system CSS (imported by non-DC tooling; DC files use inline styles) */
+@import './figma-system/fig-tokens.css';
+@import './figma-system/fig-typography.css';
+@import './figma-cc/fig-assets.css';

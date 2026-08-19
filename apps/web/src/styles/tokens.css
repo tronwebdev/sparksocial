@@ -1,0 +1,214 @@
+/**
+ * SparkSocial design tokens — extracted from the prototype in `ui build/`.
+ *
+ * SOURCE OF TRUTH: the `.dc.html` screens, per `ui build/BUILD_PLAN.md` §1.2
+ * ("Pull exact hex values from the .dc.html files — they are Figma-exact").
+ *
+ * `ui build/figma-system/fig-tokens.css` is deliberately NOT the source. It is
+ * generic Figma-variable boilerplate: it declares Inter/Geist and a grayscale
+ * brand ramp, and **zero screens reference any of its custom properties**. The
+ * screens use Onest + CS Mollwish and hardcode hex. Treat that file as deleted.
+ *
+ * Values below are ordered by measured frequency across the six built screens
+ * (Dashboard, Command Center, Auth, Assets Library, Automation, Onboarding), so
+ * the ramp reflects what the design actually leans on rather than what a palette
+ * export happened to contain.
+ *
+ * Components consume the SEMANTIC layer only. A raw `--ss-ink-500` in a component
+ * is a bug: it breaks the light/dark swap below, which is a single class toggle.
+ */
+
+:root {
+  /* ── Raw ramp ─────────────────────────────────────────────────────── */
+  --ss-ink-900: #0c0c0c; /* 573 uses — text, primary surfaces, dark backgrounds */
+  --ss-ink-800: #1e1e1e; /* primary hover */
+  --ss-ink-600: #5b5b5b; /* icon strokes */
+  --ss-ink-500: #838383; /* 387 — secondary text */
+  --ss-ink-300: #b0b0b0; /* placeholder */
+  --ss-white: #ffffff;
+
+  --ss-surface-50: #fafafa;
+  --ss-surface-100: #f8f8f8;
+  --ss-surface-150: #f7f7f7; /* the content canvas */
+  --ss-surface-200: #f5f5f5;
+  --ss-surface-300: #efefef;
+  --ss-field-bg: #f3f4f8; /* every input in the prototype */
+
+  --ss-purple: #a341ff; /* focus ring — focus is purple everywhere */
+  --ss-cyan: #6ce8ff; /* login background, active-nav glow */
+  --ss-cyan-200: #9cefff;
+  --ss-pink: #f56bff;
+  --ss-teal-900: #043133; /* auth-card headings */
+  --ss-teal-500: #0baac7; /* info chips */
+
+  --ss-green-500: #13d711;
+  --ss-green-600: #3ec332;
+  --ss-green-700: #0e9e0c;
+  --ss-amber-500: #e48915;
+  --ss-orange-500: #f35525;
+  --ss-red-500: #ef3049;
+
+  /* ── Semantic layer — what components actually use ────────────────── */
+  --ss-bg: var(--ss-white);
+  --ss-surface: var(--ss-white);
+  --ss-surface-muted: var(--ss-surface-100);
+  --ss-canvas: var(--ss-surface-150);
+
+  --ss-fg: var(--ss-ink-900);
+  --ss-fg-muted: var(--ss-ink-500);
+  --ss-fg-subtle: var(--ss-ink-600);
+  --ss-fg-placeholder: var(--ss-ink-300);
+  --ss-fg-heading: var(--ss-teal-900);
+  --ss-fg-on-primary: var(--ss-white);
+
+  --ss-border: rgba(131, 131, 131, 0.25);
+  --ss-border-strong: rgba(12, 12, 12, 0.35);
+
+  --ss-field: var(--ss-field-bg);
+  --ss-ring: var(--ss-purple);
+
+  --ss-primary: var(--ss-ink-900);
+  --ss-primary-hover: var(--ss-ink-800);
+
+  --ss-accent-purple: var(--ss-purple);
+  --ss-accent-cyan: var(--ss-cyan);
+  --ss-accent-pink: var(--ss-pink);
+  --ss-info: var(--ss-teal-500);
+  --ss-success: var(--ss-green-500);
+  --ss-warn: var(--ss-amber-500);
+  --ss-danger: var(--ss-red-500);
+
+  /* ── Gradients. Structural, not decoration — hence tokens. ────────── */
+
+  /* The sliding pill behind the active nav row. */
+  --ss-grad-nav-active: linear-gradient(
+    90deg,
+    rgba(108, 232, 255, 0.4) 0%,
+    rgba(148, 238, 255, 0.4) 32.85%,
+    rgba(255, 255, 255, 0) 100%
+  );
+
+  /**
+   * The content canvas wash. The prototype applies `transform: scaleX(-1)` to the
+   * canvas card, which mirrors the GRADIENT, not the content. Mirroring a DOM node
+   * would flip the children too, so the flip is baked into the angles instead:
+   * 157.442deg → 22.558deg and 198.502deg → -18.502deg (each reflected about the
+   * vertical axis, i.e. 180 − θ).
+   *
+   * The base colour is the last layer rather than a separate `background-color`,
+   * mirroring the prototype's own shorthand. That is not just cosmetic: two
+   * separate `bg-*` utilities on one element get collapsed by `tailwind-merge`,
+   * which cannot know a colour and an image utility don't conflict, and the
+   * colour silently disappears.
+   */
+  --ss-grad-canvas: linear-gradient(22.558deg, rgba(245, 107, 255, 0.2) 2.42%, rgba(255, 255, 255, 0) 42.66%),
+    linear-gradient(-18.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
+    linear-gradient(var(--ss-canvas), var(--ss-canvas));
+
+  --ss-grad-cta: linear-gradient(90deg, #8b3dff 0%, #37c7f4 100%);
+  --ss-grad-brand: linear-gradient(90deg, #6ce8ff, #a341ff);
+
+  /* ── Shadows. The hairline ring is used far more than any real shadow. ── */
+  --ss-shadow-hairline: 0 0 0 1px rgba(131, 131, 131, 0.2);
+  --ss-shadow-card: 0 10px 26px -18px rgba(12, 12, 12, 0.35);
+  --ss-shadow-menu: 0 24px 60px -24px rgba(0, 0, 0, 0.35);
+  --ss-shadow-overlay: 0 30px 70px -30px rgba(12, 12, 12, 0.45);
+
+  /* ── Shell geometry. Read off Dashboard.dc.html. ──────────────────── */
+  --ss-rail: 322px;
+  --ss-nav-pitch: 65px; /* 27px row + 38px gap — exact, do not round */
+}
+
+/**
+ * Dark is not cosmetic here. Sign Up's left panel, the Verify Email screen and the
+ * Meet Spark splash are all `#0C0C0C` surfaces in the prototype, so these five
+ * assignments are load-bearing for the auth flow, not a theme nobody asked for.
+ */
+.dark {
+  --ss-bg: var(--ss-ink-900);
+  --ss-surface: var(--ss-ink-900);
+  --ss-surface-muted: var(--ss-ink-800);
+  --ss-canvas: var(--ss-ink-900);
+
+  --ss-fg: var(--ss-white);
+  --ss-fg-muted: rgba(255, 255, 255, 0.7);
+  --ss-fg-subtle: rgba(255, 255, 255, 0.55);
+  --ss-fg-heading: var(--ss-white);
+  --ss-fg-on-primary: var(--ss-ink-900);
+
+  --ss-border: rgba(255, 255, 255, 0.16);
+  --ss-border-strong: rgba(255, 255, 255, 0.32);
+
+  --ss-field: rgba(255, 255, 255, 0.06);
+  --ss-primary: var(--ss-white);
+  --ss-primary-hover: var(--ss-surface-200);
+}
+
+/**
+ * Field focus ring, as plain longhands.
+ *
+ * Written here rather than composed from Tailwind variants on the component:
+ * `shadow-[…]` and `ring-*` both route through `--tw-shadow` / `--tw-ring-shadow`
+ * into a three-part `box-shadow`, and neither survived composition on this
+ * element — the custom properties computed correctly while the resulting
+ * `box-shadow` stayed transparent. An explicit rule with explicit longhands has
+ * no such indirection, and the prototype's focus treatment is a single fixed
+ * 1.5px ring on every field, so there is nothing here worth making configurable.
+ */
+.ss-field:focus-within {
+  outline-style: solid;
+  outline-width: 1.5px;
+  outline-color: var(--ss-ring);
+  outline-offset: -1.5px;
+}
+
+.ss-field[data-invalid='true'] {
+  outline-style: solid;
+  outline-width: 1.5px;
+  outline-color: var(--ss-danger);
+  outline-offset: -1.5px;
+}
+
+/* ── Keyframes lifted from the prototype. Reused across 60+ screens. ──── */
+
+@keyframes ss-float-a {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(-1.5deg); }
+}
+
+@keyframes ss-float-b {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(12px) rotate(1.5deg); }
+}
+
+@keyframes ss-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+@keyframes ss-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes ss-menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ss-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Same shape as ss-drawer-in, mirrored — for the mobile nav sheet, which
+   opens from the left edge the desktop sidebar itself occupies. */
+@keyframes ss-drawer-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
