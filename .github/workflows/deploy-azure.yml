@@ -126,11 +126,9 @@ jobs:
       # next restart, silently, which is a worse failure than refusing to boot.
       - name: Deploy to Container Apps
         run: |
-          # `az containerapp update` does not carry forward the registry-identity
-          # that `az containerapp create` set during bootstrap — it must be
-          # re-specified on every update or the pull is attempted without
-          # credentials and fails UNAUTHORIZED even though the managed identity
-          # still has AcrPull on the registry.
+          # Upgrade Azure CLI to ensure registry flags are supported
+          az upgrade --yes
+          
           IDENTITY_ID=$(az containerapp show \
             --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
