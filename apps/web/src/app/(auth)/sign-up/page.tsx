@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSignUp } from '@clerk/nextjs';
+import { useAuth, useSignUp } from '@clerk/nextjs';
 import { BrandPanel } from '@/components/auth/BrandPanel';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { AuthField, PersonIcon, MailIcon, LockIcon } from '@/components/auth/AuthField';
@@ -16,10 +16,20 @@ import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
  *
  * Headless Clerk (`useSignUp`) rather than `<SignUp/>`, so the card is ours and
  * the flow is explicit: create → send email code → `/sign-up/verify`.
+ *
+ * Guards against an already-signed-in visitor the same way `sign-in/page.tsx`
+ * does — see that file's comment for the session-propagation race this
+ * protects against. `signUp.create()` errors immediately for an active
+ * session, same failure mode as `signIn.create()`.
  */
 export default function SignUpPage() {
   const { isLoaded, signUp } = useSignUp();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (authLoaded && isSignedIn) router.replace('/');
+  }, [authLoaded, isSignedIn, router]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

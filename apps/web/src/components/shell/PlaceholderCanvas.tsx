@@ -1,5 +1,6 @@
 import { TopBar } from './TopBar';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { UserMenu } from './UserMenu';
 
 /**
  * P0 renders the frame, not the content. The screens behind these routes need
@@ -12,7 +13,7 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 export function PlaceholderCanvas({ title, subtitle, phase }: { title: string; subtitle?: string; phase: string }) {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} />
+      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8">
         <p className="text-[20px] font-medium text-ink">{title}</p>
         {subtitle ? <p className="text-[16px] text-ink-muted">{subtitle}</p> : null}

@@ -112,6 +112,11 @@ export const genomeCreate = defineTool({
     ctx.logger.info('genome created without a crawl', {
       brandId: input.brandId,
       genomeId: draft.id,
+      // Logged deliberately: the name is exactly what the caller typed into
+      // the "What's your brand called?" field, and this line is the only
+      // server-side record of what that value actually was, as opposed to
+      // what the reporter believes they typed.
+      businessName: input.businessName,
     });
 
     return {

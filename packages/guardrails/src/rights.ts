@@ -20,7 +20,7 @@ export interface RightsInput {
   referencedAssetRights: Array<{ assetId: string; rightsStatus: string }>;
   /** True if the playbook needs a cloned face/voice (Playbook.preconditions.requires_likeness_license). */
   requiresLikenessLicense: boolean;
-  /** genome.constraints.avatar_enabled — true only once likeness consent is on file (§10). */
+  /** `consent.hasActive(genomeId, orgId, 'avatar_clone')` — true only once a likeness-consent record is on file and unrevoked (§10). */
   avatarEnabled: boolean;
 }
 

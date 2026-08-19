@@ -9,6 +9,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@sparksocial/guardrails": "*",
     "@sparksocial/shared": "*",
     "@sparksocial/tools": "*",
     "playwright": "^1.62.1",

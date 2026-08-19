@@ -108,7 +108,16 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
   director: {
     name: 'director',
     responsibility: 'Per-slot brief, playbook beat filling, copy, hooks, CTA.',
-    toolScopes: ['draft.*', 'knowledge.ground_claim', 'playbook.get', 'playbook.explain'],
+    /**
+     * `content.draft` (not `content.generate_*`) — Director writes the script,
+     * Producer spends the money rendering it. `draft.*` was the placeholder
+     * name this scope was written against before `packages/generate` settled
+     * on `content.*`; it matched nothing in the real registry, which the
+     * "matches nothing is a typo" test in `scope.test.ts` exists to catch and
+     * would have caught here had this file been re-checked against the
+     * registry as tools landed.
+     */
+    toolScopes: ['content.draft', 'playbook.resolve'],
     model: 'opus',
     effort: 'high',
   },
@@ -129,7 +138,18 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
      * capability in the agent with the broadest remit, which is the wrong
      * direction for blast radius. Worth confirming when §4.1 is next revised.
      */
-    toolScopes: ['synthesize.*', 'assemble.*', 'finish.*', 'compose.*', 'publish.*', 'integration.*'],
+    /**
+     * `synthesize.*`/`finish.*` were placeholder families this scope was
+     * written against and never existed in the real registry; the
+     * direct_finish pipeline's actual tool (`direct.media.ingest`) belongs to
+     * Field, not Producer (it already owns `direct.*`). `compose.*` is real
+     * as of `compose.render` (P2) — the beat-list-to-pixels render step is
+     * exactly "executes the pipelines; renders, exports, ships", Producer's
+     * own description. The three `content.generate_*` tools are what
+     * actually spends money rendering a beat, which is Producer's job by the
+     * same reasoning; `content.draft` (the cheap half) stays with Director.
+     */
+    toolScopes: ['assemble.*', 'compose.*', 'content.generate_image', 'content.generate_avatar_video', 'content.generate_voiceover', 'publish.*', 'integration.*'],
     model: 'sonnet',
     effort: 'medium',
   },
@@ -161,7 +181,17 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
   analyst: {
     name: 'analyst',
     responsibility: 'Metrics ingestion, outcome reporting, mix reweighting, memory distillation.',
-    toolScopes: ['analytics.*', 'learning.*'],
+    /**
+     * `learning.*` (Thompson-sampling mix reweighting, memory distillation —
+     * the plan's outcome loop) was in this list from the start and matched
+     * nothing in the real registry, same bug pattern already fixed on
+     * director/producer: no `learning_*` schema, no tools, nothing to grant a
+     * scope to. It is a materially larger feature than `analytics.sync` (P4)
+     * landing next to it, tracked separately rather than claimed here.
+     * `analytics.*` is real as of `analytics.sync` (P4) — the analyst's one
+     * actual capability today is pulling metrics, not yet acting on them.
+     */
+    toolScopes: ['analytics.*'],
     model: 'sonnet',
     effort: 'medium',
   },

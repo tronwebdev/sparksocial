@@ -4,24 +4,23 @@ import { TaskChooseOrganization } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
- * Clerk session task — choose or create an organization.
+ * Clerk session task — choose or create an organization. DORMANT by design.
  *
- * The instance has `force_organization_selection: true`, so Clerk parks a
- * freshly signed-up session at `<signInUrl>/tasks` until it has an active
- * organization. Without this route that redirect 404s and sign-up dead-ends
- * *after* the account was successfully created — the worst place to fail.
+ * Org creation is now `OrgGuard.tsx` (mounted in the `(app)`, `(onboarding)`
+ * and `meet-spark` layouts), not this screen — see that file's own comment.
+ * That required turning **off** the Clerk Dashboard's "Force organization
+ * selection" setting; with it off, Clerk never issues the `choose-organization`
+ * session task this page exists to satisfy, `layout.tsx`'s `ClerkProvider`
+ * carries no `taskUrls` pointing here, and this route is simply never
+ * navigated to.
  *
- * Keeping the setting on is deliberate rather than convenient. Every genome,
- * asset and `tool_calls` row is keyed by org, and `apps/api/src/clerk-auth.ts`
- * rejects a session without one — so an org-less session cannot make a single
- * tool call. Letting Clerk guarantee the org before the app loads is stronger
- * than our `useEnsureOrg` stopgap, which only runs if the user happens to pass
- * through `/meet-spark`: deep-linking to `/calendar` on a fresh account would
- * otherwise reach a shell where every request 403s.
- *
- * Themed rather than left default, because this sits between two custom
- * full-bleed dark screens and Clerk's stock light card in the middle of that
- * sequence reads as a different product.
+ * Not deleted, because the two are coupled the other way too: if that
+ * Dashboard setting is ever switched back on, Clerk resumes issuing the task
+ * immediately, and a session with no `taskUrls` entry for it prints "Session
+ * has pending tasks but no handling is configured…" and does nothing —
+ * sign-up dead-ends right after the account is created, the worst place to
+ * fail. This page plus re-adding `taskUrls={{ 'choose-organization':
+ * '/sign-in/tasks' }}` to `layout.tsx` is the fix, already written and ready.
  */
 export default function ChooseOrganizationPage() {
   return (

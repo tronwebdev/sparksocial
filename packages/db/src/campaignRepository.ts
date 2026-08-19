@@ -16,10 +16,21 @@ import { campaignSlots, replaceCampaignSlots, type Scope } from './scoped.js';
  */
 export function createCampaignRepository(db: Database): CampaignStore {
   return {
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan }) {
+    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel }) {
       const [row] = await db
         .insert(campaigns)
-        .values({ orgId, genomeId, name, objective, windowDays, startAt, plan: plan as object, status: 'draft' })
+        .values({
+          orgId,
+          genomeId,
+          name,
+          objective,
+          windowDays,
+          startAt,
+          plan: plan as object,
+          status: 'draft',
+          ...(targetCount !== undefined ? { targetCount } : {}),
+          ...(targetLabel !== undefined ? { targetLabel } : {}),
+        })
         .returning({ id: campaigns.id });
       return { id: row!.id };
     },
@@ -40,6 +51,8 @@ export function createCampaignRepository(db: Database): CampaignStore {
         startAt: row.startAt,
         status: row.status,
         plan: row.plan,
+        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
+        ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),
       };
     },
 
@@ -59,6 +72,8 @@ export function createCampaignRepository(db: Database): CampaignStore {
         startAt: r.startAt,
         status: r.status,
         plan: r.plan,
+        ...(r.targetCount !== null ? { targetCount: r.targetCount } : {}),
+        ...(r.targetLabel !== null ? { targetLabel: r.targetLabel } : {}),
       }));
     },
 

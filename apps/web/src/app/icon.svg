@@ -1,0 +1,28 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    Favicon — a simplified, static reading of SparkMark (components/brand/SparkMark.tsx).
+    That component is live DOM (box-shadow rings, backdrop-filter blur) and cannot be
+    exported to a bitmap without a browser render pass, and none of that detail survives
+    at 16-32px anyway. This keeps only what reads at favicon size: the black ring, the
+    three brand blobs (pink/purple/cyan), and the visor with two eyes.
+  -->
+  <circle cx="32" cy="32" r="30" fill="#0C0C0C" />
+  <circle cx="32" cy="32" r="26" fill="#FFFFFF" />
+
+  <g clip-path="url(#face)">
+    <circle cx="16" cy="24" r="12" fill="#F56BFF" />
+    <circle cx="32" cy="14" r="12" fill="#A341FF" />
+    <circle cx="34" cy="30" r="12" fill="#F56BFF" />
+    <circle cx="18" cy="12" r="10" fill="#6CE8FF" />
+  </g>
+
+  <rect x="14" y="34" width="36" height="16" rx="8" fill="#0C0C0C" fill-opacity="0.55" />
+  <circle cx="24" cy="42" r="3" fill="#FFFFFF" />
+  <circle cx="40" cy="42" r="3" fill="#FFFFFF" />
+
+  <defs>
+    <clipPath id="face">
+      <circle cx="32" cy="32" r="26" />
+    </clipPath>
+  </defs>
+</svg>

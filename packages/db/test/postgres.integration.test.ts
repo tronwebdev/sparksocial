@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getTableColumns, getTableName, is } from 'drizzle-orm';
+import { eq, getTableColumns, getTableName, is } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
@@ -10,9 +11,15 @@ import type { Database } from '../src/client.js';
 import { createGenomeRepository } from '../src/genomeRepository.js';
 import { createAssetRepository } from '../src/assetRepository.js';
 import { createContentRepository, markPublished } from '../src/contentRepository.js';
+import { createAnalyticsRepository } from '../src/analyticsRepository.js';
+import { createEngagementRepository } from '../src/engagementRepository.js';
+import { createOpportunityRepository } from '../src/opportunityRepository.js';
 import { createAuditRepository } from '../src/auditRepository.js';
 import { createRunRecorder, getRun } from '../src/runRecorderRepository.js';
+import { createConsentRepository } from '../src/consentRepository.js';
+import { replaceCampaignSlots, campaignSlots, findDueContentItems, getContentMetrics } from '../src/scoped.js';
 import * as schema from '../src/schema.js';
+import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
 
 /**
  * INTEGRATION TESTS AGAINST A REAL POSTGRES ENGINE.
@@ -100,7 +107,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_items', 'assets', 'genomes']) {
+  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records']) {
     await pg.exec(`TRUNCATE TABLE ${table}`);
   }
 });
@@ -182,6 +189,82 @@ describe('genome repository — real SQL', () => {
         dimensions: { proof_asset: ['person'], capture_capability: ['screen'], objective: 'leads', secondary_objectives: [], talent_availability: 'yes_licensed' },
         avatarEnabled: false,
       }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('patchConstraints merges one field, bumps version, and leaves the other untouched', async () => {
+    const base = await repo().createDraft({
+      brandId: 'brand_1', orgId: 'org_1',
+      identity: { business_name: 'X', category: 'x', one_liner: 'x', geography: { scope: 'global', locale: 'en', radius_km: null }, languages: ['en'], price_tier: 'mid' },
+      dimensions: { proof_asset: ['person'], capture_capability: ['screen'], objective: 'leads', secondary_objectives: [], talent_availability: 'yes_licensed' },
+      voice: { tone_vector: { formal: 0.5, playful: 0.5, technical: 0.5, bold: 0.5 }, pov_statements: [], banned_phrases: [], required_disclaimers: [], reading_level: 8 },
+      source: 'inference',
+    });
+
+    const first = await repo().patchConstraints({
+      genomeId: base.id, orgId: 'org_1', patch: { heygenAvatarId: 'av_123' },
+    });
+    expect(first.version).toBe(2);
+
+    let genome = await repo().get(base.id, 'org_1');
+    expect(genome!.constraints.heygen_avatar_id).toBe('av_123');
+    expect(genome!.constraints.elevenlabs_voice_id).toBeUndefined();
+    // avatar_enabled (set by patchDimensions elsewhere) is untouched by this merge.
+    expect(genome!.constraints.approval_mode).toBe('review_first_week');
+
+    const second = await repo().patchConstraints({
+      genomeId: base.id, orgId: 'org_1', patch: { elevenlabsVoiceId: 'voice_456' },
+    });
+    expect(second.version).toBe(3);
+
+    genome = await repo().get(base.id, 'org_1');
+    // Setting the voice id did not clobber the avatar id set in the previous call.
+    expect(genome!.constraints.heygen_avatar_id).toBe('av_123');
+    expect(genome!.constraints.elevenlabs_voice_id).toBe('voice_456');
+  });
+
+  it('patchIdentity merges one field, bumps version, and leaves the rest of identity untouched', async () => {
+    const base = await repo().createDraft({
+      brandId: 'brand_1', orgId: 'org_1',
+      identity: { business_name: 'Wrong Name', category: 'software', one_liner: 'x', geography: { scope: 'global', locale: 'en', radius_km: null }, languages: ['en'], price_tier: 'mid' },
+      dimensions: { proof_asset: ['person'], capture_capability: ['screen'], objective: 'leads', secondary_objectives: [], talent_availability: 'yes_licensed' },
+      voice: { tone_vector: { formal: 0.5, playful: 0.5, technical: 0.5, bold: 0.5 }, pov_statements: [], banned_phrases: [], required_disclaimers: [], reading_level: 8 },
+      source: 'inference',
+    });
+
+    const patched = await repo().patchIdentity({
+      genomeId: base.id, orgId: 'org_1', identity: { business_name: 'Tronweb' },
+    });
+    expect(patched.version).toBe(2);
+
+    let genome = await repo().get(base.id, 'org_1');
+    expect(genome!.identity.business_name).toBe('Tronweb');
+    // The chip-review correction touched only the one field the person edited.
+    expect(genome!.identity.category).toBe('software');
+
+    const second = await repo().patchIdentity({
+      genomeId: base.id, orgId: 'org_1', identity: { category: 'developer tools', price_tier: 'premium' },
+    });
+    expect(second.version).toBe(3);
+
+    genome = await repo().get(base.id, 'org_1');
+    // The name set by the first correction survives a second, unrelated one.
+    expect(genome!.identity.business_name).toBe('Tronweb');
+    expect(genome!.identity.category).toBe('developer tools');
+    expect(genome!.identity.price_tier).toBe('premium');
+  });
+
+  it('throws NOT_FOUND patching identity for a genome in the wrong org', async () => {
+    const { id } = await repo().createDraft({
+      brandId: 'brand_1', orgId: 'org_1',
+      identity: { business_name: 'X', category: 'x', one_liner: 'x', geography: { scope: 'global', locale: 'en', radius_km: null }, languages: ['en'], price_tier: 'mid' },
+      dimensions: { proof_asset: ['person'], capture_capability: ['screen'], objective: 'leads', secondary_objectives: [], talent_availability: 'yes_licensed' },
+      voice: { tone_vector: { formal: 0.5, playful: 0.5, technical: 0.5, bold: 0.5 }, pov_statements: [], banned_phrases: [], required_disclaimers: [], reading_level: 8 },
+      source: 'inference',
+    });
+
+    await expect(
+      repo().patchIdentity({ genomeId: id, orgId: 'org_EVIL', identity: { business_name: 'Hijacked' } }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
@@ -306,6 +389,401 @@ describe('content repository — publishing history for the guardrail layer', ()
 
     const result = await contentRepo.recent('gen_A', 'org_1', 30);
     expect(result[0]!.isAvatarFormat).toBe(true); // pb_avatar_pov requires likeness license
+  });
+
+  it('markPublished persists the platform and the publish receipt (external_id/publish_via/publish_url)', async () => {
+    const [row] = await db
+      .insert(schema.contentItems)
+      .values({ orgId: 'org_1', genomeId: 'gen_A', status: 'scheduled', playbookId: 'pb_workflow_clip' })
+      .returning({ id: schema.contentItems.id });
+
+    const contentRepo = createContentRepository(db);
+    await contentRepo.markPublished({
+      id: row!.id,
+      orgId: 'org_1',
+      platform: 'tiktok',
+      embedding: [0.5],
+      externalId: 'ext_123',
+      via: 'aggregator:test',
+      url: 'https://tiktok.com/@brand/video/1',
+    });
+
+    const [persisted] = await db.select().from(schema.contentItems).where(eq(schema.contentItems.id, row!.id));
+    expect(persisted).toMatchObject({
+      status: 'published',
+      platform: 'tiktok',
+      externalId: 'ext_123',
+      publishVia: 'aggregator:test',
+      publishUrl: 'https://tiktok.com/@brand/video/1',
+    });
+    expect(persisted!.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it('markPublished never touches a row in another org', async () => {
+    const [row] = await db
+      .insert(schema.contentItems)
+      .values({ orgId: 'org_1', genomeId: 'gen_A', status: 'scheduled', playbookId: 'pb_workflow_clip' })
+      .returning({ id: schema.contentItems.id });
+
+    const contentRepo = createContentRepository(db);
+    await contentRepo.markPublished({
+      id: row!.id,
+      orgId: 'org_wrong_tenant',
+      platform: 'tiktok',
+      embedding: [0.5],
+      externalId: 'ext_123',
+      via: 'aggregator:test',
+    });
+
+    const [persisted] = await db.select().from(schema.contentItems).where(eq(schema.contentItems.id, row!.id));
+    expect(persisted!.status).toBe('scheduled'); // untouched — the WHERE clause never matched
+  });
+});
+
+describe('findDueContentItems — the scheduler\'s one cross-tenant read (apps/api/src/scheduler.ts)', () => {
+  const NOW = new Date('2026-08-13T12:00:00Z');
+  const insert = (over: Partial<typeof schema.contentItems.$inferInsert> = {}) =>
+    db
+      .insert(schema.contentItems)
+      .values({ orgId: 'org_1', genomeId: 'gen_A', status: 'scheduled', playbookId: 'pb_workflow_clip', ...over })
+      .returning({ id: schema.contentItems.id });
+
+  it('returns items due now or in the past, excluding ones still in the future', async () => {
+    const [due] = await insert({ scheduledAt: new Date(NOW.getTime() - 60_000) });
+    const [dueExactly] = await insert({ scheduledAt: NOW });
+    await insert({ scheduledAt: new Date(NOW.getTime() + 60_000) }); // not due
+
+    const result = await findDueContentItems(db, { before: NOW, limit: 25 });
+
+    expect(result.map((r) => r.id).sort()).toEqual([due!.id, dueExactly!.id].sort());
+  });
+
+  it('excludes items that are not status=scheduled, however overdue', async () => {
+    // A published or draft row past its old scheduledAt must never be
+    // re-published — only a row still waiting in `scheduled` is due.
+    await insert({ status: 'published', scheduledAt: new Date(NOW.getTime() - 60_000) });
+    await insert({ status: 'draft', scheduledAt: new Date(NOW.getTime() - 60_000) });
+
+    expect(await findDueContentItems(db, { before: NOW, limit: 25 })).toEqual([]);
+  });
+
+  it('sees due items across every org — this is the deliberate exception to genome isolation', async () => {
+    // `scoped.ts`'s entire design is "every query requires a genomeId scope".
+    // The scheduler is the one caller that must see across all tenants to find
+    // what's due; the isolation boundary is restored downstream when
+    // `apps/api/src/scheduler.ts` builds a correctly-scoped ctx per row before
+    // calling `publish.now` through `invokeTool`.
+    const [orgA] = await insert({ orgId: 'org_1', genomeId: 'gen_A', scheduledAt: new Date(NOW.getTime() - 1000) });
+    const [orgB] = await insert({ orgId: 'org_2', genomeId: 'gen_B', scheduledAt: new Date(NOW.getTime() - 1000) });
+
+    const result = await findDueContentItems(db, { before: NOW, limit: 25 });
+
+    expect(result.map((r) => r.orgId).sort()).toEqual(['org_1', 'org_2']);
+    expect(result.map((r) => r.id)).toEqual(expect.arrayContaining([orgA!.id, orgB!.id]));
+  });
+
+  it('orders by scheduledAt ascending, so the oldest miss gets caught up first', async () => {
+    const [later] = await insert({ scheduledAt: new Date(NOW.getTime() - 1000) });
+    const [earlier] = await insert({ scheduledAt: new Date(NOW.getTime() - 5000) });
+
+    const result = await findDueContentItems(db, { before: NOW, limit: 25 });
+
+    expect(result.map((r) => r.id)).toEqual([earlier!.id, later!.id]);
+  });
+
+  it('respects the limit', async () => {
+    for (let i = 0; i < 5; i++) {
+      await insert({ scheduledAt: new Date(NOW.getTime() - i * 1000) });
+    }
+
+    expect(await findDueContentItems(db, { before: NOW, limit: 2 })).toHaveLength(2);
+  });
+
+  it('carries playbookId, platform and copy through for the scheduler to resolve', async () => {
+    const [item] = await insert({
+      playbookId: 'pb_avatar_pov',
+      platform: 'tiktok',
+      copy: [{ kind: 'text', beatId: 'b1', text: 'hello' }],
+      scheduledAt: new Date(NOW.getTime() - 1000),
+    });
+
+    const [result] = await findDueContentItems(db, { before: NOW, limit: 25 });
+
+    expect(result!.id).toBe(item!.id);
+    expect(result).toMatchObject({ playbookId: 'pb_avatar_pov', platform: 'tiktok' });
+    expect(result!.copy).toEqual([{ kind: 'text', beatId: 'b1', text: 'hello' }]);
+  });
+});
+
+describe('content_metrics — analytics.sync (P4)', () => {
+  it('upserts, so a re-sync of the same post/platform updates in place rather than duplicating', async () => {
+    const analytics = createAnalyticsRepository(db);
+
+    const first = await analytics.record({
+      genomeId: 'gen_A',
+      orgId: 'org_1',
+      contentItemId: '11111111-1111-1111-1111-111111111111',
+      platform: 'instagram',
+      likes: 10,
+      comments: 1,
+      shares: 0,
+      views: 100,
+      impressions: 150,
+      raw: { pass: 1 },
+    });
+
+    const second = await analytics.record({
+      genomeId: 'gen_A',
+      orgId: 'org_1',
+      contentItemId: '11111111-1111-1111-1111-111111111111',
+      platform: 'instagram',
+      likes: 25,
+      comments: 4,
+      shares: 2,
+      views: 300,
+      impressions: 400,
+      raw: { pass: 2 },
+    });
+
+    expect(first.likes).toBe(10);
+    expect(second).toMatchObject({ likes: 25, comments: 4, shares: 2, views: 300, impressions: 400 });
+
+    // One row, refreshed — not two. If the upsert target were wrong this
+    // would be 2.
+    const rows = await getContentMetrics(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_A' }, '11111111-1111-1111-1111-111111111111');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ likes: 25, comments: 4, shares: 2, views: 300, impressions: 400 });
+  });
+
+  it('keeps one row per platform for the same post', async () => {
+    const analytics = createAnalyticsRepository(db);
+    const contentItemId = '22222222-2222-2222-2222-222222222222';
+
+    await analytics.record({
+      genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'instagram',
+      likes: 1, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+    });
+    await analytics.record({
+      genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'tiktok',
+      likes: 2, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+    });
+
+    const rows = await getContentMetrics(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_A' }, contentItemId);
+    expect(rows.map((r) => r.platform).sort()).toEqual(['instagram', 'tiktok']);
+  });
+
+  it('never surfaces another org\'s metrics, even for the same content item id', async () => {
+    const analytics = createAnalyticsRepository(db);
+    const contentItemId = '33333333-3333-3333-3333-333333333333';
+
+    await analytics.record({
+      genomeId: 'gen_shared', orgId: 'org_tenant_A', contentItemId, platform: 'instagram',
+      likes: 99, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+    });
+
+    const rows = await getContentMetrics(db, { orgId: 'org_tenant_B', brandId: 'org_tenant_B', genomeId: 'gen_shared' }, contentItemId);
+    expect(rows).toEqual([]);
+  });
+});
+
+describe('engagement_messages — the inbox (PRD §8.8, P4)', () => {
+  it('ingest is idempotent on (org, genome, platform, external_id) — a webhook retry lands the same row', async () => {
+    const engagement = createEngagementRepository(db);
+
+    const first = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'instagram', externalId: 'ext_1',
+      kind: 'comment', authorHandle: '@follower', text: 'How much?',
+    });
+    const retried = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'instagram', externalId: 'ext_1',
+      kind: 'comment', authorHandle: '@follower', text: 'How much?? (edited)',
+    });
+
+    expect(retried.id).toBe(first.id);
+    const rows = await db.select().from(schema.engagementMessages).where(eq(schema.engagementMessages.id, first.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.text).toBe('How much?? (edited)'); // delivery-side field refreshed
+  });
+
+  it('a retried delivery does not clobber a classification already recorded', async () => {
+    const engagement = createEngagementRepository(db);
+    const message = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'instagram', externalId: 'ext_2',
+      kind: 'comment', authorHandle: '@follower', text: 'Nice work!',
+    });
+
+    await engagement.classify({
+      id: message.id, genomeId: 'gen_A', orgId: 'org_1',
+      category: 'auto_handled', intentScore: 0.6, suggestedReply: 'Thanks so much!',
+      why: { summary: 'Positive engagement', factors: [], evidence: [], alternatives: [] },
+    });
+
+    // The same comment redelivered by the platform.
+    await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'instagram', externalId: 'ext_2',
+      kind: 'comment', authorHandle: '@follower', text: 'Nice work!',
+    });
+
+    const rows = await db.select().from(schema.engagementMessages).where(eq(schema.engagementMessages.id, message.id));
+    expect(rows[0]).toMatchObject({ status: 'classified', category: 'auto_handled' });
+  });
+
+  it('never surfaces another org\'s messages, even with the same platform/externalId', async () => {
+    const engagement = createEngagementRepository(db);
+    await engagement.ingest({
+      genomeId: 'gen_shared', orgId: 'org_tenant_A', platform: 'instagram', externalId: 'ext_shared',
+      kind: 'comment', authorHandle: '@x', text: 'tenant A secret question',
+    });
+
+    const crossTenant = await engagement.ingest({
+      genomeId: 'gen_shared', orgId: 'org_tenant_B', platform: 'instagram', externalId: 'ext_shared',
+      kind: 'comment', authorHandle: '@y', text: 'tenant B message',
+    });
+
+    // Different org → different row, not an upsert across the tenant boundary.
+    const rows = await db.select().from(schema.engagementMessages).where(eq(schema.engagementMessages.externalId, 'ext_shared'));
+    expect(rows).toHaveLength(2);
+    expect(await engagement.get(crossTenant.id, 'gen_shared', 'org_tenant_A')).toBeUndefined();
+  });
+
+  it('get() is scoped — out of org/genome reads as not found, not an error', async () => {
+    const engagement = createEngagementRepository(db);
+    const message = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'x', externalId: 'ext_3',
+      kind: 'dm', authorHandle: '@dm_sender', text: 'hi',
+    });
+
+    expect(await engagement.get(message.id, 'gen_A', 'org_1')).toMatchObject({ id: message.id });
+    expect(await engagement.get(message.id, 'gen_A', 'org_wrong')).toBeUndefined();
+    expect(await engagement.get(message.id, 'gen_wrong', 'org_1')).toBeUndefined();
+  });
+
+  it('markReplied flips status to replied, scoped, and is a no-op read for another tenant', async () => {
+    const engagement = createEngagementRepository(db);
+    const message = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'x', externalId: 'ext_4',
+      kind: 'dm', authorHandle: '@dm_sender', text: 'Interested — how much?',
+    });
+
+    expect(await engagement.markReplied({ id: message.id, genomeId: 'gen_A', orgId: 'org_wrong' })).toBeUndefined();
+
+    const updated = await engagement.markReplied({ id: message.id, genomeId: 'gen_A', orgId: 'org_1' });
+    expect(updated).toMatchObject({ id: message.id, status: 'replied' });
+
+    const rows = await db.select().from(schema.engagementMessages).where(eq(schema.engagementMessages.id, message.id));
+    expect(rows[0]!.status).toBe('replied');
+  });
+
+  it('markAutoHandled flips status to auto_handled, scoped, and is a no-op read for another tenant', async () => {
+    const engagement = createEngagementRepository(db);
+    const message = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'x', externalId: 'ext_auto_1',
+      kind: 'comment', authorHandle: '@follower', text: 'What time do you open?',
+    });
+
+    expect(await engagement.markAutoHandled({ id: message.id, genomeId: 'gen_A', orgId: 'org_wrong' })).toBeUndefined();
+
+    const updated = await engagement.markAutoHandled({ id: message.id, genomeId: 'gen_A', orgId: 'org_1' });
+    expect(updated).toMatchObject({ id: message.id, status: 'auto_handled' });
+  });
+
+  it('markEscalated flips status to escalated, scoped, and is a no-op read for another tenant', async () => {
+    const engagement = createEngagementRepository(db);
+    const message = await engagement.ingest({
+      genomeId: 'gen_A', orgId: 'org_1', platform: 'x', externalId: 'ext_esc_1',
+      kind: 'comment', authorHandle: '@follower', text: 'This is unacceptable.',
+    });
+
+    expect(await engagement.markEscalated({ id: message.id, genomeId: 'gen_A', orgId: 'org_wrong' })).toBeUndefined();
+
+    const updated = await engagement.markEscalated({ id: message.id, genomeId: 'gen_A', orgId: 'org_1' });
+    expect(updated).toMatchObject({ id: message.id, status: 'escalated' });
+  });
+
+  it('audit returns only rows in the given status set, newest first, scoped to the tenant', async () => {
+    const engagement = createEngagementRepository(db);
+    await engagement.ingest({
+      genomeId: 'gen_audit', orgId: 'org_1', platform: 'x', externalId: 'ext_audit_open',
+      kind: 'comment', authorHandle: '@a', text: 'still open',
+    });
+    const replied = await engagement.ingest({
+      genomeId: 'gen_audit', orgId: 'org_1', platform: 'x', externalId: 'ext_audit_replied',
+      kind: 'comment', authorHandle: '@b', text: 'thanks!',
+    });
+    await engagement.markReplied({ id: replied.id, genomeId: 'gen_audit', orgId: 'org_1' });
+    const otherTenant = await engagement.ingest({
+      genomeId: 'gen_audit', orgId: 'org_other', platform: 'x', externalId: 'ext_audit_other',
+      kind: 'comment', authorHandle: '@c', text: 'not yours',
+    });
+    await engagement.markReplied({ id: otherTenant.id, genomeId: 'gen_audit', orgId: 'org_other' });
+
+    const rows = await engagement.audit('gen_audit', 'org_1', {
+      statuses: ['replied', 'auto_handled', 'escalated', 'dismissed', 'converted'],
+      limit: 50,
+    });
+
+    expect(rows.map((r) => r.id)).toEqual([replied.id]);
+  });
+});
+
+describe('opportunities — sales leads raised from the engagement inbox (master plan §3.2)', () => {
+  it('create inserts a new row linked to the inbox message, scoped to org/genome', async () => {
+    const opportunities = createOpportunityRepository(db);
+    const inboxItemId = randomUUID();
+    const opp = await opportunities.create({
+      genomeId: 'gen_A', orgId: 'org_1', inboxItemId, temperature: 'hot', recommendedAction: 'Call within the hour.',
+    });
+
+    expect(opp).toMatchObject({ genomeId: 'gen_A', inboxItemId, temperature: 'hot', recommendedAction: 'Call within the hour.' });
+    expect(opp.routedTo).toBeUndefined();
+
+    const rows = await db.select().from(schema.opportunities).where(eq(schema.opportunities.id, opp.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.orgId).toBe('org_1');
+  });
+
+  it('creating twice makes two rows — never an upsert', async () => {
+    const opportunities = createOpportunityRepository(db);
+    const inboxItemId = randomUUID();
+    const first = await opportunities.create({
+      genomeId: 'gen_A', orgId: 'org_1', inboxItemId, temperature: 'warm', recommendedAction: 'Follow up.',
+    });
+    const second = await opportunities.create({
+      genomeId: 'gen_A', orgId: 'org_1', inboxItemId, temperature: 'warm', recommendedAction: 'Follow up.',
+    });
+
+    expect(first.id).not.toBe(second.id);
+  });
+
+  it('get() is scoped — out of org/genome reads as not found, not an error', async () => {
+    const opportunities = createOpportunityRepository(db);
+    const opp = await opportunities.create({
+      genomeId: 'gen_A', orgId: 'org_1', inboxItemId: randomUUID(), temperature: 'cold', recommendedAction: 'Add to newsletter.',
+    });
+
+    expect(await opportunities.get(opp.id, 'gen_A', 'org_1')).toMatchObject({ id: opp.id });
+    expect(await opportunities.get(opp.id, 'gen_A', 'org_wrong')).toBeUndefined();
+    expect(await opportunities.get(opp.id, 'gen_wrong', 'org_1')).toBeUndefined();
+  });
+
+  it('route updates routed_to, scoped, and is a no-op for another tenant', async () => {
+    const opportunities = createOpportunityRepository(db);
+    const inboxItemId = randomUUID();
+    const opp = await opportunities.create({
+      genomeId: 'gen_A', orgId: 'org_1', inboxItemId, temperature: 'hot', recommendedAction: 'Call now.',
+    });
+
+    expect(await opportunities.route({ id: opp.id, genomeId: 'gen_A', orgId: 'org_wrong', routedTo: 'nope@x.com' })).toBeUndefined();
+
+    const routed = await opportunities.route({ id: opp.id, genomeId: 'gen_A', orgId: 'org_1', routedTo: 'sales@emekacuts.com' });
+    expect(routed).toMatchObject({ id: opp.id, routedTo: 'sales@emekacuts.com' });
+
+    // Re-routing just updates the destination — same row, not a second one.
+    const reRouted = await opportunities.route({ id: opp.id, genomeId: 'gen_A', orgId: 'org_1', routedTo: 'crm-ref-42' });
+    expect(reRouted).toMatchObject({ id: opp.id, routedTo: 'crm-ref-42' });
+
+    const rows = await db.select().from(schema.opportunities).where(eq(schema.opportunities.inboxItemId, inboxItemId));
+    expect(rows).toHaveLength(1);
   });
 });
 
@@ -473,8 +951,240 @@ describe('migrations conform to schema.ts', () => {
     );
     const present = new Set(live.rows.map((r) => r.table_name));
 
-    for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals']) {
+    for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals', 'consent_records']) {
       expect(present.has(t), `${t} is missing`).toBe(true);
     }
+  });
+});
+
+describe('consent repository — real SQL', () => {
+  const repo = () => createConsentRepository(db);
+
+  it('grants, then reports active for that subject and for "anyone" alike', async () => {
+    await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'avatar_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone', 'Emeka, owner')).toBe(true);
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone')).toBe(true);
+    // Different kind, different subject, different genome: none of them match.
+    expect(await repo().hasActive('gen_1', 'org_1', 'voice_clone', 'Emeka, owner')).toBe(false);
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone', 'Someone Else')).toBe(false);
+    expect(await repo().hasActive('gen_2', 'org_1', 'avatar_clone', 'Emeka, owner')).toBe(false);
+  });
+
+  it('revoke turns hasActive false, and is a write-once latch like humanLoop.answer', async () => {
+    const granted = await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'avatar_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+
+    const revoked = await repo().revoke({ id: granted.id, orgId: 'org_1', revokedBy: 'user_2' });
+    expect(revoked?.revokedAt).toBeInstanceOf(Date);
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone', 'Emeka, owner')).toBe(false);
+
+    // Revoking an already-revoked record is a no-op, not a second fact.
+    expect(await repo().revoke({ id: granted.id, orgId: 'org_1', revokedBy: 'user_3' })).toBeUndefined();
+  });
+
+  it('the newest row per subject wins, not "does any un-revoked row exist"', async () => {
+    // An older, still-open grant for the same subject+kind must not paper over
+    // a deliberate, more recent revocation — the exact bug the naive
+    // `isNull(revokedAt)` query would have had. The ordering is on `grantedAt`,
+    // so the two grants need to land in different microseconds, not just
+    // different `await` points — a millisecond-resolution clock could
+    // otherwise tie them and make the assertion flaky.
+    const tick = () => new Promise((r) => setTimeout(r, 5));
+
+    const first = await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'avatar_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+    await repo().revoke({ id: first.id, orgId: 'org_1', revokedBy: 'user_1' });
+    await tick();
+    const second = await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'avatar_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+    await tick();
+
+    // Newest (second) grant is active — re-granting after a revoke works.
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone', 'Emeka, owner')).toBe(true);
+
+    await repo().revoke({ id: second.id, orgId: 'org_1', revokedBy: 'user_1' });
+    // Newest row is now revoked; the older (already-revoked) row must not
+    // resurrect an "active" result.
+    expect(await repo().hasActive('gen_1', 'org_1', 'avatar_clone', 'Emeka, owner')).toBe(false);
+  });
+
+  it('does not leak across orgId — same genomeId, different org', async () => {
+    await repo().grant({ genomeId: 'gen_shared', orgId: 'org_a', kind: 'avatar_clone', subject: 'Person A', grantedBy: 'user_a' });
+
+    expect(await repo().hasActive('gen_shared', 'org_b', 'avatar_clone', 'Person A')).toBe(false);
+    expect(await repo().list('gen_shared', 'org_b')).toEqual([]);
+    const revokeFromOtherOrg = await repo().revoke({ id: randomUUID(), orgId: 'org_b', revokedBy: 'user_b' });
+    expect(revokeFromOtherOrg).toBeUndefined();
+  });
+
+  it('list returns full history for a genome, newest first', async () => {
+    await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'avatar_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+    await repo().grant({ genomeId: 'gen_1', orgId: 'org_1', kind: 'voice_clone', subject: 'Emeka, owner', grantedBy: 'user_1' });
+
+    const rows = await repo().list('gen_1', 'org_1');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.grantedAt.getTime()).toBeGreaterThanOrEqual(rows[1]!.grantedAt.getTime());
+  });
+});
+
+describe('content drafts — real SQL', () => {
+  const repo = () => createContentRepository(db);
+  const why = { summary: 'Drafted from the brief.', factors: [], evidence: [], alternatives: [] };
+
+  it('creates a draft and reads it back scoped to its genome and org', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize',
+      copy: { beats: [{ beatId: 'copy', text: 'Two slots open this week.' }] }, why,
+    });
+
+    expect(created.status).toBe('draft');
+    expect(created.playbookId).toBe('pb_text_update');
+
+    const read = await repo().get(created.id, 'gen_1', 'org_1');
+    expect(read).toMatchObject({ id: created.id, mode: 'synthesize', status: 'draft' });
+    expect((read!.copy as { beats: unknown[] }).beats).toHaveLength(1);
+  });
+
+  it('is invisible from another genome or org — same isolation rule as everywhere else', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+
+    expect(await repo().get(created.id, 'gen_2', 'org_1')).toBeUndefined();
+    expect(await repo().get(created.id, 'gen_1', 'org_2')).toBeUndefined();
+  });
+
+  it('updateDraft overwrites copy/why in place — regeneration replaces, not appends', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize',
+      copy: { text: 'first take' }, why,
+    });
+
+    const updated = await repo().updateDraft({
+      id: created.id, genomeId: 'gen_1', orgId: 'org_1', copy: { text: 'second take' }, why,
+    });
+
+    expect(updated?.copy).toEqual({ text: 'second take' });
+    expect((await repo().get(created.id, 'gen_1', 'org_1'))?.copy).toEqual({ text: 'second take' });
+  });
+
+  it('a scheduled slot (from calendar.generate) can be filled in by id', async () => {
+    const campaignId = randomUUID();
+    await replaceCampaignSlots(
+      db,
+      { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' },
+      campaignId,
+      [{ campaignId, playbookId: 'pb_offer_announcement', mode: 'assemble', pillar: 'product', scheduledAt: new Date() }],
+    );
+    const [slot] = await campaignSlots(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' }, campaignId);
+
+    const filled = await repo().updateDraft({
+      id: slot!.id, genomeId: 'gen_1', orgId: 'org_1', copy: { text: 'Two slots open this week.' }, why,
+    });
+
+    expect(filled?.playbookId).toBe('pb_offer_announcement');
+    expect(filled?.copy).toEqual({ text: 'Two slots open this week.' });
+  });
+
+  it('refuses to overwrite a published item — a fact about the world, not a plan', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    await markPublished(db, { id: created.id, orgId: 'org_1', embedding: new Array(EMBEDDING_DIM).fill(0.1) });
+
+    const attempted = await repo().updateDraft({
+      id: created.id, genomeId: 'gen_1', orgId: 'org_1', copy: { text: 'rewritten' }, why,
+    });
+    expect(attempted).toBeUndefined();
+  });
+
+  it('list() finds both ad-hoc drafts and filled calendar slots, newest first', async () => {
+    const adHoc = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: { text: 'ad hoc' }, why,
+    });
+
+    const campaignId = randomUUID();
+    await replaceCampaignSlots(
+      db,
+      { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' },
+      campaignId,
+      [{ campaignId, playbookId: 'pb_offer_announcement', mode: 'assemble', pillar: 'product', scheduledAt: new Date() }],
+    );
+    const [slot] = await campaignSlots(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' }, campaignId);
+    await repo().updateDraft({ id: slot!.id, genomeId: 'gen_1', orgId: 'org_1', copy: { text: 'from calendar' }, why });
+
+    const listed = await repo().list('gen_1', 'org_1', { limit: 10 });
+    expect(listed.map((r) => r.id).sort()).toEqual([adHoc.id, slot!.id].sort());
+  });
+
+  it('list() filters by status', async () => {
+    const drafted = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    const published = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    await markPublished(db, { id: published.id, orgId: 'org_1', embedding: new Array(EMBEDDING_DIM).fill(0.1) });
+
+    const draftsOnly = await repo().list('gen_1', 'org_1', { status: 'draft', limit: 10 });
+    expect(draftsOnly.map((r) => r.id)).toEqual([drafted.id]);
+
+    const publishedOnly = await repo().list('gen_1', 'org_1', { status: 'published', limit: 10 });
+    expect(publishedOnly.map((r) => r.id)).toEqual([published.id]);
+  });
+
+  it('list() does not leak across genomes', async () => {
+    await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    expect(await repo().list('gen_2', 'org_1', { limit: 10 })).toEqual([]);
+  });
+
+  it('schedule() places an ad-hoc draft on a date and marks it scheduled', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    expect(created.status).toBe('draft');
+
+    const scheduledAt = new Date('2026-09-01T09:00:00.000Z');
+    const scheduled = await repo().schedule({ id: created.id, genomeId: 'gen_1', orgId: 'org_1', scheduledAt });
+
+    expect(scheduled?.status).toBe('scheduled');
+    expect(scheduled?.scheduledAt?.toISOString()).toBe(scheduledAt.toISOString());
+  });
+
+  it('schedule() moves an already-scheduled slot to a new date (CAL-05 drag)', async () => {
+    const campaignId = randomUUID();
+    await replaceCampaignSlots(
+      db,
+      { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' },
+      campaignId,
+      [{ campaignId, playbookId: 'pb_offer_announcement', mode: 'assemble', pillar: 'product', scheduledAt: new Date('2026-09-01T09:00:00.000Z') }],
+    );
+    const [slot] = await campaignSlots(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_1' }, campaignId);
+
+    const moved = new Date('2026-09-05T09:00:00.000Z');
+    const scheduled = await repo().schedule({ id: slot!.id, genomeId: 'gen_1', orgId: 'org_1', scheduledAt: moved });
+    expect(scheduled?.scheduledAt?.toISOString()).toBe(moved.toISOString());
+  });
+
+  it('schedule() refuses a published item — a fact about the world, not a plan', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    await markPublished(db, { id: created.id, orgId: 'org_1', embedding: new Array(EMBEDDING_DIM).fill(0.1) });
+
+    const attempted = await repo().schedule({
+      id: created.id, genomeId: 'gen_1', orgId: 'org_1', scheduledAt: new Date('2026-09-01T09:00:00.000Z'),
+    });
+    expect(attempted).toBeUndefined();
+  });
+
+  it('schedule() does not leak across orgs', async () => {
+    const created = await repo().createDraft({
+      genomeId: 'gen_1', orgId: 'org_1', playbookId: 'pb_text_update', mode: 'synthesize', copy: {}, why,
+    });
+    const attempted = await repo().schedule({
+      id: created.id, genomeId: 'gen_1', orgId: 'org_EVIL', scheduledAt: new Date('2026-09-01T09:00:00.000Z'),
+    });
+    expect(attempted).toBeUndefined();
   });
 });

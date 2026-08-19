@@ -16,6 +16,9 @@ export type ToolResult<T> =
 /** Where Clerk parks a session that has not finished choosing an organization. */
 const TASKS_URL = '/sign-in/tasks';
 
+/** Where an unauthenticated (or no-longer-valid) session gets sent. */
+const SIGN_IN_URL = '/sign-in';
+
 export async function invoke<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
   const res = await fetch(`/api/tools/${encodeURIComponent(name)}`, {
     method: 'POST',
@@ -43,6 +46,25 @@ export async function invoke<T>(name: string, input: unknown, idempotencyKey?: s
   const code = body && 'error' in body ? body.error?.code : undefined;
   if (code === 'NO_ORGANIZATION' && typeof window !== 'undefined') {
     if (!window.location.pathname.startsWith(TASKS_URL)) window.location.assign(TASKS_URL);
+  }
+
+  /**
+   * `FORBIDDEN` is this codebase's session-identity code — thrown only for "not
+   * signed in" / "session has no subject" (`clerk-auth.ts`) and by the proxy
+   * route itself when there's no token to forward at all. It is never an
+   * in-session permission denial: a role that lacks scope for a tool comes back
+   * as `status: 'gated'`, a structurally different response every caller
+   * already has to handle separately. So a `FORBIDDEN` here means the session
+   * the browser thinks it has isn't one the backend accepts — expired, revoked,
+   * or a stale Bearer token — and no amount of staying on this page fixes that.
+   *
+   * Before this, a guard component (e.g. `GenomeGuard`) that called `invoke()`
+   * during exactly this failure just rendered the raw error message and dead-
+   * ended there instead of routing anywhere, which is what "unauthenticated
+   * access doesn't redirect to sign-in" looked like from the outside.
+   */
+  if (code === 'FORBIDDEN' && typeof window !== 'undefined') {
+    if (!window.location.pathname.startsWith(SIGN_IN_URL)) window.location.assign(SIGN_IN_URL);
   }
 
   if (body && 'status' in body) return body;

@@ -105,6 +105,7 @@ const config: Config = {
         'menu-in': 'ss-menu-in 0.18s ease-out',
         'toast-in': 'ss-toast-in 0.22s ease-out',
         'drawer-in': 'ss-drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+        'drawer-in-left': 'ss-drawer-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
       },
 
       transitionTimingFunction: {

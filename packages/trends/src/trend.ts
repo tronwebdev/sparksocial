@@ -13,7 +13,7 @@ import { z } from 'zod';
  * brand can credibly join — and to refuse the ones it cannot.
  */
 
-export const TrendSourceName = z.enum(['tiktok', 'x', 'youtube', 'reddit', 'google', 'manual']);
+export const TrendSourceName = z.enum(['tiktok', 'x', 'youtube', 'reddit', 'google', 'hackernews', 'producthunt', 'pinterest', 'manual']);
 export type TrendSourceName = z.infer<typeof TrendSourceName>;
 
 export const TrendMetrics = z.object({
@@ -61,6 +61,12 @@ export type Trend = z.infer<typeof Trend>;
 export interface TrendSource {
   readonly name: string;
   fetch(args: { region?: string; language?: string; limit: number }): Promise<Trend[]>;
+  /**
+   * One trend by id, for `trend.detail`/`trend.explain`/`trend.repurpose`.
+   * Optional: a source with no cheap lookup-by-id falls back to scanning a
+   * larger `fetch()` — real, just less efficient, never fabricated.
+   */
+  get?(id: string): Promise<Trend | undefined>;
 }
 
 /**
@@ -139,5 +145,19 @@ export function createStubTrendSource(): TrendSource {
     async fetch({ limit }) {
       return trends.slice(0, limit);
     },
+    async get(id) {
+      return trends.find((t) => t.id === id);
+    },
   };
+}
+
+/**
+ * `TrendSource.get`'s fallback for a source that only implements `fetch` —
+ * scans a larger page rather than fabricating a lookup-by-id the source
+ * doesn't actually support.
+ */
+export async function getTrendById(source: TrendSource, id: string): Promise<Trend | undefined> {
+  if (source.get) return source.get(id);
+  const trends = await source.fetch({ limit: 200 });
+  return trends.find((t) => t.id === id);
 }

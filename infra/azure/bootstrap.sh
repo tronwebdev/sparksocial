@@ -33,6 +33,7 @@ RG="${PREFIX}-${ENVIRONMENT}-rg"
 ACR="${PREFIX}${ENVIRONMENT}acr"          # ACR names: alphanumeric only, globally unique
 CAE="${PREFIX}-${ENVIRONMENT}-env"
 APP="${PREFIX}-${ENVIRONMENT}-api"
+WEB_APP="${PREFIX}-${ENVIRONMENT}-web"
 PG="${PREFIX}-${ENVIRONMENT}-pg"
 STORAGE="${PREFIX}${ENVIRONMENT}st"
 KV="${PREFIX}-${ENVIRONMENT}-kv"
@@ -154,6 +155,21 @@ az containerapp create \
   --min-replicas 1 --max-replicas 3 \
   --output none 2>/dev/null || echo "  (app exists — the deploy workflow will update it)"
 
+# Same environment, same identity, same registry — a second app, not a
+# second everything. Seeded with the same placeholder image; the deploy
+# workflow's web job replaces it. `--min-replicas 1` (not 0): scale-to-zero
+# would mean the first request after any idle period eats a cold start on
+# top of Azure's own container start time, which is a worse tradeoff for a
+# user-facing app than for the API this environment already runs at min 1.
+az containerapp create \
+  --resource-group "$RG" --name "$WEB_APP" --environment "$CAE" \
+  --image mcr.microsoft.com/k8se/quickstart:latest \
+  --target-port 3000 --ingress external \
+  --user-assigned "$IDENTITY_ID" \
+  --registry-server "${ACR}.azurecr.io" --registry-identity "$IDENTITY_ID" \
+  --min-replicas 1 --max-replicas 3 \
+  --output none 2>/dev/null || echo "  (web app exists — the deploy workflow will update it)"
+
 # ── 8. GitHub OIDC federation — no secrets, ever ─────────────────────
 step "GitHub OIDC federation"
 APP_ID="$(az ad app list --display-name "$APP_REG" --query '[0].appId' -o tsv)"
@@ -187,12 +203,14 @@ Azure is ready. Now set these as GitHub Actions **variables** (not
 secrets — none of them are sensitive, and OIDC means there is no
 password to store):
 
-  gh variable set AZURE_CLIENT_ID          --body "$APP_ID"
-  gh variable set AZURE_TENANT_ID          --body "$TENANT_ID"
-  gh variable set AZURE_SUBSCRIPTION_ID    --body "$SUBSCRIPTION_ID"
-  gh variable set AZURE_RESOURCE_GROUP     --body "$RG"
-  gh variable set AZURE_ACR_NAME           --body "$ACR"
-  gh variable set AZURE_CONTAINERAPP_NAME  --body "$APP"
+  gh variable set AZURE_CLIENT_ID              --body "$APP_ID"
+  gh variable set AZURE_TENANT_ID              --body "$TENANT_ID"
+  gh variable set AZURE_SUBSCRIPTION_ID        --body "$SUBSCRIPTION_ID"
+  gh variable set AZURE_RESOURCE_GROUP         --body "$RG"
+  gh variable set AZURE_ACR_NAME               --body "$ACR"
+  gh variable set AZURE_CONTAINERAPP_NAME      --body "$APP"
+  gh variable set AZURE_CONTAINERAPP_WEB_NAME  --body "$WEB_APP"
+  gh variable set AZURE_STORAGE_ACCOUNT        --body "$STORAGE"
 
 Then push to main, or run the "Deploy to Azure" workflow manually.
 
@@ -202,7 +220,11 @@ Still to do before the app is useful:
         --rule-name dev --start-ip-address <your-ip> --end-ip-address <your-ip>
   • CREATE EXTENSION vector;   (pgvector is allow-listed, not yet created)
   • Wire the app to read DATABASE_URL from Key Vault via its managed identity.
-  • Put Front Door in front of the Container App before serving media —
+  • Set the web app's own secrets as GitHub Actions secrets (build-time
+    NEXT_PUBLIC_* values, baked into the image, not read at runtime):
+      gh secret set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY --body "<from Clerk>"
+    Optional: NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST.
+  • Put Front Door in front of both Container Apps before serving media —
     Blob egress is billed, unlike the R2 the plan originally assumed.
 ════════════════════════════════════════════════════════════════════
 EOF

@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ToolCtx } from '@sparksocial/tools/defineTool';
-import type { Role } from '@sparksocial/shared';
+import { ToolError, type Role } from '@sparksocial/shared';
 import { lagosBarbershop, torontoSaas } from '@sparksocial/playbooks';
 import { makeAssetRetrieve } from '../src/retrieve.js';
 import { assetGaps } from '../src/gaps.js';
 import { makeAssetIngestUrl } from '../src/ingest.js';
+import { assetRightsSet } from '../src/rights.js';
+import { assetReuse } from '../src/reuse.js';
+import { assetCooldownCheck } from '../src/cooldown.js';
+import { assetFolderCreate, assetFolderMove, assetFolderList } from '../src/folders.js';
 
 /**
  * §4 tests. The behaviours that matter most are the ones the spec calls out by
@@ -22,6 +26,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       genomes: {
         createDraft: async () => ({ id: 'gen_draft' }),
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
+        patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
+        patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
+        patchOffer: async () => ({ id: 'gen_1', version: 1 }),
+        patchLearned: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => undefined,
         listForOrg: async () => [],
       },
@@ -31,8 +39,100 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         create: async () => ({ id: 'asset_1' }),
         captionsByRole: async () => [],
         info: async () => ({}),
+        setRights: async () => undefined,
+        recordUsage: async () => undefined,
+        moveToFolder: async () => undefined,
       },
-      content: { recent: async () => [] },
+      assetFolders: {
+        create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
+        list: async () => [],
+      },
+      content: {
+        recent: async () => [],
+        createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
+        get: async () => undefined,
+        updateDraft: async () => undefined,
+        list: async () => [],
+        schedule: async () => undefined,
+        markPublished: async () => {},
+        markRolledBack: async () => {},
+        markBlocked: async () => {},
+        recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
+        listRenders: async () => [],
+      },
+      analytics: {
+        record: async () => { throw new Error('analytics.record not stubbed in this test'); },
+        listForItems: async () => [],
+      },
+      ctaLinks: {
+        create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
+        listForItems: async () => [],
+      },
+      engagement: {
+        ingest: async () => { throw new Error('engagement.ingest not stubbed in this test'); },
+        get: async () => undefined,
+        classify: async () => undefined,
+        list: async () => [],
+        audit: async () => [],
+        markReplied: async () => undefined,
+        markAutoHandled: async () => undefined,
+        markEscalated: async () => undefined,
+      },
+      opportunities: {
+        create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
+        get: async () => undefined,
+        route: async () => undefined,
+      },
+      trends: {
+        add: async () => { throw new Error('trends.add not stubbed in this test'); },
+        remove: async () => {},
+        list: async () => [],
+      },
+      learning: {
+        list: async () => [],
+        recordOutcome: async () => { throw new Error('learning.recordOutcome not stubbed in this test'); },
+        reset: async () => { throw new Error('learning.reset not stubbed in this test'); },
+      },
+      recipes: {
+        create: async () => { throw new Error('recipes.create not stubbed in this test'); },
+        get: async () => undefined,
+        list: async () => [],
+        setStatus: async () => undefined,
+        delete: async () => {},
+        markRan: async () => {},
+        findDue: async () => [],
+        recordRun: async () => { throw new Error('recipes.recordRun not stubbed in this test'); },
+        listOutputs: async () => [],
+        decideOutput: async () => undefined,
+      },
+      oauthConnections: {
+        get: async () => undefined,
+        save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
+        remove: async () => {},
+      },
+      knowledge: {
+        attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },
+        listForDoc: async () => [],
+        listAll: async () => [],
+      },
+      orgSettings: {
+        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 50_000, updatedAt: new Date() }),
+        setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
+        setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
+        setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
+      },
+      brandMembers: {
+        set: async () => { throw new Error('brandMembers.set not stubbed in this test'); },
+        remove: async () => {},
+        listForBrand: async () => [],
+        listForUser: async () => [],
+      },
+      reviewLinks: {
+        create: async () => { throw new Error('reviewLinks.create not stubbed in this test'); },
+        getByToken: async () => undefined,
+        revoke: async () => {},
+        listForBrand: async () => [],
+      },
       campaigns: {
         create: async () => ({ id: 'cmp_1' }),
         get: async () => undefined,
@@ -58,6 +158,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
         }),
+        setPolicy: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+        }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
       // the point of the interface being structural rather than partial.
@@ -68,7 +172,13 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         answer: async () => undefined,
         markDelivered: async () => {},
       },
-      toolCalls: { get: async () => undefined },
+      consent: {
+        grant: async () => { throw new Error('consent not stubbed in this test'); },
+        revoke: async () => undefined,
+        hasActive: async () => false,
+        list: async () => [],
+      },
+      toolCalls: { get: async () => undefined, list: async () => [] },
       approvals: {
         enqueue: async () => {},
         pending: async () => [],
@@ -95,6 +205,9 @@ describe('asset.retrieve', () => {
         usageCount: 0,
         lastUsedAt: null,
         rightsStatus: 'cleared',
+        url: 'https://example.com/a1.jpg',
+        mediaType: 'image',
+        folderId: null,
       },
     ]);
     const tool = makeAssetRetrieve({ embed });
@@ -230,5 +343,243 @@ describe('asset.ingest_url', () => {
   it('is not idempotent — re-ingesting the same URL is a caller error to avoid, not a safe retry', () => {
     const tool = makeAssetIngestUrl({ caption: async () => '', embed: async () => [] });
     expect(tool.idempotent).toBe(false);
+  });
+
+  /**
+   * `trustedLocalUrlPrefix` exists only for `apps/api`'s local-disk storage
+   * (CLAUDE.md § Infrastructure — Azure is production; local disk is dev-only).
+   * These pin the two things that must both be true for it to be safe: the
+   * SSRF guard still applies to everything else, and the carve-out is a
+   * closed instance-configuration value, not something a caller's input can
+   * ever widen.
+   */
+  describe('trustedLocalUrlPrefix — the local-storage SSRF carve-out', () => {
+    it('without it, a localhost URL is rejected exactly as PublicHttpUrl always rejected one', () => {
+      const tool = makeAssetIngestUrl({ caption: async () => '', embed: async () => [] });
+      const result = tool.input.safeParse({
+        genomeId: 'gen_1',
+        url: 'http://localhost:8080/v1/local-storage/org_1/gen_1/2026/08/x.jpg',
+        assetRole: 'physical_capture',
+        mediaType: 'image',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('with it, a URL under the exact configured prefix is accepted', () => {
+      const tool = makeAssetIngestUrl({
+        caption: async () => '',
+        embed: async () => [],
+        trustedLocalUrlPrefix: 'http://localhost:8080/v1/local-storage/',
+      });
+      const result = tool.input.safeParse({
+        genomeId: 'gen_1',
+        url: 'http://localhost:8080/v1/local-storage/org_1/gen_1/2026/08/x.jpg',
+        assetRole: 'physical_capture',
+        mediaType: 'image',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('with it configured, a real public URL still validates normally', () => {
+      const tool = makeAssetIngestUrl({
+        caption: async () => '',
+        embed: async () => [],
+        trustedLocalUrlPrefix: 'http://localhost:8080/v1/local-storage/',
+      });
+      const result = tool.input.safeParse({
+        genomeId: 'gen_1',
+        url: 'https://example.com/product.jpg',
+        assetRole: 'physical_capture',
+        mediaType: 'image',
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('with it configured, a private-network URL that is NOT under the prefix is still rejected', () => {
+      // The point of matching on the exact prefix rather than "any localhost
+      // URL": widening to all of localhost would reopen the metadata-endpoint
+      // class of attack safeUrl.ts exists to close.
+      const tool = makeAssetIngestUrl({
+        caption: async () => '',
+        embed: async () => [],
+        trustedLocalUrlPrefix: 'http://localhost:8080/v1/local-storage/',
+      });
+      const result = tool.input.safeParse({
+        genomeId: 'gen_1',
+        url: 'http://169.254.169.254/latest/meta-data/',
+        assetRole: 'physical_capture',
+        mediaType: 'image',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+});
+
+describe('asset.rights.set', () => {
+  it('sets the rights status and returns the update', async () => {
+    const setRights = vi.fn(async () => ({ id: 'asset_1', rightsStatus: 'cleared' }));
+    const out = await assetRightsSet.handler(
+      { genomeId: 'gen_1', assetId: 'asset_1', rightsStatus: 'cleared' },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, setRights } } }),
+    );
+    expect(setRights).toHaveBeenCalledWith({ id: 'asset_1', genomeId: 'gen_1', orgId: 'org_1', rightsStatus: 'cleared' });
+    expect(out).toEqual({ assetId: 'asset_1', rightsStatus: 'cleared' });
+  });
+
+  it('throws NOT_FOUND rather than silently succeeding on an asset out of scope', async () => {
+    await expect(
+      assetRightsSet.handler(
+        { genomeId: 'gen_1', assetId: 'asset_missing', rightsStatus: 'cleared' },
+        ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, setRights: async () => undefined } } }),
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('is human_only — a rights determination is a person’s call, never SPARK’s to propose', () => {
+    expect(assetRightsSet.autonomy).toBe('human_only');
+  });
+});
+
+describe('asset.reuse', () => {
+  it('records usage and returns the updated count', async () => {
+    const lastUsedAt = new Date('2026-08-17T00:00:00Z');
+    const recordUsage = vi.fn(async () => ({ id: 'asset_1', usageCount: 3, lastUsedAt }));
+    const out = await assetReuse.handler(
+      { genomeId: 'gen_1', assetId: 'asset_1' },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, recordUsage } } }),
+    );
+    expect(recordUsage).toHaveBeenCalledWith({ id: 'asset_1', genomeId: 'gen_1', orgId: 'org_1' });
+    expect(out).toEqual({ assetId: 'asset_1', usageCount: 3, lastUsedAt: lastUsedAt.toISOString() });
+  });
+
+  it('throws NOT_FOUND for an asset out of scope', async () => {
+    await expect(
+      assetReuse.handler(
+        { genomeId: 'gen_1', assetId: 'asset_missing' },
+        ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, recordUsage: async () => undefined } } }),
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('is not idempotent — each call is a genuine, distinct usage event', () => {
+    expect(assetReuse.idempotent).toBe(false);
+  });
+});
+
+describe('asset.cooldown.check', () => {
+  it('flags an asset used inside the cooldown window', async () => {
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 2, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const out = await assetCooldownCheck.handler(
+      { genomeId: 'gen_1', assetIds: ['asset_1'] },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
+    );
+    expect(out.cooldownDays).toBe(7); // DEFAULT_COOLDOWN_DAYS, same as guard.duplicate
+    expect(out.results).toEqual([{ assetId: 'asset_1', inCooldown: true, lastUsedDaysAgo: 2, found: true }]);
+  });
+
+  it('clears an asset used outside the window', async () => {
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 10, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const out = await assetCooldownCheck.handler(
+      { genomeId: 'gen_1', assetIds: ['asset_1'] },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
+    );
+    expect(out.results[0]).toMatchObject({ inCooldown: false });
+  });
+
+  it('clears an asset that has never been used', async () => {
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared', url: 'https://x/1.jpg', mediaType: 'image' } });
+    const out = await assetCooldownCheck.handler(
+      { genomeId: 'gen_1', assetIds: ['asset_1'] },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
+    );
+    expect(out.results[0]).toEqual({ assetId: 'asset_1', inCooldown: false, found: true });
+  });
+
+  it('reports an asset out of scope as not found rather than throwing', async () => {
+    const out = await assetCooldownCheck.handler(
+      { genomeId: 'gen_1', assetIds: ['asset_missing'] },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info: async () => ({}) } } }),
+    );
+    expect(out.results[0]).toEqual({ assetId: 'asset_missing', inCooldown: false, found: false });
+  });
+
+  it('respects a caller-supplied cooldown window over the default', async () => {
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 5, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const out = await assetCooldownCheck.handler(
+      { genomeId: 'gen_1', assetIds: ['asset_1'], cooldownDays: 3 },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
+    );
+    expect(out.cooldownDays).toBe(3);
+    expect(out.results[0]).toMatchObject({ inCooldown: false }); // 5 days ago, 3-day window — clear
+  });
+});
+
+describe('asset.folder.create', () => {
+  it('creates a folder and returns its id', async () => {
+    const create = vi.fn(async () => ({ id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() }));
+    const out = await assetFolderCreate.handler(
+      { genomeId: 'gen_1', name: 'B-roll' },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, create } } }),
+    );
+    expect(create).toHaveBeenCalledWith({ genomeId: 'gen_1', orgId: 'org_1', name: 'B-roll' });
+    expect(out).toEqual({ folderId: 'folder_1', name: 'B-roll' });
+  });
+});
+
+describe('asset.folder.list', () => {
+  it('lists this genome’s folders', async () => {
+    const list = vi.fn(async () => [
+      { id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() },
+      { id: 'folder_2', genomeId: 'gen_1', name: 'Testimonials', createdAt: new Date() },
+    ]);
+    const out = await assetFolderList.handler(
+      { genomeId: 'gen_1' },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, list } } }),
+    );
+    expect(list).toHaveBeenCalledWith('gen_1', 'org_1');
+    expect(out).toEqual({
+      folders: [
+        { folderId: 'folder_1', name: 'B-roll' },
+        { folderId: 'folder_2', name: 'Testimonials' },
+      ],
+    });
+  });
+
+  it('reports no folders honestly rather than throwing', async () => {
+    const out = await assetFolderList.handler(
+      { genomeId: 'gen_1' },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, list: async () => [] } } }),
+    );
+    expect(out).toEqual({ folders: [] });
+  });
+});
+
+describe('asset.folder.move', () => {
+  it('moves an asset into a folder', async () => {
+    const moveToFolder = vi.fn(async () => ({ id: 'asset_1', folderId: 'folder_1' }));
+    const out = await assetFolderMove.handler(
+      { genomeId: 'gen_1', assetId: 'asset_1', folderId: 'folder_1' },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, moveToFolder } } }),
+    );
+    expect(moveToFolder).toHaveBeenCalledWith({ id: 'asset_1', genomeId: 'gen_1', orgId: 'org_1', folderId: 'folder_1' });
+    expect(out).toEqual({ assetId: 'asset_1', folderId: 'folder_1' });
+  });
+
+  it('moves an asset back out of any folder with folderId: null', async () => {
+    const moveToFolder = vi.fn(async () => ({ id: 'asset_1', folderId: null }));
+    const out = await assetFolderMove.handler(
+      { genomeId: 'gen_1', assetId: 'asset_1', folderId: null },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, moveToFolder } } }),
+    );
+    expect(out).toEqual({ assetId: 'asset_1', folderId: null });
+  });
+
+  it('throws NOT_FOUND when the asset or folder does not resolve in this genome', async () => {
+    await expect(
+      assetFolderMove.handler(
+        { genomeId: 'gen_1', assetId: 'asset_1', folderId: 'folder_from_another_genome' },
+        ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, moveToFolder: async () => undefined } } }),
+      ),
+    ).rejects.toThrow(ToolError);
   });
 });

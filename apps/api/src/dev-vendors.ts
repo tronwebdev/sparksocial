@@ -1,4 +1,6 @@
 import type { DraftCaptureBrief } from '@sparksocial/capture';
+import type { TextWriter } from '@sparksocial/generate';
+import type { EngagementClassifier, ReplyWriter } from '@sparksocial/engage';
 import { deterministicEmbedding } from './dev-store.js';
 
 /**
@@ -171,6 +173,93 @@ export function devBriefWriter() {
     async write({ playbook }: { playbook: { playbook_id: string } }): Promise<DraftCaptureBrief> {
       const template = TEMPLATES[playbook.playbook_id] ?? FALLBACK;
       return { playbook_id: playbook.playbook_id, ...template };
+    },
+  };
+}
+
+/**
+ * Keyed on the `prompt_ref` category (the part before the first dot), not the
+ * full key or the playbook — same reasoning `text-writer.ts`'s real prompt
+ * gives for teaching the model the naming convention rather than hardcoding
+ * every key: a `prompt_ref` this map has never seen still gets a sensible
+ * generic line via `FALLBACK_LINE`, rather than throwing.
+ */
+const LINE_TEMPLATES: Record<string, (business: string) => string> = {
+  hook: (b) => `${b}: here's a look at how we do it.`,
+  proof: (b) => `The numbers behind ${b}'s work, in one line.`,
+  offer: (b) => `${b} has room this week — get in touch.`,
+  local: (b) => `${b}, right here in the neighbourhood.`,
+  teach: (b) => `One thing ${b} wants you to know.`,
+  text: (b) => `An update from ${b}.`,
+  quote: (b) => `"Quality is never an accident." — ${b}`,
+  data: (b) => `${b}, by the numbers.`,
+};
+const FALLBACK_LINE = (b: string) => `${b} — see what we've been working on.`;
+
+/**
+ * Dev counterpart to `text-writer.ts`'s `textWriter()`. Deterministic and
+ * uniform on purpose — same warning as `devBriefWriter`: usable, not varied.
+ */
+export function devTextWriter(): TextWriter {
+  return {
+    async write({ genome, promptRef }) {
+      const category = promptRef.split('.')[0] ?? '';
+      const line = LINE_TEMPLATES[category] ?? FALLBACK_LINE;
+      return line(genome.identity.business_name);
+    },
+  };
+}
+
+const REPLY_TEMPLATES: Record<string, (business: string) => string> = {
+  comment: (b) => `Thanks so much for the comment — glad you're here! — ${b}`,
+  dm: (b) => `Thanks for reaching out — someone from ${b} will follow up shortly!`,
+  story_reply: (b) => `Appreciate you watching — thanks for the reply! — ${b}`,
+};
+const FALLBACK_REPLY = (b: string) => `Thanks for reaching out to ${b} — we'll get back to you soon!`;
+
+/**
+ * Dev counterpart to `reply-writer.ts`'s `replyWriter()`. Deterministic and
+ * uniform on purpose — same warning as `devTextWriter`: usable, not varied,
+ * so `engage.reply.draft` exercises the whole draft → approve → send path
+ * without an `ANTHROPIC_API_KEY`.
+ */
+export function devReplyWriter(): ReplyWriter {
+  return {
+    async write({ genome, kind }) {
+      const line = REPLY_TEMPLATES[kind] ?? FALLBACK_REPLY;
+      return line(genome.identity.business_name);
+    },
+  };
+}
+
+const SALES_WORDS = ['price', 'pricing', 'cost', 'book', 'buy', 'order', 'interested', 'how much', 'available'];
+const PRAISE_WORDS = ['love', 'amazing', 'great', 'awesome', 'thank', 'thanks', 'beautiful', 'perfect'];
+
+/**
+ * Dev counterpart to `engage-classifier.ts`'s `engageClassifier()`. Fixed
+ * keyword rules, not real judgment — same warning as `devTextWriter`: usable,
+ * not smart, so `engage.classify` still exercises the whole ingest → classify
+ * → feed path without an `ANTHROPIC_API_KEY`.
+ */
+export function devEngageClassifier(): EngagementClassifier {
+  return {
+    async classify({ text }) {
+      const lower = text.toLowerCase();
+      if (SALES_WORDS.some((w) => lower.includes(w))) {
+        return { category: 'sales_opportunity', intentScore: 0.7, reason: 'Contains buying-intent keywords (dev fallback rule).' };
+      }
+      if (text.includes('?')) {
+        return { category: 'needs_review', intentScore: 0.5, reason: 'Contains a question a human should see first (dev fallback rule).' };
+      }
+      if (PRAISE_WORDS.some((w) => lower.includes(w))) {
+        return {
+          category: 'auto_handled',
+          intentScore: 0.6,
+          suggestedReply: 'Thank you so much — really appreciate you saying that!',
+          reason: 'Positive engagement, safe to auto-handle (dev fallback rule).',
+        };
+      }
+      return { category: 'needs_review', intentScore: 0.3, reason: 'No fallback rule matched; defaulting to human review.' };
     },
   };
 }

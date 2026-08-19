@@ -25,6 +25,15 @@ import { cn } from '@/lib/utils';
  */
 
 const POLL_MS = 2_000;
+/**
+ * ~10 minutes at 2s/poll. A run that is genuinely still going at that point
+ * needs a person to look at it, not a browser tab quietly polling it forever
+ * in the background — the failure mode this caps is a run whose own process
+ * died without ever calling `finishRun` (or, in dev, a seeded fixture that
+ * was never meant to finish at all), which otherwise polls for as long as
+ * the tab stays open.
+ */
+const MAX_POLLS = 300;
 
 type RunStatus = 'running' | 'succeeded' | 'failed' | 'cancelled';
 type StepType = 'think' | 'tool' | 'delegate' | 'wait';
@@ -103,7 +112,7 @@ export function RunTimeline() {
 
   if (runs === null) {
     return (
-      <div className="grid gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-16 w-full rounded" />
         ))}
@@ -123,8 +132,8 @@ export function RunTimeline() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <ul className="grid gap-2" aria-label="Agent runs">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+      <ul className="grid grid-cols-1 gap-2" aria-label="Agent runs">
         {runs.map((run) => (
           <li key={run.runId}>
             <button
@@ -178,6 +187,7 @@ function RunDetailPanel({
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let polls = 0;
 
     const tick = async () => {
       const res = await invoke<RunDetail>('agent.run.get', { runId });
@@ -190,13 +200,19 @@ function RunDetailPanel({
       setError(null);
       setDetail(res.output);
 
-      if (res.output.status === 'running') {
-        timer = setTimeout(() => void tick(), POLL_MS);
-      } else {
+      if (res.output.status !== 'running') {
         // Refresh the list once, so its status chip and duration stop
         // disagreeing with the panel next to it.
         onTerminalRef.current();
+        return;
       }
+
+      polls += 1;
+      if (polls >= MAX_POLLS) {
+        setError('Still running after 10 minutes of checking — refresh this panel to check again.');
+        return;
+      }
+      timer = setTimeout(() => void tick(), POLL_MS);
     };
 
     setDetail(null);
@@ -237,7 +253,7 @@ function RunDetailPanel({
         </p>
       ) : null}
 
-      <ol className="mt-4 grid gap-0" aria-label="Run steps">
+      <ol className="mt-4 grid grid-cols-1 gap-0" aria-label="Run steps">
         {detail.steps.map((step, i) => (
           <li key={step.idx} className="relative grid grid-cols-[16px_1fr] gap-3 pb-4">
             <div className="flex flex-col items-center">

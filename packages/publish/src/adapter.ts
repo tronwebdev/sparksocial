@@ -29,6 +29,23 @@ export interface PublishRequest {
   mediaUrls: string[];
   /** Passed to the platform for genuine dedupe, not only for our own retries. */
   idempotencyKey: string;
+  /**
+   * The connecting brand's OAuth access token, resolved by the caller
+   * (`makePublishNow`'s handler reads `ctx.db.oauthConnections` directly)
+   * from `oauth_connections` before the adapter is invoked — never looked
+   * up by the adapter itself, so every native adapter stays a pure
+   * vendor-HTTP wrapper, testable with nothing but an injected `fetchImpl`,
+   * the same contract `ayrshareAdapter.ts` already established.
+   *
+   * Absent for an adapter using one credential shared across every brand
+   * (the aggregator, whose app-level API key is set once via env and never
+   * varies per genome). Required in practice for every native adapter —
+   * each brand connects its own account via `integration.connect`, so
+   * there is no shared token a native adapter could fall back to. A native
+   * adapter that receives no token throws a `PublishError` naming the
+   * missing connection rather than guessing.
+   */
+  accessToken?: string;
 }
 
 export interface PublishReceipt {
@@ -68,6 +85,16 @@ export interface PlatformAdapter {
   /** Platforms this implementation can serve. */
   supports(platform: Platform): boolean;
   publish(req: PublishRequest): Promise<PublishReceipt>;
+  /**
+   * Deletes a live post. Optional and deliberately so — plan §10: "rollback
+   * for platforms that support deletion, plus an incident runbook for those
+   * that don't." Some platforms (and some aggregator plans) genuinely have no
+   * delete endpoint; `publish.rollback` checks for this method rather than
+   * assuming every adapter has one, and refuses cleanly when it's absent
+   * instead of pretending a no-op succeeded.
+   */
+  /** `accessToken` carries the same per-brand-resolution contract `PublishRequest.accessToken` does — see its doc comment. */
+  delete?(externalId: string, platform: Platform, accessToken?: string): Promise<void>;
 }
 
 /**
@@ -108,9 +135,10 @@ export function routeAdapters(adapters: PlatformAdapter[]) {
  * `sent` is exposed for assertions; nothing in production reads it.
  */
 export function createStubAdapter(
-  opts: { name?: string; supports?: Platform[] } = {},
-): PlatformAdapter & { sent: PublishRequest[] } {
+  opts: { name?: string; supports?: Platform[]; deletable?: boolean } = {},
+): PlatformAdapter & { sent: PublishRequest[]; deleted: string[] } {
   const sent: PublishRequest[] = [];
+  const deleted: string[] = [];
   const name = opts.name ?? 'aggregator:stub';
   const supported = new Set<Platform>(opts.supports ?? Platform.options);
   let n = 0;
@@ -118,6 +146,7 @@ export function createStubAdapter(
   return {
     name,
     sent,
+    deleted,
     supports: (platform) => supported.has(platform),
     async publish(req) {
       // Honour the idempotency key locally too: a stub that double-posts would
@@ -133,5 +162,15 @@ export function createStubAdapter(
         publishedAt: new Date(),
       };
     },
+    // Defaults to deletable so the end-to-end path (publish -> rollback) is
+    // exercisable in dev without a real account; `deletable: false` is how a
+    // test stands in for the platforms that genuinely have no delete endpoint.
+    ...(opts.deletable === false
+      ? {}
+      : {
+          async delete(externalId: string) {
+            deleted.push(externalId);
+          },
+        }),
   };
 }

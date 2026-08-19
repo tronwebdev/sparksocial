@@ -42,7 +42,12 @@ function ctx(over: { genome?: unknown; inventory?: Record<string, number>; notFo
         captionsByRole: async () => [],
         info: async () => ({}),
       },
-      content: { recent: async () => [] },
+      content: {
+        recent: async () => [],
+        createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
+        get: async () => undefined,
+        updateDraft: async () => undefined,
+      },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },

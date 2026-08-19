@@ -7,13 +7,20 @@ import {
   runAgent,
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
-import { registerAlphaTools } from './tools.js';
+import { createClerkClient } from '@clerk/backend';
+import { registerAlphaTools, registerAgencyTools, localBlobStoreForRoutes } from './tools.js';
+import { registerLocalStorageRoutes } from './local-storage-routes.js';
+import { registerCanvaOAuthCallback } from './canva-oauth.js';
+import { registerSocialOAuthCallback } from './social-oauth.js';
+import { socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
 import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
 import { embedClient } from './embed-client.js';
 import { connectPostgresStore } from './pg-store.js';
+import { startScheduler } from './scheduler.js';
+import { startRecipeScheduler } from './recipe-scheduler.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -55,16 +62,11 @@ if (env === 'production' && !clerkConfigured && process.env.ALLOW_DEV_AUTH !== '
 }
 
 // `DATABASE_URL` set → Postgres persists genomes/assets/content/tool_calls (plan
-// §5). Unset → the in-memory dev store, seeded with the golden set. Independent
-// of the auth choice below: a throwaway environment can point at real Postgres
-// while still trusting headers for tenancy, or vice versa.
+// §5). Unset → the in-memory dev store, empty until a real tool call writes to
+// it. Independent of the auth choice below: a throwaway environment can point
+// at real Postgres while still trusting headers for tenancy, or vice versa.
 const pg = process.env.DATABASE_URL ? connectPostgresStore() : undefined;
 
-/**
- * The dev store seeds the golden set under one org id. Locally that must be the
- * *caller's* Clerk org, or every genome lookup 403s against a store that does
- * contain the genome — a confusing failure that looks like a bug in the resolver.
- */
 // One run store, both halves. The dev reader and the dev recorder must share
 // arrays or the Timeline renders empty while runs are being recorded beside it.
 const devRuns = createDevRunStore();
@@ -78,14 +80,18 @@ const devRuns = createDevRunStore();
 const memoryDeps = memoryInvokeDeps({ runGuardrails: makeRunGuardrails(embedClient()) });
 const devApprovals = createDevApprovalStore((callId) => memoryDeps.rows.find((r) => r.id === callId));
 
-const scopedDb =
-  pg?.scopedDb ??
-  createDevStore({
-    orgId: envStr('DEV_SEED_ORG_ID', 'org_dev'),
-    runStore: devRuns,
-    approvalStore: devApprovals,
-    findCall: (callId) => memoryDeps.rows.find((r) => r.id === callId),
-  });
+// Captured separately from `scopedDb` below so the scheduler can still reach
+// `.findDue` in dev mode — `scopedDb`'s declared type is the plain `ScopedDb`
+// interface, which doesn't carry it.
+const devStore = pg
+  ? undefined
+  : createDevStore({
+      runStore: devRuns,
+      approvalStore: devApprovals,
+      findCall: (callId) => memoryDeps.rows.find((r) => r.id === callId),
+    });
+
+const scopedDb = pg?.scopedDb ?? devStore!;
 
 /**
  * The ledger behind `policy.ts` rule 4 (plan §9). Postgres when it is
@@ -93,6 +99,68 @@ const scopedDb =
  * spend is enforced in local development instead of only in production.
  */
 const credits = pg?.credits ?? createDevCreditStore();
+
+/**
+ * `org.*`/`brand.*`/`team.*`/`whitelabel.*` (§6.9, §12 P6) need `credits`
+ * (deliberately not reachable through `ScopedDb`, so `registerAlphaTools()`
+ * above — which has no dependencies — cannot register them) and, for
+ * `team.invite`/`team.role.set`, a real Clerk client. A second `ClerkClient`
+ * instance, separate from the one `makeClerkResolveCtx` builds internally:
+ * both are stateless HTTP wrappers around the same secret key, so two
+ * instances cost nothing and neither needs the other's internals exposed.
+ */
+/**
+ * `brand.oauth.connect` (the Canva half of the Bulk Connector, §12 P5) needs
+ * all three of an app registration and a dedicated signing secret for its
+ * `state` param — unset → not registered, same rule as `team.invite` above.
+ * `CANVA_REDIRECT_URI` defaults to this API's own callback route on the
+ * loopback IP so local dev works without setting it, matching the redirect
+ * URI that must also be registered in the Canva developer app itself.
+ * **127.0.0.1, not localhost** — Canva's redirect-URI validation rejects
+ * `localhost` outright (confirmed against their current dashboard
+ * requirements); a default of `localhost` here would register a URI in
+ * `.env` that can never match what the developer app requires.
+ */
+const canvaOAuthConfigured = envSet('CANVA_CLIENT_ID') && envSet('CANVA_CLIENT_SECRET') && envSet('OAUTH_STATE_SECRET');
+const canvaRedirectUri = envStr('CANVA_REDIRECT_URI', `http://127.0.0.1:${port}/oauth/canva/callback`);
+
+/**
+ * `integration.connect` (native publishing platforms — Instagram, TikTok,
+ * LinkedIn, X, YouTube) shares `OAUTH_STATE_SECRET` with Canva's flow —
+ * one signing secret for every PKCE handshake in this API, not a
+ * per-provider one, since it signs an envelope and never touches a vendor.
+ * `SOCIAL_REDIRECT_URI` defaults to this API's own callback route the same
+ * way `CANVA_REDIRECT_URI` does, same loopback-IP reasoning. Registered
+ * whenever the secret is set, regardless of which (if any) individual
+ * platform's client id/secret is configured — `integration.connect`'s own
+ * handler refuses a specific unconfigured provider by name rather than the
+ * whole tool being absent.
+ */
+const socialOAuthConfigured = envSet('OAUTH_STATE_SECRET');
+const socialRedirectUri = envStr('SOCIAL_REDIRECT_URI', `http://127.0.0.1:${port}/oauth/social/callback`);
+
+registerAgencyTools({
+  credits,
+  ...(clerkConfigured
+    ? { clerk: createClerkClient({ secretKey: envStr('CLERK_SECRET_KEY', ''), publishableKey: envStr('CLERK_PUBLISHABLE_KEY', '') }) }
+    : {}),
+  ...(canvaOAuthConfigured
+    ? { canvaOAuth: { clientId: envStr('CANVA_CLIENT_ID', ''), redirectUri: canvaRedirectUri, stateSecret: envStr('OAUTH_STATE_SECRET', '') } }
+    : {}),
+  ...(socialOAuthConfigured
+    ? { socialOAuth: { clientIds: socialClientIds(), redirectUri: socialRedirectUri, stateSecret: envStr('OAUTH_STATE_SECRET', '') } }
+    : {}),
+});
+
+if (!canvaOAuthConfigured) {
+  console.warn(
+    '[warn] CANVA_CLIENT_ID / CANVA_CLIENT_SECRET / OAUTH_STATE_SECRET not all set — brand.oauth.connect is not ' +
+      "registered, so the Bulk Connector's canva source cannot be connected. Its drive/csv sources are unaffected.",
+  );
+}
+if (!socialOAuthConfigured) {
+  console.warn('[warn] OAUTH_STATE_SECRET unset — integration.connect is not registered, so no brand can connect a native publishing account.');
+}
 
 const resolveCtx = clerkConfigured
   ? makeClerkResolveCtx({
@@ -255,6 +323,40 @@ if (!envSet('WHATSAPP_APP_SECRET')) {
   );
 }
 
+/**
+ * The scheduler — closes the "content.schedule sets scheduledAt and nothing
+ * ever reads it back" gap (P4 survey). No queue infra exists yet, so this is
+ * a poll loop, same trade-off `scheduler.ts`'s own comment explains. Started
+ * unconditionally: it costs one no-op query per tick when nothing is due,
+ * and gating it on an env flag would just be one more way to forget to turn
+ * it on.
+ */
+const scheduler = startScheduler(
+  {
+    source: pg ? { findDue: pg.findDue } : { findDue: devStore!.findDue },
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+    credits,
+  },
+  envNum('SCHEDULER_INTERVAL_MS', 60_000),
+);
+
+/**
+ * The recipe scheduler (§12 P5) — same poll-loop trade-off as the publish
+ * scheduler above, started unconditionally for the same reason: gating it on
+ * an env flag is one more way to forget to turn it on, and one no-op query
+ * per tick when nothing is due costs nothing.
+ */
+const recipeScheduler = startRecipeScheduler(
+  {
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+  },
+  envNum('RECIPE_SCHEDULER_INTERVAL_MS', 300_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -278,12 +380,48 @@ if (!agentConfigured) {
   console.warn('[warn] ANTHROPIC_API_KEY unset — /v1/agent/runs will answer 501. Timeline reads still work.');
 }
 
+if (canvaOAuthConfigured) {
+  registerCanvaOAuthCallback(app, {
+    clientId: envStr('CANVA_CLIENT_ID', ''),
+    clientSecret: envStr('CANVA_CLIENT_SECRET', ''),
+    redirectUri: canvaRedirectUri,
+    stateSecret: envStr('OAUTH_STATE_SECRET', ''),
+    webAppUrl: envStr('WEB_APP_URL', 'http://localhost:3000'),
+    db: scopedDb,
+  });
+}
+
+if (socialOAuthConfigured) {
+  registerSocialOAuthCallback(app, {
+    clientIds: socialClientIds(),
+    clientSecrets: socialClientSecrets(),
+    redirectUri: socialRedirectUri,
+    stateSecret: envStr('OAUTH_STATE_SECRET', ''),
+    webAppUrl: envStr('WEB_APP_URL', 'http://localhost:3000'),
+    db: scopedDb,
+  });
+}
+
+// Mounts the PUT/GET routes local-disk storage's presigned URLs point at.
+// `undefined` once AZURE_STORAGE_ACCOUNT is set — those URLs are real Blob
+// Storage SAS links and need no local route.
+const localStorage = localBlobStoreForRoutes();
+if (localStorage) {
+  registerLocalStorageRoutes(app, localStorage);
+  console.warn(
+    '[warn] AZURE_STORAGE_ACCOUNT unset — assets upload to local disk, not real object storage. Fine for ' +
+      'development; not for anything shared or deployed.',
+  );
+}
+
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`SparkSocial API listening on :${info.port} (${env})${pg ? ' [postgres]' : ' [in-memory]'}`);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
+    scheduler.stop();
+    recipeScheduler.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

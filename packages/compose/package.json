@@ -1,0 +1,21 @@
+{
+  "name": "@sparksocial/compose",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@sparksocial/agency": "*",
+    "@sparksocial/generate": "*",
+    "@sparksocial/playbooks": "*",
+    "@sparksocial/shared": "*",
+    "@sparksocial/tools": "*",
+    "react": "^19.2.0",
+    "remotion": "^4.0.509",
+    "zod": "^3.23.8"
+  }
+}

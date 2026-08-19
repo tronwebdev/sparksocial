@@ -118,6 +118,33 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
       return toGovernance(row);
     },
+
+    async setPolicy({ brandId, orgId, patch }) {
+      const set: Partial<typeof brands.$inferInsert> = { updatedAt: new Date() };
+      if (patch.familyOverrides !== undefined) set.familyOverrides = patch.familyOverrides ?? null;
+      if (patch.restrictedPlatforms !== undefined) set.restrictedPlatforms = patch.restrictedPlatforms ?? null;
+      if (patch.restrictedContentTypes !== undefined) set.restrictedContentTypes = patch.restrictedContentTypes ?? null;
+      if (patch.quietWindows !== undefined) {
+        set.quietWindows = patch.quietWindows
+          ? patch.quietWindows.map((w) => ({ from: w.from.toISOString(), to: w.to.toISOString(), reason: w.reason }))
+          : null;
+      }
+      if (patch.permissions !== undefined) set.permissions = patch.permissions ?? null;
+
+      await db
+        .insert(brands)
+        .values({ id: brandId, orgId, ...set })
+        .onConflictDoUpdate({ target: brands.id, set });
+
+      const [row] = await db
+        .select()
+        .from(brands)
+        .where(and(eq(brands.id, brandId), eq(brands.orgId, orgId)))
+        .limit(1);
+
+      if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
+      return toGovernance(row);
+    },
   };
 }
 
@@ -135,5 +162,12 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     ...(row.pausedAt ? { pausedAt: row.pausedAt } : {}),
     ...(row.pausedBy ? { pausedBy: row.pausedBy } : {}),
     ...(row.pauseReason ? { pauseReason: row.pauseReason } : {}),
+    ...(row.familyOverrides ? { familyOverrides: row.familyOverrides as BrandGovernance['familyOverrides'] } : {}),
+    ...(row.restrictedPlatforms ? { restrictedPlatforms: row.restrictedPlatforms } : {}),
+    ...(row.restrictedContentTypes ? { restrictedContentTypes: row.restrictedContentTypes } : {}),
+    ...(row.quietWindows
+      ? { quietWindows: row.quietWindows.map((w) => ({ from: new Date(w.from), to: new Date(w.to), reason: w.reason })) }
+      : {}),
+    ...(row.permissions ? { permissions: row.permissions } : {}),
   };
 }

@@ -44,6 +44,9 @@ import { invoke } from '@/lib/tools';
 /** Brand name · URL · chips · then one screen per unresolved dimension. */
 const FIXED_STEPS = 3;
 
+/** The `identity.*` fields `genome.identity.set` accepts flat, matching `GenomeIdentity`'s scalar keys. */
+const IDENTITY_SCALAR_FIELDS = new Set(['business_name', 'category', 'sub_category', 'one_liner', 'price_tier']);
+
 interface Draft {
   genomeId: string;
   chips: Chip[];
@@ -61,6 +64,12 @@ export default function OnboardingPage() {
   const [draft, setDraft] = useState<Draft | undefined>();
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
+  // Separate from `busy`: that flag is the ~29s crawl, and step 1's render
+  // used to show *its* copy ("Opening your pages, reading them…") for this
+  // path too, since both actions shared one boolean. `genome.create` has no
+  // crawl to be reading — the fast, no-website path was rendering "reading
+  // your site" text describing something that was not happening.
+  const [manualBusy, setManualBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   // Set once the crawl has failed, so the manual path is offered rather than
   // pre-empting the faster one before it has been tried.
@@ -143,7 +152,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    setBusy(true);
+    setManualBusy(true);
     setError(undefined);
 
     const result = await invoke<{
@@ -159,7 +168,7 @@ export default function OnboardingPage() {
       locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
     });
 
-    setBusy(false);
+    setManualBusy(false);
 
     if (result.status !== 'succeeded') {
       setError(result.status === 'failed' ? result.error.message : 'That needs approval before it can run.');
@@ -201,6 +210,45 @@ export default function OnboardingPage() {
     // this is the moment the workspace has a genome to be scoped to.
     document.cookie = `spark_genome=${encodeURIComponent(draft.genomeId)}; path=/; samesite=lax`;
     router.push('/');
+  }
+
+  /**
+   * ONB-02's missing save. `ChipReview` only ever touched local state — until
+   * `genome.identity.set` existed, "Looks right" (and any correction made
+   * before clicking it) had nowhere to go, so a wrong inferred business name
+   * (or category, or anything else the crawl misread) stayed wrong forever.
+   *
+   * Only flat, recognised `identity.<field>` chips are sent — a chip pointing
+   * at a nested path like `identity.geography.locale` is skipped rather than
+   * guessed at, since `genome.identity.set` merges one JSON key at a time and
+   * a dotted key would not merge into the right place.
+   */
+  async function confirmChips() {
+    if (!draft) return;
+    const patch: Record<string, string> = {};
+    for (const chip of draft.chips) {
+      const field = chip.field.startsWith('identity.') ? chip.field.slice('identity.'.length) : null;
+      if (field && !field.includes('.') && IDENTITY_SCALAR_FIELDS.has(field)) {
+        patch[field] = chip.value;
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      setBusy(true);
+      setError(undefined);
+      const result = await invoke('genome.identity.set', { genomeId: draft.genomeId, identity: patch });
+      setBusy(false);
+      if (result.status !== 'succeeded') {
+        setError(result.status === 'failed' ? result.error.message : 'That correction needs approval before it can run.');
+        return;
+      }
+      // The completion screen and every later step's eyebrow read this from
+      // local state, not from a fresh fetch — keep it in sync with what was
+      // just saved so a corrected name actually shows corrected.
+      if (patch['business_name']) setDraft({ ...draft, businessName: patch['business_name'] });
+    }
+
+    setStep(3);
   }
 
   const back = step > 0 ? () => { setError(undefined); setStep(step - 1); } : undefined;
@@ -248,7 +296,11 @@ export default function OnboardingPage() {
         footer={
           <div className="flex flex-col gap-3">
             {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button className="w-full md:w-auto" disabled={!looksLikeUrl(url) || busy} onClick={bootstrap}>
+            <Button
+              className="w-full md:w-auto"
+              disabled={!looksLikeUrl(url) || busy || manualBusy}
+              onClick={bootstrap}
+            >
               {busy ? 'Reading your site…' : 'Continue'}
             </Button>
             {busy ? (
@@ -266,7 +318,7 @@ export default function OnboardingPage() {
               the obvious next action, because the alternative is retrying
               something that just told us it will not work.
             */}
-            {!busy ? (
+            {!busy && !manualBusy ? (
               <button
                 type="button"
                 onClick={() => void createManually()}
@@ -276,6 +328,7 @@ export default function OnboardingPage() {
                 {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
               </button>
             ) : null}
+            {manualBusy ? <p className="text-[14px] text-ink-muted">Setting up your workspace…</p> : null}
           </div>
         }
       >
@@ -287,7 +340,7 @@ export default function OnboardingPage() {
           placeholder="Enter your website URL"
           aria-label="Website URL"
           inputMode="url"
-          disabled={busy}
+          disabled={busy || manualBusy}
         />
       </StepShell>
     );
@@ -304,9 +357,12 @@ export default function OnboardingPage() {
         title="Here’s what SPARK understood"
         subtitle="Tap anything that’s wrong. Getting this right now saves a month of off-brand posts."
         footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(3)}>
-            Looks right
-          </Button>
+          <div className="flex flex-col gap-3">
+            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+            <Button className="w-full md:w-auto" disabled={busy} onClick={() => void confirmChips()}>
+              {busy ? 'Saving…' : 'Looks right'}
+            </Button>
+          </div>
         }
       >
         <ChipReview chips={draft.chips} onChange={(chips) => setDraft({ ...draft, chips })} />

@@ -50,6 +50,111 @@
       "when": 1786473545715,
       "tag": "0006_sour_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786605051721,
+      "tag": "0007_boring_jack_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786668496171,
+      "tag": "0008_dark_sunset_bain",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786669755550,
+      "tag": "0009_dashing_blazing_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786712064954,
+      "tag": "0010_burly_talos",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786732205664,
+      "tag": "0011_burly_leo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786738392181,
+      "tag": "0012_hesitant_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786914163805,
+      "tag": "0013_harsh_scorpion",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786919339155,
+      "tag": "0014_fearless_the_phantom",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786924410245,
+      "tag": "0015_military_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786931404196,
+      "tag": "0016_silly_the_enforcers",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786955912598,
+      "tag": "0017_sweet_speed",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786957969251,
+      "tag": "0018_flowery_amazoness",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786995058570,
+      "tag": "0019_cheerful_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786998321920,
+      "tag": "0020_wooden_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787042268001,
+      "tag": "0021_dazzling_namor",
+      "breakpoints": true
     }
   ]
 }

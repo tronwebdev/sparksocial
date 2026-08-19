@@ -8,8 +8,10 @@ import { placeCalendar } from './calendar.js';
 /**
  * CALENDAR TOOLS — engine spec §6.8 Step 4; PRD `CAL-01`→`CAL-06`.
  *
- * Three tools, one loop:
+ * Four tools, one loop:
  *
+ *   `campaign.list`      — which campaigns exist for this genome, so a caller
+ *                          that only knows the genome can find the active one
  *   `campaign.create`  — commit to an outcome, snapshotting the approved plan
  *   `calendar.generate` — lay that plan out as dated slots
  *   `calendar.get`      — read the month at mix level
@@ -28,6 +30,14 @@ export const CampaignCreateInput = z.object({
   windowDays: z.number().int().min(7).max(90).default(30),
   /** Defaults to now. Explicit so a plan can be laid out for next month. */
   startAt: z.string().datetime().optional(),
+  /**
+   * §6.8 Step 1's "target & window" follow-up. Optional — not every objective
+   * has a natural count ("grow audience" often doesn't) — but without it,
+   * `campaign.report_vs_outcome` has nothing to compare progress against.
+   */
+  targetCount: z.number().int().positive().optional(),
+  /** What targetCount counts, in the owner's own words — "bookings", "trials", "signups". */
+  targetLabel: z.string().min(1).max(60).optional(),
 });
 
 export const CampaignCreateOutput = z.object({
@@ -36,6 +46,8 @@ export const CampaignCreateOutput = z.object({
   objective: Objective,
   windowDays: z.number(),
   startAt: z.string(),
+  targetCount: z.number().optional(),
+  targetLabel: z.string().optional(),
 });
 
 export const campaignCreate = defineTool({
@@ -80,9 +92,16 @@ export const campaignCreate = defineTool({
       windowDays: input.windowDays,
       startAt,
       plan,
+      ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
+      ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
     });
 
-    ctx.logger.info('campaign created', { campaignId: id, genomeId: input.genomeId, objective: input.objective });
+    ctx.logger.info('campaign created', {
+      campaignId: id,
+      genomeId: input.genomeId,
+      objective: input.objective,
+      ...(input.targetCount !== undefined ? { targetCount: input.targetCount, targetLabel: input.targetLabel } : {}),
+    });
 
     return {
       campaignId: id,
@@ -90,6 +109,58 @@ export const campaignCreate = defineTool({
       objective: input.objective,
       windowDays: input.windowDays,
       startAt: startAt.toISOString(),
+      ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
+      ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
+    };
+  },
+});
+
+export const CampaignListInput = z.object({
+  genomeId: z.string().min(1),
+  limit: z.number().int().min(1).max(50).default(10),
+});
+
+export const CampaignListOutput = z.object({
+  campaigns: z.array(
+    z.object({
+      campaignId: z.string(),
+      name: z.string(),
+      objective: z.string(),
+      windowDays: z.number(),
+      startAt: z.string(),
+      status: z.string(),
+    }),
+  ),
+});
+
+export const campaignList = defineTool({
+  name: 'campaign.list',
+  version: 1,
+
+  summary:
+    'Every campaign for a genome, most recently started first — the Command Center\'s way of finding ' +
+    'the active one without already knowing its id. Free.',
+
+  input: CampaignListInput,
+  output: CampaignListOutput,
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor', 'approver', 'viewer', 'client'],
+  idempotent: true,
+  surfaces: ['CC-01'],
+
+  async handler(input, ctx) {
+    const rows = await ctx.db.campaigns.listForGenome(input.genomeId, ctx.orgId, input.limit);
+    return {
+      campaigns: rows.map((c) => ({
+        campaignId: c.id,
+        name: c.name,
+        objective: c.objective,
+        windowDays: c.windowDays,
+        startAt: c.startAt.toISOString(),
+        status: c.status,
+      })),
     };
   },
 });
@@ -203,6 +274,111 @@ export const calendarGenerate = defineTool({
       })),
       unfilledPillars: placed.unfilledPillars,
       why: explainCalendar(placed.slots.length, placed.unfilledPillars, plan.mixWhy, Boolean(input.mixOverride)),
+    };
+  },
+});
+
+/**
+ * `calendar.impact_preview` — the dry-run `calendar.generate` never had.
+ * `calendar.generate` replaces every unpublished slot the moment it's
+ * called, so "less offer, more craft" committed sight-unseen — the caller
+ * only found out what changed by reading the calendar back afterward. This
+ * runs the identical planning/placement pipeline `calendar.generate` does
+ * (same `withMixOverride`, same `planCampaign`, same `placeCalendar`) and
+ * diffs the result against the campaign's current slots, without calling
+ * `replaceSlots` — nothing is written.
+ */
+export const CalendarImpactPreviewInput = z.object({
+  campaignId: z.string().min(1),
+  mixOverride: z.record(ContentPillar, z.number().min(0).max(MIX_OVERRIDE_MAX)).optional(),
+});
+
+const PillarCount = z.object({ pillar: z.string(), count: z.number() });
+
+export const CalendarImpactPreviewOutput = z.object({
+  campaignId: z.string(),
+  currentSlotCount: z.number(),
+  proposedSlotCount: z.number(),
+  mixBefore: z.array(PillarCount),
+  mixAfter: z.array(PillarCount),
+  unfilledPillars: z.array(z.object({ pillar: ContentPillar, count: z.number() })),
+  wouldChange: z.boolean(),
+  why: Explanation,
+});
+
+function countByPillar(slots: Array<{ pillar: string | null }>): Array<{ pillar: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const s of slots) {
+    if (!s.pillar) continue;
+    counts.set(s.pillar, (counts.get(s.pillar) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([pillar, count]) => ({ pillar, count })).sort((a, b) => a.pillar.localeCompare(b.pillar));
+}
+
+export const calendarImpactPreview = defineTool({
+  name: 'calendar.impact_preview',
+  version: 1,
+
+  summary:
+    'Show what calendar.generate (with the same mixOverride) would change before committing — current vs. ' +
+    'proposed slot count and pillar mix. Nothing is written; call calendar.generate to actually apply it.',
+
+  input: CalendarImpactPreviewInput,
+  output: CalendarImpactPreviewOutput,
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor', 'approver', 'viewer'],
+  idempotent: true,
+  surfaces: ['CAL-06'],
+
+  async handler(input, ctx) {
+    const campaign = await ctx.db.campaigns.get(input.campaignId, ctx.orgId);
+    if (!campaign) throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId: input.campaignId });
+
+    const genome = await ctx.db.genomes.get(campaign.genomeId, ctx.orgId);
+    if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId: campaign.genomeId });
+
+    const [inventory, currentSlots] = await Promise.all([
+      ctx.db.assets.inventory(campaign.genomeId, ctx.orgId) as Promise<AssetInventory>,
+      ctx.db.campaigns.slots(campaign.id, ctx.orgId, campaign.genomeId),
+    ]);
+
+    const plan = planCampaign({
+      genome: input.mixOverride ? withMixOverride(genome, input.mixOverride) : genome,
+      inventory,
+      objective: campaign.objective as z.infer<typeof Objective>,
+      windowDays: campaign.windowDays,
+    });
+
+    const playbooks = plan.readyPlaybookIds.map((id) => byId(id)).filter((p): p is Playbook => p !== undefined);
+
+    const placed = placeCalendar({
+      mix: plan.mix,
+      playbooks,
+      windowDays: campaign.windowDays,
+      startAt: campaign.startAt,
+    });
+
+    const mixBefore = countByPillar(currentSlots);
+    const mixAfter = countByPillar(placed.slots);
+    const wouldChange =
+      currentSlots.length !== placed.slots.length || JSON.stringify(mixBefore) !== JSON.stringify(mixAfter);
+
+    return {
+      campaignId: campaign.id,
+      currentSlotCount: currentSlots.length,
+      proposedSlotCount: placed.slots.length,
+      mixBefore,
+      mixAfter,
+      unfilledPillars: placed.unfilledPillars,
+      wouldChange,
+      why: {
+        ...explainCalendar(placed.slots.length, placed.unfilledPillars, plan.mixWhy, Boolean(input.mixOverride)),
+        summary: wouldChange
+          ? `Regenerating would go from ${currentSlots.length} to ${placed.slots.length} posts, with the pillar mix rebalanced. Nothing has been written — call calendar.generate to apply this.`
+          : `Regenerating would produce the same ${placed.slots.length} posts and mix already scheduled — no real change.`,
+      },
     };
   },
 });

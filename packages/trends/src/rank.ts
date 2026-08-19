@@ -74,7 +74,7 @@ const VOLUME_WEIGHT = 0.15;
  * asymmetry is deliberate.
  */
 export function rankTrends(genome: Genome, trends: Trend[]): { ranked: RankedTrend[]; excluded: RankedTrend[] } {
-  const scored = trends.map((trend) => score(genome, trend));
+  const scored = trends.map((trend) => scoreTrend(genome, trend));
 
   const excluded = scored.filter((r) => !r.safety.safe || r.relevance < RELEVANCE_FLOOR);
   const ranked = scored
@@ -84,7 +84,8 @@ export function rankTrends(genome: Genome, trends: Trend[]): { ranked: RankedTre
   return { ranked, excluded };
 }
 
-function score(genome: Genome, trend: Trend): RankedTrend {
+/** Per-trend scoring, exported for `trend.detail`/`trend.explain` — a single-trend breakdown without re-ranking a whole fetched batch. */
+export function scoreTrend(genome: Genome, trend: Trend): RankedTrend {
   const safety = assessSafety(genome, trend);
   const relevance = relevanceFor(genome, trend);
 

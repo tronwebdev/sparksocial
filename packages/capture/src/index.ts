@@ -5,5 +5,6 @@ export * from './generate.js';
 export * from './session.js';
 export * from './fallback.js';
 export * from './transport.js';
+export * from './whatsappTransport.js';
 export * from './send.js';
 export * from './whatsapp.js';

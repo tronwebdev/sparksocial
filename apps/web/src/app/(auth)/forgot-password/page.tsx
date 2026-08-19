@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSignIn } from '@clerk/nextjs';
+import { useAuth, useSignIn } from '@clerk/nextjs';
 import { SkyBackdrop, GlassCard } from '@/components/auth/GlassCard';
 import { AuthField, MailIcon, LockIcon } from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,19 @@ import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
  * Kept on one route because Clerk's reset flow is a single `signIn` attempt
  * carried across both steps — routing between them would mean re-establishing
  * that attempt from scratch.
+ *
+ * Same already-signed-in guard as `sign-in/page.tsx` — `signIn.create()`
+ * throws "already signed in" for an authenticated session, same as it does
+ * there.
  */
 export default function ForgotPasswordPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (authLoaded && isSignedIn) router.replace('/');
+  }, [authLoaded, isSignedIn, router]);
 
   const [step, setStep] = useState<'request' | 'reset'>('request');
   const [email, setEmail] = useState('');

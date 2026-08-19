@@ -4,7 +4,9 @@ import {
   createAuditRepository,
   createCreditRepository,
   createRunRecorder,
+  createDueContentSource,
   lookupToolCall,
+  type DueContentItem,
 } from '@sparksocial/db';
 import type { CreditStore, InvokeDeps, ToolCallRecord } from '@sparksocial/tools';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
@@ -27,6 +29,8 @@ export function connectPostgresStore(): {
   runRecorder: RunRecorder;
   /** Replay source for the Review queue — see approval-wiring.ts. */
   lookupCall: (callId: string, orgId: string) => Promise<ToolCallRecord | undefined>;
+  /** The scheduler's read — see scheduler.ts. */
+  findDue: (before: Date, limit: number) => Promise<DueContentItem[]>;
   close: () => Promise<void>;
 } {
   const { db, pool } = connect();
@@ -36,6 +40,7 @@ export function connectPostgresStore(): {
     credits: createCreditRepository(db),
     runRecorder: createRunRecorder(db),
     lookupCall: (callId, orgId) => lookupToolCall(db, callId, orgId),
+    findDue: createDueContentSource(db).findDue,
     close: () => pool.end(),
   };
 }

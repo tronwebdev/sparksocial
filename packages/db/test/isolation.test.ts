@@ -37,7 +37,12 @@ const SCHEMA_MODULE = join('packages', 'db', 'src', 'schema.ts');
 /** Barrel re-exports name the modules, not the tables. */
 const ALLOWED = new Set([SCOPED_MODULE, SCHEMA_MODULE]);
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', '.next', '.turbo']);
+// `.claude/worktrees/*` are full nested checkouts of this same repo (used by
+// background agent sessions) — walking into one double-counts every file in
+// it, including a second, unrelated copy of `scoped.ts` itself, which then
+// fails the "only scoped.ts touches these tables" check for reasons that have
+// nothing to do with this repo's own source.
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', '.next', '.turbo', '.claude']);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -59,7 +64,10 @@ function sourceFiles(): string[] {
 describe('static check — raw queries cannot bypass the scoped layer', () => {
   it('lists the tables it is guarding, so a new scoped table cannot be added silently', () => {
     expect([...SCOPED_TABLE_NAMES].sort()).toEqual(
-      ['assets', 'contentItems', 'knowledgeChunks', 'memories'].sort(),
+      [
+        'assets', 'assetFolders', 'contentItems', 'contentLinks', 'contentMetrics', 'engagementMessages', 'knowledgeChunks', 'memories', 'opportunities', 'renders',
+        'trendWatchlist', 'learningArms', 'learningOutcomes', 'recipes', 'recipeRuns', 'recipeOutputs', 'oauthConnections',
+      ].sort(),
     );
   });
 

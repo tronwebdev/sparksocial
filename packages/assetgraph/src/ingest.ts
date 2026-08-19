@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { AssetRole, PublicHttpUrl } from '@sparksocial/shared';
+import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
 
 /**
  * `asset.ingest_url` — engine spec §4.1.
@@ -18,17 +19,30 @@ import { AssetRole, PublicHttpUrl } from '@sparksocial/shared';
  * `apps/api`, never from here.
  */
 
-export const AssetIngestUrlInput = z.object({
-  genomeId: z.string(),
-  // Fetched server-side to caption and embed it — must not be able to point
-  // at the instance metadata endpoint (packages/shared/src/safeUrl.ts).
-  url: PublicHttpUrl,
-  assetRole: AssetRole,
-  mediaType: z.enum(['image', 'video', 'audio']),
-  /** 'cleared' only when consent/licensing is already confirmed; else 'pending'. */
-  rightsStatus: z.enum(['cleared', 'pending', 'restricted']).default('pending'),
-  source: z.string().optional(),
-});
+/**
+ * Built inside `makeAssetIngestUrl`, not at module scope, so the one narrow
+ * carve-out below can close over `deps.trustedLocalUrlPrefix` — a value only
+ * `apps/api`'s composition root ever supplies, never a caller. Everywhere
+ * else this is `PublicHttpUrl`, unchanged.
+ */
+function urlSchema(trustedLocalUrlPrefix?: string) {
+  if (!trustedLocalUrlPrefix) return PublicHttpUrl;
+
+  // Local-disk storage (apps/api/src/local-storage-routes.ts) hands back a
+  // `readUrl` on this server's own `localhost` — exactly the address
+  // `PublicHttpUrl` exists to block, for good reason (CLAUDE.md's Azure IMDS
+  // note in safeUrl.ts). The carve-out is narrow on purpose: only a URL
+  // matching this exact, server-controlled prefix skips the public-address
+  // check; an attacker-supplied URL that happens to start with the same
+  // string still cannot make the server fetch anything, because the caption
+  // client reads matching URLs off local disk rather than fetching them (see
+  // apps/api/src/caption-client.ts) — there is no request for it to redirect.
+  return z.string().url().superRefine((value, ctx) => {
+    if (value.startsWith(trustedLocalUrlPrefix)) return;
+    const result = checkPublicHttpUrl(value);
+    if (!result.ok) ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.reason ?? 'Unsafe URL.' });
+  });
+}
 
 export const AssetIngestUrlOutput = z.object({
   assetId: z.string(),
@@ -51,7 +65,17 @@ export interface CaptionClient {
 export type { EmbedClient } from './retrieve.js';
 import type { EmbedClient } from './retrieve.js';
 
-export function makeAssetIngestUrl(deps: CaptionClient & EmbedClient) {
+export interface AssetIngestUrlDeps extends CaptionClient, EmbedClient {
+  /**
+   * Set only in local development, to the exact origin+prefix
+   * `local-storage-routes.ts` serves from (e.g.
+   * `http://localhost:8080/v1/local-storage/`). Never a caller-influenced
+   * value — see `urlSchema`'s comment for why that's what keeps this safe.
+   */
+  trustedLocalUrlPrefix?: string;
+}
+
+export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
   return defineTool({
     name: 'asset.ingest_url',
     version: 1,
@@ -61,7 +85,18 @@ export function makeAssetIngestUrl(deps: CaptionClient & EmbedClient) {
       'a Drive file, a scraped image. Captions and embeds it so it becomes retrievable by intent. ' +
       'Cheap; a couple seconds.',
 
-    input: AssetIngestUrlInput,
+    input: z.object({
+      genomeId: z.string(),
+      // Fetched server-side to caption and embed it — must not be able to
+      // point at the instance metadata endpoint (packages/shared/src/safeUrl.ts),
+      // except this server's own local-disk storage in dev (see urlSchema).
+      url: urlSchema(deps.trustedLocalUrlPrefix),
+      assetRole: AssetRole,
+      mediaType: z.enum(['image', 'video', 'audio']),
+      /** 'cleared' only when consent/licensing is already confirmed; else 'pending'. */
+      rightsStatus: z.enum(['cleared', 'pending', 'restricted']).default('pending'),
+      source: z.string().optional(),
+    }),
     output: AssetIngestUrlOutput,
 
     effect: 'write',

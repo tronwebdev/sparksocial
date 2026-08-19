@@ -52,7 +52,12 @@ function ctx(runs: Partial<ToolCtx['db']['runs']>, over: Partial<ToolCtx> = {}):
         captionsByRole: async () => [],
         info: async () => ({}),
       },
-      content: { recent: async () => [] },
+      content: {
+        recent: async () => [],
+        createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
+        get: async () => undefined,
+        updateDraft: async () => undefined,
+      },
       runs: { list: async () => [], get: async () => undefined, ...runs },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },

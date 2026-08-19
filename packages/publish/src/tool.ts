@@ -63,10 +63,22 @@ export const PublishNowOutput = z.object({
   attempts: z.number(),
 });
 
+export interface EmbedClient {
+  embed(text: string): Promise<number[]>;
+}
+
 export interface PublishDeps {
   adapters: PlatformAdapter[];
   limiter?: RateLimiter;
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Computes the copy's embedding for `content.markPublished` — the write
+   * side of `guard.duplicate`/`guard.avatar_saturation`'s trailing-window
+   * read. Same `EmbedClient` shape `makeRunGuardrails` takes, so a caller
+   * that already has one (every one does, guardrails need it too) passes the
+   * same instance rather than standing up a second embedding client.
+   */
+  embed: EmbedClient;
 }
 
 export function makePublishNow(deps: PublishDeps) {
@@ -126,6 +138,16 @@ export function makePublishNow(deps: PublishDeps) {
       const adapter = router.for(input.platform);
       let attempts = 0;
 
+      // Resolved straight from `oauth_connections` rather than through an
+      // injected deps function — `ctx.db` is already the right seam for a
+      // per-request lookup, and adding an indirection here would only be
+      // one more thing every caller of `makePublishNow` has to wire.
+      // `undefined` for a platform whose connection this brand never made
+      // (or for the aggregator/stub, which need no per-brand token at all)
+      // — the adapter itself decides whether that's fatal.
+      const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, input.platform);
+      const accessToken = connection?.accessToken;
+
       try {
         const receipt = await publishWithRetry(
           {
@@ -135,6 +157,7 @@ export function makePublishNow(deps: PublishDeps) {
             // The content item is the natural key: the same scheduled post must
             // resolve to the same publish, whoever retried it and however.
             idempotencyKey: `${input.contentItemId}:${input.platform}`,
+            ...(accessToken ? { accessToken } : {}),
           },
           {
             publish: (r) => adapter.publish(r),
@@ -157,6 +180,47 @@ export function makePublishNow(deps: PublishDeps) {
           via: receipt.via,
         });
 
+        // The write side of `recent()` (§10's duplicate/avatar_saturation
+        // checks) and the only place `platform`/the receipt land on the row.
+        // Best-effort: the post is already live by this point, so a store
+        // failure here must not be reported as a publish failure — it would
+        // invite a retry that posts a second time. Logged loudly instead,
+        // same trade-off as `recordCost`'s swallowed failure in invoke.ts.
+        try {
+          await ctx.db.content.markPublished({
+            id: input.contentItemId,
+            orgId: ctx.orgId,
+            platform: receipt.platform,
+            embedding: await deps.embed.embed(input.text),
+            externalId: receipt.externalId,
+            via: receipt.via,
+            ...(receipt.url ? { url: receipt.url } : {}),
+            publishedAt: receipt.publishedAt,
+          });
+        } catch (e) {
+          ctx.logger.error('failed to record the publish receipt — the post is live but content_items was not updated', {
+            contentItemId: input.contentItemId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
+
+        // Best-effort for the same reason as `markPublished` above: the post
+        // is already live, so a store failure here must not fail the call.
+        // Without this, `usageCount`/`lastUsedAt` never move off their
+        // insert-time defaults on the one path that accounts for nearly
+        // every real use — see `asset.reuse`'s own comment.
+        await Promise.all(
+          input.referencedAssetIds.map((assetId) =>
+            ctx.db.assets.recordUsage({ id: assetId, genomeId: input.genomeId, orgId: ctx.orgId }).catch((e: unknown) => {
+              ctx.logger.error('failed to record asset usage — the post is live but usageCount was not updated', {
+                contentItemId: input.contentItemId,
+                assetId,
+                error: e instanceof Error ? e.message : String(e),
+              });
+            }),
+          ),
+        );
+
         return {
           platform: receipt.platform,
           externalId: receipt.externalId,
@@ -174,6 +238,96 @@ export function makePublishNow(deps: PublishDeps) {
         }
         throw e;
       }
+    },
+  });
+}
+
+/* ── Rollback (plan §10: "publish.rollback for platforms that support deletion, plus an incident runbook for those that don't") ── */
+
+export const PublishRollbackInput = z.object({
+  contentItemId: z.string().min(1),
+  genomeId: z.string().min(1),
+  /** Not persisted anywhere yet (no column for it) — logged, for the audit trail's own record of why. */
+  reason: z.string().max(500).optional(),
+});
+
+export const PublishRollbackOutput = z.object({
+  contentItemId: z.string(),
+  platform: Platform,
+  rolledBackAt: z.string(),
+});
+
+export function makePublishRollback(deps: PublishDeps) {
+  const router = routeAdapters(deps.adapters);
+
+  return defineTool({
+    name: 'publish.rollback',
+    version: 1,
+
+    summary:
+      'Delete a published post from the platform and mark it rolled back. Only works where the adapter ' +
+      'actually serving that platform supports deletion — refuses cleanly, naming the platform, when it ' +
+      "doesn't, rather than pretending the post came down.",
+
+    input: PublishRollbackInput,
+    output: PublishRollbackOutput,
+
+    // Deleting something already public is its own kind of irreversible
+    // (the deletion itself can't be undone, and a fast unpublish/republish
+    // reads as suspicious on most platforms) — same effect class as the
+    // publish it reverses, so it goes through the identical guardrail gate.
+    effect: 'publish',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin'],
+    idempotent: false,
+
+    async handler(input, ctx) {
+      const item = await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId);
+      if (!item) throw new ToolError('NOT_FOUND', 'That content item is not open.', { contentItemId: input.contentItemId });
+      if (item.status !== 'published' || !item.platform || !item.externalId) {
+        throw new ToolError('INVALID_INPUT', 'This post is not currently published — nothing to roll back.', {
+          contentItemId: input.contentItemId,
+          status: item.status,
+        });
+      }
+
+      const platform = item.platform as Platform;
+      const adapter = router.for(platform);
+      if (!adapter.delete) {
+        // Not a caller mistake in the ordinary sense — the request is well-formed,
+        // the adapter serving this platform just has no delete endpoint. No
+        // dedicated code for "unsupported by the current adapter" exists in the
+        // shared union, and inventing one here would mean every caller's switch
+        // has to learn it too; INVALID_INPUT is the closest existing code whose
+        // remedy (don't retry this the same way) matches.
+        throw new ToolError(
+          'INVALID_INPUT',
+          `${adapter.name} has no delete capability for ${platform} — this platform has to be taken down manually.`,
+          { platform, via: adapter.name },
+        );
+      }
+
+      const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, platform);
+
+      try {
+        await adapter.delete(item.externalId, platform, connection?.accessToken);
+      } catch (e) {
+        if (e instanceof PublishError) {
+          throw new ToolError('UPSTREAM_FAILED', e.message, { platform: e.platform, retryable: e.retryable });
+        }
+        throw e;
+      }
+
+      await ctx.db.content.markRolledBack({ id: input.contentItemId, orgId: ctx.orgId });
+
+      ctx.logger.info('publish rolled back', {
+        contentItemId: input.contentItemId,
+        platform,
+        via: adapter.name,
+        ...(input.reason ? { reason: input.reason } : {}),
+      });
+
+      return { contentItemId: input.contentItemId, platform, rolledBackAt: new Date().toISOString() };
     },
   });
 }

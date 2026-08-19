@@ -77,6 +77,18 @@ export function makeBrandGovernance(db: ScopedDb) {
       // `brand.agentPaused`, and a loader that does not carry it leaves the
       // field undefined however many times someone clicks Pause.
       agentPaused: governance.agentPaused,
+      /**
+       * Same "the loader is the wiring" rule as `agentPaused` above, extended
+       * to `approval.policy.set`'s five fields: `policy.ts` has read every one
+       * of these since P1, and until now no loader forwarded them, so a brand
+       * calling `approval.policy.set` had its write land in `brands` and then
+       * never be seen by a single `evaluate()` call.
+       */
+      ...(governance.familyOverrides ? { familyOverrides: governance.familyOverrides } : {}),
+      ...(governance.restrictedPlatforms ? { restrictedPlatforms: governance.restrictedPlatforms } : {}),
+      ...(governance.restrictedContentTypes ? { restrictedContentTypes: governance.restrictedContentTypes } : {}),
+      ...(governance.quietWindows ? { quietWindows: governance.quietWindows } : {}),
+      ...(governance.permissions ? { permissions: governance.permissions } : {}),
     };
   };
 }

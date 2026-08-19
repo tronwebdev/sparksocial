@@ -16,11 +16,18 @@ import { makeClerkResolveCtx } from '../src/clerk-auth.js';
 
 const GENOME_IN_ORG_A = 'gen_a';
 const GENOME_IN_ORG_B = 'gen_b';
+const GENOME_BRAND_A2 = 'gen_a2';
 
-function fakeDb(): ScopedDb {
+/**
+ * `brandMemberships` seeds `brand_members` rows for the "agency isolation"
+ * tests below — a second brand in org_A (`brand_A2`) that only some org_A
+ * members are assigned to, mirroring `team.permission.set`'s real effect.
+ */
+function fakeDb(brandMemberships: { userId: string; brandId: string }[] = []): ScopedDb {
   const genomes: Record<string, { orgId: string; workspace_id: string }> = {
     [GENOME_IN_ORG_A]: { orgId: 'org_A', workspace_id: 'brand_A' },
     [GENOME_IN_ORG_B]: { orgId: 'org_B', workspace_id: 'brand_B' },
+    [GENOME_BRAND_A2]: { orgId: 'org_A', workspace_id: 'brand_A2' },
   };
   return {
     genomes: {
@@ -43,6 +50,17 @@ function fakeDb(): ScopedDb {
       info: async () => ({}),
     },
     content: { recent: async () => [] },
+    brandMembers: {
+      set: async () => {
+        throw new Error('not used in these tests');
+      },
+      remove: async () => {},
+      listForBrand: async () => [],
+      listForUser: async (_orgId: string, userId: string) =>
+        brandMemberships
+          .filter((m) => m.userId === userId)
+          .map((m) => ({ userId: m.userId, brandId: m.brandId, role: 'editor', createdAt: new Date() })) as never,
+    },
   } as unknown as ScopedDb;
 }
 
@@ -55,8 +73,15 @@ function fakeClerk(claims: Record<string, unknown> | null): ClerkClient {
   } as unknown as ClerkClient;
 }
 
-const resolver = (claims: Record<string, unknown> | null) =>
-  makeClerkResolveCtx({ db: fakeDb(), clerk: fakeClerk(claims), authorizedParties: ['http://localhost:3000'] });
+const resolver = (
+  claims: Record<string, unknown> | null,
+  brandMemberships: { userId: string; brandId: string }[] = [],
+) =>
+  makeClerkResolveCtx({
+    db: fakeDb(brandMemberships),
+    clerk: fakeClerk(claims),
+    authorizedParties: ['http://localhost:3000'],
+  });
 
 const req = (headers: Record<string, string> = {}) => new Request('http://api.test/v1/tools/x', { headers });
 
@@ -127,6 +152,46 @@ describe('clerk resolveCtx — the tenancy boundary', () => {
     expect(ctx.genomeId).toBeUndefined();
     expect(ctx.orgId).toBe('org_A');
   });
+
+  /* ── Brand-level access (agency isolation, docs/GAPS.md) ──────────────
+   * Being in the org is not being scoped to every brand in it. org_A has two
+   * brands: `brand_A` (GENOME_IN_ORG_A) and `brand_A2` (GENOME_BRAND_A2).
+   */
+
+  it('refuses a non-admin org member reaching a brand they have no brand_members row for', async () => {
+    const resolve = resolver({ sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' }, []);
+    await expect(resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it('admits a non-admin org member to a brand they are assigned to via team.permission.set', async () => {
+    const resolve = resolver(
+      { sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' },
+      [{ userId: 'staffer', brandId: 'brand_A2' }],
+    );
+    const ctx = await resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }));
+    expect(ctx.brandId).toBe('brand_A2');
+  });
+
+  it('does not let an assignment to one brand leak access to a sibling brand in the same org', async () => {
+    const resolve = resolver(
+      { sub: 'staffer', org_id: 'org_A', org_role: 'org:editor' },
+      [{ userId: 'staffer', brandId: 'brand_A' }],
+    );
+    await expect(resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }))).rejects.toMatchObject({
+      code: 'ISOLATION_VIOLATION',
+    });
+  });
+
+  it.each([['org:owner', 'owner'], ['org:admin', 'admin']])(
+    '%s administers every brand in the org with no brand_members row needed',
+    async (orgRole) => {
+      const resolve = resolver({ sub: 'boss', org_id: 'org_A', org_role: orgRole }, []);
+      const ctx = await resolve(req({ 'x-genome-id': GENOME_BRAND_A2 }));
+      expect(ctx.brandId).toBe('brand_A2');
+    },
+  );
 
   /* ── Role mapping ───────────────────────────────────────────────────── */
 

@@ -20,6 +20,16 @@ export interface PresignedUpload {
 export interface BlobStore {
   presignUpload(args: { key: string; contentType: string; ttlSec?: number }): Promise<PresignedUpload>;
   readUrl(key: string, ttlSec?: number): Promise<string>;
+  /**
+   * Server-side write, for the one class of caller with no bytes to hand a
+   * client: a vendor API (ElevenLabs' TTS endpoint) that returns audio bytes
+   * directly rather than hosting the result at a URL the way fal.ai and
+   * HeyGen do. Every other write in this codebase goes through
+   * `presignUpload` deliberately — see this file's own note on why bytes
+   * otherwise never transit the API container — so `put` exists only for
+   * `apps/api/src/voice-client.ts` and should not become the default path.
+   */
+  put(args: { key: string; contentType: string; bytes: Uint8Array }): Promise<{ url: string }>;
 }
 
 /**

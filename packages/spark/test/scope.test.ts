@@ -106,8 +106,8 @@ describe('toolsInScope — what the model is even shown', () => {
       'human.ask', 'agent.status', 'queue.plan.list', 'approval.decide',
       'genome.bootstrap_from_url', 'knowledge.ingest_site', 'asset.ingest_url',
       'campaign.activate', 'mix.derive_from_outcome', 'playbook.resolve', 'calendar.schedule',
-      'asset.retrieve', 'draft.copy.write', 'synthesize.image', 'assemble.montage',
-      'finish.trim', 'compose.render', 'direct.brief.generate', 'whatsapp.send',
+      'asset.retrieve', 'content.draft', 'content.generate_image', 'assemble.plan',
+      'direct.brief.generate', 'whatsapp.send',
       'guard.evaluate_draft', 'engage.classify', 'trend.rank', 'analytics.sync', 'learning.reweight',
     ];
     for (const agent of agentNames()) {

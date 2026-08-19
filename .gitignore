@@ -13,6 +13,10 @@ next-env.d.ts
 !.env.example
 *.log
 
+# Local-disk object storage (apps/api/src/local-storage-routes.ts) — the dev
+# stand-in for Azure Blob Storage before an account is provisioned.
+.local-storage/
+
 # Machine-local Claude Code permissions
 .claude/settings.local.json
 .next-build/

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { CampaignStore, ToolCtx } from '@sparksocial/tools';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
-import { calendarGenerate, calendarGet, campaignCreate } from '../src/calendarTool.js';
+import { calendarGenerate, calendarImpactPreview, calendarGet, campaignCreate, campaignList } from '../src/calendarTool.js';
 
 /**
  * The tool layer around §6.8 Steps 1–4. The behaviours asserted here are the
@@ -33,8 +33,11 @@ function store(): CampaignStore & { slotWrites: number[] } {
       const r = rows.get(id);
       return r && r.orgId === orgId ? (r as never) : undefined;
     },
-    async listForGenome() {
-      return [];
+    async listForGenome(genomeId, orgId, limit) {
+      return [...rows.values()]
+        .filter((r) => r.genomeId === genomeId && r.orgId === orgId)
+        .sort((a, b) => (b.startAt as Date).getTime() - (a.startAt as Date).getTime())
+        .slice(0, limit) as never;
     },
     async replaceSlots({ campaignId, slots: next }) {
       slotWrites.push(next.length);
@@ -72,7 +75,12 @@ function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx
         captionsByRole: async () => [],
         info: async () => ({}),
       },
-      content: { recent: async () => [] },
+      content: {
+        recent: async () => [],
+        createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
+        get: async () => undefined,
+        updateDraft: async () => undefined,
+      },
       campaigns,
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -195,6 +203,83 @@ describe('calendar.generate', () => {
   });
 });
 
+describe('calendar.impact_preview', () => {
+  let s: ReturnType<typeof store>;
+  beforeEach(() => {
+    s = store();
+  });
+
+  it('reports what would change without writing anything', async () => {
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+    await calendarGenerate.handler({ campaignId }, c);
+    const before = await s.slots(campaignId, 'org_1', 'gen_barber');
+
+    const preview = await calendarImpactPreview.handler(
+      { campaignId, mixOverride: { product: 0.05, community: 0.45 } },
+      c,
+    );
+
+    expect(preview.wouldChange).toBe(true);
+    expect(preview.currentSlotCount).toBe(before.length);
+    // Nothing written — the same slots that existed before the preview still do.
+    const after = await s.slots(campaignId, 'org_1', 'gen_barber');
+    expect(after).toEqual(before);
+  });
+
+  it('matches what calendar.generate would actually produce with the same override', async () => {
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+    await calendarGenerate.handler({ campaignId }, c);
+
+    const preview = await calendarImpactPreview.handler(
+      { campaignId, mixOverride: { product: 0.05, community: 0.45 } },
+      c,
+    );
+    const applied = await calendarGenerate.handler(
+      { campaignId, mixOverride: { product: 0.05, community: 0.45 } },
+      c,
+    );
+
+    expect(preview.proposedSlotCount).toBe(applied.slotCount);
+    const productCount = (mix: typeof preview.mixAfter, pillar: string) => mix.find((m) => m.pillar === pillar)?.count ?? 0;
+    expect(productCount(preview.mixAfter, 'product')).toBe(
+      applied.slots.filter((sl) => sl.pillar === 'product').length,
+    );
+  });
+
+  it('reports no change when nothing about the plan actually differs', async () => {
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+    await calendarGenerate.handler({ campaignId }, c);
+
+    const preview = await calendarImpactPreview.handler({ campaignId }, c);
+
+    expect(preview.wouldChange).toBe(false);
+    expect(preview.why.summary).toContain('no real change');
+  });
+
+  it('reports the full proposed calendar as current when nothing has been generated yet', async () => {
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+
+    const preview = await calendarImpactPreview.handler({ campaignId }, c);
+
+    expect(preview.currentSlotCount).toBe(0);
+    expect(preview.proposedSlotCount).toBeGreaterThan(0);
+    expect(preview.wouldChange).toBe(true);
+  });
+
+  it('is read-only', () => {
+    expect(calendarImpactPreview.effect).toBe('read');
+  });
+
+  it('refuses an unknown campaign', async () => {
+    const c = ctx(s);
+    await expect(calendarImpactPreview.handler({ campaignId: 'cmp_missing' }, c)).rejects.toThrow(ToolError);
+  });
+});
+
 describe('calendar.get', () => {
   it('reports the actual mix, which is what Step 4 is reviewed at', async () => {
     const s = store();
@@ -224,5 +309,33 @@ describe('calendar.get', () => {
     (other as { orgId: string }).orgId = 'org_attacker';
 
     await expect(calendarGet.handler({ campaignId }, other)).rejects.toThrow(ToolError);
+  });
+});
+
+describe('campaign.list', () => {
+  it('finds the active campaign by genomeId alone, most recently started first', async () => {
+    const s = store();
+    const c = ctx(s);
+    await create(c); // September, START
+    await campaignCreate.handler(
+      { genomeId: 'gen_barber', name: 'October', objective: 'bookings', windowDays: 30, startAt: new Date('2026-10-01T09:00:00.000Z').toISOString() },
+      c,
+    );
+
+    const out = await campaignList.handler({ genomeId: 'gen_barber', limit: 10 }, c);
+    expect(out.campaigns.map((camp) => camp.name)).toEqual(['October', 'September']);
+  });
+
+  it('is readable by every role, same as calendar.get', () => {
+    expect(campaignList.scopes).toContain('client');
+    expect(campaignList.effect).toBe('read');
+  });
+
+  it('does not see another genome\'s campaigns', async () => {
+    const s = store();
+    await create(ctx(s));
+
+    const out = await campaignList.handler({ genomeId: 'gen_other', limit: 10 }, ctx(s));
+    expect(out.campaigns).toEqual([]);
   });
 });

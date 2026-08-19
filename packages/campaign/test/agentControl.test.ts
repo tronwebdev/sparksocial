@@ -33,6 +33,7 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
         : { brandId: row.brandId, name: row.name, approvalMode: row.approvalMode, createdAt: row.createdAt, agentPaused: false, postsPerWeek: row.postsPerWeek };
       return row;
     },
+    setPolicy: async () => row,
   };
 }
 
@@ -68,6 +69,11 @@ describe('the registry contract', () => {
   it('status is readable by everyone, including the agent', () => {
     expect(agentStatus.effect).toBe('read');
     expect(agentStatus.scopes).toContain('client');
+  });
+
+  it('status reports the current frequency, not just pause state — the Command Center needs a value to show before it sets one', async () => {
+    const out = await agentStatus.handler({}, ctx(store({ postsPerWeek: 5 })));
+    expect(out.postsPerWeek).toBe(5);
   });
 });
 

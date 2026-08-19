@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { envList, envNum, envSet, envStr } from '../src/env.js';
+import { envBool, envList, envNum, envSet, envStr } from '../src/env.js';
 
 /**
  * Present-but-empty must mean absent.
@@ -112,5 +112,38 @@ describe('envList', () => {
   it('drops empty entries from a trailing comma', () => {
     process.env[KEY] = 'https://a.example,,';
     expect(envList(KEY, [])).toEqual(['https://a.example']);
+  });
+});
+
+describe('envBool', () => {
+  it('falls back when unset', () => {
+    expect(envBool(KEY, true)).toBe(true);
+    expect(envBool(KEY, false)).toBe(false);
+  });
+
+  it('falls back when present but empty — same "empty means absent" rule as the others', () => {
+    process.env[KEY] = '';
+    expect(envBool(KEY, true)).toBe(true);
+  });
+
+  it('recognises common false spellings, case-insensitively', () => {
+    for (const v of ['false', 'FALSE', '0', 'no', 'off']) {
+      process.env[KEY] = v;
+      expect(envBool(KEY, true), v).toBe(false);
+    }
+  });
+
+  it('recognises common true spellings, case-insensitively', () => {
+    for (const v of ['true', 'TRUE', '1', 'yes', 'on']) {
+      process.env[KEY] = v;
+      expect(envBool(KEY, false), v).toBe(true);
+    }
+  });
+
+  it('warns and falls back on an unrecognised value, rather than guessing which way a typo leans', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    process.env[KEY] = 'disbaled';
+    expect(envBool(KEY, true)).toBe(true);
+    expect(warn).toHaveBeenCalled();
   });
 });

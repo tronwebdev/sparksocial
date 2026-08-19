@@ -48,5 +48,17 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
     async info(ids, genomeId, orgId) {
       return scoped.assetInfo(db, { orgId, brandId: orgId, genomeId }, ids);
     },
+
+    async setRights({ id, genomeId, orgId, rightsStatus }) {
+      return scoped.setAssetRights(db, { orgId, brandId: orgId, genomeId }, { id, rightsStatus });
+    },
+
+    async recordUsage({ id, genomeId, orgId }) {
+      return scoped.recordAssetUsage(db, { orgId, brandId: orgId, genomeId }, { id });
+    },
+
+    async moveToFolder({ id, genomeId, orgId, folderId }) {
+      return scoped.moveAssetToFolder(db, { orgId, brandId: orgId, genomeId }, { assetId: id, folderId });
+    },
   };
 }

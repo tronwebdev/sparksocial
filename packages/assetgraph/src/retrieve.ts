@@ -42,6 +42,7 @@ const RetrievedAsset = z.object({
   usageCount: z.number().int(),
   lastUsedAt: z.string().nullable(),
   rightsStatus: z.string(),
+  folderId: z.string().nullable(),
 });
 
 export const AssetRetrieveOutput = z.object({
@@ -99,6 +100,7 @@ export function makeAssetRetrieve(deps: EmbedClient) {
           usageCount: r.usageCount,
           lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null,
           rightsStatus: r.rightsStatus,
+          folderId: r.folderId,
         })),
         why: {
           summary:

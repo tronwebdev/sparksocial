@@ -148,7 +148,25 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         const draft = await ctx.db.genomes.createDraft({
           brandId: input.brandId,
           orgId: ctx.orgId,
-          identity: inferred.identity,
+          // `inferGenome`'s `GenomeIdentity` (this module, camelCase — it
+          // mirrors the model's response shape) is a different type from
+          // storage's `GenomeIdentity` (`@sparksocial/shared/genome`,
+          // snake_case). Passing the inference result straight through used
+          // to hand the repository a `business_name`-shaped field that was
+          // simply never present on the object it received.
+          identity: {
+            business_name: inferred.identity.businessName,
+            category: inferred.identity.category,
+            ...(inferred.identity.subCategory ? { sub_category: inferred.identity.subCategory } : {}),
+            one_liner: inferred.identity.oneLiner,
+            geography: {
+              scope: inferred.identity.geography.scope,
+              locale: inferred.identity.geography.locale,
+              radius_km: inferred.identity.geography.radiusKm,
+            },
+            languages: inferred.identity.languages,
+            price_tier: inferred.identity.priceTier,
+          },
           dimensions: inferred.dimensions,
           voice: inferred.voice,
           source: 'inference',
@@ -158,6 +176,10 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         brandId: input.brandId,
         pages: pages.length,
         unresolved: inferred.unresolved,
+        // What the crawl actually inferred, not what the target site was
+        // meant to say — the one way to tell "the inference got it wrong"
+        // apart from "something upstream of the inference is wrong".
+        businessName: inferred.identity.businessName,
       });
 
       return {

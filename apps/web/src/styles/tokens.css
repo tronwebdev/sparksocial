@@ -205,3 +205,10 @@
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
+
+/* Same shape as ss-drawer-in, mirrored — for the mobile nav sheet, which
+   opens from the left edge the desktop sidebar itself occupies. */
+@keyframes ss-drawer-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}

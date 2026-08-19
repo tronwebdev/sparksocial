@@ -63,6 +63,24 @@ export function createCreditRepository(db: Database): CreditStore {
         // whose side effects already happened.
         .onConflictDoNothing({ target: creditLedger.callId });
     },
+
+    async grant({ orgId, brandId, amountCents, reason }) {
+      // Negative costCents is a credit, per this table's own documented
+      // convention ("positive is a spend, negative a refund or a goodwill
+      // credit"). `callId` is null — a manual grant is not billing any real
+      // tool_calls row, so there is nothing to key idempotency on the way
+      // `record()` does; `org.credits.grant`'s own `idempotent: false`
+      // declaration is what stops a retried call from granting twice.
+      await db.insert(creditLedger).values({
+        id: randomUUID(),
+        orgId,
+        costCents: -Math.abs(amountCents),
+        tool: 'org.credits.grant',
+        reason,
+        at: new Date(),
+        ...(brandId ? { brandId } : {}),
+      });
+    },
   };
 }
 

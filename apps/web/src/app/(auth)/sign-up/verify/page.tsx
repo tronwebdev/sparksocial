@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSignUp } from '@clerk/nextjs';
+import { useAuth, useSignUp } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,25 @@ import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
  *
  * Dark surface, so this subtree sets `.dark` and reads the same semantic tokens
  * as everything else rather than hardcoding white text.
+ *
+ * ── The already-signed-in guard ─────────────────────────────────────────────
+ * Same fix as `sign-in/page.tsx` and `sign-up/page.tsx`, and the same real
+ * incident that motivated it: a successful `attemptEmailAddressVerification`
+ * completes the session and navigates to `/meet-spark` — but a refresh (or a
+ * back-navigation) that lands the browser back on this page *after* that
+ * already happened calls `attemptEmailAddressVerification` again on a session
+ * with nothing left to verify, and Clerk throws "already signed in" instead of
+ * quietly doing nothing. Without this guard that reads as the first code
+ * having failed, when it had already worked.
  */
 export default function VerifyPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (authLoaded && isSignedIn) router.replace('/meet-spark');
+  }, [authLoaded, isSignedIn, router]);
 
   const [code, setCode] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });

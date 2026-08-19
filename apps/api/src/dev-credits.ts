@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CreditStore } from '@sparksocial/tools/defineTool';
 import { periodStart } from '@sparksocial/db/creditRepository';
 import { envNum } from './env.js';
@@ -39,6 +40,10 @@ export function createDevCreditStore(
       // First write wins, like `onConflictDoNothing`.
       if (charged.has(callId)) return;
       charged.set(callId, { orgId, costCents, at });
+    },
+
+    async grant({ orgId, amountCents }) {
+      charged.set(`grant_${randomUUID()}`, { orgId, costCents: -Math.abs(amountCents), at: new Date() });
     },
   };
 }

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganizationList, useUser } from '@clerk/nextjs';
+import { SparkMark } from '@/components/brand/SparkMark';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 /**
  * Guarantees the session has an **active organization** before the shell renders.
@@ -19,15 +22,30 @@ import { useAuth, useOrganizationList, useUser } from '@clerk/nextjs';
  * shell layout closes every one of those routes at once, which is why it lives
  * here rather than on individual pages.
  *
- * It activates rather than asks. Clerk's `TaskChooseOrganization` is where a
- * user *chooses*; by the time they reach the shell the choice has been made and
- * re-prompting would be a second decision about something already decided.
+ * ── Membership: activate. No membership at all: ask ────────────────────────
+ *
+ * A member with an existing org (someone who accepted an invite, or is
+ * returning after `createOrganization` below on a previous visit) just needs
+ * it activated on THIS session — no prompt needed, since the choice of which
+ * org was already made elsewhere.
+ *
+ * A session with **no membership at all** — every fresh sign-up, now that the
+ * Clerk Dashboard's "Force organization selection" is off and Clerk never
+ * intercepts with its own `TaskChooseOrganization` — used to hit a silent
+ * fallback here that invented a name — `${firstName}'s workspace}`, or
+ * literally "My workspace" whenever `firstName` was empty — and created it
+ * without ever showing the user a form. This is that missing form, not a
+ * smarter default: it can't be right without knowing what the business is
+ * called, and neither can a guess.
  */
 export function OrgGuard({ children }: { children: React.ReactNode }) {
   const { isLoaded: authLoaded, orgId } = useAuth();
   const { user, isLoaded: userLoaded } = useUser();
   const { setActive, createOrganization, isLoaded: listLoaded } = useOrganizationList();
 
+  const [needsName, setNeedsName] = useState(false);
+  const [name, setName] = useState('');
+  const [creating, setCreating] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
 
   const ready = authLoaded && userLoaded && listLoaded;
@@ -43,23 +61,68 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
           await setActive({ organization: existing.organization.id });
           return;
         }
-        // No membership at all. Clerk's task flow should have prevented this,
-        // but a session predating `force_organization_selection` can reach here
-        // — and an org-less session cannot make a single tool call, so creating
-        // one beats rendering a shell where everything 403s.
-        if (!createOrganization) return;
-        const name = user.firstName ? `${user.firstName}'s workspace` : 'My workspace';
-        const org = await createOrganization({ name });
-        await setActive({ organization: org.id });
+        // No membership at all — the case that used to auto-create silently.
+        if (!cancelled) setNeedsName(true);
       } catch (e) {
-        if (!cancelled) setFailed(e instanceof Error ? e.message : 'Could not select a workspace.');
+        if (!cancelled) setFailed(e instanceof Error ? e.message : 'Could not open your workspace.');
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [ready, orgId, user, setActive, createOrganization]);
+  }, [ready, orgId, user, setActive]);
+
+  async function submitName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!createOrganization || !setActive || creating) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    setCreating(true);
+    setFailed(null);
+    try {
+      const org = await createOrganization({ name: trimmed });
+      await setActive({ organization: org.id });
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : 'Could not create your workspace.');
+      setCreating(false);
+    }
+  }
+
+  if (needsName && !orgId) {
+    return (
+      <div className="dark flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-6">
+        <div className="flex flex-col items-center">
+          <SparkMark variant="card" />
+          <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">Name your workspace</h1>
+          <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
+            Everything SPARK makes lives inside a workspace. You can add brands to it, or a second
+            workspace, later.
+          </p>
+        </div>
+
+        <form onSubmit={submitName} className="flex w-[380px] max-w-full flex-col gap-4">
+          <Input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Emeka Cuts, or your agency's name"
+            aria-label="Workspace name"
+            disabled={creating}
+          />
+          {failed ? (
+            <p role="alert" className="text-center text-[14px] text-destructive">
+              {failed}
+            </p>
+          ) : null}
+          <Button type="submit" size="cta" disabled={creating || !name.trim()}>
+            {creating ? 'Creating…' : 'Continue'}
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
   if (failed) {
     return (

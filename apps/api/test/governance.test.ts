@@ -15,12 +15,13 @@ import { createDevBrandStore } from '../src/dev-brands.js';
  * undefined however many times somebody clicked Pause.
  */
 
-const publishAsAgent = (brand: Awaited<ReturnType<ReturnType<typeof makeBrandGovernance>>>) => ({
+const publishAsAgent = (brand: Awaited<ReturnType<ReturnType<typeof makeBrandGovernance>>>, subject?: { platform?: string }) => ({
   tool: { name: 'publish.now', effect: 'publish' as const, autonomy: 'auto' as const, scopes: ['owner' as const] },
   caller: 'agent' as const,
   role: 'owner' as const,
   now: new Date(),
   brand,
+  ...(subject ? { subject } : {}),
   budget: { remainingCents: 10_000, estimatedCents: 0 },
 });
 
@@ -79,5 +80,46 @@ describe('makeBrandGovernance', () => {
 
     expect((await load('org_1', 'brand_1')).agentPaused).toBe(true);
     expect((await load('org_1', 'brand_2')).agentPaused).toBe(false);
+  });
+});
+
+/**
+ * `approval.policy.set`'s five fields — same class of bug as `agentPaused`
+ * above, and caught the same way: `policy.ts` has read `restrictedPlatforms`
+ * / `familyOverrides` / etc. since P1, but until `setPolicy` and this loader
+ * update existed, nothing ever wrote or forwarded them, so every branch that
+ * reads them was live in the unit tests and dead in production.
+ */
+describe('makeBrandGovernance — approval.policy.set fields', () => {
+  it('carries restrictedPlatforms through to a real approval-required decision', async () => {
+    const { brands, load } = harness();
+    await brands.setPolicy({ brandId: 'brand_1', orgId: 'org_1', patch: { restrictedPlatforms: ['tiktok'] } });
+
+    const governance = await load('org_1', 'brand_1');
+    expect(governance.restrictedPlatforms).toEqual(['tiktok']);
+
+    const decision = evaluate(publishAsAgent(governance, { platform: 'tiktok' }));
+    expect(decision.kind).toBe('approval');
+    expect(decision.kind === 'approval' && decision.ruleId).toBe('brand.restricted_platform');
+
+    // An unrestricted platform on the same brand is unaffected.
+    expect(evaluate(publishAsAgent(governance, { platform: 'instagram' })).kind).toBe('allow');
+  });
+
+  it('a brand nobody has configured carries every policy field as undefined, not a stale default', async () => {
+    const { load } = harness();
+    const governance = await load('org_1', 'brand_new');
+    expect(governance.restrictedPlatforms).toBeUndefined();
+    expect(governance.familyOverrides).toBeUndefined();
+    expect(governance.quietWindows).toBeUndefined();
+    expect(governance.permissions).toBeUndefined();
+  });
+
+  it('does not leak one brand’s restricted platforms onto another', async () => {
+    const { brands, load } = harness();
+    await brands.setPolicy({ brandId: 'brand_1', orgId: 'org_1', patch: { restrictedPlatforms: ['tiktok'] } });
+
+    expect((await load('org_1', 'brand_1')).restrictedPlatforms).toEqual(['tiktok']);
+    expect((await load('org_1', 'brand_2')).restrictedPlatforms).toBeUndefined();
   });
 });

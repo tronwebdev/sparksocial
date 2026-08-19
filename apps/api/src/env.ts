@@ -70,3 +70,30 @@ export function envList(name: string, fallback: string[]): string[] {
   if (!raw) return fallback;
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
+
+const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+const FALSE_VALUES = new Set(['false', '0', 'no', 'off']);
+
+/**
+ * A real operator on/off switch — distinct from `envSet`, which asks "is a
+ * credential present." A source can be fully configured and still disabled
+ * (`FOO_ENABLED=false`), which is the whole point of an explicit switch: it
+ * turns a source off without touching its credentials, so re-enabling it
+ * later doesn't mean re-entering them.
+ *
+ * Same "loud rejection over a silent wrong default" rule as `envNum`: an
+ * unrecognised value warns and falls back, rather than a typo like `"no"` or
+ * `"disbaled"` being silently read as true or false depending on which way
+ * the parser happens to lean.
+ */
+export function envBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+
+  const normalised = raw.trim().toLowerCase();
+  if (TRUE_VALUES.has(normalised)) return true;
+  if (FALSE_VALUES.has(normalised)) return false;
+
+  console.warn(`[warn] ${name}="${raw}" is not a recognised true/false value — using ${fallback}.`);
+  return fallback;
+}

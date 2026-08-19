@@ -19,24 +19,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       signInFallbackRedirectUrl="/"
       signUpFallbackRedirectUrl="/meet-spark"
       /**
-       * SESSION TASKS. Do not remove — the app is unusable without it.
+       * NO `taskUrls` — deliberately. Org creation is fully custom now
+       * (`OrgGuard.tsx`, mounted in the `(app)`/`(onboarding)`/`meet-spark`
+       * layouts), which requires the Clerk Dashboard's "Force organization
+       * selection" setting to be OFF. With it off, a fresh session carries no
+       * pending Clerk task at all — `OrgGuard` sees `orgId` absent and shows
+       * its own "Name your workspace" form, the same one path regardless of
+       * which route the session first lands on.
        *
-       * The instance has `force_organization_selection: true`, so Clerk parks a
-       * new session with an incomplete `choose-organization` task. A session in
-       * that state carries **no `org_id` claim**, and `apps/api/src/clerk-auth.ts`
-       * rejects every tool call without one. The user lands in a fully rendered
-       * shell where each panel reports "No active organization on this session".
-       *
-       * Clerk cannot route to the task screen on its own: with no `taskUrls` it
-       * warns "Session has pending tasks but no handling is configured… users
-       * may get stuck on incomplete flows" and then does nothing. That warning
-       * is the whole bug — it is a console message rather than a redirect, so it
-       * surfaces as a broken app rather than as a missing step.
-       *
-       * The route it points at already existed (`(auth)/sign-in/tasks`); nothing
-       * was sending anyone to it.
+       * `(auth)/sign-in/tasks` (Clerk's own `TaskChooseOrganization`) is kept
+       * as a dormant fallback, not deleted — if that Dashboard setting is ever
+       * re-enabled, Clerk needs a `taskUrls` entry pointing at it again or it
+       * prints "Session has pending tasks but no handling is configured…" and
+       * does nothing. See that route's own comment for the full history.
        */
-      taskUrls={{ 'choose-organization': '/sign-in/tasks' }}
     >
       <html lang="en" className={`${onest.variable} ${mollwish.variable}`}>
         <body>

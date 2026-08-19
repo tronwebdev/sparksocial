@@ -38,6 +38,8 @@ const AgentStatus = z.object({
   reason: z.string().optional(),
   /** Plain-language summary of what the agent may currently do. */
   effect: z.string(),
+  /** The Command Center's frequency control needs a current value to show, not just a setter. */
+  postsPerWeek: z.number(),
 });
 
 function describe(paused: boolean): string {
@@ -75,6 +77,7 @@ export const agentStatus = defineTool({
       ...(g.pausedBy ? { pausedBy: g.pausedBy } : {}),
       ...(g.pauseReason ? { reason: g.pauseReason } : {}),
       effect: describe(g.agentPaused),
+      postsPerWeek: g.postsPerWeek,
     };
   },
 });
@@ -128,6 +131,7 @@ export const agentPause = defineTool({
       ...(g.pausedBy ? { pausedBy: g.pausedBy } : {}),
       ...(g.pauseReason ? { reason: g.pauseReason } : {}),
       effect: describe(g.agentPaused),
+      postsPerWeek: g.postsPerWeek,
     };
   },
 });
@@ -158,7 +162,7 @@ export const agentResume = defineTool({
     const g = await ctx.db.brands.setAgentPaused({ brandId, orgId: ctx.orgId, paused: false, by });
     ctx.logger.warn('agent resumed', { brandId, by });
 
-    return { brandId, paused: g.agentPaused, effect: describe(g.agentPaused) };
+    return { brandId, paused: g.agentPaused, effect: describe(g.agentPaused), postsPerWeek: g.postsPerWeek };
   },
 });
 

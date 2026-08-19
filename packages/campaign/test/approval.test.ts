@@ -42,6 +42,7 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
       };
       return row;
     },
+    setPolicy: async () => row,
   };
 }
 

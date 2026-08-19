@@ -80,5 +80,14 @@ export function createAzureBlobStore(opts: AzureBlobOptions): BlobStore {
     async readUrl(key, ttlSec = DEFAULT_UPLOAD_TTL_SEC) {
       return sign(key, 'r', ttlSec);
     },
+
+    async put({ key, contentType, bytes }) {
+      const container = client.getContainerClient(opts.container);
+      await container.getBlockBlobClient(key).uploadData(bytes, { blobHTTPHeaders: { blobContentType: contentType } });
+      // Long-lived on purpose: unlike a presigned upload URL (minutes, single
+      // use), this is a *read* URL for content a draft references for as long
+      // as the draft is being reviewed, which can be days.
+      return { url: await sign(key, 'r', 7 * 24 * 3600) };
+    },
   };
 }

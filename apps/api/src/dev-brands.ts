@@ -91,5 +91,29 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       row.postsPerWeek = postsPerWeek;
       return copy({ ...row });
     },
+    async setPolicy({ brandId, orgId, patch }) {
+      const row = upsert(brandId, orgId);
+      if (patch.familyOverrides !== undefined) {
+        if (patch.familyOverrides === null) delete row.familyOverrides;
+        else row.familyOverrides = patch.familyOverrides;
+      }
+      if (patch.restrictedPlatforms !== undefined) {
+        if (patch.restrictedPlatforms === null) delete row.restrictedPlatforms;
+        else row.restrictedPlatforms = patch.restrictedPlatforms;
+      }
+      if (patch.restrictedContentTypes !== undefined) {
+        if (patch.restrictedContentTypes === null) delete row.restrictedContentTypes;
+        else row.restrictedContentTypes = patch.restrictedContentTypes;
+      }
+      if (patch.quietWindows !== undefined) {
+        if (patch.quietWindows === null) delete row.quietWindows;
+        else row.quietWindows = patch.quietWindows;
+      }
+      if (patch.permissions !== undefined) {
+        if (patch.permissions === null) delete row.permissions;
+        else row.permissions = patch.permissions;
+      }
+      return copy({ ...row });
+    },
   };
 }

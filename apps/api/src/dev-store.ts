@@ -1,23 +1,45 @@
 import { randomUUID } from 'node:crypto';
 import type { ScopedDb } from '@sparksocial/tools';
-import { GOLDEN_SET } from '@sparksocial/playbooks';
-import type { AssetRole, Genome } from '@sparksocial/shared';
+import type { AssetRole, Genome, Role } from '@sparksocial/shared';
 import { EMBEDDING_DIM, deterministicEmbedding } from '@sparksocial/shared/embedding';
-import { createDevRunStore, seedDevRuns, type DevRunStore } from './dev-runs.js';
+import { createDevRunStore, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
 import { createDevBrandStore } from './dev-brands.js';
 import { createDevApprovalStore } from './dev-approvals.js';
 import { createDevHumanLoopStore } from './dev-human-loop.js';
-import type { ApprovalStore, BrandGovernanceStore, CampaignStore, HumanLoopStore } from '@sparksocial/tools/defineTool';
+import { createDevConsentStore } from './dev-consent.js';
+import type {
+  ApprovalStore,
+  BrandGovernanceStore,
+  CampaignStore,
+  ConsentStore,
+  ContentDraft,
+  ContentLinkRecord,
+  ContentMetricsSnapshot,
+  EngagementMessage,
+  HumanLoopStore,
+  LearningArm,
+  OAuthConnectionRecord,
+  Opportunity,
+  RecipeOutputRecord,
+  RecipeRecord,
+  RenderRecord,
+  TrendWatchlistEntry,
+} from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
+import type { DueContentSource } from '@sparksocial/db';
 
 /**
- * DEVELOPMENT STORE — in-memory, seeded with the golden set.
+ * DEVELOPMENT STORE — in-memory, empty until something real writes to it.
  *
- * Stands in for `@sparksocial/db` until Postgres is wired. Seeding it with the
- * §13 golden cases is deliberate: it means the running API can be driven through
- * the same three businesses the acceptance eval asserts on, so a manual poke at
- * `/v1/tools/playbook.resolve` and the CI suite are looking at the same fixtures.
+ * Stands in for `@sparksocial/db` until Postgres is wired. Holds nothing at
+ * boot: every genome, asset, draft and run in here exists only because a real
+ * tool call created it, the same as it would against Postgres. The §13 golden
+ * cases (`@sparksocial/playbooks`'s `GOLDEN_SET`) are exercised directly by the
+ * acceptance eval and by tests that import them as fixtures — they have no
+ * business being pre-loaded into a store a live user session also reads from,
+ * which is exactly how a fixture's business name ends up on someone's real
+ * dashboard.
  *
  * Every accessor takes `orgId` and filters on it, mirroring the scoped layer's
  * shape — a dev store that ignored tenancy would train the wrong habits into
@@ -49,6 +71,16 @@ interface AssetRow {
   usageCount: number;
   lastUsedAt: Date | null;
   source: string;
+  url: string;
+  folderId: string | null;
+}
+
+interface AssetFolderRow {
+  id: string;
+  genomeId: string;
+  orgId: string;
+  name: string;
+  createdAt: Date;
 }
 
 interface ContentRow {
@@ -96,7 +128,6 @@ function score(a: AssetRow, queryEmbedding: number[], now: Date, cooldownDays = 
 }
 
 export interface DevStoreOptions {
-  orgId?: string;
   /**
    * The run store is injected rather than created here because the *recorder*
    * half of it belongs to the agent endpoint, and both halves must be the same
@@ -113,6 +144,7 @@ export interface DevStoreOptions {
    */
   approvalStore?: ApprovalStore;
   humanLoopStore?: HumanLoopStore;
+  consentStore?: ConsentStore;
   /**
    * How `agent.explain` reaches a recorded call. Same injection and same reason
    * as `approvalStore`: the audit rows live in `memoryInvokeDeps`, and copying
@@ -124,96 +156,97 @@ export interface DevStoreOptions {
 
 export function createDevStore(
   opts: DevStoreOptions = {},
-): ScopedDb & { seedCount: number; runs: ScopedDb['runs'] } {
+): ScopedDb & { seedCount: number; runs: ScopedDb['runs']; findDue: DueContentSource['findDue'] } {
   const {
-    orgId = 'org_dev',
     runStore = createDevRunStore(),
     campaignStore = createDevCampaignStore(),
     brandStore = createDevBrandStore(),
     approvalStore = createDevApprovalStore(() => undefined),
     humanLoopStore = createDevHumanLoopStore(),
+    consentStore = createDevConsentStore(),
     findCall = () => undefined,
   } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
+  const assetFolders = new Map<string, AssetFolderRow>();
   const content: ContentRow[] = [];
-
-  for (const c of GOLDEN_SET) {
-    genomes.set(c.genome.genome_id, { genome: c.genome, orgId });
-
-    // Synthesize one row per unit of the golden case's role counts, so
-    // inventory() reflects real rows from the start rather than a shortcut map.
-    for (const [role, count] of Object.entries(c.assets)) {
-      for (let i = 0; i < (count as number); i++) {
-        const id = `${c.genome.genome_id}_${role}_${i}`;
-        assets.set(id, {
-          id,
-          genomeId: c.genome.genome_id,
-          orgId,
-          role: role as AssetRole,
-          mediaType: 'image',
-          rightsStatus: 'cleared',
-          caption: `${role.replace(/_/g, ' ')} for ${c.genome.identity.business_name}`,
-          embedding: deterministicEmbedding(id),
-          usageCount: 0,
-          lastUsedAt: null,
-          source: 'golden_seed',
-        });
-      }
-    }
-  }
-
-  // Seed a little publishing history so avatar_saturation and duplicate have
-  // something real to evaluate against, rather than always trivially passing
-  // on an empty window.
-  const freelancer = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_freelancer');
-  if (freelancer) {
-    const now = Date.now();
-    // 3 avatar-format posts already in the trailing 30 days — one more avatar
-    // post would put this genome at 4-of-5 (80%), well over the 30% cap.
-    for (let i = 0; i < 3; i++) {
-      content.push({
-        genomeId: freelancer.genome.genome_id,
-        orgId,
-        isAvatarFormat: true,
-        embedding: deterministicEmbedding(`freelancer_avatar_${i}`),
-        publishedAt: new Date(now - i * 86_400_000),
-      });
-    }
-  }
-  const barber = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_barber');
-  if (barber) {
-    // A published post whose embedding the demo can deliberately restate, to
-    // show the duplicate guardrail actually firing rather than always passing.
-    content.push({
-      genomeId: barber.genome.genome_id,
-      orgId,
-      isAvatarFormat: false,
-      embedding: deterministicEmbedding('the fade finishing, up close, no talking'),
-      publishedAt: new Date(),
-    });
-  }
-
-  // A little run history, for the same reason the golden set is seeded above:
-  // the Agent Timeline is a P1 deliverable and needs to be reviewable without
-  // an ANTHROPIC_API_KEY. These are obviously synthetic — one succeeded, one
-  // failed, one still running — so the three states the UI must handle are all
-  // reachable locally. Postgres seeds nothing; there, runs only exist if the
-  // agent made them.
-  seedDevRuns(runStore, GOLDEN_SET.map((c) => c.genome.workspace_id));
+  // Drafts and scheduled slots — separate from `content`, which only ever
+  // holds the *published* seed history `recent()` reads. A draft's fuller
+  // shape (copy/why/status) has no seed data and no reason to share a type
+  // with rows that are `isAvatarFormat`+`embedding`-only by construction.
+  const drafts = new Map<string, ContentDraft & { orgId: string }>();
+  // Keyed on `${contentItemId}:${platform}` — the same upsert target the real
+  // schema's unique index enforces, so a re-sync overwrites in dev mode too.
+  const metrics = new Map<string, ContentMetricsSnapshot & { orgId: string; genomeId: string }>();
+  const contentLinks: (ContentLinkRecord & { orgId: string })[] = [];
+  // Keyed by row id; a second map from `${platform}:${externalId}` enforces
+  // the same at-least-once-delivery upsert the real unique index does.
+  const engagementMessages = new Map<string, EngagementMessage & { orgId: string }>();
+  const engagementByExternalId = new Map<string, string>(); // "orgId:genomeId:platform:externalId" -> message id
+  const renders: (RenderRecord & { orgId: string; genomeId: string })[] = [];
+  const opportunities: (Opportunity & { orgId: string })[] = [];
+  const trendWatchlist: (TrendWatchlistEntry & { orgId: string; genomeId: string })[] = [];
+  // Keyed on `${genomeId}:${pillar}` — one arm per (genome, pillar), same unique target as the real schema.
+  const learningArms = new Map<string, LearningArm & { orgId: string; genomeId: string }>();
+  const scoredContentItems = new Set<string>(); // idempotency for recordOutcome, mirrors the real unique index on contentItemId
+  const recipes = new Map<string, RecipeRecord & { orgId: string }>();
+  const recipeRuns = new Map<string, { id: string; recipeId: string; orgId: string; genomeId: string }>();
+  const recipeOutputs: (RecipeOutputRecord & { orgId: string })[] = [];
+  // Keyed on `${genomeId}:${provider}` — one connection per (genome, provider), same unique target as the real schema.
+  const oauthConnectionsMap = new Map<string, OAuthConnectionRecord & { orgId: string }>();
+  const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
+  const orgSettingsMap = new Map<string, { orgId: string; plan: 'starter' | 'growth' | 'agency'; defaultApprovalMode: string; ssoRequired: boolean; monthlyCapCents: number; updatedAt: Date }>();
+  const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
+  const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
 
   let nextDraft = 1;
+  let nextRecipe = 1;
+  let nextRun = 1;
+  let nextOutput = 1;
 
   return {
     seedCount: genomes.size,
 
     genomes: {
-      async createDraft({ orgId: org }) {
+      async createDraft({ brandId, orgId: org, identity, dimensions, voice }) {
         const id = `gen_draft_${nextDraft++}`;
-        // A draft carries no dimensions yet — onboarding fills them in via
-        // genome.dimensions.set, which is exactly the ONB-02 → ONB-03 handoff.
-        const seed = GOLDEN_SET[0]!.genome;
-        genomes.set(id, { genome: { ...seed, genome_id: id, version: 1 }, orgId: org });
+        // Built from what the caller actually supplied — `genome.create` sends
+        // a name and category the owner typed, `genome.bootstrap_from_url`
+        // sends what the crawl inferred. Neither ever runs through here as a
+        // clone of a fixture, so a genome this store hands back always traces
+        // to one real operation instead of to `@sparksocial/playbooks`'s
+        // golden set. `dimensions`/`voice` are commonly `{}` at this point —
+        // onboarding fills them in next via `genome.dimensions.set`/
+        // `genome.identity.set` — so every field the caller didn't resolve
+        // gets a neutral, empty default rather than a borrowed one.
+        genomes.set(id, {
+          genome: {
+            genome_id: id,
+            workspace_id: brandId,
+            version: 1,
+            identity: identity as Genome['identity'],
+            dimensions: (dimensions ?? {}) as Genome['dimensions'],
+            voice: {
+              tone_vector: { formal: 0.5, playful: 0.5, technical: 0.5, bold: 0.5 },
+              pov_statements: [],
+              banned_phrases: [],
+              required_disclaimers: [],
+              reading_level: 8,
+              ...(voice as Partial<Genome['voice']>),
+            },
+            audience: { segments: [] },
+            offer: { products: [], primary_cta: '' },
+            constraints: {
+              compliance_profile: 'none',
+              avatar_enabled: false,
+              max_posts_per_week: 12,
+              approval_mode: 'review_first_week',
+              avatar_override: null,
+            },
+            learned: { top_formats: [], best_post_times: [], mix_weights_override: null, confidence: 0, frozen: false },
+          },
+          orgId: org,
+        });
         return { id };
       },
 
@@ -225,6 +258,63 @@ export function createDevStore(
           version: row.genome.version + 1,
           dimensions: dimensions as Genome['dimensions'],
           constraints: { ...row.genome.constraints, avatar_enabled: avatarEnabled },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
+      async patchConstraints({ genomeId, orgId: org, patch }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          constraints: {
+            ...row.genome.constraints,
+            ...(patch.heygenAvatarId !== undefined ? { heygen_avatar_id: patch.heygenAvatarId } : {}),
+            ...(patch.elevenlabsVoiceId !== undefined ? { elevenlabs_voice_id: patch.elevenlabsVoiceId } : {}),
+            ...(patch.complianceProfile !== undefined ? { compliance_profile: patch.complianceProfile } : {}),
+            ...(patch.avatarEnabled !== undefined ? { avatar_enabled: patch.avatarEnabled } : {}),
+            ...(patch.avatarOverride !== undefined
+              ? {
+                  avatar_override: patch.avatarOverride
+                    ? { reason: patch.avatarOverride.reason, set_by: patch.avatarOverride.setBy, set_at: patch.avatarOverride.setAt }
+                    : null,
+                }
+              : {}),
+          },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
+      async patchIdentity({ genomeId, orgId: org, identity }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          identity: { ...row.genome.identity, ...identity },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
+      async patchOffer({ genomeId, orgId: org, offer }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          offer: { ...row.genome.offer, ...offer },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
+      async patchLearned({ genomeId, orgId: org, patch }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          learned: { ...row.genome.learned, ...patch },
         };
         return { id: genomeId, version: row.genome.version };
       },
@@ -275,12 +365,15 @@ export function createDevStore(
             usageCount: a.usageCount,
             lastUsedAt: a.lastUsedAt,
             rightsStatus: a.rightsStatus,
+            url: a.url,
+            mediaType: a.mediaType,
+            folderId: a.folderId,
           }))
           .sort((x, y) => y.score - x.score)
           .slice(0, k);
       },
 
-      async create({ genomeId, orgId: org, assetRole, mediaType, rightsStatus, caption, embedding, source }) {
+      async create({ genomeId, orgId: org, url, assetRole, mediaType, rightsStatus, caption, embedding, source }) {
         const id = randomUUID();
         assets.set(id, {
           id,
@@ -294,6 +387,8 @@ export function createDevStore(
           usageCount: 0,
           lastUsedAt: null,
           source,
+          url,
+          folderId: null,
         });
         return { id };
       },
@@ -306,16 +401,59 @@ export function createDevStore(
 
       async info(ids, genomeId, org) {
         const now = Date.now();
-        const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number }> = {};
+        const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
         for (const id of ids) {
           const a = assets.get(id);
           if (!a || a.genomeId !== genomeId || a.orgId !== org) continue;
           out[id] = {
             rightsStatus: a.rightsStatus,
             lastUsedDaysAgo: a.lastUsedAt ? (now - a.lastUsedAt.getTime()) / 86_400_000 : undefined,
+            url: a.url,
+            mediaType: a.mediaType,
           };
         }
         return out;
+      },
+
+      async setRights({ id, genomeId, orgId: org, rightsStatus }) {
+        const a = assets.get(id);
+        if (!a || a.genomeId !== genomeId || a.orgId !== org) return undefined;
+        a.rightsStatus = rightsStatus;
+        return { id, rightsStatus };
+      },
+
+      async recordUsage({ id, genomeId, orgId: org }) {
+        const a = assets.get(id);
+        if (!a || a.genomeId !== genomeId || a.orgId !== org) return undefined;
+        a.usageCount += 1;
+        a.lastUsedAt = new Date();
+        return { id, usageCount: a.usageCount, lastUsedAt: a.lastUsedAt };
+      },
+
+      async moveToFolder({ id, genomeId, orgId: org, folderId }) {
+        const a = assets.get(id);
+        if (!a || a.genomeId !== genomeId || a.orgId !== org) return undefined;
+        if (folderId) {
+          const folder = assetFolders.get(folderId);
+          if (!folder || folder.genomeId !== genomeId || folder.orgId !== org) return undefined;
+        }
+        a.folderId = folderId;
+        return { id, folderId };
+      },
+    },
+
+    assetFolders: {
+      async create({ genomeId, orgId: org, name }) {
+        const id = randomUUID();
+        const row = { id, genomeId, orgId: org, name, createdAt: new Date() };
+        assetFolders.set(id, row);
+        return row;
+      },
+
+      async list(genomeId, org) {
+        return [...assetFolders.values()]
+          .filter((f) => f.genomeId === genomeId && f.orgId === org)
+          .sort((a, b) => a.name.localeCompare(b.name));
       },
     },
 
@@ -326,12 +464,546 @@ export function createDevStore(
           .filter((c) => c.genomeId === genomeId && c.orgId === org && c.publishedAt.getTime() >= cutoff)
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
+
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId }) {
+        const row: ContentDraft & { orgId: string } = {
+          id: randomUUID(),
+          orgId: org,
+          genomeId,
+          playbookId,
+          mode,
+          status: 'draft',
+          copy,
+          why,
+          createdAt: new Date(),
+          ...(pillar ? { pillar } : {}),
+          ...(campaignId ? { campaignId } : {}),
+        };
+        drafts.set(row.id, row);
+        return row;
+      },
+
+      async get(id, genomeId, org) {
+        const row = drafts.get(id);
+        return row && row.orgId === org && row.genomeId === genomeId ? row : undefined;
+      },
+
+      async updateDraft({ id, genomeId, orgId: org, copy, why }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        if (row.status === 'published') return undefined;
+        row.copy = copy;
+        row.why = why;
+        return row;
+      },
+
+      async list(genomeId, org, { status, limit }) {
+        // Ad-hoc drafts only — calendar-slot rows live in `campaignStore`'s own
+        // map in dev mode (see the note on the `drafts` declaration above), a
+        // pre-existing dev-store simplification this doesn't newly introduce.
+        return [...drafts.values()]
+          .filter((r) => r.orgId === org && r.genomeId === genomeId && (!status || r.status === status))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit);
+      },
+
+      async schedule({ id, genomeId, orgId: org, scheduledAt }) {
+        // Same `drafts`-only reach as `list`/`get` — see the note above.
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        if (row.status === 'published') return undefined;
+        row.scheduledAt = scheduledAt;
+        row.status = 'scheduled';
+        return row;
+      },
+
+      async markPublished({ id, orgId: org, platform, embedding, externalId, via, url }) {
+        // Same `drafts`-only reach as `list`/`get`/`schedule`. `content` (the
+        // published-history array `recent()` reads) is seed-only in dev mode —
+        // see the note on its declaration above — so a real publish through
+        // this store flips the draft row's status (which is what stops
+        // `findDue` re-selecting it) and carries the receipt, but does not
+        // feed `recent()`; the seeded rows there already exist for exactly
+        // that purpose. The embedding itself has nowhere to go — `ContentDraft`
+        // has no field for it, the same honest gap `recent()`'s seed rows fill.
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'published';
+        row.platform = platform;
+        row.externalId = externalId;
+        row.via = via;
+        if (url) row.url = url;
+        void embedding;
+      },
+
+      async markRolledBack({ id, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'rolled_back';
+      },
+
+      async markBlocked({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'blocked';
+        row.blockedReason = reason;
+      },
+
+      async recordRender({ contentItemId, genomeId, orgId: org, aspect, storageUrl, engine, costCents }) {
+        const row: RenderRecord & { orgId: string; genomeId: string } = {
+          id: randomUUID(),
+          contentItemId,
+          orgId: org,
+          genomeId,
+          aspect,
+          storageUrl,
+          engine,
+          costCents,
+          createdAt: new Date(),
+        };
+        renders.push(row);
+        return row;
+      },
+
+      async listRenders(contentItemId, genomeId, org) {
+        return renders
+          .filter((r) => r.contentItemId === contentItemId && r.orgId === org && r.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+    },
+
+    analytics: {
+      async record({ genomeId, orgId: org, contentItemId, platform, likes, comments, shares, views, impressions }) {
+        const snapshot: ContentMetricsSnapshot = {
+          contentItemId,
+          platform,
+          likes,
+          comments,
+          shares,
+          views,
+          impressions,
+          syncedAt: new Date(),
+        };
+        metrics.set(`${contentItemId}:${platform}`, { ...snapshot, orgId: org, genomeId });
+        return snapshot;
+      },
+
+      async listForItems(contentItemIds, org, genomeId) {
+        const ids = new Set(contentItemIds);
+        return [...metrics.values()]
+          .filter((m) => ids.has(m.contentItemId) && m.orgId === org && m.genomeId === genomeId)
+          .map(({ orgId: _orgId, genomeId: _genomeId, ...snapshot }) => snapshot);
+      },
+    },
+
+    ctaLinks: {
+      async create({ genomeId, orgId: org, contentItemId, dubLinkId, shortUrl, destinationUrl }) {
+        const row: ContentLinkRecord & { orgId: string } = {
+          id: randomUUID(), genomeId, orgId: org, contentItemId, dubLinkId, shortUrl, destinationUrl, createdAt: new Date(),
+        };
+        contentLinks.push(row);
+        return row;
+      },
+
+      async listForItems(contentItemIds, org, genomeId) {
+        const ids = new Set(contentItemIds);
+        return contentLinks
+          .filter((l) => ids.has(l.contentItemId) && l.orgId === org && l.genomeId === genomeId)
+          .map(({ orgId: _orgId, ...row }) => row);
+      },
+    },
+
+    engagement: {
+      async ingest({ genomeId, orgId: org, platform, externalId, kind, authorHandle, authorName, text, contentItemId, receivedAt }) {
+        const externalKey = `${org}:${genomeId}:${platform}:${externalId}`;
+        const existingId = engagementByExternalId.get(externalKey);
+        if (existingId) {
+          // Same "retry lands the same row" upsert the real unique index
+          // enforces — refresh the delivery-side fields, leave any
+          // classification already on the row untouched.
+          const existing = engagementMessages.get(existingId)!;
+          existing.text = text;
+          if (authorName) existing.authorName = authorName;
+          return existing;
+        }
+
+        const row: EngagementMessage & { orgId: string } = {
+          id: randomUUID(),
+          orgId: org,
+          genomeId,
+          platform,
+          externalId,
+          kind,
+          authorHandle,
+          ...(authorName ? { authorName } : {}),
+          text,
+          ...(contentItemId ? { contentItemId } : {}),
+          receivedAt: receivedAt ?? new Date(),
+          status: 'new',
+          createdAt: new Date(),
+        };
+        engagementMessages.set(row.id, row);
+        engagementByExternalId.set(externalKey, row.id);
+        return row;
+      },
+
+      async get(id, genomeId, org) {
+        const row = engagementMessages.get(id);
+        return row && row.orgId === org && row.genomeId === genomeId ? row : undefined;
+      },
+
+      async classify({ id, genomeId, orgId: org, category, intentScore, suggestedReply, why }) {
+        const row = engagementMessages.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.status = 'classified';
+        row.category = category;
+        row.intentScore = intentScore;
+        if (suggestedReply) row.suggestedReply = suggestedReply;
+        row.why = why;
+        return row;
+      },
+
+      async list(genomeId, org, { status, category, limit }) {
+        return [...engagementMessages.values()]
+          .filter(
+            (r) =>
+              r.orgId === org &&
+              r.genomeId === genomeId &&
+              (!status || r.status === status) &&
+              (!category || r.category === category),
+          )
+          .sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime())
+          .slice(0, limit);
+      },
+
+      async markReplied({ id, genomeId, orgId: org }) {
+        const row = engagementMessages.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.status = 'replied';
+        return row;
+      },
+
+      async markAutoHandled({ id, genomeId, orgId: org }) {
+        const row = engagementMessages.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.status = 'auto_handled';
+        return row;
+      },
+
+      async markEscalated({ id, genomeId, orgId: org }) {
+        const row = engagementMessages.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.status = 'escalated';
+        return row;
+      },
+
+      async audit(genomeId, org, { statuses, since, until, limit }) {
+        return [...engagementMessages.values()]
+          .filter(
+            (r) =>
+              r.orgId === org &&
+              r.genomeId === genomeId &&
+              statuses.includes(r.status) &&
+              (!since || r.receivedAt >= since) &&
+              (!until || r.receivedAt <= until),
+          )
+          .sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime())
+          .slice(0, limit);
+      },
+    },
+
+    opportunities: {
+      async create({ genomeId, orgId: org, inboxItemId, temperature, recommendedAction }) {
+        const row: Opportunity & { orgId: string } = {
+          id: randomUUID(),
+          orgId: org,
+          genomeId,
+          inboxItemId,
+          temperature,
+          recommendedAction,
+          createdAt: new Date(),
+        };
+        opportunities.push(row);
+        return row;
+      },
+
+      async get(id, genomeId, org) {
+        return opportunities.find((o) => o.id === id && o.orgId === org && o.genomeId === genomeId);
+      },
+
+      async route({ id, genomeId, orgId: org, routedTo }) {
+        const row = opportunities.find((o) => o.id === id && o.orgId === org && o.genomeId === genomeId);
+        if (!row) return undefined;
+        row.routedTo = routedTo;
+        return row;
+      },
     },
 
     campaigns: campaignStore,
+
+    trends: {
+      async add({ genomeId, orgId: org, trendId, source, topic, note }) {
+        const existing = trendWatchlist.find((w) => w.genomeId === genomeId && w.orgId === org && w.trendId === trendId);
+        if (existing) {
+          if (note) existing.note = note;
+          return existing;
+        }
+        const row = { id: `watch_${randomUUID()}`, genomeId, orgId: org, trendId, source, topic, createdAt: new Date(), ...(note ? { note } : {}) };
+        trendWatchlist.push(row);
+        return row;
+      },
+      async remove({ genomeId, orgId: org, trendId }) {
+        const idx = trendWatchlist.findIndex((w) => w.genomeId === genomeId && w.orgId === org && w.trendId === trendId);
+        if (idx >= 0) trendWatchlist.splice(idx, 1);
+      },
+      async list(genomeId, org) {
+        return trendWatchlist.filter((w) => w.genomeId === genomeId && w.orgId === org);
+      },
+    },
+
+    learning: {
+      async list(genomeId, org) {
+        return [...learningArms.values()].filter((a) => a.genomeId === genomeId && a.orgId === org);
+      },
+      async recordOutcome({ genomeId, orgId: org, contentItemId, pillar, reward }) {
+        const recorded = !scoredContentItems.has(contentItemId);
+        if (recorded) {
+          scoredContentItems.add(contentItemId);
+          const key = `${genomeId}:${pillar}`;
+          const existing = learningArms.get(key);
+          if (existing) {
+            existing.alpha += reward;
+            existing.beta += 1 - reward;
+            existing.observations += 1;
+            existing.updatedAt = new Date();
+          } else {
+            learningArms.set(key, {
+              pillar,
+              alpha: 1 + reward,
+              beta: 1 + (1 - reward),
+              observations: 1,
+              updatedAt: new Date(),
+              orgId: org,
+              genomeId,
+            });
+          }
+        }
+        const arm = learningArms.get(`${genomeId}:${pillar}`)!;
+        return { recorded, arm };
+      },
+      async reset(genomeId, org) {
+        for (const key of [...learningArms.keys()]) {
+          const arm = learningArms.get(key)!;
+          if (arm.genomeId === genomeId && arm.orgId === org) learningArms.delete(key);
+        }
+        // `scoredContentItems` is idempotency for `recordOutcome`, keyed only
+        // on `contentItemId` (mirroring the real unique index) — clearing it
+        // for this genome's own items is what lets a post scored before the
+        // reset be re-scored after, same reasoning as `resetLearning`'s
+        // real-store comment on why `learning_outcomes` must be cleared too.
+        for (const id of [...scoredContentItems]) {
+          const draft = drafts.get(id);
+          if (draft && draft.genomeId === genomeId && draft.orgId === org) scoredContentItems.delete(id);
+        }
+      },
+    },
+
+    recipes: {
+      async create({ genomeId, orgId: org, kind, name, config, intervalMinutes }) {
+        const id = `recipe_${nextRecipe++}`;
+        const row = {
+          id, genomeId, orgId: org, kind, name, config, status: 'active' as const,
+          createdAt: new Date(), updatedAt: new Date(),
+          ...(intervalMinutes ? { intervalMinutes } : {}),
+        };
+        recipes.set(id, row);
+        return row;
+      },
+      async get(id, genomeId, org) {
+        const row = recipes.get(id);
+        return row && row.genomeId === genomeId && row.orgId === org ? row : undefined;
+      },
+      async list(genomeId, org) {
+        return [...recipes.values()].filter((r) => r.genomeId === genomeId && r.orgId === org);
+      },
+      async setStatus({ id, genomeId, orgId: org, status }) {
+        const row = recipes.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        row.status = status;
+        row.updatedAt = new Date();
+        return row;
+      },
+      async delete(id, genomeId, org) {
+        const row = recipes.get(id);
+        if (row && row.genomeId === genomeId && row.orgId === org) recipes.delete(id);
+      },
+      async markRan(id, genomeId, org, at) {
+        const row = recipes.get(id);
+        if (row && row.genomeId === genomeId && row.orgId === org) {
+          row.lastRunAt = at;
+          row.updatedAt = new Date();
+        }
+      },
+      async findDue(before) {
+        return [...recipes.values()].filter(
+          (r) =>
+            r.status === 'active' &&
+            r.intervalMinutes &&
+            (!r.lastRunAt || r.lastRunAt.getTime() + r.intervalMinutes * 60_000 <= before.getTime()),
+        );
+      },
+      async recordRun({ genomeId, orgId: org, recipeId, status, outputCount, outputs }) {
+        const runId = `run_${nextRun++}`;
+        recipeRuns.set(runId, { id: runId, recipeId, orgId: org, genomeId });
+        for (const preview of outputs) {
+          recipeOutputs.push({
+            id: `output_${nextOutput++}`,
+            recipeId,
+            runId,
+            genomeId,
+            orgId: org,
+            status: 'pending_review',
+            preview,
+            createdAt: new Date(),
+          });
+        }
+        void status;
+        void outputCount;
+        return { runId };
+      },
+      async listOutputs(genomeId, org, { status, limit }) {
+        return recipeOutputs
+          .filter((o) => o.genomeId === genomeId && o.orgId === org && (!status || o.status === status))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit);
+      },
+      async decideOutput({ id, genomeId, orgId: org, status, contentItemId }) {
+        const row = recipeOutputs.find((o) => o.id === id && o.genomeId === genomeId && o.orgId === org);
+        if (!row) return undefined;
+        row.status = status;
+        row.decidedAt = new Date();
+        if (contentItemId) row.contentItemId = contentItemId;
+        return row;
+      },
+    },
+
+    oauthConnections: {
+      async get(genomeId, org, provider) {
+        const row = oauthConnectionsMap.get(`${genomeId}:${provider}`);
+        return row && row.orgId === org ? row : undefined;
+      },
+      async save({ genomeId, orgId: org, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel }) {
+        const key = `${genomeId}:${provider}`;
+        const existing = oauthConnectionsMap.get(key);
+        const row: OAuthConnectionRecord & { orgId: string } = {
+          id: existing?.id ?? `oauth_${randomUUID()}`,
+          genomeId,
+          orgId: org,
+          provider,
+          accessToken,
+          connectedBy,
+          createdAt: existing?.createdAt ?? new Date(),
+          updatedAt: new Date(),
+          ...(refreshToken ? { refreshToken } : {}),
+          ...(expiresAt ? { expiresAt } : {}),
+          ...(scopes ? { scopes } : {}),
+          ...(accountLabel ? { accountLabel } : {}),
+        };
+        oauthConnectionsMap.set(key, row);
+        return row;
+      },
+      async remove(genomeId, org, provider) {
+        const key = `${genomeId}:${provider}`;
+        const existing = oauthConnectionsMap.get(key);
+        if (existing && existing.orgId === org) oauthConnectionsMap.delete(key);
+      },
+    },
+
+    knowledge: {
+      async attach({ genomeId, orgId, docId, text, citation }) {
+        const row = { id: `kc_${randomUUID()}`, orgId, genomeId, docId, text, createdAt: new Date(), ...(citation ? { citation } : {}) };
+        knowledgeChunkRows.push(row);
+        return row;
+      },
+      async listForDoc(genomeId, orgId, docId) {
+        return knowledgeChunkRows.filter((r) => r.genomeId === genomeId && r.orgId === orgId && r.docId === docId);
+      },
+      async listAll(genomeId, orgId) {
+        return knowledgeChunkRows.filter((r) => r.genomeId === genomeId && r.orgId === orgId);
+      },
+    },
+
+    orgSettings: {
+      async get(orgId) {
+        return (
+          orgSettingsMap.get(orgId) ?? {
+            orgId,
+            plan: 'starter' as const,
+            defaultApprovalMode: 'review_first_week',
+            ssoRequired: false,
+            monthlyCapCents: 500_00,
+            updatedAt: new Date(),
+          }
+        );
+      },
+      async setPlan({ orgId, plan, monthlyCapCents }) {
+        const row = { ...(await this.get(orgId)), plan, monthlyCapCents, updatedAt: new Date() };
+        orgSettingsMap.set(orgId, row);
+        return row;
+      },
+      async setGovernance({ orgId, defaultApprovalMode }) {
+        const row = { ...(await this.get(orgId)), defaultApprovalMode, updatedAt: new Date() };
+        orgSettingsMap.set(orgId, row);
+        return row;
+      },
+      async setSso({ orgId, required }) {
+        const row = { ...(await this.get(orgId)), ssoRequired: required, updatedAt: new Date() };
+        orgSettingsMap.set(orgId, row);
+        return row;
+      },
+    },
+
+    brandMembers: {
+      async set({ orgId, brandId, userId, role }) {
+        const row = { orgId, brandId, userId, role, createdAt: new Date() };
+        brandMemberRows.set(`${brandId}:${userId}`, row);
+        return row;
+      },
+      async remove({ brandId, userId }) {
+        brandMemberRows.delete(`${brandId}:${userId}`);
+      },
+      async listForBrand(orgId, brandId) {
+        return [...brandMemberRows.values()].filter((r) => r.orgId === orgId && r.brandId === brandId);
+      },
+      async listForUser(orgId, userId) {
+        return [...brandMemberRows.values()].filter((r) => r.orgId === orgId && r.userId === userId);
+      },
+    },
+
+    reviewLinks: {
+      async create({ orgId, brandId, scope, targetId, createdBy, expiresAt }) {
+        const row = { id: `link_${randomUUID()}`, token: randomUUID(), brandId, scope, createdBy, expiresAt, createdAt: new Date(), orgId, ...(targetId ? { targetId } : {}) };
+        reviewLinkRows.set(row.id, row);
+        return row;
+      },
+      async getByToken(token) {
+        const row = [...reviewLinkRows.values()].find((r) => r.token === token);
+        if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()) return undefined;
+        return row;
+      },
+      async revoke({ orgId, id }) {
+        const row = reviewLinkRows.get(id);
+        if (row && row.orgId === orgId) row.revokedAt = new Date();
+      },
+      async listForBrand(orgId, brandId) {
+        return [...reviewLinkRows.values()].filter((r) => r.orgId === orgId && r.brandId === brandId);
+      },
+    },
+
     approvals: approvalStore,
     brands: brandStore,
     humanLoop: humanLoopStore,
+    consent: consentStore,
 
     toolCalls: {
       async get(callId, org) {
@@ -353,7 +1025,32 @@ export function createDevStore(
           ...(row.why ? { why: row.why } : {}),
         };
       },
+      // `findCall` only supports lookup-by-id in dev mode (whatever backs it
+      // in apps/api/app.ts has no enumeration API) — an honest empty list
+      // rather than a fabricated one. `org.audit.query` is fully real against
+      // Postgres, which is what this dev store stands in for elsewhere too.
+      async list() {
+        return [];
+      },
     },
     runs: runStore.reader,
+
+    // The scheduler's read. Same `drafts`-only reach as `content.list`/`.get`
+    // — see the note on the `drafts` declaration above.
+    async findDue(before, limit) {
+      return [...drafts.values()]
+        .filter((r) => r.status === 'scheduled' && r.scheduledAt !== undefined && r.scheduledAt <= before)
+        .sort((a, b) => a.scheduledAt!.getTime() - b.scheduledAt!.getTime())
+        .slice(0, limit)
+        .map((r) => ({
+          id: r.id,
+          orgId: r.orgId,
+          genomeId: r.genomeId,
+          playbookId: r.playbookId,
+          platform: r.platform ?? null,
+          copy: r.copy,
+          scheduledAt: r.scheduledAt!,
+        }));
+    },
   };
 }

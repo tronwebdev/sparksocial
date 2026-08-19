@@ -22,6 +22,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       genomes: {
         createDraft: async () => ({ id: 'gen_draft' }),
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
+        patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
+        patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
+        patchOffer: async () => ({ id: 'gen_1', version: 1 }),
+        patchLearned: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => lagosBarbershop.genome,
         listForOrg: async () => [],
       },
@@ -31,8 +35,100 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         create: async () => ({ id: 'asset_1' }),
         captionsByRole: async () => [],
         info: async () => ({}),
+        setRights: async () => undefined,
+        recordUsage: async () => undefined,
+        moveToFolder: async () => undefined,
       },
-      content: { recent: async () => [] },
+      assetFolders: {
+        create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
+        list: async () => [],
+      },
+      content: {
+        recent: async () => [],
+        createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
+        get: async () => undefined,
+        updateDraft: async () => undefined,
+        list: async () => [],
+        schedule: async () => undefined,
+        markPublished: async () => {},
+        markRolledBack: async () => {},
+        markBlocked: async () => {},
+        recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
+        listRenders: async () => [],
+      },
+      analytics: {
+        record: async () => { throw new Error('analytics.record not stubbed in this test'); },
+        listForItems: async () => [],
+      },
+      ctaLinks: {
+        create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
+        listForItems: async () => [],
+      },
+      engagement: {
+        ingest: async () => { throw new Error('engagement.ingest not stubbed in this test'); },
+        get: async () => undefined,
+        classify: async () => undefined,
+        list: async () => [],
+        audit: async () => [],
+        markReplied: async () => undefined,
+        markAutoHandled: async () => undefined,
+        markEscalated: async () => undefined,
+      },
+      opportunities: {
+        create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
+        get: async () => undefined,
+        route: async () => undefined,
+      },
+      trends: {
+        add: async () => { throw new Error('trends.add not stubbed in this test'); },
+        remove: async () => {},
+        list: async () => [],
+      },
+      learning: {
+        list: async () => [],
+        recordOutcome: async () => { throw new Error('learning.recordOutcome not stubbed in this test'); },
+        reset: async () => { throw new Error('learning.reset not stubbed in this test'); },
+      },
+      recipes: {
+        create: async () => { throw new Error('recipes.create not stubbed in this test'); },
+        get: async () => undefined,
+        list: async () => [],
+        setStatus: async () => undefined,
+        delete: async () => {},
+        markRan: async () => {},
+        findDue: async () => [],
+        recordRun: async () => { throw new Error('recipes.recordRun not stubbed in this test'); },
+        listOutputs: async () => [],
+        decideOutput: async () => undefined,
+      },
+      oauthConnections: {
+        get: async () => undefined,
+        save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
+        remove: async () => {},
+      },
+      knowledge: {
+        attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },
+        listForDoc: async () => [],
+        listAll: async () => [],
+      },
+      orgSettings: {
+        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 50_000, updatedAt: new Date() }),
+        setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
+        setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
+        setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
+      },
+      brandMembers: {
+        set: async () => { throw new Error('brandMembers.set not stubbed in this test'); },
+        remove: async () => {},
+        listForBrand: async () => [],
+        listForUser: async () => [],
+      },
+      reviewLinks: {
+        create: async () => { throw new Error('reviewLinks.create not stubbed in this test'); },
+        getByToken: async () => undefined,
+        revoke: async () => {},
+        listForBrand: async () => [],
+      },
       campaigns: {
         create: async () => ({ id: 'cmp_1' }),
         get: async () => undefined,
@@ -58,6 +154,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
         }),
+        setPolicy: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+        }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
       // the point of the interface being structural rather than partial.
@@ -68,7 +168,15 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         answer: async () => undefined,
         markDelivered: async () => {},
       },
-      toolCalls: { get: async () => undefined },
+      // `pb_craft_capture` never requires_likeness_license, so `rights` never
+      // reads this — false is a safe default rather than a meaningful stub.
+      consent: {
+        grant: async () => { throw new Error('consent not stubbed in this test'); },
+        revoke: async () => undefined,
+        hasActive: async () => false,
+        list: async () => [],
+      },
+      toolCalls: { get: async () => undefined, list: async () => [] },
       approvals: {
         enqueue: async () => {},
         pending: async () => [],
@@ -107,6 +215,35 @@ describe('guard.evaluate_draft', () => {
     );
     expect(res.overall).toBe('pass');
     expect(res.why.summary).toContain('clear');
+  });
+
+  it('grounds a claim from knowledge_chunks, not just asset captions — the gap knowledge.ingest_* closes', async () => {
+    // Before this fix, claim_grounding's corpus was built from
+    // `assets.captionsByRole` alone; nothing written via
+    // `brand.knowledge.attach`/`knowledge.ingest_site`/`.ingest_docs` was
+    // ever actually consulted. This proves a claim grounded *only* by a
+    // knowledge chunk now clears — captionsByRole stays empty on purpose.
+    const tool = makeEvaluateDraft(embed);
+    const res = await tool.handler(
+      {
+        genomeId: lagosBarbershop.genome.genome_id,
+        playbookId: 'pb_craft_capture',
+        platform: 'instagram',
+        text: 'Fades finished in 20 minutes flat.',
+        referencedAssetIds: [],
+      },
+      ctx({
+        db: {
+          ...ctx().db,
+          assets: { ...ctx().db.assets, captionsByRole: async () => [] },
+          knowledge: {
+            ...ctx().db.knowledge,
+            listAll: async () => [{ id: 'kc_1', genomeId: lagosBarbershop.genome.genome_id, docId: 'faq', text: 'Every fade is finished in 20 minutes flat.', createdAt: new Date() }],
+          },
+        },
+      }),
+    );
+    expect(res.checks.claim_grounding?.verdict).toBe('pass');
   });
 
   it('reports overall block when any check blocks, and lists it in why.factors', async () => {
@@ -160,6 +297,35 @@ describe('guard.evaluate_draft', () => {
       ctx({ db: { ...ctx().db, genomes: { ...ctx().db.genomes, get: async () => undefined } } }),
     );
     expect(res.overall).toBe('block');
+  });
+
+  describe('rights — wired to consent, not to the genome constraint', () => {
+    // `pb_avatar_pov` is one of the three playbooks with
+    // `requires_likeness_license: true`, so it is the one that actually
+    // exercises `gather.ts`'s `ctx.db.consent.hasActive` call.
+    const draft = {
+      genomeId: lagosBarbershop.genome.genome_id,
+      playbookId: 'pb_avatar_pov',
+      platform: 'instagram',
+      text: 'A short clip.',
+      referencedAssetIds: [],
+    };
+
+    it('blocks when no consent record is active, even though the base ctx() stub says false', async () => {
+      const tool = makeEvaluateDraft(embed);
+      const res = await tool.handler(draft, ctx());
+      expect(res.overall).toBe('block');
+      expect(res.checks.rights?.verdict).toBe('block');
+    });
+
+    it('passes rights once ctx.db.consent.hasActive reports an active grant', async () => {
+      const tool = makeEvaluateDraft(embed);
+      const res = await tool.handler(
+        draft,
+        ctx({ db: { ...ctx().db, consent: { ...ctx().db.consent, hasActive: async () => true } } }),
+      );
+      expect(res.checks.rights?.verdict).toBe('pass');
+    });
   });
 });
 

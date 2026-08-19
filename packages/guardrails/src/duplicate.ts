@@ -45,7 +45,8 @@ export interface DuplicateInput {
 }
 
 const DEFAULT_SIMILARITY_THRESHOLD = 0.92; // near-restatement, not merely the same topic
-const DEFAULT_COOLDOWN_DAYS = 7;
+/** Exported for `asset.cooldown.check` (packages/assetgraph) — same reuse-cooldown concept, exposed as a pre-flight read instead of buried in a block verdict. */
+export const DEFAULT_COOLDOWN_DAYS = 7;
 
 export function duplicate(input: DuplicateInput): CheckResult {
   const threshold = input.similarityThreshold ?? DEFAULT_SIMILARITY_THRESHOLD;

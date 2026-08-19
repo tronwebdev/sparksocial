@@ -53,8 +53,20 @@ export async function gatherAndEvaluate(
   await Promise.all([
     run('claim_grounding', async () => {
       if (!genome) return missingContext('genome');
-      const knowledge = await ctx.db.assets.captionsByRole(draft.genomeId, ctx.orgId, ['knowledge', 'social_proof']);
-      return claimGrounding({ text: draft.text, groundingCorpus: knowledge.join('\n') });
+      // Two sources, both genuine grounding: asset captions carry proof
+      // embedded in what was actually shot (a testimonial's own words, a
+      // spec sheet photographed at the counter); `knowledge_chunks` carries
+      // text attached directly — `brand.knowledge.attach`,
+      // `knowledge.ingest_site`, `knowledge.ingest_docs`. Reading only the
+      // first meant every knowledge-ingestion write was inert: nothing here
+      // ever consulted it, so a business that pasted its entire FAQ in still
+      // had every specific claim rejected as ungrounded.
+      const [captions, chunks] = await Promise.all([
+        ctx.db.assets.captionsByRole(draft.genomeId, ctx.orgId, ['knowledge', 'social_proof']),
+        ctx.db.knowledge.listAll(draft.genomeId, ctx.orgId),
+      ]);
+      const groundingCorpus = [...captions, ...chunks.map((c) => c.text)].join('\n');
+      return claimGrounding({ text: draft.text, groundingCorpus });
     }),
 
     run('compliance_profile', () => {
@@ -108,14 +120,17 @@ export async function gatherAndEvaluate(
 
     run('rights', async () => {
       if (!genome || !playbook) return missingContext('genome or playbook');
-      const info = await ctx.db.assets.info(draft.referencedAssetIds, draft.genomeId, ctx.orgId);
+      const [info, avatarEnabled] = await Promise.all([
+        ctx.db.assets.info(draft.referencedAssetIds, draft.genomeId, ctx.orgId),
+        ctx.db.consent.hasActive(draft.genomeId, ctx.orgId, 'avatar_clone'),
+      ]);
       return rights({
         referencedAssetRights: draft.referencedAssetIds.map((id) => ({
           assetId: id,
           rightsStatus: info[id]?.rightsStatus ?? 'pending',
         })),
         requiresLikenessLicense: playbook.preconditions.requires_likeness_license,
-        avatarEnabled: genome.constraints.avatar_enabled,
+        avatarEnabled,
       });
     }),
   ]);

@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheck,
 } from '@/components/ui/dropdown-menu';
@@ -122,13 +124,34 @@ export function WorkspaceSwitcher() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-[348px]">
-        <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+        {/*
+          "Brands", not "Workspaces" — this switches between businesses inside
+          one org (an agency running several genomes side by side), which is a
+          different thing from the Clerk *organization* that auth calls a
+          "workspace" (`/sign-in/tasks`, `OrgGuard`'s naming prompt). Both used
+          the same word, which is exactly what made "why do all my workspaces
+          have the same name" an ambiguous bug report instead of an obvious one.
+        */}
+        <DropdownMenuLabel>Brands</DropdownMenuLabel>
         {genomes.map((g) => (
           <DropdownMenuItem key={g.genomeId} onSelect={() => select(g.genomeId)}>
             <span className="truncate">{g.name}</span>
             <DropdownMenuCheck checked={g.genomeId === active.genomeId} />
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        {/*
+          The other half of "add a new workspace from the dashboard": a second
+          *brand* inside this org, not a second Clerk organization (full
+          multi-tenancy is explicitly out of scope for the alpha — CLAUDE.md).
+          Onboarding already writes `spark_genome` to whatever it creates, so
+          re-running it here needs no new tool — the gap was purely that
+          nothing linked to it after the first run.
+        */}
+        <DropdownMenuItem onSelect={() => router.push('/onboarding')}>
+          <Plus className="h-[16px] w-[16px] text-ink-muted" aria-hidden />
+          <span>Add a brand</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

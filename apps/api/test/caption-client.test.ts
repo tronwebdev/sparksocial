@@ -75,6 +75,71 @@ describe('the URL is re-checked before a third party fetches it', () => {
   });
 });
 
+describe('local-disk storage — Claude cannot fetch a localhost URL, so this reads bytes off disk instead', () => {
+  const LOCAL_PREFIX = 'http://localhost:8080/v1/local-storage/';
+
+  it('sends bytes inline instead of the URL, for a URL under the configured local prefix', async () => {
+    const anthropic = say('A blue ceramic mug on a white background.');
+    const read = vi.fn(async () => ({ bytes: Buffer.from('fake-jpeg-bytes'), contentType: 'image/jpeg' }));
+
+    const out = await createCaptionClient({
+      anthropic,
+      localSource: { read },
+      localUrlPrefix: LOCAL_PREFIX,
+    }).caption(`${LOCAL_PREFIX}org_1/gen_1/2026/08/mug.jpg`, 'image');
+
+    expect(out).toMatch(/mug/i);
+    expect(read).toHaveBeenCalledWith('org_1/gen_1/2026/08/mug.jpg');
+
+    const call = (anthropic.messages.create as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]![0] as {
+      messages: Array<{ content: Array<{ type: string; source?: { type: string; data?: string; url?: string } }> }>;
+    };
+    const image = call.messages[0]!.content.find((c) => c.type === 'image');
+    expect(image?.source?.type).toBe('base64');
+    expect(image?.source?.url).toBeUndefined();
+    expect(image?.source?.data).toBe(Buffer.from('fake-jpeg-bytes').toString('base64'));
+  });
+
+  it('still enforces the SSRF guard for a private-network URL that is NOT under the local prefix', async () => {
+    // Configuring localUrlPrefix must not widen what's exempt beyond that
+    // exact prefix — otherwise it would be a general "skip the guard" flag.
+    await expect(
+      createCaptionClient({ localSource: { read: vi.fn() }, localUrlPrefix: LOCAL_PREFIX }).caption(
+        'http://169.254.169.254/metadata',
+        'image',
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('throws NOT_FOUND rather than a caption when the file is missing', async () => {
+    const read = vi.fn(async () => undefined);
+    await expect(
+      createCaptionClient({ localSource: { read }, localUrlPrefix: LOCAL_PREFIX }).caption(
+        `${LOCAL_PREFIX}org_1/gen_1/gone.jpg`,
+        'image',
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('refuses an image type Claude\'s inline path does not accept', async () => {
+    const read = vi.fn(async () => ({ bytes: Buffer.from('x'), contentType: 'image/heic' }));
+    await expect(
+      createCaptionClient({ localSource: { read }, localUrlPrefix: LOCAL_PREFIX }).caption(
+        `${LOCAL_PREFIX}org_1/gen_1/x.heic`,
+        'image',
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('reports video/audio under local storage as honestly untranscribable rather than failing or guessing', async () => {
+    const out = await createCaptionClient({
+      localSource: { read: vi.fn() },
+      localUrlPrefix: LOCAL_PREFIX,
+    }).caption(`${LOCAL_PREFIX}org_1/gen_1/clip.mp4`, 'video');
+    expect(out).toMatch(/untranscribed video/i);
+  });
+});
+
 describe('video and audio', () => {
   const transcriptFlow = (text: string | null, status = 'completed') => {
     let polls = 0;

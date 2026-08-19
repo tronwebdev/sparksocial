@@ -28,5 +28,9 @@ export function createMemoryBlobStore(base = 'https://memory.blob.local'): BlobS
       const se = new Date(Date.now() + ttlSec * 1000).toISOString();
       return `${base}/${encodeURI(key)}?sig=dev&se=${encodeURIComponent(se)}&sp=r`;
     },
+    async put({ key }) {
+      keys.push(key);
+      return { url: `${base}/${encodeURI(key)}?sig=dev&sp=r` };
+    },
   };
 }

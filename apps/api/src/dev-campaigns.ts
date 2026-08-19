@@ -27,9 +27,21 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
   return {
     size: () => rows.size,
 
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan }) {
+    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel }) {
       const id = randomUUID();
-      rows.set(id, { id, orgId, genomeId, name, objective, windowDays, startAt, status: 'draft', plan });
+      rows.set(id, {
+        id,
+        orgId,
+        genomeId,
+        name,
+        objective,
+        windowDays,
+        startAt,
+        status: 'draft',
+        plan,
+        ...(targetCount !== undefined ? { targetCount } : {}),
+        ...(targetLabel !== undefined ? { targetLabel } : {}),
+      });
       slots.set(id, []);
       return { id };
     },

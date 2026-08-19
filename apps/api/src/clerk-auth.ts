@@ -14,6 +14,13 @@ import { readBudget } from './budget.js';
  *   - `userId`, `orgId`, `role` — from a **cryptographically verified session**.
  *   - `genomeId`, `brandId`     — from a **database lookup against that orgId**.
  *
+ * A third check gates brandId once it's resolved: for anyone below
+ * owner/admin, the `brand_members` row `team.permission.set` writes has to
+ * actually exist for this brand, or the request is refused. Org membership
+ * alone used to be enough to reach any brand in the org — see the
+ * "Brand-level access" block below for why that was a real gap, not a
+ * missing nice-to-have.
+ *
  * Nothing here reads a value off the request and trusts it. That is the whole
  * difference from `dev-auth.ts`, which takes `x-genome-id` at face value and is
  * therefore forgeable by any caller.
@@ -143,6 +150,33 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
       }
       ctx.genomeId = claimedGenomeId;
       ctx.brandId = genome.workspace_id;
+
+      // Brand-level access — agency isolation (plan §6.9). Being in the org
+      //    is not being scoped to every brand in it: `team.permission.set`
+      //    writes a `brand_members` row per (user, brand), and until this
+      //    check existed nothing ever read it back, so any org member could
+      //    reach any brand in the org regardless of their assignment — a real
+      //    gap `docs/GAPS.md` tracked under "Agency / team isolation".
+      //
+      //    `owner`/`admin` are the org's administrators everywhere else this
+      //    codebase draws that line (they are the only roles that can call
+      //    `team.permission.set` itself) — they administer every brand in
+      //    their org by construction, the same reasoning `brand.oauth.*` and
+      //    `org.*` already scope to `['owner', 'admin']`. Every other role
+      //    needs an explicit row for *this* brand, or is refused exactly like
+      //    a genome from another org: absent rather than forbidden, so
+      //    probing a genome id cannot confirm a brand exists that the caller
+      //    just isn't assigned to.
+      if (role !== 'owner' && role !== 'admin') {
+        const memberships = await deps.db.brandMembers.listForUser(orgId, userId);
+        const assigned = memberships.some((m) => m.brandId === ctx.brandId);
+        if (!assigned) {
+          throw new ToolError('ISOLATION_VIOLATION', 'You are not assigned to this brand.', {
+            genomeId: claimedGenomeId,
+            brandId: ctx.brandId,
+          });
+        }
+      }
     }
     // No header → no genomeId. `genome.list` still works (it is org-scoped);
     // anything genome-scoped fails later in `assertScope`, which is correct.

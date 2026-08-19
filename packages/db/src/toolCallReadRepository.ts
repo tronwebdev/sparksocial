@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
 import type { Explanation } from '@sparksocial/shared/types';
 import type { RecordedCall, ScopedDb } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
@@ -60,6 +60,46 @@ export function createToolCallReadRepository(db: Database): ScopedDb['toolCalls'
         ...(row.why ? { why: row.why as Explanation } : {}),
       };
       return call;
+    },
+
+    async list(orgId, args) {
+      const conditions: SQL[] = [eq(toolCalls.orgId, orgId)];
+      if (args.tool) conditions.push(eq(toolCalls.tool, args.tool));
+      if (args.since) conditions.push(gte(toolCalls.at, args.since));
+      if (args.until) conditions.push(lte(toolCalls.at, args.until));
+
+      const rows = await db
+        .select({
+          id: toolCalls.id,
+          tool: toolCalls.tool,
+          caller: toolCalls.caller,
+          decision: toolCalls.decision,
+          status: toolCalls.status,
+          ruleId: toolCalls.ruleId,
+          reason: toolCalls.reason,
+          costCents: toolCalls.costCents,
+          at: toolCalls.at,
+          runId: toolCalls.runId,
+          why: toolCalls.why,
+        })
+        .from(toolCalls)
+        .where(and(...conditions))
+        .orderBy(desc(toolCalls.at))
+        .limit(args.limit);
+
+      return rows.map((row) => ({
+        id: row.id,
+        tool: row.tool,
+        caller: row.caller === 'agent' ? 'agent' : 'user',
+        decision: row.decision,
+        status: row.status,
+        costCents: row.costCents,
+        at: row.at,
+        ...(row.ruleId ? { ruleId: row.ruleId } : {}),
+        ...(row.reason ? { reason: row.reason } : {}),
+        ...(row.runId ? { runId: row.runId } : {}),
+        ...(row.why ? { why: row.why as Explanation } : {}),
+      }));
     },
   };
 }
