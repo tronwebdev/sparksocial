@@ -68,6 +68,10 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       await scoped.markContentBlocked(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
     },
 
+    async recordPublishFailure(args) {
+      return scoped.recordContentPublishFailure(db, { orgId: args.orgId }, { id: args.id, error: args.error });
+    },
+
     async markNeedsReview(args) {
       await scoped.markContentNeedsReview(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
     },
@@ -131,6 +135,12 @@ function toDraft(row: scoped.ContentDraftRow): ContentDraft {
     ...(row.publishVia ? { via: row.publishVia } : {}),
     ...(row.publishUrl ? { url: row.publishUrl } : {}),
     ...(row.blockedReason ? { blockedReason: row.blockedReason } : {}),
+    // §10's retry state. `publishAttempts` is included even at zero, unlike the
+    // fields above: "tried 0 times" is a fact the Draft Panel can render, and an
+    // absent field would be indistinguishable from an older row that never
+    // carried the column.
+    publishAttempts: row.publishAttempts,
+    ...(row.lastPublishError ? { lastPublishError: row.lastPublishError } : {}),
     ...(row.copy !== null ? { copy: row.copy } : {}),
     ...(row.why !== null ? { why: row.why as Explanation } : {}),
     ...(row.scheduledAt ? { scheduledAt: row.scheduledAt } : {}),

@@ -90,7 +90,15 @@ function makeDeps(
     // `markNeedsReview` is the scheduler's write when the approval ladder holds a
     // publish (PRD §7.4): the item leaves `scheduled` so `findDue` stops
     // re-selecting and re-holding it once a minute forever.
-    content: { markBlocked: async () => {}, markNeedsReview: async () => {} },
+    content: {
+      markBlocked: async () => {},
+      markNeedsReview: async () => {},
+      // §10's retry counter. One attempt by default: every existing test in
+      // this file exercises a *first* failure, and returning the ceiling here
+      // would make all of them assert give-up behaviour they were not written
+      // for.
+      recordPublishFailure: async () => ({ attempts: 1 }),
+    },
   } as unknown as ScopedDb;
 
   const invoke: InvokeDeps = { writeToolCall: async () => {} };
@@ -346,12 +354,157 @@ describe('scheduler', () => {
     register(tool);
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 1 }) },
+      } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(markBlocked).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('counts every transient failure, so the retry has an end to reach', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const recordPublishFailure = vi.fn(async () => ({ attempts: 2 }));
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    // The error string carries the code as well as the message: "UPSTREAM_FAILED"
+    // and "GUARDRAIL_BLOCKED" need to be distinguishable by whoever reads the
+    // stalled item later.
+    expect(recordPublishFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item_1', orgId: 'org_1', error: expect.stringContaining('publish transport down') }),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('does not count a guardrail block as a retry attempt', async () => {
+    // It is already terminal. Counting it would put a second, redundant number
+    // on a row that is not being retried at all.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ guardrailBlocked: true });
+    register(tool);
+    const recordPublishFailure = vi.fn(async () => ({ attempts: 1 }));
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(recordPublishFailure).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('stops retrying at the ceiling and blocks the item with the last error', async () => {
+    // The gap this closes: before the ceiling, an item whose platform
+    // connection had died failed identically on every tick forever, logging to
+    // a console nobody reads while the calendar still showed it going out.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(markBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'item_1',
+        orgId: 'org_1',
+        reason: expect.stringContaining('5 times'),
+      }),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('tells somebody when it gives up', async () => {
+    // `blocked` on a calendar nobody is looking at is still a silent miss.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const notified: string[] = [];
+    register(
+      defineTool({
+        name: 'human.notify',
+        version: 1,
+        summary: 'fake human.notify for scheduler give-up tests',
+        input: z.object({ message: z.string(), urgency: z.string() }),
+        output: z.object({ id: z.string() }),
+        effect: 'external',
+        autonomy: 'auto',
+        scopes: ['owner', 'admin', 'editor'],
+        idempotent: true,
+        async handler(input) {
+          notified.push(input.message);
+          return { id: 'msg_1' };
+        },
+      }),
+    );
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(notified).toHaveLength(1);
+    expect(notified[0]).toMatch(/stopped retrying/i);
+    vi.restoreAllMocks();
+  });
+
+  it('leaves the item blocked even when the notification cannot be sent', async () => {
+    // Losing the block because the notification channel is down would put the
+    // row straight back into the infinite loop the ceiling exists to end.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    register(
+      defineTool({
+        name: 'human.notify',
+        version: 1,
+        summary: 'fake failing human.notify',
+        input: z.object({ message: z.string(), urgency: z.string() }),
+        output: z.object({ id: z.string() }),
+        effect: 'external',
+        autonomy: 'auto',
+        scopes: ['owner', 'admin', 'editor'],
+        idempotent: true,
+        async handler() {
+          throw new Error('notification channel down');
+        },
+      }),
+    );
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await expect(runOnce(deps)).resolves.toBeUndefined();
+    expect(markBlocked).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 

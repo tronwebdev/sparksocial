@@ -608,6 +608,10 @@ export interface ContentDraft {
   url?: string;
   /** Set only when `status === 'blocked'` — see `ContentStore.markBlocked`. */
   blockedReason?: string;
+  /** Failed publish attempts so far. See `ContentStore.recordPublishFailure`. */
+  publishAttempts?: number;
+  /** The last thing that went wrong, verbatim from the failing tool. */
+  lastPublishError?: string;
   /**
    * The resolved beats/copy payload. `unknown` at this layer for the same
    * reason `CampaignPlan.plan` is — the shape belongs to whichever package
@@ -759,6 +763,16 @@ export interface ContentStore {
    * *why* it stalled, via `reason`, not just that it's editable again).
    */
   markBlocked(args: { id: string; orgId: string; reason: string }): Promise<void>;
+
+  /**
+   * Records one failed publish attempt and returns the running total — PRD
+   * §10's retry flow needs an end, and an end needs a count.
+   *
+   * Returns the count rather than deciding what to do with it: whether five
+   * attempts is too many is the scheduler's policy, not storage's, and the same
+   * counter will want a different ceiling when a queue replaces the poll loop.
+   */
+  recordPublishFailure(args: { id: string; orgId: string; error: string }): Promise<{ attempts: number }>;
 
   /**
    * Where this item came from, for `policy.ts` rule 7's automation branch —
@@ -1544,6 +1558,8 @@ export interface OAuthConnectionRecord {
   scopes?: string[];
   /** Human-readable "@handle" or page/channel name, when cheaply available right after token exchange. */
   accountLabel?: string;
+  /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
+  expiryNotifiedAt?: Date;
 }
 
 export interface OAuthConnectionStore {
@@ -1560,6 +1576,24 @@ export interface OAuthConnectionStore {
     accountLabel?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
+
+  /**
+   * Connections whose token expires before `before` and that have not been
+   * warned about since it was last saved — PRD §10's connection alerts.
+   *
+   * **Cross-tenant by necessity**, like `findDueContentItems`: the caller is a
+   * clock, and a clock has no session to be scoped to. Every row carries its own
+   * `orgId`/`genomeId` so the notification it produces goes through the tenant's
+   * own governance, and this is the only method on this store that is not
+   * genome-keyed — deliberately narrow for that reason.
+   */
+  findExpiring(args: { before: Date; limit: number }): Promise<(OAuthConnectionRecord & { orgId: string })[]>;
+
+  /**
+   * Latches the alert so the next tick does not repeat it. Cleared by `save`,
+   * which is what makes a reconnection re-arm the warning.
+   */
+  markExpiryNotified(args: { id: string; orgId: string; at: Date }): Promise<void>;
 }
 
 /** One ingested chunk of claim-grounding source text — `brand.knowledge.attach`'s storage. */

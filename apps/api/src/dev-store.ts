@@ -589,6 +589,19 @@ export function createDevStore(
         row.blockedReason = reason;
       },
 
+      /**
+       * Increments and returns, like the SQL one. Deliberately does not touch
+       * `status`: whether the count has reached a ceiling is the scheduler's
+       * decision, not storage's.
+       */
+      async recordPublishFailure({ id, orgId: org, error }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return { attempts: 0 };
+        row.publishAttempts = (row.publishAttempts ?? 0) + 1;
+        row.lastPublishError = error.slice(0, 2000);
+        return { attempts: row.publishAttempts };
+      },
+
       async markNeedsReview({ id, orgId: org, reason }) {
         const row = drafts.get(id);
         if (!row || row.orgId !== org) return;
@@ -1036,6 +1049,8 @@ export function createDevStore(
           ...(expiresAt ? { expiresAt } : {}),
           ...(scopes ? { scopes } : {}),
           ...(accountLabel ? { accountLabel } : {}),
+          // Not carried over from `existing`: reconnecting re-arms the §10
+          // expiry alert, because the new token has a new expiry.
         };
         oauthConnectionsMap.set(key, row);
         return row;
@@ -1044,6 +1059,25 @@ export function createDevStore(
         const key = `${genomeId}:${provider}`;
         const existing = oauthConnectionsMap.get(key);
         if (existing && existing.orgId === org) oauthConnectionsMap.delete(key);
+      },
+
+      /**
+       * Cross-tenant, like the SQL one — and `expiresAt` absent is excluded
+       * rather than treated as urgent, for the reason `scoped.ts` gives: several
+       * providers issue tokens with no stated expiry, and warning about a
+       * connection that works fine is how an alert channel becomes noise.
+       */
+      async findExpiring({ before, limit }) {
+        return [...oauthConnectionsMap.values()]
+          .filter((c) => c.expiresAt !== undefined && c.expiresAt <= before && c.expiryNotifiedAt === undefined)
+          .sort((a, b) => a.expiresAt!.getTime() - b.expiresAt!.getTime())
+          .slice(0, limit);
+      },
+
+      async markExpiryNotified({ id, orgId: org, at }) {
+        for (const row of oauthConnectionsMap.values()) {
+          if (row.id === id && row.orgId === org) row.expiryNotifiedAt = at;
+        }
       },
     },
 

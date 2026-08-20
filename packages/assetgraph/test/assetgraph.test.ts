@@ -57,6 +57,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        recordPublishFailure: async () => ({ attempts: 1 }),
         publishOrigin: async () => undefined,
         pendingReviewCount: async () => 0,
         markNeedsReview: async () => {},
@@ -118,6 +119,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async () => undefined,
         save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
         remove: async () => {},
+        findExpiring: async () => [],
+        markExpiryNotified: async () => {},
       },
       knowledge: {
         attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },

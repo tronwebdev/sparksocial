@@ -22,6 +22,7 @@ import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
+import { startConnectionWatcher } from './connection-watcher.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -375,6 +376,21 @@ const trendObserver = startTrendObserver(
   envNum('TREND_OBSERVER_INTERVAL_MS', 3_600_000),
 );
 
+/**
+ * The connection watcher (§10) — warns the owner before a platform token
+ * expires, so an expiring connection is not discovered by a week of posts
+ * silently failing. Every six hours: the warning window is seven days, so a
+ * tighter interval only re-reads the same rows.
+ */
+const connectionWatcher = startConnectionWatcher(
+  {
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+  },
+  envNum('CONNECTION_WATCHER_INTERVAL_MS', 21_600_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -441,6 +457,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     scheduler.stop();
     recipeScheduler.stop();
     trendObserver.stop();
+    connectionWatcher.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

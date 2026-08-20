@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
@@ -529,6 +529,39 @@ export async function markContentBlocked(
 }
 
 /**
+ * One failed publish attempt, counted — PRD §10's retry flow needs an end.
+ *
+ * `publish_attempts + 1` in SQL rather than read-modify-write: two scheduler
+ * ticks racing the same row would otherwise both read 3 and both write 4, and a
+ * ceiling that can be undercounted is a ceiling that can be walked past.
+ *
+ * Deliberately does not change `status`. The item stays `scheduled` and stays
+ * retryable; whether the count has reached a ceiling is the scheduler's
+ * decision, and mixing the two here would put a retry policy in the storage
+ * layer.
+ */
+export async function recordContentPublishFailure(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; error: string },
+): Promise<{ attempts: number }> {
+  const [row] = await db
+    .update(contentItems)
+    .set({
+      publishAttempts: sql`${contentItems.publishAttempts} + 1`,
+      lastPublishError: args.error.slice(0, 2000),
+    })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)))
+    .returning({ attempts: contentItems.publishAttempts });
+
+  // A row that no longer exists (or belongs to another org) reports zero rather
+  // than throwing: the caller is a clock reacting to a failure it has already
+  // logged, and a second error there would replace a useful message with a
+  // useless one.
+  return { attempts: row?.attempts ?? 0 };
+}
+
+/**
  * PRD §7.4's `Needs Review` state — see `ContentStore.markNeedsReview`.
  *
  * Reuses `blockedReason` for the held-reason rather than adding a second column:
@@ -1048,6 +1081,9 @@ export interface ContentDraftRow {
   publishVia: string | null;
   publishUrl: string | null;
   blockedReason: string | null;
+  /** §10's retry state — see `recordContentPublishFailure`. */
+  publishAttempts: number;
+  lastPublishError: string | null;
   copy: unknown;
   why: unknown;
   scheduledAt: Date | null;
@@ -1067,6 +1103,10 @@ const contentDraftColumns = {
   publishVia: contentItems.publishVia,
   publishUrl: contentItems.publishUrl,
   blockedReason: contentItems.blockedReason,
+  // §10's retry flow: a stalled item has to be able to explain how many times
+  // it has been tried and what happened, or the only record is a console line.
+  publishAttempts: contentItems.publishAttempts,
+  lastPublishError: contentItems.lastPublishError,
   copy: contentItems.copy,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
@@ -1173,7 +1213,15 @@ export async function scheduleContentItem(
   assertScope(scope);
   const [row] = await db
     .update(contentItems)
-    .set({ scheduledAt: args.scheduledAt, status: 'scheduled' })
+    .set({
+      scheduledAt: args.scheduledAt,
+      status: 'scheduled',
+      // Rescheduling is a person saying "try this again". Carrying the old
+      // attempt count forward would mean an item that hit the ceiling once
+      // could never be given a second chance without editing the database.
+      publishAttempts: 0,
+      lastPublishError: null,
+    })
     .where(
       and(
         eq(contentItems.id, args.id),
@@ -1835,6 +1883,8 @@ export async function decideRecipeOutput(
 
 export interface OAuthConnectionRow {
   id: string;
+  /** Selected for `findExpiringOAuthConnections` — see the projection's comment. */
+  orgId: string;
   genomeId: string;
   provider: string;
   accessToken: string;
@@ -1845,10 +1895,15 @@ export interface OAuthConnectionRow {
   updatedAt: Date;
   scopes: string[] | null;
   accountLabel: string | null;
+  expiryNotifiedAt: Date | null;
 }
 
 const oauthConnectionColumns = {
   id: oauthConnections.id,
+  // `orgId` is here for `findExpiringOAuthConnections`, the one read on this
+  // table that is not already inside a tenant: its caller has to know whose
+  // connection each row is before it can notify anybody about it.
+  orgId: oauthConnections.orgId,
   genomeId: oauthConnections.genomeId,
   provider: oauthConnections.provider,
   accessToken: oauthConnections.accessToken,
@@ -1859,6 +1914,7 @@ const oauthConnectionColumns = {
   updatedAt: oauthConnections.updatedAt,
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
+  expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
 /** Upsert by (genome, provider) — reconnecting replaces the old token rather than accumulating stale rows. */
@@ -1898,6 +1954,10 @@ export async function saveOAuthConnection(
         expiresAt: args.expiresAt ?? null,
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
+        // Reconnecting re-arms the §10 expiry alert. The new token has a new
+        // expiry, so the next warning is a new fact, not a repeat of the one
+        // that prompted this reconnection.
+        expiryNotifiedAt: null,
         updatedAt: sql`now()`,
       },
     })
@@ -1913,6 +1973,54 @@ export async function getOAuthConnection(db: Database, scope: Scope, provider: s
     .where(and(scopePredicate('oauthConnections', scope), eq(oauthConnections.provider, provider)))
     .limit(1);
   return row;
+}
+
+/**
+ * Connections due a §10 expiry warning: token expires before `before`, and
+ * nobody has been told since the token was last saved.
+ *
+ * **The second deliberate cross-tenant read in this file**, after
+ * {@link findDueContentItems}, and it carries the same justification and the
+ * same shape. The caller is a clock (`apps/api/src/connection-watcher.ts`);
+ * a clock has no session, so there is no genome to scope to. Every row comes
+ * back carrying its own `orgId` and `genomeId`, and the caller is required to
+ * use them — the notification it raises goes through that tenant's own
+ * governance, exactly like a scheduled publish does.
+ *
+ * `expiresAt` null is excluded, not treated as urgent. Several providers issue
+ * tokens with no stated expiry (or ones this codebase never learned), and
+ * warning about a connection that is working fine is how an alert channel
+ * becomes noise the owner learns to ignore — which would cost more than the
+ * alert is worth.
+ */
+export async function findExpiringOAuthConnections(
+  db: Database,
+  args: { before: Date; limit: number },
+): Promise<OAuthConnectionRow[]> {
+  return db
+    .select(oauthConnectionColumns)
+    .from(oauthConnections)
+    .where(
+      and(
+        isNotNull(oauthConnections.expiresAt),
+        lte(oauthConnections.expiresAt, args.before),
+        isNull(oauthConnections.expiryNotifiedAt),
+      ),
+    )
+    .orderBy(asc(oauthConnections.expiresAt))
+    .limit(args.limit);
+}
+
+/** Latches the warning from {@link findExpiringOAuthConnections}. Org-scoped, unlike the read. */
+export async function markOAuthExpiryNotified(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; at: Date },
+): Promise<void> {
+  await db
+    .update(oauthConnections)
+    .set({ expiryNotifiedAt: args.at })
+    .where(and(eq(oauthConnections.id, args.id), eq(oauthConnections.orgId, scope.orgId)));
 }
 
 export async function removeOAuthConnection(db: Database, scope: Scope, provider: string): Promise<void> {

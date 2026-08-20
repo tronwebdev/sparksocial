@@ -51,6 +51,24 @@ export interface SchedulerDeps {
 
 const BATCH_SIZE = 25;
 
+/**
+ * How many times a scheduled publish is retried before it stops — PRD §10's
+ * retry flow, given an end.
+ *
+ * Every non-guardrail failure used to be retried forever on the correct
+ * reasoning that a down adapter or an exhausted budget may well succeed later.
+ * The case that reasoning misses is a dead platform connection: it fails
+ * identically on every tick, the console line repeats once a minute for weeks,
+ * and the calendar still shows a post that is going out. That is §10's "silent
+ * miss" arriving as an infinitely retried post rather than a missing one.
+ *
+ * Five, at the default one-minute tick, is roughly five minutes of transient
+ * trouble absorbed before a person is told — which is the right trade: a
+ * momentary adapter blip should not reach the owner, and a broken connection
+ * should not take a week to.
+ */
+const MAX_PUBLISH_ATTEMPTS = 5;
+
 export function startScheduler(deps: SchedulerDeps, intervalMs: number): { stop: () => void } {
   let running = false;
 
@@ -278,10 +296,62 @@ async function publishOne(
     // identically on every future tick: nothing about the content changes
     // between them. Leaving `status: 'scheduled'` in place would mean this
     // exact log line repeats forever, once per tick, with no way for a
-    // person to ever see or act on it. Every other failure code stays
-    // retryable — those genuinely might succeed on a later tick.
+    // person to ever see or act on it.
     if (result.error.code === 'GUARDRAIL_BLOCKED') {
       await deps.db.content.markBlocked({ id: item.id, orgId: item.orgId, reason: result.error.message });
+      return;
+    }
+
+    /**
+     * Everything else is retryable — but not forever (PRD §10). The count is
+     * recorded on the row rather than held in memory, so it survives the
+     * container restarts this poll loop is explicitly built to tolerate, and so
+     * the Draft Panel can show a person *why* their post stalled instead of the
+     * reason living only in a log line.
+     */
+    const { attempts } = await deps.db.content.recordPublishFailure({
+      id: item.id,
+      orgId: item.orgId,
+      error: `${result.error.code}: ${result.error.message}`,
+    });
+
+    if (attempts >= MAX_PUBLISH_ATTEMPTS) {
+      const reason =
+        `Publishing failed ${attempts} times and has stopped retrying. Last error: ${result.error.code} — ` +
+        `${result.error.message}. Reschedule it once the cause is fixed.`;
+      await deps.db.content.markBlocked({ id: item.id, orgId: item.orgId, reason });
+      console.error('[error] scheduler: giving up on this item', { contentItemId: item.id, attempts });
+
+      /**
+       * Tell somebody. A post that has stopped retrying is exactly the state
+       * §10 is about, and `blocked` on a calendar nobody is looking at is still
+       * a silent miss. Through the registry like everything else, and its
+       * failure is logged rather than thrown: the item is already correctly
+       * blocked, and losing that because the notification channel is down would
+       * put the row back into the infinite loop this branch exists to end.
+       */
+      const notified = await invokeTool(
+        {
+          tool: 'human.notify',
+          input: {
+            message:
+              `A scheduled post stopped retrying after ${attempts} attempts (${platform}). ` +
+              `Last error: ${result.error.message}. Check Settings \u2192 Connections, then reschedule it.`,
+            urgency: 'high',
+          },
+          caller: 'agent',
+          ctx,
+          brand,
+          idempotencyKey: `publish-gave-up:${item.id}`,
+        },
+        deps.invoke,
+      );
+      if (notified.status === 'failed') {
+        console.error('[error] scheduler: could not notify about a stalled item', {
+          contentItemId: item.id,
+          code: notified.error.code,
+        });
+      }
     }
   } else if (result.status === 'gated') {
     // Not a failure — `review_everything`, a restricted platform, a recipe's own

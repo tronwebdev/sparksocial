@@ -222,6 +222,23 @@ export const contentItems = pgTable(
      * sees why it stalled without re-deriving it.
      */
     blockedReason: text('blocked_reason'),
+    /**
+     * ── PRD §10's retry flow, and its ceiling ──────────────────────────────
+     *
+     * `scheduler.ts` retries every `publish.now` failure except a guardrail
+     * block, on the correct reasoning that a down adapter or an exhausted
+     * budget may well succeed later. What it had no way to do was *stop*: an
+     * item whose platform connection has expired failed identically on every
+     * tick, forever, logging to a console nobody reads. That is §10's "silent
+     * miss" arriving by a second route — not a missing post, an infinitely
+     * retried one.
+     *
+     * Counting the attempts is what turns an unbounded loop into a retry flow
+     * with an end, and `lastPublishError` is what makes the end explainable to
+     * the person who has to fix it.
+     */
+    publishAttempts: integer('publish_attempts').notNull().default(0),
+    lastPublishError: text('last_publish_error'),
     copy: jsonb('copy'),
     /**
      * The copy's embedding at publish time — the guardrail layer's `duplicate`
@@ -1303,9 +1320,27 @@ export const oauthConnections = pgTable(
     // and not every provider has a cheap "who am I" call for a label.
     scopes: text('scopes').array(),
     accountLabel: text('account_label'),
+    /**
+     * ── PRD §10's connection alerts ────────────────────────────────────────
+     *
+     * §10 pairs "connection health indicators" with "alerts + retry flows"
+     * against the risk that *"integration failures cause silent misses"*.
+     * `integration.health` was the indicator; nothing ever told anybody. A
+     * token quietly expiring is the exact silent miss the row is about — the
+     * calendar still shows posts going out, and they stop.
+     *
+     * This is the latch that stops the watcher notifying about the same
+     * connection every tick. Cleared on every `save()`, which is what makes
+     * reconnecting re-arm the alert: the new token has a new expiry, so the
+     * next warning is a genuinely new fact rather than a repeat.
+     */
+    expiryNotifiedAt: timestamp('expiry_notified_at', { withTimezone: true }),
   },
   (t) => [
     index('oauth_connections_scope_idx').on(t.orgId, t.genomeId),
     uniqueIndex('oauth_connections_unique_idx').on(t.genomeId, t.provider),
+    // The watcher's one cross-tenant read: "which connections are near expiry",
+    // ordered by when. Without this it is a full scan on every tick.
+    index('oauth_connections_expiry_idx').on(t.expiresAt),
   ],
 );

@@ -10,6 +10,11 @@ const badgeVariants = cva('inline-flex items-center gap-1.5 font-semibold', {
       neutral: 'rounded-full bg-surface-muted px-3 py-1 text-[14px] text-ink-muted',
       success: 'rounded-full bg-success/15 px-3 py-1 text-[14px] text-success',
       warn: 'rounded-full bg-warn/15 px-3 py-1 text-[14px] text-warn',
+      // Added for PRD §10's connection health: an expired token is a failure,
+      // not a caution, and rendering it amber alongside "expiring" would make
+      // the two states look like degrees of the same thing rather than
+      // "act soon" versus "already broken".
+      destructive: 'rounded-full bg-destructive/15 px-3 py-1 text-[14px] text-destructive',
     },
   },
   defaultVariants: { variant: 'neutral' },

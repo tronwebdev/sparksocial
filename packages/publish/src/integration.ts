@@ -431,7 +431,40 @@ export function makeIntegrationConnect(deps: IntegrationConnectDeps) {
 
 /* ── integration.health ──────────────────────────────────────────────── */
 
-export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[] }) {
+/**
+ * PRD §10's *"connection health indicators"*.
+ *
+ * `connected: true` plus a raw `expiresAt` was not an indicator — it made every
+ * caller re-derive the same date arithmetic, and it made a token that expired
+ * last Tuesday indistinguishable from a healthy one at a glance. The states
+ * below are the four a person actually acts on, and `expiring` is the one worth
+ * having: it is the only state where doing something now prevents a missed post
+ * rather than explaining one.
+ */
+export const ConnectionStatus = z.enum(['not_connected', 'ok', 'expiring', 'expired']);
+export type ConnectionStatus = z.infer<typeof ConnectionStatus>;
+
+/**
+ * How far ahead a connection counts as expiring.
+ *
+ * Seven days, matched to `connection-watcher.ts`'s own window so the badge on
+ * the screen and the notification in the inbox never disagree. Long enough that
+ * a brand which only opens the product weekly still sees the warning before the
+ * token dies; short enough that it is not permanently amber.
+ */
+export const EXPIRY_WARNING_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function connectionStatus(expiresAt: Date | undefined, connected: boolean, now: Date): ConnectionStatus {
+  if (!connected) return 'not_connected';
+  // No stated expiry is reported as `ok`, not as unknown. Several providers
+  // issue tokens without one, and a permanent "we are not sure" badge on a
+  // working connection is worse than no badge at all.
+  if (!expiresAt) return 'ok';
+  if (expiresAt.getTime() <= now.getTime()) return 'expired';
+  return expiresAt.getTime() - now.getTime() <= EXPIRY_WARNING_MS ? 'expiring' : 'ok';
+}
+
+export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?: () => Date }) {
   const router = routeAdapters(deps.adapters);
 
   return defineTool({
@@ -439,9 +472,10 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[] }) {
     version: 1,
 
     summary:
-      'Per publishing platform: whether this brand has actually connected an account, which adapter would ' +
-      'serve it (native once connected + configured, the stub otherwise), and remaining posting budget today. ' +
-      'Richer than publish.status, which only ever reported routing — this also reports real connection state.',
+      'Per publishing platform: whether this brand has actually connected an account, whether that ' +
+      'connection is healthy / expiring / expired, which adapter would serve it (native once connected + ' +
+      'configured, the stub otherwise), and remaining posting budget today. Richer than publish.status, ' +
+      'which only ever reported routing — this also reports real connection state.',
 
     input: z.object({}),
     output: z.object({
@@ -449,12 +483,23 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[] }) {
         z.object({
           platform: Platform,
           connected: z.boolean(),
+          /** §10's health indicator. See {@link connectionStatus}. */
+          status: ConnectionStatus,
           accountLabel: z.string().optional(),
           expiresAt: z.string().optional(),
+          /** Negative once expired, so a caller can say "3 days ago" without re-parsing the date. */
+          hoursUntilExpiry: z.number().nullable(),
           supported: z.boolean(),
           via: z.string().nullable(),
         }),
       ),
+      /**
+       * The platforms in a state somebody has to do something about, and what.
+       * Derived here rather than in each caller: the Connections panel, the
+       * campaign wizard's account picker and SPARK itself all need the same
+       * answer, and three copies of the same threshold is how they drift apart.
+       */
+      needsAttention: z.array(z.object({ platform: Platform, status: ConnectionStatus, detail: z.string() })),
     }),
 
     effect: 'read',
@@ -465,22 +510,43 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[] }) {
     async handler(_input, ctx) {
       const genomeId = requireGenome(ctx.genomeId);
       const supported = new Set(router.supported());
+      const now = (deps.now ?? (() => new Date()))();
+
+      const platforms = await Promise.all(
+        Platform.options.map(async (platform) => {
+          const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, platform);
+          const isSupported = supported.has(platform);
+          const status = connectionStatus(conn?.expiresAt, Boolean(conn), now);
+          return {
+            platform,
+            connected: Boolean(conn),
+            status,
+            ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
+            ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
+            hoursUntilExpiry: conn?.expiresAt
+              ? Math.round(((conn.expiresAt.getTime() - now.getTime()) / 3_600_000) * 10) / 10
+              : null,
+            supported: isSupported,
+            via: isSupported ? router.for(platform).name : null,
+          };
+        }),
+      );
 
       return {
-        platforms: await Promise.all(
-          Platform.options.map(async (platform) => {
-            const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, platform);
-            const isSupported = supported.has(platform);
-            return {
-              platform,
-              connected: Boolean(conn),
-              ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
-              ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
-              supported: isSupported,
-              via: isSupported ? router.for(platform).name : null,
-            };
-          }),
-        ),
+        platforms,
+        // `not_connected` is not an alert. A brand that never connected TikTok
+        // is not broken, and listing eleven platforms as problems would bury the
+        // one that genuinely is.
+        needsAttention: platforms
+          .filter((p) => p.status === 'expiring' || p.status === 'expired')
+          .map((p) => ({
+            platform: p.platform,
+            status: p.status,
+            detail:
+              p.status === 'expired'
+                ? `${p.accountLabel ?? p.platform} needs reconnecting — its access expired and posts to it will fail.`
+                : `${p.accountLabel ?? p.platform} expires in ${Math.max(0, Math.round((p.hoursUntilExpiry ?? 0) / 24))} days. Reconnect before it does.`,
+          })),
       };
     },
   });

@@ -18,6 +18,7 @@ import { createAuditRepository } from '../src/auditRepository.js';
 import { createRunRecorder, getRun } from '../src/runRecorderRepository.js';
 import { createConsentRepository } from '../src/consentRepository.js';
 import { createTrendObservationRepository } from '../src/trendObservationRepository.js';
+import { createOAuthConnectionRepository } from '../src/oauthConnectionRepository.js';
 import { replaceCampaignSlots, campaignSlots, findDueContentItems, getContentMetrics } from '../src/scoped.js';
 import * as schema from '../src/schema.js';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
@@ -108,7 +109,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations']) {
+  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations', 'oauth_connections']) {
     await pg.exec(`TRUNCATE TABLE ${table}`);
   }
 });
@@ -955,6 +956,128 @@ describe('migrations conform to schema.ts', () => {
     for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals', 'consent_records']) {
       expect(present.has(t), `${t} is missing`).toBe(true);
     }
+  });
+});
+
+describe('connection health — §10 alerts on real SQL', () => {
+  const repo = () => createOAuthConnectionRepository(db);
+  const at = (iso: string) => new Date(iso);
+
+  const connect = (over: { provider?: string; expiresAt?: Date; genomeId?: string } = {}) =>
+    repo().save({
+      genomeId: over.genomeId ?? 'gen_1',
+      orgId: 'org_1',
+      provider: over.provider ?? 'instagram',
+      accessToken: 'tok',
+      connectedBy: 'user_1',
+      ...(over.expiresAt ? { expiresAt: over.expiresAt } : {}),
+    });
+
+  it('finds a connection expiring inside the window, across tenants', async () => {
+    // The caller is a clock, so this is one of only two deliberately
+    // cross-tenant reads in `scoped.ts` — every row has to carry its own org.
+    await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().save({ genomeId: 'gen_other', orgId: 'org_2', provider: 'x', accessToken: 't', connectedBy: 'u', expiresAt: at('2026-08-21T00:00:00Z') });
+
+    const found = await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 });
+    expect(found.map((c) => c.orgId).sort()).toEqual(['org_1', 'org_2']);
+    // Soonest first: a clock with a batch limit should warn about the one that
+    // dies tomorrow before the one that dies next week.
+    expect(found[0]!.provider).toBe('x');
+  });
+
+  it('excludes a connection with no stated expiry rather than treating it as urgent', async () => {
+    await connect({});
+    expect(await repo().findExpiring({ before: at('2030-01-01T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('excludes a connection expiring beyond the window', async () => {
+    await connect({ expiresAt: at('2026-12-01T00:00:00Z') });
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('latches so the next tick does not repeat the warning', async () => {
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_1', at: at('2026-08-20T12:00:00Z') });
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('will not latch another org\'s connection', async () => {
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_2', at: at('2026-08-20T12:00:00Z') });
+    // Still warnable: the write was scoped to the wrong org and did nothing.
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toHaveLength(1);
+  });
+
+  it('re-arms the warning when the connection is saved again', async () => {
+    // Reconnecting produces a token with a new expiry, so the next warning is a
+    // new fact rather than a repeat of the one that prompted the reconnection.
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_1', at: at('2026-08-20T12:00:00Z') });
+    await connect({ expiresAt: at('2026-11-01T00:00:00Z') });
+
+    const found = await repo().findExpiring({ before: at('2026-12-01T00:00:00Z'), limit: 10 });
+    expect(found).toHaveLength(1);
+    expect(found[0]!.expiryNotifiedAt).toBeUndefined();
+  });
+});
+
+describe('publish retries — §10\'s retry flow on real SQL', () => {
+  const repo = () => createContentRepository(db);
+
+  async function draft() {
+    return repo().createDraft({
+      genomeId: 'gen_1',
+      orgId: 'org_1',
+      playbookId: 'pb_1',
+      mode: 'synthesize',
+      pillar: 'proof',
+      copy: [{ kind: 'text', text: 'hello' }],
+    });
+  }
+
+  it('increments in SQL rather than read-modify-write', async () => {
+    // Two scheduler ticks racing the same row would otherwise both read 3 and
+    // both write 4 — a ceiling that can be undercounted can be walked past.
+    const item = await draft();
+    const results = await Promise.all([
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'a' }),
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'b' }),
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'c' }),
+    ]);
+    expect(results.map((r) => r.attempts).sort()).toEqual([1, 2, 3]);
+  });
+
+  it('keeps the last error where a person can read it', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'UPSTREAM_FAILED: token expired' });
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.lastPublishError).toContain('token expired');
+    expect(read!.publishAttempts).toBe(1);
+  });
+
+  it('does not change the status — the retry policy is the scheduler\'s, not storage\'s', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'x' });
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.status).toBe(item.status);
+  });
+
+  it('reports zero for another org\'s row rather than throwing', async () => {
+    const item = await draft();
+    expect(await repo().recordPublishFailure({ id: item.id, orgId: 'org_2', error: 'x' })).toEqual({ attempts: 0 });
+  });
+
+  it('rescheduling clears the count, so a stalled post can be given another chance', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'x' });
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'y' });
+
+    await repo().schedule({ id: item.id, genomeId: 'gen_1', orgId: 'org_1', scheduledAt: new Date('2026-09-01T09:00:00Z') });
+
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.publishAttempts).toBe(0);
+    expect(read!.lastPublishError).toBeUndefined();
   });
 });
 
