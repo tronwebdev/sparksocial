@@ -127,6 +127,16 @@ export const ContentDraftInput = z.object({
   contentItemId: z.string().optional(),
   /** What this specific post is about — grounds both retrieval (assemble mode) and copy (every mode). */
   intent: z.string().max(500).default(''),
+  /**
+   * The trend this post came out of, when it came out of one.
+   *
+   * PRD §5's Discovery group asks for a "Trend-to-post conversion rate", and
+   * there was no link to compute it from: `trend.repurpose` returns a
+   * *suggestion*, the caller then calls this tool, and the two were connected
+   * only in the mind of whoever clicked. Passing the trend id here records the
+   * connection, which is what makes the metric a count rather than a guess.
+   */
+  fromTrendId: z.string().max(200).optional(),
 });
 
 export const ContentDraftOutput = z.object({
@@ -244,6 +254,8 @@ export function makeContentDraft(deps: ContentDraftDeps) {
             ...(playbook.content_pillar ? { pillar: playbook.content_pillar } : {}),
             copy: beats,
             why,
+            ...(input.intent ? { intent: input.intent } : {}),
+            ...(input.fromTrendId ? { sourceTrendId: input.fromTrendId } : {}),
           });
 
       if (!draft) {

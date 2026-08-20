@@ -336,6 +336,10 @@ export function makeRecipeRun(deps: RecipeDeps) {
             },
             recipeId: recipe.id,
             intent: output.intent,
+            // An `auto_trend` recipe's outputs are trend-derived by definition;
+            // `title` is the trend's own topic (see `runAutoTrend`). Counts
+            // toward PRD §5's trend-to-post rate like a hand-made one.
+            ...(recipe.kind === 'auto_trend' ? { sourceTrendId: output.title } : {}),
             // Staggered so a run producing five posts does not queue five
             // simultaneous publishes — `postingSlotAt` does this for campaign
             // slots and the same reasoning applies here.

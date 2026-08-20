@@ -729,6 +729,8 @@ export async function getContentMetricsForItems(
 }
 
 export interface EngagementMessageRow {
+  /** When it stopped needing attention — PRD §5's "Reply SLA" endpoint. */
+  resolvedAt: Date | null;
   id: string;
   genomeId: string;
   platform: string;
@@ -761,6 +763,7 @@ const engagementMessageColumns = {
   status: engagementMessages.status,
   category: engagementMessages.category,
   intentScore: engagementMessages.intentScore,
+  resolvedAt: engagementMessages.resolvedAt,
   suggestedReply: engagementMessages.suggestedReply,
   why: engagementMessages.why,
   createdAt: engagementMessages.createdAt,
@@ -864,7 +867,9 @@ export async function markEngagementMessageReplied(
   assertScope(scope);
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'replied' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    .set({ status: 'replied', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -879,7 +884,9 @@ export async function markEngagementMessageAutoHandled(
   assertScope(scope);
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'auto_handled' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    .set({ status: 'auto_handled', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -898,7 +905,9 @@ export async function markEngagementMessageEscalated(
   assertScope(scope);
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'escalated' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    .set({ status: 'escalated', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -1025,6 +1034,8 @@ export async function routeOpportunity(
 }
 
 export interface ContentDraftRow {
+  /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
+  publishedAt: Date | null;
   id: string;
   genomeId: string;
   campaignId: string | null;
@@ -1059,6 +1070,9 @@ const contentDraftColumns = {
   copy: contentItems.copy,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
+  // PRD §5's "time to first post" measures from campaign start to here, so the
+  // projection has to carry it — the column existed and was never selected.
+  publishedAt: contentItems.publishedAt,
   createdAt: contentItems.createdAt,
 };
 
@@ -1081,6 +1095,7 @@ export async function createContentDraft(
     campaignId?: string;
     recipeId?: string;
     intent?: string;
+    sourceTrendId?: string;
     scheduledAt?: Date;
   },
 ): Promise<ContentDraftRow> {
@@ -1096,6 +1111,7 @@ export async function createContentDraft(
       ...(args.campaignId ? { campaignId: args.campaignId } : {}),
       ...(args.recipeId ? { recipeId: args.recipeId } : {}),
       ...(args.intent ? { intent: args.intent } : {}),
+      ...(args.sourceTrendId ? { sourceTrendId: args.sourceTrendId } : {}),
       // A row created with a date is created scheduled; the column default
       // (`draft`) is right for everything else.
       ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
@@ -1902,4 +1918,188 @@ export async function getOAuthConnection(db: Database, scope: Scope, provider: s
 export async function removeOAuthConnection(db: Database, scope: Scope, provider: string): Promise<void> {
   assertScope(scope);
   await db.delete(oauthConnections).where(and(scopePredicate('oauthConnections', scope), eq(oauthConnections.provider, provider)));
+}
+
+/* ── PRD §5's success metrics ───────────────────────────────────────────── */
+
+/**
+ * The raw counts PRD §5's fourteen success metrics are computed from, for one
+ * genome over one window.
+ *
+ * ── Why one read and not fourteen ──────────────────────────────────────────
+ *
+ * §5 is a dashboard. Fourteen separate tools would be fourteen round trips to
+ * render one screen, and — worse — fourteen chances for two numbers on the same
+ * screen to be computed over subtly different windows. One read, one window, one
+ * moment.
+ *
+ * ── What is a count and what is honestly a proxy ───────────────────────────
+ *
+ * Most of these are exact. Two are not, and the tool that reads this says so
+ * rather than presenting an estimate as a measurement:
+ *
+ *  - **Draft edits per post** is counted as successful `content.draft` calls
+ *    divided by published posts. A "post" can be re-drafted before it is ever
+ *    published, and `tool_calls` does not carry the content item id in a queryable
+ *    column (it is inside the `input` jsonb), so this is a ratio over the window
+ *    rather than a per-post average. Directionally right, not exact.
+ *  - **CTA clicks** are not here at all. Clicks live in Dub, behind
+ *    `analytics.cta_traffic`, one link at a time. What this reports is how many
+ *    published posts carried a tracked link — the denominator — because a
+ *    fabricated click total would be worse than an honest absence.
+ */
+export interface SuccessMetricRows {
+  /* Activation */
+  connectedAccounts: number;
+  campaignCount: number;
+  firstCampaignStartAt: Date | null;
+  firstPublishedAt: Date | null;
+
+  /* Production */
+  publishedInWindow: number;
+  postsWithTrackedLink: number;
+
+  /* Discovery */
+  postsFromTrends: number;
+
+  /* Automation */
+  recipeCount: number;
+  outputsApproved: number;
+  outputsRejected: number;
+
+  /* Engagement */
+  messagesInWindow: number;
+  messagesResolved: number;
+  /** Mean seconds from arrival to resolution, over resolved messages only. */
+  meanReplySeconds: number | null;
+  opportunitiesInWindow: number;
+  opportunitiesRouted: number;
+
+  /* Trust & safety */
+  publishedEverBlocked: number;
+  rolledBack: number;
+  needsReview: number;
+}
+
+export async function readSuccessMetrics(
+  db: Database,
+  scope: Scope,
+  since: Date,
+): Promise<SuccessMetricRows> {
+  assertScope(scope);
+  const contentScope = scopePredicate('contentItems', scope);
+
+  const [
+    connections,
+    campaignRows,
+    firstPublished,
+    contentCounts,
+    linked,
+    recipeRows,
+    outputRows,
+    messageRows,
+    opportunityRows,
+  ] = await Promise.all([
+    db
+      .select({ n: sql<string>`count(*)` })
+      .from(oauthConnections)
+      .where(scopePredicate('oauthConnections', scope)),
+
+    // Campaign count and the earliest start, for "time to first post after
+    // activation" — the interval §5 names, measured from activation not creation.
+    db
+      .select({ n: sql<string>`count(*)`, firstStart: sql<Date | null>`min(${campaigns.startAt})` })
+      .from(campaigns)
+      .where(and(eq(campaigns.orgId, scope.orgId), eq(campaigns.genomeId, scope.genomeId))),
+
+    db
+      .select({ at: sql<Date | null>`min(${contentItems.publishedAt})` })
+      .from(contentItems)
+      .where(and(contentScope, eq(contentItems.status, 'published'))),
+
+    // One grouped pass over statuses rather than a query each: the dashboard
+    // wants published, blocked, rolled back and needs-review together.
+    db
+      .select({ status: contentItems.status, n: sql<string>`count(*)` })
+      .from(contentItems)
+      .where(contentScope)
+      .groupBy(contentItems.status),
+
+    // Published in the window, split by whether it carried a tracked link and
+    // whether it came from a trend — the two attribution questions §5 asks.
+    db
+      .select({
+        published: sql<string>`count(*)`,
+        withLink: sql<string>`count(distinct ${contentLinks.contentItemId})`,
+        fromTrend: sql<string>`count(${contentItems.sourceTrendId})`,
+      })
+      .from(contentItems)
+      .leftJoin(contentLinks, eq(contentLinks.contentItemId, contentItems.id))
+      .where(and(contentScope, eq(contentItems.status, 'published'), gte(contentItems.publishedAt, since))),
+
+    db
+      .select({ n: sql<string>`count(*)` })
+      .from(recipes)
+      .where(scopePredicate('recipes', scope)),
+
+    db
+      .select({ status: recipeOutputs.status, n: sql<string>`count(*)` })
+      .from(recipeOutputs)
+      .where(scopePredicate('recipeOutputs', scope))
+      .groupBy(recipeOutputs.status),
+
+    // Reply SLA over *resolved* messages only. Including the unanswered ones
+    // would make an ignored inbox look fast, since an open message has no
+    // interval at all.
+    db
+      .select({
+        total: sql<string>`count(*)`,
+        resolved: sql<string>`count(${engagementMessages.resolvedAt})`,
+        meanSeconds: sql<
+          string | null
+        >`avg(extract(epoch from (${engagementMessages.resolvedAt} - ${engagementMessages.receivedAt})))`,
+      })
+      .from(engagementMessages)
+      .where(and(scopePredicate('engagementMessages', scope), gte(engagementMessages.receivedAt, since))),
+
+    // "Next action taken" is `routedTo` being set: §8.8's recommended action
+    // having actually been carried out, rather than merely offered.
+    db
+      .select({
+        total: sql<string>`count(*)`,
+        routed: sql<string>`count(${opportunities.routedTo})`,
+      })
+      .from(opportunities)
+      .where(and(scopePredicate('opportunities', scope), gte(opportunities.createdAt, since))),
+  ]);
+
+  const byStatus = (status: string) =>
+    Number(contentCounts.find((r) => r.status === status)?.n ?? 0);
+  const outputsBy = (status: string) => Number(outputRows.find((r) => r.status === status)?.n ?? 0);
+  const meanSeconds = messageRows[0]?.meanSeconds;
+
+  return {
+    connectedAccounts: Number(connections[0]?.n ?? 0),
+    campaignCount: Number(campaignRows[0]?.n ?? 0),
+    firstCampaignStartAt: campaignRows[0]?.firstStart ?? null,
+    firstPublishedAt: firstPublished[0]?.at ?? null,
+
+    publishedInWindow: Number(linked[0]?.published ?? 0),
+    postsWithTrackedLink: Number(linked[0]?.withLink ?? 0),
+    postsFromTrends: Number(linked[0]?.fromTrend ?? 0),
+
+    recipeCount: Number(recipeRows[0]?.n ?? 0),
+    outputsApproved: outputsBy('approved'),
+    outputsRejected: outputsBy('rejected'),
+
+    messagesInWindow: Number(messageRows[0]?.total ?? 0),
+    messagesResolved: Number(messageRows[0]?.resolved ?? 0),
+    meanReplySeconds: meanSeconds === null || meanSeconds === undefined ? null : Number(meanSeconds),
+    opportunitiesInWindow: Number(opportunityRows[0]?.total ?? 0),
+    opportunitiesRouted: Number(opportunityRows[0]?.routed ?? 0),
+
+    publishedEverBlocked: byStatus('blocked'),
+    rolledBack: byStatus('rolled_back'),
+    needsReview: byStatus('needs_review'),
+  };
 }

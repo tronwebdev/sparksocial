@@ -175,6 +175,9 @@ export function TrendDetail({
         genomeId,
         playbookId: suggestion.playbookId,
         intent: ctaUrl.trim() ? `${suggestion.intent} Point people at ${ctaUrl.trim()}.` : suggestion.intent,
+        // Records which trend this post came out of — PRD §5's "Trend-to-post
+        // conversion rate" counts these, and this is the only screen that knows.
+        fromTrendId: trendId,
       },
       // Non-idempotent: a second call is a second take, not a replay.
       `trend-draft:${trendId}:${Date.now()}`,

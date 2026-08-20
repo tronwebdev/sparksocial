@@ -145,7 +145,13 @@ import {
 import { fetchTextForRecipes, fetchWithAuthForRecipes } from './recipe-fetch.js';
 import { buildTrendSource } from './trend-sources.js';
 import { learningRecordOutcome, learningReweight, learningConfidence, learningExplain, learningFreeze, learningReset } from '@sparksocial/learning';
-import { makeAnalyticsSync, analyticsPostMetrics, analyticsCampaignReport, makeAnalyticsCtaTraffic } from '@sparksocial/analytics';
+import {
+  makeAnalyticsSync,
+  analyticsPostMetrics,
+  analyticsCampaignReport,
+  analyticsSuccessMetrics,
+  makeAnalyticsCtaTraffic,
+} from '@sparksocial/analytics';
 import {
   engageIngest,
   makeEngageClassify,
@@ -468,6 +474,11 @@ export function registerAlphaTools(): void {
   // Reads over what analytics.sync writes — need no vendor of their own.
   register(analyticsPostMetrics);
   register(analyticsCampaignReport);
+  // PRD §5, all fourteen metrics. `tool_calls`, `content_items`,
+  // `engagement_messages`, `opportunities` and `recipe_outputs` held the raw
+  // material for nearly all of them and nothing aggregated any of it — which is
+  // the gap that made every other gap hard to prioritise.
+  register(analyticsSuccessMetrics);
 
   // Trend discovery (§8.9, DISC-01/DISC-02, §12 P5). Ranked on what is LEFT
   // of a trend, not its size. `buildTrendSource` merges every configured

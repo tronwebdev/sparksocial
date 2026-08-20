@@ -5,6 +5,7 @@ import { createAssetRepository } from './assetRepository.js';
 import { createAssetFolderRepository } from './assetFolderRepository.js';
 import { createContentRepository } from './contentRepository.js';
 import { createAnalyticsRepository } from './analyticsRepository.js';
+import { createMetricsRepository } from './metricsRepository.js';
 import { createEngagementRepository } from './engagementRepository.js';
 import { createOpportunityRepository } from './opportunityRepository.js';
 import { createRunReadRepository } from './runRecorderRepository.js';
@@ -31,6 +32,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     assetFolders: createAssetFolderRepository(db),
     content: createContentRepository(db),
     analytics: createAnalyticsRepository(db),
+    metrics: createMetricsRepository(db),
     ctaLinks: createCtaLinkRepository(db),
     engagement: createEngagementRepository(db),
     opportunities: createOpportunityRepository(db),

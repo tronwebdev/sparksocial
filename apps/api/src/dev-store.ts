@@ -152,6 +152,15 @@ export interface DevStoreOptions {
    * can disagree with the first.
    */
   findCall?: (callId: string) => ToolCallRecord | undefined;
+  /**
+   * Every audit row, for `metrics.toolActivity` — PRD §5's publish-attempt,
+   * block and draft counts.
+   *
+   * Injected for the same reason `findCall` is: the rows live in
+   * `memoryInvokeDeps`, and copying them into this store would create a second
+   * version of what happened that can disagree with the first.
+   */
+  allCalls?: () => ToolCallRecord[];
 }
 
 export function createDevStore(
@@ -165,6 +174,7 @@ export function createDevStore(
     humanLoopStore = createDevHumanLoopStore(),
     consentStore = createDevConsentStore(),
     findCall = () => undefined,
+    allCalls = () => [],
   } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -473,8 +483,13 @@ export function createDevStore(
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
 
-      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, scheduledAt }) {
-        const row: ContentDraft & { orgId: string; recipeId?: string; intent?: string } = {
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt }) {
+        const row: ContentDraft & {
+          orgId: string;
+          recipeId?: string;
+          intent?: string;
+          sourceTrendId?: string;
+        } = {
           id: randomUUID(),
           orgId: org,
           genomeId,
@@ -490,6 +505,7 @@ export function createDevStore(
           ...(campaignId ? { campaignId } : {}),
           ...(recipeId ? { recipeId } : {}),
           ...(intent ? { intent } : {}),
+          ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
         };
         drafts.set(row.id, row);
@@ -542,6 +558,10 @@ export function createDevStore(
         const row = drafts.get(id);
         if (!row || row.orgId !== org) return;
         row.status = 'published';
+        // PRD §5's "time to first post" measures to here, so the dev store has
+        // to stamp it too — a metric that is real under Postgres and null in
+        // development is a metric nobody trusts.
+        row.publishedAt = new Date();
         row.platform = platform;
         row.externalId = externalId;
         row.via = via;
@@ -752,6 +772,8 @@ export function createDevStore(
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'replied';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
         return row;
       },
 
@@ -759,6 +781,8 @@ export function createDevStore(
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'auto_handled';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
         return row;
       },
 
@@ -766,6 +790,8 @@ export function createDevStore(
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'escalated';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
         return row;
       },
 
@@ -1105,6 +1131,86 @@ export function createDevStore(
         return [];
       },
     },
+    /**
+     * PRD §5's success metrics, computed from this store's own maps.
+     *
+     * Implemented rather than stubbed, for the reason this file's header gives
+     * about `lookupIdempotent`: a metric that is real under Postgres and zero in
+     * development is a number nobody trusts, and the whole point of §5 is having
+     * numbers somebody acts on.
+     */
+    metrics: {
+      async successMetrics(genomeId, org, since) {
+        const mine = <T extends { orgId: string; genomeId?: string }>(rows: T[]) =>
+          rows.filter((r) => r.orgId === org && (r.genomeId === undefined || r.genomeId === genomeId));
+
+        const items = [...drafts.values()].filter((d) => d.orgId === org && d.genomeId === genomeId);
+        const publishedInWindow = items.filter(
+          (d) => d.status === 'published' && d.publishedAt !== undefined && d.publishedAt >= since,
+        );
+        const linkedIds = new Set(mine(contentLinks).map((l) => l.contentItemId));
+
+        const msgs = mine([...engagementMessages.values()]).filter((m) => m.receivedAt >= since);
+        const resolved = msgs.filter((m) => m.resolvedAt !== undefined);
+        const opps = mine(opportunities).filter((o) => o.createdAt >= since);
+        const outputs = mine(recipeOutputs);
+
+        const campaignRows = await campaignStore.listForGenome(genomeId, org, 100);
+        const firstStart = campaignRows
+          .map((c) => c.startAt)
+          .sort((a, b) => a.getTime() - b.getTime())[0];
+        const firstPublished = items
+          .filter((d) => d.publishedAt !== undefined)
+          .map((d) => d.publishedAt!)
+          .sort((a, b) => a.getTime() - b.getTime())[0];
+
+        return {
+          connectedAccounts: mine([...oauthConnectionsMap.values()]).length,
+          campaignCount: campaignRows.length,
+          firstCampaignStartAt: firstStart ?? null,
+          firstPublishedAt: firstPublished ?? null,
+          publishedInWindow: publishedInWindow.length,
+          postsWithTrackedLink: publishedInWindow.filter((d) => linkedIds.has(d.id)).length,
+          postsFromTrends: publishedInWindow.filter((d) => (d as { sourceTrendId?: string }).sourceTrendId)
+            .length,
+          recipeCount: [...recipes.values()].filter((r) => r.orgId === org && r.genomeId === genomeId)
+            .length,
+          outputsApproved: outputs.filter((o) => o.status === 'approved').length,
+          outputsRejected: outputs.filter((o) => o.status === 'rejected').length,
+          messagesInWindow: msgs.length,
+          messagesResolved: resolved.length,
+          // Over resolved messages only — including the unanswered ones would
+          // make an ignored inbox look fast.
+          meanReplySeconds: resolved.length
+            ? resolved.reduce((acc, m) => acc + (m.resolvedAt!.getTime() - m.receivedAt.getTime()), 0) /
+              resolved.length /
+              1_000
+            : null,
+          opportunitiesInWindow: opps.length,
+          opportunitiesRouted: opps.filter((o) => o.routedTo).length,
+          publishedEverBlocked: items.filter((d) => d.status === 'blocked').length,
+          rolledBack: items.filter((d) => d.status === 'rolled_back').length,
+          needsReview: items.filter((d) => d.status === 'needs_review').length,
+        };
+      },
+
+      async toolActivity(org, genomeId, since) {
+        const rows = allCalls().filter(
+          (c) => c.orgId === org && c.genomeId === genomeId && c.at >= since,
+        );
+        const count = (predicate: (c: ToolCallRecord) => boolean) => rows.filter(predicate).length;
+
+        return {
+          publishAttempts: count((c) => c.tool === 'publish.now'),
+          publishBlocked: count((c) => c.tool === 'publish.now' && c.status === 'failed'),
+          publishHeld: count((c) => c.tool === 'publish.now' && c.decision === 'approval'),
+          draftCalls: count((c) => c.tool === 'content.draft' && c.status === 'succeeded'),
+          trendsRanked: count((c) => c.tool === 'trend.rank' && c.status === 'succeeded'),
+          repurposeCalls: count((c) => c.tool === 'trend.repurpose' && c.status === 'succeeded'),
+        };
+      },
+    },
+
     runs: runStore.reader,
 
     // The scheduler's read. Same `drafts`-only reach as `content.list`/`.get`

@@ -16,7 +16,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.recentContent(db, { orgId, brandId: orgId, genomeId }, windowDays);
     },
 
-    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, scheduledAt }) {
+    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt }) {
       const row = await scoped.createContentDraft(
         db,
         { orgId, brandId: orgId, genomeId },
@@ -29,6 +29,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
           ...(campaignId ? { campaignId } : {}),
           ...(recipeId ? { recipeId } : {}),
           ...(intent ? { intent } : {}),
+          ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
         },
       );
@@ -133,6 +134,7 @@ function toDraft(row: scoped.ContentDraftRow): ContentDraft {
     ...(row.copy !== null ? { copy: row.copy } : {}),
     ...(row.why !== null ? { why: row.why as Explanation } : {}),
     ...(row.scheduledAt ? { scheduledAt: row.scheduledAt } : {}),
+    ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
   };
 }
 

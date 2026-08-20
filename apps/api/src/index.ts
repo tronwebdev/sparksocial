@@ -89,6 +89,9 @@ const devStore = pg
       runStore: devRuns,
       approvalStore: devApprovals,
       findCall: (callId) => memoryDeps.rows.find((r) => r.id === callId),
+      // PRD §5's publish-attempt/block/draft counts, read off the same rows
+      // rather than a copy — same reasoning as `findCall` above.
+      allCalls: () => memoryDeps.rows,
     });
 
 const scopedDb = pg?.scopedDb ?? devStore!;

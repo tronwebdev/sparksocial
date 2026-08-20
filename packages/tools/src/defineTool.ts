@@ -211,6 +211,8 @@ export interface ScopedDb {
   ctaLinks: CtaLinkStore;
   /** Post performance snapshots — `analytics.sync`'s one write. See {@link AnalyticsStore}. */
   analytics: AnalyticsStore;
+  /** PRD §5's success metrics — read-only aggregates. See {@link MetricsStore}. */
+  metrics: MetricsStore;
   /** The engagement inbox — `engage.ingest`/`.classify`. See {@link EngagementStore}. */
   engagement: EngagementStore;
   /** Sales opportunities surfaced from the engagement inbox. See {@link OpportunityStore}. */
@@ -613,6 +615,8 @@ export interface ContentDraft {
   copy?: unknown;
   why?: Explanation;
   scheduledAt?: Date;
+  /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
+  publishedAt?: Date;
   createdAt: Date;
 }
 
@@ -661,6 +665,11 @@ export interface ContentStore {
     recipeId?: string;
     /** The brief, for a row whose copy will be written later (by the scheduler). */
     intent?: string;
+    /**
+     * The trend this post came out of — PRD §5's "Trend-to-post conversion
+     * rate" counts these. A vendor's id, not a row we own.
+     */
+    sourceTrendId?: string;
     /**
      * Create it already scheduled.
      *
@@ -943,6 +952,12 @@ export interface EngagementMessage {
   intentScore?: number;
   suggestedReply?: string;
   why?: Explanation;
+  /**
+   * When this stopped needing anyone's attention. PRD §5's "Reply SLA" is the
+   * interval from `receivedAt` to here — absent while the message is still open,
+   * which is how the metric tells "unanswered" from "answered instantly".
+   */
+  resolvedAt?: Date;
   createdAt: Date;
 }
 
@@ -1230,6 +1245,67 @@ export interface CampaignRecord {
    * applies — see `campaigns.approvalMode` in `schema.ts`.
    */
   approvalMode?: ApprovalMode;
+}
+
+/**
+ * PRD §5's success metrics, as counts.
+ *
+ * Read-only and aggregate-only — there is no write side, because every number
+ * here is derived from rows some other tool already wrote. That is the point:
+ * §5 asked for fourteen metrics and the raw material for nearly all of them was
+ * already being recorded, with nothing aggregating any of it.
+ *
+ * Two readers rather than one, because they read two different kinds of thing.
+ * `successMetrics` is genome-scoped domain data and goes through `scoped.ts`;
+ * `toolActivity` reads `tool_calls`, which is the audit log rather than tenant
+ * content and is deliberately outside `SCOPED_TABLES`.
+ */
+export interface MetricsStore {
+  successMetrics(
+    genomeId: string,
+    orgId: string,
+    since: Date,
+  ): Promise<{
+    connectedAccounts: number;
+    campaignCount: number;
+    firstCampaignStartAt: Date | null;
+    firstPublishedAt: Date | null;
+    publishedInWindow: number;
+    postsWithTrackedLink: number;
+    postsFromTrends: number;
+    recipeCount: number;
+    outputsApproved: number;
+    outputsRejected: number;
+    messagesInWindow: number;
+    messagesResolved: number;
+    meanReplySeconds: number | null;
+    opportunitiesInWindow: number;
+    opportunitiesRouted: number;
+    publishedEverBlocked: number;
+    rolledBack: number;
+    needsReview: number;
+  }>;
+
+  /**
+   * What was attempted and what was refused, from the audit log.
+   *
+   * `publishHeld` counts policy holds (`decision: 'approval'`) and `publishBlocked`
+   * counts hard guardrail failures — §5's "% of blocked/flagged prevented from
+   * publishing" is the two together over every attempt, since both are the
+   * governance layer stopping something.
+   */
+  toolActivity(
+    orgId: string,
+    genomeId: string,
+    since: Date,
+  ): Promise<{
+    publishAttempts: number;
+    publishBlocked: number;
+    publishHeld: number;
+    draftCalls: number;
+    trendsRanked: number;
+    repurposeCalls: number;
+  }>;
 }
 
 export interface CampaignSlotInput {

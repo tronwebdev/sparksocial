@@ -64,6 +64,7 @@ function toMessage(row: scoped.EngagementMessageRow): EngagementMessage {
     text: row.text,
     ...(row.contentItemId ? { contentItemId: row.contentItemId } : {}),
     receivedAt: row.receivedAt,
+    ...(row.resolvedAt ? { resolvedAt: row.resolvedAt } : {}),
     status: row.status,
     ...(row.category ? { category: row.category } : {}),
     ...(row.intentScore !== null ? { intentScore: row.intentScore } : {}),

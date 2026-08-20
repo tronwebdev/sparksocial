@@ -190,6 +190,19 @@ export const contentItems = pgTable(
      * are the whole of the brief.
      */
     intent: text('intent'),
+    /**
+     * The trend this post came out of, when it came out of one.
+     *
+     * PRD §5's Discovery section asks for "Trend-to-post conversion rate", which
+     * needs a link between a trend and the post it produced. There was none:
+     * `trend.repurpose` returns a *suggestion* and the caller then calls
+     * `content.draft`, so the two were connected only in the mind of whoever
+     * clicked. This column is that link, set by `content.draft`'s `fromTrendId`.
+     *
+     * Not a foreign key: trends come from third-party sources and are not rows
+     * we own, so the id is a vendor's string kept for attribution.
+     */
+    sourceTrendId: text('source_trend_id'),
     playbookId: text('playbook_id'),
     mode: text('mode'), // synthesize | assemble | direct_finish
     pillar: text('pillar'),
@@ -325,6 +338,17 @@ export const engagementMessages = pgTable(
     suggestedReply: text('suggested_reply'),
     /** The Explanation payload — PRD §7.3, same contract every agent-visible decision carries. */
     why: jsonb('why'),
+    /**
+     * When this message stopped needing anyone's attention — replied,
+     * auto-handled, escalated or dismissed.
+     *
+     * PRD §5 lists "Reply SLA (time to reply)" as an engagement success metric
+     * and it was not measurable: `status` recorded *that* a message was answered
+     * and nothing recorded *when*, so the interval the metric is defined as had
+     * no second endpoint. Null while a message is still open, which is also how
+     * the metric distinguishes "not answered yet" from "answered instantly".
+     */
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

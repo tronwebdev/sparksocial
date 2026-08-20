@@ -4,6 +4,7 @@ export * from './genomeRepository.js';
 export * from './assetRepository.js';
 export * from './contentRepository.js';
 export * from './analyticsRepository.js';
+export * from './metricsRepository.js';
 export * from './engagementRepository.js';
 export * from './opportunityRepository.js';
 export * from './postgresScopedDb.js';
