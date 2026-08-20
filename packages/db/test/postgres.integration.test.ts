@@ -17,6 +17,7 @@ import { createOpportunityRepository } from '../src/opportunityRepository.js';
 import { createAuditRepository } from '../src/auditRepository.js';
 import { createRunRecorder, getRun } from '../src/runRecorderRepository.js';
 import { createConsentRepository } from '../src/consentRepository.js';
+import { createTrendObservationRepository } from '../src/trendObservationRepository.js';
 import { replaceCampaignSlots, campaignSlots, findDueContentItems, getContentMetrics } from '../src/scoped.js';
 import * as schema from '../src/schema.js';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
@@ -107,7 +108,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records']) {
+  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations']) {
     await pg.exec(`TRUNCATE TABLE ${table}`);
   }
 });
@@ -954,6 +955,87 @@ describe('migrations conform to schema.ts', () => {
     for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals', 'consent_records']) {
       expect(present.has(t), `${t} is missing`).toBe(true);
     }
+  });
+});
+
+describe('trend observations — §8.9\'s time series on real SQL', () => {
+  const repo = () => createTrendObservationRepository(db);
+  const at = (iso: string) => new Date(iso);
+
+  const sample = (overrides: Record<string, unknown> = {}) => ({
+    source: 'tiktok',
+    trendId: 'tr_1',
+    topic: 'one continuous shot',
+    observedAt: at('2026-08-19T14:32:11.500Z'),
+    volume: 1000,
+    velocity: 0.8,
+    saturation: 0.2,
+    growth: 1.5,
+    ...overrides,
+  });
+
+  it('round-trips the 0–1 metrics through the integer encoding', async () => {
+    await repo().record([sample()]);
+    const [row] = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(row!.velocity).toBeCloseTo(0.8, 3);
+    expect(row!.saturation).toBeCloseTo(0.2, 3);
+    expect(row!.growth).toBeCloseTo(1.5, 3);
+    expect(row!.volume).toBe(1000);
+  });
+
+  it('buckets to the hour, so a sub-hour repeat is one row not two', async () => {
+    // The reason this matters: every `trend.rank` call by every org records a
+    // sample. Without the bucket a busy afternoon writes thousands of rows and
+    // the chart is dense without being more informative.
+    await repo().record([sample({ observedAt: at('2026-08-19T14:02:00Z') })]);
+    await repo().record([sample({ observedAt: at('2026-08-19T14:58:59Z'), volume: 2000 })]);
+
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.observedAt.toISOString()).toBe('2026-08-19T14:00:00.000Z');
+    // Last write wins inside the bucket — otherwise the hour's value is set by
+    // whoever loaded the feed at :01 and never updated again.
+    expect(rows[0]!.volume).toBe(2000);
+  });
+
+  it('collapses duplicates inside a single batch rather than erroring', async () => {
+    // Postgres rejects an ON CONFLICT statement whose own VALUES list conflicts
+    // with itself, and two callers handing us the same trend in one hour is a
+    // normal thing to happen, not a caller bug.
+    await repo().record([
+      sample({ observedAt: at('2026-08-19T09:10:00Z'), volume: 1 }),
+      sample({ observedAt: at('2026-08-19T09:50:00Z'), volume: 7 }),
+    ]);
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.volume).toBe(7);
+  });
+
+  it('returns the series oldest first', async () => {
+    await repo().record([
+      sample({ observedAt: at('2026-08-19T12:00:00Z') }),
+      sample({ observedAt: at('2026-08-17T12:00:00Z') }),
+      sample({ observedAt: at('2026-08-18T12:00:00Z') }),
+    ]);
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows.map((r) => r.observedAt.toISOString())).toEqual([
+      '2026-08-17T12:00:00.000Z',
+      '2026-08-18T12:00:00.000Z',
+      '2026-08-19T12:00:00.000Z',
+    ]);
+  });
+
+  it('keys the series by source as well as id, so two sources cannot merge', async () => {
+    await repo().record([sample(), sample({ source: 'youtube', volume: 5 })]);
+    const tiktok = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    const youtube = await repo().series({ source: 'youtube', trendId: 'tr_1', sinceDays: 3650 });
+    expect(tiktok).toHaveLength(1);
+    expect(youtube).toHaveLength(1);
+    expect(youtube[0]!.volume).toBe(5);
+  });
+
+  it('records nothing and does not error on an empty batch', async () => {
+    await expect(repo().record([])).resolves.toBeUndefined();
   });
 });
 

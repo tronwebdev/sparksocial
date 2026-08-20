@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { rankTrends, scoreTrend, type RankedTrend } from './rank.js';
 import { assessSafety } from './safety.js';
@@ -76,6 +76,11 @@ export function makeTrendRank(source: TrendSource) {
         ...(input.language ? { language: input.language } : {}),
       });
 
+      // Everything fetched, not just what survived ranking: a trend excluded
+      // for this brand is still a trend whose numbers another brand's detail
+      // screen will want the history of.
+      await observe(fetched, ctx, new Date());
+
       const { ranked, excluded } = rankTrends(genome, fetched);
       const top = ranked.slice(0, input.limit);
 
@@ -99,6 +104,40 @@ export function makeTrendRank(source: TrendSource) {
       };
     },
   });
+}
+
+/**
+ * Records what a fetch just saw, so `DISC-02`'s time series exists.
+ *
+ * Called from the *read* paths on purpose. §8.9's series has to come from
+ * somewhere, and the honest options are a dedicated poller or the traffic the
+ * product already generates. It is both: `trend.observe` runs on a clock so the
+ * series does not go blank overnight, and every `trend.rank` contributes a
+ * sample so the resolution is better than the poll interval whenever anyone is
+ * actually using the feed.
+ *
+ * Never allowed to fail the caller. A trend feed that 500s because a history
+ * table was unavailable would be trading the feature for the telemetry about
+ * the feature.
+ */
+async function observe(trends: Trend[], ctx: ToolCtx, now: Date): Promise<void> {
+  if (trends.length === 0) return;
+  try {
+    await ctx.db.trendObservations.record(
+      trends.map((t) => ({
+        source: t.source,
+        trendId: t.id,
+        topic: t.topic,
+        observedAt: now,
+        volume: t.metrics.volume,
+        velocity: t.metrics.velocity,
+        saturation: t.metrics.saturation,
+        growth: t.metrics.growth,
+      })),
+    );
+  } catch (e) {
+    ctx.logger.warn('trend observation not recorded', { error: e instanceof Error ? e.message : String(e) });
+  }
 }
 
 function toOutput(r: RankedTrend) {
@@ -191,12 +230,102 @@ export function makeTrendFetch(source: TrendSource) {
   });
 }
 
+/* ── trend.observe ────────────────────────────────────────── */
+
+export const TrendObserveInput = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  region: z.string().optional(),
+  language: z.string().optional(),
+});
+
+export const TrendObserveOutput = z.object({
+  observed: z.number(),
+  source: z.string(),
+  at: z.string(),
+});
+
+/**
+ * The clock-driven half of §8.9's time series.
+ *
+ * `trend.rank` already records what it sees, which gives good resolution while
+ * somebody is using the product and none at all overnight or on a quiet
+ * weekend — and a gap in the middle of a series is worse than a coarse series,
+ * because the chart has no way to show that the flat stretch is missing data
+ * rather than a flat trend. This tool exists so the sampling interval is a
+ * decision rather than a side effect of traffic.
+ *
+ * Takes no `genomeId`: it is measuring the outside world, and the rows it
+ * writes are shared by every brand. That is also why it is not on any screen —
+ * `surfaces` is empty and the only caller is the scheduler.
+ */
+export function makeTrendObserve(source: TrendSource) {
+  return defineTool({
+    name: 'trend.observe',
+    version: 1,
+
+    summary:
+      'Sample every trend the source currently reports and append it to the shared metric history behind ' +
+      'the DISC-02 time series. Not brand-specific and not on a screen — the scheduler is the only caller.',
+
+    input: TrendObserveInput,
+    output: TrendObserveOutput,
+
+    effect: 'write',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin'],
+    // Bucketed to the hour and last-write-wins, so running it twice in an hour
+    // leaves the same rows behind as running it once.
+    idempotent: true,
+
+    async handler(input, ctx) {
+      const now = new Date();
+      const fetched = await source.fetch({
+        limit: input.limit,
+        ...(input.region ? { region: input.region } : {}),
+        ...(input.language ? { language: input.language } : {}),
+      });
+
+      // Not via `observe()`: a scheduled sampler that swallowed its own write
+      // failure would report success while the series quietly stopped growing.
+      await ctx.db.trendObservations.record(
+        fetched.map((t) => ({
+          source: t.source,
+          trendId: t.id,
+          topic: t.topic,
+          observedAt: now,
+          volume: t.metrics.volume,
+          velocity: t.metrics.velocity,
+          saturation: t.metrics.saturation,
+          growth: t.metrics.growth,
+        })),
+      );
+
+      ctx.logger.info('trends observed', { source: source.name, observed: fetched.length });
+      return { observed: fetched.length, source: source.name, at: now.toISOString() };
+    },
+  });
+}
+
 /* ── trend.detail ────────────────────────────────────────────────────── */
 
 const SafetyOut = z.object({ safe: z.boolean(), reasons: z.array(z.string()), detail: z.string().optional() });
 const FactorsOut = z.array(z.object({ label: z.string(), detail: z.string(), weight: z.number().optional() }));
 
-export const TrendDetailInput = z.object({ genomeId: z.string().min(1), trendId: z.string().min(1) });
+export const TrendDetailInput = z.object({
+  genomeId: z.string().min(1),
+  trendId: z.string().min(1),
+  /** How far back the §8.9 time series reaches. 14 days is two full weekly cycles. */
+  seriesDays: z.number().int().min(1).max(90).default(14),
+});
+
+/** One point on the `DISC-02` chart. */
+const SeriesPoint = z.object({
+  at: z.string(),
+  volume: z.number(),
+  velocity: z.number(),
+  saturation: z.number(),
+  growth: z.number(),
+});
 
 export const TrendDetailOutput = z.object({
   trend: Trend,
@@ -205,6 +334,28 @@ export const TrendDetailOutput = z.object({
   opportunity: z.number(),
   safety: SafetyOut,
   factors: FactorsOut,
+  /**
+   * §8.9's *"metrics + time series"*. Oldest first. Empty until the trend has
+   * been seen more than once — and empty is the correct answer then, not a
+   * flat line through today's value, which would read as "stable" when the
+   * truth is "unknown".
+   */
+  series: z.array(SeriesPoint),
+  /**
+   * What the history says, in words, so the chart is not the only place the
+   * direction is stated. Null when there is not yet enough history to say.
+   */
+  trajectory: z
+    .object({
+      direction: z.enum(['climbing', 'flat', 'cooling']),
+      /** Change in saturation across the window, as a fraction. */
+      saturationChange: z.number(),
+      /** Change in volume across the window, as a multiple of the first point. */
+      volumeChange: z.number().nullable(),
+      observations: z.number(),
+      spanHours: z.number(),
+    })
+    .nullable(),
   why: Explanation,
 });
 
@@ -232,7 +383,19 @@ export function makeTrendDetail(source: TrendSource) {
       const trend = await getTrendById(source, input.trendId);
       if (!trend) throw new ToolError('NOT_FOUND', 'No such trend.', { trendId: input.trendId });
 
+      // Record before reading, so opening the detail screen on a trend nobody
+      // has ranked today still puts today's point on the chart.
+      await observe([trend], ctx, new Date());
+
+      const observations = await ctx.db.trendObservations
+        .series({ source: trend.source, trendId: trend.id, sinceDays: input.seriesDays })
+        .catch((e: unknown) => {
+          ctx.logger.warn('trend series unavailable', { error: e instanceof Error ? e.message : String(e) });
+          return [];
+        });
+
       const scored = scoreTrend(genome, trend);
+      const trajectory = summariseTrajectory(observations);
       return {
         trend,
         score: scored.score,
@@ -240,7 +403,15 @@ export function makeTrendDetail(source: TrendSource) {
         opportunity: scored.opportunity,
         safety: { safe: scored.safety.safe, reasons: scored.safety.reasons, ...(scored.safety.detail ? { detail: scored.safety.detail } : {}) },
         factors: scored.factors,
-        why: explainOne(scored, source.name),
+        series: observations.map((o) => ({
+          at: o.observedAt.toISOString(),
+          volume: o.volume,
+          velocity: o.velocity,
+          saturation: o.saturation,
+          growth: o.growth,
+        })),
+        trajectory,
+        why: explainOne(scored, source.name, trajectory),
       };
     },
   });
@@ -619,7 +790,7 @@ export function makeTrendExplain(source: TrendSource) {
   });
 }
 
-function explainOne(r: RankedTrend, sourceName: string): Explanation {
+function explainOne(r: RankedTrend, sourceName: string, trajectory?: Trajectory | null): Explanation {
   if (!r.safety.safe) {
     const because = r.safety.detail ?? r.safety.reasons.join(', ');
     return {
@@ -629,10 +800,69 @@ function explainOne(r: RankedTrend, sourceName: string): Explanation {
       alternatives: [],
     };
   }
+
+  // The trajectory goes in front of the score when we have one. A 70% match
+  // that is cooling and a 70% match that is climbing are the same number and
+  // opposite decisions — which is the entire argument for §8.9's time series.
+  const factors = trajectory ? [{ label: 'trajectory', detail: describeTrajectory(trajectory) }, ...r.factors] : r.factors;
+  const lead = trajectory ? `${describeTrajectory(trajectory)}. ` : '';
+
   return {
-    summary: `${r.trend.topic} — ${r.factors[0]?.detail ?? 'scored'} (${Math.round(r.score * 100)}% match).`,
-    factors: r.factors,
-    evidence: [{ kind: 'trend', id: r.trend.id, note: `source: ${sourceName}` }],
+    summary: `${r.trend.topic} — ${lead}${r.factors[0]?.detail ?? 'scored'} (${Math.round(r.score * 100)}% match).`,
+    factors,
+    evidence: [
+      { kind: 'trend', id: r.trend.id, note: `source: ${sourceName}` },
+      ...(trajectory
+        ? [{ kind: 'trend' as const, id: r.trend.id, note: `${trajectory.observations} observations over ${trajectory.spanHours}h` }]
+        : []),
+    ],
     alternatives: [],
   };
+}
+
+/* ── the time series, read ────────────────────────────────────────── */
+
+interface Trajectory {
+  direction: 'climbing' | 'flat' | 'cooling';
+  saturationChange: number;
+  volumeChange: number | null;
+  observations: number;
+  spanHours: number;
+}
+
+/**
+ * Direction is read off *saturation*, not volume.
+ *
+ * Volume is the tempting signal and the wrong one: a trend can keep growing in
+ * absolute reach right up to the point where there is nothing left to say,
+ * which is the trap §8.9's problem statement is about. Saturation rising means
+ * the window is closing, whatever volume is doing.
+ */
+const SATURATION_NOISE = 0.03;
+
+function summariseTrajectory(series: { observedAt: Date; volume: number; saturation: number }[]): Trajectory | null {
+  // One point is not a trajectory. Reporting "flat" off a single observation
+  // would be inventing a claim about the past out of a single measurement.
+  if (series.length < 2) return null;
+
+  const first = series[0]!;
+  const last = series[series.length - 1]!;
+  const saturationChange = last.saturation - first.saturation;
+  const spanHours = Math.round((last.observedAt.getTime() - first.observedAt.getTime()) / 3_600_000);
+
+  return {
+    direction: saturationChange > SATURATION_NOISE ? 'cooling' : saturationChange < -SATURATION_NOISE ? 'climbing' : 'flat',
+    saturationChange: Math.round(saturationChange * 1000) / 1000,
+    volumeChange: first.volume > 0 ? Math.round((last.volume / first.volume) * 100) / 100 : null,
+    observations: series.length,
+    spanHours,
+  };
+}
+
+function describeTrajectory(t: Trajectory): string {
+  const window = t.spanHours >= 48 ? `${Math.round(t.spanHours / 24)}d` : `${t.spanHours}h`;
+  const pct = Math.abs(Math.round(t.saturationChange * 100));
+  if (t.direction === 'cooling') return `Closing — saturation up ${pct} points over the last ${window}`;
+  if (t.direction === 'climbing') return `Still opening — saturation down ${pct} points over the last ${window}`;
+  return `Holding — saturation flat over the last ${window}`;
 }

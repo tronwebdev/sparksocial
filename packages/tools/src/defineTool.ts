@@ -234,6 +234,8 @@ export interface ScopedDb {
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
   trends: TrendWatchlistStore;
+  /** The `DISC-02` metric history. Cross-tenant by design. See {@link TrendObservationStore}. */
+  trendObservations: TrendObservationStore;
   /** Thompson-sampling arms and outcomes — the learning loop (plan §6.7). See {@link LearningStore}. */
   learning: LearningStore;
   /** Automation recipes and their output queue (plan §12 P5). See {@link RecipeStore}. */
@@ -1389,6 +1391,39 @@ export interface TrendWatchlistStore {
   add(args: { genomeId: string; orgId: string; trendId: string; source: string; topic: string; note?: string }): Promise<TrendWatchlistEntry>;
   remove(args: { genomeId: string; orgId: string; trendId: string }): Promise<void>;
   list(genomeId: string, orgId: string): Promise<TrendWatchlistEntry[]>;
+}
+
+/**
+ * One hourly sample of one trend's metrics — PRD §8.9's *"metrics + time
+ * series"* on the `DISC-02` detail screen.
+ *
+ * Not genome-scoped, unlike everything around it: these are measurements of
+ * the outside world, and the series is only worth anything if it accumulates
+ * across every caller. See `trend_observations` in `schema.ts`.
+ */
+export interface TrendObservation {
+  source: string;
+  trendId: string;
+  topic: string;
+  /** Truncated to the hour by the store, so recording is idempotent. */
+  observedAt: Date;
+  volume: number;
+  /** 0–1, as `TrendMetrics` carries them — the integer encoding is storage's business. */
+  velocity: number;
+  saturation: number;
+  /** Signed period-over-period change. */
+  growth: number;
+}
+
+export interface TrendObservationStore {
+  /**
+   * Records a batch, bucketed to the hour, last-write-wins within a bucket.
+   * Safe to call on every read path: the unique index collapses duplicates, so
+   * a thousand `trend.rank` calls in an hour leave one row per trend.
+   */
+  record(observations: TrendObservation[]): Promise<void>;
+  /** Oldest first — a chart reads left to right. */
+  series(args: { source: string; trendId: string; sinceDays: number; limit?: number }): Promise<TrendObservation[]>;
 }
 
 /** One (genome, pillar) Thompson-sampling arm — `learning.*`'s storage (plan §6.7). */

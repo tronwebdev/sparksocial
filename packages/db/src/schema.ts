@@ -1028,6 +1028,53 @@ export const trendWatchlist = pgTable(
 );
 
 /**
+ * `trend_observations` — the time series behind `DISC-02`, PRD §8.9.
+ *
+ * §8.9's functional requirement is *"trend detail includes: metrics + time
+ * series"*. `TrendMetrics` is four scalars read live from the source, so
+ * before this table the detail screen could show where a trend is and never
+ * where it came from — which is precisely the judgement the screen exists to
+ * support. Velocity 0.4 on the way up and velocity 0.4 on the way down are the
+ * same number and opposite decisions.
+ *
+ * **Deliberately not scoped through `scoped.ts`.** These rows are public
+ * source data about the outside world, not a brand's material — the same
+ * reasoning as `brands` and `org_settings`, but with an additional argument
+ * that runs the other way: the series is only useful if it accumulates
+ * independently of who happens to be looking. One org polling once a week
+ * would build nothing. Nothing genome-specific is stored here, so there is no
+ * isolation question to answer: a trend's volume is not anybody's secret.
+ *
+ * Bucketed to the hour rather than stamped with the arrival time. Every
+ * `trend.rank` call by every org contributes a sample, so the raw arrival
+ * times would produce thousands of near-identical rows a day and a chart that
+ * is dense without being informative. The unique index makes recording
+ * idempotent, which is what lets any caller record freely.
+ */
+export const trendObservations = pgTable(
+  'trend_observations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    source: text('source').notNull(),
+    trendId: text('trend_id').notNull(),
+    /** Truncated to the hour — see the note above. */
+    observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
+    /** The topic as it read at the time. Trends get renamed; the series should not lose its label. */
+    topic: text('topic').notNull(),
+    volume: integer('volume').notNull(),
+    /** 0–1, stored ×1000 as an integer — a float column would invite drift on a value used for ordering. */
+    velocityBp: integer('velocity_bp').notNull(),
+    saturationBp: integer('saturation_bp').notNull(),
+    /** Period-over-period change, ×1000. Signed: negative means dying. */
+    growthBp: integer('growth_bp').notNull(),
+  },
+  // One index, not two: the unique index is `(source, trend_id, observed_at)`,
+  // which is already the exact prefix the series read scans, so a second index
+  // on the same columns in the same order would be write cost for nothing.
+  (t) => [uniqueIndex('trend_observations_unique_idx').on(t.source, t.trendId, t.observedAt)],
+);
+
+/**
  * `recipe.*` — Automation Recipes (plan §12 P5, `AUTO-01`→`AUTO-04.4`).
  *
  * One table for every recipe kind (AutoTrend, Bulk Connector, RSS), not one

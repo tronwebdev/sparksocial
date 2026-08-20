@@ -34,12 +34,13 @@ import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
  * premise for Discovery is acting *before saturation*, and a number without its
  * factors is a number nobody can act on.
  *
- * Not here: a time series. `TrendMetrics` carries four scalars — volume,
- * velocity, saturation, growth — and no history, so a chart would be a chart of
- * one point. Drawing a fabricated curve through it would be worse than the
- * honest four numbers with `growth` named as the direction of travel. The
- * series needs the sources to be polled and stored over time, which is real work
- * and not a rendering problem.
+ * The time series is here now too. It used to be the one §8.9 requirement this
+ * screen deliberately skipped, because `TrendMetrics` carried four scalars and
+ * no history — a chart of one point, and drawing a fabricated curve through it
+ * would have been worse than the honest four numbers. `trend_observations` and
+ * `trend.observe` supply the history; this screen renders whatever exists and
+ * says so plainly when that is not yet enough to draw, which is the same
+ * principle as before rather than a reversal of it.
  */
 
 interface TrendMetrics {
@@ -63,7 +64,23 @@ interface TrendDetailView {
   opportunity: number;
   safety: { safe: boolean; reasons: string[]; detail?: string };
   factors: Array<{ label: string; detail: string; weight?: number }>;
+  series: SeriesPoint[];
+  trajectory: {
+    direction: 'climbing' | 'flat' | 'cooling';
+    saturationChange: number;
+    volumeChange: number | null;
+    observations: number;
+    spanHours: number;
+  } | null;
   why: Explanation;
+}
+
+interface SeriesPoint {
+  at: string;
+  volume: number;
+  velocity: number;
+  saturation: number;
+  growth: number;
 }
 
 interface RepurposeSuggestion {
@@ -85,6 +102,103 @@ function compact(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(Math.round(n));
+}
+
+/**
+ * §8.9's time series.
+ *
+ * Charts **saturation**, not volume, and that is the whole editorial decision
+ * on this screen: volume rising tells you the trend is loud, saturation rising
+ * tells you the window is closing, and only the second one changes what you
+ * should do this afternoon. Volume is still shown, as the multiple over the
+ * window, because it is the number people expect to see and its absence would
+ * read as an omission rather than a choice.
+ *
+ * Renders nothing but an honest line of text below two observations. A
+ * two-point line drawn across a card looks like a trend; it is a pair of
+ * measurements. The threshold matches `summariseTrajectory`, so the chart and
+ * the verdict never disagree about whether there is enough history.
+ */
+const CHART_W = 640;
+const CHART_H = 96;
+
+function SaturationHistory({
+  series,
+  trajectory,
+}: {
+  series: SeriesPoint[];
+  trajectory: TrendDetailView['trajectory'];
+}) {
+  if (series.length < 2 || !trajectory) {
+    return (
+      <p className="mt-4 rounded-lg border border-dashed border-border px-3 py-2.5 text-[13px] text-ink-muted">
+        {series.length === 0
+          ? 'No history for this trend yet.'
+          : 'Only one reading so far — not enough to show a direction.'}{' '}
+        SPARK samples every trend hourly; check back tomorrow.
+      </p>
+    );
+  }
+
+  // Fixed 0–1 domain, not fitted to the data. An autoscaled axis makes a drift
+  // from 0.18 to 0.21 look like a collapse, which is the classic way a
+  // truthful chart tells a lie.
+  const points = series.map((p, i) => {
+    const x = (i / (series.length - 1)) * CHART_W;
+    const y = CHART_H - Math.min(1, Math.max(0, p.saturation)) * CHART_H;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  const tone =
+    trajectory.direction === 'cooling' ? 'text-warn' : trajectory.direction === 'climbing' ? 'text-success' : 'text-ink-muted';
+  const window = trajectory.spanHours >= 48 ? `${Math.round(trajectory.spanHours / 24)} days` : `${trajectory.spanHours} hours`;
+
+  return (
+    <figure className="mt-4 rounded-lg border border-border p-3">
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-[13px] font-medium text-ink">Saturation over the last {window}</span>
+        <span className={cn('text-[13px] font-medium capitalize', tone)}>
+          {trajectory.direction}
+          {trajectory.direction === 'cooling' ? ' — the window is closing' : null}
+        </span>
+      </figcaption>
+
+      <svg
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        className="mt-2 h-24 w-full"
+        role="img"
+        aria-label={`Saturation ${trajectory.direction} over ${window}, from ${pct(series[0]!.saturation)} to ${pct(series[series.length - 1]!.saturation)}.`}
+        preserveAspectRatio="none"
+      >
+        {/* 70% is where `Metric` starts warning, so the chart marks the same line. */}
+        <line
+          x1="0"
+          x2={CHART_W}
+          y1={CHART_H * 0.3}
+          y2={CHART_H * 0.3}
+          className="stroke-warn/40"
+          strokeWidth="1"
+          strokeDasharray="4 4"
+          vectorEffect="non-scaling-stroke"
+        />
+        <polyline
+          points={points.join(' ')}
+          fill="none"
+          className={trajectory.direction === 'cooling' ? 'stroke-warn' : 'stroke-primary'}
+          strokeWidth="2"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <p className="mt-1.5 text-[12px] text-ink-muted">
+        {pct(series[0]!.saturation)} → {pct(series[series.length - 1]!.saturation)} across{' '}
+        {trajectory.observations} readings. Volume{' '}
+        {trajectory.volumeChange === null ? 'not comparable over this window' : `\u00d7${trajectory.volumeChange.toFixed(2)}`}
+        . Dashed line is the 70% saturation mark.
+      </p>
+    </figure>
+  );
 }
 
 export function TrendDetail({
@@ -114,7 +228,7 @@ export function TrendDetail({
     void (async () => {
       setView(null);
       setError(null);
-      const res = await invoke<TrendDetailView>('trend.detail', { genomeId, trendId });
+      const res = await invoke<TrendDetailView>('trend.detail', { genomeId, trendId, seriesDays: 14 });
       if (cancelled) return;
       if (res.status !== 'succeeded') {
         setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
@@ -248,6 +362,8 @@ export function TrendDetail({
         />
         <Metric label="Volume" value={compact(metrics.volume)} note="Reach. Context, not a reason." />
       </dl>
+
+      <SaturationHistory series={view.series} trajectory={view.trajectory} />
 
       <p className="mt-3 text-[13px] text-ink-muted">
         Opportunity is <span className="font-medium text-ink">{pct(view.opportunity)}</span> — velocity

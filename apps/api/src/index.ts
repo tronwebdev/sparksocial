@@ -21,6 +21,7 @@ import { embedClient } from './embed-client.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
+import { startTrendObserver } from './trend-observer.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -360,6 +361,20 @@ const recipeScheduler = startRecipeScheduler(
   envNum('RECIPE_SCHEDULER_INTERVAL_MS', 300_000),
 );
 
+/**
+ * The trend observer (§8.9) — samples the trend source on a clock so the
+ * `DISC-02` time series does not go blank overnight. Hourly by default, which
+ * is the resolution the store buckets to; a shorter interval would write no
+ * extra rows.
+ */
+const trendObserver = startTrendObserver(
+  {
+    db: scopedDb,
+    invoke: invokeDeps,
+  },
+  envNum('TREND_OBSERVER_INTERVAL_MS', 3_600_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -425,6 +440,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
     scheduler.stop();
     recipeScheduler.stop();
+    trendObserver.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

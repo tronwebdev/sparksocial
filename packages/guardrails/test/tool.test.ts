@@ -89,6 +89,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         remove: async () => {},
         list: async () => [],
       },
+      trendObservations: {
+        record: async () => {},
+        series: async () => [],
+      },
       learning: {
         list: async () => [],
         recordOutcome: async () => { throw new Error('learning.recordOutcome not stubbed in this test'); },

@@ -25,6 +25,7 @@ import type {
   RecipeOutputRecord,
   RecipeRecord,
   RenderRecord,
+  TrendObservation,
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
@@ -197,6 +198,8 @@ export function createDevStore(
   const renders: (RenderRecord & { orgId: string; genomeId: string })[] = [];
   const opportunities: (Opportunity & { orgId: string })[] = [];
   const trendWatchlist: (TrendWatchlistEntry & { orgId: string; genomeId: string })[] = [];
+  /** `DISC-02`'s time series, keyed by [source, trendId, hour] — the same bucket the Postgres unique index enforces. */
+  const trendObservationRows = new Map<string, TrendObservation>();
   // Keyed on `${genomeId}:${pillar}` — one arm per (genome, pillar), same unique target as the real schema.
   const learningArms = new Map<string, LearningArm & { orgId: string; genomeId: string }>();
   const scoredContentItems = new Set<string>(); // idempotency for recordOutcome, mirrors the real unique index on contentItemId
@@ -860,6 +863,29 @@ export function createDevStore(
       },
       async list(genomeId, org) {
         return trendWatchlist.filter((w) => w.genomeId === genomeId && w.orgId === org);
+      },
+    },
+
+    /**
+     * Bucketed to the hour and last-write-wins, exactly like the Postgres one —
+     * a dev store that recorded every call would make the chart look dense here
+     * and sparse in production, which is the wrong way round for catching
+     * "there is not enough history to say anything" in development.
+     */
+    trendObservations: {
+      async record(observations) {
+        for (const o of observations) {
+          const at = new Date(o.observedAt.getTime());
+          at.setUTCMinutes(0, 0, 0);
+          trendObservationRows.set(JSON.stringify([o.source, o.trendId, at.toISOString()]), { ...o, observedAt: at });
+        }
+      },
+      async series({ source, trendId, sinceDays, limit }) {
+        const since = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+        return [...trendObservationRows.values()]
+          .filter((o) => o.source === source && o.trendId === trendId && o.observedAt.getTime() >= since)
+          .sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime())
+          .slice(0, limit ?? 720);
       },
     },
 

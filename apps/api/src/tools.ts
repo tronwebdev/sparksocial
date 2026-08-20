@@ -130,6 +130,7 @@ import {
   makeTrendReshare,
   makeTrendWatchlist,
   makeTrendExplain,
+  makeTrendObserve,
 } from '@sparksocial/trends';
 import {
   recipeValidate,
@@ -497,6 +498,7 @@ export function registerAlphaTools(): void {
   register(makeTrendReshare(trendSource));
   register(makeTrendWatchlist(trendSource));
   register(makeTrendExplain(trendSource));
+  register(makeTrendObserve(trendSource));
 
   // Automation Recipes (§12 P5, `AUTO-01`→`AUTO-04.4`). `auto_trend` reuses
   // the same trend source as the `trend.*` family above; `rss` and the csv
