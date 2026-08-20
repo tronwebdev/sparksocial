@@ -317,6 +317,14 @@ export interface AssetFolderRow {
   genomeId: string;
   name: string;
   createdAt: Date;
+  /**
+   * How many assets sit in this folder. PRD §8.11's `LIB-01` asks the folder
+   * list for exactly this ("list with created date/count"), and it is not
+   * derivable client-side: `asset.retrieve` is semantic and returns the top-k
+   * matches, so counting what it happens to return would report a ranking
+   * cutoff as a folder size.
+   */
+  assetCount: number;
 }
 
 /** `asset.folder.create` — see the table's own comment on `assets.folderId`'s history. */
@@ -326,15 +334,28 @@ export async function createAssetFolder(db: Database, scope: Scope, args: { name
     .insert(assetFolders)
     .values({ orgId: scope.orgId, genomeId: scope.genomeId, name: args.name })
     .returning({ id: assetFolders.id, genomeId: assetFolders.genomeId, name: assetFolders.name, createdAt: assetFolders.createdAt });
-  return row!;
+  // A folder that was created one statement ago holds nothing; no count query
+  // needed to know that.
+  return { ...row!, assetCount: 0 };
 }
 
 export async function listAssetFolders(db: Database, scope: Scope): Promise<AssetFolderRow[]> {
-  return db
-    .select({ id: assetFolders.id, genomeId: assetFolders.genomeId, name: assetFolders.name, createdAt: assetFolders.createdAt })
+  // Left join, so an empty folder still appears with a count of zero — the
+  // empty ones are precisely the ones somebody needs to see.
+  const rows = await db
+    .select({
+      id: assetFolders.id,
+      genomeId: assetFolders.genomeId,
+      name: assetFolders.name,
+      createdAt: assetFolders.createdAt,
+      assetCount: sql<number>`count(${assets.id})::int`,
+    })
     .from(assetFolders)
+    .leftJoin(assets, and(eq(assets.folderId, assetFolders.id), eq(assets.orgId, assetFolders.orgId)))
     .where(scopePredicate('assetFolders', scope))
+    .groupBy(assetFolders.id, assetFolders.genomeId, assetFolders.name, assetFolders.createdAt)
     .orderBy(assetFolders.name);
+  return rows.map((r) => ({ ...r, assetCount: Number(r.assetCount) }));
 }
 
 export interface ContentLinkRow {
@@ -504,6 +525,52 @@ export async function markContentBlocked(
   await db
     .update(contentItems)
     .set({ status: 'blocked', blockedReason: args.reason })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/**
+ * PRD §7.4's `Needs Review` state — see `ContentStore.markNeedsReview`.
+ *
+ * Reuses `blockedReason` for the held-reason rather than adding a second column:
+ * both answer the one question a person opening a stalled item asks, and one
+ * column with one meaning ("why is this not moving") beats two that have to be
+ * checked in the right order.
+ */
+export async function markContentNeedsReview(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; reason: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    .set({ status: 'needs_review', blockedReason: args.reason })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/** PRD §7.4's `Approved` state — see `ContentStore.markApproved`. */
+export async function markContentApproved(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    // Clears the held-reason: it described a wait that is over.
+    .set({ status: 'approved', blockedReason: null })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/** PRD §7.4: a rejected item is editable again — see `ContentStore.markRejected`. */
+export async function markContentRejected(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; reason: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    // Back to `draft`, with the reason kept so whoever picks it up knows what
+    // to change. `scheduledAt` is left alone: the date was not the objection.
+    .set({ status: 'draft', blockedReason: args.reason })
     .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
 }
 
@@ -1000,7 +1067,17 @@ const contentDraftColumns = {
 export async function createContentDraft(
   db: Database,
   scope: Scope,
-  args: { playbookId: string; mode: string; pillar?: string; copy: unknown; why: unknown; campaignId?: string },
+  args: {
+    playbookId: string;
+    mode: string;
+    pillar?: string;
+    copy: unknown;
+    why: unknown;
+    campaignId?: string;
+    recipeId?: string;
+    intent?: string;
+    scheduledAt?: Date;
+  },
 ): Promise<ContentDraftRow> {
   assertScope(scope);
   const [row] = await db
@@ -1012,6 +1089,11 @@ export async function createContentDraft(
       mode: args.mode,
       ...(args.pillar ? { pillar: args.pillar } : {}),
       ...(args.campaignId ? { campaignId: args.campaignId } : {}),
+      ...(args.recipeId ? { recipeId: args.recipeId } : {}),
+      ...(args.intent ? { intent: args.intent } : {}),
+      // A row created with a date is created scheduled; the column default
+      // (`draft`) is right for everything else.
+      ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
       copy: args.copy as object,
       why: args.why as object,
     })
@@ -1130,7 +1212,42 @@ export interface DueContentItem {
   playbookId: string | null;
   platform: string | null;
   copy: unknown;
+  /** The brief, for a slot the scheduler has to draft before it can publish it. */
+  intent: string | null;
   scheduledAt: Date;
+}
+
+/**
+ * `ContentStore.publishOrigin` — did a recipe make this, and does that recipe
+ * want its output reviewed?
+ *
+ * One join rather than two reads, because `policy.ts` runs this on the critical
+ * path of every publish. `reviewBeforePublish` is read out of the recipe's own
+ * `config` jsonb (`RecipeCommonConfig`), and defaults to `true` for a config
+ * that cannot be parsed — an unreadable recipe config is the one case where
+ * "send it unreviewed" is definitely the wrong answer.
+ */
+export async function contentPublishOrigin(
+  db: Database,
+  scope: Scope,
+  id: string,
+): Promise<{ recipeId?: string; reviewBeforePublish: boolean } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .select({ recipeId: contentItems.recipeId, config: recipes.config })
+    .from(contentItems)
+    .leftJoin(recipes, eq(recipes.id, contentItems.recipeId))
+    .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
+    .limit(1);
+
+  if (!row) return undefined;
+  if (!row.recipeId) return { reviewBeforePublish: false };
+
+  const cfg = row.config as { reviewBeforePublish?: unknown } | null;
+  return {
+    recipeId: row.recipeId,
+    reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+  };
 }
 
 export async function findDueContentItems(db: Database, args: { before: Date; limit: number }): Promise<DueContentItem[]> {
@@ -1142,6 +1259,7 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
       playbookId: contentItems.playbookId,
       platform: contentItems.platform,
       copy: contentItems.copy,
+      intent: contentItems.intent,
       scheduledAt: contentItems.scheduledAt,
     })
     .from(contentItems)
@@ -1156,6 +1274,8 @@ export interface CalendarSlotRow {
   mode: string;
   pillar: string;
   scheduledAt: Date;
+  /** `CMP-01.4`'s chosen account for this slot. Null keeps the playbook fallback. */
+  platform?: string;
 }
 
 /**
@@ -1200,6 +1320,7 @@ export async function replaceCampaignSlots(
       pillar: s.pillar,
       status: 'scheduled',
       scheduledAt: s.scheduledAt,
+      ...(s.platform ? { platform: s.platform } : {}),
     })),
   );
   return slots.length;

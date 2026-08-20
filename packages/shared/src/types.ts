@@ -158,7 +158,17 @@ export type ToolErrorCode =
    * task present as `401 Not signed in` to a user who was demonstrably signed
    * in — the client could not tell which recovery to offer, so it offered none.
    */
-  | 'NO_ORGANIZATION';
+  | 'NO_ORGANIZATION'
+  /**
+   * Another call is already running under this idempotency key.
+   *
+   * Distinct from `RATE_LIMITED` (slow down) and from `UPSTREAM_FAILED` (it
+   * broke): nothing is wrong, the work is simply already in flight, and the
+   * correct response is to wait and read the result rather than to send the
+   * request again. `invoke.ts` returns this instead of executing a second side
+   * effect — see `InvokeDeps.reserveIdempotent`.
+   */
+  | 'IN_FLIGHT';
 
 export class ToolError extends Error {
   constructor(

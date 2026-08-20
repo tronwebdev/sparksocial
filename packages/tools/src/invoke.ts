@@ -2,7 +2,7 @@ import { ZodError } from 'zod';
 import { ToolError, type Explanation, type Role } from '@sparksocial/shared/types';
 import { getTool, type RegisteredTool } from './registry.js';
 import { evaluate, type Decision } from './policy.js';
-import type { GuardrailId, ToolCtx } from './defineTool.js';
+import type { GuardrailId, PolicySubject, ToolCtx } from './defineTool.js';
 
 /**
  * THE MIDDLEWARE CHAIN — the only path a tool runs through.
@@ -73,6 +73,31 @@ export interface InvokeDeps {
   runGuardrails?: (guards: GuardrailId[], input: unknown, ctx: ToolCtx) => Promise<GuardrailVerdict[]>;
   /** Returns a prior result for this key, if the call already succeeded. */
   lookupIdempotent?: (key: string) => Promise<ToolCallRecord | undefined>;
+  /**
+   * Claim an idempotency key for the duration of one handler run.
+   *
+   * `lookupIdempotent` alone cannot make a non-idempotent tool safe under
+   * concurrency: it only sees keys whose audit row has already been *written*,
+   * and the row is written after the handler returns. Two simultaneous calls
+   * with the same key therefore both miss the lookup and both execute the side
+   * effect — for `publish.now`, two attempts at the same post, with nothing but
+   * the platform adapter's own dedupe between that and a double post on a
+   * customer's feed.
+   *
+   * So the key is *claimed* before the handler runs, against a uniqueness
+   * constraint the database enforces. `'in_flight'` means somebody else holds
+   * it right now; the caller gets a retryable CONFLICT rather than a second
+   * side effect. Optional because the in-memory dev store has no concurrency
+   * to protect against — but when it is absent, the window is real, which is
+   * why `index.ts` wires it wherever Postgres is configured.
+   */
+  reserveIdempotent?: (key: string, tool: string) => Promise<'reserved' | 'in_flight'>;
+  /**
+   * Give a claimed key back after a failed run, so a genuine retry can proceed.
+   * Never called on success: the succeeded audit row is the permanent record,
+   * and `lookupIdempotent` replays from it.
+   */
+  releaseIdempotent?: (key: string) => Promise<void>;
   /** Emit to the queue/event fan-out. */
   emit?: (event: string, record: ToolCallRecord) => void;
   newId?: () => string;
@@ -95,12 +120,19 @@ export interface InvokeRequest {
    * own actions.
    */
   approval?: { grantedBy: string; grantedAt: Date };
-  /** Publish-effect context the policy engine reads (platform, content type, …). */
+  /**
+   * Invocation-context risk flags — and **only** flags.
+   *
+   * `platform`, `contentType`, `isAutomationOutput` and `reviewBeforePublish`
+   * used to live here and are now derived by the tool itself
+   * (`ToolDef.policySubject`). They were removed rather than deprecated: every
+   * one of them *adds* a restriction, so a request-level field for them is a
+   * request-level opt-out, and the field going missing is exactly how brand
+   * platform restrictions came to be settable and unenforced. Leaving them
+   * accepted-but-overridden would have kept a plausible-looking bypass in the
+   * type for the next caller to reach for.
+   */
   subject?: {
-    platform?: string;
-    contentType?: string;
-    isAutomationOutput?: boolean;
-    reviewBeforePublish?: boolean;
     /**
      * Flags raised by the *caller* about this invocation's context, merged with
      * whatever the tool's own declared guardrails produce.
@@ -119,7 +151,6 @@ export interface InvokeRequest {
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
   /** Brand governance state the policy engine reads. */
   brand: Parameters<typeof evaluate>[0]['brand'];
-  spentTodayCents?: number;
 }
 
 export type InvokeResult =
@@ -200,6 +231,26 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     guardrailFlags = [...guardrailFlags, ...verdicts.filter((v) => v.verdict === 'flag').map((v) => v.guard)];
   }
 
+  /* 4b ─ The publish context, derived from validated input by the tool itself.
+   *
+   *      Not taken from the request: see `ToolDef.policySubject`. A throw here
+   *      fails the call rather than falling back to an empty subject — an
+   *      unreadable content item is not a reason to publish it unrestricted. */
+  let derived: PolicySubject = {};
+  if (tool.policySubject) {
+    try {
+      derived = await tool.policySubject(input, req.ctx);
+    } catch (e) {
+      return fail(
+        skeleton(newId(), req, tool, at, input, estimatedCents),
+        e instanceof ToolError
+          ? e
+          : new ToolError('UPSTREAM_FAILED', `Could not resolve the publish context for "${tool.name}": ${e instanceof Error ? e.message : String(e)}`),
+        deps,
+      );
+    }
+  }
+
   /* 5 ── Policy. Role scope, autonomy, budget, quiet windows, approval mode —
    *      all resolved in the one pure function. */
   const decision = evaluate({
@@ -208,7 +259,7 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     role: req.ctx.role,
     now: at,
     brand: req.brand,
-    subject: { ...req.subject, guardrailFlags },
+    subject: { ...derived, guardrailFlags },
     budget: {
       remainingCents: req.ctx.budget.remainingCents,
       estimatedCents,
@@ -233,7 +284,26 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     return { status: 'gated', call: gated, decision };
   }
 
-  /* 7 ── Execute. */
+  /* 7 ── Claim the idempotency key, then execute.
+   *
+   *      The claim sits *after* the gate on purpose: a denied or held call took
+   *      no side effect, so burning the key on it would make the eventual
+   *      approved replay look like a duplicate. It sits *before* the handler
+   *      because that is the only position that closes the concurrency window —
+   *      see `InvokeDeps.reserveIdempotent`. */
+  if (req.idempotencyKey && deps.reserveIdempotent) {
+    const claim = await deps.reserveIdempotent(req.idempotencyKey, tool.name);
+    if (claim === 'in_flight') {
+      return fail(
+        base,
+        new ToolError('IN_FLIGHT', `Another "${tool.name}" call is already running under this key. Wait for it rather than retrying.`, {
+          idempotencyKey: req.idempotencyKey,
+        }),
+        deps,
+      );
+    }
+  }
+
   try {
     const raw = await tool.handler(input, req.ctx);
 
@@ -262,6 +332,39 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
         : e instanceof ZodError
           ? new ToolError('UPSTREAM_FAILED', `"${tool.name}" returned a malformed result: ${zodMessage(e)}`)
           : new ToolError('UPSTREAM_FAILED', e instanceof Error ? e.message : String(e));
+
+    /* A failed run gives the key back, so a genuine retry is not mistaken for a
+     * duplicate. Deliberately not done for the `in_flight` path above — that
+     * caller never held the claim and must not be able to free somebody else's. */
+    if (req.idempotencyKey && deps.releaseIdempotent) {
+      await deps.releaseIdempotent(req.idempotencyKey).catch(() => {
+        /* A stranded claim blocks retries of one key; throwing here would lose
+         * the audit row for the actual failure, which is worse. */
+      });
+    }
+
+    /**
+     * Bill the spend even though the call failed.
+     *
+     * A handler that reached a paid vendor and *then* threw — a timeout after
+     * the render started, a malformed response from a call that was already
+     * charged for — has spent the money regardless of what we report. Skipping
+     * the ledger here was silently absorbing that: the 50¢ avatar-video and
+     * 60¢ dubbing tools are the expensive cases, and a vendor timeout is their
+     * most likely failure. The charge is real, so it is recorded.
+     *
+     * Only when an estimate existed, matching the success path — a tool with no
+     * `estimateCents` had nothing to bill either way.
+     */
+    if (estimatedCents > 0) {
+      await deps
+        .recordCost?.({ ...base, status: 'failed', error: { code: err.code, message: err.message } })
+        .catch(() => {
+          /* Same trade-off `index.ts` documents on the success path: losing a
+           * charge costs money, throwing here costs the audit row. */
+        });
+    }
+
     return fail(base, err, deps);
   }
 }

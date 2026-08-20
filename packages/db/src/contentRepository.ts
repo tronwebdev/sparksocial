@@ -16,11 +16,21 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.recentContent(db, { orgId, brandId: orgId, genomeId }, windowDays);
     },
 
-    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId }) {
+    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, scheduledAt }) {
       const row = await scoped.createContentDraft(
         db,
         { orgId, brandId: orgId, genomeId },
-        { playbookId, mode, ...(pillar ? { pillar } : {}), copy, why, ...(campaignId ? { campaignId } : {}) },
+        {
+          playbookId,
+          mode,
+          ...(pillar ? { pillar } : {}),
+          copy,
+          why,
+          ...(campaignId ? { campaignId } : {}),
+          ...(recipeId ? { recipeId } : {}),
+          ...(intent ? { intent } : {}),
+          ...(scheduledAt ? { scheduledAt } : {}),
+        },
       );
       return toDraft(row);
     },
@@ -55,6 +65,22 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
 
     async markBlocked(args) {
       await scoped.markContentBlocked(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
+    },
+
+    async markNeedsReview(args) {
+      await scoped.markContentNeedsReview(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
+    },
+
+    async markApproved(args) {
+      await scoped.markContentApproved(db, { orgId: args.orgId }, { id: args.id });
+    },
+
+    async markRejected(args) {
+      await scoped.markContentRejected(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
+    },
+
+    async publishOrigin({ id, genomeId, orgId }) {
+      return scoped.contentPublishOrigin(db, { orgId, brandId: orgId, genomeId }, id);
     },
 
     async recordRender(args) {

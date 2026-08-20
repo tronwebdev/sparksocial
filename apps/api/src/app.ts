@@ -320,10 +320,14 @@ function authFailureStatus(e: unknown): 401 | 403 {
   return e instanceof ToolError && e.code === 'NO_ORGANIZATION' ? 403 : 401;
 }
 
-function httpStatusFor(code: ToolError['code']): 400 | 403 | 404 | 429 | 502 {
+function httpStatusFor(code: ToolError['code']): 400 | 403 | 404 | 409 | 429 | 502 {
   switch (code) {
     case 'INVALID_INPUT':
       return 400;
+    // Not an error the caller should fix — the same work is already running.
+    // 409 rather than 429 because retrying later is right and slowing down is not.
+    case 'IN_FLIGHT':
+      return 409;
     case 'FORBIDDEN':
     case 'NO_ORGANIZATION':
     case 'GUARDRAIL_BLOCKED':
@@ -358,9 +362,17 @@ function errorBody(e: unknown, fallback: ToolError['code']) {
  *
  * Mirrors `createAuditRepository`: most recent row for the key, and only a
  * `succeeded` one counts as a replay (a prior failure should be retryable).
+ *
+ * `reserveIdempotent`/`releaseIdempotent` are implemented here for the same
+ * reason `lookupIdempotent` is, and the comment above is the precedent: a
+ * concurrency guard that holds under Postgres and is absent in development is
+ * a bug that cannot be found until it is live. A `Set` is a faithful model of
+ * the reservation table's uniqueness within one process, which is the whole of
+ * what a single dev process can race against.
  */
 export function memoryInvokeDeps(over: Partial<InvokeDeps> = {}): InvokeDeps & { rows: ToolCallRecord[] } {
   const rows: ToolCallRecord[] = [];
+  const claimed = new Set<string>();
   return {
     rows,
     writeToolCall: async (r) => void rows.push(r),
@@ -370,6 +382,12 @@ export function memoryInvokeDeps(over: Partial<InvokeDeps> = {}): InvokeDeps & {
       }
       return undefined;
     },
+    reserveIdempotent: async (key) => {
+      if (claimed.has(key)) return 'in_flight';
+      claimed.add(key);
+      return 'reserved';
+    },
+    releaseIdempotent: async (key) => void claimed.delete(key),
     ...over,
   };
 }

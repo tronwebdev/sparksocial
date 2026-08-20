@@ -447,13 +447,21 @@ export function createDevStore(
         const id = randomUUID();
         const row = { id, genomeId, orgId: org, name, createdAt: new Date() };
         assetFolders.set(id, row);
-        return row;
+        // A brand-new folder is empty, and `LIB-01` shows the count.
+        return { ...row, assetCount: 0 };
       },
 
       async list(genomeId, org) {
         return [...assetFolders.values()]
           .filter((f) => f.genomeId === genomeId && f.orgId === org)
-          .sort((a, b) => a.name.localeCompare(b.name));
+          .sort((a, b) => a.name.localeCompare(b.name))
+          // Counted from the same `assets` map the real query counts from, so an
+          // empty folder still reports zero rather than being omitted — see
+          // `listAssetFolders`'s left join.
+          .map((f) => ({
+            ...f,
+            assetCount: [...assets.values()].filter((a) => a.orgId === org && a.folderId === f.id).length,
+          }));
       },
     },
 
@@ -465,19 +473,24 @@ export function createDevStore(
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
 
-      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId }) {
-        const row: ContentDraft & { orgId: string } = {
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, scheduledAt }) {
+        const row: ContentDraft & { orgId: string; recipeId?: string; intent?: string } = {
           id: randomUUID(),
           orgId: org,
           genomeId,
           playbookId,
           mode,
-          status: 'draft',
+          // Same rule as `scoped.createContentDraft`: a row created with a date
+          // is created scheduled.
+          status: scheduledAt ? 'scheduled' : 'draft',
           copy,
           why,
           createdAt: new Date(),
           ...(pillar ? { pillar } : {}),
           ...(campaignId ? { campaignId } : {}),
+          ...(recipeId ? { recipeId } : {}),
+          ...(intent ? { intent } : {}),
+          ...(scheduledAt ? { scheduledAt } : {}),
         };
         drafts.set(row.id, row);
         return row;
@@ -547,6 +560,46 @@ export function createDevStore(
         if (!row || row.orgId !== org) return;
         row.status = 'blocked';
         row.blockedReason = reason;
+      },
+
+      async markNeedsReview({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'needs_review';
+        row.blockedReason = reason;
+      },
+
+      async markApproved({ id, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'approved';
+        delete row.blockedReason;
+      },
+
+      async markRejected({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'draft';
+        row.blockedReason = reason;
+      },
+
+      /**
+       * Mirrors `scoped.contentPublishOrigin`, including its defaults: no
+       * recipe means not automation, an unreadable recipe config means review.
+       * Implemented here rather than left to throw for the reason the file
+       * header gives — a policy branch that fires under Postgres and is inert
+       * in development is a bug nobody finds until it is live.
+       */
+      async publishOrigin({ id, genomeId, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        const recipeId = (row as { recipeId?: string }).recipeId;
+        if (!recipeId) return { reviewBeforePublish: false };
+        const cfg = recipes.get(recipeId)?.config as { reviewBeforePublish?: unknown } | undefined;
+        return {
+          recipeId,
+          reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+        };
       },
 
       async recordRender({ contentItemId, genomeId, orgId: org, aspect, storageUrl, engine, costCents }) {
@@ -1049,6 +1102,7 @@ export function createDevStore(
           playbookId: r.playbookId,
           platform: r.platform ?? null,
           copy: r.copy,
+          intent: (r as { intent?: string }).intent ?? null,
           scheduledAt: r.scheduledAt!,
         }));
     },

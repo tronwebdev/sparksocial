@@ -37,6 +37,9 @@ const Publish = defineTool({
   autonomy: 'auto',
   scopes: ['owner', 'admin', 'editor'],
   idempotent: false,
+  // Required of every publish tool by `defineTool` — see `PolicySubject`. These
+  // tests are about containment flags, not platform restrictions.
+  policySubject: async () => ({}),
   async handler() {
     return { ok: true };
   },
@@ -85,6 +88,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        publishOrigin: async () => undefined,
+        markNeedsReview: async () => {},
+        markApproved: async () => {},
+        markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
       },
@@ -173,22 +180,38 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+        }),
+        setGovernance: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is

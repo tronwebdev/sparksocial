@@ -166,6 +166,30 @@ export const contentItems = pgTable(
     orgId: text('org_id').notNull(),
     genomeId: text('genome_id').notNull(),
     campaignId: uuid('campaign_id'),
+    /**
+     * The recipe that produced this item, when one did.
+     *
+     * `policy.ts` rule 7 has always had a branch for automation output
+     * (`isAutomationOutput` → honour the recipe's review setting, then the
+     * workspace's `automationAutoPublish` permission) and no way to know an
+     * item *was* one: recipe outputs lived only in `recipe_outputs`, and by the
+     * time anything became publishable the link was gone. This column is that
+     * link, read by `publish.now`'s `policySubject` before the handler runs.
+     * Null for everything a campaign or a person created.
+     */
+    recipeId: uuid('recipe_id'),
+    /**
+     * What this specific post is about, in one line — `content.draft`'s `intent`
+     * input, persisted.
+     *
+     * Needed because drafting is no longer only something a person does in the
+     * Draft Panel: the scheduler now drafts a due slot that has no copy yet
+     * (see `apps/api/src/scheduler.ts`), and a recipe that publishes unattended
+     * creates the slot hours before anything writes its copy. Both need the
+     * intent to survive in between. Null for a slot whose pillar and playbook
+     * are the whole of the brief.
+     */
+    intent: text('intent'),
     playbookId: text('playbook_id'),
     mode: text('mode'), // synthesize | assemble | direct_finish
     pillar: text('pillar'),
@@ -431,6 +455,88 @@ export const brands = pgTable(
     restrictedContentTypes: jsonb('restricted_content_types').$type<string[]>(),
     quietWindows: jsonb('quiet_windows').$type<Array<{ from: string; to: string; reason: string }>>(),
     permissions: jsonb('permissions').$type<{ spendCredits?: boolean; automationAutoPublish?: boolean }>(),
+
+    /**
+     * ── PRD §8.2 ONB-03 / §8.12 SET-WS-01 / §9: the governance a brand states
+     * about itself, as opposed to the approval *ladder* above it. ─────────────
+     *
+     * "Restricted topics" and "claims to avoid" are named in PRD §4, §8.2,
+     * §8.8, §8.12 and §9, and existed in no layer of this system: no column, no
+     * tool, no screen. `brand.settings.patch` renamed a brand and that was the
+     * whole of brand configuration. So §9's guardrail-enforcement section had
+     * nothing to enforce, §8.6's "Apply Brand Kit" toggle had no kit to apply,
+     * and the stated mitigation for the PRD's own first-listed risk — "wrong or
+     * off-brand autoposting" — was unimplementable rather than unimplemented.
+     *
+     * Deliberately here on `brands` and not on `genomes`. A genome is inferred
+     * (crawled, then corrected) and is about what the business *is*; this is
+     * asserted by a human and is about what the business *will not say*. The
+     * second must not be silently overwritten the next time the first is
+     * re-inferred from a website.
+     */
+
+    /**
+     * Topics SPARK may not post about. Matched case-insensitively as whole
+     * phrases against draft copy by `guard.restricted_topics`.
+     *
+     * `strictMode` decides whether a hit is a flag (routes to review) or a hard
+     * block, per §9: *"restricted topics/claims trigger Needs Review (soft) or
+     * Blocked (hard) depending on strict mode and rule type."*
+     */
+    restrictedTopics: jsonb('restricted_topics').$type<string[]>(),
+    /**
+     * Claims this brand does not make — "guaranteed", "the cheapest", "clinically
+     * proven". Distinct from `restrictedTopics`: a topic is a subject to avoid,
+     * a claim is an assertion to avoid making *about* a subject it is otherwise
+     * happy to discuss. They are separate fields because §9 treats them as
+     * separate rule types, and strict mode escalates them differently.
+     */
+    claimsToAvoid: jsonb('claims_to_avoid').$type<string[]>(),
+    /**
+     * §9's "strict compliance mode". Off: a restricted topic or claim flags the
+     * draft and routes it to review. On: it blocks outright.
+     */
+    strictMode: boolean('strict_mode').notNull().default(false),
+    /**
+     * ONB-03's voice sliders, 0–1 each. The same four axes
+     * `Genome.voice.tone_vector` carries, asserted at brand level: where both
+     * exist this wins, because a person moved these deliberately and the
+     * genome's were inferred from a website.
+     */
+    toneVector: jsonb('tone_vector').$type<{ formal: number; playful: number; technical: number; bold: number }>(),
+    /** Words and phrases never to use. Checked verbatim by `guard.brand_voice`. */
+    bannedPhrases: jsonb('banned_phrases').$type<string[]>(),
+    /** ONB-01's logo, and the brand kit colours §8.6's "Apply Brand Kit" toggle applies. */
+    logoUrl: text('logo_url'),
+    brandColors: jsonb('brand_colors').$type<string[]>(),
+
+    /**
+     * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────
+     *
+     * An IANA zone name, e.g. `Europe/London`. The string "timezone" appeared
+     * nowhere in this codebase: not in the schema, the genome, the campaign
+     * model, or any tool, and there was no time-of-day logic anywhere either.
+     * Every post therefore fired at whatever wall-clock instant its campaign
+     * happened to be created, in UTC, and two posts placed on the same day got
+     * byte-identical timestamps and published simultaneously.
+     *
+     * Defaults to UTC rather than null so that every existing brand has a
+     * defined zone and `placeCalendar` never has to branch on "unknown".
+     */
+    timezone: text('timezone').notNull().default('UTC'),
+    /**
+     * §8.7's "posting windows" — local hours-of-day, in `timezone`, that posts
+     * are placed into, earliest first. A day with more posts than windows wraps
+     * back through the list at a later minute offset rather than stacking two
+     * posts on one instant.
+     *
+     * The default is a plain three-times-a-day spread. It is not researched
+     * best-time-to-post data and does not pretend to be: what it fixes is
+     * "every post goes out at 03:47 because that is when the campaign was
+     * created", and `learning.*` is where a real per-brand answer belongs.
+     */
+    postingWindows: jsonb('posting_windows').$type<number[]>(),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -671,6 +777,20 @@ export const campaigns = pgTable(
     targetCount: integer('target_count'),
     /** What targetCount counts — "bookings", "trials", "signups". Free text like the objective preset itself. */
     targetLabel: text('target_label'),
+    /**
+     * `CMP-01.4` — the accounts this campaign posts to.
+     *
+     * PRD §8.4 lists "Connected accounts selection" as a campaign input and
+     * there was nowhere to put it, so a campaign was genome + objective +
+     * window and nothing else. The cost of that was visible two layers down:
+     * `apps/api/src/scheduler.ts` had to fall back to *"the playbook's first
+     * declared platform"* for every scheduled post, because nothing in the
+     * system had ever recorded where the owner wanted this campaign to publish.
+     *
+     * Null or empty keeps that fallback, which is still the honest default for
+     * a campaign created before this column existed.
+     */
+    platforms: jsonb('platforms').$type<string[]>(),
     /** draft | active | done | cancelled */
     status: text('status').notNull().default('draft'),
     /** The approved plan: volume, mix, capture ask, reasoning. */
@@ -727,6 +847,26 @@ export const toolCalls = pgTable(
     index('tool_calls_idempotency_idx').on(t.idempotencyKey),
   ],
 );
+
+/**
+ * `idempotency_reservations` — the mutual exclusion `tool_calls` cannot provide.
+ *
+ * `tool_calls` is INSERT-only and the row lands *after* the handler returns, so
+ * `lookupIdempotent` cannot see a call that is still running. Two concurrent
+ * `publish.now` calls with the same key both missed the lookup and both posted;
+ * the platform adapter's own dedupe was the only thing standing between that
+ * and a duplicate post on a customer's feed.
+ *
+ * A separate table, rather than a status column on `tool_calls`, precisely so
+ * that INSERT-only property survives. The primary key *is* the mechanism: the
+ * second inserter loses on a uniqueness violation and is told to wait.
+ * `invoke.ts` deletes the row when a run fails, so a real retry still works.
+ */
+export const idempotencyReservations = pgTable('idempotency_reservations', {
+  key: text('key').primaryKey(),
+  tool: text('tool').notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * `agent_runs` / `agent_steps` — master plan §5, §4.5's Agent Timeline,

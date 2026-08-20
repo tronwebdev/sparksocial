@@ -46,6 +46,11 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
             createdAt: new Date(),
             agentPaused: false,
             postsPerWeek: DEFAULT_POSTS_PER_WEEK,
+            // Same column defaults as the schema. Both are non-optional on
+            // `BrandGovernance`: a brand always has a strict-mode answer and a
+            // zone, and this fallback must not be the one place they are absent.
+            strictMode: false,
+            timezone: 'UTC',
           };
     },
 
@@ -145,6 +150,38 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
       return toGovernance(row);
     },
+
+    /**
+     * `brand.governance.set`. Same merge-not-replace shape as `setPolicy` above,
+     * and for the same reason: onboarding writes the timezone, the settings
+     * screen writes the restricted topics, and neither may clear the other's work.
+     */
+    async setGovernance({ brandId, orgId, patch }) {
+      const set: Partial<typeof brands.$inferInsert> = { updatedAt: new Date() };
+      if (patch.restrictedTopics !== undefined) set.restrictedTopics = patch.restrictedTopics ?? null;
+      if (patch.claimsToAvoid !== undefined) set.claimsToAvoid = patch.claimsToAvoid ?? null;
+      if (patch.strictMode !== undefined) set.strictMode = patch.strictMode;
+      if (patch.toneVector !== undefined) set.toneVector = patch.toneVector ?? null;
+      if (patch.bannedPhrases !== undefined) set.bannedPhrases = patch.bannedPhrases ?? null;
+      if (patch.logoUrl !== undefined) set.logoUrl = patch.logoUrl ?? null;
+      if (patch.brandColors !== undefined) set.brandColors = patch.brandColors ?? null;
+      if (patch.timezone !== undefined) set.timezone = patch.timezone;
+      if (patch.postingWindows !== undefined) set.postingWindows = patch.postingWindows ?? null;
+
+      await db
+        .insert(brands)
+        .values({ id: brandId, orgId, ...set })
+        .onConflictDoUpdate({ target: brands.id, set });
+
+      const [row] = await db
+        .select()
+        .from(brands)
+        .where(and(eq(brands.id, brandId), eq(brands.orgId, orgId)))
+        .limit(1);
+
+      if (!row) throw new Error(`Brand ${brandId} is not in this organisation.`);
+      return toGovernance(row);
+    },
   };
 }
 
@@ -169,5 +206,16 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
       ? { quietWindows: row.quietWindows.map((w) => ({ from: new Date(w.from), to: new Date(w.to), reason: w.reason })) }
       : {}),
     ...(row.permissions ? { permissions: row.permissions } : {}),
+    // Non-optional on `BrandGovernance` — every brand has a strict-mode answer
+    // and a zone, and "unset" is not one of them. The column defaults carry it.
+    strictMode: row.strictMode,
+    timezone: row.timezone,
+    ...(row.restrictedTopics ? { restrictedTopics: row.restrictedTopics } : {}),
+    ...(row.claimsToAvoid ? { claimsToAvoid: row.claimsToAvoid } : {}),
+    ...(row.toneVector ? { toneVector: row.toneVector } : {}),
+    ...(row.bannedPhrases ? { bannedPhrases: row.bannedPhrases } : {}),
+    ...(row.logoUrl ? { logoUrl: row.logoUrl } : {}),
+    ...(row.brandColors ? { brandColors: row.brandColors } : {}),
+    ...(row.postingWindows ? { postingWindows: row.postingWindows } : {}),
   };
 }

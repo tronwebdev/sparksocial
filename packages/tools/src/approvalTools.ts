@@ -158,8 +158,38 @@ export function makeApprovalDecide(deps: {
         tool: pending.tool,
       });
 
+      /**
+       * ── PRD §7.4's `Approved` / back-to-`Draft` transitions ───────────────
+       *
+       * The held call's *own* status ladder is the `approvals` row above. This
+       * is the content item's, which is a different object and was not being
+       * moved at all: a post held for review sat at `needs_review` (or, before
+       * that state existed, at `scheduled`) whatever a reviewer decided.
+       *
+       * Kept to publish-effect calls that name a `contentItemId`, and read off
+       * the held input rather than asked for — a reviewer approves a *call*, and
+       * nothing here should let them redirect the decision onto a different
+       * post. A rejected post returns to `draft`: it is editable again, which is
+       * the state a reviewer saying no actually leaves it in.
+       */
+      const heldItemId = publishedContentItemId(pending);
+
       if (input.decision === 'reject') {
+        if (heldItemId) {
+          await ctx.db.content.markRejected({
+            id: heldItemId,
+            orgId: ctx.orgId,
+            reason: `Rejected in review by ${userId}.`,
+          });
+        }
         return { callId: input.callId, decision: input.decision };
+      }
+
+      if (heldItemId) {
+        // Set before the replay, not after. A replay that fails leaves the item
+        // showing `approved` with no publish — which is exactly the state it is
+        // in, and is otherwise indistinguishable from "nobody has looked at it".
+        await ctx.db.content.markApproved({ id: heldItemId, orgId: ctx.orgId });
       }
 
       const result = await deps.execute({ callId: input.callId, grantedBy: userId, ctx });
@@ -175,4 +205,20 @@ export function makeApprovalDecide(deps: {
       };
     },
   });
+}
+
+/**
+ * The content item a held publish call was about, if it was about one.
+ *
+ * Narrow by design: only `publish.*`, and only from the held input's own
+ * `contentItemId`. `approval.decide` is generic over every tool in the registry
+ * and must not grow a branch per tool — this is the one shape where the content
+ * item's own PRD §7.4 status is a consequence of the decision.
+ */
+function publishedContentItemId(pending: { tool: string; input: unknown }): string | undefined {
+  if (!pending.tool.startsWith('publish.')) return undefined;
+  const input = pending.input;
+  if (!input || typeof input !== 'object') return undefined;
+  const id = (input as { contentItemId?: unknown }).contentItemId;
+  return typeof id === 'string' && id.length > 0 ? id : undefined;
 }

@@ -34,6 +34,10 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       createdAt: new Date(Date.now() - 8 * 86_400_000),
       agentPaused: false,
       postsPerWeek: DEFAULT_POSTS_PER_WEEK,
+      // Same column defaults `schema.ts` carries: every brand has a
+      // strict-mode answer and a zone, and neither may read as "unset".
+      strictMode: false,
+      timezone: 'UTC',
     };
     rows.set(brandId, created);
     return created;
@@ -112,6 +116,42 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       if (patch.permissions !== undefined) {
         if (patch.permissions === null) delete row.permissions;
         else row.permissions = patch.permissions;
+      }
+      return copy({ ...row });
+    },
+
+    /** Mirrors `brandRepository.setGovernance`, including its merge semantics. */
+    async setGovernance({ brandId, orgId, patch }) {
+      const row = upsert(brandId, orgId);
+      if (patch.restrictedTopics !== undefined) {
+        if (patch.restrictedTopics === null) delete row.restrictedTopics;
+        else row.restrictedTopics = patch.restrictedTopics;
+      }
+      if (patch.claimsToAvoid !== undefined) {
+        if (patch.claimsToAvoid === null) delete row.claimsToAvoid;
+        else row.claimsToAvoid = patch.claimsToAvoid;
+      }
+      if (patch.strictMode !== undefined) row.strictMode = patch.strictMode;
+      if (patch.toneVector !== undefined) {
+        if (patch.toneVector === null) delete row.toneVector;
+        else row.toneVector = patch.toneVector;
+      }
+      if (patch.bannedPhrases !== undefined) {
+        if (patch.bannedPhrases === null) delete row.bannedPhrases;
+        else row.bannedPhrases = patch.bannedPhrases;
+      }
+      if (patch.logoUrl !== undefined) {
+        if (patch.logoUrl === null) delete row.logoUrl;
+        else row.logoUrl = patch.logoUrl;
+      }
+      if (patch.brandColors !== undefined) {
+        if (patch.brandColors === null) delete row.brandColors;
+        else row.brandColors = patch.brandColors;
+      }
+      if (patch.timezone !== undefined) row.timezone = patch.timezone;
+      if (patch.postingWindows !== undefined) {
+        if (patch.postingWindows === null) delete row.postingWindows;
+        else row.postingWindows = patch.postingWindows;
       }
       return copy({ ...row });
     },

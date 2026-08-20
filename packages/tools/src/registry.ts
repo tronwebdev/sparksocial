@@ -1,6 +1,6 @@
 import type { ZodTypeAny } from 'zod';
 import type { Autonomy, Effect, Role } from '@sparksocial/shared/types';
-import type { GuardrailId, ToolCtx, ToolDef } from './defineTool.js';
+import type { GuardrailId, PolicySubject, ToolCtx, ToolDef } from './defineTool.js';
 import { toolFamily } from './defineTool.js';
 
 /**
@@ -38,6 +38,7 @@ export interface RegisteredTool {
   scopes: Role[];
   guardrails?: GuardrailId[];
   estimateCents?: (input: unknown) => number;
+  policySubject?: (input: unknown, ctx: ToolCtx) => Promise<PolicySubject>;
   idempotent: boolean;
   surfaces?: string[];
   handler: (input: unknown, ctx: ToolCtx) => Promise<unknown>;

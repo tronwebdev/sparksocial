@@ -95,6 +95,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        publishOrigin: async () => undefined,
+        markNeedsReview: async () => {},
+        markApproved: async () => {},
+        markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
       },
@@ -183,22 +187,38 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+        }),
+        setGovernance: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
@@ -538,5 +558,244 @@ describe('execution, cost and explainability', () => {
     await invokeTool(request({ tool: 'nope.missing' }), h.deps);
 
     expect(emit.mock.calls.map((c) => c[0])).toEqual(['tool.succeeded', 'tool.deny', 'tool.failed']);
+  });
+});
+
+/* ── policySubject: the tool derives the publish context, not the caller ──── */
+
+describe('policySubject — brand platform/content-type restrictions actually fire', () => {
+  /**
+   * The bug this closes: `policy.ts` rule 7 read `subject.platform` and
+   * `subject.contentType` from the *request*, and nothing in the product ever
+   * set them. `approval.policy.set` persisted `restrictedPlatforms`, the settings
+   * panel edited it, `loadBrandGovernance` loaded it — and it was compared
+   * against a field that was always `undefined`. A workspace could switch on
+   * "Instagram requires review", see it saved, and publish to Instagram
+   * unreviewed forever.
+   */
+  const publisher = (subject: () => Promise<{ platform?: string; contentType?: string }>) => ({
+    ...Echo,
+    name: 'publish.now',
+    effect: 'publish' as const,
+    policySubject: subject,
+  });
+
+  it('routes a restricted platform to approval, from the tool own derivation', async () => {
+    register(publisher(async () => ({ platform: 'instagram' })));
+    const { deps } = harness();
+
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedPlatforms: ['instagram'] } }),
+      deps,
+    );
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('brand.restricted_platform');
+    }
+  });
+
+  it('lets an unrestricted platform through', async () => {
+    register(publisher(async () => ({ platform: 'tiktok' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedPlatforms: ['instagram'] } }),
+      deps,
+    );
+    expect(out.status).toBe('succeeded');
+  });
+
+  it('cannot be bypassed by a caller omitting the platform', async () => {
+    // The whole point of moving this off the request. `subject` no longer
+    // carries platform at all, so there is nothing for a caller to leave out.
+    register(publisher(async () => ({ platform: 'instagram' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({
+        tool: 'publish.now',
+        brand: { ...brand, restrictedPlatforms: ['instagram'] },
+        subject: {},
+      }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+  });
+
+  it('routes a restricted content type to approval', async () => {
+    register(publisher(async () => ({ platform: 'tiktok', contentType: 'carousel' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedContentTypes: ['carousel'] } }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('brand.restricted_content_type');
+    }
+  });
+
+  it('fails the call when the derivation throws, rather than publishing unrestricted', async () => {
+    // An unreadable content item is not a reason to skip the restrictions that
+    // item was subject to.
+    register(
+      publisher(async () => {
+        throw new Error('content item is gone');
+      }),
+    );
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'publish.now' }), deps);
+    expect(out.status).toBe('failed');
+  });
+
+  it('still merges caller-supplied guardrail flags, which only ever escalate', async () => {
+    // Containment flags describe the *turn*, not the post, so they stay on the
+    // request — see `InvokeRequest.subject`.
+    register(publisher(async () => ({ platform: 'tiktok' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', subject: { guardrailFlags: ['untrusted_context'] } }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('guardrail.flagged');
+    }
+  });
+});
+
+/* ── Idempotency: the claim closes the concurrency window ─────────────────── */
+
+describe('reserveIdempotent — two concurrent calls do not both take the side effect', () => {
+  /**
+   * `lookupIdempotent` only ever saw keys whose audit row was already written,
+   * and the row is written *after* the handler returns. Two simultaneous
+   * `publish.now` calls with one key therefore both missed the lookup and both
+   * posted; the platform adapter own dedupe was the only thing between that and
+   * a duplicate post on someone feed.
+   */
+  const NonIdempotentPublish = {
+    ...Echo,
+    name: 'publish.now',
+    effect: 'publish' as const,
+    idempotent: false,
+    policySubject: async () => ({}),
+  };
+
+  function claimingHarness() {
+    const claimed = new Set<string>();
+    const { rows, deps } = harness({
+      reserveIdempotent: async (key) => {
+        if (claimed.has(key)) return 'in_flight';
+        claimed.add(key);
+        return 'reserved';
+      },
+      releaseIdempotent: async (key) => void claimed.delete(key),
+    });
+    return { rows, deps, claimed };
+  }
+
+  /** Echo's output shape, so an overridden handler still passes output validation. */
+  const echoed = {
+    copy: 'posted',
+    why: { summary: 'ok', factors: [], evidence: [], alternatives: [] },
+  };
+
+  it('refuses the second caller with IN_FLIGHT instead of running the handler twice', async () => {
+    let ran = 0;
+    register({
+      ...NonIdempotentPublish,
+      handler: async () => {
+        ran += 1;
+        return echoed;
+      },
+    });
+    const { deps } = claimingHarness();
+
+    const first = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k1' }), deps);
+    const second = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k1' }), deps);
+
+    expect(first.status).toBe('succeeded');
+    expect(second.status).toBe('failed');
+    if (second.status === 'failed') expect(second.error.code).toBe('IN_FLIGHT');
+    expect(ran).toBe(1);
+  });
+
+  it('gives the key back after a failure, so a genuine retry can proceed', async () => {
+    let attempts = 0;
+    register({
+      ...NonIdempotentPublish,
+      handler: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error('transport down');
+        return echoed;
+      },
+    });
+    const { deps } = claimingHarness();
+
+    const failed = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k2' }), deps);
+    expect(failed.status).toBe('failed');
+
+    const retried = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k2' }), deps);
+    expect(retried.status).toBe('succeeded');
+    expect(attempts).toBe(2);
+  });
+
+  it('does not burn the key on a gated call, so the approved replay is not a duplicate', async () => {
+    // The claim sits after the gate on purpose: a held call took no side effect.
+    register(NonIdempotentPublish);
+    const { deps, claimed } = claimingHarness();
+
+    const gated = await invokeTool(
+      request({
+        tool: 'publish.now',
+        idempotencyKey: 'k3',
+        brand: { ...brand, approvalMode: 'review_everything' },
+      }),
+      deps,
+    );
+
+    expect(gated.status).toBe('gated');
+    expect(claimed.has('k3')).toBe(false);
+  });
+});
+
+/* ── Cost is recorded even when the handler throws ────────────────────────── */
+
+describe('recordCost on failure', () => {
+  it('bills a spend whose handler reached the vendor and then threw', async () => {
+    // A timeout after a render has started has spent the money regardless of
+    // what we report. Skipping the ledger absorbed that silently — the 50c
+    // avatar-video and 60c dubbing tools being the expensive cases.
+    const billed: ToolCallRecord[] = [];
+    register({
+      ...Echo,
+      name: 'content.generate_avatar_video',
+      estimateCents: () => 50,
+      handler: async () => {
+        throw new Error('vendor timed out after starting the render');
+      },
+    });
+    const { deps } = harness({ recordCost: async (r) => void billed.push(r) });
+
+    const out = await invokeTool(request({ tool: 'content.generate_avatar_video' }), deps);
+
+    expect(out.status).toBe('failed');
+    expect(billed).toHaveLength(1);
+    expect(billed[0]!.costCents).toBe(50);
+  });
+
+  it('bills nothing when there was no estimate to bill', async () => {
+    const billed: ToolCallRecord[] = [];
+    register({
+      ...Echo,
+      name: 'free.thing',
+      handler: async () => {
+        throw new Error('nope');
+      },
+    });
+    const { deps } = harness({ recordCost: async (r) => void billed.push(r) });
+
+    await invokeTool(request({ tool: 'free.thing' }), deps);
+    expect(billed).toHaveLength(0);
   });
 });

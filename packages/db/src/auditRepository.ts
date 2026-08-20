@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import type { InvokeDeps, ToolCallRecord } from '@sparksocial/tools';
 import type { Database } from './client.js';
-import { toolCalls } from './schema.js';
+import { idempotencyReservations, toolCalls } from './schema.js';
 
 /**
  * `tool_calls` backed by Postgres — master plan §5, the P1 acceptance test's
@@ -13,7 +13,9 @@ import { toolCalls } from './schema.js';
  * guardrails package, queue fan-out) that don't belong to "how audit rows are
  * persisted" and are wired in at the application layer, not here.
  */
-export function createAuditRepository(db: Database): Pick<InvokeDeps, 'writeToolCall' | 'lookupIdempotent'> {
+export function createAuditRepository(
+  db: Database,
+): Pick<InvokeDeps, 'writeToolCall' | 'lookupIdempotent' | 'reserveIdempotent' | 'releaseIdempotent'> {
   return {
     async writeToolCall(record) {
       await db.insert(toolCalls).values(toRow(record));
@@ -27,6 +29,29 @@ export function createAuditRepository(db: Database): Pick<InvokeDeps, 'writeTool
         .orderBy(desc(toolCalls.at))
         .limit(1);
       return row ? fromRow(row) : undefined;
+    },
+
+    /**
+     * `ON CONFLICT DO NOTHING` plus "did I get a row back" is the whole
+     * mechanism — one statement, decided by the database, so it holds across
+     * replicas. A returning-nothing insert means somebody else owns the key.
+     *
+     * No expiry on the claim. A process killed mid-handler leaves the key held,
+     * and that is the safe direction to fail for a `publish.now`: a stuck key
+     * blocks one retry a human can see and clear, where a self-expiring one
+     * would eventually re-run a side effect nobody is watching.
+     */
+    async reserveIdempotent(key, tool) {
+      const rows = await db
+        .insert(idempotencyReservations)
+        .values({ key, tool })
+        .onConflictDoNothing({ target: idempotencyReservations.key })
+        .returning({ key: idempotencyReservations.key });
+      return rows.length > 0 ? 'reserved' : 'in_flight';
+    },
+
+    async releaseIdempotent(key) {
+      await db.delete(idempotencyReservations).where(eq(idempotencyReservations.key, key));
     },
   };
 }

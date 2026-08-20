@@ -314,6 +314,35 @@ export interface BrandGovernance {
   quietWindows?: Array<{ from: Date; to: Date; reason: string }>;
   /** Permission toggles PRD §6 names — `spendCredits`/`automationAutoPublish`. */
   permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean };
+
+  /**
+   * ── The brand's own governance (PRD §8.2 ONB-03, §8.12, §9) ───────────────
+   *
+   * Distinct from the approval ladder above, which is about *who signs off*.
+   * This is about *what the brand will not say* — and it did not exist in any
+   * layer of this system until now, which left §9's whole guardrail-enforcement
+   * section with nothing to enforce. See `brands` in `schema.ts`.
+   */
+  /** Subjects SPARK may not post about. Flag under normal mode, block under strict. */
+  restrictedTopics?: string[];
+  /** Assertions this brand does not make. Same soft/hard escalation as topics. */
+  claimsToAvoid?: string[];
+  /** §9's strict compliance mode: a restricted topic or claim blocks rather than flags. */
+  strictMode: boolean;
+  /** ONB-03's voice sliders. Overrides the genome's inferred `tone_vector` where set. */
+  toneVector?: { formal: number; playful: number; technical: number; bold: number };
+  /** Words never to use, checked verbatim by `guard.brand_voice`. */
+  bannedPhrases?: string[];
+  logoUrl?: string;
+  brandColors?: string[];
+
+  /**
+   * ── Scheduling (PRD §8.2 required, §8.7 a Calendar input) ─────────────────
+   */
+  /** IANA zone name. Defaults to `UTC` so every brand has a defined one. */
+  timezone: string;
+  /** Local hours-of-day posts are placed into. Empty falls back to `DEFAULT_POSTING_WINDOWS`. */
+  postingWindows?: number[];
 }
 
 /**
@@ -368,6 +397,37 @@ export interface BrandGovernanceStore {
       restrictedContentTypes?: string[] | null;
       quietWindows?: Array<{ from: Date; to: Date; reason: string }> | null;
       permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean } | null;
+    };
+  }): Promise<BrandGovernance>;
+
+  /**
+   * `brand.governance.set` — the brand's own rules: voice, restricted topics,
+   * claims to avoid, strict mode, brand kit, timezone, posting windows.
+   *
+   * Kept separate from {@link setPolicy} rather than folded into it, because the
+   * two answer different questions and are edited by different people at
+   * different times. `setPolicy` is "who has to sign this off" and is an
+   * operator's setting; this is "what may we say and when do we say it", is
+   * captured in onboarding, and is the brand's own statement about itself.
+   * Merging them would mean one screen owning both, and a partial patch from
+   * either able to clear the other's fields.
+   *
+   * Same merge semantics as `setPolicy`: `undefined` leaves a field alone,
+   * `null` clears it.
+   */
+  setGovernance(args: {
+    brandId: string;
+    orgId: string;
+    patch: {
+      restrictedTopics?: string[] | null;
+      claimsToAvoid?: string[] | null;
+      strictMode?: boolean;
+      toneVector?: { formal: number; playful: number; technical: number; bold: number } | null;
+      bannedPhrases?: string[] | null;
+      logoUrl?: string | null;
+      brandColors?: string[] | null;
+      timezone?: string;
+      postingWindows?: number[] | null;
     };
   }): Promise<BrandGovernance>;
 }
@@ -558,6 +618,25 @@ export interface ContentStore {
     copy: unknown;
     why: Explanation;
     campaignId?: string;
+    /**
+     * The recipe that produced this, when one did — `policy.ts` rule 7's
+     * automation branch reads it back through `publishOrigin`. Without it a
+     * recipe's output was indistinguishable from a person's once it became a
+     * content item, so "automation auto-publish is disabled" could not be
+     * enforced against the only thing it was about.
+     */
+    recipeId?: string;
+    /** The brief, for a row whose copy will be written later (by the scheduler). */
+    intent?: string;
+    /**
+     * Create it already scheduled.
+     *
+     * A recipe that publishes unattended has to be able to put a post on the
+     * calendar without a human opening the Draft Panel first. The copy is
+     * written by the scheduler when the slot comes due — same path a campaign
+     * slot takes.
+     */
+    scheduledAt?: Date;
   }): Promise<ContentDraft>;
 
   get(id: string, genomeId: string, orgId: string): Promise<ContentDraft | undefined>;
@@ -636,6 +715,75 @@ export interface ContentStore {
    * *why* it stalled, via `reason`, not just that it's editable again).
    */
   markBlocked(args: { id: string; orgId: string; reason: string }): Promise<void>;
+
+  /**
+   * Where this item came from, for `policy.ts` rule 7's automation branch —
+   * `publish.now`'s `policySubject` reads it before the handler runs.
+   *
+   * Deliberately narrow: it answers "was this a recipe's doing, and did that
+   * recipe ask for review" and nothing else. A wider "get the item" would
+   * tempt the policy layer into deciding things from content it has no
+   * business reading. `undefined` when the item does not exist — which
+   * `policySubject` treats as "not automation" rather than as fatal, since
+   * `publish.now`'s own handler will fail on the missing row a moment later
+   * with a better message than the policy engine could give.
+   */
+  publishOrigin(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+  }): Promise<{ recipeId?: string; reviewBeforePublish: boolean } | undefined>;
+
+  /**
+   * ── PRD §7.4's two missing states ────────────────────────────────────────
+   *
+   * *"Unified statuses across content: Draft → Needs Review → Approved →
+   * Scheduled → Published. Failed / Blocked."*
+   *
+   * `content_items.status` only ever held `draft`, `scheduled`, `published`,
+   * `failed` or `blocked`. `needs_review` existed solely as an *engagement*
+   * category and `approved` only on approval and recipe-output rows, so a post
+   * held by the approval ladder stayed `scheduled` while a `tool_calls` row sat
+   * at `gated` — the Review queue was assembled from audit rows and the content
+   * item itself had no idea it was waiting on anyone.
+   *
+   * Two things followed. §8.7's "filters by status" could not offer a Needs
+   * Review filter, because no item was ever in that state. And a held item
+   * stayed `scheduled`, so `findDue` re-selected it on every tick and re-held
+   * it, forever.
+   */
+
+  /**
+   * A publish was held for a human. Sets `status: 'needs_review'` and records
+   * why, so the calendar can say what is waiting and on what rule.
+   *
+   * Deliberately takes the item *out* of `scheduled`: it is no longer due, it is
+   * pending a decision, and re-attempting it every minute until somebody
+   * notices is not the same thing as waiting for them.
+   */
+  markNeedsReview(args: { id: string; orgId: string; reason: string }): Promise<void>;
+
+  /**
+   * A human approved it. Sets `status: 'approved'`.
+   *
+   * Usually momentary — `approval.decide` replays the held call straight away
+   * and a successful replay moves it to `published` within the same request. It
+   * persists exactly when it matters most: when the replay *failed*, so the
+   * calendar shows "a person approved this and it still did not go out", which
+   * is otherwise indistinguishable from "nobody has looked at it".
+   */
+  markApproved(args: { id: string; orgId: string }): Promise<void>;
+
+  /**
+   * A reviewer said no. Returns the item to `draft` with the reason recorded.
+   *
+   * `draft`, not a `rejected` state of its own: PRD §7.4's ladder has no such
+   * rung, and the honest description of a post a reviewer turned down is that it
+   * is editable again. A terminal `rejected` would make the ordinary next
+   * action — fix the copy and resubmit — impossible without a second tool to
+   * undo it.
+   */
+  markRejected(args: { id: string; orgId: string; reason: string }): Promise<void>;
 
   /** Write side of `compose.render` — one row per aspect ratio rendered. */
   recordRender(args: {
@@ -985,6 +1133,12 @@ export interface CampaignRecord {
    */
   targetCount?: number;
   targetLabel?: string;
+  /**
+   * `CMP-01.4`'s connected-account selection. Empty or absent means "wherever
+   * each chosen format is meant for" — see `campaigns.platforms` in `schema.ts`
+   * on the scheduler fallback this replaces.
+   */
+  platforms?: string[];
 }
 
 export interface CampaignSlotInput {
@@ -992,6 +1146,16 @@ export interface CampaignSlotInput {
   mode: string;
   pillar: string;
   scheduledAt: Date;
+  /**
+   * Which account this slot posts to.
+   *
+   * Written at placement time from the campaign's own `platforms`, rather than
+   * left for the scheduler to guess from the playbook. `content_items.platform`
+   * existed and nothing ever populated it, which is the entire reason
+   * `apps/api/src/scheduler.ts` carried a *"falling back to the playbook's first
+   * declared platform"* branch.
+   */
+  platform?: string;
 }
 
 /**
@@ -1013,6 +1177,7 @@ export interface CampaignStore {
     plan: unknown;
     targetCount?: number;
     targetLabel?: string;
+    platforms?: string[];
   }): Promise<{ id: string }>;
   /** Undefined rather than throwing when out of scope. */
   get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
@@ -1152,6 +1317,8 @@ export interface AssetFolderRecord {
   genomeId: string;
   name: string;
   createdAt: Date;
+  /** How many assets are in it — `LIB-01`'s folder list shows this. Zero for a new folder. */
+  assetCount: number;
 }
 
 export interface AssetFolderStore {
@@ -1309,11 +1476,47 @@ export interface RunDetail extends RunSummary {
 export type GuardrailId =
   | 'claim_grounding'
   | 'compliance_profile'
+  /** PRD §9's restricted topics and claims-to-avoid — see `guardrails/src/restrictedTopics.ts`. */
+  | 'restricted_topics'
   | 'brand_voice'
   | 'avatar_saturation'
   | 'duplicate'
   | 'platform_policy'
   | 'rights';
+
+/* ── The publish context the policy engine reads ────────────────────── */
+
+/**
+ * What `policy.ts` rule 7 needs to know about *this* publish, beyond the tool
+ * and the brand: which platform, what kind of content, and whether it came out
+ * of an automation recipe.
+ *
+ * ── Why the tool derives this and the caller does not ──────────────────────
+ *
+ * These four fields were read by the policy engine from `InvokeRequest.subject`
+ * from the day rule 7 was written, and nothing ever set them. The write side
+ * was complete — `approval.policy.set` persists `restrictedPlatforms`, the
+ * settings panel edits it, `loadBrandGovernance` loads it — so a workspace
+ * could switch on "Instagram requires review", see it saved, and publish to
+ * Instagram unreviewed forever.
+ *
+ * The obvious repair is to have the caller pass `subject`, and it is the wrong
+ * one: every rule here *adds* a restriction, so a caller that omits the field
+ * is a caller that escapes the restriction. "Restrict autopublish on Instagram"
+ * has to mean the restriction holds for a caller that would rather it did not.
+ *
+ * So the tool declares how its own input maps to this shape, and `invoke.ts`
+ * computes it from *validated input* after the tool has been resolved. There is
+ * no request field to omit. `guardrailFlags` stays on the request — flags
+ * describe the invocation's context (untrusted content in the turn) rather than
+ * the post, and can only ever escalate.
+ */
+export interface PolicySubject {
+  platform?: string;
+  contentType?: string;
+  isAutomationOutput?: boolean;
+  reviewBeforePublish?: boolean;
+}
 
 /* ── The contract ──────────────────────────────────────────────────── */
 
@@ -1343,6 +1546,19 @@ export interface ToolDef<I extends ZodTypeAny = ZodTypeAny, O extends ZodTypeAny
   /** Pre-flight cost estimate in cents, checked against remaining budget. */
   estimateCents?: (input: z.infer<I>) => number;
 
+  /**
+   * The publish context `policy.ts` rule 7 evaluates against brand governance —
+   * see {@link PolicySubject} on why this belongs to the tool and not the caller.
+   *
+   * Required (by `defineTool`'s own check) on every `effect: 'publish'` tool, so
+   * that adding a new publish path cannot silently opt out of platform and
+   * content-type restrictions. Async and given `ctx` because some of it is a
+   * fact about a stored row rather than about the input — whether a content item
+   * came from a recipe, and whether that recipe asked for review — and rule 7
+   * has to know before the handler runs.
+   */
+  policySubject?: (input: z.infer<I>, ctx: ToolCtx) => Promise<PolicySubject>;
+
   /** When false, callers must supply an idempotency key. */
   idempotent: boolean;
 
@@ -1363,6 +1579,16 @@ export const defineTool = <I extends ZodTypeAny, O extends ZodTypeAny>(
   }
   if ((def.effect === 'spend') && !def.estimateCents) {
     throw new Error(`"${def.name}": spend tools must provide estimateCents`);
+  }
+  /* Rule 7's restrictions are only as good as the weakest publish tool. Making
+   * this a boot-time failure rather than a review-time convention is what stops
+   * the next publish path from quietly reintroducing the gap `PolicySubject`
+   * documents. */
+  if (def.effect === 'publish' && !def.policySubject) {
+    throw new Error(
+      `"${def.name}": publish tools must provide policySubject, or brand platform/content-type ` +
+        `restrictions cannot be enforced against them (see PolicySubject in defineTool.ts)`,
+    );
   }
   return def;
 };

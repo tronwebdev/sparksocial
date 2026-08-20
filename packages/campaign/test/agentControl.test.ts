@@ -21,6 +21,8 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     agentPaused: false,
     postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
     ...initial,
   };
   return {
@@ -30,10 +32,17 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     setAgentPaused: async ({ paused, by, reason }) => {
       row = paused
         ? { ...row, agentPaused: true, pausedAt: new Date(), pausedBy: by, ...(reason ? { pauseReason: reason } : {}) }
-        : { brandId: row.brandId, name: row.name, approvalMode: row.approvalMode, createdAt: row.createdAt, agentPaused: false, postsPerWeek: row.postsPerWeek };
+        // Spread the existing row and drop the pause fields, rather than
+        // rebuilding a literal — a hand-listed literal silently omits every
+        // field added to `BrandGovernance` after it was written.
+        : (() => {
+            const { pausedAt: _a, pausedBy: _b, pauseReason: _c, ...rest } = row;
+            return { ...rest, agentPaused: false };
+          })();
       return row;
     },
     setPolicy: async () => row,
+    setGovernance: async () => row,
   };
 }
 
