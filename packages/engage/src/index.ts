@@ -5,6 +5,7 @@ export * from './eligibility.js';
 export * from './list.js';
 export * from './replyWriter.js';
 export * from './replySender.js';
+export * from './replyGuard.js';
 export * from './replyDraft.js';
 export * from './replySend.js';
 export * from './autohandle.js';

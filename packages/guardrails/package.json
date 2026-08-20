@@ -6,6 +6,8 @@
   "main": "./src/index.ts",
   "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
   "dependencies": {
+    "@sparksocial/engage": "*",
+    "@sparksocial/generate": "*",
     "@sparksocial/playbooks": "*",
     "@sparksocial/shared": "*",
     "@sparksocial/tools": "*",

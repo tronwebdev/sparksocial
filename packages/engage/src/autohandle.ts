@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError, Explanation } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
+import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
 
 /**
  * `engage.autohandle` — SPARK sending a reply with nobody in the loop.
@@ -34,6 +35,29 @@ import type { ReplySender } from './replySender.js';
  * row. Requires an idempotency key at the `invoke.ts` layer.
  */
 
+/**
+ * The publish context `policy.ts` rule 7 evaluates for an outbound reply — see
+ * `PolicySubject` in `defineTool.ts` on why the tool derives this.
+ *
+ * Rule 6 already gates the whole `engage.*` publish family on eligibility and
+ * autonomy configuration, and it runs first. This adds the platform and content
+ * type on top, so that "Instagram requires review" covers what SPARK *says* on
+ * Instagram and not only what it posts there. `contentType` is
+ * `engagement_reply` rather than a media type: a workspace that wants replies
+ * reviewed while posts flow freely (or the reverse) needs to be able to name
+ * them separately, and nothing else in the system produces that string.
+ */
+async function replyPolicySubject(
+  input: { messageId: string; genomeId: string },
+  ctx: ToolCtx,
+): Promise<PolicySubject> {
+  const message = await ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId);
+  return {
+    ...(message?.platform ? { platform: message.platform } : {}),
+    contentType: 'engagement_reply',
+  };
+}
+
 export const EngageAutohandleInput = z.object({
   genomeId: z.string().min(1),
   messageId: z.string().min(1),
@@ -50,6 +74,13 @@ export const EngageAutohandleOutput = z.object({
 
 export interface EngageAutohandleDeps {
   sender: ReplySender;
+  /**
+   * Checks the reply before it goes out unattended — see `replyGuard.ts`. This
+   * tool sent model-written text with nobody in the loop and no check of any
+   * kind on it, which is the half of the prompt-injection story that fencing
+   * the prompt does not close.
+   */
+  guard?: ReplyGuard;
 }
 
 export function makeEngageAutohandle(deps: EngageAutohandleDeps) {
@@ -66,6 +97,7 @@ export function makeEngageAutohandle(deps: EngageAutohandleDeps) {
     output: EngageAutohandleOutput,
 
     effect: 'publish',
+    policySubject: replyPolicySubject,
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
@@ -97,6 +129,22 @@ export function makeEngageAutohandle(deps: EngageAutohandleDeps) {
           { messageId: message.id },
         );
       }
+
+      /**
+       * Nobody will read this before the audience does, so a *flag* is fatal
+       * here — see `enforceReplyGuard`. The message stays in the inbox needing
+       * review rather than going out unseen.
+       */
+      await enforceReplyGuard(
+        deps.guard,
+        {
+          genomeId: input.genomeId,
+          platform: message.platform,
+          text: message.suggestedReply,
+          unattended: true,
+        },
+        ctx,
+      );
 
       const receipt = await deps.sender.send({
         platform: message.platform,

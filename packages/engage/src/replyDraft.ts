@@ -55,6 +55,9 @@ export function makeEngageReplyDraft(deps: EngageReplyDraftDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
+    // One Claude call per drafted reply. `effect: 'read'` describes its lack of
+    // outward side effect, not its lack of cost.
+    estimateCents: () => 1,
 
     async handler(input, ctx) {
       // Same check every other `engage.*` tool makes: whoever built this ctx

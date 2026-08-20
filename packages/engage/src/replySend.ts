@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError, Explanation } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
+import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
 
 /**
  * `engage.reply.send` — the second half of the "approve & send" loop
@@ -31,6 +32,29 @@ import type { ReplySender } from './replySender.js';
  * message for the same reason `publish.now` keys on `contentItemId:platform`.
  */
 
+/**
+ * The publish context `policy.ts` rule 7 evaluates for an outbound reply — see
+ * `PolicySubject` in `defineTool.ts` on why the tool derives this.
+ *
+ * Rule 6 already gates the whole `engage.*` publish family on eligibility and
+ * autonomy configuration, and it runs first. This adds the platform and content
+ * type on top, so that "Instagram requires review" covers what SPARK *says* on
+ * Instagram and not only what it posts there. `contentType` is
+ * `engagement_reply` rather than a media type: a workspace that wants replies
+ * reviewed while posts flow freely (or the reverse) needs to be able to name
+ * them separately, and nothing else in the system produces that string.
+ */
+async function replyPolicySubject(
+  input: { messageId: string; genomeId: string },
+  ctx: ToolCtx,
+): Promise<PolicySubject> {
+  const message = await ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId);
+  return {
+    ...(message?.platform ? { platform: message.platform } : {}),
+    contentType: 'engagement_reply',
+  };
+}
+
 export const EngageReplySendInput = z.object({
   genomeId: z.string().min(1),
   messageId: z.string().min(1),
@@ -49,6 +73,12 @@ export const EngageReplySendOutput = z.object({
 
 export interface EngageReplySendDeps {
   sender: ReplySender;
+  /**
+   * Checks the reply before it goes out — see `replyGuard.ts`. A person has read
+   * these words, so only a hard *block* stops them; a flag is noise they have
+   * already judged.
+   */
+  guard?: ReplyGuard;
 }
 
 export function makeEngageReplySend(deps: EngageReplySendDeps) {
@@ -64,6 +94,7 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
     output: EngageReplySendOutput,
 
     effect: 'publish',
+    policySubject: replyPolicySubject,
     autonomy: 'confirm',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
@@ -80,6 +111,15 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
       if (!message) {
         throw new ToolError('NOT_FOUND', 'No inbox message with that id in this genome.');
       }
+
+      // A human is sending words they can see, so only a block stops this —
+      // see `enforceReplyGuard` on why `unattended` is the whole difference
+      // between this call site and `engage.autohandle`'s.
+      await enforceReplyGuard(
+        deps.guard,
+        { genomeId: input.genomeId, platform: message.platform, text: input.text, unattended: false },
+        ctx,
+      );
 
       const receipt = await deps.sender.send({
         platform: message.platform,
