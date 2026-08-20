@@ -61,6 +61,12 @@ export function makeKnowledgeIngestSite(deps: KnowledgeIngestSiteDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
+    /**
+     * A real browser crawl plus one embedding per page. Modelled on
+     * `genome.bootstrap_from_url`'s own estimate, which charges per page for
+     * exactly the same work — this tool did the same crawling and recorded 0¢.
+     */
+    estimateCents: (i) => 1 + i.maxPages,
 
     async handler(input, ctx) {
       const result = await crawl(input.url, { maxPages: input.maxPages });
@@ -145,6 +151,8 @@ export function makeKnowledgeIngestDocs(deps: KnowledgeIngestDocsDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
+    /** One embedding per document. */
+    estimateCents: (i) => Math.max(1, i.docs.length),
 
     async handler(input, ctx) {
       const results: z.infer<typeof DocResult>[] = [];

@@ -43,6 +43,17 @@ const RetrievedAsset = z.object({
   lastUsedAt: z.string().nullable(),
   rightsStatus: z.string(),
   folderId: z.string().nullable(),
+  /**
+   * Where the file actually is, and what kind it is.
+   *
+   * Both come back from the scoped query already (`ScopedDb.assets.retrieve`)
+   * and were dropped by this schema, so every screen reading retrieval got a
+   * list of assets it could describe and not show. `LIB-02`'s grid view is the
+   * case that made it obvious: a media library whose thumbnails cannot be
+   * rendered is a table with extra steps.
+   */
+  url: z.string(),
+  mediaType: z.string(),
 });
 
 export const AssetRetrieveOutput = z.object({
@@ -76,6 +87,10 @@ export function makeAssetRetrieve(deps: EmbedClient) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
+    // One embedding call to turn the query into a vector. Cheap individually;
+    // this is the most-called tool in the product, which is exactly why it
+    // should not be invisible in the ledger.
+    estimateCents: () => 1,
     surfaces: ['LIB-01'],
 
     async handler(input, ctx) {
@@ -101,6 +116,8 @@ export function makeAssetRetrieve(deps: EmbedClient) {
           lastUsedAt: r.lastUsedAt ? r.lastUsedAt.toISOString() : null,
           rightsStatus: r.rightsStatus,
           folderId: r.folderId,
+          url: r.url,
+          mediaType: r.mediaType,
         })),
         why: {
           summary:

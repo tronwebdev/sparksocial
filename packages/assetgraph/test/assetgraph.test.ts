@@ -57,6 +57,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        publishOrigin: async () => undefined,
+        markNeedsReview: async () => {},
+        markApproved: async () => {},
+        markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
       },
@@ -145,22 +149,38 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+        }),
+        setGovernance: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
@@ -514,9 +534,12 @@ describe('asset.cooldown.check', () => {
   });
 });
 
+/** Fixed so `LIB-01`'s created-date assertion is exact rather than time-dependent. */
+const FOLDER_CREATED = new Date('2026-08-01T10:00:00.000Z');
+
 describe('asset.folder.create', () => {
   it('creates a folder and returns its id', async () => {
-    const create = vi.fn(async () => ({ id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() }));
+    const create = vi.fn(async () => ({ id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date(), assetCount: 0 }));
     const out = await assetFolderCreate.handler(
       { genomeId: 'gen_1', name: 'B-roll' },
       ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, create } } }),
@@ -529,18 +552,20 @@ describe('asset.folder.create', () => {
 describe('asset.folder.list', () => {
   it('lists this genome’s folders', async () => {
     const list = vi.fn(async () => [
-      { id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() },
-      { id: 'folder_2', genomeId: 'gen_1', name: 'Testimonials', createdAt: new Date() },
+      { id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: FOLDER_CREATED, assetCount: 4 },
+      { id: 'folder_2', genomeId: 'gen_1', name: 'Testimonials', createdAt: FOLDER_CREATED, assetCount: 0 },
     ]);
     const out = await assetFolderList.handler(
       { genomeId: 'gen_1' },
       ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, list } } }),
     );
     expect(list).toHaveBeenCalledWith('gen_1', 'org_1');
+    // `LIB-01` shows a created date and an item count per folder. Both were
+    // computed by the query and dropped by the tool's output schema.
     expect(out).toEqual({
       folders: [
-        { folderId: 'folder_1', name: 'B-roll' },
-        { folderId: 'folder_2', name: 'Testimonials' },
+        { folderId: 'folder_1', name: 'B-roll', createdAt: FOLDER_CREATED.toISOString(), assetCount: 4 },
+        { folderId: 'folder_2', name: 'Testimonials', createdAt: FOLDER_CREATED.toISOString(), assetCount: 0 },
       ],
     });
   });

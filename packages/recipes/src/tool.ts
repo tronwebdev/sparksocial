@@ -2,7 +2,25 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import type { TrendSource } from '@sparksocial/trends';
-import { AutoTrendConfig, BulkConnectorConfig, RssConfig, runRecipe, type RecipeRunContext } from './runners.js';
+import { byId } from '@sparksocial/playbooks';
+import {
+  AutoTrendConfig,
+  BulkConnectorConfig,
+  RssConfig,
+  requiresReview,
+  runRecipe,
+  withinRunWindow,
+  type RecipeRunContext,
+} from './runners.js';
+
+/**
+ * Gap between two posts a single recipe run schedules.
+ *
+ * Not zero. A run producing five outputs would otherwise queue five publishes on
+ * one instant — the pattern rate limiters punish and an audience reads as a bot,
+ * which is the same reason `postingSlotAt` staggers campaign slots sharing a day.
+ */
+const RECIPE_STAGGER_MS = 11 * 60_000;
 
 /**
  * `recipe.*` — Automation Recipes, plan §12 P5 (`AUTO-01`→`AUTO-04.4`).
@@ -207,8 +225,8 @@ export function makeRecipeRun(deps: RecipeDeps) {
     name: 'recipe.run',
     version: 1,
 
-    summary: 'Run a recipe right now instead of waiting for its schedule. Writes proposed output to the ' +
-      "queue for review — never publishes, never creates a draft by itself.",
+    summary: 'Run a recipe right now instead of waiting for its schedule. Outputs go to the review queue, ' +
+      'or straight onto the calendar when the recipe has review-before-publish switched off.',
 
     input: z.object({ id: z.string().min(1), genomeId: z.string().min(1) }),
     output: RecipeRunOutput,
@@ -246,7 +264,86 @@ export function makeRecipeRun(deps: RecipeDeps) {
         },
       };
 
+      /**
+       * PRD §8.10's start/end options. A recipe outside its window produces
+       * nothing and says why, rather than silently running or silently not.
+       */
+      const window = withinRunWindow(recipe.config, new Date());
+      if (!window.ok) {
+        return {
+          runId: '',
+          outputCount: 0,
+          error: window.reason,
+          why: {
+            summary: window.reason,
+            factors: [{ label: 'kind', detail: recipe.kind }],
+            evidence: [],
+            alternatives: [],
+          },
+        };
+      }
+
       const { outputs, error } = await runRecipe(recipe.kind, recipe.config, runCtx);
+
+      /**
+       * ── Recipes publish now, which is the whole point of a recipe ──────────
+       *
+       * Every output landed `pending_review` unconditionally, and this tool's
+       * own summary said so: *"never publishes, never creates a draft by
+       * itself."* PRD §8.10 specifies the opposite default — *"publish
+       * automatically if approvals are OFF and content not flagged"* — with a
+       * per-recipe "review before publish" checkbox as the opt-in, and §5's
+       * Goal 4 is "set-and-forget autopublishing". What existed was a proposal
+       * queue wearing an automation label.
+       *
+       * With review off, each output becomes a real scheduled `content_items`
+       * row carrying the recipe's id. That id is what `policy.ts` rule 7 reads
+       * back (via `publish.now`'s `policySubject`), so an unattended recipe post
+       * is still subject to the workspace's approval mode, its restricted
+       * platforms, its quiet windows and the `automationAutoPublish` permission.
+       * "Autopublish" here means the *recipe* asks no further permission — not
+       * that the brand's governance stops applying.
+       *
+       * The copy is deliberately not written here. The slot carries the intent
+       * and the scheduler drafts it when it comes due — the same path a campaign
+       * slot takes, so there is one drafting path rather than two that can
+       * disagree about the same playbook.
+       */
+      const needsReview = requiresReview(recipe.config);
+      const scheduled: string[] = [];
+
+      if (!needsReview && outputs.length) {
+        const startAt = new Date();
+        for (const [i, output] of outputs.entries()) {
+          if (!output.playbookId) continue; // nothing to schedule without a format
+          const playbook = byId(output.playbookId);
+          if (!playbook) continue;
+          const item = await ctx.db.content.createDraft({
+            genomeId: input.genomeId,
+            orgId: ctx.orgId,
+            playbookId: output.playbookId,
+            mode: playbook.mode === 'direct_finish' ? 'direct_finish' : playbook.mode,
+            pillar: playbook.content_pillar,
+            copy: [],
+            why: {
+              summary: `${recipe.name} proposed this from ${output.sourceUrl ?? output.title}.`,
+              factors: [
+                { label: 'recipe', detail: recipe.name },
+                { label: 'kind', detail: recipe.kind },
+              ],
+              evidence: [],
+              alternatives: [],
+            },
+            recipeId: recipe.id,
+            intent: output.intent,
+            // Staggered so a run producing five posts does not queue five
+            // simultaneous publishes — `postingSlotAt` does this for campaign
+            // slots and the same reasoning applies here.
+            scheduledAt: new Date(startAt.getTime() + i * RECIPE_STAGGER_MS),
+          });
+          scheduled.push(item.id);
+        }
+      }
 
       const { runId } = await ctx.db.recipes.recordRun({
         genomeId: input.genomeId,
@@ -268,9 +365,11 @@ export function makeRecipeRun(deps: RecipeDeps) {
         why: {
           summary: error
             ? `${recipe.name} failed: ${error}`
-            : outputs.length
-              ? `${recipe.name} produced ${outputs.length} item${outputs.length === 1 ? '' : 's'} for review.`
-              : `${recipe.name} ran but found nothing new.`,
+            : scheduled.length
+              ? `${recipe.name} scheduled ${scheduled.length} post${scheduled.length === 1 ? '' : 's'} to publish.`
+              : outputs.length
+                ? `${recipe.name} produced ${outputs.length} item${outputs.length === 1 ? '' : 's'} for review.`
+                : `${recipe.name} ran but found nothing new.`,
           factors: [{ label: 'kind', detail: recipe.kind }],
           evidence: [],
           alternatives: [],

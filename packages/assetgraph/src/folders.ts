@@ -41,10 +41,23 @@ export const assetFolderList = defineTool({
   name: 'asset.folder.list',
   version: 1,
 
-  summary: "This genome's asset folders, for a folder picker — `db.assetFolders.list` has existed since `asset.folder.create` was built but nothing exposed it as a tool.",
+  summary:
+    "This genome's asset folders, with when each was made and how much is in it — the folder picker and " +
+    "LIB-01's folder list read the same call.",
 
   input: AssetFolderListInput,
-  output: z.object({ folders: z.array(z.object({ folderId: z.string(), name: z.string() })) }),
+  output: z.object({
+    folders: z.array(
+      z.object({
+        folderId: z.string(),
+        name: z.string(),
+        // `LIB-01` asks the folder list for both. They were computed by the
+        // query and dropped by this schema, so the screen had nothing to show.
+        createdAt: z.string(),
+        assetCount: z.number().int(),
+      }),
+    ),
+  }),
 
   effect: 'read',
   autonomy: 'auto',
@@ -53,7 +66,14 @@ export const assetFolderList = defineTool({
 
   async handler(input, ctx) {
     const folders = await ctx.db.assetFolders.list(input.genomeId, ctx.orgId);
-    return { folders: folders.map((f) => ({ folderId: f.id, name: f.name })) };
+    return {
+      folders: folders.map((f) => ({
+        folderId: f.id,
+        name: f.name,
+        createdAt: f.createdAt.toISOString(),
+        assetCount: f.assetCount,
+      })),
+    };
   },
 });
 

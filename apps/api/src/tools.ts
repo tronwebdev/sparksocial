@@ -39,7 +39,7 @@ import {
   makeWhatsappSend,
   makeWhatsappReceive,
 } from '@sparksocial/capture';
-import { makeEvaluateDraft } from '@sparksocial/guardrails';
+import { createDraftGuard, createReplyGuard, makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
 import { makeAssemblePlan } from '@sparksocial/assemble';
 import { makeComposeRender, makeComposeStatic, makeComposeFanout } from '@sparksocial/compose';
@@ -94,6 +94,8 @@ import {
   makeOrgCreditsGrant,
   brandCreate,
   brandSettingsPatch,
+  brandGovernanceGet,
+  brandGovernanceSet,
   makeBrandKnowledgeAttach,
   brandExport,
   brandImport,
@@ -323,7 +325,12 @@ export function registerAlphaTools(): void {
   // ANTHROPIC_API_KEY, which the boot guard already requires for genome
   // inference. The image half is genuinely optional — see image-client.ts on
   // why there is no fake fallback for pixels, only "not registered".
-  register(makeContentDraft({ text: textWriter(devTextWriter()), embed }));
+  // PRD §8.6's draft-time governance verdict. Guardrails ran only at
+  // `publish.now` — the strongest place to enforce them, and the worst place to
+  // learn about them: a month of drafts looked fine on the calendar and then
+  // failed one at a time on the way out. `createDraftGuard` runs the same eight
+  // checks `publish.now` declares, so an earlier pass means something.
+  register(makeContentDraft({ text: textWriter(devTextWriter()), embed, guard: createDraftGuard(embed) }));
   // Both reuse content.draft's own plan-then-write pipeline — see
   // packages/generate/src/variants.ts's own comment.
   register(makeDraftVariants({ text: textWriter(devTextWriter()), embed }));
@@ -531,13 +538,21 @@ export function registerAlphaTools(): void {
   // sender; `.escalate`/`.takeover`/`.opportunity.*`/`.audit.query` need no
   // vendor at all — see each tool's own file for why.
   const replySender = createStubReplySender();
+  /**
+   * Guardrails on an outbound reply — the second half of the prompt-injection
+   * fix (`packages/engage/src/replyGuard.ts`). Fencing the classifier and
+   * reply-writer prompts stops most injected text from being obeyed; this stops
+   * whatever gets through from reaching someone's inbox. `engage.autohandle`
+   * previously sent model-written text unattended with no check of any kind.
+   */
+  const replyGuardImpl = createReplyGuard();
   register(engageIngest);
   register(makeEngageClassify({ classifier: engageClassifier(devEngageClassifier()) }));
   register(engageEligibilityCheck);
   register(engageList);
   register(makeEngageReplyDraft({ writer: replyWriter(devReplyWriter()) }));
-  register(makeEngageReplySend({ sender: replySender }));
-  register(makeEngageAutohandle({ sender: replySender }));
+  register(makeEngageReplySend({ sender: replySender, guard: replyGuardImpl }));
+  register(makeEngageAutohandle({ sender: replySender, guard: replyGuardImpl }));
   register(engageEscalate);
   register(engageTakeover);
   register(engageOpportunityCreate);
@@ -702,6 +717,13 @@ export function registerAgencyTools(deps: {
 
   register(brandCreate);
   register(brandSettingsPatch);
+  // PRD §8.2 ONB-03 / §8.12 SET-WS-01 / §9 — restricted topics, claims to
+  // avoid, strict mode, voice sliders, brand kit, timezone, posting windows.
+  // None of this existed in any layer before now, which left §9's whole
+  // guardrail-enforcement section with nothing to enforce and every post
+  // firing at the instant its campaign happened to be created.
+  register(brandGovernanceGet);
+  register(brandGovernanceSet);
   register(makeBrandKnowledgeAttach(embedClient()));
   register(brandExport);
   register(brandImport);
