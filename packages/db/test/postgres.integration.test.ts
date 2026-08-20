@@ -528,7 +528,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
       comments: 1,
       shares: 0,
       views: 100,
-      impressions: 150,
+      impressions: 150, saves: 150,
       raw: { pass: 1 },
     });
 
@@ -541,7 +541,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
       comments: 4,
       shares: 2,
       views: 300,
-      impressions: 400,
+      impressions: 400, saves: 400,
       raw: { pass: 2 },
     });
 
@@ -561,11 +561,11 @@ describe('content_metrics — analytics.sync (P4)', () => {
 
     await analytics.record({
       genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'instagram',
-      likes: 1, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 1, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
     await analytics.record({
       genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'tiktok',
-      likes: 2, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 2, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
 
     const rows = await getContentMetrics(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_A' }, contentItemId);
@@ -578,7 +578,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
 
     await analytics.record({
       genomeId: 'gen_shared', orgId: 'org_tenant_A', contentItemId, platform: 'instagram',
-      likes: 99, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 99, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
 
     const rows = await getContentMetrics(db, { orgId: 'org_tenant_B', brandId: 'org_tenant_B', genomeId: 'gen_shared' }, contentItemId);

@@ -29,6 +29,7 @@ export const AnalyticsSyncOutput = z.object({
   shares: z.number(),
   views: z.number(),
   impressions: z.number(),
+  saves: z.number(),
   syncedAt: z.string(),
 });
 
@@ -83,6 +84,10 @@ export function makeAnalyticsSync(deps: AnalyticsSyncDeps) {
         contentItemId: item.id,
         platform: item.platform,
         ...metrics,
+        // `RawPostMetrics.saves` is optional on the vendor seam — a platform
+        // that does not report saves must not have to invent a number, and
+        // absent genuinely means none were reported.
+        saves: metrics.saves ?? 0,
       });
 
       return {
@@ -93,6 +98,7 @@ export function makeAnalyticsSync(deps: AnalyticsSyncDeps) {
         shares: snapshot.shares,
         views: snapshot.views,
         impressions: snapshot.impressions,
+        saves: snapshot.saves,
         syncedAt: snapshot.syncedAt.toISOString(),
       };
     },

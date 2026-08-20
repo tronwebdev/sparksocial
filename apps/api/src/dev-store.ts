@@ -644,7 +644,7 @@ export function createDevStore(
     },
 
     analytics: {
-      async record({ genomeId, orgId: org, contentItemId, platform, likes, comments, shares, views, impressions }) {
+      async record({ genomeId, orgId: org, contentItemId, platform, likes, comments, shares, views, impressions, saves }) {
         const snapshot: ContentMetricsSnapshot = {
           contentItemId,
           platform,
@@ -653,6 +653,7 @@ export function createDevStore(
           shares,
           views,
           impressions,
+          saves,
           syncedAt: new Date(),
         };
         metrics.set(`${contentItemId}:${platform}`, { ...snapshot, orgId: org, genomeId });

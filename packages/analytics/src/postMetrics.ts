@@ -22,6 +22,7 @@ const PlatformSnapshot = z.object({
   shares: z.number(),
   views: z.number(),
   impressions: z.number(),
+  saves: z.number(),
   syncedAt: z.string(),
 });
 
@@ -29,7 +30,14 @@ export const AnalyticsPostMetricsOutput = z.object({
   contentItemId: z.string(),
   synced: z.boolean(),
   platforms: z.array(PlatformSnapshot),
-  totals: z.object({ likes: z.number(), comments: z.number(), shares: z.number(), views: z.number(), impressions: z.number() }),
+  totals: z.object({
+    likes: z.number(),
+    comments: z.number(),
+    shares: z.number(),
+    views: z.number(),
+    impressions: z.number(),
+    saves: z.number(),
+  }),
 });
 
 export const analyticsPostMetrics = defineTool({
@@ -65,6 +73,7 @@ export const analyticsPostMetrics = defineTool({
       shares: r.shares,
       views: r.views,
       impressions: r.impressions,
+      saves: r.saves,
       syncedAt: r.syncedAt.toISOString(),
     }));
 
@@ -75,8 +84,9 @@ export const analyticsPostMetrics = defineTool({
         shares: acc.shares + p.shares,
         views: acc.views + p.views,
         impressions: acc.impressions + p.impressions,
+        saves: acc.saves + p.saves,
       }),
-      { likes: 0, comments: 0, shares: 0, views: 0, impressions: 0 },
+      { likes: 0, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0 },
     );
 
     return { contentItemId: input.contentItemId, synced: platforms.length > 0, platforms, totals };

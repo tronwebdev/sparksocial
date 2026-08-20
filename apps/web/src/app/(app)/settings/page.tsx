@@ -6,6 +6,7 @@ import { AvatarConfigPanel } from '@/components/settings/AvatarConfigPanel';
 import { PublishHealthPanel } from '@/components/settings/PublishHealthPanel';
 import { OfferPanel } from '@/components/settings/OfferPanel';
 import { AgencyPanel } from '@/components/settings/AgencyPanel';
+import { UsagePanel } from '@/components/settings/UsagePanel';
 import { ConnectionsPanel } from '@/components/settings/ConnectionsPanel';
 import { PolicyPanel } from '@/components/settings/PolicyPanel';
 import { GovernancePanel } from '@/components/settings/GovernancePanel';
@@ -43,6 +44,7 @@ export default function SettingsPage() {
         <PublishHealthPanel />
         <PolicyPanel />
         <LearningPanel />
+        <UsagePanel />
         <AgencyPanel />
       </div>
     </>

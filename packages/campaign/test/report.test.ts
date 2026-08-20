@@ -132,8 +132,8 @@ describe('campaign.report_vs_outcome', () => {
       { campaignId: 'cmp_1' },
       ctx(campaignStore({ slots }), {
         listForItems: async () => [
-          { contentItemId: slots[0]!.id, platform: 'instagram', likes: 10, comments: 2, shares: 1, views: 100, impressions: 500, syncedAt: new Date() },
-          { contentItemId: slots[0]!.id, platform: 'tiktok', likes: 5, comments: 0, shares: 0, views: 50, impressions: 200, syncedAt: new Date() },
+          { contentItemId: slots[0]!.id, platform: 'instagram', likes: 10, comments: 2, shares: 1, views: 100, impressions: 500, saves: 500, syncedAt: new Date() },
+          { contentItemId: slots[0]!.id, platform: 'tiktok', likes: 5, comments: 0, shares: 0, views: 50, impressions: 200, saves: 200, syncedAt: new Date() },
         ],
       }),
     );

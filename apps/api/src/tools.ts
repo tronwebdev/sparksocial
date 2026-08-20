@@ -92,6 +92,7 @@ import {
   orgSecuritySsoConfigure,
   orgAuditQuery,
   makeOrgCreditsGrant,
+  makeOrgUsageGet,
   brandCreate,
   brandSettingsPatch,
   brandGovernanceGet,
@@ -714,6 +715,11 @@ export function registerAgencyTools(deps: {
   register(orgSecuritySsoConfigure);
   register(orgAuditQuery);
   register(makeOrgCreditsGrant(deps.credits));
+  // PRD §8.12's "usage slice and alerts", and §12's "what consumes credits"
+  // open question. The ledger has been real since P1 and had no reader: a
+  // balance only ever came back from `org.credits.grant`, so rendering a usage
+  // panel meant granting credits to display a number.
+  register(makeOrgUsageGet({ credits: deps.credits }));
 
   register(brandCreate);
   register(brandSettingsPatch);

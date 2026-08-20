@@ -624,6 +624,7 @@ export interface ContentMetricsRow {
   shares: number;
   views: number;
   impressions: number;
+  saves: number;
   raw: unknown;
   syncedAt: Date;
 }
@@ -637,6 +638,7 @@ const contentMetricsColumns = {
   shares: contentMetrics.shares,
   views: contentMetrics.views,
   impressions: contentMetrics.impressions,
+  saves: contentMetrics.saves,
   raw: contentMetrics.raw,
   syncedAt: contentMetrics.syncedAt,
 };
@@ -658,6 +660,7 @@ export async function upsertContentMetrics(
     shares: number;
     views: number;
     impressions: number;
+    saves: number;
     raw: unknown;
     syncedAt?: Date;
   },
@@ -675,6 +678,7 @@ export async function upsertContentMetrics(
       shares: args.shares,
       views: args.views,
       impressions: args.impressions,
+      saves: args.saves,
       raw: args.raw as object,
       syncedAt: args.syncedAt ?? new Date(),
     })
@@ -686,6 +690,7 @@ export async function upsertContentMetrics(
         shares: args.shares,
         views: args.views,
         impressions: args.impressions,
+      saves: args.saves,
         raw: args.raw as object,
         syncedAt: args.syncedAt ?? new Date(),
       },

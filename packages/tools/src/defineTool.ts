@@ -871,6 +871,8 @@ export interface ContentMetricsSnapshot {
   shares: number;
   views: number;
   impressions: number;
+  /** `CC-04`'s "Saves" — the strongest usefulness signal on Instagram and TikTok. */
+  saves: number;
   syncedAt: Date;
 }
 
@@ -893,6 +895,7 @@ export interface AnalyticsStore {
     shares: number;
     views: number;
     impressions: number;
+    saves: number;
     raw: unknown;
   }): Promise<ContentMetricsSnapshot>;
   /** Every synced platform snapshot across a set of posts — `campaign.report_vs_outcome`'s roll-up. */
@@ -1095,6 +1098,38 @@ export interface CreditStore {
    * subtraction is a cost with no benefit.
    */
   budget(orgId: string, now: Date): Promise<{ monthlyCapCents: number; spentCents: number }>;
+
+  /**
+   * What the money went on this period, biggest first — `org.usage.get`'s read,
+   * and PRD §12's "what consumes credits" answered from what was actually
+   * charged rather than from a table of list prices.
+   *
+   * Separate from {@link budget} on purpose: that one runs on the hot path of
+   * every single request and must stay a single cheap subtraction. This is a
+   * `group by` a settings panel asks for occasionally, and putting it on the
+   * same call would make every tool invocation pay for it.
+   */
+  spendByTool(
+    orgId: string,
+    now: Date,
+    limit: number,
+  ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
+
+  /**
+   * What the money went on this period, biggest first — `org.usage.get`'s read,
+   * and PRD §12's "what consumes credits" answered from what was actually
+   * charged rather than from a table of list prices.
+   *
+   * Separate from {@link budget} on purpose: that one runs on the hot path of
+   * every single request and must stay a single cheap subtraction. This is a
+   * `group by` a settings panel asks for occasionally, and putting it on the
+   * same call would make every tool invocation pay for it.
+   */
+  spendByTool(
+    orgId: string,
+    now: Date,
+    limit: number,
+  ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
 
   /**
    * Append one charge. Idempotent on `callId` — a second write for the same

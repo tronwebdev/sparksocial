@@ -260,6 +260,17 @@ export const contentMetrics = pgTable(
     shares: integer('shares').notNull().default(0),
     views: integer('views').notNull().default(0),
     impressions: integer('impressions').notNull().default(0),
+    /**
+     * PRD `CC-04` names three headline metrics — Impressions, **Saves** and
+     * Replies — and this table carried likes/comments/shares/views/impressions.
+     *
+     * Saves is the one worth having most and the one that was missing: on
+     * Instagram and TikTok it is the strongest signal that a post was *useful*
+     * rather than merely seen, which is exactly what a brand posting craft and
+     * how-to content needs to know. Zero-defaulted rather than nullable, because
+     * a platform that does not report saves genuinely had none to report.
+     */
+    saves: integer('saves').notNull().default(0),
     /** The vendor's unnormalized response — nothing is lost to normalization. */
     raw: jsonb('raw'),
     syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),

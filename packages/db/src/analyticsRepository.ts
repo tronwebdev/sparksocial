@@ -21,6 +21,7 @@ export function createAnalyticsRepository(db: Database): AnalyticsStore {
         shares: row.shares,
         views: row.views,
         impressions: row.impressions,
+        saves: row.saves,
         syncedAt: row.syncedAt,
       };
     },
@@ -35,6 +36,7 @@ export function createAnalyticsRepository(db: Database): AnalyticsStore {
         shares: row.shares,
         views: row.views,
         impressions: row.impressions,
+        saves: row.saves,
         syncedAt: row.syncedAt,
       }));
     },

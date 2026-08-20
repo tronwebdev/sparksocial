@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import type { CreditStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { creditLedger, orgBudgets } from './schema.js';
@@ -43,6 +43,43 @@ export function createCreditRepository(db: Database): CreditStore {
       // in general. It is here (cents, capped monthly), but parsing explicitly
       // beats relying on the driver's coercion, which differs across versions.
       return { monthlyCapCents: cap, spentCents: Number(spent?.total ?? 0) };
+    },
+
+    /**
+     * `org.usage.get`'s breakdown — one row per tool that has actually been
+     * charged this period, biggest first.
+     *
+     * Negative rows are grants (see this table's own comment on `costCents`) and
+     * are excluded: a goodwill credit is not a tool that consumed anything, and
+     * including it would show `org.credits.grant` as the biggest line item on
+     * the panel.
+     */
+    async spendByTool(orgId, now, limit) {
+      const rows = await db
+        .select({
+          tool: creditLedger.tool,
+          costCents: sql<string>`sum(${creditLedger.costCents})`,
+          calls: sql<string>`count(*)`,
+        })
+        .from(creditLedger)
+        .where(
+          and(
+            eq(creditLedger.orgId, orgId),
+            gte(creditLedger.at, periodStart(now)),
+            gt(creditLedger.costCents, 0),
+          ),
+        )
+        .groupBy(creditLedger.tool)
+        .orderBy(desc(sql`sum(${creditLedger.costCents})`))
+        .limit(limit);
+
+      // Same string-to-number reasoning as `budget` above: Postgres widens a
+      // sum of int4 to bigint and the driver hands it back as a string.
+      return rows.map((r) => ({
+        tool: r.tool,
+        costCents: Number(r.costCents),
+        calls: Number(r.calls),
+      }));
     },
 
     async record({ callId, orgId, brandId, tool, costCents, at }) {
