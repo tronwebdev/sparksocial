@@ -1556,6 +1556,12 @@ export interface OrgSettingsRecord {
   plan: 'starter' | 'growth' | 'agency';
   defaultApprovalMode: string;
   ssoRequired: boolean;
+  /** §8.12's other half of "security (SSO/2FA)". */
+  twoFactorRequired: boolean;
+  /** §8.12's data residency commitment. `any` when none has been made. */
+  dataResidency: string;
+  /** §8.12's retention policy, in days. Absent means keep indefinitely. */
+  retentionDays?: number;
   monthlyCapCents: number;
   updatedAt: Date;
 }
@@ -1564,7 +1570,14 @@ export interface OrgSettingsStore {
   /** Upsert-on-read, like `brands.get` — a missing row resolves to the schema defaults, never to "unset". */
   get(orgId: string): Promise<OrgSettingsRecord>;
   setPlan(args: { orgId: string; plan: 'starter' | 'growth' | 'agency'; monthlyCapCents: number }): Promise<OrgSettingsRecord>;
-  setGovernance(args: { orgId: string; defaultApprovalMode: string }): Promise<OrgSettingsRecord>;
+  setGovernance(args: {
+    orgId: string;
+    defaultApprovalMode?: string;
+    twoFactorRequired?: boolean;
+    dataResidency?: string;
+    /** `null` clears the policy back to "keep indefinitely". */
+    retentionDays?: number | null;
+  }): Promise<OrgSettingsRecord>;
   setSso(args: { orgId: string; required: boolean }): Promise<OrgSettingsRecord>;
 }
 

@@ -20,6 +20,7 @@ import type {
   HumanLoopStore,
   LearningArm,
   OAuthConnectionRecord,
+  OrgSettingsRecord,
   Opportunity,
   RecipeOutputRecord,
   RecipeRecord,
@@ -205,7 +206,10 @@ export function createDevStore(
   // Keyed on `${genomeId}:${provider}` — one connection per (genome, provider), same unique target as the real schema.
   const oauthConnectionsMap = new Map<string, OAuthConnectionRecord & { orgId: string }>();
   const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
-  const orgSettingsMap = new Map<string, { orgId: string; plan: 'starter' | 'growth' | 'agency'; defaultApprovalMode: string; ssoRequired: boolean; monthlyCapCents: number; updatedAt: Date }>();
+  // Typed as the record itself rather than a hand-listed copy of its fields —
+  // the inline literal is how this drifted when §8.12's 2FA/residency/retention
+  // columns landed.
+  const orgSettingsMap = new Map<string, OrgSettingsRecord>();
   const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
   const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
 
@@ -1039,6 +1043,11 @@ export function createDevStore(
             plan: 'starter' as const,
             defaultApprovalMode: 'review_first_week',
             ssoRequired: false,
+            // Same column defaults as `schema.ts`. `retentionDays` is absent
+            // rather than zero: keeping data indefinitely is the default, and a
+            // dev store that implied a 0-day policy would be alarming.
+            twoFactorRequired: false,
+            dataResidency: 'any',
             monthlyCapCents: 500_00,
             updatedAt: new Date(),
           }
@@ -1049,8 +1058,22 @@ export function createDevStore(
         orgSettingsMap.set(orgId, row);
         return row;
       },
-      async setGovernance({ orgId, defaultApprovalMode }) {
-        const row = { ...(await this.get(orgId)), defaultApprovalMode, updatedAt: new Date() };
+      /** A merge patch, mirroring the Postgres one — omitted fields are left alone. */
+      async setGovernance({ orgId, defaultApprovalMode, twoFactorRequired, dataResidency, retentionDays }) {
+        const current = await this.get(orgId);
+        const row = {
+          ...current,
+          ...(defaultApprovalMode !== undefined ? { defaultApprovalMode } : {}),
+          ...(twoFactorRequired !== undefined ? { twoFactorRequired } : {}),
+          ...(dataResidency !== undefined ? { dataResidency } : {}),
+          // `null` clears; omitted leaves alone.
+          ...(retentionDays === null
+            ? { retentionDays: undefined }
+            : retentionDays !== undefined
+              ? { retentionDays }
+              : {}),
+          updatedAt: new Date(),
+        };
         orgSettingsMap.set(orgId, row);
         return row;
       },

@@ -121,7 +121,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         listAll: async () => [],
       },
       orgSettings: {
-        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 50_000, updatedAt: new Date() }),
+        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, twoFactorRequired: false, dataResidency: 'any', monthlyCapCents: 50_000, updatedAt: new Date() }),
         setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
         setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
         setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },

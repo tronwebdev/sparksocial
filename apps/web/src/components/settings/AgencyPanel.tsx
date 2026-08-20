@@ -22,8 +22,31 @@ interface OrgSettings {
   plan: Plan;
   defaultApprovalMode: string;
   ssoRequired: boolean;
+  twoFactorRequired: boolean;
+  dataResidency: string;
+  retentionDays?: number | null;
   monthlyCapCents: number;
 }
+
+const RESIDENCY_LABEL: Record<string, string> = {
+  any: 'No commitment',
+  eu: 'European Union',
+  us: 'United States',
+  uk: 'United Kingdom',
+};
+
+/**
+ * Retention is offered as a few defensible periods rather than a free-text day
+ * count: the choice here is a policy commitment, and "1,847 days" is not one
+ * anybody made on purpose.
+ */
+const RETENTION_CHOICES: { label: string; value: number | null }[] = [
+  { label: 'Keep indefinitely', value: null },
+  { label: '90 days', value: 90 },
+  { label: '1 year', value: 365 },
+  { label: '2 years', value: 730 },
+  { label: '7 years', value: 2555 },
+];
 
 interface BrandRow {
   genomeId: string;
@@ -70,10 +93,16 @@ export function AgencyPanel() {
     if (res.status === 'succeeded') setSettings(res.output);
   }
 
-  async function changeGovernance(defaultApprovalMode: string) {
+  /**
+   * One writer for all four of `org.governance.set`'s fields — it is a merge
+   * patch, so each control sends only what it changed and the others are left
+   * alone. Sending the whole record back would make two admins editing
+   * different settings overwrite each other.
+   */
+  async function changeGovernance(patch: Record<string, unknown>) {
     if (busy) return;
     setBusy(true);
-    const res = await invoke<OrgSettings>('org.governance.set', { defaultApprovalMode });
+    const res = await invoke<OrgSettings>('org.governance.set', patch);
     setBusy(false);
     if (res.status === 'succeeded') setSettings(res.output);
   }
@@ -125,7 +154,7 @@ export function AgencyPanel() {
                 key={m}
                 type="button"
                 disabled={busy}
-                onClick={() => void changeGovernance(m)}
+                onClick={() => void changeGovernance({ defaultApprovalMode: m })}
                 className={`rounded-full border px-3 py-1.5 text-[12px] capitalize disabled:opacity-50 ${
                   settings.defaultApprovalMode === m ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
                 }`}
@@ -134,13 +163,75 @@ export function AgencyPanel() {
               </button>
             ))}
           </div>
-          <label className="mt-3 flex items-center gap-2 text-[13px] text-ink">
+          <p className="mt-2 text-[12px] text-ink-muted">Existing brands keep whatever mode they are already on.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-[13px] font-medium text-ink-muted">Security</p>
+          <label className="mt-2 flex items-center gap-2 text-[13px] text-ink">
             <input type="checkbox" checked={settings.ssoRequired} disabled={busy} onChange={() => void toggleSso()} />
             Require SSO
           </label>
-          {settings.ssoRequired ? (
-            <p className="mt-1 text-[12px] text-ink-muted">This is a policy flag only — the actual SSO connection is set up in the Clerk dashboard.</p>
+          <label className="mt-2 flex items-center gap-2 text-[13px] text-ink">
+            <input
+              type="checkbox"
+              checked={settings.twoFactorRequired}
+              disabled={busy}
+              onChange={() => void changeGovernance({ twoFactorRequired: !settings.twoFactorRequired })}
+            />
+            Require two-factor authentication
+          </label>
+          {settings.ssoRequired || settings.twoFactorRequired ? (
+            <p className="mt-2 text-[12px] text-ink-muted">
+              Recorded here as org policy; enrolment itself is enforced by the identity provider in the Clerk dashboard.
+            </p>
           ) : null}
+        </div>
+
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-[13px] font-medium text-ink-muted">Data governance</p>
+
+          <label className="mt-2 block text-[12px] text-ink-muted" htmlFor="org-residency">
+            Data residency
+          </label>
+          <select
+            id="org-residency"
+            value={settings.dataResidency}
+            disabled={busy}
+            onChange={(e) => void changeGovernance({ dataResidency: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] text-ink disabled:opacity-50"
+          >
+            {Object.entries(RESIDENCY_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+
+          <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="org-retention">
+            Keep content, inbox messages and audit history for
+          </label>
+          <select
+            id="org-retention"
+            value={settings.retentionDays == null ? '' : String(settings.retentionDays)}
+            disabled={busy}
+            onChange={(e) => void changeGovernance({ retentionDays: e.target.value === '' ? null : Number(e.target.value) })}
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] text-ink disabled:opacity-50"
+          >
+            {RETENTION_CHOICES.map((c) => (
+              <option key={c.label} value={c.value == null ? '' : String(c.value)}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+
+          <p className="mt-2 text-[12px] text-ink-muted">
+            {settings.dataResidency === 'any'
+              ? 'No region has been committed to. Both settings are recorded commitments — changing them does not move or delete anything on its own.'
+              : `Committed to ${RESIDENCY_LABEL[settings.dataResidency] ?? settings.dataResidency}. Recorded as policy — moving existing data is an infrastructure change.`}
+          </p>
         </div>
       </div>
 

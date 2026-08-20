@@ -1196,6 +1196,33 @@ export const orgSettings = pgTable('org_settings', {
   plan: text('plan').notNull().default('starter'), // 'starter' | 'growth' | 'agency'
   defaultApprovalMode: text('default_approval_mode').notNull().default('review_first_week'),
   ssoRequired: boolean('sso_required').notNull().default(false),
+  /**
+   * ── PRD §8.12's org security and data governance ─────────────────────────
+   *
+   * §8.12 asks the org layer for "security (SSO/2FA)" and "data governance
+   * (residency/retention)". This table had four columns: plan, default approval
+   * mode, SSO required, updated-at. SSO was the only one of the four §8.12 names
+   * that existed.
+   *
+   * Retention has the most teeth of the three for a product that stores crawled
+   * customer sites, inbox messages from third parties, and generated media —
+   * "we keep everything forever" is a policy whether or not anyone chose it.
+   */
+  twoFactorRequired: boolean('two_factor_required').notNull().default(false),
+  /**
+   * Where this org's data must stay. `any` is the honest default: enforcing a
+   * region means provisioning storage in it, which is an infrastructure decision
+   * (CLAUDE.md's Azure section) rather than a column — so this records the
+   * *commitment* and `org.governance.set` refuses to imply more than that.
+   */
+  dataResidency: text('data_residency').notNull().default('any'),
+  /**
+   * Days to keep content, inbox messages and audit rows. Null means indefinitely,
+   * which is the current behaviour for every existing org and must stay the
+   * default — a migration that silently started deleting customer data would be
+   * the worst possible reading of this feature.
+   */
+  retentionDays: integer('retention_days'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

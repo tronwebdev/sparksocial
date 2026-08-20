@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import type { OrgSettingsStore } from '@sparksocial/tools/defineTool';
+import type { OrgSettingsRecord, OrgSettingsStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { orgBudgets, orgSettings } from './schema.js';
 
@@ -16,7 +16,7 @@ const DEFAULT_MONTHLY_CAP_CENTS = 500_00;
  * rationale as `brands` and `org_budgets` itself.
  */
 export function createOrgSettingsRepository(db: Database): OrgSettingsStore {
-  async function getRecord(orgId: string) {
+  async function getRecord(orgId: string): Promise<OrgSettingsRecord> {
     const [settings] = await db.select().from(orgSettings).where(eq(orgSettings.orgId, orgId)).limit(1);
     const [budget] = await db.select().from(orgBudgets).where(eq(orgBudgets.orgId, orgId)).limit(1);
 
@@ -31,10 +31,14 @@ export function createOrgSettingsRepository(db: Database): OrgSettingsStore {
     return created
       ? toRecord(created, budget?.monthlyCapCents ?? DEFAULT_MONTHLY_CAP_CENTS)
       : {
+          // Mirrors `schema.ts`'s column defaults. `retentionDays` is absent
+          // rather than 0 — no policy means keep indefinitely.
           orgId,
           plan: 'starter' as const,
           defaultApprovalMode: 'review_first_week',
           ssoRequired: false,
+          twoFactorRequired: false,
+          dataResidency: 'any',
           monthlyCapCents: DEFAULT_MONTHLY_CAP_CENTS,
           updatedAt: new Date(),
         };
@@ -55,11 +59,25 @@ export function createOrgSettingsRepository(db: Database): OrgSettingsStore {
       return getRecord(orgId);
     },
 
-    async setGovernance({ orgId, defaultApprovalMode }) {
+    /**
+     * A merge patch, not a replace — §8.12's org layer has four independent
+     * settings and they are changed at different times by different people. The
+     * previous signature took one required field, so adding the other three
+     * would otherwise have meant sending all four on every call.
+     */
+    async setGovernance({ orgId, defaultApprovalMode, twoFactorRequired, dataResidency, retentionDays }) {
+      const set: Partial<typeof orgSettings.$inferInsert> = { updatedAt: new Date() };
+      if (defaultApprovalMode !== undefined) set.defaultApprovalMode = defaultApprovalMode;
+      if (twoFactorRequired !== undefined) set.twoFactorRequired = twoFactorRequired;
+      if (dataResidency !== undefined) set.dataResidency = dataResidency;
+      // `null` is meaningful here and is not the same as omitted: it clears the
+      // policy back to "keep indefinitely".
+      if (retentionDays !== undefined) set.retentionDays = retentionDays;
+
       await db
         .insert(orgSettings)
-        .values({ orgId, defaultApprovalMode })
-        .onConflictDoUpdate({ target: orgSettings.orgId, set: { defaultApprovalMode, updatedAt: new Date() } });
+        .values({ orgId, ...set })
+        .onConflictDoUpdate({ target: orgSettings.orgId, set });
       return getRecord(orgId);
     },
 
@@ -73,12 +91,17 @@ export function createOrgSettingsRepository(db: Database): OrgSettingsStore {
   };
 }
 
-function toRecord(row: typeof orgSettings.$inferSelect, monthlyCapCents: number) {
+function toRecord(row: typeof orgSettings.$inferSelect, monthlyCapCents: number): OrgSettingsRecord {
   return {
     orgId: row.orgId,
     plan: row.plan as 'starter' | 'growth' | 'agency',
     defaultApprovalMode: row.defaultApprovalMode,
     ssoRequired: row.ssoRequired,
+    twoFactorRequired: row.twoFactorRequired,
+    dataResidency: row.dataResidency,
+    // Absent, not zero: no policy means keep indefinitely, and a 0 would read
+    // as "delete everything immediately".
+    ...(row.retentionDays !== null ? { retentionDays: row.retentionDays } : {}),
     monthlyCapCents,
     updatedAt: row.updatedAt,
   };

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
+import type { OrgSettingsRecord } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
 
 /**
@@ -26,15 +27,24 @@ const OrgSettingsOut = z.object({
   plan: Plan,
   defaultApprovalMode: z.string(),
   ssoRequired: z.boolean(),
+  twoFactorRequired: z.boolean(),
+  dataResidency: z.string(),
+  /** Null rather than absent on the wire — "keep indefinitely" is a state the
+   *  UI has to render, and an omitted key is indistinguishable from a field the
+   *  client is too old to know about. */
+  retentionDays: z.number().nullable(),
   monthlyCapCents: z.number(),
   updatedAt: z.string(),
 });
 
-function shape(s: { plan: string; defaultApprovalMode: string; ssoRequired: boolean; monthlyCapCents: number; updatedAt: Date }) {
+function shape(s: OrgSettingsRecord) {
   return {
     plan: s.plan as Plan,
     defaultApprovalMode: s.defaultApprovalMode,
     ssoRequired: s.ssoRequired,
+    twoFactorRequired: s.twoFactorRequired,
+    dataResidency: s.dataResidency,
+    retentionDays: s.retentionDays ?? null,
     monthlyCapCents: s.monthlyCapCents,
     updatedAt: s.updatedAt.toISOString(),
   };
@@ -80,15 +90,59 @@ export const orgCreate = defineTool({
 export const orgGovernanceSet = defineTool({
   name: 'org.governance.set',
   version: 1,
-  summary: 'Set the default approval mode new brands under this org start on. Existing brands keep whatever they already have.',
-  input: z.object({ defaultApprovalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']) }),
+  summary:
+    "Org-wide governance: the approval mode new brands start on, whether 2FA is required, where data " +
+    'must live, and how long it is kept. A partial patch — omitted fields are left alone.',
+  input: z
+    .object({
+      /** Existing brands keep whatever they already have; this is the default new ones start on. */
+      defaultApprovalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']).optional(),
+      /** §8.12's "security (SSO/2FA)" — the half SSO did not cover. */
+      twoFactorRequired: z.boolean().optional(),
+      /**
+       * §8.12's data residency. Records the *commitment*, and deliberately does
+       * not claim to enforce it: enforcement means provisioning storage in the
+       * region, which is an infrastructure decision (CLAUDE.md's Azure section)
+       * rather than a column. A tool that silently implied otherwise would be
+       * worse than no tool.
+       */
+      dataResidency: z.enum(['any', 'eu', 'us', 'uk']).optional(),
+      /**
+       * §8.12's retention policy, in days. `null` clears it back to keeping data
+       * indefinitely, which is the default and the current behaviour of every
+       * existing org — nothing here deletes anything on its own, and the job
+       * that eventually does must be a separate, explicit tool.
+       */
+      retentionDays: z.number().int().min(30).max(3650).nullable().optional(),
+    })
+    .refine((v) => Object.values(v).some((x) => x !== undefined), {
+      message: 'Set at least one governance field.',
+    }),
   output: OrgSettingsOut,
   effect: 'write',
-  autonomy: 'auto',
+  /**
+   * Human-only, where it used to be `auto`. When this tool only carried the
+   * default approval mode that was arguable; now that it carries 2FA,
+   * residency and retention, an agent that could call it could lower the org's
+   * own security posture or set a retention floor that deletes a brand's
+   * history — the class of change a person has to make deliberately.
+   */
+  autonomy: 'human_only',
   scopes: ['owner', 'admin'],
   idempotent: true,
   async handler(input, ctx) {
-    const settings = await ctx.db.orgSettings.setGovernance({ orgId: ctx.orgId, defaultApprovalMode: input.defaultApprovalMode });
+    const settings = await ctx.db.orgSettings.setGovernance({
+      orgId: ctx.orgId,
+      ...(input.defaultApprovalMode !== undefined ? { defaultApprovalMode: input.defaultApprovalMode } : {}),
+      ...(input.twoFactorRequired !== undefined ? { twoFactorRequired: input.twoFactorRequired } : {}),
+      ...(input.dataResidency !== undefined ? { dataResidency: input.dataResidency } : {}),
+      ...(input.retentionDays !== undefined ? { retentionDays: input.retentionDays } : {}),
+    });
+    ctx.logger.info('org governance set', {
+      orgId: ctx.orgId,
+      changed: Object.keys(input),
+      by: ctx.userId ?? 'unknown',
+    });
     return shape(settings);
   },
 });

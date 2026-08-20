@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
-import type { ToolCtx } from '@sparksocial/tools';
+import type { OrgSettingsRecord, ToolCtx } from '@sparksocial/tools';
 import { orgCreate, orgGovernanceSet, orgBillingPlanSet, orgSecuritySsoConfigure, orgAuditQuery, makeOrgCreditsGrant } from '../src/org.js';
 
 function orgSettingsStore() {
-  const rows = new Map<string, { orgId: string; plan: 'starter' | 'growth' | 'agency'; defaultApprovalMode: string; ssoRequired: boolean; monthlyCapCents: number; updatedAt: Date }>();
-  const get = async (orgId: string) =>
-    rows.get(orgId) ?? { orgId, plan: 'starter' as const, defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 500_00, updatedAt: new Date() };
+  const rows = new Map<string, OrgSettingsRecord>();
+  const get = async (orgId: string): Promise<OrgSettingsRecord> =>
+    rows.get(orgId) ?? {
+      orgId,
+      plan: 'starter' as const,
+      defaultApprovalMode: 'review_first_week',
+      ssoRequired: false,
+      twoFactorRequired: false,
+      dataResidency: 'any',
+      monthlyCapCents: 500_00,
+      updatedAt: new Date(),
+    };
   return {
     rows,
     store: {
@@ -16,8 +25,16 @@ function orgSettingsStore() {
         rows.set(orgId, row);
         return row;
       },
-      async setGovernance({ orgId, defaultApprovalMode }: any) {
-        const row = { ...(await get(orgId)), defaultApprovalMode, updatedAt: new Date() };
+      // A merge patch, like both real implementations: only the keys actually
+      // sent are applied, and `retentionDays: null` clears rather than omits.
+      async setGovernance({ orgId, ...patch }: any) {
+        const current = await get(orgId);
+        const row: OrgSettingsRecord = { ...current, updatedAt: new Date() };
+        for (const [k, v] of Object.entries(patch)) {
+          if (v === undefined) continue;
+          if (k === 'retentionDays' && v === null) delete (row as any).retentionDays;
+          else (row as any)[k] = v;
+        }
         rows.set(orgId, row);
         return row;
       },
@@ -73,6 +90,57 @@ describe('org.governance.set', () => {
     const { store } = orgSettingsStore();
     const out = await orgGovernanceSet.handler({ defaultApprovalMode: 'review_everything' }, ctx({ orgSettings: store }));
     expect(out.defaultApprovalMode).toBe('review_everything');
+  });
+
+  it("carries §8.12's security and data-governance settings, not just the approval mode", async () => {
+    const { store } = orgSettingsStore();
+    const out = await orgGovernanceSet.handler(
+      { twoFactorRequired: true, dataResidency: 'eu', retentionDays: 365 },
+      ctx({ orgSettings: store }),
+    );
+    expect(out.twoFactorRequired).toBe(true);
+    expect(out.dataResidency).toBe('eu');
+    expect(out.retentionDays).toBe(365);
+  });
+
+  it('leaves the fields it was not sent alone', async () => {
+    // The four settings are changed at different times by different people. A
+    // replace would let an admin flipping 2FA silently reset the retention
+    // policy somebody else committed to.
+    const { store } = orgSettingsStore();
+    const c = ctx({ orgSettings: store });
+    await orgGovernanceSet.handler({ dataResidency: 'uk', retentionDays: 730 }, c);
+    const out = await orgGovernanceSet.handler({ twoFactorRequired: true }, c);
+    expect(out.dataResidency).toBe('uk');
+    expect(out.retentionDays).toBe(730);
+    expect(out.defaultApprovalMode).toBe('review_first_week');
+  });
+
+  it('clears the retention policy back to indefinite when sent null', async () => {
+    const { store } = orgSettingsStore();
+    const c = ctx({ orgSettings: store });
+    await orgGovernanceSet.handler({ retentionDays: 90 }, c);
+    const out = await orgGovernanceSet.handler({ retentionDays: null }, c);
+    expect(out.retentionDays).toBeNull();
+  });
+
+  it('refuses an empty patch rather than writing an updatedAt for nothing', () => {
+    expect(orgGovernanceSet.input.safeParse({}).success).toBe(false);
+  });
+
+  it('refuses a retention period too short to be a real policy', () => {
+    // A one-day retention would delete a brand's content mid-campaign; the
+    // floor exists so nobody reaches that state through a settings dropdown.
+    expect(orgGovernanceSet.input.safeParse({ retentionDays: 1 }).success).toBe(false);
+  });
+
+  it('refuses a residency region the product has made no commitment about', () => {
+    expect(orgGovernanceSet.input.safeParse({ dataResidency: 'apac' }).success).toBe(false);
+  });
+
+  it("is human-only — SPARK never changes an org's governance on its own", () => {
+    expect(orgGovernanceSet.autonomy).toBe('human_only');
+    expect(orgGovernanceSet.scopes).not.toContain('member');
   });
 });
 
