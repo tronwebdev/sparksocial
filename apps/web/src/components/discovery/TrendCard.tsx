@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
 
 export interface RankedTrendItem {
   trendId: string;
@@ -44,10 +45,13 @@ export function TrendCard({
   trend,
   genomeId,
   onWatchChanged,
+  onOpen,
 }: {
   trend: RankedTrendItem;
   genomeId: string;
   onWatchChanged?: (trendId: string, watched: boolean) => void;
+  /** Opens `DISC-02` for this trend. Absent where there is nowhere to open into. */
+  onOpen?: () => void;
 }) {
   const [watching, setWatching] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
@@ -98,16 +102,25 @@ export function TrendCard({
         </Button>
       </div>
 
-      <ul className="mt-2 grid grid-cols-1 gap-0.5">
-        {trend.factors.slice(0, 2).map((f, i) => (
-          <li key={i} className="text-[13px] text-ink-muted">
-            <span className="capitalize text-ink">{f.label}:</span> {f.detail}
-          </li>
-        ))}
-      </ul>
+      {/* PRD §7.3 lists trend selection first among the decisions that must be
+          explainable, and `trend.rank` returns weighted factors for every one.
+          This showed the first two, unweighted, and dropped the rest — so a
+          trend at 34% match looked arbitrary rather than reasoned. */}
+      <WhyPopover
+        why={{ summary: `Ranked ${Math.round(trend.score * 100)}% for this brand.`, factors: trend.factors }}
+        label={trend.factors.slice(0, 2).map((f) => `${f.label}: ${f.detail}`).join(' · ')}
+      />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" disabled={repurposeBusy} onClick={() => void repurpose()}>
+        {/* `DISC-01`'s "open" action, which had no destination until `DISC-02`
+            existed — the PRD lists open/repurpose/reshare as the three card
+            actions and only repurpose was reachable. */}
+        {onOpen ? (
+          <Button size="sm" variant="outline" onClick={onOpen}>
+            Open
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" disabled={repurposeBusy} onClick={() => void repurpose()}>
           {repurposeBusy ? 'Thinking…' : 'Suggest a post'}
         </Button>
       </div>

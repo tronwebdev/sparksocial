@@ -10,6 +10,7 @@ import { AuthField, PersonIcon, MailIcon, LockIcon } from '@/components/auth/Aut
 import { SocialRow, type OAuthStrategy } from '@/components/auth/SocialRow';
 import { Button } from '@/components/ui/button';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
+import { rememberSelectedPlan } from '@/lib/selectedPlan';
 
 /**
  * Sign Up — `Auth.dc.html` state 1. Split screen: dark brand panel, white card.
@@ -26,6 +27,18 @@ export default function SignUpPage() {
   const { isLoaded, signUp } = useSignUp();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+
+  /**
+   * `AUTH-01`'s selected plan, arriving as `?plan=` from `/pricing`.
+   *
+   * Stashed rather than used here: there is no org to apply a plan to until
+   * `OrgGuard` creates one, several navigations later — see `selectedPlan.ts` on
+   * why a query parameter cannot make that trip, and on why this reads the URL
+   * directly instead of through `useSearchParams()`.
+   */
+  useEffect(() => {
+    rememberSelectedPlan();
+  }, []);
 
   useEffect(() => {
     if (authLoaded && isSignedIn) router.replace('/');

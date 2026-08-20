@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { ReplyAction } from './ReplyAction';
@@ -30,9 +31,8 @@ import { OpportunityActions } from './OpportunityActions';
 
 type EngagementCategory = 'needs_review' | 'suggested_reply' | 'auto_handled' | 'sales_opportunity';
 
-interface EngagementWhy {
-  summary: string;
-}
+/** The shape `WhyPopover` renders — `Explanation` as it arrives over HTTP. */
+type EngagementWhy = Explanation;
 
 /** Exported for `ReplyAction`, the only other file that needs this shape. */
 export interface EngagementItem {
@@ -183,9 +183,10 @@ export function EngagementFeed() {
                 </div>
               ) : null}
 
-              {item.why?.summary ? (
-                <p className="mt-2 text-[13px] italic text-ink-muted">Why: {item.why.summary}</p>
-              ) : null}
+              {/* PRD §7.3 names engagement classification explicitly as something
+                  that must be explainable. The classifier returns weighted
+                  factors and its evidence; only the summary was ever shown. */}
+              <WhyPopover why={item.why} />
 
               <ReplyAction item={item} genomeId={genomeId} onReplied={handleResolved} />
               <EngagementCardActions item={item} genomeId={genomeId} onResolved={handleResolved} />

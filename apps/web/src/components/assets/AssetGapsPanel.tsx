@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
 
@@ -53,6 +54,7 @@ export function AssetGapsPanel({ refreshKey }: { refreshKey: number }) {
       ) : data ? (
         <>
           <p className="mt-2 text-[14px] text-ink">{data.why.summary}</p>
+          <WhyPopover why={data.why} label="Which formats this unblocks" />
           {data.gaps.length > 0 ? (
             <ul className="mt-3 grid grid-cols-1 gap-2">
               {data.gaps.map((g) => (

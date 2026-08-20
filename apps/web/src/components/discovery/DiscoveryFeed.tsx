@@ -7,6 +7,7 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { TrendCard, type RankedTrendItem, type WatchlistTrendItem } from './TrendCard';
+import { TrendDetail } from './TrendDetail';
 
 /**
  * Discovery — `DISC-01`/`DISC-02`, plan §12 P5. Two tabs: `trend.rank`'s
@@ -15,6 +16,12 @@ import { TrendCard, type RankedTrendItem, type WatchlistTrendItem } from './Tren
  * `trend.watchlist`'s saved list. Repurpose/reshare/watch actions live on
  * each card (`TrendCard`) rather than here, the same split `EngagementFeed`
  * uses for its per-item actions.
+ *
+ * `DISC-02` opens in place of the feed rather than on its own route. The detail
+ * view is a step inside "find something worth posting about", not a destination
+ * — a full page navigation would lose the ranked list and the excluded-trends
+ * argument beneath it, which is the context that makes one trend's score mean
+ * anything.
  */
 
 const TABS: Array<{ key: 'trending' | 'watchlist'; label: string }> = [
@@ -30,6 +37,8 @@ export function DiscoveryFeed() {
   const [excluded, setExcluded] = useState<Array<{ trendId: string; topic: string; because: string }>>([]);
   const [watchlist, setWatchlist] = useState<WatchlistTrendItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The trend whose `DISC-02` detail is open, if any. */
+  const [openTrendId, setOpenTrendId] = useState<string | null>(null);
 
   const loadTrending = useCallback(async (id: string) => {
     setTrends(null);
@@ -83,6 +92,20 @@ export function DiscoveryFeed() {
     );
   }
 
+  // DISC-02 replaces the feed while it is open. `key` on the trend id so
+  // opening a second trend remounts rather than showing the first one's data
+  // while the second loads.
+  if (openTrendId) {
+    return (
+      <TrendDetail
+        key={openTrendId}
+        genomeId={genomeId}
+        trendId={openTrendId}
+        onClose={() => setOpenTrendId(null)}
+      />
+    );
+  }
+
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
       <h2 className="text-[18px] font-semibold text-ink">Discovery</h2>
@@ -121,7 +144,13 @@ export function DiscoveryFeed() {
           <>
             <ul className="mt-4 grid grid-cols-1 gap-3">
               {trends.map((t) => (
-                <TrendCard key={t.trendId} trend={t} genomeId={genomeId} onWatchChanged={handleWatchChanged} />
+                <TrendCard
+                  key={t.trendId}
+                  trend={t}
+                  genomeId={genomeId}
+                  onWatchChanged={handleWatchChanged}
+                  onOpen={() => setOpenTrendId(t.trendId)}
+                />
               ))}
             </ul>
             {excluded.length > 0 ? (
@@ -159,6 +188,13 @@ export function DiscoveryFeed() {
                 <Badge variant="neutral" className="capitalize">{w.source}</Badge>
               </div>
               {w.note ? <p className="mt-1 text-[13px] text-ink-muted">{w.note}</p> : null}
+              <button
+                type="button"
+                onClick={() => setOpenTrendId(w.trendId)}
+                className="mt-2 mr-4 text-[13px] font-medium text-brand-purple hover:underline"
+              >
+                Open
+              </button>
               <button
                 type="button"
                 onClick={async () => {

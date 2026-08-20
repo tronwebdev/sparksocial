@@ -125,3 +125,34 @@ export function SettingsIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/**
+ * `DASH-B-01`'s nav icon. Same 26×26 grid and `currentColor` convention as the
+ * icons lifted from the prototype — the prototype has no Home row, because the
+ * screen it leads to did not exist.
+ */
+export function HomeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 26 26" {...base(props)}>
+      <path
+        d="M4 11 13 4l9 7v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 4 20v-9Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M10.5 21.5v-6h5v6" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** `DASH-A-01`'s nav icon — the org level, drawn as a set of workspaces rather than a person. */
+export function AccountIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 26 26" {...base(props)}>
+      <rect x="3.5" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <rect x="14.5" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <rect x="3.5" y="14.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="2" />
+      <path d="M18.5 15v7M15 18.5h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}

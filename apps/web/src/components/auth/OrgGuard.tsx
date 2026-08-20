@@ -5,6 +5,8 @@ import { useAuth, useOrganizationList, useUser } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { invoke } from '@/lib/tools';
+import { takeSelectedPlan } from '@/lib/selectedPlan';
 
 /**
  * Guarantees the session has an **active organization** before the shell renders.
@@ -73,6 +75,21 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
     };
   }, [ready, orgId, user, setActive]);
 
+  /**
+   * `AUTH-01`'s plan selection, applied at the first moment there is an org to
+   * apply it to.
+   *
+   * Deliberately best-effort and unblocking: a failure here leaves the org on
+   * the default plan, which is recoverable in settings, and refusing to let
+   * somebody into a workspace they just created because a billing preference
+   * did not stick would be the wrong trade.
+   */
+  async function applySelectedPlan() {
+    const plan = takeSelectedPlan();
+    if (!plan) return;
+    await invoke('org.billing.plan.set', { plan }).catch(() => undefined);
+  }
+
   async function submitName(e: React.FormEvent) {
     e.preventDefault();
     if (!createOrganization || !setActive || creating) return;
@@ -84,6 +101,7 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
     try {
       const org = await createOrganization({ name: trimmed });
       await setActive({ organization: org.id });
+      await applySelectedPlan();
     } catch (e) {
       setFailed(e instanceof Error ? e.message : 'Could not create your workspace.');
       setCreating(false);

@@ -8,6 +8,7 @@ import { OfferPanel } from '@/components/settings/OfferPanel';
 import { AgencyPanel } from '@/components/settings/AgencyPanel';
 import { ConnectionsPanel } from '@/components/settings/ConnectionsPanel';
 import { PolicyPanel } from '@/components/settings/PolicyPanel';
+import { GovernancePanel } from '@/components/settings/GovernancePanel';
 import { LearningPanel } from '@/components/settings/LearningPanel';
 
 /**
@@ -16,9 +17,14 @@ import { LearningPanel } from '@/components/settings/LearningPanel';
  * else since the phase that shipped them. This is that home.
  *
  * Billing/plan management and the multi-brand roster (`AgencyPanel`, §12 P6)
- * landed here too — the org-level counterpart to everything above it, which
- * is all brand-level. Workspace-level guardrail/compliance configuration is
- * still a real gap.
+ * landed here too — the org-level counterpart to everything above it, which is
+ * all brand-level.
+ *
+ * `GovernancePanel` closed the gap this comment used to end on: workspace-level
+ * guardrail and compliance configuration (PRD §8.2 `ONB-03`, §8.12 `SET-WS-01`,
+ * §9) — restricted topics, claims to avoid, strict mode, voice, timezone and
+ * posting windows. It leads the page because it is the one panel that changes
+ * what SPARK is allowed to say.
  */
 export default function SettingsPage() {
   return (
@@ -29,6 +35,7 @@ export default function SettingsPage() {
           <h1 className="text-[20px] font-medium text-ink">Settings</h1>
           <p className="mt-1 text-[14px] text-ink-muted">Workspace and personal</p>
         </header>
+        <GovernancePanel />
         <ConsentPanel />
         <OfferPanel />
         <AvatarConfigPanel />

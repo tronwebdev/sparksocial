@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
+import { CampaignWizard } from '@/components/campaign/CampaignWizard';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
@@ -72,29 +74,23 @@ interface MixImpactPreview {
   why: { summary: string };
 }
 
-interface ProposedPlan {
-  objective: string;
-  windowDays: number;
-  buildableNow: number;
-  potentialWithCapture: number;
-  mix: { pillar: string; count: number }[];
-  capture: { missingRoles: string[]; sittings: number; minutesPerSitting: number } | null;
-  why: { summary: string };
-}
-
-/** `Objective` (packages/shared/src/types.ts), labeled for the proposal step. */
-const OBJECTIVES: { value: string; label: string }[] = [
-  { value: 'leads', label: 'Generate leads' },
-  { value: 'bookings', label: 'Fill bookings' },
-  { value: 'trials', label: 'Drive trials' },
-  { value: 'sales', label: 'Drive sales' },
-  { value: 'audience', label: 'Grow audience' },
-  { value: 'hiring', label: 'Hire' },
-];
+// `ProposedPlan` and the objective labels moved to `CampaignWizard` with
+// `CMP-01.1`/`.2`. This file is the calendar; creating a campaign is a
+// six-step flow of its own and no longer half-lives here.
 
 /** One nudge, in mix-weight terms. Small enough that a click is a nudge, not a lurch. */
 const ADJUST_STEP = 0.12;
-/** Local noon, so a scheduled date never rounds onto the neighbouring day across timezones. */
+/**
+ * UTC noon — not local noon, which is what this comment used to claim while the
+ * constant's own name said otherwise.
+ *
+ * It is a *fallback* now rather than the rule. A drag places a post on a day;
+ * the hour within that day belongs to the brand's posting windows, in the
+ * brand's timezone (`brand.governance.get`), and `placeCalendar` applies them.
+ * Noon UTC is only what a drag resolves to before those windows are known,
+ * chosen because it is the hour least likely to round onto the neighbouring day
+ * in any populated zone.
+ */
 const SCHEDULE_HOUR_UTC = 12;
 
 export function CalendarBoard() {
@@ -111,9 +107,10 @@ export function CalendarBoard() {
   const [previewOverride, setPreviewOverride] = useState<Record<string, number> | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [pickerDate, setPickerDate] = useState('');
-  const [objective, setObjective] = useState(OBJECTIVES[1]!.value); // 'bookings' — the prior hardcoded default, now a starting point rather than the only option
-  const [proposal, setProposal] = useState<ProposedPlan | null>(null);
-  const [proposing, setProposing] = useState(false);
+  // The objective and the proposed plan moved to `CampaignWizard` (CMP-01.1/.2)
+  // along with the screen that collected them.
+  /** Remount counter for the CMP-01 wizard — see its `onCancel` below. */
+  const [wizardRun, setWizardRun] = useState(0);
 
   const reload = useCallback(async (campaignId: string) => {
     const got = await invoke<CalendarView>('calendar.get', { campaignId });
@@ -135,7 +132,6 @@ export function CalendarBoard() {
     // with no campaign would keep showing the *previous* genome's calendar
     // until this effect happened to find nothing to replace it with.
     setView(null);
-    setProposal(null);
     void (async () => {
       const list = await invoke<{ campaigns: Array<{ campaignId: string; status: string }> }>('campaign.list', {
         genomeId: genome.genomeId,
@@ -169,57 +165,6 @@ export function CalendarBoard() {
     },
     [reload],
   );
-
-  /**
-   * `campaign.propose_plan` — the review step §6.8 Steps 2–3 describe and
-   * `campaign.create`'s own summary asks for ("Call campaign.propose_plan
-   * first to show them the numbers"). Read-only: proposing commits nothing,
-   * so re-proposing on a different objective just replaces the preview.
-   */
-  const proposePlan = useCallback(async () => {
-    if (!genome) return;
-    setProposing(true);
-    setError(null);
-    const res = await invoke<ProposedPlan>('campaign.propose_plan', {
-      genomeId: genome.genomeId,
-      objective,
-      windowDays: 30,
-    });
-    setProposing(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
-      return;
-    }
-    setProposal(res.output);
-  }, [genome, objective]);
-
-  const createCampaign = useCallback(async () => {
-    if (!genome || !proposal) return;
-    setBusy(true);
-    setError(null);
-
-    const created = await invoke<{ campaignId: string }>(
-      'campaign.create',
-      {
-        genomeId: genome.genomeId,
-        name: `${new Date().toLocaleString('en', { month: 'long' })} campaign`,
-        objective: proposal.objective,
-        windowDays: proposal.windowDays,
-      },
-      // Non-idempotent: without a key the API refuses, which is the guard
-      // against a double-click creating two campaigns.
-      `campaign:${genome.genomeId}:${Date.now()}`,
-    );
-
-    if (created.status !== 'succeeded') {
-      setError(created.status === 'failed' ? created.error.message : 'That request was gated.');
-      setBusy(false);
-      return;
-    }
-    setOverride({});
-    setProposal(null);
-    await regenerate(created.output.campaignId, {});
-  }, [genome, proposal, regenerate]);
 
   // `calendar.impact_preview`'s own doc comment: "show what calendar.generate
   // would change before committing... nothing is written." A mix nudge
@@ -321,78 +266,25 @@ export function CalendarBoard() {
   }
 
   if (!view) {
+    /**
+     * `CMP-01` — the six-step wizard, replacing the two-click propose-then-create
+     * control that used to live here.
+     *
+     * That control captured an objective and a window and nothing else, which is
+     * why `campaign.create` accepted nothing else — no accounts, no offer, no
+     * oversight choice. See `CampaignWizard`'s own header on what each step
+     * writes and why the scheduler had to guess a platform without step 4.
+     */
     return (
-      <div className="mx-auto max-w-lg rounded border border-border bg-surface p-8 text-center">
-        <p className="text-[16px] font-medium text-ink">No calendar yet</p>
-        <p className="mx-auto mt-1 max-w-md text-[14px] text-ink-muted">
-          A campaign starts with an outcome, not a format. SPARK works out how many posts are possible
-          from what {genome?.name ?? 'this brand'} already has — and what filming would add.
-        </p>
-
-        {!proposal ? (
-          <div className="mt-5 grid grid-cols-1 gap-3 text-left">
-            <label className="text-[13px] font-medium text-ink-muted" htmlFor="cb-objective">
-              What's the outcome?
-            </label>
-            <select
-              id="cb-objective"
-              value={objective}
-              onChange={(e) => setObjective(e.target.value)}
-              className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink"
-            >
-              {OBJECTIVES.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
-            <Button onClick={() => void proposePlan()} disabled={proposing || !genome}>
-              {proposing ? 'Working out the numbers…' : 'See the plan'}
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-5 grid grid-cols-1 gap-3 text-left">
-            <div className="rounded border border-border p-4">
-              <p className="text-[14px] text-ink">{proposal.why.summary}</p>
-              <p className="mt-2 text-[13px] text-ink-muted">
-                <span className="font-medium text-ink">{proposal.buildableNow}</span> posts buildable right now
-                {proposal.potentialWithCapture > proposal.buildableNow ? (
-                  <>
-                    {' · '}
-                    <span className="font-medium text-ink">{proposal.potentialWithCapture}</span> possible if you film
-                  </>
-                ) : null}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {proposal.mix.map((m) => (
-                  <span
-                    key={m.pillar}
-                    className={cn('rounded border px-2 py-0.5 text-[11px] font-medium', pillarStyle(m.pillar).chip)}
-                  >
-                    {pillarStyle(m.pillar).label} · {m.count}
-                  </span>
-                ))}
-              </div>
-              {proposal.capture ? (
-                <p className="mt-3 text-[12px] text-warn">
-                  Needs {proposal.capture.sittings} filming sitting(s), ~{proposal.capture.minutesPerSitting} min each,
-                  to close: {proposal.capture.missingRoles.join(', ')}.
-                </p>
-              ) : null}
-            </div>
-            {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
-            <div className="flex items-center justify-center gap-2">
-              <Button variant="ghost" onClick={() => setProposal(null)} disabled={busy}>
-                Choose a different outcome
-              </Button>
-              <Button onClick={() => void createCampaign()} disabled={busy}>
-                {busy ? 'Starting…' : 'Start this campaign'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      <CampaignWizard
+        key={wizardRun}
+        genomeId={genome!.genomeId}
+        onActivated={(campaignId) => void reload(campaignId)}
+        // There is nowhere to navigate back to — this *is* the empty state — so
+        // Cancel restarts the wizard at step one by remounting it. Bumping a key
+        // rather than threading a reset through six steps of state.
+        onCancel={() => setWizardRun((n) => n + 1)}
+      />
     );
   }
 
@@ -417,6 +309,7 @@ export function CalendarBoard() {
         {mixPreview ? (
           <div className="mt-3 rounded-lg border border-border bg-surface-muted p-4">
             <p className="text-[13px] text-ink">{mixPreview.why.summary}</p>
+            <WhyPopover why={mixPreview.why} label="What this change is based on" />
             {mixPreview.wouldChange ? (
               <p className="mt-1 text-[13px] text-ink-muted">
                 {mixPreview.currentSlotCount} → <b className="text-ink">{mixPreview.proposedSlotCount}</b> posts
