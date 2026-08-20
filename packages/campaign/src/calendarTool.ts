@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ContentPillar, Explanation, GenerationMode, Objective, ToolError } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
@@ -38,6 +38,15 @@ export const CampaignCreateInput = z.object({
   targetCount: z.number().int().positive().optional(),
   /** What targetCount counts, in the owner's own words — "bookings", "trials", "signups". */
   targetLabel: z.string().min(1).max(60).optional(),
+  /**
+   * `CMP-01.4` — which connected accounts this campaign posts to.
+   *
+   * Optional, and empty means "wherever each chosen format is meant for", which
+   * is the behaviour every campaign had before this existed. Naming platforms
+   * here is what stops the scheduler having to guess: see `campaigns.platforms`
+   * in `schema.ts` on why it was guessing.
+   */
+  platforms: z.array(z.string().min(1).max(40)).max(15).default([]),
 });
 
 export const CampaignCreateOutput = z.object({
@@ -49,6 +58,31 @@ export const CampaignCreateOutput = z.object({
   targetCount: z.number().optional(),
   targetLabel: z.string().optional(),
 });
+
+/**
+ * The scheduling half of brand governance, read once per placement.
+ *
+ * `brands.get` upserts, so this always resolves — a brand nobody has configured
+ * gets `UTC` and the default posting spread rather than "unset". The whole
+ * reason it is read at all: before it, `placeCalendar` had no zone and no
+ * time-of-day, so every post in a campaign fired at the wall-clock instant the
+ * campaign was created (PRD §8.2 makes the timezone required at onboarding;
+ * §8.7 lists it and the posting windows as Calendar inputs).
+ *
+ * `notBefore: now` is the day-0 fix. `dayOffset: 0` used to resolve to
+ * `startAt` exactly, so activating a campaign left its opening slots already
+ * due; the scheduler picked them up on the next tick, found no copy yet
+ * written, and marked the brand's first day `blocked`.
+ */
+async function schedulingFor(ctx: ToolCtx, now: Date) {
+  if (!ctx.brandId) return { timeZone: 'UTC', notBefore: now } as const;
+  const gov = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
+  return {
+    timeZone: gov.timezone,
+    ...(gov.postingWindows?.length ? { postingWindows: gov.postingWindows } : {}),
+    notBefore: now,
+  } as const;
+}
 
 export const campaignCreate = defineTool({
   name: 'campaign.create',
@@ -94,6 +128,7 @@ export const campaignCreate = defineTool({
       plan,
       ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
       ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
+      ...(input.platforms.length ? { platforms: input.platforms } : {}),
     });
 
     ctx.logger.info('campaign created', {
@@ -242,6 +277,8 @@ export const calendarGenerate = defineTool({
       playbooks,
       windowDays: campaign.windowDays,
       startAt: campaign.startAt,
+      ...(campaign.platforms?.length ? { platforms: campaign.platforms } : {}),
+      ...(await schedulingFor(ctx, new Date())),
     });
 
     const written = await ctx.db.campaigns.replaceSlots({
@@ -253,6 +290,7 @@ export const calendarGenerate = defineTool({
         mode: s.mode,
         pillar: s.pillar,
         scheduledAt: s.scheduledAt,
+        ...(s.platform ? { platform: s.platform } : {}),
       })),
     });
 
@@ -358,6 +396,8 @@ export const calendarImpactPreview = defineTool({
       playbooks,
       windowDays: campaign.windowDays,
       startAt: campaign.startAt,
+      ...(campaign.platforms?.length ? { platforms: campaign.platforms } : {}),
+      ...(await schedulingFor(ctx, new Date())),
     });
 
     const mixBefore = countByPillar(currentSlots);

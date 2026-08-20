@@ -82,6 +82,25 @@ function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx
         updateDraft: async () => undefined,
       },
       campaigns,
+      /**
+       * `calendar.generate` reads the brand's timezone and posting windows —
+       * PRD §8.2 makes the zone required, §8.7 lists both as Calendar inputs.
+       * `UTC` with no windows keeps these assertions on the *dates* rather than
+       * the times, which is what they are about; `calendar.test.ts` covers the
+       * placement of the times themselves.
+       */
+      brands: {
+        get: async () => ({
+          brandId: 'brand_1',
+          name: '',
+          approvalMode: 'autopublish' as const,
+          createdAt: START,
+          agentPaused: false,
+          postsPerWeek: 3,
+          strictMode: false,
+          timezone: 'UTC',
+        }),
+      },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -91,7 +110,7 @@ function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx
 
 const create = (c: ToolCtx) =>
   campaignCreate.handler(
-    { genomeId: 'gen_barber', name: 'September', objective: 'bookings', windowDays: 30, startAt: START.toISOString() },
+    { genomeId: 'gen_barber', name: 'September', objective: 'bookings', windowDays: 30, startAt: START.toISOString(), platforms: [] },
     c,
   );
 
@@ -318,7 +337,7 @@ describe('campaign.list', () => {
     const c = ctx(s);
     await create(c); // September, START
     await campaignCreate.handler(
-      { genomeId: 'gen_barber', name: 'October', objective: 'bookings', windowDays: 30, startAt: new Date('2026-10-01T09:00:00.000Z').toISOString() },
+      { genomeId: 'gen_barber', name: 'October', objective: 'bookings', windowDays: 30, startAt: new Date('2026-10-01T09:00:00.000Z').toISOString(), platforms: [] },
       c,
     );
 

@@ -1,4 +1,4 @@
-import type { ContentPillar, GenerationMode } from '@sparksocial/shared';
+import { postingSlotAt, type ContentPillar, type GenerationMode } from '@sparksocial/shared';
 import { PROMOTIONAL_CEILING, type Playbook } from '@sparksocial/playbooks';
 import type { PlannedSlot } from './plan.js';
 
@@ -33,6 +33,16 @@ export interface CalendarSlot {
   pillar: ContentPillar;
   playbookId: string;
   mode: GenerationMode;
+  /**
+   * Which account this slot posts to (`CMP-01.4`).
+   *
+   * Resolved here, at placement, from the intersection of the campaign's chosen
+   * accounts and the platforms the chosen format is actually for — a carousel
+   * cannot go to a Shorts-only account however the campaign is configured.
+   * Undefined when the campaign named no accounts, which keeps the previous
+   * behaviour for every campaign created before `CMP-01.4` existed.
+   */
+  platform?: string;
 }
 
 export interface PlaceCalendarArgs {
@@ -41,6 +51,37 @@ export interface PlaceCalendarArgs {
   playbooks: Playbook[];
   windowDays: number;
   startAt: Date;
+  /**
+   * The brand's own zone (PRD §8.2, required at onboarding) and the local hours
+   * it posts in (§8.7's "posting windows").
+   *
+   * Optional so that a caller with no brand row still gets a sane calendar, but
+   * *not* absent in the product: `calendar.generate` reads both off `brands`.
+   * Before these existed every slot inherited `startAt`'s time-of-day, so a
+   * campaign created at 03:47 posted at 03:47 for a month and any two slots
+   * sharing a day published on the same instant.
+   */
+  timeZone?: string;
+  postingWindows?: number[];
+  /**
+   * `CMP-01.4`'s account selection, from `campaigns.platforms`.
+   *
+   * Slots are dealt round-robin across whichever of these the chosen format
+   * supports, so a campaign targeting three accounts spreads across them rather
+   * than sending everything to the first. Empty leaves `slot.platform` unset and
+   * the scheduler's playbook fallback in charge.
+   */
+  platforms?: string[];
+  /**
+   * Nothing is placed before this instant — the day-0 fix.
+   *
+   * `dayOffset: 0` used to resolve to `startAt` exactly, so the moment a
+   * campaign was created its opening slots were already due; the scheduler
+   * picked them up on its next tick, found copy that nothing had written yet,
+   * and marked the brand's whole first day `blocked`. Passing `now` here rolls
+   * those slots forward to the next real posting window instead.
+   */
+  notBefore?: Date;
 }
 
 export interface PlacedCalendar {
@@ -93,6 +134,11 @@ export function placeCalendar(args: PlaceCalendarArgs): PlacedCalendar {
   const order = interleave(demand);
   const lastUsedDay = new Map<string, number>();
   const slots: CalendarSlot[] = [];
+  const timeZone = args.timeZone ?? 'UTC';
+  /** How many slots already sit on each day, so two never share an instant. */
+  const placedPerDay = new Map<number, number>();
+  /** Per-playbook rotation through the campaign's eligible accounts. */
+  const perPlatformCursor = new Map<string, number>();
 
   for (let i = 0; i < order.length; i++) {
     // Even spread. `(i + 0.5)` centres each post in its share of the window
@@ -102,12 +148,39 @@ export function placeCalendar(args: PlaceCalendarArgs): PlacedCalendar {
     const chosen = pickPlaybook(byPillar.get(pillar)!, dayOffset, lastUsedDay);
     lastUsedDay.set(chosen.playbook_id, dayOffset);
 
+    const indexWithinDay = placedPerDay.get(dayOffset) ?? 0;
+    placedPerDay.set(dayOffset, indexWithinDay + 1);
+
+    // Round-robin across the campaign's accounts that this format can serve.
+    // `perPlatformCursor` is keyed by playbook, so two formats with different
+    // platform support each rotate through their own eligible set rather than
+    // sharing one counter and skewing the spread.
+    const eligible = (args.platforms ?? []).filter((p) => chosen.output.platforms.includes(p));
+    let platform: string | undefined;
+    if (eligible.length) {
+      const cursor = perPlatformCursor.get(chosen.playbook_id) ?? 0;
+      platform = eligible[cursor % eligible.length];
+      perPlatformCursor.set(chosen.playbook_id, cursor + 1);
+    }
+
     slots.push({
       dayOffset,
-      scheduledAt: addDays(startAt, dayOffset),
+      // A real local time of day, in the brand's zone, from the brand's own
+      // posting windows — see `postingSlotAt`. Was `addDays(startAt, n)`, which
+      // is why every post in a campaign used to fire at the minute the campaign
+      // was created.
+      scheduledAt: postingSlotAt({
+        dayOffset,
+        indexWithinDay,
+        startAt,
+        timeZone,
+        ...(args.postingWindows ? { postingWindows: args.postingWindows } : {}),
+        ...(args.notBefore ? { notBefore: args.notBefore } : {}),
+      }),
       pillar,
       playbookId: chosen.playbook_id,
       mode: chosen.mode,
+      ...(platform ? { platform } : {}),
     });
   }
 
@@ -214,10 +287,4 @@ function pickPlaybook(
   return pool.reduce((best, p) =>
     (lastUsedDay.get(p.playbook_id) ?? -Infinity) < (lastUsedDay.get(best.playbook_id) ?? -Infinity) ? p : best,
   );
-}
-
-function addDays(from: Date, days: number): Date {
-  const d = new Date(from);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
 }

@@ -33,7 +33,7 @@ function ctx(over: { schedule?: ScopedDb['content']['schedule'] } = {}): ToolCtx
 describe('content.schedule', () => {
   it('places a draft on the date, marking it scheduled', async () => {
     const out = await contentSchedule.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z' },
+      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
       ctx(),
     );
     expect(out.status).toBe('scheduled');
@@ -46,7 +46,7 @@ describe('content.schedule', () => {
       status: 'scheduled', scheduledAt: args.scheduledAt, createdAt: new Date(),
     }));
     await contentSchedule.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z' },
+      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
       ctx({ schedule }),
     );
     expect(schedule).toHaveBeenCalledWith({
@@ -57,7 +57,7 @@ describe('content.schedule', () => {
   it('404s when the item is not open — gone, out of scope, or already published', async () => {
     await expect(
       contentSchedule.handler(
-        { contentItemId: 'ci_x', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z' },
+        { contentItemId: 'ci_x', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
         ctx({ schedule: async () => undefined }),
       ),
     ).rejects.toThrow(ToolError);
@@ -65,5 +65,29 @@ describe('content.schedule', () => {
 
   it('is idempotent — moving the same post to the same date twice is one fact', () => {
     expect(contentSchedule.idempotent).toBe(true);
+  });
+});
+
+describe('content.schedule — a date already in the past', () => {
+  const PAST = '2020-01-01T09:00:00.000Z';
+
+  it('refuses it by default, because the scheduler would publish it within a minute', async () => {
+    // `CalendarBoard`'s drop handler blocked only the unscheduled column and
+    // published slots, and there was no lower bound here — so dragging a post
+    // onto an earlier day was an unlabelled "publish now" button.
+    await expect(
+      contentSchedule.handler(
+        { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: PAST, publishImmediatelyIfPast: false },
+        ctx(),
+      ),
+    ).rejects.toThrow(/already passed/);
+  });
+
+  it('allows it when the caller says so — backfilling a date is a real thing to want', async () => {
+    const out = await contentSchedule.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: PAST, publishImmediatelyIfPast: true },
+      ctx(),
+    );
+    expect(out.scheduledAt).toBe(PAST);
   });
 });

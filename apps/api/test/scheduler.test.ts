@@ -37,6 +37,10 @@ function fakePublishNow(opts: { effect?: 'publish' | 'external'; throws?: boolea
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
+    // Mirrors the real `publish.now`'s own derivation closely enough for the
+    // scheduler's purposes: the platform comes off the validated input, which
+    // is what lets `brand.restricted_platform` fire on a scheduled publish.
+    policySubject: async (input) => ({ platform: input.platform }),
     async handler(input) {
       calls.push(input);
       if (opts.throws) throw new Error('publish transport down');
@@ -68,6 +72,7 @@ const dueItem = (over: Partial<DueContentItem> = {}): DueContentItem => ({
   playbookId: 'pb_avatar_pov',
   platform: null,
   copy: [{ kind: 'text', beatId: 'b1', text: 'hello world' }],
+  intent: null,
   scheduledAt: new Date('2026-08-13T09:00:00Z'),
   ...over,
 });
@@ -82,7 +87,10 @@ function makeDeps(
   const source: DueContentSource = { findDue: async () => items };
   const db = {
     genomes: { get: async () => (over.missingGenome ? undefined : genome()) },
-    content: { markBlocked: async () => {} },
+    // `markNeedsReview` is the scheduler's write when the approval ladder holds a
+    // publish (PRD §7.4): the item leaves `scheduled` so `findDue` stops
+    // re-selecting and re-holding it once a minute forever.
+    content: { markBlocked: async () => {}, markNeedsReview: async () => {} },
   } as unknown as ScopedDb;
 
   const invoke: InvokeDeps = { writeToolCall: async () => {} };
@@ -222,10 +230,64 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  it('skips an item with no text beats — and marks it blocked, closing the exact bug a stuck item was found in production with', async () => {
+  it('drafts a due item that has no copy yet, then publishes it', async () => {
+    // The day-0 bug, from the other side. `calendar.generate` writes empty
+    // slots, so "due but undrafted" is the *normal* state of a campaign's next
+    // post — not a fault. The scheduler used to mark these `blocked` with "No
+    // written copy", which meant activating a campaign blocked its own opening
+    // day within one tick. Drafting is SPARK's own work (PRD §1), so it does it.
+    const { tool, calls } = fakePublishNow();
+    register(tool);
+
+    const drafted = { kind: 'text', beatId: 'b1', text: 'copy SPARK wrote' };
+    const draftTool = defineTool({
+      name: 'content.draft',
+      version: 1,
+      summary: 'fake content.draft for scheduler tests',
+      input: z.object({
+        genomeId: z.string(),
+        playbookId: z.string(),
+        contentItemId: z.string().optional(),
+        intent: z.string().default(''),
+      }),
+      output: z.object({ contentItemId: z.string() }),
+      effect: 'write',
+      autonomy: 'auto',
+      scopes: ['owner', 'admin', 'editor'],
+      idempotent: false,
+      async handler(input) {
+        return { contentItemId: input.contentItemId ?? 'item_1' };
+      },
+    });
+    register(draftTool);
+
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      // No text beats — only an asset, which is exactly what an unfilled slot
+      // looks like once the resolver has picked media but written nothing.
+      items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
+      db: {
+        genomes: { get: async () => genome() },
+        // The re-read after drafting: the scheduler trusts the row, not the
+        // tool's return value, because the row is what gets published.
+        content: { markBlocked, get: async () => ({ copy: [drafted] }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(markBlocked).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ text: 'copy SPARK wrote' });
+  });
+
+  it('blocks an item only once drafting itself has failed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
+    // No `content.draft` registered at all, so the draft attempt fails hard.
+    // A hard failure is terminal for the same reason a guardrail block is: it
+    // will fail identically on every future tick.
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
@@ -236,7 +298,7 @@ describe('scheduler', () => {
 
     expect(calls).toHaveLength(0);
     expect(markBlocked).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'item_1', orgId: 'org_1', reason: expect.stringContaining('No written copy') }),
+      expect.objectContaining({ id: 'item_1', orgId: 'org_1', reason: expect.stringContaining('could not draft') }),
     );
     vi.restoreAllMocks();
   });
@@ -297,7 +359,12 @@ describe('scheduler', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
+    const markNeedsReview = vi.fn(async () => {});
     const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, markNeedsReview },
+      } as unknown as ScopedDb,
       loadBrandGovernance: async () => ({
         createdAt: new Date('2020-01-01T00:00:00Z'),
         approvalMode: 'review_everything',
@@ -312,6 +379,12 @@ describe('scheduler', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('publish held for review'),
       expect.objectContaining({ contentItemId: 'item_1' }),
+    );
+    // And it left `scheduled`, so the next tick does not re-hold it. Staying
+    // scheduled meant this log line repeated once a minute forever while the
+    // calendar still showed the post as going out.
+    expect(markNeedsReview).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item_1', reason: expect.stringContaining('Waiting for approval') }),
     );
     vi.restoreAllMocks();
   });

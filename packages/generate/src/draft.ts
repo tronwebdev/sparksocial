@@ -141,9 +141,34 @@ export const ContentDraftOutput = z.object({
 /** Retrieval breadth per role — same value `assemble.plan` uses, for the same reason. */
 const CANDIDATES_PER_ROLE = 4;
 
+/**
+ * The draft-time guardrail pass — PRD §8.6.
+ *
+ *   *"Governance checks set status to Needs Review or Blocked."*
+ *
+ * Guardrails ran at `publish.now` and only there, which is the strongest place
+ * to enforce them and the worst place to *learn* about them: a whole month of
+ * drafts could sit on a calendar looking fine and then fail one at a time on the
+ * way out, each an hour before it was due, with nobody watching. §8.6 asks for
+ * the verdict at draft time, on the item, where somebody can act on it.
+ *
+ * Injected rather than imported because `@sparksocial/guardrails` sits after
+ * `generate` in the build order — the same seam `ReplyGuard` uses in
+ * `packages/engage`, for the same reason. Optional: without it a draft is simply
+ * not pre-checked, and `publish.now` still refuses anything that should not go
+ * out. Nothing becomes *less* safe when this is absent, only later-diagnosed.
+ */
+export interface DraftGuard {
+  check(
+    args: { genomeId: string; playbookId: string; platform: string; text: string; referencedAssetIds: string[] },
+    ctx: ToolCtx,
+  ): Promise<{ verdict: 'pass' | 'flag' | 'block'; guard?: string; rule?: string; fixAction?: string }>;
+}
+
 export interface ContentDraftDeps {
   text: TextWriter;
   embed: EmbedClient;
+  guard?: DraftGuard;
 }
 
 export function makeContentDraft(deps: ContentDraftDeps) {
@@ -225,6 +250,59 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         // Out of scope, already published, or genuinely gone — one message
         // for all three, same reasoning as HumanLoopStore.answer.
         throw new ToolError('NOT_FOUND', 'That draft slot is not open.', { contentItemId: input.contentItemId });
+      }
+
+      /**
+       * §8.6's draft-time verdict. Evaluated against the copy that was just
+       * written, and recorded on the item so the calendar can show it.
+       *
+       * A *block* sets `blocked` and a *flag* sets `needs_review`; a pass leaves
+       * the status alone, because a clean draft is exactly as scheduled as it was
+       * before. Deliberately does not throw on a block: the draft exists, it is
+       * on the calendar, and somebody has to be able to open it and see what is
+       * wrong with it. Throwing would delete the evidence.
+       *
+       * The platform is the playbook's first — this runs before a slot has an
+       * account assigned in the ad-hoc path, and `platform_policy` is the only
+       * check that reads it.
+       */
+      const guardPlatform = playbook.output.platforms[0] ?? 'instagram';
+      const draftText = beats
+        .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
+        .map((b) => b.text)
+        .join('\n\n');
+
+      if (deps.guard && draftText) {
+        const verdict = await deps.guard
+          .check(
+            {
+              genomeId: input.genomeId,
+              playbookId: playbook.playbook_id,
+              platform: guardPlatform,
+              text: draftText,
+              referencedAssetIds: beats
+                .filter((b): b is Extract<ResolvedBeat, { kind: 'asset' }> => b.kind === 'asset')
+                .map((b) => b.assetId),
+            },
+            ctx,
+          )
+          // A guardrail layer that is itself broken must not stop a draft being
+          // saved — `publish.now` re-runs all of this before anything is public.
+          .catch(() => ({ verdict: 'pass' as const }));
+
+        if (verdict.verdict === 'block') {
+          await ctx.db.content.markBlocked({
+            id: draft.id,
+            orgId: ctx.orgId,
+            reason: verdict.fixAction ?? verdict.rule ?? `Blocked by ${verdict.guard ?? 'a guardrail'}.`,
+          });
+        } else if (verdict.verdict === 'flag') {
+          await ctx.db.content.markNeedsReview({
+            id: draft.id,
+            orgId: ctx.orgId,
+            reason: verdict.fixAction ?? verdict.rule ?? `Flagged by ${verdict.guard ?? 'a guardrail'}.`,
+          });
+        }
       }
 
       ctx.logger.info('content drafted', {
