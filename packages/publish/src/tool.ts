@@ -1,8 +1,72 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
+import { byId as playbookById } from '@sparksocial/playbooks';
 import { Platform, PublishError, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, publishWithRetry, type RateLimiter } from './retry.js';
+
+/**
+ * The publish context `policy.ts` rule 7 evaluates — see `PolicySubject` in
+ * `defineTool.ts` for why the tool derives this rather than the caller sending it.
+ *
+ * `contentType` is the playbook's own `output.media_type` (`video` · `image` ·
+ * `carousel` · `text`). That is the vocabulary a workspace is actually choosing
+ * from when it says "carousels need review", and it is a property of the format
+ * rather than of the platform, so it survives the same post going to two places.
+ *
+ * `isAutomationOutput`/`reviewBeforePublish` come off the `content_items` row:
+ * a post created by a recipe carries the recipe's id, and the recipe carries
+ * whether its outputs are to be reviewed. Reading it here — before the handler,
+ * on the tool's own initiative — is what makes AUTO-04.4's review checkbox
+ * binding on the publish call rather than advisory.
+ */
+async function publishPolicySubject(
+  input: { platform: string; playbookId: string; contentItemId: string; genomeId: string },
+  ctx: ToolCtx,
+): Promise<PolicySubject> {
+  const playbook = playbookById(input.playbookId);
+  const origin = await ctx.db.content.publishOrigin({
+    id: input.contentItemId,
+    genomeId: input.genomeId,
+    orgId: ctx.orgId,
+  });
+
+  return {
+    platform: input.platform,
+    ...(playbook ? { contentType: playbook.output.media_type } : {}),
+    ...(origin?.recipeId
+      ? { isAutomationOutput: true, reviewBeforePublish: origin.reviewBeforePublish }
+      : {}),
+  };
+}
+
+/**
+ * The rollback's own publish context. Same shape, different source: a rollback
+ * names only the item, so platform and format come off the stored row rather
+ * than the input. A brand that requires review before *posting* to a platform
+ * has, if anything, a stronger claim to review before a public unpublish of the
+ * same platform — an unpublish is visible too.
+ */
+async function rollbackPolicySubject(
+  input: { contentItemId: string; genomeId: string },
+  ctx: ToolCtx,
+): Promise<PolicySubject> {
+  const item = await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId);
+  const playbook = item?.playbookId ? playbookById(item.playbookId) : undefined;
+  const origin = await ctx.db.content.publishOrigin({
+    id: input.contentItemId,
+    genomeId: input.genomeId,
+    orgId: ctx.orgId,
+  });
+
+  return {
+    ...(item?.platform ? { platform: item.platform } : {}),
+    ...(playbook ? { contentType: playbook.output.media_type } : {}),
+    ...(origin?.recipeId
+      ? { isAutomationOutput: true, reviewBeforePublish: origin.reviewBeforePublish }
+      : {}),
+  };
+}
 
 /**
  * `publish.now` — the terminal step, and the highest-consequence tool in the
@@ -63,6 +127,24 @@ export const PublishNowOutput = z.object({
   attempts: z.number(),
 });
 
+/**
+ * Per-post platform cost, in cents — see `publish.now`'s `estimateCents`.
+ *
+ * X is the only one that bills per post today (the PRD's Track 3: pay-per-use,
+ * ~$0.20 with a URL). The rest are free-with-quota, and are recorded at 1¢
+ * rather than 0¢ deliberately: a zero estimate takes the call out of
+ * `policy.ts` rule 4 entirely, including the spend-permission check, so "free"
+ * and "unmetered" would become the same thing.
+ */
+const PLATFORM_COST_CENTS: Record<string, number> = {
+  x: 20,
+  instagram: 1,
+  tiktok: 1,
+  linkedin: 1,
+  youtube_shorts: 1,
+  default: 1,
+};
+
 export interface EmbedClient {
   embed(text: string): Promise<number[]>;
 }
@@ -104,7 +186,57 @@ export function makePublishNow(deps: PublishDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
-    guardrails: ['rights', 'platform_policy', 'claim_grounding'],
+    /**
+     * Publishing costs money on at least one platform and cost nothing here.
+     *
+     * The PRD's own integrations register prices X at *"~$0.20/post w/ URL"*
+     * (Track 3), and this tool declared no `estimateCents`, so every post was
+     * recorded at 0¢. Two consequences, and the second is worse than the
+     * accounting one: `policy.ts` rule 4 keys on `estimatedCents > 0`, so a
+     * zero estimate also skipped the `permissions.spendCredits === false`
+     * check — a workspace with credit spending switched off could still publish
+     * to a paid platform indefinitely.
+     *
+     * Per-platform because the prices are not comparable. The figures are
+     * deliberately coarse and named as estimates: the ledger's job here is to
+     * make spend *visible and enforceable*, and a coarse non-zero number does
+     * that where an exact zero does not.
+     */
+    estimateCents: (raw) => {
+      const parsed = PublishNowInput.safeParse(raw);
+      if (!parsed.success) return PLATFORM_COST_CENTS.default;
+      return PLATFORM_COST_CENTS[parsed.data.platform] ?? PLATFORM_COST_CENTS.default;
+    },
+    /**
+     * All seven, not three.
+     *
+     * This declared `['rights', 'platform_policy', 'claim_grounding']` and was
+     * the *only* tool in the registry declaring any guardrails at all — so
+     * `brand_voice`, `duplicate`, `avatar_saturation`, `compliance_profile` and
+     * (once it existed) `restricted_topics` were fully implemented, unit-tested,
+     * and run by no code path in the product.
+     *
+     * `compliance_profile` was the sharp end of that. Its own module comment
+     * quotes the engine spec — *"Do not ship these verticals without this in
+     * place — we would be generating liability for customers at scale"* — and it
+     * was not on the publish path. A health brand's "cures" claim reached a feed.
+     *
+     * Cost is a real consideration and does not change the answer: `duplicate`
+     * embeds the copy, which is one embedding call on the last irreversible step
+     * of a post that already cost dollars to produce. `gather.ts` runs all of
+     * them concurrently.
+     */
+    guardrails: [
+      'rights',
+      'platform_policy',
+      'claim_grounding',
+      'compliance_profile',
+      'restricted_topics',
+      'brand_voice',
+      'duplicate',
+      'avatar_saturation',
+    ],
+    policySubject: publishPolicySubject,
     surfaces: ['CAL-05'],
 
     async handler(input, ctx) {
@@ -280,6 +412,7 @@ export function makePublishRollback(deps: PublishDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin'],
     idempotent: false,
+    policySubject: rollbackPolicySubject,
 
     async handler(input, ctx) {
       const item = await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId);

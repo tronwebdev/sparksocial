@@ -40,10 +40,21 @@ const DEFAULT_BASE_URL = 'https://api.ayrshare.com';
  */
 const AYRSHARE_PLATFORM: Record<Platform, string> = {
   instagram: 'instagram',
+  // Ayrshare treats a story as the same platform with a different post type;
+  // the type is set per-request, so the platform key is unchanged.
+  instagram_story: 'instagram',
   tiktok: 'tiktok',
   linkedin: 'linkedin',
   x: 'twitter',
   youtube_shorts: 'youtube',
+  youtube_long: 'youtube',
+  facebook: 'facebook',
+  facebook_group: 'fbg',
+  threads: 'threads',
+  pinterest: 'pinterest',
+  google_business: 'gmb',
+  reddit: 'reddit',
+  bluesky: 'bluesky',
 };
 
 interface AyrsharePostResult {

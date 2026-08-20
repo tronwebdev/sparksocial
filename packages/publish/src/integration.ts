@@ -52,8 +52,24 @@ interface ExchangeArgs {
   fetchImpl: typeof fetch;
 }
 
-/** Required scopes this codebase requests at connect time, per platform — what `integration.scopes.verify` checks a stored connection against. */
-export const REQUIRED_SCOPES: Record<Platform, string[]> = {
+/**
+ * Required scopes this codebase requests at connect time, per platform — what
+ * `integration.scopes.verify` checks a stored connection against.
+ *
+ * `Partial`, and deliberately so. `Platform` names every surface the product can
+ * publish *to*; this map names every one it has built a *native* OAuth flow for,
+ * and those are different lists. The core five are native (own the relationship,
+ * the data depth and the margin); Facebook, Threads, Pinterest, Reddit, Bluesky
+ * and Google Business are reached through the aggregator, which holds its own
+ * credentials and needs no per-brand OAuth here.
+ *
+ * A `Record` would have forced a fabricated scope list for each of them —
+ * plausible-looking strings that no code path has ever sent to a real
+ * authorization server. `integration.connect` refuses an absent platform by
+ * name instead, which is the same "unset → say so, never fake it" rule the rest
+ * of this codebase's vendor seams follow.
+ */
+export const REQUIRED_SCOPES: Partial<Record<Platform, string[]>> = {
   instagram: ['instagram_content_publish', 'pages_show_list', 'pages_read_engagement'],
   tiktok: ['video.publish', 'user.info.basic'],
   linkedin: ['w_member_social', 'openid', 'profile'],
@@ -62,7 +78,19 @@ export const REQUIRED_SCOPES: Record<Platform, string[]> = {
 };
 
 function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirectUri: string; codeChallenge: string; state: string }): string {
-  const scope = REQUIRED_SCOPES[provider].join(provider === 'instagram' ? ',' : ' ');
+  const required = REQUIRED_SCOPES[provider];
+  if (!required) {
+    // Same refusal as `exchangeSocialCode`, at the other end of the flow: a
+    // platform with no native OAuth here must not be sent to an authorize URL
+    // built from an empty scope list, which would fail confusingly at the
+    // provider rather than clearly at us.
+    throw new ToolError(
+      'INVALID_INPUT',
+      `${provider} has no native OAuth flow in this build — it publishes through the aggregator, which holds its own credentials.`,
+      { platform: provider, nativePlatforms: Object.keys(REQUIRED_SCOPES) },
+    );
+  }
+  const scope = required.join(provider === 'instagram' ? ',' : ' ');
   switch (provider) {
     case 'instagram':
       return `https://www.facebook.com/v21.0/dialog/oauth?${new URLSearchParams({
@@ -110,6 +138,11 @@ function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirec
         prompt: 'consent',
         state: args.state,
       })}`;
+    default:
+      // Unreachable: `REQUIRED_SCOPES` above gates every provider that gets
+      // here, and its keys are exactly this switch's cases. Present so adding a
+      // native platform to that map without a URL builder fails loudly.
+      throw new ToolError('INVALID_INPUT', `No authorize URL is built for ${provider}.`, { platform: provider });
   }
 }
 
@@ -312,7 +345,8 @@ async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
   };
 }
 
-const EXCHANGERS: Record<Platform, (args: ExchangeArgs) => Promise<SocialTokenResult>> = {
+/** Same `Partial` reasoning as {@link REQUIRED_SCOPES}: native flows only. */
+const EXCHANGERS: Partial<Record<Platform, (args: ExchangeArgs) => Promise<SocialTokenResult>>> = {
   instagram: exchangeInstagram,
   tiktok: exchangeTikTok,
   linkedin: exchangeLinkedIn,
@@ -322,7 +356,15 @@ const EXCHANGERS: Record<Platform, (args: ExchangeArgs) => Promise<SocialTokenRe
 
 /** Dispatches to the right platform's token exchange — the callback route's one entry point into this file. */
 export function exchangeSocialCode(provider: Platform, args: ExchangeArgs): Promise<SocialTokenResult> {
-  return EXCHANGERS[provider](args);
+  const exchange = EXCHANGERS[provider];
+  if (!exchange) {
+    throw new ToolError(
+      'INVALID_INPUT',
+      `${provider} has no native OAuth flow in this build — it publishes through the aggregator, which holds its own credentials.`,
+      { platform: provider, nativePlatforms: Object.keys(EXCHANGERS) },
+    );
+  }
+  return exchange(args);
 }
 
 export { generatePkce, signOAuthState, verifyOAuthState };
@@ -471,7 +513,10 @@ export const integrationScopesVerify = defineTool({
 
   async handler(input, ctx) {
     const conn = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, input.provider);
-    const required = REQUIRED_SCOPES[input.provider];
+    // An aggregator-served platform has no scopes of ours to verify. Reported as
+    // an empty requirement that is trivially satisfied, rather than as a
+    // failure: nothing is wrong, there is simply nothing here to check.
+    const required = REQUIRED_SCOPES[input.provider] ?? [];
     // No stored scopes at all means the platform's token response didn't
     // report any (several don't) — treated as "can't verify, assume granted"
     // rather than a false failure, same honesty trade-off the doc comment

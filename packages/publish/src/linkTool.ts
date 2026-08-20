@@ -57,6 +57,9 @@ export function makeLinkShorten(dub: DubClient) {
     // Re-shortening the same URL twice creates two links pointing at the same
     // place, which is wasteful but not unsafe — no idempotency key needed.
     idempotent: true,
+    // Dub bills per link. Small, and the point of recording it is that a brand
+    // publishing 400 posts a month can see it at all.
+    estimateCents: () => 1,
     surfaces: ['CC-02', 'CAL-04'],
 
     async handler(input, ctx) {
