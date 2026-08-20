@@ -71,6 +71,9 @@ export function makeContentGenerateAvatarVideo(avatar: AvatarClient) {
 
     // HeyGen prices per rendered minute; this is the rough per-call ceiling
     // for a short-form beat, same approximation content.generate_image makes.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 50,
 
     async handler(input, ctx) {

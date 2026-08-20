@@ -39,6 +39,7 @@ export interface RegisteredTool {
   guardrails?: GuardrailId[];
   estimateCents?: (input: unknown) => number;
   policySubject?: (input: unknown, ctx: ToolCtx) => Promise<PolicySubject>;
+  producesMedia?: boolean;
   idempotent: boolean;
   surfaces?: string[];
   handler: (input: unknown, ctx: ToolCtx) => Promise<unknown>;

@@ -83,6 +83,10 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.contentPublishOrigin(db, { orgId, brandId: orgId, genomeId }, id);
     },
 
+    async pendingReviewCount(genomeId, orgId) {
+      return scoped.countPendingReview(db, { orgId, brandId: orgId, genomeId });
+    },
+
     async recordRender(args) {
       const row = await scoped.recordRender(
         db,

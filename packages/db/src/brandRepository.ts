@@ -136,6 +136,8 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
           : null;
       }
       if (patch.permissions !== undefined) set.permissions = patch.permissions ?? null;
+      if (patch.publishRoles !== undefined) set.publishRoles = patch.publishRoles ?? null;
+      if (patch.maxPendingReview !== undefined) set.maxPendingReview = patch.maxPendingReview ?? null;
 
       await db
         .insert(brands)
@@ -209,6 +211,8 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
       ? { quietWindows: row.quietWindows.map((w) => ({ from: new Date(w.from), to: new Date(w.to), reason: w.reason })) }
       : {}),
     ...(row.permissions ? { permissions: row.permissions } : {}),
+    ...(row.publishRoles ? { publishRoles: row.publishRoles as BrandGovernance['publishRoles'] } : {}),
+    ...(row.maxPendingReview !== null ? { maxPendingReview: row.maxPendingReview } : {}),
     // Non-optional on `BrandGovernance` — every brand has a strict-mode answer
     // and a zone, and "unset" is not one of them. The column defaults carry it.
     strictMode: row.strictMode,

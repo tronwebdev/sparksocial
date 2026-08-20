@@ -25,11 +25,14 @@ async function publishPolicySubject(
   ctx: ToolCtx,
 ): Promise<PolicySubject> {
   const playbook = playbookById(input.playbookId);
-  const origin = await ctx.db.content.publishOrigin({
-    id: input.contentItemId,
-    genomeId: input.genomeId,
-    orgId: ctx.orgId,
-  });
+  const [origin, pendingReviewCount] = await Promise.all([
+    ctx.db.content.publishOrigin({
+      id: input.contentItemId,
+      genomeId: input.genomeId,
+      orgId: ctx.orgId,
+    }),
+    ctx.db.content.pendingReviewCount(input.genomeId, ctx.orgId),
+  ]);
 
   return {
     platform: input.platform,
@@ -37,6 +40,11 @@ async function publishPolicySubject(
     ...(origin?.recipeId
       ? { isAutomationOutput: true, reviewBeforePublish: origin.reviewBeforePublish }
       : {}),
+    // PRD §7.2's per-campaign approval scope, and §10's queue cap. Both are
+    // facts about stored rows rather than about the input, which is why
+    // `policySubject` is async and takes `ctx`.
+    ...(origin?.campaignApprovalMode ? { campaignApprovalMode: origin.campaignApprovalMode } : {}),
+    pendingReviewCount,
   };
 }
 

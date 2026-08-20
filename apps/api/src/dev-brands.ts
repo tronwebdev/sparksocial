@@ -119,6 +119,14 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
         if (patch.permissions === null) delete row.permissions;
         else row.permissions = patch.permissions;
       }
+      if (patch.publishRoles !== undefined) {
+        if (patch.publishRoles === null) delete row.publishRoles;
+        else row.publishRoles = patch.publishRoles;
+      }
+      if (patch.maxPendingReview !== undefined) {
+        if (patch.maxPendingReview === null) delete row.maxPendingReview;
+        else row.maxPendingReview = patch.maxPendingReview;
+      }
       return copy({ ...row });
     },
 

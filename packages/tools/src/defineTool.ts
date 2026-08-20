@@ -312,8 +312,16 @@ export interface BrandGovernance {
   restrictedContentTypes?: string[];
   /** Publishing freeze windows — crisis pause, holiday, etc. */
   quietWindows?: Array<{ from: Date; to: Date; reason: string }>;
-  /** Permission toggles PRD §6 names — `spendCredits`/`automationAutoPublish`. */
-  permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean };
+  /** Permission toggles PRD §6 names. `requireApprovalForMedia` guards the 50–60¢ vendor calls. */
+  permissions?: {
+    spendCredits?: boolean;
+    automationAutoPublish?: boolean;
+    requireApprovalForMedia?: boolean;
+  };
+  /** §6's "Publish permission (per role)". Narrows a publish tool's scopes, never widens them. */
+  publishRoles?: Role[];
+  /** §10's queue cap: how much unreviewed work may accumulate before SPARK stops adding. */
+  maxPendingReview?: number;
 
   /**
    * ── The brand's own governance (PRD §8.2 ONB-03, §8.12, §9) ───────────────
@@ -413,7 +421,13 @@ export interface BrandGovernanceStore {
       restrictedPlatforms?: string[] | null;
       restrictedContentTypes?: string[] | null;
       quietWindows?: Array<{ from: Date; to: Date; reason: string }> | null;
-      permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean } | null;
+      permissions?: {
+        spendCredits?: boolean;
+        automationAutoPublish?: boolean;
+        requireApprovalForMedia?: boolean;
+      } | null;
+      publishRoles?: Role[] | null;
+      maxPendingReview?: number | null;
     };
   }): Promise<BrandGovernance>;
 
@@ -751,7 +765,25 @@ export interface ContentStore {
     id: string;
     genomeId: string;
     orgId: string;
-  }): Promise<{ recipeId?: string; reviewBeforePublish: boolean } | undefined>;
+  }): Promise<{
+    recipeId?: string;
+    reviewBeforePublish: boolean;
+    /**
+     * The item's campaign's own approval mode, when it set one — PRD §7.2's
+     * per-campaign scope. Absent means the brand's mode applies.
+     */
+    campaignApprovalMode?: ApprovalMode;
+  } | undefined>;
+
+  /**
+   * How many items are waiting on a human for this genome — `needs_review`,
+   * per PRD §7.4.
+   *
+   * Read by the publish tools' `policySubject` for §10's queue cap. A count
+   * rather than a list: the policy engine decides whether the pile is too deep,
+   * and has no business seeing what is in it.
+   */
+  pendingReviewCount(genomeId: string, orgId: string): Promise<number>;
 
   /**
    * ── PRD §7.4's two missing states ────────────────────────────────────────
@@ -1158,6 +1190,11 @@ export interface CampaignRecord {
    * on the scheduler fallback this replaces.
    */
   platforms?: string[];
+  /**
+   * PRD §7.2's per-campaign approval scope. Absent means the brand's own mode
+   * applies — see `campaigns.approvalMode` in `schema.ts`.
+   */
+  approvalMode?: ApprovalMode;
 }
 
 export interface CampaignSlotInput {
@@ -1197,6 +1234,7 @@ export interface CampaignStore {
     targetCount?: number;
     targetLabel?: string;
     platforms?: string[];
+    approvalMode?: ApprovalMode;
   }): Promise<{ id: string }>;
   /** Undefined rather than throwing when out of scope. */
   get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
@@ -1551,6 +1589,16 @@ export interface PolicySubject {
    * autonomy setting. There is no request field left to forge.
    */
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
+  /**
+   * PRD §7.2's per-campaign approval scope. Overrides `brand.approvalMode` for
+   * this post in either direction — see `policy.ts` rule 7.
+   */
+  campaignApprovalMode?: 'autopublish' | 'review_first_week' | 'review_everything';
+  /**
+   * How many items already sit at `needs_review` for this brand — §10's queue
+   * cap (`brand.maxPendingReview`) reads it in rule 4c.
+   */
+  pendingReviewCount?: number;
 }
 
 /* ── The contract ──────────────────────────────────────────────────── */
@@ -1593,6 +1641,21 @@ export interface ToolDef<I extends ZodTypeAny = ZodTypeAny, O extends ZodTypeAny
    * has to know before the handler runs.
    */
   policySubject?: (input: z.infer<I>, ctx: ToolCtx) => Promise<PolicySubject>;
+
+  /**
+   * True for a tool whose whole job is spending a vendor's money to produce a
+   * media file — an image, a video, a voiceover, a dub, a render.
+   *
+   * Declared rather than inferred, because there is no reliable way to infer it:
+   * `content.*` holds `content.draft` (text, ~1¢) next to
+   * `content.generate_avatar_video` (50¢), and `compose.*` holds a Canva
+   * passthrough next to a Remotion video render. A family check would gate the
+   * cheap ones or miss the expensive ones.
+   *
+   * Read by `policy.ts` rule 4b for PRD §6's "Approval required for media
+   * generation (optional)" permission.
+   */
+  producesMedia?: boolean;
 
   /** When false, callers must supply an idempotency key. */
   idempotent: boolean;

@@ -70,6 +70,9 @@ export function makeContentGenerateDub(dubbing: DubbingClient) {
     // ElevenLabs prices dubbing per minute of source media; this is a rough
     // per-call ceiling for a short beat, same honest-approximation posture
     // every vendor estimate in this package takes.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 60,
 
     async handler(input, ctx) {

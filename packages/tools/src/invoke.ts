@@ -261,7 +261,13 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
   /* 5 ── Policy. Role scope, autonomy, budget, quiet windows, approval mode —
    *      all resolved in the one pure function. */
   const decision = evaluate({
-    tool: { name: tool.name, effect: tool.effect, autonomy: tool.autonomy, scopes: tool.scopes },
+    tool: {
+      name: tool.name,
+      effect: tool.effect,
+      autonomy: tool.autonomy,
+      scopes: tool.scopes,
+      ...(tool.producesMedia ? { producesMedia: true } : {}),
+    },
     caller: req.caller,
     role: req.ctx.role,
     now: at,

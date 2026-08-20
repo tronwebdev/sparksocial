@@ -27,7 +27,7 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
   return {
     size: () => rows.size,
 
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms }) {
+    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode }) {
       const id = randomUUID();
       rows.set(id, {
         id,
@@ -42,6 +42,7 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
         ...(targetCount !== undefined ? { targetCount } : {}),
         ...(targetLabel !== undefined ? { targetLabel } : {}),
         ...(platforms?.length ? { platforms } : {}),
+        ...(approvalMode ? { approvalMode } : {}),
       });
       slots.set(id, []);
       return { id };

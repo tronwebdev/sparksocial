@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { cn } from '@/lib/utils';
 
 /**
  * `approval.policy.get`/`.set` — real since 17 Aug 2026, reached from no
@@ -35,8 +36,23 @@ interface Policy {
   restrictedPlatforms: string[] | null;
   restrictedContentTypes: string[] | null;
   quietWindows: QuietWindow[] | null;
-  permissions: { spendCredits?: boolean; automationAutoPublish?: boolean } | null;
+  permissions: {
+    spendCredits?: boolean;
+    automationAutoPublish?: boolean;
+    requireApprovalForMedia?: boolean;
+  } | null;
+  publishRoles: string[] | null;
+  maxPendingReview: number | null;
 }
+
+/**
+ * §6's "Publish permission (per role)". Only the roles a publish tool could
+ * ever be granted to — `publish.now` declares `['owner','admin','editor']`, and
+ * `policy.ts` rule 2 refuses anything outside that regardless of what is set
+ * here, so offering `approver`/`viewer`/`client` would be offering a choice that
+ * cannot take effect.
+ */
+const PUBLISH_ROLES = ['owner', 'admin', 'editor'] as const;
 
 export function PolicyPanel() {
   const [loading, setLoading] = useState(true);
@@ -44,6 +60,9 @@ export function PolicyPanel() {
   const [contentTypesText, setContentTypesText] = useState('');
   const [spendCredits, setSpendCredits] = useState(true);
   const [automationAutoPublish, setAutomationAutoPublish] = useState(true);
+  const [requireApprovalForMedia, setRequireApprovalForMedia] = useState(false);
+  const [publishRoles, setPublishRoles] = useState<string[]>([]);
+  const [maxPendingReview, setMaxPendingReview] = useState('');
   const [quietWindows, setQuietWindows] = useState<QuietWindow[]>([]);
   const [newWindow, setNewWindow] = useState({ from: '', to: '', reason: '' });
   const [familyOverrides, setFamilyOverrides] = useState<Record<string, string>>({});
@@ -61,6 +80,9 @@ export function PolicyPanel() {
       setContentTypesText((p.restrictedContentTypes ?? []).join(', '));
       setSpendCredits(p.permissions?.spendCredits ?? true);
       setAutomationAutoPublish(p.permissions?.automationAutoPublish ?? true);
+      setRequireApprovalForMedia(p.permissions?.requireApprovalForMedia ?? false);
+      setPublishRoles(p.publishRoles ?? []);
+      setMaxPendingReview(p.maxPendingReview === null ? '' : String(p.maxPendingReview));
       setQuietWindows(p.quietWindows ?? []);
       setFamilyOverrides(p.familyOverrides ?? {});
     })();
@@ -92,7 +114,12 @@ export function PolicyPanel() {
     const res = await invoke<{ policy: Policy }>('approval.policy.set', {
       restrictedPlatforms: restrictedPlatforms.length ? restrictedPlatforms : null,
       restrictedContentTypes: contentTypes.length ? contentTypes : null,
-      permissions: { spendCredits, automationAutoPublish },
+      permissions: { spendCredits, automationAutoPublish, requireApprovalForMedia },
+      // Empty means "the tool's own scopes stand" — a cleared list must not read
+      // as "nobody may publish", which would take a workspace down from a
+      // settings screen.
+      publishRoles: publishRoles.length ? publishRoles : null,
+      maxPendingReview: Number(maxPendingReview) > 0 ? Number(maxPendingReview) : null,
       quietWindows: quietWindows.length
         ? quietWindows.map((w) => ({ from: new Date(w.from).toISOString(), to: new Date(w.to).toISOString(), reason: w.reason }))
         : null,
@@ -157,6 +184,72 @@ export function PolicyPanel() {
             <input type="checkbox" checked={automationAutoPublish} onChange={(e) => setAutomationAutoPublish(e.target.checked)} />
             Allow automation recipes to autopublish
           </label>
+          {/* PRD §6's fifth permission control, and the one guarding the money:
+              an avatar video is 50¢ a call and a dub 60¢. Distinct from the
+              spend cap, which answers "can we afford it" rather than "should a
+              person look first". */}
+          <label className="flex items-center gap-2 text-[13px] text-ink">
+            <input
+              type="checkbox"
+              checked={requireApprovalForMedia}
+              onChange={(e) => setRequireApprovalForMedia(e.target.checked)}
+            />
+            Approve before generating video, images or voice
+          </label>
+        </div>
+
+        {/* PRD §6: "Publish permission (per role)" */}
+        <div>
+          <p className="text-[13px] font-medium text-ink">Who may publish</p>
+          <p className="mt-0.5 text-[12px] text-ink-muted">
+            {publishRoles.length === 0
+              ? 'Anyone who can create drafts can also publish them.'
+              : `Only ${publishRoles.join(', ')}. Everyone else can draft and schedule.`}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {PUBLISH_ROLES.map((r) => {
+              const on = publishRoles.includes(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setPublishRoles((prev) =>
+                      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r],
+                    )
+                  }
+                  className={cn(
+                    'rounded border px-2.5 py-1 text-[12px] capitalize transition-colors',
+                    on
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border text-ink hover:bg-surface-muted',
+                  )}
+                >
+                  {r}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* PRD §10: queue caps, the mitigation for "automation floods calendars" */}
+        <div className="max-w-xs">
+          <label className="text-[13px] font-medium text-ink" htmlFor="policy-queue-cap">
+            Stop SPARK when this many items await review
+          </label>
+          <p className="mt-0.5 text-[12px] text-ink-muted">
+            Leave empty for no limit. You can always keep clearing the queue yourself — this only stops
+            SPARK adding to it.
+          </p>
+          <input
+            id="policy-queue-cap"
+            value={maxPendingReview}
+            inputMode="numeric"
+            onChange={(e) => setMaxPendingReview(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="e.g. 25"
+            className="mt-1.5 h-9 w-full rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder"
+          />
         </div>
 
         <div>

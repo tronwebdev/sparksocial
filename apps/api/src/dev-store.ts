@@ -593,13 +593,31 @@ export function createDevStore(
       async publishOrigin({ id, genomeId, orgId: org }) {
         const row = drafts.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+
+        // PRD §7.2's per-campaign approval scope, same as the real join — read
+        // through the campaign store this store already holds rather than a
+        // second copy of the rows.
+        const campaignMode = row.campaignId
+          ? (await campaignStore.get(row.campaignId, org))?.approvalMode
+          : undefined;
+        const modePart = campaignMode
+          ? { campaignApprovalMode: campaignMode as 'autopublish' | 'review_first_week' | 'review_everything' }
+          : {};
+
         const recipeId = (row as { recipeId?: string }).recipeId;
-        if (!recipeId) return { reviewBeforePublish: false };
+        if (!recipeId) return { reviewBeforePublish: false, ...modePart };
         const cfg = recipes.get(recipeId)?.config as { reviewBeforePublish?: unknown } | undefined;
         return {
           recipeId,
           reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+          ...modePart,
         };
+      },
+
+      async pendingReviewCount(genomeId, org) {
+        return [...drafts.values()].filter(
+          (r) => r.orgId === org && r.genomeId === genomeId && r.status === 'needs_review',
+        ).length;
       },
 
       async recordRender({ contentItemId, genomeId, orgId: org, aspect, storageUrl, engine, costCents }) {

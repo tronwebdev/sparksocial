@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -1234,20 +1234,47 @@ export async function contentPublishOrigin(
 ): Promise<{ recipeId?: string; reviewBeforePublish: boolean } | undefined> {
   assertScope(scope);
   const [row] = await db
-    .select({ recipeId: contentItems.recipeId, config: recipes.config })
+    .select({
+      recipeId: contentItems.recipeId,
+      config: recipes.config,
+      campaignApprovalMode: campaigns.approvalMode,
+    })
     .from(contentItems)
     .leftJoin(recipes, eq(recipes.id, contentItems.recipeId))
+    // PRD §7.2's per-campaign approval scope, read in the same statement rather
+    // than a second round trip: this runs on the critical path of every publish.
+    .leftJoin(campaigns, eq(campaigns.id, contentItems.campaignId))
     .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
     .limit(1);
 
   if (!row) return undefined;
-  if (!row.recipeId) return { reviewBeforePublish: false };
+
+  const campaignMode = row.campaignApprovalMode
+    ? { campaignApprovalMode: row.campaignApprovalMode as 'autopublish' | 'review_first_week' | 'review_everything' }
+    : {};
+
+  if (!row.recipeId) return { reviewBeforePublish: false, ...campaignMode };
 
   const cfg = row.config as { reviewBeforePublish?: unknown } | null;
   return {
     recipeId: row.recipeId,
     reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+    ...campaignMode,
   };
+}
+
+/**
+ * How many of this genome's items are sitting at `needs_review` — §10's queue
+ * cap reads it. `count(*)`, not a list: the policy engine needs the depth of the
+ * pile and has no business seeing what is in it.
+ */
+export async function countPendingReview(db: Database, scope: Scope): Promise<number> {
+  assertScope(scope);
+  const [row] = await db
+    .select({ n: sql<string>`count(*)` })
+    .from(contentItems)
+    .where(and(scopePredicate('contentItems', scope), eq(contentItems.status, 'needs_review')));
+  return Number(row?.n ?? 0);
 }
 
 export async function findDueContentItems(db: Database, args: { before: Date; limit: number }): Promise<DueContentItem[]> {

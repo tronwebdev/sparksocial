@@ -102,6 +102,11 @@ describe('approval.policy.get', () => {
       restrictedContentTypes: null,
       quietWindows: null,
       permissions: null,
+      // PRD §6's "Publish permission (per role)" and §10's queue cap. Null means
+      // the tool's own scopes stand and there is no cap — the behaviour every
+      // brand had before these columns existed.
+      publishRoles: null,
+      maxPendingReview: null,
     });
   });
 

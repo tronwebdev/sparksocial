@@ -71,6 +71,12 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
     // Same reasoning as `compose.render`: a re-render is a new render, not a safe replay.
     idempotent: false,
 
+    // PRD §6's \"approval required for media generation\" permission —
+
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+
+    producesMedia: true,
+
     estimateCents: () => COST_CENTS_PER_RENDER,
 
     async handler(input, ctx) {

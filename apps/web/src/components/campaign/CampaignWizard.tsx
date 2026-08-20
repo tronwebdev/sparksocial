@@ -104,7 +104,7 @@ const STEP_TITLES: Record<Step, string> = {
   2: 'What SPARK plans to make',
   3: 'What are you pointing people at?',
   4: 'Where should it post?',
-  5: 'How much should it do on its own?',
+  5: 'How much should this campaign do on its own?',
   6: 'Ready to go',
 };
 
@@ -139,6 +139,8 @@ export function CampaignWizard({
   // CMP-01.5
   const [approvalMode, setApprovalMode] = useState<string>('review_first_week');
   const [learnFromPerformance, setLearnFromPerformance] = useState(true);
+  /** Also change the brand's default, not just this campaign's — off by default. */
+  const [applyToWholeBrand, setApplyToWholeBrand] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -206,13 +208,24 @@ export function CampaignWizard({
     setBusy(true);
     setError(null);
 
-    // The approval mode has to be set *before* the calendar exists, or the
-    // first slots are placed under whatever the brand was on previously.
-    const modeRes = await invoke('agent.approval_mode.set', { mode: approvalMode });
-    if (modeRes.status !== 'succeeded') {
-      setBusy(false);
-      setError(modeRes.status === 'failed' ? modeRes.error.message : 'Setting the approval mode was gated.');
-      return;
+    /**
+     * The oversight choice is stored on the *campaign* now, not the brand — PRD
+     * §7.2's per-campaign approval scope, which had no representation until
+     * `campaigns.approval_mode` existed.
+     *
+     * That is the meaningful change from setting `agent.approval_mode.set` here:
+     * it used to overwrite the whole brand's posture, so activating a cautious
+     * launch campaign quietly put every *other* running campaign into review
+     * too. A campaign's mode now applies to its own posts and nothing else, and
+     * `applyToWholeBrand` is the explicit way to do the old thing on purpose.
+     */
+    if (applyToWholeBrand) {
+      const modeRes = await invoke('agent.approval_mode.set', { mode: approvalMode });
+      if (modeRes.status !== 'succeeded') {
+        setBusy(false);
+        setError(modeRes.status === 'failed' ? modeRes.error.message : 'Setting the approval mode was gated.');
+        return;
+      }
     }
 
     if (!learnFromPerformance) {
@@ -229,6 +242,7 @@ export function CampaignWizard({
         objective,
         windowDays,
         platforms: selected,
+        approvalMode,
         ...(targetCount.trim() && Number(targetCount) > 0 ? { targetCount: Number(targetCount) } : {}),
         ...(targetLabel.trim() ? { targetLabel: targetLabel.trim() } : {}),
       },
@@ -544,6 +558,22 @@ export function CampaignWizard({
             <label className="flex items-start gap-3 rounded-lg border border-border p-3">
               <input
                 type="checkbox"
+                checked={applyToWholeBrand}
+                onChange={(e) => setApplyToWholeBrand(e.target.checked)}
+                className="mt-1 size-4 accent-[--ss-primary]"
+              />
+              <span>
+                <span className="text-[14px] font-medium text-ink">Use this for every campaign</span>
+                <span className="mt-0.5 block text-[13px] text-ink-muted">
+                  Off by default: this choice applies to this campaign only, so a cautious launch does not
+                  put your routine posting into review as well.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <input
+                type="checkbox"
                 checked={learnFromPerformance}
                 onChange={(e) => setLearnFromPerformance(e.target.checked)}
                 className="mt-1 size-4 accent-[--ss-primary]"
@@ -585,7 +615,9 @@ export function CampaignWizard({
               />
               <Row
                 label="Oversight"
-                value={APPROVAL_MODES.find((m) => m.value === approvalMode)?.label ?? approvalMode}
+                value={`${APPROVAL_MODES.find((m) => m.value === approvalMode)?.label ?? approvalMode}${
+                  applyToWholeBrand ? ' — for every campaign' : ' — this campaign only'
+                }`}
               />
               <Row label="CTA" value={ctaUrl.trim() || 'None set'} />
             </dl>

@@ -54,6 +54,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markRolledBack: async () => {},
         markBlocked: async () => {},
         publishOrigin: async () => undefined,
+        pendingReviewCount: async () => 0,
         markNeedsReview: async () => {},
         markApproved: async () => {},
         markRejected: async () => {},

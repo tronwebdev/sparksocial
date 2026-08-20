@@ -60,6 +60,9 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
 
     // ElevenLabs prices per character; this is a rough per-call ceiling for a
     // short beat, same approximation used elsewhere in this package.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 3,
 
     async handler(input, ctx) {

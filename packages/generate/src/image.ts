@@ -67,6 +67,9 @@ export function makeContentGenerateImage(image: ImageClient) {
     // fal.ai's per-image price varies by model; this is the rough per-call
     // ceiling, not a metered readout — same approximation `direct.media.ingest`
     // makes for ffmpeg time.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 5,
 
     async handler(input, ctx) {

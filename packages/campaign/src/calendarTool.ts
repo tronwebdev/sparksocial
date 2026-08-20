@@ -47,6 +47,17 @@ export const CampaignCreateInput = z.object({
    * in `schema.ts` on why it was guessing.
    */
   platforms: z.array(z.string().min(1).max(40)).max(15).default([]),
+  /**
+   * PRD §7.2's per-campaign approval scope — the fourth of the four scopes it
+   * lists, and the one that had no representation.
+   *
+   * Omitted means the brand's own mode applies, which is every campaign created
+   * before this existed. Set, it wins in either direction: a cautious launch
+   * campaign can require review inside an autopublishing brand, and a routine
+   * one can publish freely inside a brand that reviews everything. Without the
+   * downward direction this would be a second lock rather than a control.
+   */
+  approvalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']).optional(),
 });
 
 export const CampaignCreateOutput = z.object({
@@ -57,6 +68,8 @@ export const CampaignCreateOutput = z.object({
   startAt: z.string(),
   targetCount: z.number().optional(),
   targetLabel: z.string().optional(),
+  /** Echoed so a caller can confirm which posture it actually committed to. */
+  approvalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']).optional(),
 });
 
 /**
@@ -128,7 +141,9 @@ export const campaignCreate = defineTool({
       plan,
       ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
       ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
+      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
       ...(input.platforms.length ? { platforms: input.platforms } : {}),
+      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
     });
 
     ctx.logger.info('campaign created', {

@@ -454,7 +454,27 @@ export const brands = pgTable(
     restrictedPlatforms: jsonb('restricted_platforms').$type<string[]>(),
     restrictedContentTypes: jsonb('restricted_content_types').$type<string[]>(),
     quietWindows: jsonb('quiet_windows').$type<Array<{ from: string; to: string; reason: string }>>(),
-    permissions: jsonb('permissions').$type<{ spendCredits?: boolean; automationAutoPublish?: boolean }>(),
+    permissions: jsonb('permissions').$type<{
+      spendCredits?: boolean;
+      automationAutoPublish?: boolean;
+      /**
+       * PRD §6's "Approval required for media generation (optional)" — the one
+       * of the five permission controls with no representation anywhere.
+       */
+      requireApprovalForMedia?: boolean;
+    }>(),
+    /**
+     * §6's "Publish permission (per role)". Narrows a publish tool's own
+     * declared scopes; it can never widen them (`policy.ts` rule 2 runs first).
+     * Null means the tool's own scopes stand.
+     */
+    publishRoles: jsonb('publish_roles').$type<string[]>(),
+    /**
+     * §10's queue cap — the mitigation for "automation floods
+     * feeds/calendars". How many items may sit waiting for review before SPARK
+     * stops adding to the pile. Null means no cap.
+     */
+    maxPendingReview: integer('max_pending_review'),
 
     /**
      * ── PRD §8.2 ONB-03 / §8.12 SET-WS-01 / §9: the governance a brand states
@@ -809,6 +829,20 @@ export const campaigns = pgTable(
      * a campaign created before this column existed.
      */
     platforms: jsonb('platforms').$type<string[]>(),
+    /**
+     * PRD §7.2's per-campaign approval scope.
+     *
+     * §7.2 lists four scopes at which approvals may be switched on — globally,
+     * **per campaign**, per content type/platform, and by guardrail trigger —
+     * and three of them were real. Null means "use the brand's", which is every
+     * campaign created before this column existed.
+     *
+     * Overrides in *either* direction, which is what makes it a control rather
+     * than a second lock: a cautious launch campaign can require review inside
+     * an autopublishing brand, and a routine one can publish freely inside a
+     * brand that reviews everything.
+     */
+    approvalMode: text('approval_mode'),
     /** draft | active | done | cancelled */
     status: text('status').notNull().default('draft'),
     /** The approved plan: volume, mix, capture ask, reasoning. */

@@ -72,6 +72,12 @@ export function makeComposeRender(deps: ComposeDeps) {
     /** A re-render is a new render (new footage, a fixed typo, another take) — not a safe replay. Same reasoning as `content.draft`. */
     idempotent: false,
 
+    // PRD §6's \"approval required for media generation\" permission —
+
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+
+    producesMedia: true,
+
     estimateCents: (raw) => {
       const parsed = ComposeRenderInput.safeParse(raw);
       if (!parsed.success) return COST_CENTS_PER_RENDER;
