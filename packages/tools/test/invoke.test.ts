@@ -189,36 +189,42 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setGovernance: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
@@ -797,5 +803,76 @@ describe('recordCost on failure', () => {
 
     await invokeTool(request({ tool: 'free.thing' }), deps);
     expect(billed).toHaveLength(0);
+  });
+});
+
+/* ── The engagement gate cannot be self-certified ─────────────────────────── */
+
+describe('policy rule 6 — engagement eligibility is derived, never asserted', () => {
+  /**
+   * `engagement` used to sit on `InvokeRequest` and was forwarded verbatim from
+   * the HTTP request body, so a client could post
+   * `engagement: { eligible: true, autonomyConfigured: true }` and send
+   * unattended replies for a campaign that had never published anything.
+   *
+   * It failed *closed* when omitted — rule 6 denies without it — which is why
+   * it never presented as a broken feature. Forgeable is worse than broken.
+   */
+  const replier = (engagement?: { eligible: boolean; autonomyConfigured: boolean }) => ({
+    ...Echo,
+    name: 'engage.reply.send',
+    effect: 'publish' as const,
+    policySubject: async () => (engagement ? { engagement } : {}),
+  });
+
+  it('denies when the tool derives ineligible, whatever the request said', async () => {
+    register(replier({ eligible: false, autonomyConfigured: true }));
+    const { deps } = harness();
+
+    // The request cannot carry `engagement` any more — this is the shape a
+    // caller trying the old bypass would send, and it is simply ignored.
+    const out = await invokeTool(
+      { ...request({ tool: 'engage.reply.send' }), ...({ engagement: { eligible: true, autonomyConfigured: true } } as object) },
+      deps,
+    );
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.kind).toBe('deny');
+      expect(out.decision.ruleId).toBe('engage.ineligible');
+    }
+  });
+
+  it('holds for approval when eligible but autonomy is unconfigured', async () => {
+    register(replier({ eligible: true, autonomyConfigured: false }));
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.kind).toBe('approval');
+      expect(out.decision.ruleId).toBe('engage.unconfigured');
+    }
+  });
+
+  it('allows once the tool derives both', async () => {
+    register(replier({ eligible: true, autonomyConfigured: true }));
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+    expect(out.status).toBe('succeeded');
+  });
+
+  it('denies an engage publish whose tool derives nothing at all', async () => {
+    // A `policySubject` that omits `engagement` must not read as permission.
+    // Failing closed is the whole reason the old bypass went unnoticed, and it
+    // is still the right behaviour — it just can no longer be overridden.
+    register(replier());
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('engage.ineligible');
+    }
   });
 });

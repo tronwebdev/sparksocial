@@ -3,6 +3,7 @@ import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools
 import { ToolError, Explanation } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
+import { resolveEngagementEligibility } from './eligibility.js';
 
 /**
  * `engage.autohandle` — SPARK sending a reply with nobody in the loop.
@@ -36,25 +37,53 @@ import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
  */
 
 /**
- * The publish context `policy.ts` rule 7 evaluates for an outbound reply — see
- * `PolicySubject` in `defineTool.ts` on why the tool derives this.
+ * The policy context `policy.ts` rules 6 and 7 evaluate for an outbound reply.
  *
- * Rule 6 already gates the whole `engage.*` publish family on eligibility and
- * autonomy configuration, and it runs first. This adds the platform and content
- * type on top, so that "Instagram requires review" covers what SPARK *says* on
- * Instagram and not only what it posts there. `contentType` is
- * `engagement_reply` rather than a media type: a workspace that wants replies
- * reviewed while posts flow freely (or the reverse) needs to be able to name
- * them separately, and nothing else in the system produces that string.
+ * ── Why the engagement gate moved here ─────────────────────────────────────
+ *
+ * `engagement` used to arrive on `InvokeRequest`, forwarded verbatim from the
+ * HTTP request body (`app.ts`). So a client could post
+ * `engagement: { eligible: true, autonomyConfigured: true }` and send unattended
+ * replies for a campaign that had never published anything — PRD §8.8's entire
+ * eligibility gate, bypassed by two booleans the caller chose.
+ *
+ * It failed *closed* when the field was absent (rule 6 denies without it), which
+ * is why nothing ever looked broken. Forgeable is worse than broken: broken gets
+ * reported.
+ *
+ * Both halves are now facts the server owns:
+ *
+ *   - `eligible` is recomputed here from the genome's most recent campaign,
+ *     using the same rule and the same two constants `engage.eligibility.check`
+ *     exposes as a tool. One rule, two readers — a second implementation is how
+ *     the screen and the gate come to disagree.
+ *   - `autonomyConfigured` is `brands.engagementAutonomy !== 'off'`. A brand that
+ *     has never chosen leaves SPARK suggesting replies for a person to send,
+ *     which is what rule 6's `approval` outcome does with it.
+ *
+ * Rule 6 runs before rule 7, so an ineligible brand is denied before the
+ * platform and content-type restrictions are even consulted.
  */
 async function replyPolicySubject(
   input: { messageId: string; genomeId: string },
   ctx: ToolCtx,
 ): Promise<PolicySubject> {
-  const message = await ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId);
+  const [message, eligibility, brand] = await Promise.all([
+    ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
+    resolveEngagementEligibility(ctx, input.genomeId),
+    ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
+  ]);
+
   return {
     ...(message?.platform ? { platform: message.platform } : {}),
+    // Not a media type: a workspace that wants replies reviewed while posts
+    // flow freely (or the reverse) has to be able to name them separately, and
+    // nothing else in the system produces this string.
     contentType: 'engagement_reply',
+    engagement: {
+      eligible: eligibility.eligible,
+      autonomyConfigured: (brand?.engagementAutonomy ?? 'off') !== 'off',
+    },
   };
 }
 

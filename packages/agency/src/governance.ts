@@ -88,6 +88,15 @@ export const BrandGovernanceSetInput = z.object({
     .refine(isKnownTimeZone, { message: 'Not a recognised IANA timezone, e.g. "Europe/London".' })
     .optional(),
   postingWindows: z.array(z.number().int().min(0).max(23)).max(12).nullable().optional(),
+  /**
+   * PRD §8.8's engagement autonomy level. `off` means SPARK drafts a reply and a
+   * person sends it; `suggest` and `auto` both count as *configured*, which is
+   * what `policy.ts` rule 6 asks about — the difference between them is how far
+   * `engage.autohandle` gets, not whether the family is gated.
+   */
+  engagementAutonomy: z.enum(['off', 'suggest', 'auto']).optional(),
+  /** comment | dm | story_reply. Null clears back to "all of them". */
+  engagementTypes: z.array(z.enum(['comment', 'dm', 'story_reply'])).max(3).nullable().optional(),
 });
 
 export const BrandGovernanceOutput = z.object({
@@ -104,6 +113,8 @@ export const BrandGovernanceOutput = z.object({
   postingWindows: z.array(z.number()),
   /** True when `postingWindows` is the system default rather than this brand's own choice. */
   usingDefaultWindows: z.boolean(),
+  engagementAutonomy: z.enum(['off', 'suggest', 'auto']),
+  engagementTypes: z.array(z.string()),
   why: Explanation,
 });
 
@@ -178,6 +189,13 @@ export const brandGovernanceSet = defineTool({
           { label: 'strict mode', detail: after.strictMode ? 'on — restricted topics block' : 'off — restricted topics flag' },
           { label: 'timezone', detail: after.timezone },
           {
+            label: 'engagement',
+            detail:
+              after.engagementAutonomy === 'off'
+                ? 'off — SPARK drafts, a person sends'
+                : `${after.engagementAutonomy} — replies are gated by eligibility as well`,
+          },
+          {
             label: 'restricted topics',
             detail: `${after.restrictedTopics?.length ?? 0} topic(s), ${after.claimsToAvoid?.length ?? 0} claim(s)`,
           },
@@ -208,6 +226,8 @@ function toOutput(gov: {
   brandColors?: string[];
   timezone: string;
   postingWindows?: number[];
+  engagementAutonomy: 'off' | 'suggest' | 'auto';
+  engagementTypes?: string[];
 }) {
   const own = gov.postingWindows?.length ? gov.postingWindows : undefined;
   return {
@@ -225,6 +245,8 @@ function toOutput(gov: {
     // has effective windows.
     postingWindows: own ?? [...DEFAULT_POSTING_WINDOWS],
     usingDefaultWindows: own === undefined,
+    engagementAutonomy: gov.engagementAutonomy,
+    engagementTypes: gov.engagementTypes ?? [],
     why: {
       summary: 'The rules this brand publishes under.',
       factors: [],

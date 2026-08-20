@@ -38,6 +38,8 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       // strict-mode answer and a zone, and neither may read as "unset".
       strictMode: false,
       timezone: 'UTC',
+      // Same column default: suggest, do not send.
+      engagementAutonomy: 'off' as const,
     };
     rows.set(brandId, created);
     return created;
@@ -152,6 +154,11 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       if (patch.postingWindows !== undefined) {
         if (patch.postingWindows === null) delete row.postingWindows;
         else row.postingWindows = patch.postingWindows;
+      }
+      if (patch.engagementAutonomy !== undefined) row.engagementAutonomy = patch.engagementAutonomy;
+      if (patch.engagementTypes !== undefined) {
+        if (patch.engagementTypes === null) delete row.engagementTypes;
+        else row.engagementTypes = patch.engagementTypes;
       }
       return copy({ ...row });
     },

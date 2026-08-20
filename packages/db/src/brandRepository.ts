@@ -51,6 +51,7 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
             // zone, and this fallback must not be the one place they are absent.
             strictMode: false,
             timezone: 'UTC',
+            engagementAutonomy: 'off',
           };
     },
 
@@ -167,6 +168,8 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (patch.brandColors !== undefined) set.brandColors = patch.brandColors ?? null;
       if (patch.timezone !== undefined) set.timezone = patch.timezone;
       if (patch.postingWindows !== undefined) set.postingWindows = patch.postingWindows ?? null;
+      if (patch.engagementAutonomy !== undefined) set.engagementAutonomy = patch.engagementAutonomy;
+      if (patch.engagementTypes !== undefined) set.engagementTypes = patch.engagementTypes ?? null;
 
       await db
         .insert(brands)
@@ -210,6 +213,7 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     // and a zone, and "unset" is not one of them. The column defaults carry it.
     strictMode: row.strictMode,
     timezone: row.timezone,
+    engagementAutonomy: row.engagementAutonomy as BrandGovernance['engagementAutonomy'],
     ...(row.restrictedTopics ? { restrictedTopics: row.restrictedTopics } : {}),
     ...(row.claimsToAvoid ? { claimsToAvoid: row.claimsToAvoid } : {}),
     ...(row.toneVector ? { toneVector: row.toneVector } : {}),
@@ -217,5 +221,6 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     ...(row.logoUrl ? { logoUrl: row.logoUrl } : {}),
     ...(row.brandColors ? { brandColors: row.brandColors } : {}),
     ...(row.postingWindows ? { postingWindows: row.postingWindows } : {}),
+    ...(row.engagementTypes ? { engagementTypes: row.engagementTypes } : {}),
   };
 }

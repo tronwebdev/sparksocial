@@ -99,6 +99,7 @@ function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx
           postsPerWeek: 3,
           strictMode: false,
           timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
       },
       runs: { list: async () => [], get: async () => undefined },

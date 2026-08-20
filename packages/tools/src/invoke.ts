@@ -147,9 +147,16 @@ export interface InvokeRequest {
      */
     guardrailFlags?: string[];
   };
-  /** Engagement eligibility, for the `engage.*` family. */
-  engagement?: { eligible: boolean; autonomyConfigured: boolean };
-  /** Brand governance state the policy engine reads. */
+  /**
+   * Brand governance state the policy engine reads.
+   *
+   * `engagement` used to sit beside this and is now derived by the tool
+   * (`ToolDef.policySubject`), for the same reason the publish fields were: it
+   * was forwarded straight from the request body, so a caller could
+   * self-certify that a campaign had cleared PRD §8.8's eligibility gate and
+   * that its autonomy had been configured — and then send unattended replies.
+   * It failed closed when omitted, so nothing ever looked wrong.
+   */
   brand: Parameters<typeof evaluate>[0]['brand'];
 }
 
@@ -260,11 +267,11 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     now: at,
     brand: req.brand,
     subject: { ...derived, guardrailFlags },
+    ...(derived.engagement ? { engagement: derived.engagement } : {}),
     budget: {
       remainingCents: req.ctx.budget.remainingCents,
       estimatedCents,
     },
-    ...(req.engagement ? { engagement: req.engagement } : {}),
     ...(req.approval ? { approval: req.approval } : {}),
   });
 

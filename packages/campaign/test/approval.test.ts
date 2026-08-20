@@ -24,6 +24,7 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     postsPerWeek: 3,
       strictMode: false,
       timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
     ...initial,
   };
   return {

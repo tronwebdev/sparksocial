@@ -119,8 +119,11 @@ export function createApp(deps: AppDeps) {
         ctx,
         brand,
         ...(body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {}),
+        // Only `guardrailFlags` survives on `subject`; everything else the
+        // policy engine reads about a publish or a reply is derived by the tool
+        // itself (`ToolDef.policySubject`), because a request-level field for a
+        // restriction is a request-level opt-out.
         ...(body.subject ? { subject: body.subject } : {}),
-        ...(body.engagement ? { engagement: body.engagement } : {}),
       },
       deps.invokeDeps,
     );

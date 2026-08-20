@@ -523,6 +523,24 @@ export const brands = pgTable(
      * Defaults to UTC rather than null so that every existing brand has a
      * defined zone and `placeCalendar` never has to branch on "unknown".
      */
+    /**
+     * ── PRD §8.8's engagement configuration ─────────────────────────────────
+     *
+     * *"Inputs/Config: Engagement autonomy level. Enabled engagement types
+     * (comments/DMs/story replies). Approval rules for sending replies."*
+     *
+     * None of it existed, and that absence is what made `policy.ts` rule 6
+     * forgeable: `autonomyConfigured` arrived on the HTTP request because there
+     * was nothing on the server to compare a claim against.
+     *
+     * `off` (suggest a reply, a person sends it) is the default and is not the
+     * same as unset — the conservative rung, matching how `approvalMode`
+     * defaults to `review_first_week` rather than to nothing.
+     */
+    engagementAutonomy: text('engagement_autonomy').notNull().default('off'),
+    /** comment | dm | story_reply. Empty means all of them. */
+    engagementTypes: jsonb('engagement_types').$type<string[]>(),
+
     timezone: text('timezone').notNull().default('UTC'),
     /**
      * §8.7's "posting windows" — local hours-of-day, in `timezone`, that posts

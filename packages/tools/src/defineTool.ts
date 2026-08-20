@@ -339,6 +339,23 @@ export interface BrandGovernance {
   /**
    * ── Scheduling (PRD §8.2 required, §8.7 a Calendar input) ─────────────────
    */
+  /**
+   * ── PRD §8.8's engagement configuration ──────────────────────────────────
+   *
+   * *"Inputs/Config: Engagement autonomy level. Enabled engagement types
+   * (comments/DMs/story replies). Approval rules for sending replies."*
+   *
+   * None of it existed, which is what made `autonomyConfigured` forgeable:
+   * there was nothing on the server to compare a claim against.
+   *
+   * `off` is the default and is not the same as unset — a brand that has never
+   * chosen leaves SPARK suggesting replies for a person to send, which is the
+   * conservative rung and matches how `approvalMode` defaults.
+   */
+  engagementAutonomy: 'off' | 'suggest' | 'auto';
+  /** Which surfaces SPARK may answer on. Empty means every enabled type. */
+  engagementTypes?: string[];
+
   /** IANA zone name. Defaults to `UTC` so every brand has a defined one. */
   timezone: string;
   /** Local hours-of-day posts are placed into. Empty falls back to `DEFAULT_POSTING_WINDOWS`. */
@@ -428,6 +445,8 @@ export interface BrandGovernanceStore {
       brandColors?: string[] | null;
       timezone?: string;
       postingWindows?: number[] | null;
+      engagementAutonomy?: 'off' | 'suggest' | 'auto';
+      engagementTypes?: string[] | null;
     };
   }): Promise<BrandGovernance>;
 }
@@ -1516,6 +1535,22 @@ export interface PolicySubject {
   contentType?: string;
   isAutomationOutput?: boolean;
   reviewBeforePublish?: boolean;
+  /**
+   * `policy.ts` rule 6's input — PRD §8.8's eligibility gate and autonomy
+   * requirement for the `engage.*` publish family.
+   *
+   * Here for exactly the reason the four fields above are: it used to arrive on
+   * `InvokeRequest` and was forwarded verbatim from the HTTP request body, so a
+   * client could post `engagement: { eligible: true, autonomyConfigured: true }`
+   * and send unattended replies for a campaign that had never published
+   * anything. Unlike the fields above it failed *closed* when omitted — rule 6
+   * denies without it — which is why nothing ever looked broken. Forgeable is
+   * worse than broken: broken gets reported.
+   *
+   * Derived by the tool from the message's own campaign and the brand's stored
+   * autonomy setting. There is no request field left to forge.
+   */
+  engagement?: { eligible: boolean; autonomyConfigured: boolean };
 }
 
 /* ── The contract ──────────────────────────────────────────────────── */

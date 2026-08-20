@@ -80,7 +80,26 @@ interface Governance {
   timezone: string;
   postingWindows: number[];
   usingDefaultWindows: boolean;
+  engagementAutonomy: 'off' | 'suggest' | 'auto';
+  engagementTypes: string[];
 }
+
+/**
+ * PRD §8.8's autonomy level. `off` is not the same as unset — it is the
+ * conservative rung, and it is what `policy.ts` rule 6 reads as
+ * "autonomy has not been configured", which holds every reply for approval.
+ */
+const ENGAGEMENT_LEVELS = [
+  { value: 'off', label: 'Draft only', hint: 'SPARK writes the reply. You send it.' },
+  { value: 'suggest', label: 'Suggest and hold', hint: 'Replies queue for your approval before sending.' },
+  { value: 'auto', label: 'Answer the safe ones', hint: 'SPARK sends replies it judged safe, on its own.' },
+] as const;
+
+const ENGAGEMENT_TYPES = [
+  { value: 'comment', label: 'Comments' },
+  { value: 'dm', label: 'DMs' },
+  { value: 'story_reply', label: 'Story replies' },
+] as const;
 
 const splitList = (text: string): string[] =>
   text
@@ -99,6 +118,8 @@ export function GovernancePanel() {
   const [windows, setWindows] = useState<number[]>([]);
   const [usingDefaultWindows, setUsingDefaultWindows] = useState(true);
   const [logoUrl, setLogoUrl] = useState('');
+  const [engagementAutonomy, setEngagementAutonomy] = useState<'off' | 'suggest' | 'auto'>('off');
+  const [engagementTypes, setEngagementTypes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -117,6 +138,8 @@ export function GovernancePanel() {
       setWindows(g.postingWindows);
       setUsingDefaultWindows(g.usingDefaultWindows);
       setLogoUrl(g.logoUrl ?? '');
+      setEngagementAutonomy(g.engagementAutonomy);
+      setEngagementTypes(g.engagementTypes);
     })();
   }, []);
 
@@ -142,6 +165,10 @@ export function GovernancePanel() {
       // the default could then never move.
       postingWindows: usingDefaultWindows ? null : windows,
       logoUrl: logoUrl.trim() ? logoUrl.trim() : null,
+      engagementAutonomy,
+      // Empty means every type, which is a different fact from "none" — so it
+      // clears rather than storing an empty list.
+      engagementTypes: engagementTypes.length ? engagementTypes : null,
     });
 
     setBusy(false);
@@ -347,6 +374,70 @@ export function GovernancePanel() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+
+          {/* ── Engagement (§8.8) ──────────────────────────────────────── */}
+          <div>
+            <h3 className="text-[14px] font-medium text-ink">Answering your audience</h3>
+            <p className="mt-0.5 text-[12px] text-ink-muted">
+              How much SPARK may say back on its own. It cannot reply at all until a campaign has been
+              running two weeks with five posts out — this decides what happens after that.
+            </p>
+
+            <ul className="mt-3 grid grid-cols-1 gap-2">
+              {ENGAGEMENT_LEVELS.map((l) => (
+                <li key={l.value}>
+                  <button
+                    type="button"
+                    aria-pressed={engagementAutonomy === l.value}
+                    onClick={() => setEngagementAutonomy(l.value)}
+                    className={cn(
+                      'w-full rounded-lg border p-3 text-left transition-colors',
+                      engagementAutonomy === l.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:bg-surface-muted',
+                    )}
+                  >
+                    <span className="block text-[14px] font-medium text-ink">{l.label}</span>
+                    <span className="mt-0.5 block text-[12px] text-ink-muted">{l.hint}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-3 text-[12px] font-medium text-ink-muted">Where it may answer</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {ENGAGEMENT_TYPES.map((t) => {
+                // Empty means all three, so nothing selected reads as "everywhere".
+                const on = engagementTypes.length === 0 || engagementTypes.includes(t.value);
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setEngagementTypes((prev) => {
+                        const current = prev.length ? prev : ENGAGEMENT_TYPES.map((x) => x.value);
+                        const next = current.includes(t.value)
+                          ? current.filter((x) => x !== t.value)
+                          : [...current, t.value];
+                        // Back to "all" rather than storing a list that happens
+                        // to contain everything.
+                        return next.length === ENGAGEMENT_TYPES.length ? [] : next;
+                      })
+                    }
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                      on
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-ink-muted hover:bg-surface-muted',
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
