@@ -1033,6 +1033,7 @@ describe('publish retries — §10\'s retry flow on real SQL', () => {
       mode: 'synthesize',
       pillar: 'proof',
       copy: [{ kind: 'text', text: 'hello' }],
+      why: { summary: 'test fixture', factors: [], evidence: [], alternatives: [] },
     });
   }
 

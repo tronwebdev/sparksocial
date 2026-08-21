@@ -30,6 +30,11 @@ export interface DraftView {
   externalId?: string;
   via?: string;
   url?: string;
+  /** Why this item is not moving — set when `status` is 'blocked' or 'needs_review'. */
+  blockedReason?: string;
+  /** PRD §10's retry flow. 0 when nothing has been tried; see `content.get`'s own comment. */
+  publishAttempts?: number;
+  lastPublishError?: string;
 }
 
 export interface RankedPlaybook {

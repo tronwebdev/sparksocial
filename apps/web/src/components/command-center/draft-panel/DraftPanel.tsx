@@ -70,6 +70,8 @@ export function DraftPanel({
   const [renderError, setRenderError] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
   const [rollbackError, setRollbackError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [variants, setVariants] = useState<Array<{ beats: ResolvedBeat[] }> | null>(null);
   const [variantsLoading, setVariantsLoading] = useState(false);
   const [variantsError, setVariantsError] = useState<string | null>(null);
@@ -612,6 +614,44 @@ export function DraftPanel({
     setDraft((d) => (d ? { ...d, status: 'rolled_back' } : d));
   }
 
+  /**
+   * The human end of PRD §10's retry flow.
+   *
+   * The scheduler stops retrying at a ceiling and blocks the item; the only way
+   * back was to edit the database. `content.schedule` already resets the attempt
+   * count (see `scheduleContentItem` in `scoped.ts`), so rescheduling *is* the
+   * retry — this button does not need a second mechanism, it needs to exist.
+   *
+   * Tomorrow morning rather than a date picker: the fix for a stalled post is
+   * almost always "I have reconnected the account, send it", and the calendar is
+   * where a specific date gets chosen. 9am is `DEFAULT_POSTING_WINDOWS`' first
+   * slot, so this lands where the brand already posts.
+   */
+  async function rescheduleTomorrow() {
+    if (!draft || !genomeId || rescheduling) return;
+    setRescheduling(true);
+    setRescheduleError(null);
+
+    const when = new Date();
+    when.setDate(when.getDate() + 1);
+    when.setHours(9, 0, 0, 0);
+
+    const res = await invoke<{ contentItemId: string; scheduledAt: string }>('content.schedule', {
+      contentItemId: draft.contentItemId,
+      genomeId,
+      scheduledAt: when.toISOString(),
+    });
+    setRescheduling(false);
+    if (res.status !== 'succeeded') {
+      setRescheduleError(res.status === 'failed' ? res.error.message : 'Rescheduling was held for review.');
+      return;
+    }
+    // Mirror the write locally rather than refetching: `content.schedule` clears
+    // the attempt count and the last error, so leaving them on screen would show
+    // a stall that no longer exists.
+    setDraft((d) => (d ? { ...d, status: 'scheduled', publishAttempts: 0, lastPublishError: undefined, blockedReason: undefined } : d));
+  }
+
   if (!open) return null;
 
   return (
@@ -688,6 +728,21 @@ export function DraftPanel({
                 {busy ? 'Generating…' : 'Generate post'}
               </Button>
             </div>
+          ) : null}
+
+          {/* ── Why this post is not moving (PRD §10 / §7.4) ─────────────────
+              Above the beats, below nothing: a stalled post is the first thing
+              to say about itself, and the reason used to live only in a server
+              log. `blocked` and `needs_review` share one banner because they
+              share one column and one question — "why is this not going out" —
+              but not one remedy, so the actions differ. */}
+          {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'needs_review') ? (
+            <StallNotice
+              draft={draft}
+              rescheduling={rescheduling}
+              error={rescheduleError}
+              onReschedule={() => void rescheduleTomorrow()}
+            />
           ) : null}
 
           {phase === 'editor' && draft && draft.status === 'published' ? (
@@ -1051,6 +1106,73 @@ export function DraftPanel({
               </>
             )}
           </footer>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Why a post stopped, and the one action that restarts it.
+ *
+ * Two states share this banner because they share one stored column
+ * (`blocked_reason`, see `markContentBlocked`'s comment) and one question. They
+ * do not share a remedy: `needs_review` is waiting on a person in the Review
+ * queue and this panel is not that queue, so it says so and offers nothing;
+ * `blocked` has nothing left waiting on it, which is what makes rescheduling the
+ * right and only button.
+ *
+ * The attempt count appears only once something has actually been tried. "0
+ * attempts" on a post blocked by a guardrail is true and misleading — it invites
+ * the reader to look for a transport problem that was never there.
+ */
+function StallNotice({
+  draft,
+  rescheduling,
+  error,
+  onReschedule,
+}: {
+  draft: DraftView;
+  rescheduling: boolean;
+  error: string | null;
+  onReschedule: () => void;
+}) {
+  const blocked = draft.status === 'blocked';
+  const attempts = draft.publishAttempts ?? 0;
+
+  return (
+    <div
+      className={`mb-1 rounded-lg border px-4 py-3 ${blocked ? 'border-destructive/30 bg-destructive/10' : 'border-warn/40 bg-warn/10'}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-ink">
+            {blocked ? 'This post stopped and will not retry' : 'Waiting for approval'}
+          </p>
+          <p className="mt-1 text-[13px] text-ink-muted">
+            {draft.blockedReason ?? (blocked ? 'No reason was recorded.' : 'Someone has to approve it in the Review queue.')}
+          </p>
+
+          {attempts > 0 ? (
+            <p className="mt-1.5 text-[12px] text-ink-muted">
+              Tried {attempts} {attempts === 1 ? 'time' : 'times'}
+              {draft.lastPublishError ? (
+                <>
+                  {' \u00b7 last error: '}
+                  <span className="font-mono text-[11px] text-ink">{draft.lastPublishError}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+
+        {blocked ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {error ? <p className="text-[12px] text-destructive">{error}</p> : null}
+            <Button size="sm" variant="outline" disabled={rescheduling} onClick={onReschedule}>
+              {rescheduling ? 'Rescheduling\u2026' : 'Try again tomorrow'}
+            </Button>
+          </div>
         ) : null}
       </div>
     </div>

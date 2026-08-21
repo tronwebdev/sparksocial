@@ -54,6 +54,33 @@ describe('content.get', () => {
     expect(out.status).toBe('scheduled');
   });
 
+  it('carries the stall reason and the retry count, so a UI can explain a stopped post', async () => {
+    // §10's retry flow at the reading end. Before this the only record of why a
+    // scheduled post stopped was a server log line, and the person who has to
+    // fix it is looking at a screen.
+    const out = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({ get: async () => ({
+        id: 'ci_1', genomeId: 'gen_1', playbookId: 'pb_text_update', mode: 'synthesize',
+        status: 'blocked', copy: [], createdAt: new Date(),
+        blockedReason: 'Publishing failed 5 times and has stopped retrying.',
+        publishAttempts: 5, lastPublishError: 'UPSTREAM_FAILED: token expired',
+      }) }),
+    );
+    expect(out.status).toBe('blocked');
+    expect(out.blockedReason).toContain('stopped retrying');
+    expect(out.publishAttempts).toBe(5);
+    expect(out.lastPublishError).toContain('token expired');
+  });
+
+  it('reports zero attempts rather than omitting the field', async () => {
+    // An absent field is indistinguishable from an older API that never carried
+    // it; "tried 0 times" is a fact a UI can decide not to render.
+    const out = await contentGet.handler({ contentItemId: 'ci_1', genomeId: 'gen_1' }, ctx());
+    expect(out.publishAttempts).toBe(0);
+    expect(out.lastPublishError).toBeUndefined();
+  });
+
   it('is readable by every role, like calendar.get', () => {
     expect(contentGet.scopes).toContain('client');
     expect(contentGet.effect).toBe('read');

@@ -102,20 +102,18 @@ reached the vendor. Setup steps in `apps/api/.env.example`.
 - [ ] **Browser sign-in redirect loop** — last seen 16 Aug 2026, never established whether it
       was a real config issue or a stale-session artifact. Not re-tested since.
 
-## Frontend surfaces for backend that now exists
+## Frontend surfaces — not verified in a browser
 
-The backend work of 20–21 Aug added capabilities faster than screens. `apps/web` reaches
-every capability through `invoke()` (CLAUDE.md's frontend rule), so a gap here means a
-registered, tested tool a person cannot reach by clicking anything.
+Both surfaces added 21 Aug (`StallNotice` in the Draft Panel, `PerformancePanel` on
+`/agents`) are typechecked and prerender in `next build`, and **neither has been looked at
+in a running browser**. Every `(app)` route sits behind Clerk, and signing in is not
+something an agent can or should do. Worth ten minutes of clicking before the alpha:
 
-- [ ] **The stalled-post explanation.** `content_items.publish_attempts` /
-      `last_publish_error` are populated and returned on `ContentDraft`, and the Draft Panel
-      does not render them. A person whose post stopped retrying sees `blocked` and the
-      reason string, but not how many times it was tried.
-- [ ] **`analytics.success_metrics` has no screen.** Fourteen PRD §5 metrics, computed and
-      tested, reachable only by calling the tool directly.
-- [ ] **`org.usage.get`** — same: the warning and critical thresholds exist and nothing
-      displays them.
+- [ ] **`StallNotice`** — needs a genuinely blocked item to render against. The cheapest
+      way to produce one is to schedule a post to a platform with no connection and let the
+      scheduler reach its five-attempt ceiling.
+- [ ] **`PerformancePanel`** — the case worth checking is the *empty* one: a brand with no
+      campaign should show em dashes with reasons, never a column of confident zeros.
 
 ## Open decisions
 
