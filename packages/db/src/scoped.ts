@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -25,7 +25,7 @@ import type { Database } from './client.js';
 /** Tables that carry client-confidential material and must always be genome-scoped. */
 const SCOPED_TABLES = {
   assets, assetFolders, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities,
-  trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
+  trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
 } as const;
 export type ScopedTable = keyof typeof SCOPED_TABLES;
 
@@ -317,6 +317,14 @@ export interface AssetFolderRow {
   genomeId: string;
   name: string;
   createdAt: Date;
+  /**
+   * How many assets sit in this folder. PRD §8.11's `LIB-01` asks the folder
+   * list for exactly this ("list with created date/count"), and it is not
+   * derivable client-side: `asset.retrieve` is semantic and returns the top-k
+   * matches, so counting what it happens to return would report a ranking
+   * cutoff as a folder size.
+   */
+  assetCount: number;
 }
 
 /** `asset.folder.create` — see the table's own comment on `assets.folderId`'s history. */
@@ -326,15 +334,28 @@ export async function createAssetFolder(db: Database, scope: Scope, args: { name
     .insert(assetFolders)
     .values({ orgId: scope.orgId, genomeId: scope.genomeId, name: args.name })
     .returning({ id: assetFolders.id, genomeId: assetFolders.genomeId, name: assetFolders.name, createdAt: assetFolders.createdAt });
-  return row!;
+  // A folder that was created one statement ago holds nothing; no count query
+  // needed to know that.
+  return { ...row!, assetCount: 0 };
 }
 
 export async function listAssetFolders(db: Database, scope: Scope): Promise<AssetFolderRow[]> {
-  return db
-    .select({ id: assetFolders.id, genomeId: assetFolders.genomeId, name: assetFolders.name, createdAt: assetFolders.createdAt })
+  // Left join, so an empty folder still appears with a count of zero — the
+  // empty ones are precisely the ones somebody needs to see.
+  const rows = await db
+    .select({
+      id: assetFolders.id,
+      genomeId: assetFolders.genomeId,
+      name: assetFolders.name,
+      createdAt: assetFolders.createdAt,
+      assetCount: sql<number>`count(${assets.id})::int`,
+    })
     .from(assetFolders)
+    .leftJoin(assets, and(eq(assets.folderId, assetFolders.id), eq(assets.orgId, assetFolders.orgId)))
     .where(scopePredicate('assetFolders', scope))
+    .groupBy(assetFolders.id, assetFolders.genomeId, assetFolders.name, assetFolders.createdAt)
     .orderBy(assetFolders.name);
+  return rows.map((r) => ({ ...r, assetCount: Number(r.assetCount) }));
 }
 
 export interface ContentLinkRow {
@@ -507,6 +528,85 @@ export async function markContentBlocked(
     .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
 }
 
+/**
+ * One failed publish attempt, counted — PRD §10's retry flow needs an end.
+ *
+ * `publish_attempts + 1` in SQL rather than read-modify-write: two scheduler
+ * ticks racing the same row would otherwise both read 3 and both write 4, and a
+ * ceiling that can be undercounted is a ceiling that can be walked past.
+ *
+ * Deliberately does not change `status`. The item stays `scheduled` and stays
+ * retryable; whether the count has reached a ceiling is the scheduler's
+ * decision, and mixing the two here would put a retry policy in the storage
+ * layer.
+ */
+export async function recordContentPublishFailure(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; error: string },
+): Promise<{ attempts: number }> {
+  const [row] = await db
+    .update(contentItems)
+    .set({
+      publishAttempts: sql`${contentItems.publishAttempts} + 1`,
+      lastPublishError: args.error.slice(0, 2000),
+    })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)))
+    .returning({ attempts: contentItems.publishAttempts });
+
+  // A row that no longer exists (or belongs to another org) reports zero rather
+  // than throwing: the caller is a clock reacting to a failure it has already
+  // logged, and a second error there would replace a useful message with a
+  // useless one.
+  return { attempts: row?.attempts ?? 0 };
+}
+
+/**
+ * PRD §7.4's `Needs Review` state — see `ContentStore.markNeedsReview`.
+ *
+ * Reuses `blockedReason` for the held-reason rather than adding a second column:
+ * both answer the one question a person opening a stalled item asks, and one
+ * column with one meaning ("why is this not moving") beats two that have to be
+ * checked in the right order.
+ */
+export async function markContentNeedsReview(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; reason: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    .set({ status: 'needs_review', blockedReason: args.reason })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/** PRD §7.4's `Approved` state — see `ContentStore.markApproved`. */
+export async function markContentApproved(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    // Clears the held-reason: it described a wait that is over.
+    .set({ status: 'approved', blockedReason: null })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/** PRD §7.4: a rejected item is editable again — see `ContentStore.markRejected`. */
+export async function markContentRejected(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; reason: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    // Back to `draft`, with the reason kept so whoever picks it up knows what
+    // to change. `scheduledAt` is left alone: the date was not the objection.
+    .set({ status: 'draft', blockedReason: args.reason })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
 export interface RenderRow {
   id: string;
   contentItemId: string;
@@ -557,6 +657,7 @@ export interface ContentMetricsRow {
   shares: number;
   views: number;
   impressions: number;
+  saves: number;
   raw: unknown;
   syncedAt: Date;
 }
@@ -570,6 +671,7 @@ const contentMetricsColumns = {
   shares: contentMetrics.shares,
   views: contentMetrics.views,
   impressions: contentMetrics.impressions,
+  saves: contentMetrics.saves,
   raw: contentMetrics.raw,
   syncedAt: contentMetrics.syncedAt,
 };
@@ -591,6 +693,7 @@ export async function upsertContentMetrics(
     shares: number;
     views: number;
     impressions: number;
+    saves: number;
     raw: unknown;
     syncedAt?: Date;
   },
@@ -608,6 +711,7 @@ export async function upsertContentMetrics(
       shares: args.shares,
       views: args.views,
       impressions: args.impressions,
+      saves: args.saves,
       raw: args.raw as object,
       syncedAt: args.syncedAt ?? new Date(),
     })
@@ -619,6 +723,7 @@ export async function upsertContentMetrics(
         shares: args.shares,
         views: args.views,
         impressions: args.impressions,
+      saves: args.saves,
         raw: args.raw as object,
         syncedAt: args.syncedAt ?? new Date(),
       },
@@ -657,6 +762,8 @@ export async function getContentMetricsForItems(
 }
 
 export interface EngagementMessageRow {
+  /** When it stopped needing attention — PRD §5's "Reply SLA" endpoint. */
+  resolvedAt: Date | null;
   id: string;
   genomeId: string;
   platform: string;
@@ -672,6 +779,11 @@ export interface EngagementMessageRow {
   intentScore: number | null;
   suggestedReply: string | null;
   why: unknown;
+  /** `ENG-02.4`'s conversation key. Null on rows written before threading existed. */
+  threadKey: string | null;
+  /** What we sent back, and when — the outbound half of a thread. */
+  sentReply: string | null;
+  sentAt: Date | null;
   createdAt: Date;
 }
 
@@ -689,8 +801,12 @@ const engagementMessageColumns = {
   status: engagementMessages.status,
   category: engagementMessages.category,
   intentScore: engagementMessages.intentScore,
+  resolvedAt: engagementMessages.resolvedAt,
   suggestedReply: engagementMessages.suggestedReply,
   why: engagementMessages.why,
+  threadKey: engagementMessages.threadKey,
+  sentReply: engagementMessages.sentReply,
+  sentAt: engagementMessages.sentAt,
   createdAt: engagementMessages.createdAt,
 };
 
@@ -712,6 +828,8 @@ export async function ingestEngagementMessage(
     text: string;
     contentItemId?: string;
     receivedAt?: Date;
+    /** Derived by the caller (`engage.ingest`) so the rule lives in one place. */
+    threadKey?: string;
   },
 ): Promise<EngagementMessageRow> {
   assertScope(scope);
@@ -726,6 +844,7 @@ export async function ingestEngagementMessage(
     text: args.text,
     contentItemId: args.contentItemId ?? null,
     receivedAt: args.receivedAt ?? new Date(),
+    threadKey: args.threadKey ?? null,
   };
   const [row] = await db
     .insert(engagementMessages)
@@ -736,7 +855,10 @@ export async function ingestEngagementMessage(
       // classification already sitting on this row (status/category/etc.)
       // must not be clobbered back to "new" by the platform redelivering
       // the same comment.
-      set: { text: values.text, authorName: values.authorName },
+      // `threadKey` refreshes with the delivery fields, unlike the
+      // classification: a platform that starts supplying a real conversation id
+      // should correct a derived one, and a redelivery is the moment it would.
+      set: { text: values.text, authorName: values.authorName, threadKey: values.threadKey },
     })
     .returning(engagementMessageColumns);
   return row!;
@@ -787,12 +909,19 @@ export async function classifyEngagementMessage(
 export async function markEngagementMessageReplied(
   db: Database,
   scope: Scope,
-  args: { id: string },
+  args: { id: string; sentReply?: string },
 ): Promise<EngagementMessageRow | undefined> {
   assertScope(scope);
+  const now = new Date();
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'replied' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    //
+    // `sentReply` is optional because the send already happened by the time
+    // this runs: a caller that cannot supply the text must still be able to
+    // record that the message was answered rather than leaving it open.
+    .set({ status: 'replied', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -802,15 +931,43 @@ export async function markEngagementMessageReplied(
 export async function markEngagementMessageAutoHandled(
   db: Database,
   scope: Scope,
-  args: { id: string },
+  args: { id: string; sentReply?: string },
 ): Promise<EngagementMessageRow | undefined> {
   assertScope(scope);
+  const now = new Date();
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'auto_handled' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    .set({ status: 'auto_handled', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
+}
+
+/**
+ * One conversation, oldest first — `engage.thread`'s read (`ENG-02.4`).
+ *
+ * Ascending, unlike every other engagement read in this file. The feed answers
+ * "what is new" and sorts newest-first for it; a transcript is read downward,
+ * and reversing it in the client would put the ordering rule somewhere a second
+ * caller could get wrong.
+ *
+ * Scoped like the rest. A thread key is not a capability: it identifies a
+ * conversation *within* a genome, and two genomes could hold the same derived
+ * key for the same public commenter on their respective posts.
+ */
+export async function threadEngagementMessages(
+  db: Database,
+  scope: Scope,
+  args: { threadKey: string; limit: number },
+): Promise<EngagementMessageRow[]> {
+  return db
+    .select(engagementMessageColumns)
+    .from(engagementMessages)
+    .where(and(scopePredicate('engagementMessages', scope), eq(engagementMessages.threadKey, args.threadKey)))
+    .orderBy(asc(engagementMessages.receivedAt))
+    .limit(args.limit);
 }
 
 /**
@@ -826,7 +983,9 @@ export async function markEngagementMessageEscalated(
   assertScope(scope);
   const [row] = await db
     .update(engagementMessages)
-    .set({ status: 'escalated' })
+    // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
+    // as an interval over. Set wherever a message stops needing attention.
+    .set({ status: 'escalated', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -953,6 +1112,8 @@ export async function routeOpportunity(
 }
 
 export interface ContentDraftRow {
+  /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
+  publishedAt: Date | null;
   id: string;
   genomeId: string;
   campaignId: string | null;
@@ -965,6 +1126,12 @@ export interface ContentDraftRow {
   publishVia: string | null;
   publishUrl: string | null;
   blockedReason: string | null;
+  /** §10's retry state — see `recordContentPublishFailure`. */
+  publishAttempts: number;
+  lastPublishError: string | null;
+  /** `DISC-02`'s A/B group. Null on an ordinary post, which is nearly all of them. */
+  variantGroupId: string | null;
+  variantLabel: string | null;
   copy: unknown;
   why: unknown;
   scheduledAt: Date | null;
@@ -984,9 +1151,18 @@ const contentDraftColumns = {
   publishVia: contentItems.publishVia,
   publishUrl: contentItems.publishUrl,
   blockedReason: contentItems.blockedReason,
+  // §10's retry flow: a stalled item has to be able to explain how many times
+  // it has been tried and what happened, or the only record is a console line.
+  publishAttempts: contentItems.publishAttempts,
+  lastPublishError: contentItems.lastPublishError,
+  variantGroupId: contentItems.variantGroupId,
+  variantLabel: contentItems.variantLabel,
   copy: contentItems.copy,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
+  // PRD §5's "time to first post" measures from campaign start to here, so the
+  // projection has to carry it — the column existed and was never selected.
+  publishedAt: contentItems.publishedAt,
   createdAt: contentItems.createdAt,
 };
 
@@ -1000,7 +1176,21 @@ const contentDraftColumns = {
 export async function createContentDraft(
   db: Database,
   scope: Scope,
-  args: { playbookId: string; mode: string; pillar?: string; copy: unknown; why: unknown; campaignId?: string },
+  args: {
+    playbookId: string;
+    mode: string;
+    pillar?: string;
+    copy: unknown;
+    why: unknown;
+    campaignId?: string;
+    recipeId?: string;
+    intent?: string;
+    sourceTrendId?: string;
+    scheduledAt?: Date;
+    /** `DISC-02`'s A/B group — set only by `content.variant.split`. */
+    variantGroupId?: string;
+    variantLabel?: string;
+  },
 ): Promise<ContentDraftRow> {
   assertScope(scope);
   const [row] = await db
@@ -1012,11 +1202,60 @@ export async function createContentDraft(
       mode: args.mode,
       ...(args.pillar ? { pillar: args.pillar } : {}),
       ...(args.campaignId ? { campaignId: args.campaignId } : {}),
+      ...(args.recipeId ? { recipeId: args.recipeId } : {}),
+      ...(args.intent ? { intent: args.intent } : {}),
+      ...(args.sourceTrendId ? { sourceTrendId: args.sourceTrendId } : {}),
+      ...(args.variantGroupId ? { variantGroupId: args.variantGroupId } : {}),
+      ...(args.variantLabel ? { variantLabel: args.variantLabel } : {}),
+      // A row created with a date is created scheduled; the column default
+      // (`draft`) is right for everything else.
+      ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
       copy: args.copy as object,
       why: args.why as object,
     })
     .returning(contentDraftColumns);
   return row!;
+}
+
+/**
+ * Tags a draft as an arm of a test, touching nothing else.
+ *
+ * Deliberately not part of {@link updateContentDraft}: that writes `copy` and
+ * `why`, and arm A is typically a draft somebody has already reviewed. A test
+ * being set up must not be able to alter the words being tested.
+ */
+export async function tagContentVariant(
+  db: Database,
+  scope: Scope,
+  args: { id: string; variantGroupId: string; variantLabel: string },
+): Promise<ContentDraftRow | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(contentItems)
+    .set({ variantGroupId: args.variantGroupId, variantLabel: args.variantLabel })
+    .where(and(eq(contentItems.id, args.id), scopePredicate('contentItems', scope)))
+    .returning(contentDraftColumns);
+  return row;
+}
+
+/**
+ * The arms of one A/B test — `content.variant.result`'s read.
+ *
+ * Ordered by label so `a` is always first, which is what makes a two-arm
+ * comparison stable across calls. Sorting by `createdAt` would put the arms in
+ * whichever order they happened to be written, and a verdict that swapped sides
+ * between refreshes reads as a bug even when the numbers are identical.
+ */
+export async function contentVariantGroup(
+  db: Database,
+  scope: Scope,
+  variantGroupId: string,
+): Promise<ContentDraftRow[]> {
+  return db
+    .select(contentDraftColumns)
+    .from(contentItems)
+    .where(and(scopePredicate('contentItems', scope), eq(contentItems.variantGroupId, variantGroupId)))
+    .orderBy(asc(contentItems.variantLabel));
 }
 
 /** Read side of {@link createContentDraft}/{@link updateContentDraft} — one row, scoped. */
@@ -1070,7 +1309,15 @@ export async function scheduleContentItem(
   assertScope(scope);
   const [row] = await db
     .update(contentItems)
-    .set({ scheduledAt: args.scheduledAt, status: 'scheduled' })
+    .set({
+      scheduledAt: args.scheduledAt,
+      status: 'scheduled',
+      // Rescheduling is a person saying "try this again". Carrying the old
+      // attempt count forward would mean an item that hit the ceiling once
+      // could never be given a second chance without editing the database.
+      publishAttempts: 0,
+      lastPublishError: null,
+    })
     .where(
       and(
         eq(contentItems.id, args.id),
@@ -1130,7 +1377,69 @@ export interface DueContentItem {
   playbookId: string | null;
   platform: string | null;
   copy: unknown;
+  /** The brief, for a slot the scheduler has to draft before it can publish it. */
+  intent: string | null;
   scheduledAt: Date;
+}
+
+/**
+ * `ContentStore.publishOrigin` — did a recipe make this, and does that recipe
+ * want its output reviewed?
+ *
+ * One join rather than two reads, because `policy.ts` runs this on the critical
+ * path of every publish. `reviewBeforePublish` is read out of the recipe's own
+ * `config` jsonb (`RecipeCommonConfig`), and defaults to `true` for a config
+ * that cannot be parsed — an unreadable recipe config is the one case where
+ * "send it unreviewed" is definitely the wrong answer.
+ */
+export async function contentPublishOrigin(
+  db: Database,
+  scope: Scope,
+  id: string,
+): Promise<{ recipeId?: string; reviewBeforePublish: boolean } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .select({
+      recipeId: contentItems.recipeId,
+      config: recipes.config,
+      campaignApprovalMode: campaigns.approvalMode,
+    })
+    .from(contentItems)
+    .leftJoin(recipes, eq(recipes.id, contentItems.recipeId))
+    // PRD §7.2's per-campaign approval scope, read in the same statement rather
+    // than a second round trip: this runs on the critical path of every publish.
+    .leftJoin(campaigns, eq(campaigns.id, contentItems.campaignId))
+    .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
+    .limit(1);
+
+  if (!row) return undefined;
+
+  const campaignMode = row.campaignApprovalMode
+    ? { campaignApprovalMode: row.campaignApprovalMode as 'autopublish' | 'review_first_week' | 'review_everything' }
+    : {};
+
+  if (!row.recipeId) return { reviewBeforePublish: false, ...campaignMode };
+
+  const cfg = row.config as { reviewBeforePublish?: unknown } | null;
+  return {
+    recipeId: row.recipeId,
+    reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+    ...campaignMode,
+  };
+}
+
+/**
+ * How many of this genome's items are sitting at `needs_review` — §10's queue
+ * cap reads it. `count(*)`, not a list: the policy engine needs the depth of the
+ * pile and has no business seeing what is in it.
+ */
+export async function countPendingReview(db: Database, scope: Scope): Promise<number> {
+  assertScope(scope);
+  const [row] = await db
+    .select({ n: sql<string>`count(*)` })
+    .from(contentItems)
+    .where(and(scopePredicate('contentItems', scope), eq(contentItems.status, 'needs_review')));
+  return Number(row?.n ?? 0);
 }
 
 export async function findDueContentItems(db: Database, args: { before: Date; limit: number }): Promise<DueContentItem[]> {
@@ -1142,6 +1451,7 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
       playbookId: contentItems.playbookId,
       platform: contentItems.platform,
       copy: contentItems.copy,
+      intent: contentItems.intent,
       scheduledAt: contentItems.scheduledAt,
     })
     .from(contentItems)
@@ -1156,6 +1466,8 @@ export interface CalendarSlotRow {
   mode: string;
   pillar: string;
   scheduledAt: Date;
+  /** `CMP-01.4`'s chosen account for this slot. Null keeps the playbook fallback. */
+  platform?: string;
 }
 
 /**
@@ -1200,6 +1512,7 @@ export async function replaceCampaignSlots(
       pillar: s.pillar,
       status: 'scheduled',
       scheduledAt: s.scheduledAt,
+      ...(s.platform ? { platform: s.platform } : {}),
     })),
   );
   return slots.length;
@@ -1218,6 +1531,14 @@ export async function campaignSlots(
     pillar: string | null;
     status: string;
     scheduledAt: Date | null;
+    /**
+     * Set at placement time by `CMP-01.4`'s account selection, and null for a
+     * slot placed on a day rather than on an account (the date picker and
+     * drag-and-drop paths). Selected here for §8.7's platform filter — the
+     * column existed and this projection never read it, so the calendar could
+     * not group by the thing it schedules to.
+     */
+    platform: string | null;
   }>
 > {
   return db
@@ -1228,6 +1549,7 @@ export async function campaignSlots(
       pillar: contentItems.pillar,
       status: contentItems.status,
       scheduledAt: contentItems.scheduledAt,
+      platform: contentItems.platform,
     })
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.campaignId, campaignId)))
@@ -1318,6 +1640,84 @@ const trendWatchlistColumns = {
 };
 
 /** Upsert-by-(genome, trend) — watching the same trend twice is one watch, not two. */
+export interface InfluencerWatchRow {
+  id: string;
+  platform: string;
+  handle: string;
+  displayName: string | null;
+  note: string | null;
+  createdAt: Date;
+}
+
+const influencerWatchColumns = {
+  id: influencerWatchlist.id,
+  platform: influencerWatchlist.platform,
+  handle: influencerWatchlist.handle,
+  displayName: influencerWatchlist.displayName,
+  note: influencerWatchlist.note,
+  createdAt: influencerWatchlist.createdAt,
+};
+
+/**
+ * §8.9's influencer watchlist — upsert by `(genome, platform, handle)`.
+ *
+ * Watching the same account twice is one watch. The handle arrives already
+ * normalised (`normaliseHandle` in `packages/trends/src/influencer.ts`), which
+ * is what makes the unique index mean "this account" rather than "this spelling
+ * of this account".
+ */
+export async function addInfluencerWatch(
+  db: Database,
+  scope: Scope,
+  args: { platform: string; handle: string; displayName?: string; note?: string },
+): Promise<InfluencerWatchRow> {
+  assertScope(scope);
+  const [row] = await db
+    .insert(influencerWatchlist)
+    .values({
+      orgId: scope.orgId,
+      genomeId: scope.genomeId,
+      platform: args.platform,
+      handle: args.handle,
+      displayName: args.displayName ?? null,
+      note: args.note ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [influencerWatchlist.genomeId, influencerWatchlist.platform, influencerWatchlist.handle],
+      // Re-watching updates the note rather than erroring: the second attempt is
+      // almost always somebody correcting why they were watching.
+      set: { note: args.note ?? null, ...(args.displayName ? { displayName: args.displayName } : {}) },
+    })
+    .returning(influencerWatchColumns);
+  return row!;
+}
+
+export async function removeInfluencerWatch(
+  db: Database,
+  scope: Scope,
+  args: { platform: string; handle: string },
+): Promise<void> {
+  assertScope(scope);
+  await db
+    .delete(influencerWatchlist)
+    .where(
+      and(
+        scopePredicate('influencerWatchlist', scope),
+        eq(influencerWatchlist.platform, args.platform),
+        eq(influencerWatchlist.handle, args.handle),
+      ),
+    );
+}
+
+/** Newest first — the account somebody just added is the one they are looking for. */
+export async function listInfluencerWatchlist(db: Database, scope: Scope): Promise<InfluencerWatchRow[]> {
+  return db
+    .select(influencerWatchColumns)
+    .from(influencerWatchlist)
+    .where(scopePredicate('influencerWatchlist', scope))
+    .orderBy(desc(influencerWatchlist.createdAt));
+}
+
 export async function addToTrendWatchlist(
   db: Database,
   scope: Scope,
@@ -1666,6 +2066,8 @@ export async function decideRecipeOutput(
 
 export interface OAuthConnectionRow {
   id: string;
+  /** Selected for `findExpiringOAuthConnections` — see the projection's comment. */
+  orgId: string;
   genomeId: string;
   provider: string;
   accessToken: string;
@@ -1676,10 +2078,15 @@ export interface OAuthConnectionRow {
   updatedAt: Date;
   scopes: string[] | null;
   accountLabel: string | null;
+  expiryNotifiedAt: Date | null;
 }
 
 const oauthConnectionColumns = {
   id: oauthConnections.id,
+  // `orgId` is here for `findExpiringOAuthConnections`, the one read on this
+  // table that is not already inside a tenant: its caller has to know whose
+  // connection each row is before it can notify anybody about it.
+  orgId: oauthConnections.orgId,
   genomeId: oauthConnections.genomeId,
   provider: oauthConnections.provider,
   accessToken: oauthConnections.accessToken,
@@ -1690,6 +2097,7 @@ const oauthConnectionColumns = {
   updatedAt: oauthConnections.updatedAt,
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
+  expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
 /** Upsert by (genome, provider) — reconnecting replaces the old token rather than accumulating stale rows. */
@@ -1729,6 +2137,10 @@ export async function saveOAuthConnection(
         expiresAt: args.expiresAt ?? null,
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
+        // Reconnecting re-arms the §10 expiry alert. The new token has a new
+        // expiry, so the next warning is a new fact, not a repeat of the one
+        // that prompted this reconnection.
+        expiryNotifiedAt: null,
         updatedAt: sql`now()`,
       },
     })
@@ -1746,7 +2158,239 @@ export async function getOAuthConnection(db: Database, scope: Scope, provider: s
   return row;
 }
 
+/**
+ * Connections due a §10 expiry warning: token expires before `before`, and
+ * nobody has been told since the token was last saved.
+ *
+ * **The second deliberate cross-tenant read in this file**, after
+ * {@link findDueContentItems}, and it carries the same justification and the
+ * same shape. The caller is a clock (`apps/api/src/connection-watcher.ts`);
+ * a clock has no session, so there is no genome to scope to. Every row comes
+ * back carrying its own `orgId` and `genomeId`, and the caller is required to
+ * use them — the notification it raises goes through that tenant's own
+ * governance, exactly like a scheduled publish does.
+ *
+ * `expiresAt` null is excluded, not treated as urgent. Several providers issue
+ * tokens with no stated expiry (or ones this codebase never learned), and
+ * warning about a connection that is working fine is how an alert channel
+ * becomes noise the owner learns to ignore — which would cost more than the
+ * alert is worth.
+ */
+export async function findExpiringOAuthConnections(
+  db: Database,
+  args: { before: Date; limit: number },
+): Promise<OAuthConnectionRow[]> {
+  return db
+    .select(oauthConnectionColumns)
+    .from(oauthConnections)
+    .where(
+      and(
+        isNotNull(oauthConnections.expiresAt),
+        lte(oauthConnections.expiresAt, args.before),
+        isNull(oauthConnections.expiryNotifiedAt),
+      ),
+    )
+    .orderBy(asc(oauthConnections.expiresAt))
+    .limit(args.limit);
+}
+
+/** Latches the warning from {@link findExpiringOAuthConnections}. Org-scoped, unlike the read. */
+export async function markOAuthExpiryNotified(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; at: Date },
+): Promise<void> {
+  await db
+    .update(oauthConnections)
+    .set({ expiryNotifiedAt: args.at })
+    .where(and(eq(oauthConnections.id, args.id), eq(oauthConnections.orgId, scope.orgId)));
+}
+
 export async function removeOAuthConnection(db: Database, scope: Scope, provider: string): Promise<void> {
   assertScope(scope);
   await db.delete(oauthConnections).where(and(scopePredicate('oauthConnections', scope), eq(oauthConnections.provider, provider)));
+}
+
+/* ── PRD §5's success metrics ───────────────────────────────────────────── */
+
+/**
+ * The raw counts PRD §5's fourteen success metrics are computed from, for one
+ * genome over one window.
+ *
+ * ── Why one read and not fourteen ──────────────────────────────────────────
+ *
+ * §5 is a dashboard. Fourteen separate tools would be fourteen round trips to
+ * render one screen, and — worse — fourteen chances for two numbers on the same
+ * screen to be computed over subtly different windows. One read, one window, one
+ * moment.
+ *
+ * ── What is a count and what is honestly a proxy ───────────────────────────
+ *
+ * Most of these are exact. Two are not, and the tool that reads this says so
+ * rather than presenting an estimate as a measurement:
+ *
+ *  - **Draft edits per post** is counted as successful `content.draft` calls
+ *    divided by published posts. A "post" can be re-drafted before it is ever
+ *    published, and `tool_calls` does not carry the content item id in a queryable
+ *    column (it is inside the `input` jsonb), so this is a ratio over the window
+ *    rather than a per-post average. Directionally right, not exact.
+ *  - **CTA clicks** are not here at all. Clicks live in Dub, behind
+ *    `analytics.cta_traffic`, one link at a time. What this reports is how many
+ *    published posts carried a tracked link — the denominator — because a
+ *    fabricated click total would be worse than an honest absence.
+ */
+export interface SuccessMetricRows {
+  /* Activation */
+  connectedAccounts: number;
+  campaignCount: number;
+  firstCampaignStartAt: Date | null;
+  firstPublishedAt: Date | null;
+
+  /* Production */
+  publishedInWindow: number;
+  postsWithTrackedLink: number;
+
+  /* Discovery */
+  postsFromTrends: number;
+
+  /* Automation */
+  recipeCount: number;
+  outputsApproved: number;
+  outputsRejected: number;
+
+  /* Engagement */
+  messagesInWindow: number;
+  messagesResolved: number;
+  /** Mean seconds from arrival to resolution, over resolved messages only. */
+  meanReplySeconds: number | null;
+  opportunitiesInWindow: number;
+  opportunitiesRouted: number;
+
+  /* Trust & safety */
+  publishedEverBlocked: number;
+  rolledBack: number;
+  needsReview: number;
+}
+
+export async function readSuccessMetrics(
+  db: Database,
+  scope: Scope,
+  since: Date,
+): Promise<SuccessMetricRows> {
+  assertScope(scope);
+  const contentScope = scopePredicate('contentItems', scope);
+
+  const [
+    connections,
+    campaignRows,
+    firstPublished,
+    contentCounts,
+    linked,
+    recipeRows,
+    outputRows,
+    messageRows,
+    opportunityRows,
+  ] = await Promise.all([
+    db
+      .select({ n: sql<string>`count(*)` })
+      .from(oauthConnections)
+      .where(scopePredicate('oauthConnections', scope)),
+
+    // Campaign count and the earliest start, for "time to first post after
+    // activation" — the interval §5 names, measured from activation not creation.
+    db
+      .select({ n: sql<string>`count(*)`, firstStart: sql<Date | null>`min(${campaigns.startAt})` })
+      .from(campaigns)
+      .where(and(eq(campaigns.orgId, scope.orgId), eq(campaigns.genomeId, scope.genomeId))),
+
+    db
+      .select({ at: sql<Date | null>`min(${contentItems.publishedAt})` })
+      .from(contentItems)
+      .where(and(contentScope, eq(contentItems.status, 'published'))),
+
+    // One grouped pass over statuses rather than a query each: the dashboard
+    // wants published, blocked, rolled back and needs-review together.
+    db
+      .select({ status: contentItems.status, n: sql<string>`count(*)` })
+      .from(contentItems)
+      .where(contentScope)
+      .groupBy(contentItems.status),
+
+    // Published in the window, split by whether it carried a tracked link and
+    // whether it came from a trend — the two attribution questions §5 asks.
+    db
+      .select({
+        published: sql<string>`count(*)`,
+        withLink: sql<string>`count(distinct ${contentLinks.contentItemId})`,
+        fromTrend: sql<string>`count(${contentItems.sourceTrendId})`,
+      })
+      .from(contentItems)
+      .leftJoin(contentLinks, eq(contentLinks.contentItemId, contentItems.id))
+      .where(and(contentScope, eq(contentItems.status, 'published'), gte(contentItems.publishedAt, since))),
+
+    db
+      .select({ n: sql<string>`count(*)` })
+      .from(recipes)
+      .where(scopePredicate('recipes', scope)),
+
+    db
+      .select({ status: recipeOutputs.status, n: sql<string>`count(*)` })
+      .from(recipeOutputs)
+      .where(scopePredicate('recipeOutputs', scope))
+      .groupBy(recipeOutputs.status),
+
+    // Reply SLA over *resolved* messages only. Including the unanswered ones
+    // would make an ignored inbox look fast, since an open message has no
+    // interval at all.
+    db
+      .select({
+        total: sql<string>`count(*)`,
+        resolved: sql<string>`count(${engagementMessages.resolvedAt})`,
+        meanSeconds: sql<
+          string | null
+        >`avg(extract(epoch from (${engagementMessages.resolvedAt} - ${engagementMessages.receivedAt})))`,
+      })
+      .from(engagementMessages)
+      .where(and(scopePredicate('engagementMessages', scope), gte(engagementMessages.receivedAt, since))),
+
+    // "Next action taken" is `routedTo` being set: §8.8's recommended action
+    // having actually been carried out, rather than merely offered.
+    db
+      .select({
+        total: sql<string>`count(*)`,
+        routed: sql<string>`count(${opportunities.routedTo})`,
+      })
+      .from(opportunities)
+      .where(and(scopePredicate('opportunities', scope), gte(opportunities.createdAt, since))),
+  ]);
+
+  const byStatus = (status: string) =>
+    Number(contentCounts.find((r) => r.status === status)?.n ?? 0);
+  const outputsBy = (status: string) => Number(outputRows.find((r) => r.status === status)?.n ?? 0);
+  const meanSeconds = messageRows[0]?.meanSeconds;
+
+  return {
+    connectedAccounts: Number(connections[0]?.n ?? 0),
+    campaignCount: Number(campaignRows[0]?.n ?? 0),
+    firstCampaignStartAt: campaignRows[0]?.firstStart ?? null,
+    firstPublishedAt: firstPublished[0]?.at ?? null,
+
+    publishedInWindow: Number(linked[0]?.published ?? 0),
+    postsWithTrackedLink: Number(linked[0]?.withLink ?? 0),
+    postsFromTrends: Number(linked[0]?.fromTrend ?? 0),
+
+    recipeCount: Number(recipeRows[0]?.n ?? 0),
+    outputsApproved: outputsBy('approved'),
+    outputsRejected: outputsBy('rejected'),
+
+    messagesInWindow: Number(messageRows[0]?.total ?? 0),
+    messagesResolved: Number(messageRows[0]?.resolved ?? 0),
+    meanReplySeconds: meanSeconds === null || meanSeconds === undefined ? null : Number(meanSeconds),
+    opportunitiesInWindow: Number(opportunityRows[0]?.total ?? 0),
+    opportunitiesRouted: Number(opportunityRows[0]?.routed ?? 0),
+
+    publishedEverBlocked: byStatus('blocked'),
+    rolledBack: byStatus('rolled_back'),
+    needsReview: byStatus('needs_review'),
+  };
 }

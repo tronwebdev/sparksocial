@@ -30,6 +30,20 @@ export function createOAuthConnectionRepository(db: Database): OAuthConnectionSt
     async remove(genomeId, orgId, provider) {
       await scoped.removeOAuthConnection(db, { orgId, brandId: orgId, genomeId }, provider);
     },
+
+    /**
+     * The one read on this store that is not inside a tenant — see the
+     * `findExpiringOAuthConnections` comment in `scoped.ts` for why a clock has
+     * no genome to be scoped to, and why every row still carries its own.
+     */
+    async findExpiring({ before, limit }) {
+      const rows = await scoped.findExpiringOAuthConnections(db, { before, limit });
+      return rows.map((row) => ({ ...toConnection(row), orgId: row.orgId }));
+    },
+
+    async markExpiryNotified({ id, orgId, at }) {
+      await scoped.markOAuthExpiryNotified(db, { orgId }, { id, at });
+    },
   };
 }
 
@@ -46,5 +60,6 @@ function toConnection(row: scoped.OAuthConnectionRow) {
     ...(row.expiresAt ? { expiresAt: row.expiresAt } : {}),
     ...(row.scopes ? { scopes: row.scopes } : {}),
     ...(row.accountLabel ? { accountLabel: row.accountLabel } : {}),
+    ...(row.expiryNotifiedAt ? { expiryNotifiedAt: row.expiryNotifiedAt } : {}),
   };
 }

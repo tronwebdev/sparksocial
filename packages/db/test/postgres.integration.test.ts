@@ -17,6 +17,8 @@ import { createOpportunityRepository } from '../src/opportunityRepository.js';
 import { createAuditRepository } from '../src/auditRepository.js';
 import { createRunRecorder, getRun } from '../src/runRecorderRepository.js';
 import { createConsentRepository } from '../src/consentRepository.js';
+import { createTrendObservationRepository } from '../src/trendObservationRepository.js';
+import { createOAuthConnectionRepository } from '../src/oauthConnectionRepository.js';
 import { replaceCampaignSlots, campaignSlots, findDueContentItems, getContentMetrics } from '../src/scoped.js';
 import * as schema from '../src/schema.js';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
@@ -107,7 +109,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records']) {
+  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations', 'oauth_connections']) {
     await pg.exec(`TRUNCATE TABLE ${table}`);
   }
 });
@@ -528,7 +530,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
       comments: 1,
       shares: 0,
       views: 100,
-      impressions: 150,
+      impressions: 150, saves: 150,
       raw: { pass: 1 },
     });
 
@@ -541,7 +543,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
       comments: 4,
       shares: 2,
       views: 300,
-      impressions: 400,
+      impressions: 400, saves: 400,
       raw: { pass: 2 },
     });
 
@@ -561,11 +563,11 @@ describe('content_metrics — analytics.sync (P4)', () => {
 
     await analytics.record({
       genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'instagram',
-      likes: 1, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 1, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
     await analytics.record({
       genomeId: 'gen_A', orgId: 'org_1', contentItemId, platform: 'tiktok',
-      likes: 2, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 2, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
 
     const rows = await getContentMetrics(db, { orgId: 'org_1', brandId: 'org_1', genomeId: 'gen_A' }, contentItemId);
@@ -578,7 +580,7 @@ describe('content_metrics — analytics.sync (P4)', () => {
 
     await analytics.record({
       genomeId: 'gen_shared', orgId: 'org_tenant_A', contentItemId, platform: 'instagram',
-      likes: 99, comments: 0, shares: 0, views: 0, impressions: 0, raw: {},
+      likes: 99, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0, raw: {},
     });
 
     const rows = await getContentMetrics(db, { orgId: 'org_tenant_B', brandId: 'org_tenant_B', genomeId: 'gen_shared' }, contentItemId);
@@ -954,6 +956,210 @@ describe('migrations conform to schema.ts', () => {
     for (const t of ['org_budgets', 'credit_ledger', 'human_messages', 'approvals', 'consent_records']) {
       expect(present.has(t), `${t} is missing`).toBe(true);
     }
+  });
+});
+
+describe('connection health — §10 alerts on real SQL', () => {
+  const repo = () => createOAuthConnectionRepository(db);
+  const at = (iso: string) => new Date(iso);
+
+  const connect = (over: { provider?: string; expiresAt?: Date; genomeId?: string } = {}) =>
+    repo().save({
+      genomeId: over.genomeId ?? 'gen_1',
+      orgId: 'org_1',
+      provider: over.provider ?? 'instagram',
+      accessToken: 'tok',
+      connectedBy: 'user_1',
+      ...(over.expiresAt ? { expiresAt: over.expiresAt } : {}),
+    });
+
+  it('finds a connection expiring inside the window, across tenants', async () => {
+    // The caller is a clock, so this is one of only two deliberately
+    // cross-tenant reads in `scoped.ts` — every row has to carry its own org.
+    await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().save({ genomeId: 'gen_other', orgId: 'org_2', provider: 'x', accessToken: 't', connectedBy: 'u', expiresAt: at('2026-08-21T00:00:00Z') });
+
+    const found = await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 });
+    expect(found.map((c) => c.orgId).sort()).toEqual(['org_1', 'org_2']);
+    // Soonest first: a clock with a batch limit should warn about the one that
+    // dies tomorrow before the one that dies next week.
+    expect(found[0]!.provider).toBe('x');
+  });
+
+  it('excludes a connection with no stated expiry rather than treating it as urgent', async () => {
+    await connect({});
+    expect(await repo().findExpiring({ before: at('2030-01-01T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('excludes a connection expiring beyond the window', async () => {
+    await connect({ expiresAt: at('2026-12-01T00:00:00Z') });
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('latches so the next tick does not repeat the warning', async () => {
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_1', at: at('2026-08-20T12:00:00Z') });
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toEqual([]);
+  });
+
+  it('will not latch another org\'s connection', async () => {
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_2', at: at('2026-08-20T12:00:00Z') });
+    // Still warnable: the write was scoped to the wrong org and did nothing.
+    expect(await repo().findExpiring({ before: at('2026-08-25T00:00:00Z'), limit: 10 })).toHaveLength(1);
+  });
+
+  it('re-arms the warning when the connection is saved again', async () => {
+    // Reconnecting produces a token with a new expiry, so the next warning is a
+    // new fact rather than a repeat of the one that prompted the reconnection.
+    const conn = await connect({ expiresAt: at('2026-08-22T00:00:00Z') });
+    await repo().markExpiryNotified({ id: conn.id, orgId: 'org_1', at: at('2026-08-20T12:00:00Z') });
+    await connect({ expiresAt: at('2026-11-01T00:00:00Z') });
+
+    const found = await repo().findExpiring({ before: at('2026-12-01T00:00:00Z'), limit: 10 });
+    expect(found).toHaveLength(1);
+    expect(found[0]!.expiryNotifiedAt).toBeUndefined();
+  });
+});
+
+describe('publish retries — §10\'s retry flow on real SQL', () => {
+  const repo = () => createContentRepository(db);
+
+  async function draft() {
+    return repo().createDraft({
+      genomeId: 'gen_1',
+      orgId: 'org_1',
+      playbookId: 'pb_1',
+      mode: 'synthesize',
+      pillar: 'proof',
+      copy: [{ kind: 'text', text: 'hello' }],
+      why: { summary: 'test fixture', factors: [], evidence: [], alternatives: [] },
+    });
+  }
+
+  it('increments in SQL rather than read-modify-write', async () => {
+    // Two scheduler ticks racing the same row would otherwise both read 3 and
+    // both write 4 — a ceiling that can be undercounted can be walked past.
+    const item = await draft();
+    const results = await Promise.all([
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'a' }),
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'b' }),
+      repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'c' }),
+    ]);
+    expect(results.map((r) => r.attempts).sort()).toEqual([1, 2, 3]);
+  });
+
+  it('keeps the last error where a person can read it', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'UPSTREAM_FAILED: token expired' });
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.lastPublishError).toContain('token expired');
+    expect(read!.publishAttempts).toBe(1);
+  });
+
+  it('does not change the status — the retry policy is the scheduler\'s, not storage\'s', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'x' });
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.status).toBe(item.status);
+  });
+
+  it('reports zero for another org\'s row rather than throwing', async () => {
+    const item = await draft();
+    expect(await repo().recordPublishFailure({ id: item.id, orgId: 'org_2', error: 'x' })).toEqual({ attempts: 0 });
+  });
+
+  it('rescheduling clears the count, so a stalled post can be given another chance', async () => {
+    const item = await draft();
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'x' });
+    await repo().recordPublishFailure({ id: item.id, orgId: 'org_1', error: 'y' });
+
+    await repo().schedule({ id: item.id, genomeId: 'gen_1', orgId: 'org_1', scheduledAt: new Date('2026-09-01T09:00:00Z') });
+
+    const read = await repo().get(item.id, 'gen_1', 'org_1');
+    expect(read!.publishAttempts).toBe(0);
+    expect(read!.lastPublishError).toBeUndefined();
+  });
+});
+
+describe('trend observations — §8.9\'s time series on real SQL', () => {
+  const repo = () => createTrendObservationRepository(db);
+  const at = (iso: string) => new Date(iso);
+
+  const sample = (overrides: Record<string, unknown> = {}) => ({
+    source: 'tiktok',
+    trendId: 'tr_1',
+    topic: 'one continuous shot',
+    observedAt: at('2026-08-19T14:32:11.500Z'),
+    volume: 1000,
+    velocity: 0.8,
+    saturation: 0.2,
+    growth: 1.5,
+    ...overrides,
+  });
+
+  it('round-trips the 0–1 metrics through the integer encoding', async () => {
+    await repo().record([sample()]);
+    const [row] = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(row!.velocity).toBeCloseTo(0.8, 3);
+    expect(row!.saturation).toBeCloseTo(0.2, 3);
+    expect(row!.growth).toBeCloseTo(1.5, 3);
+    expect(row!.volume).toBe(1000);
+  });
+
+  it('buckets to the hour, so a sub-hour repeat is one row not two', async () => {
+    // The reason this matters: every `trend.rank` call by every org records a
+    // sample. Without the bucket a busy afternoon writes thousands of rows and
+    // the chart is dense without being more informative.
+    await repo().record([sample({ observedAt: at('2026-08-19T14:02:00Z') })]);
+    await repo().record([sample({ observedAt: at('2026-08-19T14:58:59Z'), volume: 2000 })]);
+
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.observedAt.toISOString()).toBe('2026-08-19T14:00:00.000Z');
+    // Last write wins inside the bucket — otherwise the hour's value is set by
+    // whoever loaded the feed at :01 and never updated again.
+    expect(rows[0]!.volume).toBe(2000);
+  });
+
+  it('collapses duplicates inside a single batch rather than erroring', async () => {
+    // Postgres rejects an ON CONFLICT statement whose own VALUES list conflicts
+    // with itself, and two callers handing us the same trend in one hour is a
+    // normal thing to happen, not a caller bug.
+    await repo().record([
+      sample({ observedAt: at('2026-08-19T09:10:00Z'), volume: 1 }),
+      sample({ observedAt: at('2026-08-19T09:50:00Z'), volume: 7 }),
+    ]);
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.volume).toBe(7);
+  });
+
+  it('returns the series oldest first', async () => {
+    await repo().record([
+      sample({ observedAt: at('2026-08-19T12:00:00Z') }),
+      sample({ observedAt: at('2026-08-17T12:00:00Z') }),
+      sample({ observedAt: at('2026-08-18T12:00:00Z') }),
+    ]);
+    const rows = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    expect(rows.map((r) => r.observedAt.toISOString())).toEqual([
+      '2026-08-17T12:00:00.000Z',
+      '2026-08-18T12:00:00.000Z',
+      '2026-08-19T12:00:00.000Z',
+    ]);
+  });
+
+  it('keys the series by source as well as id, so two sources cannot merge', async () => {
+    await repo().record([sample(), sample({ source: 'youtube', volume: 5 })]);
+    const tiktok = await repo().series({ source: 'tiktok', trendId: 'tr_1', sinceDays: 3650 });
+    const youtube = await repo().series({ source: 'youtube', trendId: 'tr_1', sinceDays: 3650 });
+    expect(tiktok).toHaveLength(1);
+    expect(youtube).toHaveLength(1);
+    expect(youtube[0]!.volume).toBe(5);
+  });
+
+  it('records nothing and does not error on an empty batch', async () => {
+    await expect(repo().record([])).resolves.toBeUndefined();
   });
 });
 

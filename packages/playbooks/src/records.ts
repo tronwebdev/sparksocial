@@ -157,8 +157,27 @@ export const carouselTeaching = definePlaybook({
   output: { media_type: 'carousel', aspect_ratios: ['4:5'], platforms: ['instagram', 'linkedin'] },
   structure: {
     beats: [
+      /**
+       * One beat per slide, because `compose.render_static` renders a carousel
+       * by drawing each beat as its own slide.
+       *
+       * This was `cover` / `slides` / `cta`, which is a three-slide carousel
+       * described to the reader as "a multi-slide walkthrough". The writer,
+       * handed a single beat called `slides`, produced a single slide -- and
+       * once returned it as "Step 3: Know Your Style", having assumed it was one
+       * of several it never got asked for. Naming the steps individually is what
+       * makes it a walkthrough, and it needs no code change to do it
+       * (CLAUDE.md invariant 5).
+       *
+       * Four steps rather than more: it is the most a 4:5 carousel holds without
+       * the reader swiping past the point, and `teach.steps` stays one idea
+       * broken down, not a listicle.
+       */
       { id: 'cover', duration_sec: 0, prompt_ref: 'hook.listicle' },
-      { id: 'slides', duration_sec: 0, prompt_ref: 'teach.steps' },
+      { id: 'step_1', duration_sec: 0, prompt_ref: 'teach.steps' },
+      { id: 'step_2', duration_sec: 0, prompt_ref: 'teach.steps' },
+      { id: 'step_3', duration_sec: 0, prompt_ref: 'teach.steps' },
+      { id: 'step_4', duration_sec: 0, prompt_ref: 'teach.steps' },
       { id: 'cta', duration_sec: 0, source: 'genome:offer.primary_cta' },
     ],
   },

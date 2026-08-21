@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError, untrusted } from '@sparksocial/shared';
+import { languageModelAvailable, modelClient } from './model-client.js';
+import { ToolError, callVendor, untrusted } from '@sparksocial/shared';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import type { CaptionClient } from '@sparksocial/assetgraph';
 import { envSet, envStr } from './env.js';
@@ -79,7 +80,11 @@ export interface CaptionClientOptions {
 }
 
 export function createCaptionClient(opts: CaptionClientOptions = {}): CaptionClient {
-  const anthropic = opts.anthropic ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const anthropic = opts.anthropic ?? modelClient();
   const model = opts.model ?? CAPTION_MODEL;
   const doFetch = opts.fetchImpl ?? fetch;
 
@@ -119,11 +124,28 @@ export function createCaptionClient(opts: CaptionClientOptions = {}): CaptionCli
   };
 }
 
+/**
+ * The captioner's three paths — remote image, local image, transcript summary —
+ * through the one wrapper, so a thrown vendor error cannot reach the Assets
+ * Library as a raw response body. See `callVendor` for what that looked like.
+ */
+function captionCall(
+  anthropic: Anthropic,
+  body: Anthropic.MessageCreateParamsNonStreaming,
+): Promise<Anthropic.Message> {
+  return callVendor(
+    'captioner',
+    'SPARK could not describe this file — the service that looks at images and video is not ' +
+      'responding. Your file uploaded fine; add it again once that service is back.',
+    () => anthropic.messages.create(body),
+  );
+}
+
 async function captionImage(
   deps: { anthropic: Anthropic; model: string },
   url: string,
 ): Promise<string> {
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,
@@ -162,7 +184,7 @@ async function captionLocalImage(
     throw new ToolError('INVALID_INPUT', `Unsupported image type for captioning: ${found.contentType}.`);
   }
 
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,
@@ -195,7 +217,7 @@ async function summarise(
   transcript: string,
   mediaType: 'video' | 'audio',
 ): Promise<string> {
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,
@@ -310,9 +332,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * looks exactly like a working Asset Graph.
  */
 export function captionClient(local?: { source: LocalByteSource; urlPrefix: string }): CaptionClient {
-  if (!envSet('ANTHROPIC_API_KEY')) {
+  if (!languageModelAvailable()) {
     console.warn(
-      '[warn] ANTHROPIC_API_KEY unset — asset captions are placeholders. Every asset will embed to ' +
+      '[warn] No language model configured (ANTHROPIC_API_KEY or OPENAI_API_KEY) — asset captions are placeholders. Every asset will embed to ' +
         'roughly the same point and retrieval will return a stable, meaningless ranking.',
     );
     return { async caption(url, mediaType) { return `${mediaType} at ${url}`; } };

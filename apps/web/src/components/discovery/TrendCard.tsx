@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
 
 export interface RankedTrendItem {
   trendId: string;
@@ -44,10 +45,13 @@ export function TrendCard({
   trend,
   genomeId,
   onWatchChanged,
+  onOpen,
 }: {
   trend: RankedTrendItem;
   genomeId: string;
   onWatchChanged?: (trendId: string, watched: boolean) => void;
+  /** Opens `DISC-02` for this trend. Absent where there is nowhere to open into. */
+  onOpen?: () => void;
 }) {
   const [watching, setWatching] = useState(false);
   const [watchBusy, setWatchBusy] = useState(false);
@@ -98,16 +102,25 @@ export function TrendCard({
         </Button>
       </div>
 
-      <ul className="mt-2 grid grid-cols-1 gap-0.5">
-        {trend.factors.slice(0, 2).map((f, i) => (
-          <li key={i} className="text-[13px] text-ink-muted">
-            <span className="capitalize text-ink">{f.label}:</span> {f.detail}
-          </li>
-        ))}
-      </ul>
+      {/* PRD §7.3 lists trend selection first among the decisions that must be
+          explainable, and `trend.rank` returns weighted factors for every one.
+          This showed the first two, unweighted, and dropped the rest — so a
+          trend at 34% match looked arbitrary rather than reasoned. */}
+      <WhyPopover
+        why={{ summary: `Ranked ${Math.round(trend.score * 100)}% for this brand.`, factors: trend.factors }}
+        label={trend.factors.slice(0, 2).map((f) => `${f.label}: ${f.detail}`).join(' · ')}
+      />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="outline" disabled={repurposeBusy} onClick={() => void repurpose()}>
+        {/* `DISC-01`'s "open" action, which had no destination until `DISC-02`
+            existed — the PRD lists open/repurpose/reshare as the three card
+            actions and only repurpose was reachable. */}
+        {onOpen ? (
+          <Button size="sm" variant="outline" onClick={onOpen}>
+            Open
+          </Button>
+        ) : null}
+        <Button size="sm" variant="ghost" disabled={repurposeBusy} onClick={() => void repurpose()}>
           {repurposeBusy ? 'Thinking…' : 'Suggest a post'}
         </Button>
       </div>
@@ -117,10 +130,17 @@ export function TrendCard({
           <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
             Suggested — {suggestion.playbookName}
           </p>
-          <p className="mt-1 text-[14px] text-ink">{suggestion.intent}</p>
-          {suggestion.unlockable ? (
-            <p className="mt-1 text-[12px] text-warn">Needs {suggestion.missingRoles.join(', ')} first.</p>
-          ) : null}
+          {/* `intent` already ends with what is missing and how to get it —
+              "needs footage first (physical capture)" or "needs a brand kit
+              uploaded first" — worded server-side by `buildIntent`, where the
+              upload-versus-film distinction is known.
+
+              A second line restated it from `missingRoles`, in raw
+              `snake_case`, so the card read "…needs footage first (physical
+              capture)" and then "Needs physical_capture first." */}
+          <p className={`mt-1 text-[14px] ${suggestion.unlockable ? 'text-ink-muted' : 'text-ink'}`}>
+            {suggestion.intent}
+          </p>
         </div>
       ) : null}
       {repurposeError ? <p className="mt-2 text-[13px] text-ink-muted">{repurposeError}</p> : null}

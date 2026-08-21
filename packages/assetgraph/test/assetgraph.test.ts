@@ -29,6 +29,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
         patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
         patchOffer: async () => ({ id: 'gen_1', version: 1 }),
+        patchVoice: async () => ({ id: 'gen_1', version: 1 }),
         patchLearned: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => undefined,
         listForOrg: async () => [],
@@ -57,6 +58,14 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        recordPublishFailure: async () => ({ attempts: 1 }),
+        variantGroup: async () => [],
+        tagVariant: async () => undefined,
+        publishOrigin: async () => undefined,
+        pendingReviewCount: async () => 0,
+        markNeedsReview: async () => {},
+        markApproved: async () => {},
+        markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
       },
@@ -74,6 +83,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         classify: async () => undefined,
         list: async () => [],
         audit: async () => [],
+        thread: async () => [],
         markReplied: async () => undefined,
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
@@ -85,6 +95,15 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       },
       trends: {
         add: async () => { throw new Error('trends.add not stubbed in this test'); },
+        remove: async () => {},
+        list: async () => [],
+      },
+      trendObservations: {
+        record: async () => {},
+        series: async () => [],
+      },
+      influencers: {
+        add: async () => { throw new Error('influencers.add not stubbed in this test'); },
         remove: async () => {},
         list: async () => [],
       },
@@ -109,6 +128,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async () => undefined,
         save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
         remove: async () => {},
+        findExpiring: async () => [],
+        markExpiryNotified: async () => {},
       },
       knowledge: {
         attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },
@@ -116,7 +137,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         listAll: async () => [],
       },
       orgSettings: {
-        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 50_000, updatedAt: new Date() }),
+        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, twoFactorRequired: false, dataResidency: 'any', monthlyCapCents: 50_000, updatedAt: new Date() }),
         setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
         setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
         setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
@@ -145,22 +166,44 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
+        }),
+        setGovernance: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
@@ -184,6 +227,36 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         pending: async () => [],
         get: async () => undefined,
         resolve: async () => {},
+      },
+      metrics: {
+        successMetrics: async () => ({
+          connectedAccounts: 0,
+          campaignCount: 0,
+          firstCampaignStartAt: null,
+          firstPublishedAt: null,
+          publishedInWindow: 0,
+          postsWithTrackedLink: 0,
+          postsFromTrends: 0,
+          recipeCount: 0,
+          outputsApproved: 0,
+          outputsRejected: 0,
+          messagesInWindow: 0,
+          messagesResolved: 0,
+          meanReplySeconds: null,
+          opportunitiesInWindow: 0,
+          opportunitiesRouted: 0,
+          publishedEverBlocked: 0,
+          rolledBack: 0,
+          needsReview: 0,
+        }),
+        toolActivity: async () => ({
+          publishAttempts: 0,
+          publishBlocked: 0,
+          publishHeld: 0,
+          draftCalls: 0,
+          trendsRanked: 0,
+          repurposeCalls: 0,
+        }),
       },
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -264,12 +337,17 @@ describe('asset.gaps', () => {
     expect(res.why.summary).toMatch(/posts are ready now/);
   });
 
-  it('reports zero gaps when everything resolvable is already producible', async () => {
-    // Toronto SaaS's golden fixture has enough assets that nothing needs filming
-    // for the formats gated on what it already has (product_screen, knowledge,
-    // social_proof) — direct_finish playbooks are excluded from its resolution
-    // by the capture_capability dimension, not by a missing asset, so they never
-    // appear as a gap here.
+  it('reports an uploadable gap the old resolver hid, and calls it an upload', async () => {
+    /**
+     * This asserted `gaps` was empty, and it passed for the wrong reason.
+     *
+     * Toronto SaaS holds product_screen, knowledge, social_proof and a brand
+     * kit, so nothing it can *film* is missing — but `pb_case_study_breakdown`
+     * wants a work artifact, and the resolver used to reject that outright with
+     * "cannot be filmed to order" rather than report it. The gap was real and
+     * closeable by dragging in one file; the engine simply had no vocabulary for
+     * a gap that is not a shoot, so this test recorded its absence as correct.
+     */
     const res = await assetGaps.handler(
       { genomeId: torontoSaas.genome.genome_id, horizonDays: 30 },
       ctx({
@@ -281,8 +359,11 @@ describe('asset.gaps', () => {
       }),
     );
 
-    expect(res.gaps).toEqual([]);
-    expect(res.why.summary).toContain('already on hand');
+    expect(res.gaps.map((g) => g.missingRole)).toEqual(['work_artifact']);
+    expect(res.gaps[0]!.unlockedBy).toBe('upload');
+    // Nothing to film, so the sentence must not mention filming at all.
+    expect(res.why.summary).toContain('no filming');
+    expect(res.why.summary).not.toMatch(/filming opens/);
   });
 
   it('throws NOT_FOUND for an unknown genome rather than silently resolving empty', async () => {
@@ -291,7 +372,7 @@ describe('asset.gaps', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  it('sorts gaps by how many playbooks they block, worst first', async () => {
+  it('sorts uploads before shoots, and by impact within each', async () => {
     const res = await assetGaps.handler(
       { genomeId: lagosBarbershop.genome.genome_id, horizonDays: 30 },
       ctx({
@@ -302,8 +383,55 @@ describe('asset.gaps', () => {
         },
       }),
     );
-    const counts = res.gaps.map((g) => g.playbooksBlocked.length);
-    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    /**
+     * Effort first, impact second — not impact alone, which is what this used to
+     * assert.
+     *
+     * The barbershop's biggest gap by count is `physical_capture`, so ranking on
+     * count alone put "book a filming session" at the top of the list for a brand
+     * that had uploaded nothing. The uploads above it are worth more than their
+     * count suggests, because they cost a minute each.
+     */
+    const routes = res.gaps.map((g) => g.unlockedBy);
+    expect(routes.indexOf('capture')).toBe(routes.length - 1);
+    expect(routes.filter((r) => r === 'upload').length).toBeGreaterThan(0);
+
+    const within = (route: 'upload' | 'capture') =>
+      res.gaps.filter((g) => g.unlockedBy === route).map((g) => g.playbooksBlocked.length);
+    for (const route of ['upload', 'capture'] as const) {
+      expect(within(route)).toEqual([...within(route)].sort((a, b) => b - a));
+    }
+  });
+
+  it('leads a brand with nothing uploaded toward the file, not the film crew', async () => {
+    /**
+     * The whole point of the change, on the case that matters most: a real brand
+     * on its first day, before anything has been uploaded.
+     *
+     * The old summary read "0 posts are ready now; 7 are possible if you film to
+     * close 1 gap — physical capture would unlock the most." Filming was the only
+     * route the resolver kept, so it was the only advice available — and it was
+     * not even the best one by count, let alone by effort.
+     */
+    const empty = { ...lagosBarbershop, assets: {} };
+    const res = await assetGaps.handler(
+      { genomeId: empty.genome.genome_id, horizonDays: 30 },
+      ctx({
+        db: {
+          ...ctx().db,
+          genomes: { ...ctx().db.genomes, get: async () => empty.genome },
+          assets: { ...ctx().db.assets, inventory: async () => ({}) },
+        },
+      }),
+    );
+
+    expect(res.producibleNow).toBe(0);
+    expect(res.gaps[0]!.unlockedBy).toBe('upload');
+    expect(res.gaps[0]!.missingRole).toBe('brand_kit');
+    expect(res.why.summary).toMatch(/uploading a brand kit unlocks \d+ formats with no filming/i);
+    // Filming still gets named — it is how the moat formats are reached — but second.
+    expect(res.why.summary).toMatch(/filming opens/);
+    expect(res.why.summary.indexOf('uploading')).toBeLessThan(res.why.summary.indexOf('filming'));
   });
 });
 
@@ -514,9 +642,12 @@ describe('asset.cooldown.check', () => {
   });
 });
 
+/** Fixed so `LIB-01`'s created-date assertion is exact rather than time-dependent. */
+const FOLDER_CREATED = new Date('2026-08-01T10:00:00.000Z');
+
 describe('asset.folder.create', () => {
   it('creates a folder and returns its id', async () => {
-    const create = vi.fn(async () => ({ id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() }));
+    const create = vi.fn(async () => ({ id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date(), assetCount: 0 }));
     const out = await assetFolderCreate.handler(
       { genomeId: 'gen_1', name: 'B-roll' },
       ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, create } } }),
@@ -529,18 +660,20 @@ describe('asset.folder.create', () => {
 describe('asset.folder.list', () => {
   it('lists this genome’s folders', async () => {
     const list = vi.fn(async () => [
-      { id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: new Date() },
-      { id: 'folder_2', genomeId: 'gen_1', name: 'Testimonials', createdAt: new Date() },
+      { id: 'folder_1', genomeId: 'gen_1', name: 'B-roll', createdAt: FOLDER_CREATED, assetCount: 4 },
+      { id: 'folder_2', genomeId: 'gen_1', name: 'Testimonials', createdAt: FOLDER_CREATED, assetCount: 0 },
     ]);
     const out = await assetFolderList.handler(
       { genomeId: 'gen_1' },
       ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, list } } }),
     );
     expect(list).toHaveBeenCalledWith('gen_1', 'org_1');
+    // `LIB-01` shows a created date and an item count per folder. Both were
+    // computed by the query and dropped by the tool's output schema.
     expect(out).toEqual({
       folders: [
-        { folderId: 'folder_1', name: 'B-roll' },
-        { folderId: 'folder_2', name: 'Testimonials' },
+        { folderId: 'folder_1', name: 'B-roll', createdAt: FOLDER_CREATED.toISOString(), assetCount: 4 },
+        { folderId: 'folder_2', name: 'Testimonials', createdAt: FOLDER_CREATED.toISOString(), assetCount: 0 },
       ],
     });
   });

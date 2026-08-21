@@ -1,0 +1,1 @@
+ALTER TABLE "content_metrics" ADD COLUMN "saves" integer DEFAULT 0 NOT NULL;

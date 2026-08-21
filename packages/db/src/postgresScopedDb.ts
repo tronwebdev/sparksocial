@@ -5,6 +5,7 @@ import { createAssetRepository } from './assetRepository.js';
 import { createAssetFolderRepository } from './assetFolderRepository.js';
 import { createContentRepository } from './contentRepository.js';
 import { createAnalyticsRepository } from './analyticsRepository.js';
+import { createMetricsRepository } from './metricsRepository.js';
 import { createEngagementRepository } from './engagementRepository.js';
 import { createOpportunityRepository } from './opportunityRepository.js';
 import { createRunReadRepository } from './runRecorderRepository.js';
@@ -14,7 +15,8 @@ import { createBrandRepository } from './brandRepository.js';
 import { createHumanLoopRepository } from './humanLoopRepository.js';
 import { createConsentRepository } from './consentRepository.js';
 import { createToolCallReadRepository } from './toolCallReadRepository.js';
-import { createTrendRepository } from './trendRepository.js';
+import { createTrendRepository, createInfluencerWatchRepository } from './trendRepository.js';
+import { createTrendObservationRepository } from './trendObservationRepository.js';
 import { createLearningRepository } from './learningRepository.js';
 import { createRecipeRepository } from './recipeRepository.js';
 import { createOAuthConnectionRepository } from './oauthConnectionRepository.js';
@@ -31,11 +33,14 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     assetFolders: createAssetFolderRepository(db),
     content: createContentRepository(db),
     analytics: createAnalyticsRepository(db),
+    metrics: createMetricsRepository(db),
     ctaLinks: createCtaLinkRepository(db),
     engagement: createEngagementRepository(db),
     opportunities: createOpportunityRepository(db),
     campaigns: createCampaignRepository(db),
     trends: createTrendRepository(db),
+    trendObservations: createTrendObservationRepository(db),
+    influencers: createInfluencerWatchRepository(db),
     learning: createLearningRepository(db),
     recipes: createRecipeRepository(db),
     oauthConnections: createOAuthConnectionRepository(db),

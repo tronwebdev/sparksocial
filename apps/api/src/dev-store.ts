@@ -20,10 +20,13 @@ import type {
   HumanLoopStore,
   LearningArm,
   OAuthConnectionRecord,
+  OrgSettingsRecord,
   Opportunity,
   RecipeOutputRecord,
   RecipeRecord,
   RenderRecord,
+  InfluencerWatch,
+  TrendObservation,
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
@@ -152,6 +155,15 @@ export interface DevStoreOptions {
    * can disagree with the first.
    */
   findCall?: (callId: string) => ToolCallRecord | undefined;
+  /**
+   * Every audit row, for `metrics.toolActivity` — PRD §5's publish-attempt,
+   * block and draft counts.
+   *
+   * Injected for the same reason `findCall` is: the rows live in
+   * `memoryInvokeDeps`, and copying them into this store would create a second
+   * version of what happened that can disagree with the first.
+   */
+  allCalls?: () => ToolCallRecord[];
 }
 
 export function createDevStore(
@@ -165,6 +177,7 @@ export function createDevStore(
     humanLoopStore = createDevHumanLoopStore(),
     consentStore = createDevConsentStore(),
     findCall = () => undefined,
+    allCalls = () => [],
   } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -186,6 +199,10 @@ export function createDevStore(
   const renders: (RenderRecord & { orgId: string; genomeId: string })[] = [];
   const opportunities: (Opportunity & { orgId: string })[] = [];
   const trendWatchlist: (TrendWatchlistEntry & { orgId: string; genomeId: string })[] = [];
+  /** `DISC-02`'s time series, keyed by [source, trendId, hour] — the same bucket the Postgres unique index enforces. */
+  const trendObservationRows = new Map<string, TrendObservation>();
+  /** §8.9's influencer watchlist, keyed `org:genome:platform:handle` — the real unique index. */
+  const influencerWatches = new Map<string, InfluencerWatch & { orgId: string; genomeId: string }>();
   // Keyed on `${genomeId}:${pillar}` — one arm per (genome, pillar), same unique target as the real schema.
   const learningArms = new Map<string, LearningArm & { orgId: string; genomeId: string }>();
   const scoredContentItems = new Set<string>(); // idempotency for recordOutcome, mirrors the real unique index on contentItemId
@@ -195,7 +212,10 @@ export function createDevStore(
   // Keyed on `${genomeId}:${provider}` — one connection per (genome, provider), same unique target as the real schema.
   const oauthConnectionsMap = new Map<string, OAuthConnectionRecord & { orgId: string }>();
   const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
-  const orgSettingsMap = new Map<string, { orgId: string; plan: 'starter' | 'growth' | 'agency'; defaultApprovalMode: string; ssoRequired: boolean; monthlyCapCents: number; updatedAt: Date }>();
+  // Typed as the record itself rather than a hand-listed copy of its fields —
+  // the inline literal is how this drifted when §8.12's 2FA/residency/retention
+  // columns landed.
+  const orgSettingsMap = new Map<string, OrgSettingsRecord>();
   const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
   const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
 
@@ -304,6 +324,17 @@ export function createDevStore(
           ...row.genome,
           version: row.genome.version + 1,
           offer: { ...row.genome.offer, ...offer },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
+      async patchVoice({ genomeId, orgId: org, voice }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          voice: { ...row.genome.voice, ...voice },
         };
         return { id: genomeId, version: row.genome.version };
       },
@@ -447,13 +478,21 @@ export function createDevStore(
         const id = randomUUID();
         const row = { id, genomeId, orgId: org, name, createdAt: new Date() };
         assetFolders.set(id, row);
-        return row;
+        // A brand-new folder is empty, and `LIB-01` shows the count.
+        return { ...row, assetCount: 0 };
       },
 
       async list(genomeId, org) {
         return [...assetFolders.values()]
           .filter((f) => f.genomeId === genomeId && f.orgId === org)
-          .sort((a, b) => a.name.localeCompare(b.name));
+          .sort((a, b) => a.name.localeCompare(b.name))
+          // Counted from the same `assets` map the real query counts from, so an
+          // empty folder still reports zero rather than being omitted — see
+          // `listAssetFolders`'s left join.
+          .map((f) => ({
+            ...f,
+            assetCount: [...assets.values()].filter((a) => a.orgId === org && a.folderId === f.id).length,
+          }));
       },
     },
 
@@ -465,22 +504,50 @@ export function createDevStore(
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
 
-      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId }) {
-        const row: ContentDraft & { orgId: string } = {
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
+        const row: ContentDraft & {
+          orgId: string;
+          recipeId?: string;
+          intent?: string;
+          sourceTrendId?: string;
+        } = {
           id: randomUUID(),
           orgId: org,
           genomeId,
           playbookId,
           mode,
-          status: 'draft',
+          // Same rule as `scoped.createContentDraft`: a row created with a date
+          // is created scheduled.
+          status: scheduledAt ? 'scheduled' : 'draft',
           copy,
           why,
           createdAt: new Date(),
           ...(pillar ? { pillar } : {}),
           ...(campaignId ? { campaignId } : {}),
+          ...(recipeId ? { recipeId } : {}),
+          ...(intent ? { intent } : {}),
+          ...(sourceTrendId ? { sourceTrendId } : {}),
+          ...(scheduledAt ? { scheduledAt } : {}),
+          ...(variantGroupId ? { variantGroupId } : {}),
+          ...(variantLabel ? { variantLabel } : {}),
         };
         drafts.set(row.id, row);
         return row;
+      },
+
+      async tagVariant({ id, genomeId, orgId: org, variantGroupId, variantLabel }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.variantGroupId = variantGroupId;
+        row.variantLabel = variantLabel;
+        return row;
+      },
+
+      /** Ordered by label, like the SQL one — a two-arm verdict must not swap sides between calls. */
+      async variantGroup(variantGroupId, genomeId, org) {
+        return [...drafts.values()]
+          .filter((r) => r.orgId === org && r.genomeId === genomeId && r.variantGroupId === variantGroupId)
+          .sort((a, b) => (a.variantLabel ?? '').localeCompare(b.variantLabel ?? ''));
       },
 
       async get(id, genomeId, org) {
@@ -529,6 +596,10 @@ export function createDevStore(
         const row = drafts.get(id);
         if (!row || row.orgId !== org) return;
         row.status = 'published';
+        // PRD §5's "time to first post" measures to here, so the dev store has
+        // to stamp it too — a metric that is real under Postgres and null in
+        // development is a metric nobody trusts.
+        row.publishedAt = new Date();
         row.platform = platform;
         row.externalId = externalId;
         row.via = via;
@@ -547,6 +618,77 @@ export function createDevStore(
         if (!row || row.orgId !== org) return;
         row.status = 'blocked';
         row.blockedReason = reason;
+      },
+
+      /**
+       * Increments and returns, like the SQL one. Deliberately does not touch
+       * `status`: whether the count has reached a ceiling is the scheduler's
+       * decision, not storage's.
+       */
+      async recordPublishFailure({ id, orgId: org, error }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return { attempts: 0 };
+        row.publishAttempts = (row.publishAttempts ?? 0) + 1;
+        row.lastPublishError = error.slice(0, 2000);
+        return { attempts: row.publishAttempts };
+      },
+
+      async markNeedsReview({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'needs_review';
+        row.blockedReason = reason;
+      },
+
+      async markApproved({ id, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'approved';
+        delete row.blockedReason;
+      },
+
+      async markRejected({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'draft';
+        row.blockedReason = reason;
+      },
+
+      /**
+       * Mirrors `scoped.contentPublishOrigin`, including its defaults: no
+       * recipe means not automation, an unreadable recipe config means review.
+       * Implemented here rather than left to throw for the reason the file
+       * header gives — a policy branch that fires under Postgres and is inert
+       * in development is a bug nobody finds until it is live.
+       */
+      async publishOrigin({ id, genomeId, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+
+        // PRD §7.2's per-campaign approval scope, same as the real join — read
+        // through the campaign store this store already holds rather than a
+        // second copy of the rows.
+        const campaignMode = row.campaignId
+          ? (await campaignStore.get(row.campaignId, org))?.approvalMode
+          : undefined;
+        const modePart = campaignMode
+          ? { campaignApprovalMode: campaignMode as 'autopublish' | 'review_first_week' | 'review_everything' }
+          : {};
+
+        const recipeId = (row as { recipeId?: string }).recipeId;
+        if (!recipeId) return { reviewBeforePublish: false, ...modePart };
+        const cfg = recipes.get(recipeId)?.config as { reviewBeforePublish?: unknown } | undefined;
+        return {
+          recipeId,
+          reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+          ...modePart,
+        };
+      },
+
+      async pendingReviewCount(genomeId, org) {
+        return [...drafts.values()].filter(
+          (r) => r.orgId === org && r.genomeId === genomeId && r.status === 'needs_review',
+        ).length;
       },
 
       async recordRender({ contentItemId, genomeId, orgId: org, aspect, storageUrl, engine, costCents }) {
@@ -573,7 +715,7 @@ export function createDevStore(
     },
 
     analytics: {
-      async record({ genomeId, orgId: org, contentItemId, platform, likes, comments, shares, views, impressions }) {
+      async record({ genomeId, orgId: org, contentItemId, platform, likes, comments, shares, views, impressions, saves }) {
         const snapshot: ContentMetricsSnapshot = {
           contentItemId,
           platform,
@@ -582,6 +724,7 @@ export function createDevStore(
           shares,
           views,
           impressions,
+          saves,
           syncedAt: new Date(),
         };
         metrics.set(`${contentItemId}:${platform}`, { ...snapshot, orgId: org, genomeId });
@@ -614,7 +757,7 @@ export function createDevStore(
     },
 
     engagement: {
-      async ingest({ genomeId, orgId: org, platform, externalId, kind, authorHandle, authorName, text, contentItemId, receivedAt }) {
+      async ingest({ genomeId, orgId: org, platform, externalId, kind, authorHandle, authorName, text, contentItemId, receivedAt, threadKey }) {
         const externalKey = `${org}:${genomeId}:${platform}:${externalId}`;
         const existingId = engagementByExternalId.get(externalKey);
         if (existingId) {
@@ -624,6 +767,10 @@ export function createDevStore(
           const existing = engagementMessages.get(existingId)!;
           existing.text = text;
           if (authorName) existing.authorName = authorName;
+          // Refreshed with the delivery fields, like the real upsert: a platform
+          // that starts supplying a real conversation id should correct a
+          // derived one.
+          if (threadKey) existing.threadKey = threadKey;
           return existing;
         }
 
@@ -639,6 +786,7 @@ export function createDevStore(
           text,
           ...(contentItemId ? { contentItemId } : {}),
           receivedAt: receivedAt ?? new Date(),
+          ...(threadKey ? { threadKey } : {}),
           status: 'new',
           createdAt: new Date(),
         };
@@ -676,17 +824,40 @@ export function createDevStore(
           .slice(0, limit);
       },
 
-      async markReplied({ id, genomeId, orgId: org }) {
+      /**
+       * Oldest first, unlike `list` above — see `EngagementStore.thread` on why
+       * a transcript and a feed sort in opposite directions.
+       */
+      async thread(genomeId, org, { threadKey, limit }) {
+        return [...engagementMessages.values()]
+          .filter((r) => r.orgId === org && r.genomeId === genomeId && r.threadKey === threadKey)
+          .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime())
+          .slice(0, limit);
+      },
+
+      async markReplied({ id, genomeId, orgId: org, sentReply }) {
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'replied';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
+        if (sentReply) {
+          row.sentReply = sentReply;
+          row.sentAt = row.resolvedAt;
+        }
         return row;
       },
 
-      async markAutoHandled({ id, genomeId, orgId: org }) {
+      async markAutoHandled({ id, genomeId, orgId: org, sentReply }) {
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'auto_handled';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
+        if (sentReply) {
+          row.sentReply = sentReply;
+          row.sentAt = row.resolvedAt;
+        }
         return row;
       },
 
@@ -694,6 +865,8 @@ export function createDevStore(
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'escalated';
+        // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
+        row.resolvedAt = new Date();
         return row;
       },
 
@@ -758,6 +931,60 @@ export function createDevStore(
       },
       async list(genomeId, org) {
         return trendWatchlist.filter((w) => w.genomeId === genomeId && w.orgId === org);
+      },
+    },
+
+    /**
+     * §8.9's influencer watchlist. Upsert by (genome, platform, handle), like
+     * the real unique index — watching the same account twice is one watch.
+     */
+    influencers: {
+      async add({ genomeId, orgId: org, platform, handle, displayName, note }) {
+        const key = `${org}:${genomeId}:${platform}:${handle}`;
+        const existing = influencerWatches.get(key);
+        const row = {
+          id: existing?.id ?? `inf_${randomUUID()}`,
+          orgId: org,
+          genomeId,
+          platform,
+          handle,
+          createdAt: existing?.createdAt ?? new Date(),
+          ...(displayName ?? existing?.displayName ? { displayName: displayName ?? existing!.displayName! } : {}),
+          ...(note ? { note } : {}),
+        };
+        influencerWatches.set(key, row);
+        return row;
+      },
+      async remove({ genomeId, orgId: org, platform, handle }) {
+        influencerWatches.delete(`${org}:${genomeId}:${platform}:${handle}`);
+      },
+      async list(genomeId, org) {
+        return [...influencerWatches.values()]
+          .filter((w) => w.orgId === org && w.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
+    },
+
+    /**
+     * Bucketed to the hour and last-write-wins, exactly like the Postgres one —
+     * a dev store that recorded every call would make the chart look dense here
+     * and sparse in production, which is the wrong way round for catching
+     * "there is not enough history to say anything" in development.
+     */
+    trendObservations: {
+      async record(observations) {
+        for (const o of observations) {
+          const at = new Date(o.observedAt.getTime());
+          at.setUTCMinutes(0, 0, 0);
+          trendObservationRows.set(JSON.stringify([o.source, o.trendId, at.toISOString()]), { ...o, observedAt: at });
+        }
+      },
+      async series({ source, trendId, sinceDays, limit }) {
+        const since = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+        return [...trendObservationRows.values()]
+          .filter((o) => o.source === source && o.trendId === trendId && o.observedAt.getTime() >= since)
+          .sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime())
+          .slice(0, limit ?? 720);
       },
     },
 
@@ -908,6 +1135,8 @@ export function createDevStore(
           ...(expiresAt ? { expiresAt } : {}),
           ...(scopes ? { scopes } : {}),
           ...(accountLabel ? { accountLabel } : {}),
+          // Not carried over from `existing`: reconnecting re-arms the §10
+          // expiry alert, because the new token has a new expiry.
         };
         oauthConnectionsMap.set(key, row);
         return row;
@@ -916,6 +1145,25 @@ export function createDevStore(
         const key = `${genomeId}:${provider}`;
         const existing = oauthConnectionsMap.get(key);
         if (existing && existing.orgId === org) oauthConnectionsMap.delete(key);
+      },
+
+      /**
+       * Cross-tenant, like the SQL one — and `expiresAt` absent is excluded
+       * rather than treated as urgent, for the reason `scoped.ts` gives: several
+       * providers issue tokens with no stated expiry, and warning about a
+       * connection that works fine is how an alert channel becomes noise.
+       */
+      async findExpiring({ before, limit }) {
+        return [...oauthConnectionsMap.values()]
+          .filter((c) => c.expiresAt !== undefined && c.expiresAt <= before && c.expiryNotifiedAt === undefined)
+          .sort((a, b) => a.expiresAt!.getTime() - b.expiresAt!.getTime())
+          .slice(0, limit);
+      },
+
+      async markExpiryNotified({ id, orgId: org, at }) {
+        for (const row of oauthConnectionsMap.values()) {
+          if (row.id === id && row.orgId === org) row.expiryNotifiedAt = at;
+        }
       },
     },
 
@@ -941,6 +1189,11 @@ export function createDevStore(
             plan: 'starter' as const,
             defaultApprovalMode: 'review_first_week',
             ssoRequired: false,
+            // Same column defaults as `schema.ts`. `retentionDays` is absent
+            // rather than zero: keeping data indefinitely is the default, and a
+            // dev store that implied a 0-day policy would be alarming.
+            twoFactorRequired: false,
+            dataResidency: 'any',
             monthlyCapCents: 500_00,
             updatedAt: new Date(),
           }
@@ -951,8 +1204,22 @@ export function createDevStore(
         orgSettingsMap.set(orgId, row);
         return row;
       },
-      async setGovernance({ orgId, defaultApprovalMode }) {
-        const row = { ...(await this.get(orgId)), defaultApprovalMode, updatedAt: new Date() };
+      /** A merge patch, mirroring the Postgres one — omitted fields are left alone. */
+      async setGovernance({ orgId, defaultApprovalMode, twoFactorRequired, dataResidency, retentionDays }) {
+        const current = await this.get(orgId);
+        const row = {
+          ...current,
+          ...(defaultApprovalMode !== undefined ? { defaultApprovalMode } : {}),
+          ...(twoFactorRequired !== undefined ? { twoFactorRequired } : {}),
+          ...(dataResidency !== undefined ? { dataResidency } : {}),
+          // `null` clears; omitted leaves alone.
+          ...(retentionDays === null
+            ? { retentionDays: undefined }
+            : retentionDays !== undefined
+              ? { retentionDays }
+              : {}),
+          updatedAt: new Date(),
+        };
         orgSettingsMap.set(orgId, row);
         return row;
       },
@@ -1033,6 +1300,86 @@ export function createDevStore(
         return [];
       },
     },
+    /**
+     * PRD §5's success metrics, computed from this store's own maps.
+     *
+     * Implemented rather than stubbed, for the reason this file's header gives
+     * about `lookupIdempotent`: a metric that is real under Postgres and zero in
+     * development is a number nobody trusts, and the whole point of §5 is having
+     * numbers somebody acts on.
+     */
+    metrics: {
+      async successMetrics(genomeId, org, since) {
+        const mine = <T extends { orgId: string; genomeId?: string }>(rows: T[]) =>
+          rows.filter((r) => r.orgId === org && (r.genomeId === undefined || r.genomeId === genomeId));
+
+        const items = [...drafts.values()].filter((d) => d.orgId === org && d.genomeId === genomeId);
+        const publishedInWindow = items.filter(
+          (d) => d.status === 'published' && d.publishedAt !== undefined && d.publishedAt >= since,
+        );
+        const linkedIds = new Set(mine(contentLinks).map((l) => l.contentItemId));
+
+        const msgs = mine([...engagementMessages.values()]).filter((m) => m.receivedAt >= since);
+        const resolved = msgs.filter((m) => m.resolvedAt !== undefined);
+        const opps = mine(opportunities).filter((o) => o.createdAt >= since);
+        const outputs = mine(recipeOutputs);
+
+        const campaignRows = await campaignStore.listForGenome(genomeId, org, 100);
+        const firstStart = campaignRows
+          .map((c) => c.startAt)
+          .sort((a, b) => a.getTime() - b.getTime())[0];
+        const firstPublished = items
+          .filter((d) => d.publishedAt !== undefined)
+          .map((d) => d.publishedAt!)
+          .sort((a, b) => a.getTime() - b.getTime())[0];
+
+        return {
+          connectedAccounts: mine([...oauthConnectionsMap.values()]).length,
+          campaignCount: campaignRows.length,
+          firstCampaignStartAt: firstStart ?? null,
+          firstPublishedAt: firstPublished ?? null,
+          publishedInWindow: publishedInWindow.length,
+          postsWithTrackedLink: publishedInWindow.filter((d) => linkedIds.has(d.id)).length,
+          postsFromTrends: publishedInWindow.filter((d) => (d as { sourceTrendId?: string }).sourceTrendId)
+            .length,
+          recipeCount: [...recipes.values()].filter((r) => r.orgId === org && r.genomeId === genomeId)
+            .length,
+          outputsApproved: outputs.filter((o) => o.status === 'approved').length,
+          outputsRejected: outputs.filter((o) => o.status === 'rejected').length,
+          messagesInWindow: msgs.length,
+          messagesResolved: resolved.length,
+          // Over resolved messages only — including the unanswered ones would
+          // make an ignored inbox look fast.
+          meanReplySeconds: resolved.length
+            ? resolved.reduce((acc, m) => acc + (m.resolvedAt!.getTime() - m.receivedAt.getTime()), 0) /
+              resolved.length /
+              1_000
+            : null,
+          opportunitiesInWindow: opps.length,
+          opportunitiesRouted: opps.filter((o) => o.routedTo).length,
+          publishedEverBlocked: items.filter((d) => d.status === 'blocked').length,
+          rolledBack: items.filter((d) => d.status === 'rolled_back').length,
+          needsReview: items.filter((d) => d.status === 'needs_review').length,
+        };
+      },
+
+      async toolActivity(org, genomeId, since) {
+        const rows = allCalls().filter(
+          (c) => c.orgId === org && c.genomeId === genomeId && c.at >= since,
+        );
+        const count = (predicate: (c: ToolCallRecord) => boolean) => rows.filter(predicate).length;
+
+        return {
+          publishAttempts: count((c) => c.tool === 'publish.now'),
+          publishBlocked: count((c) => c.tool === 'publish.now' && c.status === 'failed'),
+          publishHeld: count((c) => c.tool === 'publish.now' && c.decision === 'approval'),
+          draftCalls: count((c) => c.tool === 'content.draft' && c.status === 'succeeded'),
+          trendsRanked: count((c) => c.tool === 'trend.rank' && c.status === 'succeeded'),
+          repurposeCalls: count((c) => c.tool === 'trend.repurpose' && c.status === 'succeeded'),
+        };
+      },
+    },
+
     runs: runStore.reader,
 
     // The scheduler's read. Same `drafts`-only reach as `content.list`/`.get`
@@ -1049,6 +1396,7 @@ export function createDevStore(
           playbookId: r.playbookId,
           platform: r.platform ?? null,
           copy: r.copy,
+          intent: (r as { intent?: string }).intent ?? null,
           scheduledAt: r.scheduledAt!,
         }));
     },

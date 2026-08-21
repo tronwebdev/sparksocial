@@ -63,6 +63,9 @@ export function makeContentGenerateBroll(video: VideoClient) {
     // fal's video models price well above their image models (longer
     // inference); this is a rough per-call ceiling for a short clip, same
     // approximation `content.generate_image` makes for its own model.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 40,
 
     async handler(input, ctx) {

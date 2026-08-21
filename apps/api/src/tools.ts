@@ -3,13 +3,14 @@ import { makeGenomeBootstrap } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { genomeIdentitySet } from '@sparksocial/genome/identity';
 import { genomeOfferSet } from '@sparksocial/genome/offer';
+import { genomeVoiceSet } from '@sparksocial/genome/voice';
 import { genomeCreate } from '@sparksocial/genome/create';
 import { genomeList } from '@sparksocial/genome/list';
 import { consentGrant, consentRevoke, consentList } from '@sparksocial/genome/consent';
 import { avatarConfigSet } from '@sparksocial/genome/avatarConfig';
 import { genomeComplianceClassify } from '@sparksocial/genome/compliance';
 import { genomeAvatarOverrideSet } from '@sparksocial/genome/avatarOverride';
-import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim } from '@sparksocial/genome/knowledge';
+import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim, knowledgeList } from '@sparksocial/genome/knowledge';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { playbookList, playbookGet, playbookExplain } from '@sparksocial/playbooks/browse';
 import {
@@ -39,13 +40,15 @@ import {
   makeWhatsappSend,
   makeWhatsappReceive,
 } from '@sparksocial/capture';
-import { makeEvaluateDraft } from '@sparksocial/guardrails';
+import { createDraftGuard, createReplyGuard, makeEvaluateDraft } from '@sparksocial/guardrails';
 import { makeMediaIngest } from '@sparksocial/finish';
 import { makeAssemblePlan } from '@sparksocial/assemble';
 import { makeComposeRender, makeComposeStatic, makeComposeFanout } from '@sparksocial/compose';
 import {
   makeContentDraft,
   makeDraftVariants,
+  contentVariantSplit,
+  contentVariantResult,
   makeDraftRepurpose,
   makeContentGenerateImage,
   makeContentGenerateBroll,
@@ -92,13 +95,17 @@ import {
   orgSecuritySsoConfigure,
   orgAuditQuery,
   makeOrgCreditsGrant,
+  makeOrgUsageGet,
   brandCreate,
   brandSettingsPatch,
+  brandGovernanceGet,
+  brandGovernanceSet,
   makeBrandKnowledgeAttach,
   brandExport,
   brandImport,
   makeTeamInvite,
   makeTeamRoleSet,
+  makeTeamList,
   teamPermissionSet,
   whitelabelLinkCreate,
   makeBrandOAuthConnect,
@@ -127,6 +134,9 @@ import {
   makeTrendReshare,
   makeTrendWatchlist,
   makeTrendExplain,
+  makeTrendObserve,
+  trendInfluencerWatch,
+  makeTrendInfluencerReview,
 } from '@sparksocial/trends';
 import {
   recipeValidate,
@@ -142,7 +152,13 @@ import {
 import { fetchTextForRecipes, fetchWithAuthForRecipes } from './recipe-fetch.js';
 import { buildTrendSource } from './trend-sources.js';
 import { learningRecordOutcome, learningReweight, learningConfidence, learningExplain, learningFreeze, learningReset } from '@sparksocial/learning';
-import { makeAnalyticsSync, analyticsPostMetrics, analyticsCampaignReport, makeAnalyticsCtaTraffic } from '@sparksocial/analytics';
+import {
+  makeAnalyticsSync,
+  analyticsPostMetrics,
+  analyticsCampaignReport,
+  analyticsSuccessMetrics,
+  makeAnalyticsCtaTraffic,
+} from '@sparksocial/analytics';
 import {
   engageIngest,
   makeEngageClassify,
@@ -156,10 +172,12 @@ import {
   engageOpportunityCreate,
   engageOpportunityRoute,
   engageAuditQuery,
+  engageThread,
   createStubReplySender,
 } from '@sparksocial/engage';
 import { devBriefWriter, devMediaIngestDeps, devInferenceClient, devTextWriter, devEngageClassifier, devReplyWriter } from './dev-vendors.js';
 import { anthropicInferenceClient } from './inference-client.js';
+import { languageModelAvailable } from './model-client.js';
 import { buildRateLimiter } from './rate-limiter.js';
 import { embedClient } from './embed-client.js';
 import { captionClient } from './caption-client.js';
@@ -198,7 +216,7 @@ import { readFile } from 'node:fs/promises';
  * confident profile of a business nobody looked at.
  */
 function inferenceClient() {
-  if (envSet('ANTHROPIC_API_KEY')) return anthropicInferenceClient();
+  if (languageModelAvailable()) return anthropicInferenceClient();
   console.warn(
     '[warn] ANTHROPIC_API_KEY unset — genome.bootstrap_from_url will return a fixed development ' +
       'profile derived from the hostname, ignoring the crawled site.',
@@ -247,6 +265,7 @@ export function registerAlphaTools(): void {
   // output was missing a way to save.
   register(genomeIdentitySet);
   register(genomeOfferSet);
+  register(genomeVoiceSet);
   // Reads before a genome is selected — the brand switcher's source.
   register(genomeList);
   // §10 likeness consent — what backs `rights()`'s `avatarEnabled` input.
@@ -263,6 +282,7 @@ export function registerAlphaTools(): void {
   register(makeKnowledgeIngestSite({ embed }));
   register(makeKnowledgeIngestDocs({ embed }));
   register(knowledgeGroundClaim);
+  register(knowledgeList);
 
   // Campaign (§6.8): outcome in, a plan and an honest gap report out.
   register(campaignProposePlan);
@@ -323,10 +343,22 @@ export function registerAlphaTools(): void {
   // ANTHROPIC_API_KEY, which the boot guard already requires for genome
   // inference. The image half is genuinely optional — see image-client.ts on
   // why there is no fake fallback for pixels, only "not registered".
-  register(makeContentDraft({ text: textWriter(devTextWriter()), embed }));
+  // PRD §8.6's draft-time governance verdict. Guardrails ran only at
+  // `publish.now` — the strongest place to enforce them, and the worst place to
+  // learn about them: a month of drafts looked fine on the calendar and then
+  // failed one at a time on the way out. `createDraftGuard` runs the same eight
+  // checks `publish.now` declares, so an earlier pass means something.
+  register(makeContentDraft({ text: textWriter(devTextWriter()), embed, guard: createDraftGuard(embed) }));
   // Both reuse content.draft's own plan-then-write pipeline — see
   // packages/generate/src/variants.ts's own comment.
   register(makeDraftVariants({ text: textWriter(devTextWriter()), embed }));
+  /**
+   * §8.9's A/B test, the half `draft.variants` did not cover: two posts that
+   * both go out and are measured separately. `.split` is `human_only` — running
+   * a test means deliberately publishing something you think is worse.
+   */
+  register(contentVariantSplit);
+  register(contentVariantResult);
   register(makeDraftRepurpose({ text: textWriter(devTextWriter()), embed }));
   register(contentGet);
   register(contentBeatUpdate);
@@ -460,6 +492,11 @@ export function registerAlphaTools(): void {
   // Reads over what analytics.sync writes — need no vendor of their own.
   register(analyticsPostMetrics);
   register(analyticsCampaignReport);
+  // PRD §5, all fourteen metrics. `tool_calls`, `content_items`,
+  // `engagement_messages`, `opportunities` and `recipe_outputs` held the raw
+  // material for nearly all of them and nothing aggregated any of it — which is
+  // the gap that made every other gap hard to prioritise.
+  register(analyticsSuccessMetrics);
 
   // Trend discovery (§8.9, DISC-01/DISC-02, §12 P5). Ranked on what is LEFT
   // of a trend, not its size. `buildTrendSource` merges every configured
@@ -478,6 +515,17 @@ export function registerAlphaTools(): void {
   register(makeTrendReshare(trendSource));
   register(makeTrendWatchlist(trendSource));
   register(makeTrendExplain(trendSource));
+  register(makeTrendObserve(trendSource));
+
+  /**
+   * §8.9's influencer watchlist. The watch tool is unconditional — a watchlist is
+   * storage and needs no vendor. The review tool is registered with `undefined`
+   * because reading a named account's posts needs platform listening access
+   * nobody has cleared in this build; it refuses by name rather than returning a
+   * fabricated feed, the same rule every other unconfigured seam here follows.
+   */
+  register(trendInfluencerWatch);
+  register(makeTrendInfluencerReview(undefined));
 
   // Automation Recipes (§12 P5, `AUTO-01`→`AUTO-04.4`). `auto_trend` reuses
   // the same trend source as the `trend.*` family above; `rss` and the csv
@@ -531,18 +579,27 @@ export function registerAlphaTools(): void {
   // sender; `.escalate`/`.takeover`/`.opportunity.*`/`.audit.query` need no
   // vendor at all — see each tool's own file for why.
   const replySender = createStubReplySender();
+  /**
+   * Guardrails on an outbound reply — the second half of the prompt-injection
+   * fix (`packages/engage/src/replyGuard.ts`). Fencing the classifier and
+   * reply-writer prompts stops most injected text from being obeyed; this stops
+   * whatever gets through from reaching someone's inbox. `engage.autohandle`
+   * previously sent model-written text unattended with no check of any kind.
+   */
+  const replyGuardImpl = createReplyGuard();
   register(engageIngest);
   register(makeEngageClassify({ classifier: engageClassifier(devEngageClassifier()) }));
   register(engageEligibilityCheck);
   register(engageList);
   register(makeEngageReplyDraft({ writer: replyWriter(devReplyWriter()) }));
-  register(makeEngageReplySend({ sender: replySender }));
-  register(makeEngageAutohandle({ sender: replySender }));
+  register(makeEngageReplySend({ sender: replySender, guard: replyGuardImpl }));
+  register(makeEngageAutohandle({ sender: replySender, guard: replyGuardImpl }));
   register(engageEscalate);
   register(engageTakeover);
   register(engageOpportunityCreate);
   register(engageOpportunityRoute);
   register(engageAuditQuery);
+  register(engageThread);
 
   // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
   // that makes autopublish something a user can reasonably agree to.
@@ -699,9 +756,21 @@ export function registerAgencyTools(deps: {
   register(orgSecuritySsoConfigure);
   register(orgAuditQuery);
   register(makeOrgCreditsGrant(deps.credits));
+  // PRD §8.12's "usage slice and alerts", and §12's "what consumes credits"
+  // open question. The ledger has been real since P1 and had no reader: a
+  // balance only ever came back from `org.credits.grant`, so rendering a usage
+  // panel meant granting credits to display a number.
+  register(makeOrgUsageGet({ credits: deps.credits }));
 
   register(brandCreate);
   register(brandSettingsPatch);
+  // PRD §8.2 ONB-03 / §8.12 SET-WS-01 / §9 — restricted topics, claims to
+  // avoid, strict mode, voice sliders, brand kit, timezone, posting windows.
+  // None of this existed in any layer before now, which left §9's whole
+  // guardrail-enforcement section with nothing to enforce and every post
+  // firing at the instant its campaign happened to be created.
+  register(brandGovernanceGet);
+  register(brandGovernanceSet);
   register(makeBrandKnowledgeAttach(embedClient()));
   register(brandExport);
   register(brandImport);
@@ -709,6 +778,10 @@ export function registerAgencyTools(deps: {
   if (deps.clerk) {
     register(makeTeamInvite({ clerk: deps.clerk }));
     register(makeTeamRoleSet({ clerk: deps.clerk }));
+    // The read, gated on the same client as the writes: without Clerk there is
+    // no membership list to join brand assignments against, and a team screen
+    // showing only `brand_members` rows would omit every member who has none.
+    register(makeTeamList({ clerk: deps.clerk }));
   }
   register(teamPermissionSet);
 

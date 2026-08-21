@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError } from '@sparksocial/shared';
+import { modelClient } from './model-client.js';
+import { ToolError, callVendor } from '@sparksocial/shared';
 import {
   CaptureCapability,
   Objective,
@@ -145,26 +146,35 @@ export interface AnthropicInferenceOptions {
 }
 
 export function anthropicInferenceClient(opts: AnthropicInferenceOptions = {}) {
-  const client = opts.client ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const client = opts.client ?? modelClient();
   const model = opts.model ?? MODEL;
 
   return {
     async infer({ prompt }: { prompt: string; sourceUrl: string }): Promise<unknown> {
-      const response = await client.messages.create({
-        model,
-        max_tokens: MAX_TOKENS,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: prompt }],
-        tools: [
-          {
-            name: TOOL_NAME,
-            description: 'Record the inferred brand genome. Omit dimensions the site does not evidence.',
-            input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
-          },
-        ],
-        // Forced: the model cannot answer in prose, so there is nothing to parse.
-        tool_choice: { type: 'tool', name: TOOL_NAME },
-      });
+      const response = await callVendor(
+        'inference',
+        'SPARK could not read your site — the service that interprets pages is not responding.',
+        () =>
+          client.messages.create({
+            model,
+            max_tokens: MAX_TOKENS,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: prompt }],
+            tools: [
+              {
+                name: TOOL_NAME,
+                description: 'Record the inferred brand genome. Omit dimensions the site does not evidence.',
+                input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+              },
+            ],
+            // Forced: the model cannot answer in prose, so there is nothing to parse.
+            tool_choice: { type: 'tool', name: TOOL_NAME },
+          }),
+      );
 
       const block = response.content.find(
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,

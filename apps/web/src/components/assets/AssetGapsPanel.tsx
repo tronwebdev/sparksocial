@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
 
@@ -14,6 +15,8 @@ import { ASSET_ROLES } from './roles';
 
 interface Gap {
   missingRole: string;
+  /** `'upload'` — a file. `'capture'` — a shoot. The effort, which is the deciding fact. */
+  unlockedBy: 'upload' | 'capture';
   playbooksBlocked: string[];
   impact: string;
 }
@@ -53,14 +56,31 @@ export function AssetGapsPanel({ refreshKey }: { refreshKey: number }) {
       ) : data ? (
         <>
           <p className="mt-2 text-[14px] text-ink">{data.why.summary}</p>
+          <WhyPopover why={data.why} label="Which formats this unblocks" />
           {data.gaps.length > 0 ? (
             <ul className="mt-3 grid grid-cols-1 gap-2">
               {data.gaps.map((g) => (
+                /* The route is a chip rather than more prose, because the list is
+                   scanned for "which of these can I do right now" and the answer
+                   should not have to be read out of a sentence. Amber for a shoot
+                   is not a warning — it is the more expensive of two good
+                   options, and it should look different from the one-minute one. */
                 <li key={g.missingRole} className="rounded border border-border p-3 text-[13px]">
-                  <span className="font-medium text-ink">
-                    {ASSET_ROLES.find((r) => r.value === g.missingRole)?.label ?? g.missingRole}
-                  </span>{' '}
-                  <span className="text-ink-muted">— blocks {g.impact}</span>
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="font-medium text-ink">
+                      {ASSET_ROLES.find((r) => r.value === g.missingRole)?.label ?? g.missingRole}
+                    </span>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                        g.unlockedBy === 'upload'
+                          ? 'bg-success/10 text-success'
+                          : 'bg-warn/10 text-warn'
+                      }`}
+                    >
+                      {g.unlockedBy === 'upload' ? 'upload a file' : 'needs filming'}
+                    </span>
+                    <span className="text-ink-muted">— blocks {g.impact}</span>
+                  </div>
                 </li>
               ))}
             </ul>

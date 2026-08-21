@@ -18,7 +18,56 @@ import { z } from 'zod';
  * table when the approval lands.
  */
 
-export const Platform = z.enum(['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts']);
+/**
+ * Every platform the product can publish to.
+ *
+ * ── Why this list grew ─────────────────────────────────────────────────────
+ *
+ * It was `['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts']` — five —
+ * and **Facebook was not among them**, despite being the first channel on PRD
+ * §9's must-have-at-GA list and free under the very same Meta app review as
+ * Instagram (Track 1: *"apply to Meta once, unlock Facebook + Instagram +
+ * Threads"*). Pinterest, Threads and the whole secondary list were absent too.
+ *
+ * That was not a routing gap, it was a *vocabulary* gap, and it made the
+ * aggregator strategy incoherent: the Ayrshare adapter exists specifically to
+ * cover "the long tail (Pinterest, Snapchat, Google Business, Reddit, Bluesky,
+ * Threads) without waiting on every audit", and it could not be asked to
+ * publish to any of them, because no caller could name one.
+ *
+ * ── Naming ─────────────────────────────────────────────────────────────────
+ *
+ * Surface-specific where the surfaces have genuinely different rules and
+ * limits (`instagram_story` is 24 hours and vertical; `youtube_long` is not
+ * Shorts; `facebook_group` posts under different permissions than a Page), and
+ * plain where they do not. `youtube_shorts` keeps its name rather than becoming
+ * `youtube` — renaming it would silently repoint every stored
+ * `content_items.platform` value.
+ *
+ * A platform being nameable here does not mean it is reachable: `routeAdapters`
+ * picks the first adapter claiming `supports()`, and an unconfigured platform
+ * falls through to whatever is last in the list. What this fixes is that the
+ * aggregator can now *be* asked.
+ */
+export const Platform = z.enum([
+  // ── Core five: native adapters, own the relationship (PRD Part B, Tier 2) ──
+  'instagram',
+  'instagram_story',
+  'tiktok',
+  'linkedin',
+  'x',
+  'youtube_shorts',
+  'youtube_long',
+  // ── Meta's other surfaces, same App Review as Instagram ──
+  'facebook',
+  'facebook_group',
+  'threads',
+  // ── The aggregator's long tail (PRD §9 "Secondary / Optional") ──
+  'pinterest',
+  'google_business',
+  'reddit',
+  'bluesky',
+]);
 export type Platform = z.infer<typeof Platform>;
 
 export interface PublishRequest {

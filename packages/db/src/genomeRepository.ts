@@ -189,6 +189,31 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
       return updated;
     },
 
+    async patchVoice({ genomeId, orgId, voice }) {
+      // Same single-UPDATE per-field jsonb_set merge as patchOffer, for the same
+      // race-avoidance reason: setting a point of view must not clobber a
+      // tone_vector written a moment earlier by a different screen.
+      let column = sql`${genomes.voice}`;
+      for (const [key, value] of Object.entries(voice)) {
+        if (value === undefined) continue;
+        if (!/^[a-z_]+$/.test(key)) {
+          throw new ToolError('INVALID_INPUT', `Unexpected voice field "${key}".`, { key });
+        }
+        column = sql`jsonb_set(${column}, ${sql.raw(`'{${key}}'`)}, ${JSON.stringify(value)}::jsonb)`;
+      }
+
+      const [updated] = await db
+        .update(genomes)
+        .set({ version: sql`${genomes.version} + 1`, voice: column, updatedAt: new Date() })
+        .where(and(eq(genomes.id, genomeId), eq(genomes.orgId, orgId)))
+        .returning({ id: genomes.id, version: genomes.version });
+
+      if (!updated) {
+        throw new ToolError('NOT_FOUND', `No genome ${genomeId} in org ${orgId}.`, { genomeId, orgId });
+      }
+      return updated;
+    },
+
     async patchLearned({ genomeId, orgId, patch }) {
       // Same single-UPDATE per-field jsonb_set merge as patchOffer, for the
       // same race-avoidance reason — a confidence write from `learning.reweight`

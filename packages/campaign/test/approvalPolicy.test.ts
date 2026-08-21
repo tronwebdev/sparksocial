@@ -20,6 +20,9 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     agentPaused: false,
     postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
     ...initial,
   };
   return {
@@ -52,7 +55,16 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
       row = next;
       return row;
     },
+    // Brand-level governance is a separate patch surface from `setPolicy` above
+    // (see `BrandGovernanceStore.setGovernance`); these tests only exercise the
+    // approval ladder, so this records the patch faithfully and nothing more.
+    setGovernance: async ({ patch }) => ((row = { ...row, ...stripNulls(patch) } as BrandGovernance), row),
   };
+}
+
+/** `null` clears a field in the real store; for these tests dropping it is equivalent. */
+function stripNulls<T extends object>(patch: T): Partial<T> {
+  return Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== null && v !== undefined)) as Partial<T>;
 }
 
 const ctx = (brands: BrandGovernanceStore, over: Partial<ToolCtx> = {}): ToolCtx =>
@@ -90,6 +102,11 @@ describe('approval.policy.get', () => {
       restrictedContentTypes: null,
       quietWindows: null,
       permissions: null,
+      // PRD §6's "Publish permission (per role)" and §10's queue cap. Null means
+      // the tool's own scopes stand and there is no cap — the behaviour every
+      // brand had before these columns existed.
+      publishRoles: null,
+      maxPendingReview: null,
     });
   });
 

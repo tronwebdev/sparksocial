@@ -73,6 +73,7 @@ describe('normalizeAyrshareMetrics', () => {
       shares: 0,
       views: 0,
       impressions: 0,
+      saves: 0,
       raw: {},
     });
   });

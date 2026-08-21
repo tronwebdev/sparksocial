@@ -40,8 +40,22 @@ function guessContentType(file: File): string | undefined {
   return CONTENT_TYPES[ext];
 }
 
-export function AssetUploadForm({ onIngested }: { onIngested: () => void }) {
-  const { genome } = useSelectedGenome();
+export function AssetUploadForm({
+  onIngested,
+  genomeId: explicitGenomeId,
+}: {
+  onIngested: () => void;
+  /**
+   * Which genome to upload against, when the brand switcher is not the answer.
+   *
+   * Onboarding needs this: the genome it just created is not the *selected* one
+   * yet, and `useSelectedGenome`'s "no cookie, use the first genome" fallback
+   * would quietly pick a different brand for anyone adding their second.
+   */
+  genomeId?: string;
+}) {
+  const { genome: selected } = useSelectedGenome();
+  const genome = explicitGenomeId ? { genomeId: explicitGenomeId, name: '' } : selected;
   const inputRef = useRef<HTMLInputElement>(null);
   const [role, setRole] = useState<string>(ASSET_ROLES[0]!.value);
   // Every asset used to upload as 'pending' unconditionally, with no screen
@@ -161,13 +175,21 @@ export function AssetUploadForm({ onIngested }: { onIngested: () => void }) {
           className="text-[13px] text-ink-muted file:mr-3 file:h-10 file:rounded file:border-0 file:bg-primary file:px-3 file:text-[13px] file:font-medium file:text-primary-foreground"
         />
       </div>
-      <label className="flex h-10 items-center gap-2 text-[13px] text-ink-muted" htmlFor="upload-rights-cleared">
+      {/* `min-h-10`, not `h-10`. The row is a flex line with the role select and
+          the file button, so a fixed height lines the three up — but this label is
+          the only one whose text is a sentence, and on a narrow viewport it wraps
+          to three lines inside a 40px box and spills over whatever follows. Seen
+          overlapping the upload error at 280px. */}
+      <label
+        className="flex min-h-10 items-center gap-2 text-[13px] text-ink-muted"
+        htmlFor="upload-rights-cleared"
+      >
         <input
           id="upload-rights-cleared"
           type="checkbox"
           checked={rightsCleared}
           onChange={(e) => setRightsCleared(e.target.checked)}
-          className="h-4 w-4"
+          className="h-4 w-4 shrink-0"
         />
         This is my own photo/video, or I have permission to use it
       </label>

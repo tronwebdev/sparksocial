@@ -49,7 +49,7 @@ describe('analytics.post_metrics', () => {
     const out = await analyticsPostMetrics.handler({ genomeId: 'gen_1', contentItemId: 'ci_1' }, ctx({ listForItems: async () => [] }));
     expect(out.synced).toBe(false);
     expect(out.platforms).toEqual([]);
-    expect(out.totals).toEqual({ likes: 0, comments: 0, shares: 0, views: 0, impressions: 0 });
+    expect(out.totals).toEqual({ likes: 0, comments: 0, shares: 0, views: 0, impressions: 0, saves: 0 });
   });
 
   it('throws NOT_FOUND for a content item that does not exist in this genome', async () => {

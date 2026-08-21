@@ -35,13 +35,26 @@ export function createEngagementRepository(db: Database): EngagementStore {
       return rows.map(toMessage);
     },
 
-    async markReplied({ id, genomeId, orgId }) {
-      const row = await scoped.markEngagementMessageReplied(db, { orgId, brandId: orgId, genomeId }, { id });
+    async thread(genomeId, orgId, args) {
+      const rows = await scoped.threadEngagementMessages(db, { orgId, brandId: orgId, genomeId }, args);
+      return rows.map(toMessage);
+    },
+
+    async markReplied({ id, genomeId, orgId, sentReply }) {
+      const row = await scoped.markEngagementMessageReplied(
+        db,
+        { orgId, brandId: orgId, genomeId },
+        { id, ...(sentReply ? { sentReply } : {}) },
+      );
       return row ? toMessage(row) : undefined;
     },
 
-    async markAutoHandled({ id, genomeId, orgId }) {
-      const row = await scoped.markEngagementMessageAutoHandled(db, { orgId, brandId: orgId, genomeId }, { id });
+    async markAutoHandled({ id, genomeId, orgId, sentReply }) {
+      const row = await scoped.markEngagementMessageAutoHandled(
+        db,
+        { orgId, brandId: orgId, genomeId },
+        { id, ...(sentReply ? { sentReply } : {}) },
+      );
       return row ? toMessage(row) : undefined;
     },
 
@@ -64,11 +77,15 @@ function toMessage(row: scoped.EngagementMessageRow): EngagementMessage {
     text: row.text,
     ...(row.contentItemId ? { contentItemId: row.contentItemId } : {}),
     receivedAt: row.receivedAt,
+    ...(row.resolvedAt ? { resolvedAt: row.resolvedAt } : {}),
     status: row.status,
     ...(row.category ? { category: row.category } : {}),
     ...(row.intentScore !== null ? { intentScore: row.intentScore } : {}),
     ...(row.suggestedReply ? { suggestedReply: row.suggestedReply } : {}),
     ...(row.why !== null ? { why: row.why as Explanation } : {}),
+    ...(row.threadKey ? { threadKey: row.threadKey } : {}),
+    ...(row.sentReply ? { sentReply: row.sentReply } : {}),
+    ...(row.sentAt ? { sentAt: row.sentAt } : {}),
     createdAt: row.createdAt,
   };
 }

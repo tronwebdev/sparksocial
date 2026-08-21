@@ -8,6 +8,27 @@ import type { Playbook } from '@sparksocial/playbooks';
  * living in `apps/api`, never imported here. `packages/generate` must not
  * depend on a vendor SDK any more than `packages/capture` does.
  */
+/**
+ * One entry per beat in the post being written, in running order.
+ *
+ * The writer produces one beat at a time — deliberately, so "rewrite just the
+ * hook" is a thing the product can do — but a beat written with no knowledge of
+ * its neighbours repeats them. Observed: the 30-second `body` of a Voice-over
+ * B-roll ended "Book a chair today and see the difference at Northside
+ * Barbers", and the very next beat was the CTA, "Book a chair". The post said it
+ * twice because nothing told the body writer a CTA was coming.
+ *
+ * `text` is carried for literal beats (a CTA lifted from the genome) because the
+ * exact wording is what a neighbouring beat has to avoid restating.
+ */
+export interface BeatOutlineEntry {
+  beatId: string;
+  /** `copy` — written by a model. `literal` — lifted from the genome or an asset caption. */
+  kind: 'copy' | 'literal';
+  promptRef?: string;
+  text?: string;
+}
+
 export interface TextWriter {
   write(args: {
     genome: Genome;
@@ -16,6 +37,19 @@ export interface TextWriter {
     promptRef: string;
     /** What this specific post is about. Optional — grounding still works from the genome alone. */
     intent?: string;
+    /** Which beat this is, so the writer can find itself in `outline`. */
+    beatId: string;
+    /**
+     * The beat's own screen time. `0` for a still or a text-only post.
+     *
+     * This is the fact that decides how much to write, and the writer used not
+     * to receive it: a 3-second hook and a 30-second explainer body arrived at
+     * the model as the same request, so both came back one line long. A 30s
+     * narration beat was filled with 41 words — under half of what fits.
+     */
+    durationSec: number;
+    /** Every beat in the post, in order. See `BeatOutlineEntry`. */
+    outline: BeatOutlineEntry[];
   }): Promise<string>;
 }
 

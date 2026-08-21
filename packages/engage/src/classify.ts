@@ -44,6 +44,9 @@ export function makeEngageClassify(deps: EngageClassifyDeps) {
     // Re-classifying the same message is a refresh, not a new decision —
     // same reasoning `analytics.sync` gives for its own upsert.
     idempotent: true,
+    // One Claude call per message. An inbox is high-volume by nature, so this
+    // is the line item most likely to surprise someone at the end of a month.
+    estimateCents: () => 1,
 
     async handler(input, ctx) {
       if (ctx.genomeId && input.genomeId !== ctx.genomeId) {

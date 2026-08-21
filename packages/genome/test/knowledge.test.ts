@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
-import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim } from '../src/knowledge.js';
+import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim, knowledgeList } from '../src/knowledge.js';
 
 /**
  * `knowledge.ingest_site` / `.ingest_docs` / `.ground_claim` — the automated
@@ -187,5 +187,87 @@ describe('knowledge.ground_claim', () => {
     await expect(
       knowledgeGroundClaim.handler({ genomeId: 'gen_missing', claim: 'anything' }, ctx({ get: async () => undefined })),
     ).rejects.toThrow(ToolError);
+  });
+});
+
+describe('knowledge.list', () => {
+  const chunk = (docId: string, text: string, at: string, citation?: string) => ({
+    id: `kc_${docId}_${at}`,
+    genomeId: 'gen_1',
+    docId,
+    text,
+    ...(citation ? { citation } : {}),
+    createdAt: new Date(at),
+  });
+
+  const withChunks = (chunks: ReturnType<typeof chunk>[]) =>
+    ctx({ knowledge: { listAll: async () => chunks } });
+
+  it('groups by document, not by embedding chunk', async () => {
+    // A person attached *a document*. Showing one long policy as fourteen rows
+    // would be reporting the storage layout rather than the thing they did.
+    const out = await knowledgeList.handler(
+      { genomeId: 'gen_1' },
+      withChunks([
+        chunk('policy', 'part one', '2026-08-01T10:00:00Z'),
+        chunk('policy', 'part two', '2026-08-01T10:00:01Z'),
+        chunk('faq', 'a question', '2026-08-02T10:00:00Z'),
+      ]),
+    );
+    expect(out.docs).toHaveLength(2);
+    expect(out.docs.find((d) => d.docId === 'policy')!.chunks).toBe(2);
+    expect(out.totalChunks).toBe(3);
+  });
+
+  it('sums characters per document and across the corpus', async () => {
+    const out = await knowledgeList.handler(
+      { genomeId: 'gen_1' },
+      withChunks([chunk('a', '12345', '2026-08-01T10:00:00Z'), chunk('a', '123', '2026-08-01T11:00:00Z')]),
+    );
+    expect(out.docs[0]!.chars).toBe(8);
+    expect(out.totalChars).toBe(8);
+  });
+
+  it('reports the newest document first, by its newest chunk', async () => {
+    const out = await knowledgeList.handler(
+      { genomeId: 'gen_1' },
+      withChunks([
+        chunk('old', 'x', '2026-08-01T10:00:00Z'),
+        chunk('new', 'y', '2026-08-05T10:00:00Z'),
+        // A late chunk on `old` moves it ahead of `new` — a re-ingest is recent activity.
+        chunk('old', 'z', '2026-08-09T10:00:00Z'),
+      ]),
+    );
+    expect(out.docs.map((d) => d.docId)).toEqual(['old', 'new']);
+  });
+
+  it('carries a preview, so two similarly-named docs are distinguishable', async () => {
+    const out = await knowledgeList.handler(
+      { genomeId: 'gen_1' },
+      withChunks([chunk('terms', 'x'.repeat(500), '2026-08-01T10:00:00Z')]),
+    );
+    expect(out.docs[0]!.preview).toHaveLength(200);
+  });
+
+  it('keeps the first citation label rather than the last', async () => {
+    // A re-ingest that dropped the label must not blank an existing one.
+    const out = await knowledgeList.handler(
+      { genomeId: 'gen_1' },
+      withChunks([chunk('p', 'a', '2026-08-01T10:00:00Z', 'Returns policy'), chunk('p', 'b', '2026-08-02T10:00:00Z')]),
+    );
+    expect(out.docs[0]!.citationLabel).toBe('Returns policy');
+  });
+
+  it('reports an empty corpus as empty rather than failing', async () => {
+    // This is the state that makes `claim_grounding` flag everything, so it has
+    // to be renderable rather than an error.
+    const out = await knowledgeList.handler({ genomeId: 'gen_1' }, withChunks([]));
+    expect(out.docs).toEqual([]);
+    expect(out.totalChunks).toBe(0);
+  });
+
+  it('is readable by an agency client — it is their own source material', () => {
+    expect(knowledgeList.scopes).toContain('client');
+    expect(knowledgeList.effect).toBe('read');
   });
 });

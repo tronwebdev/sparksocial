@@ -103,6 +103,14 @@ export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false, // re-ingesting the same URL would duplicate the asset
+    /**
+     * Captioning a video means a real transcription call (AssemblyAI-class,
+     * priced per minute) plus an embedding. Recorded as a flat estimate rather
+     * than per-minute because the duration is not known until the media has
+     * been fetched, and rule 4 has to decide before the handler runs — an
+     * approximate charge that is enforceable beats an exact one that is not.
+     */
+    estimateCents: () => 4,
 
     async handler(input, ctx) {
       const caption = await deps.caption(input.url, input.mediaType);

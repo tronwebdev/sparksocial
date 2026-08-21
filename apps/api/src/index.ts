@@ -21,6 +21,8 @@ import { embedClient } from './embed-client.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
+import { startTrendObserver } from './trend-observer.js';
+import { startConnectionWatcher } from './connection-watcher.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -28,6 +30,7 @@ import { createDevApprovalStore } from './dev-approvals.js';
 import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
 import { envList, envNum, envSet, envStr } from './env.js';
+import { describeModelVendors } from './model-client.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -89,6 +92,9 @@ const devStore = pg
       runStore: devRuns,
       approvalStore: devApprovals,
       findCall: (callId) => memoryDeps.rows.find((r) => r.id === callId),
+      // PRD §5's publish-attempt/block/draft counts, read off the same rows
+      // rather than a copy — same reasoning as `findCall` above.
+      allCalls: () => memoryDeps.rows,
     });
 
 const scopedDb = pg?.scopedDb ?? devStore!;
@@ -357,6 +363,35 @@ const recipeScheduler = startRecipeScheduler(
   envNum('RECIPE_SCHEDULER_INTERVAL_MS', 300_000),
 );
 
+/**
+ * The trend observer (§8.9) — samples the trend source on a clock so the
+ * `DISC-02` time series does not go blank overnight. Hourly by default, which
+ * is the resolution the store buckets to; a shorter interval would write no
+ * extra rows.
+ */
+const trendObserver = startTrendObserver(
+  {
+    db: scopedDb,
+    invoke: invokeDeps,
+  },
+  envNum('TREND_OBSERVER_INTERVAL_MS', 3_600_000),
+);
+
+/**
+ * The connection watcher (§10) — warns the owner before a platform token
+ * expires, so an expiring connection is not discovered by a week of posts
+ * silently failing. Every six hours: the warning window is seven days, so a
+ * tighter interval only re-reads the same rows.
+ */
+const connectionWatcher = startConnectionWatcher(
+  {
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+  },
+  envNum('CONNECTION_WATCHER_INTERVAL_MS', 21_600_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -416,12 +451,17 @@ if (localStorage) {
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`SparkSocial API listening on :${info.port} (${env})${pg ? ' [postgres]' : ' [in-memory]'}`);
+  // Which vendor is actually reachable, because a silent fallback means an
+  // instance can write every post with the substitute model and read as healthy.
+  console.log(`  language models: ${describeModelVendors()}`);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
     scheduler.stop();
     recipeScheduler.stop();
+    trendObserver.stop();
+    connectionWatcher.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

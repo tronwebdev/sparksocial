@@ -22,7 +22,10 @@ import { envNum } from './env.js';
 export function createDevCreditStore(
   monthlyCapCents = envNum('DEV_MONTHLY_CAP_CENTS', 500_00),
 ): CreditStore & { entries(): Array<{ callId: string; costCents: number }> } {
-  const charged = new Map<string, { orgId: string; costCents: number; at: Date }>();
+  // `tool` is carried so `spendByTool` can group on it, the same as the real
+  // ledger's column. Without it the dev store could answer "how much" and not
+  // "on what", which is the whole of what `org.usage.get` adds.
+  const charged = new Map<string, { orgId: string; tool: string; costCents: number; at: Date }>();
 
   return {
     entries: () => [...charged.entries()].map(([callId, e]) => ({ callId, costCents: e.costCents })),
@@ -36,14 +39,44 @@ export function createDevCreditStore(
       return { monthlyCapCents, spentCents };
     },
 
-    async record({ callId, orgId, costCents, at }) {
+    /**
+     * Mirrors `creditRepository.spendByTool`, including the exclusion that
+     * matters: grants are negative rows and are left out, or
+     * `org.credits.grant` shows up as the biggest line item on the panel.
+     */
+    async spendByTool(orgId, now, limit) {
+      const from = periodStart(now).getTime();
+      const byTool = new Map<string, { costCents: number; calls: number }>();
+
+      for (const e of charged.values()) {
+        if (e.orgId !== orgId || e.at.getTime() < from || e.costCents <= 0) continue;
+        const acc = byTool.get(e.tool) ?? { costCents: 0, calls: 0 };
+        acc.costCents += e.costCents;
+        acc.calls += 1;
+        byTool.set(e.tool, acc);
+      }
+
+      return [...byTool.entries()]
+        .map(([tool, acc]) => ({ tool, ...acc }))
+        .sort((a, b) => b.costCents - a.costCents)
+        .slice(0, limit);
+    },
+
+    async record({ callId, orgId, tool, costCents, at }) {
       // First write wins, like `onConflictDoNothing`.
       if (charged.has(callId)) return;
-      charged.set(callId, { orgId, costCents, at });
+      charged.set(callId, { orgId, tool, costCents, at });
     },
 
     async grant({ orgId, amountCents }) {
-      charged.set(`grant_${randomUUID()}`, { orgId, costCents: -Math.abs(amountCents), at: new Date() });
+      charged.set(`grant_${randomUUID()}`, {
+        orgId,
+        // Named so a grant is legible in `entries()` and excluded by name as
+        // well as by sign in `spendByTool`.
+        tool: 'org.credits.grant',
+        costCents: -Math.abs(amountCents),
+        at: new Date(),
+      });
     },
   };
 }

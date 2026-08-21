@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { WhyPopover } from '@/components/explain/WhyPopover';
 import { cn } from '@/lib/utils';
 import { pillarStyle } from './pillars';
 
@@ -81,6 +82,7 @@ export function CampaignReportPanel({ campaignId }: { campaignId: string }) {
       {report ? (
         <div className="mt-3 grid grid-cols-1 gap-3">
           <p className="text-[14px] text-ink">{report.why.summary}</p>
+          <WhyPopover why={report.why} label="How this was measured" />
 
           <div className="flex flex-wrap gap-4 text-[13px] text-ink-muted">
             <span>

@@ -28,6 +28,13 @@ const ContentListItem = z.object({
   summary: z.string(),
   scheduledAt: z.string().optional(),
   createdAt: z.string(),
+  /**
+   * `DISC-02`'s A/B group, when this post is an arm of one. Present so a list
+   * row can offer the verdict without a second read per item — the alternative
+   * was N calls to find out that N-1 of them are ordinary posts.
+   */
+  variantGroupId: z.string().optional(),
+  variantLabel: z.string().optional(),
 });
 
 export const ContentListOutput = z.object({ items: z.array(ContentListItem) });
@@ -71,6 +78,8 @@ export const contentList = defineTool({
           summary: firstText ? truncate(firstText.text) : '(no copy yet)',
           ...(r.scheduledAt ? { scheduledAt: r.scheduledAt.toISOString() } : {}),
           createdAt: r.createdAt.toISOString(),
+          ...(r.variantGroupId ? { variantGroupId: r.variantGroupId } : {}),
+          ...(r.variantLabel ? { variantLabel: r.variantLabel } : {}),
         };
       }),
     };

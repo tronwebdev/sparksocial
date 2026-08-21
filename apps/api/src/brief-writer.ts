@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError } from '@sparksocial/shared';
+import { languageModelAvailable, modelClient } from './model-client.js';
+import { ToolError, callVendor } from '@sparksocial/shared';
 import { DraftCaptureBrief } from '@sparksocial/capture';
 import type { BriefWriter } from '@sparksocial/capture';
-import { envSet } from './env.js';
 
 /**
  * Production capture-brief writer — engine spec §6.2.
@@ -94,25 +94,34 @@ export interface BriefWriterOptions {
 }
 
 export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
-  const anthropic = opts.anthropic ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const anthropic = opts.anthropic ?? modelClient();
   const model = opts.model ?? MODEL;
 
   return {
     async write({ playbook, genome, feedback }): Promise<DraftCaptureBrief> {
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 1_500,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: prompt(playbook, genome, feedback) }],
-        tools: [
-          {
-            name: TOOL_NAME,
-            description: 'Record the capture brief.',
-            input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
-          },
-        ],
-        tool_choice: { type: 'tool', name: TOOL_NAME },
-      });
+      const response = await callVendor(
+        'brief writer',
+        'SPARK could not write the capture brief — the service that writes it is not responding. Nothing was saved, so trying again is safe.',
+        () =>
+          anthropic.messages.create({
+            model,
+            max_tokens: 1_500,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: prompt(playbook, genome, feedback) }],
+            tools: [
+              {
+                name: TOOL_NAME,
+                description: 'Record the capture brief.',
+                input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+              },
+            ],
+            tool_choice: { type: 'tool', name: TOOL_NAME },
+          }),
+      );
 
       const block = response.content.find(
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
@@ -251,9 +260,9 @@ function prompt(
  * briefs, week after week.
  */
 export function briefWriter(fallback: BriefWriter): BriefWriter {
-  if (!envSet('ANTHROPIC_API_KEY')) {
+  if (!languageModelAvailable()) {
     console.warn(
-      '[warn] ANTHROPIC_API_KEY unset — capture briefs come from fixed templates. Every brand receives ' +
+      '[warn] No language model configured (ANTHROPIC_API_KEY or OPENAI_API_KEY) — capture briefs come from fixed templates. Every brand receives ' +
         'the same brief for a given playbook, every week.',
     );
     return fallback;

@@ -166,6 +166,43 @@ export const contentItems = pgTable(
     orgId: text('org_id').notNull(),
     genomeId: text('genome_id').notNull(),
     campaignId: uuid('campaign_id'),
+    /**
+     * The recipe that produced this item, when one did.
+     *
+     * `policy.ts` rule 7 has always had a branch for automation output
+     * (`isAutomationOutput` → honour the recipe's review setting, then the
+     * workspace's `automationAutoPublish` permission) and no way to know an
+     * item *was* one: recipe outputs lived only in `recipe_outputs`, and by the
+     * time anything became publishable the link was gone. This column is that
+     * link, read by `publish.now`'s `policySubject` before the handler runs.
+     * Null for everything a campaign or a person created.
+     */
+    recipeId: uuid('recipe_id'),
+    /**
+     * What this specific post is about, in one line — `content.draft`'s `intent`
+     * input, persisted.
+     *
+     * Needed because drafting is no longer only something a person does in the
+     * Draft Panel: the scheduler now drafts a due slot that has no copy yet
+     * (see `apps/api/src/scheduler.ts`), and a recipe that publishes unattended
+     * creates the slot hours before anything writes its copy. Both need the
+     * intent to survive in between. Null for a slot whose pillar and playbook
+     * are the whole of the brief.
+     */
+    intent: text('intent'),
+    /**
+     * The trend this post came out of, when it came out of one.
+     *
+     * PRD §5's Discovery section asks for "Trend-to-post conversion rate", which
+     * needs a link between a trend and the post it produced. There was none:
+     * `trend.repurpose` returns a *suggestion* and the caller then calls
+     * `content.draft`, so the two were connected only in the mind of whoever
+     * clicked. This column is that link, set by `content.draft`'s `fromTrendId`.
+     *
+     * Not a foreign key: trends come from third-party sources and are not rows
+     * we own, so the id is a vendor's string kept for attribution.
+     */
+    sourceTrendId: text('source_trend_id'),
     playbookId: text('playbook_id'),
     mode: text('mode'), // synthesize | assemble | direct_finish
     pillar: text('pillar'),
@@ -185,6 +222,45 @@ export const contentItems = pgTable(
      * sees why it stalled without re-deriving it.
      */
     blockedReason: text('blocked_reason'),
+    /**
+     * ── PRD §10's retry flow, and its ceiling ──────────────────────────────
+     *
+     * `scheduler.ts` retries every `publish.now` failure except a guardrail
+     * block, on the correct reasoning that a down adapter or an exhausted
+     * budget may well succeed later. What it had no way to do was *stop*: an
+     * item whose platform connection has expired failed identically on every
+     * tick, forever, logging to a console nobody reads. That is §10's "silent
+     * miss" arriving by a second route — not a missing post, an infinitely
+     * retried one.
+     *
+     * Counting the attempts is what turns an unbounded loop into a retry flow
+     * with an end, and `lastPublishError` is what makes the end explainable to
+     * the person who has to fix it.
+     */
+    publishAttempts: integer('publish_attempts').notNull().default(0),
+    lastPublishError: text('last_publish_error'),
+    /**
+     * ── PRD §8.9 / `DISC-02`'s A/B test ─────────────────────────────────────
+     *
+     * §8.9 marks A/B optional, and half of it already existed: `draft.variants`
+     * writes alternative takes on the same playbook and the Draft Panel shows
+     * them. What was missing is the part that makes it a *test* rather than a
+     * choice — two posts that go out, each measured, with the result feeding
+     * `learning.record_outcome`.
+     *
+     * Two rows in the same group are the same intent written differently. Null
+     * on every ordinary post, which is the overwhelming majority: an A/B test is
+     * a deliberate act, not a default state, and a non-null default would make
+     * every post look like a one-armed experiment.
+     */
+    variantGroupId: uuid('variant_group_id'),
+    /**
+     * `a`, `b`, … — which arm this row is. Plain text rather than an enum
+     * because the group is not limited to two by anything except good sense
+     * (`draft.variants` will produce four), and a two-value CHECK would need a
+     * migration the first time somebody wanted three.
+     */
+    variantLabel: text('variant_label'),
     copy: jsonb('copy'),
     /**
      * The copy's embedding at publish time — the guardrail layer's `duplicate`
@@ -202,6 +278,8 @@ export const contentItems = pgTable(
   },
   (t) => [
     index('content_items_scope_idx').on(t.orgId, t.genomeId),
+    // `content.variant.result`'s read: the arms of one test.
+    index('content_items_variant_idx').on(t.orgId, t.genomeId, t.variantGroupId),
     // The guardrail layer's trailing-window read (`recentContent`) filters
     // scope *and* `published_at >= cutoff` on every draft evaluated. Carrying
     // the date in the index keeps that from widening into a scan of the
@@ -236,6 +314,17 @@ export const contentMetrics = pgTable(
     shares: integer('shares').notNull().default(0),
     views: integer('views').notNull().default(0),
     impressions: integer('impressions').notNull().default(0),
+    /**
+     * PRD `CC-04` names three headline metrics — Impressions, **Saves** and
+     * Replies — and this table carried likes/comments/shares/views/impressions.
+     *
+     * Saves is the one worth having most and the one that was missing: on
+     * Instagram and TikTok it is the strongest signal that a post was *useful*
+     * rather than merely seen, which is exactly what a brand posting craft and
+     * how-to content needs to know. Zero-defaulted rather than nullable, because
+     * a platform that does not report saves genuinely had none to report.
+     */
+    saves: integer('saves').notNull().default(0),
     /** The vendor's unnormalized response — nothing is lost to normalization. */
     raw: jsonb('raw'),
     syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
@@ -273,6 +362,35 @@ export const engagementMessages = pgTable(
     text: text('text').notNull(),
     /** The post this is a reply to, when known — not every DM is. */
     contentItemId: uuid('content_item_id'),
+    /**
+     * ── PRD §8.8 / `ENG-02.4`'s conversation ────────────────────────────────
+     *
+     * §8.8 asks for the thread behind a sales opportunity, and the feed could
+     * only ever show one message at a time: rows were keyed by the platform's
+     * per-message id and nothing said which of them belonged to the same
+     * exchange. A lead that took four messages to become a lead read as four
+     * unrelated strangers.
+     *
+     * The platform's own conversation id when it supplies one (`engage.ingest`
+     * takes it); otherwise derived — see `deriveThreadKey` in
+     * `packages/engage/src/thread.ts`. Stored rather than derived at read time
+     * so the read is one indexed equality, and so a platform that starts
+     * supplying real ids does not silently re-group history.
+     */
+    threadKey: text('thread_key'),
+    /**
+     * What we sent back, and when.
+     *
+     * `EngagementStore.markReplied`'s comment used to argue this needed no
+     * column: the status enum already recorded *that* a reply went out and the
+     * text was on the audit row. That reasoning was right for its question
+     * ("was this answered?") and is not enough for this one ("show me the
+     * conversation") — a thread with the outbound half missing is half a
+     * transcript, and `tool_calls` is deliberately a projection that never
+     * returns inputs. A conversation view needs the turn, so the turn is stored.
+     */
+    sentReply: text('sent_reply'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
     /**
      * new | classified | replied | auto_handled | escalated | dismissed |
@@ -290,6 +408,17 @@ export const engagementMessages = pgTable(
     suggestedReply: text('suggested_reply'),
     /** The Explanation payload — PRD §7.3, same contract every agent-visible decision carries. */
     why: jsonb('why'),
+    /**
+     * When this message stopped needing anyone's attention — replied,
+     * auto-handled, escalated or dismissed.
+     *
+     * PRD §5 lists "Reply SLA (time to reply)" as an engagement success metric
+     * and it was not measurable: `status` recorded *that* a message was answered
+     * and nothing recorded *when*, so the interval the metric is defined as had
+     * no second endpoint. Null while a message is still open, which is also how
+     * the metric distinguishes "not answered yet" from "answered instantly".
+     */
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -298,6 +427,8 @@ export const engagementMessages = pgTable(
     // `ENG-02`'s tabs read.
     index('engagement_messages_feed_idx').on(t.orgId, t.genomeId, t.status, t.receivedAt.desc()),
     uniqueIndex('engagement_messages_external_idx').on(t.orgId, t.genomeId, t.platform, t.externalId),
+    // `engage.thread`'s read: one conversation, oldest first.
+    index('engagement_messages_thread_idx').on(t.orgId, t.genomeId, t.threadKey, t.receivedAt),
   ],
 );
 
@@ -430,7 +561,127 @@ export const brands = pgTable(
     restrictedPlatforms: jsonb('restricted_platforms').$type<string[]>(),
     restrictedContentTypes: jsonb('restricted_content_types').$type<string[]>(),
     quietWindows: jsonb('quiet_windows').$type<Array<{ from: string; to: string; reason: string }>>(),
-    permissions: jsonb('permissions').$type<{ spendCredits?: boolean; automationAutoPublish?: boolean }>(),
+    permissions: jsonb('permissions').$type<{
+      spendCredits?: boolean;
+      automationAutoPublish?: boolean;
+      /**
+       * PRD §6's "Approval required for media generation (optional)" — the one
+       * of the five permission controls with no representation anywhere.
+       */
+      requireApprovalForMedia?: boolean;
+    }>(),
+    /**
+     * §6's "Publish permission (per role)". Narrows a publish tool's own
+     * declared scopes; it can never widen them (`policy.ts` rule 2 runs first).
+     * Null means the tool's own scopes stand.
+     */
+    publishRoles: jsonb('publish_roles').$type<string[]>(),
+    /**
+     * §10's queue cap — the mitigation for "automation floods
+     * feeds/calendars". How many items may sit waiting for review before SPARK
+     * stops adding to the pile. Null means no cap.
+     */
+    maxPendingReview: integer('max_pending_review'),
+
+    /**
+     * ── PRD §8.2 ONB-03 / §8.12 SET-WS-01 / §9: the governance a brand states
+     * about itself, as opposed to the approval *ladder* above it. ─────────────
+     *
+     * "Restricted topics" and "claims to avoid" are named in PRD §4, §8.2,
+     * §8.8, §8.12 and §9, and existed in no layer of this system: no column, no
+     * tool, no screen. `brand.settings.patch` renamed a brand and that was the
+     * whole of brand configuration. So §9's guardrail-enforcement section had
+     * nothing to enforce, §8.6's "Apply Brand Kit" toggle had no kit to apply,
+     * and the stated mitigation for the PRD's own first-listed risk — "wrong or
+     * off-brand autoposting" — was unimplementable rather than unimplemented.
+     *
+     * Deliberately here on `brands` and not on `genomes`. A genome is inferred
+     * (crawled, then corrected) and is about what the business *is*; this is
+     * asserted by a human and is about what the business *will not say*. The
+     * second must not be silently overwritten the next time the first is
+     * re-inferred from a website.
+     */
+
+    /**
+     * Topics SPARK may not post about. Matched case-insensitively as whole
+     * phrases against draft copy by `guard.restricted_topics`.
+     *
+     * `strictMode` decides whether a hit is a flag (routes to review) or a hard
+     * block, per §9: *"restricted topics/claims trigger Needs Review (soft) or
+     * Blocked (hard) depending on strict mode and rule type."*
+     */
+    restrictedTopics: jsonb('restricted_topics').$type<string[]>(),
+    /**
+     * Claims this brand does not make — "guaranteed", "the cheapest", "clinically
+     * proven". Distinct from `restrictedTopics`: a topic is a subject to avoid,
+     * a claim is an assertion to avoid making *about* a subject it is otherwise
+     * happy to discuss. They are separate fields because §9 treats them as
+     * separate rule types, and strict mode escalates them differently.
+     */
+    claimsToAvoid: jsonb('claims_to_avoid').$type<string[]>(),
+    /**
+     * §9's "strict compliance mode". Off: a restricted topic or claim flags the
+     * draft and routes it to review. On: it blocks outright.
+     */
+    strictMode: boolean('strict_mode').notNull().default(false),
+    /**
+     * ONB-03's voice sliders, 0–1 each. The same four axes
+     * `Genome.voice.tone_vector` carries, asserted at brand level: where both
+     * exist this wins, because a person moved these deliberately and the
+     * genome's were inferred from a website.
+     */
+    toneVector: jsonb('tone_vector').$type<{ formal: number; playful: number; technical: number; bold: number }>(),
+    /** Words and phrases never to use. Checked verbatim by `guard.brand_voice`. */
+    bannedPhrases: jsonb('banned_phrases').$type<string[]>(),
+    /** ONB-01's logo, and the brand kit colours §8.6's "Apply Brand Kit" toggle applies. */
+    logoUrl: text('logo_url'),
+    brandColors: jsonb('brand_colors').$type<string[]>(),
+
+    /**
+     * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────
+     *
+     * An IANA zone name, e.g. `Europe/London`. The string "timezone" appeared
+     * nowhere in this codebase: not in the schema, the genome, the campaign
+     * model, or any tool, and there was no time-of-day logic anywhere either.
+     * Every post therefore fired at whatever wall-clock instant its campaign
+     * happened to be created, in UTC, and two posts placed on the same day got
+     * byte-identical timestamps and published simultaneously.
+     *
+     * Defaults to UTC rather than null so that every existing brand has a
+     * defined zone and `placeCalendar` never has to branch on "unknown".
+     */
+    /**
+     * ── PRD §8.8's engagement configuration ─────────────────────────────────
+     *
+     * *"Inputs/Config: Engagement autonomy level. Enabled engagement types
+     * (comments/DMs/story replies). Approval rules for sending replies."*
+     *
+     * None of it existed, and that absence is what made `policy.ts` rule 6
+     * forgeable: `autonomyConfigured` arrived on the HTTP request because there
+     * was nothing on the server to compare a claim against.
+     *
+     * `off` (suggest a reply, a person sends it) is the default and is not the
+     * same as unset — the conservative rung, matching how `approvalMode`
+     * defaults to `review_first_week` rather than to nothing.
+     */
+    engagementAutonomy: text('engagement_autonomy').notNull().default('off'),
+    /** comment | dm | story_reply. Empty means all of them. */
+    engagementTypes: jsonb('engagement_types').$type<string[]>(),
+
+    timezone: text('timezone').notNull().default('UTC'),
+    /**
+     * §8.7's "posting windows" — local hours-of-day, in `timezone`, that posts
+     * are placed into, earliest first. A day with more posts than windows wraps
+     * back through the list at a later minute offset rather than stacking two
+     * posts on one instant.
+     *
+     * The default is a plain three-times-a-day spread. It is not researched
+     * best-time-to-post data and does not pretend to be: what it fixes is
+     * "every post goes out at 03:47 because that is when the campaign was
+     * created", and `learning.*` is where a real per-brand answer belongs.
+     */
+    postingWindows: jsonb('posting_windows').$type<number[]>(),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -671,6 +922,34 @@ export const campaigns = pgTable(
     targetCount: integer('target_count'),
     /** What targetCount counts — "bookings", "trials", "signups". Free text like the objective preset itself. */
     targetLabel: text('target_label'),
+    /**
+     * `CMP-01.4` — the accounts this campaign posts to.
+     *
+     * PRD §8.4 lists "Connected accounts selection" as a campaign input and
+     * there was nowhere to put it, so a campaign was genome + objective +
+     * window and nothing else. The cost of that was visible two layers down:
+     * `apps/api/src/scheduler.ts` had to fall back to *"the playbook's first
+     * declared platform"* for every scheduled post, because nothing in the
+     * system had ever recorded where the owner wanted this campaign to publish.
+     *
+     * Null or empty keeps that fallback, which is still the honest default for
+     * a campaign created before this column existed.
+     */
+    platforms: jsonb('platforms').$type<string[]>(),
+    /**
+     * PRD §7.2's per-campaign approval scope.
+     *
+     * §7.2 lists four scopes at which approvals may be switched on — globally,
+     * **per campaign**, per content type/platform, and by guardrail trigger —
+     * and three of them were real. Null means "use the brand's", which is every
+     * campaign created before this column existed.
+     *
+     * Overrides in *either* direction, which is what makes it a control rather
+     * than a second lock: a cautious launch campaign can require review inside
+     * an autopublishing brand, and a routine one can publish freely inside a
+     * brand that reviews everything.
+     */
+    approvalMode: text('approval_mode'),
     /** draft | active | done | cancelled */
     status: text('status').notNull().default('draft'),
     /** The approved plan: volume, mix, capture ask, reasoning. */
@@ -727,6 +1006,26 @@ export const toolCalls = pgTable(
     index('tool_calls_idempotency_idx').on(t.idempotencyKey),
   ],
 );
+
+/**
+ * `idempotency_reservations` — the mutual exclusion `tool_calls` cannot provide.
+ *
+ * `tool_calls` is INSERT-only and the row lands *after* the handler returns, so
+ * `lookupIdempotent` cannot see a call that is still running. Two concurrent
+ * `publish.now` calls with the same key both missed the lookup and both posted;
+ * the platform adapter's own dedupe was the only thing standing between that
+ * and a duplicate post on a customer's feed.
+ *
+ * A separate table, rather than a status column on `tool_calls`, precisely so
+ * that INSERT-only property survives. The primary key *is* the mechanism: the
+ * second inserter loses on a uniqueness violation and is told to wait.
+ * `invoke.ts` deletes the row when a run fails, so a real retry still works.
+ */
+export const idempotencyReservations = pgTable('idempotency_reservations', {
+  key: text('key').primaryKey(),
+  tool: text('tool').notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 /**
  * `agent_runs` / `agent_steps` — master plan §5, §4.5's Agent Timeline,
@@ -798,6 +1097,93 @@ export const trendWatchlist = pgTable(
     index('trend_watchlist_scope_idx').on(t.orgId, t.genomeId),
     uniqueIndex('trend_watchlist_unique_idx').on(t.genomeId, t.trendId),
   ],
+);
+
+/**
+ * `trend_observations` — the time series behind `DISC-02`, PRD §8.9.
+ *
+ * §8.9's functional requirement is *"trend detail includes: metrics + time
+ * series"*. `TrendMetrics` is four scalars read live from the source, so
+ * before this table the detail screen could show where a trend is and never
+ * where it came from — which is precisely the judgement the screen exists to
+ * support. Velocity 0.4 on the way up and velocity 0.4 on the way down are the
+ * same number and opposite decisions.
+ *
+ * **Deliberately not scoped through `scoped.ts`.** These rows are public
+ * source data about the outside world, not a brand's material — the same
+ * reasoning as `brands` and `org_settings`, but with an additional argument
+ * that runs the other way: the series is only useful if it accumulates
+ * independently of who happens to be looking. One org polling once a week
+ * would build nothing. Nothing genome-specific is stored here, so there is no
+ * isolation question to answer: a trend's volume is not anybody's secret.
+ *
+ * Bucketed to the hour rather than stamped with the arrival time. Every
+ * `trend.rank` call by every org contributes a sample, so the raw arrival
+ * times would produce thousands of near-identical rows a day and a chart that
+ * is dense without being informative. The unique index makes recording
+ * idempotent, which is what lets any caller record freely.
+ */
+/**
+ * `influencer_watchlist` — the second of PRD §8.9's two watchlists.
+ *
+ * §8.9 lists *"Watchlist keywords"* and *"Influencer watchlist"* among
+ * Discovery's inputs. The keyword one has been real since P5
+ * (`trend_watchlist`); this one had no storage, no tool and no screen.
+ *
+ * Genome-scoped, unlike `trend_observations` beside it. A trend's volume is a
+ * fact about TikTok; **which accounts a brand studies is competitive
+ * intelligence** — often literally a list of its rivals — and is exactly the
+ * kind of thing that must never surface in another client's workspace.
+ *
+ * Kept as its own table rather than a `kind` column on `trend_watchlist`: a
+ * watched keyword and a watched account are joined to different things (one to
+ * a trend id, one to a handle on a platform) and read by different tools, and
+ * the shared columns would be two of six.
+ */
+export const influencerWatchlist = pgTable(
+  'influencer_watchlist',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    platform: text('platform').notNull(),
+    /** Stored normalised — lowercase, no leading `@`. See `normaliseHandle` in `packages/trends/src/influencer.ts`. */
+    handle: text('handle').notNull(),
+    /** The account's display name, when a source reported one. */
+    displayName: text('display_name'),
+    /** Why this account is worth watching — a competitor, a customer, a format to study. Free text. */
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('influencer_watchlist_scope_idx').on(t.orgId, t.genomeId),
+    // Watching the same account twice is one watch. Normalising the handle
+    // before it reaches here is what makes this constraint mean what it says.
+    uniqueIndex('influencer_watchlist_unique_idx').on(t.genomeId, t.platform, t.handle),
+  ],
+);
+
+export const trendObservations = pgTable(
+  'trend_observations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    source: text('source').notNull(),
+    trendId: text('trend_id').notNull(),
+    /** Truncated to the hour — see the note above. */
+    observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
+    /** The topic as it read at the time. Trends get renamed; the series should not lose its label. */
+    topic: text('topic').notNull(),
+    volume: integer('volume').notNull(),
+    /** 0–1, stored ×1000 as an integer — a float column would invite drift on a value used for ordering. */
+    velocityBp: integer('velocity_bp').notNull(),
+    saturationBp: integer('saturation_bp').notNull(),
+    /** Period-over-period change, ×1000. Signed: negative means dying. */
+    growthBp: integer('growth_bp').notNull(),
+  },
+  // One index, not two: the unique index is `(source, trend_id, observed_at)`,
+  // which is already the exact prefix the series read scans, so a second index
+  // on the same columns in the same order would be write cost for nothing.
+  (t) => [uniqueIndex('trend_observations_unique_idx').on(t.source, t.trendId, t.observedAt)],
 );
 
 /**
@@ -969,6 +1355,33 @@ export const orgSettings = pgTable('org_settings', {
   plan: text('plan').notNull().default('starter'), // 'starter' | 'growth' | 'agency'
   defaultApprovalMode: text('default_approval_mode').notNull().default('review_first_week'),
   ssoRequired: boolean('sso_required').notNull().default(false),
+  /**
+   * ── PRD §8.12's org security and data governance ─────────────────────────
+   *
+   * §8.12 asks the org layer for "security (SSO/2FA)" and "data governance
+   * (residency/retention)". This table had four columns: plan, default approval
+   * mode, SSO required, updated-at. SSO was the only one of the four §8.12 names
+   * that existed.
+   *
+   * Retention has the most teeth of the three for a product that stores crawled
+   * customer sites, inbox messages from third parties, and generated media —
+   * "we keep everything forever" is a policy whether or not anyone chose it.
+   */
+  twoFactorRequired: boolean('two_factor_required').notNull().default(false),
+  /**
+   * Where this org's data must stay. `any` is the honest default: enforcing a
+   * region means provisioning storage in it, which is an infrastructure decision
+   * (CLAUDE.md's Azure section) rather than a column — so this records the
+   * *commitment* and `org.governance.set` refuses to imply more than that.
+   */
+  dataResidency: text('data_residency').notNull().default('any'),
+  /**
+   * Days to keep content, inbox messages and audit rows. Null means indefinitely,
+   * which is the current behaviour for every existing org and must stay the
+   * default — a migration that silently started deleting customer data would be
+   * the worst possible reading of this feature.
+   */
+  retentionDays: integer('retention_days'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1002,9 +1415,27 @@ export const oauthConnections = pgTable(
     // and not every provider has a cheap "who am I" call for a label.
     scopes: text('scopes').array(),
     accountLabel: text('account_label'),
+    /**
+     * ── PRD §10's connection alerts ────────────────────────────────────────
+     *
+     * §10 pairs "connection health indicators" with "alerts + retry flows"
+     * against the risk that *"integration failures cause silent misses"*.
+     * `integration.health` was the indicator; nothing ever told anybody. A
+     * token quietly expiring is the exact silent miss the row is about — the
+     * calendar still shows posts going out, and they stop.
+     *
+     * This is the latch that stops the watcher notifying about the same
+     * connection every tick. Cleared on every `save()`, which is what makes
+     * reconnecting re-arm the alert: the new token has a new expiry, so the
+     * next warning is a genuinely new fact rather than a repeat.
+     */
+    expiryNotifiedAt: timestamp('expiry_notified_at', { withTimezone: true }),
   },
   (t) => [
     index('oauth_connections_scope_idx').on(t.orgId, t.genomeId),
     uniqueIndex('oauth_connections_unique_idx').on(t.genomeId, t.provider),
+    // The watcher's one cross-tenant read: "which connections are near expiry",
+    // ordered by when. Without this it is a full scan on every tick.
+    index('oauth_connections_expiry_idx').on(t.expiresAt),
   ],
 );

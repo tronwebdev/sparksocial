@@ -9,6 +9,10 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
  * token to the API, so an unauthenticated request there has nothing to forward.
  */
 const isPublic = createRouteMatcher([
+  // `AUTH-01`: pricing is where a visitor *arrives*, before any account exists.
+  // Protecting it would redirect every prospective customer to sign-in, which
+  // is the one screen that cannot come first.
+  '/pricing(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/forgot-password(.*)',

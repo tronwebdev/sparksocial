@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, assetRoleWordList } from '@sparksocial/shared';
 import { PLAYBOOKS, byId } from './records.js';
 import { resolve } from './resolver.js';
 import type { AssetInventory } from './golden.js';
@@ -190,7 +190,9 @@ export const playbookExplain = defineTool({
         score: Number(found.score.toFixed(4)),
         why: {
           summary: found.unlockable
-            ? `${playbook.name} would work, but needs ${found.missingRoles.join(', ')} — film a capture brief to unlock it.`
+            ? found.unlockedBy === 'capture'
+              ? `${playbook.name} would work, but needs ${assetRoleWordList(found.missingRoles)} — film a capture brief to unlock it.`
+              : `${playbook.name} would work, but needs ${assetRoleWordList(found.missingRoles)} — upload one and it is ready, no filming.`
             : `${playbook.name} is producible now from assets already on hand.`,
           factors: found.factors,
           evidence: [{ kind: 'rule' as const, id: 'engine_spec.§5.2', note: 'Preconditions over genome dimensions.' }],

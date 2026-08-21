@@ -35,6 +35,28 @@ export const ContentGetOutput = z.object({
   externalId: z.string().optional(),
   via: z.string().optional(),
   url: z.string().optional(),
+  /**
+   * Why this item is not moving — set when `status` is 'blocked' or
+   * 'needs_review'. One column with one meaning, as `markContentBlocked`'s own
+   * comment explains: both states answer the same question a person opening a
+   * stalled item asks.
+   */
+  blockedReason: z.string().optional(),
+  /**
+   * PRD §10's retry flow, at the reading end. The scheduler counts failed
+   * publish attempts and stops at a ceiling; without these two on the wire the
+   * only record of *why* a post stalled is a server log line, and the person who
+   * has to fix it is looking at a UI, not a log.
+   *
+   * `publishAttempts` is always present (0 when nothing has been tried) rather
+   * than omitted at zero: "tried 0 times" is a fact worth rendering, and an
+   * absent field is indistinguishable from an older API that never carried it.
+   */
+  publishAttempts: z.number(),
+  lastPublishError: z.string().optional(),
+  /** `DISC-02`'s A/B group, when this draft is an arm — so the panel can say so rather than looking like an ordinary post. */
+  variantGroupId: z.string().optional(),
+  variantLabel: z.string().optional(),
 });
 
 export const contentGet = defineTool({
@@ -81,6 +103,11 @@ export const contentGet = defineTool({
       ...(draft.externalId ? { externalId: draft.externalId } : {}),
       ...(draft.via ? { via: draft.via } : {}),
       ...(draft.url ? { url: draft.url } : {}),
+      ...(draft.blockedReason ? { blockedReason: draft.blockedReason } : {}),
+      publishAttempts: draft.publishAttempts ?? 0,
+      ...(draft.lastPublishError ? { lastPublishError: draft.lastPublishError } : {}),
+      ...(draft.variantGroupId ? { variantGroupId: draft.variantGroupId } : {}),
+      ...(draft.variantLabel ? { variantLabel: draft.variantLabel } : {}),
     };
   },
 });

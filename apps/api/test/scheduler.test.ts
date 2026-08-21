@@ -37,6 +37,10 @@ function fakePublishNow(opts: { effect?: 'publish' | 'external'; throws?: boolea
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
+    // Mirrors the real `publish.now`'s own derivation closely enough for the
+    // scheduler's purposes: the platform comes off the validated input, which
+    // is what lets `brand.restricted_platform` fire on a scheduled publish.
+    policySubject: async (input) => ({ platform: input.platform }),
     async handler(input) {
       calls.push(input);
       if (opts.throws) throw new Error('publish transport down');
@@ -68,6 +72,7 @@ const dueItem = (over: Partial<DueContentItem> = {}): DueContentItem => ({
   playbookId: 'pb_avatar_pov',
   platform: null,
   copy: [{ kind: 'text', beatId: 'b1', text: 'hello world' }],
+  intent: null,
   scheduledAt: new Date('2026-08-13T09:00:00Z'),
   ...over,
 });
@@ -82,7 +87,18 @@ function makeDeps(
   const source: DueContentSource = { findDue: async () => items };
   const db = {
     genomes: { get: async () => (over.missingGenome ? undefined : genome()) },
-    content: { markBlocked: async () => {} },
+    // `markNeedsReview` is the scheduler's write when the approval ladder holds a
+    // publish (PRD §7.4): the item leaves `scheduled` so `findDue` stops
+    // re-selecting and re-holding it once a minute forever.
+    content: {
+      markBlocked: async () => {},
+      markNeedsReview: async () => {},
+      // §10's retry counter. One attempt by default: every existing test in
+      // this file exercises a *first* failure, and returning the ceiling here
+      // would make all of them assert give-up behaviour they were not written
+      // for.
+      recordPublishFailure: async () => ({ attempts: 1 }),
+    },
   } as unknown as ScopedDb;
 
   const invoke: InvokeDeps = { writeToolCall: async () => {} };
@@ -222,10 +238,64 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  it('skips an item with no text beats — and marks it blocked, closing the exact bug a stuck item was found in production with', async () => {
+  it('drafts a due item that has no copy yet, then publishes it', async () => {
+    // The day-0 bug, from the other side. `calendar.generate` writes empty
+    // slots, so "due but undrafted" is the *normal* state of a campaign's next
+    // post — not a fault. The scheduler used to mark these `blocked` with "No
+    // written copy", which meant activating a campaign blocked its own opening
+    // day within one tick. Drafting is SPARK's own work (PRD §1), so it does it.
+    const { tool, calls } = fakePublishNow();
+    register(tool);
+
+    const drafted = { kind: 'text', beatId: 'b1', text: 'copy SPARK wrote' };
+    const draftTool = defineTool({
+      name: 'content.draft',
+      version: 1,
+      summary: 'fake content.draft for scheduler tests',
+      input: z.object({
+        genomeId: z.string(),
+        playbookId: z.string(),
+        contentItemId: z.string().optional(),
+        intent: z.string().default(''),
+      }),
+      output: z.object({ contentItemId: z.string() }),
+      effect: 'write',
+      autonomy: 'auto',
+      scopes: ['owner', 'admin', 'editor'],
+      idempotent: false,
+      async handler(input) {
+        return { contentItemId: input.contentItemId ?? 'item_1' };
+      },
+    });
+    register(draftTool);
+
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      // No text beats — only an asset, which is exactly what an unfilled slot
+      // looks like once the resolver has picked media but written nothing.
+      items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
+      db: {
+        genomes: { get: async () => genome() },
+        // The re-read after drafting: the scheduler trusts the row, not the
+        // tool's return value, because the row is what gets published.
+        content: { markBlocked, get: async () => ({ copy: [drafted] }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(markBlocked).not.toHaveBeenCalled();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ text: 'copy SPARK wrote' });
+  });
+
+  it('blocks an item only once drafting itself has failed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
+    // No `content.draft` registered at all, so the draft attempt fails hard.
+    // A hard failure is terminal for the same reason a guardrail block is: it
+    // will fail identically on every future tick.
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
@@ -236,7 +306,7 @@ describe('scheduler', () => {
 
     expect(calls).toHaveLength(0);
     expect(markBlocked).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'item_1', orgId: 'org_1', reason: expect.stringContaining('No written copy') }),
+      expect.objectContaining({ id: 'item_1', orgId: 'org_1', reason: expect.stringContaining('could not draft') }),
     );
     vi.restoreAllMocks();
   });
@@ -284,7 +354,10 @@ describe('scheduler', () => {
     register(tool);
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 1 }) },
+      } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -293,11 +366,158 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
+  it('counts every transient failure, so the retry has an end to reach', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const recordPublishFailure = vi.fn(async () => ({ attempts: 2 }));
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    // The error string carries the code as well as the message: "UPSTREAM_FAILED"
+    // and "GUARDRAIL_BLOCKED" need to be distinguishable by whoever reads the
+    // stalled item later.
+    expect(recordPublishFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item_1', orgId: 'org_1', error: expect.stringContaining('publish transport down') }),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('does not count a guardrail block as a retry attempt', async () => {
+    // It is already terminal. Counting it would put a second, redundant number
+    // on a row that is not being retried at all.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ guardrailBlocked: true });
+    register(tool);
+    const recordPublishFailure = vi.fn(async () => ({ attempts: 1 }));
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(recordPublishFailure).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('stops retrying at the ceiling and blocks the item with the last error', async () => {
+    // The gap this closes: before the ceiling, an item whose platform
+    // connection had died failed identically on every tick forever, logging to
+    // a console nobody reads while the calendar still showed it going out.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(markBlocked).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'item_1',
+        orgId: 'org_1',
+        reason: expect.stringContaining('5 times'),
+      }),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('tells somebody when it gives up', async () => {
+    // `blocked` on a calendar nobody is looking at is still a silent miss.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const notified: string[] = [];
+    register(
+      defineTool({
+        name: 'human.notify',
+        version: 1,
+        summary: 'fake human.notify for scheduler give-up tests',
+        input: z.object({ message: z.string(), urgency: z.string() }),
+        output: z.object({ id: z.string() }),
+        effect: 'external',
+        autonomy: 'auto',
+        scopes: ['owner', 'admin', 'editor'],
+        idempotent: true,
+        async handler(input) {
+          notified.push(input.message);
+          return { id: 'msg_1' };
+        },
+      }),
+    );
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(notified).toHaveLength(1);
+    expect(notified[0]).toMatch(/stopped retrying/i);
+    vi.restoreAllMocks();
+  });
+
+  it('leaves the item blocked even when the notification cannot be sent', async () => {
+    // Losing the block because the notification channel is down would put the
+    // row straight back into the infinite loop the ceiling exists to end.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    register(
+      defineTool({
+        name: 'human.notify',
+        version: 1,
+        summary: 'fake failing human.notify',
+        input: z.object({ message: z.string(), urgency: z.string() }),
+        output: z.object({ id: z.string() }),
+        effect: 'external',
+        autonomy: 'auto',
+        scopes: ['owner', 'admin', 'editor'],
+        idempotent: true,
+        async handler() {
+          throw new Error('notification channel down');
+        },
+      }),
+    );
+    const markBlocked = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+      } as unknown as ScopedDb,
+    });
+
+    await expect(runOnce(deps)).resolves.toBeUndefined();
+    expect(markBlocked).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   it('logs rather than throws when the approval ladder holds the publish for review', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
+    const markNeedsReview = vi.fn(async () => {});
     const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { markBlocked: async () => {}, markNeedsReview },
+      } as unknown as ScopedDb,
       loadBrandGovernance: async () => ({
         createdAt: new Date('2020-01-01T00:00:00Z'),
         approvalMode: 'review_everything',
@@ -312,6 +532,12 @@ describe('scheduler', () => {
     expect(console.log).toHaveBeenCalledWith(
       expect.stringContaining('publish held for review'),
       expect.objectContaining({ contentItemId: 'item_1' }),
+    );
+    // And it left `scheduled`, so the next tick does not re-hold it. Staying
+    // scheduled meant this log line repeated once a minute forever while the
+    // calendar still showed the post as going out.
+    expect(markNeedsReview).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item_1', reason: expect.stringContaining('Waiting for approval') }),
     );
     vi.restoreAllMocks();
   });

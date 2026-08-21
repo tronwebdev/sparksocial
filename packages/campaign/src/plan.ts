@@ -113,6 +113,16 @@ export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
 
   const ready = forObjective.filter((r) => !r.unlockable);
   const unlockable = forObjective.filter((r) => r.unlockable);
+  /**
+   * The filmable subset, separately, because only these belong in a capture ask.
+   *
+   * The resolver now also reports formats unlocked by uploading a file. Those
+   * still count toward what the plan could contain, so they stay in
+   * `unlockable` — but handing them to `buildCaptureAsk` would produce a shot
+   * list for "supply your logo", asking the owner for an afternoon to solve
+   * something a drag-and-drop closes.
+   */
+  const filmable = unlockable.filter((r) => r.unlockedBy === 'capture');
 
   const slots = Math.max(1, Math.round((windowDays / 7) * POSTS_PER_WEEK));
 
@@ -137,7 +147,7 @@ export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
     // existing formats already fill the cadence gains no posts by shooting more,
     // and asking anyway trades the owner's Saturday for nothing — which is the
     // fastest way to make them stop trusting the asks that do matter.
-    capture: potentialWithCapture > buildableNow ? buildCaptureAsk(unlockable) : null,
+    capture: potentialWithCapture > buildableNow && filmable.length > 0 ? buildCaptureAsk(filmable) : null,
     readyPlaybookIds: ready.map((r) => r.playbook.playbook_id),
   };
 }

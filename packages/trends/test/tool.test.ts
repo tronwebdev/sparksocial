@@ -12,6 +12,7 @@ import {
   makeTrendReshare,
   makeTrendWatchlist,
   makeTrendExplain,
+  makeTrendObserve,
 } from '../src/tool.js';
 
 /**
@@ -53,7 +54,35 @@ function watchlistStore() {
   };
 }
 
-function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
+/**
+ * The §8.9 metric history, in memory. Buckets to the hour and lets the last
+ * write in a bucket win, like both real implementations — a fake that recorded
+ * every call would hide the fact that repeated `trend.rank` calls are supposed
+ * to collapse into one chart point.
+ */
+function observationStore() {
+  const rows = new Map<string, any>();
+  return {
+    rows,
+    store: {
+      async record(observations: any[]) {
+        for (const o of observations) {
+          const at = new Date(o.observedAt.getTime());
+          at.setUTCMinutes(0, 0, 0);
+          rows.set(JSON.stringify([o.source, o.trendId, at.toISOString()]), { ...o, observedAt: at });
+        }
+      },
+      async series({ source: src, trendId, sinceDays }: any) {
+        const since = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+        return [...rows.values()]
+          .filter((o) => o.source === src && o.trendId === trendId && o.observedAt.getTime() >= since)
+          .sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime());
+      },
+    },
+  };
+}
+
+function ctx(over: Partial<ToolCtx> = {}, observations = observationStore().store): ToolCtx {
   const { store } = watchlistStore();
   return {
     orgId: 'org_1',
@@ -65,6 +94,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       assets: { inventory: async () => ({}) },
       content: { get: async () => undefined },
       trends: store,
+      trendObservations: observations,
     } as unknown as ToolCtx['db'],
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -90,7 +120,7 @@ describe('trend.fetch', () => {
 describe('trend.detail', () => {
   it('returns the full breakdown for a known trend', async () => {
     const tool = makeTrendDetail(source);
-    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising' }, ctx());
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx());
     expect(out.trend.id).toBe('tr_rising');
     expect(out.safety.safe).toBe(true);
     expect(out.score).toBeGreaterThan(0);
@@ -99,12 +129,185 @@ describe('trend.detail', () => {
 
   it('404s for an unknown trend', async () => {
     const tool = makeTrendDetail(source);
-    await expect(tool.handler({ genomeId: 'gen_barber', trendId: 'nope' }, ctx())).rejects.toThrow(ToolError);
+    await expect(tool.handler({ genomeId: 'gen_barber', trendId: 'nope', seriesDays: 14 }, ctx())).rejects.toThrow(ToolError);
   });
 
   it('404s for an unknown genome', async () => {
     const tool = makeTrendDetail(source);
-    await expect(tool.handler({ genomeId: 'gen_ghost', trendId: 'tr_rising' }, ctx())).rejects.toThrow(ToolError);
+    await expect(tool.handler({ genomeId: 'gen_ghost', trendId: 'tr_rising', seriesDays: 14 }, ctx())).rejects.toThrow(ToolError);
+  });
+});
+
+describe('trend.detail — §8.9 time series', () => {
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+
+  it('records what it just read, so opening the screen puts today on the chart', async () => {
+    const obs = observationStore();
+    const tool = makeTrendDetail(source);
+    await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(obs.rows.size).toBe(1);
+  });
+
+  it('returns no trajectory from a single observation', async () => {
+    // The trap this guards: a one-point series charted as a flat line reads as
+    // "stable", when the truth is "we have never seen this before".
+    const obs = observationStore();
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(out.series).toHaveLength(1);
+    expect(out.trajectory).toBeNull();
+  });
+
+  it('returns the history oldest first', async () => {
+    const obs = observationStore();
+    await obs.store.record([
+      { source: 'tiktok', trendId: 'tr_rising', topic: 'x', observedAt: hoursAgo(48), volume: 10, velocity: 0.5, saturation: 0.1, growth: 1 },
+      { source: 'tiktok', trendId: 'tr_rising', topic: 'x', observedAt: hoursAgo(24), volume: 20, velocity: 0.5, saturation: 0.2, growth: 1 },
+    ]);
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    const times = out.series.map((point) => Date.parse(point.at));
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  /**
+   * These fixtures seed the *past* only. `trend.detail` records the live metrics
+   * as part of the call, so the stub's own numbers are always the newest point —
+   * a fixture that also seeds a recent point contradicting them would be
+   * measuring the fixture rather than the code. `tr_rising` sits at saturation
+   * 0.18, so seeding below it means cooling and above it means climbing.
+   */
+  const seed = (saturation: number, volume: number, hours = 72) =>
+    [{ source: 'tiktok', trendId: 'tr_rising', topic: 'x', observedAt: hoursAgo(hours), volume, velocity: 0.8, saturation, growth: 2 }];
+
+  it('calls a trend with rising saturation closing, whatever its volume is doing', async () => {
+    // Volume is the tempting signal and the wrong one — a trend can keep growing
+    // in reach right up to the point where there is nothing left to say, which
+    // is exactly the trap §8.9's problem statement describes. Here volume grows
+    // 1200× and the verdict is still "closing".
+    const obs = observationStore();
+    await obs.store.record(seed(0.05, 100));
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(out.trajectory!.direction).toBe('cooling');
+    expect(out.trajectory!.volumeChange).toBeGreaterThan(1);
+  });
+
+  it('calls falling saturation still opening', async () => {
+    const obs = observationStore();
+    await obs.store.record(seed(0.6, 100));
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(out.trajectory!.direction).toBe('climbing');
+  });
+
+  it('does not call a small wobble a direction', async () => {
+    const obs = observationStore();
+    // 0.19 against the stub's live 0.18 — inside the noise band.
+    await obs.store.record(seed(0.19, 100));
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(out.trajectory!.direction).toBe('flat');
+  });
+
+  it('puts the trajectory in the why, ahead of the score', async () => {
+    // §7.3 requires the trend decision to carry a visible reason. Once history
+    // exists, "cooling" is the most decision-relevant part of it.
+    const obs = observationStore();
+    await obs.store.record(seed(0.05, 100));
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, obs.store));
+    expect(out.why.factors[0]!.label).toBe('trajectory');
+    expect(out.why.summary).toMatch(/closing/i);
+  });
+
+  it('still returns the trend when the history store is unavailable', async () => {
+    // Losing the chart is a degraded detail screen. Losing the screen because
+    // the chart is unavailable is a worse trade than not having the chart.
+    const broken = {
+      record: async () => {
+        throw new Error('history down');
+      },
+      series: async () => {
+        throw new Error('history down');
+      },
+    };
+    const tool = makeTrendDetail(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', trendId: 'tr_rising', seriesDays: 14 }, ctx({}, broken as never));
+    expect(out.trend.id).toBe('tr_rising');
+    expect(out.series).toEqual([]);
+    expect(out.trajectory).toBeNull();
+  });
+});
+
+describe('trend.rank — sampling', () => {
+  it('records every trend it fetched, including the ones it excluded', async () => {
+    // A trend this brand cannot touch is still a trend whose history another
+    // brand's detail screen will want.
+    const obs = observationStore();
+    const tool = makeTrendRank(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', limit: 2 }, ctx({}, obs.store));
+    expect(out.excluded.length).toBeGreaterThan(0);
+    expect(obs.rows.size).toBe(6); // every trend in the stub source
+  });
+
+  it('collapses repeated calls within the hour into one point per trend', async () => {
+    const obs = observationStore();
+    const tool = makeTrendRank(source);
+    const c = ctx({}, obs.store);
+    await tool.handler({ genomeId: 'gen_barber', limit: 2 }, c);
+    await tool.handler({ genomeId: 'gen_barber', limit: 2 }, c);
+    await tool.handler({ genomeId: 'gen_barber', limit: 2 }, c);
+    expect(obs.rows.size).toBe(6);
+  });
+
+  it('still ranks when recording fails', async () => {
+    const broken = {
+      record: async () => {
+        throw new Error('history down');
+      },
+      series: async () => [],
+    };
+    const tool = makeTrendRank(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', limit: 2 }, ctx({}, broken as never));
+    expect(out.trends.length).toBeGreaterThan(0);
+  });
+});
+
+describe('trend.observe', () => {
+  it('samples the source without a genome, because the rows are shared', async () => {
+    const obs = observationStore();
+    const tool = makeTrendObserve(source);
+    const out = await tool.handler({ limit: 50 }, ctx({}, obs.store));
+    expect(out.observed).toBe(6);
+    expect(obs.rows.size).toBe(6);
+    expect(Object.keys(tool.input.parse({ limit: 50 }))).not.toContain('genomeId');
+  });
+
+  it('is idempotent across a repeat within the hour', async () => {
+    const obs = observationStore();
+    const tool = makeTrendObserve(source);
+    await tool.handler({ limit: 50 }, ctx({}, obs.store));
+    await tool.handler({ limit: 50 }, ctx({}, obs.store));
+    expect(obs.rows.size).toBe(6);
+    expect(tool.idempotent).toBe(true);
+  });
+
+  it('fails loudly when the history store is unavailable', async () => {
+    // Unlike the read paths, a scheduled sampler that swallowed a write failure
+    // would report success while the series quietly stopped growing.
+    const broken = {
+      record: async () => {
+        throw new Error('history down');
+      },
+      series: async () => [],
+    };
+    const tool = makeTrendObserve(source);
+    await expect(tool.handler({ limit: 50 }, ctx({}, broken as never))).rejects.toThrow('history down');
+  });
+
+  it('is not on any screen', () => {
+    expect(makeTrendObserve(source).surfaces ?? []).toEqual([]);
   });
 });
 

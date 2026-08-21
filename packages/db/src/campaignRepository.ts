@@ -1,6 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { ToolError } from '@sparksocial/shared';
-import type { CampaignStore } from '@sparksocial/tools/defineTool';
+import type { ApprovalMode, CampaignStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { campaigns } from './schema.js';
 import { campaignSlots, replaceCampaignSlots, type Scope } from './scoped.js';
@@ -16,7 +16,7 @@ import { campaignSlots, replaceCampaignSlots, type Scope } from './scoped.js';
  */
 export function createCampaignRepository(db: Database): CampaignStore {
   return {
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel }) {
+    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode }) {
       const [row] = await db
         .insert(campaigns)
         .values({
@@ -30,6 +30,8 @@ export function createCampaignRepository(db: Database): CampaignStore {
           status: 'draft',
           ...(targetCount !== undefined ? { targetCount } : {}),
           ...(targetLabel !== undefined ? { targetLabel } : {}),
+          ...(platforms?.length ? { platforms } : {}),
+          ...(approvalMode ? { approvalMode } : {}),
         })
         .returning({ id: campaigns.id });
       return { id: row!.id };
@@ -53,6 +55,8 @@ export function createCampaignRepository(db: Database): CampaignStore {
         plan: row.plan,
         ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
         ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),
+        ...(row.platforms ? { platforms: row.platforms } : {}),
+        ...(row.approvalMode ? { approvalMode: row.approvalMode as ApprovalMode } : {}),
       };
     },
 
@@ -74,6 +78,8 @@ export function createCampaignRepository(db: Database): CampaignStore {
         plan: r.plan,
         ...(r.targetCount !== null ? { targetCount: r.targetCount } : {}),
         ...(r.targetLabel !== null ? { targetLabel: r.targetLabel } : {}),
+        ...(r.platforms ? { platforms: r.platforms } : {}),
+        ...(r.approvalMode ? { approvalMode: r.approvalMode as ApprovalMode } : {}),
       }));
     },
 

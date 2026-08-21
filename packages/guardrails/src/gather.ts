@@ -4,6 +4,7 @@ import type { GuardrailId } from './types.js';
 import { PASS, type CheckResult } from './types.js';
 import { claimGrounding } from './claimGrounding.js';
 import { complianceProfile } from './compliance.js';
+import { restrictedTopics } from './restrictedTopics.js';
 import { brandVoice } from './brandVoice.js';
 import { avatarSaturation } from './avatarSaturation.js';
 import { duplicate } from './duplicate.js';
@@ -78,9 +79,37 @@ export async function gatherAndEvaluate(
       });
     }),
 
-    run('brand_voice', () => {
+    /**
+     * PRD §9's restricted topics and claims-to-avoid. Read off `brands`, not
+     * the genome: the genome is inferred from a website and re-inferred when
+     * that site changes, and a human's statement of what the brand will not say
+     * must not be silently overwritten by a crawl.
+     *
+     * A brand with nothing configured passes, which is why this can be declared
+     * unconditionally on every publish path.
+     */
+    run('restricted_topics', async () => {
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      if (!brand) return PASS;
+      return restrictedTopics({
+        text: draft.text,
+        ...(brand.restrictedTopics ? { restrictedTopics: brand.restrictedTopics } : {}),
+        ...(brand.claimsToAvoid ? { claimsToAvoid: brand.claimsToAvoid } : {}),
+        strictMode: brand.strictMode,
+      });
+    }),
+
+    run('brand_voice', async () => {
       if (!genome) return missingContext('genome');
-      return brandVoice({ text: draft.text, bannedPhrases: genome.voice.banned_phrases });
+      // Brand-level banned phrases are additive to the genome's, not a
+      // replacement: the genome's came from the site's own copy, and ONB-03's
+      // are what a person typed. Both are things this brand does not say.
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      const bannedPhrases = [
+        ...(genome.voice.banned_phrases ?? []),
+        ...(brand?.bannedPhrases ?? []),
+      ];
+      return brandVoice({ text: draft.text, bannedPhrases });
     }),
 
     run('avatar_saturation', async () => {
@@ -146,6 +175,7 @@ export async function gatherAndEvaluate(
 export const ALL_GUARDRAILS: readonly GuardrailId[] = [
   'claim_grounding',
   'compliance_profile',
+  'restricted_topics',
   'brand_voice',
   'avatar_saturation',
   'duplicate',

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { VariantResult } from './VariantResult';
 
 /**
  * CC-03 — the Draft List: everything a genome has in flight, across every
@@ -29,6 +30,9 @@ interface DraftListItem {
   summary: string;
   scheduledAt?: string;
   createdAt: string;
+  /** `DISC-02`'s A/B group, when this post is an arm. Carried on the list read so a row can offer the verdict without a call per item. */
+  variantGroupId?: string;
+  variantLabel?: string;
 }
 
 interface MetricsSnapshot {
@@ -169,9 +173,14 @@ export function DraftList({
                     <p className="truncate text-[14px] font-medium text-ink">{item.playbookName}</p>
                     <p className="truncate text-[13px] text-ink-muted">{item.summary}</p>
                   </div>
-                  <Badge variant={STATUS_TONE[item.status] ?? 'neutral'} className="shrink-0 capitalize">
-                    {item.status}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {/* An arm of a test is not an ordinary post, and the row is
+                        the only place somebody scanning the list would notice. */}
+                    {item.variantLabel ? <Badge variant="neutral">A/B · {item.variantLabel.toUpperCase()}</Badge> : null}
+                    <Badge variant={STATUS_TONE[item.status] ?? 'neutral'} className="capitalize">
+                      {item.status}
+                    </Badge>
+                  </div>
                 </button>
 
                 {item.status === 'published' ? (
@@ -243,6 +252,14 @@ export function DraftList({
                         {ctaTraffic[item.contentItemId]!.totalClicks} link click
                         {ctaTraffic[item.contentItemId]!.totalClicks === 1 ? '' : 's'}
                       </p>
+                    ) : null}
+                    {/* §8.9's A/B verdict, next to the numbers it is drawn
+                        from — a comparison shown anywhere else would make
+                        somebody hold two screens in their head. */}
+                    {item.variantGroupId ? (
+                      <div className="mt-2">
+                        <VariantResult genomeId={genomeId} variantGroupId={item.variantGroupId} />
+                      </div>
                     ) : null}
                   </div>
                 ) : null}

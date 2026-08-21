@@ -4,16 +4,18 @@ import { GuardrailableDraft } from './draft.js';
 import { gatherAndEvaluate, type EmbedClient } from './gather.js';
 
 /**
- * The `InvokeDeps.runGuardrails` adapter — what a *future* tool declaring
- * `guardrails: [...]` on itself (e.g. a `publish.now`, once §8 lands) would be
- * checked by inside `invokeTool`'s middleware chain. Calls the exact same
- * `gatherAndEvaluate` core as `guard.evaluate_draft`, just reshaped into
- * `invoke.ts`'s `GuardrailVerdict[]`.
+ * The `InvokeDeps.runGuardrails` adapter — how a tool declaring
+ * `guardrails: [...]` on itself gets checked inside `invokeTool`'s middleware
+ * chain. Calls the exact same `gatherAndEvaluate` core as
+ * `guard.evaluate_draft`, reshaped into `invoke.ts`'s `GuardrailVerdict[]`.
  *
- * No currently-registered tool declares `guardrails` yet — nothing in this
- * repo produces publishable copy. Wired here and exported so the moment such a
- * tool exists, enforcement is a one-line `guardrails: [...]` on its
- * `defineTool` call, not new plumbing.
+ * `publish.now` declares all eight, which makes this the enforcement path for
+ * every post that reaches a feed. It is the *only* tool that declares any, and
+ * that is a real constraint rather than an oversight: the checks need
+ * draft-shaped input (`GuardrailableDraft`), and `publish.now` is shaped that
+ * way on purpose. Outbound *replies* take a parallel route —
+ * `packages/engage/src/replyGuard.ts` — because a reply has no playbook and no
+ * referenced assets, so three of the eight checks have nothing to evaluate.
  */
 export function makeRunGuardrails(embed: EmbedClient): NonNullable<InvokeDeps['runGuardrails']> {
   return async (guards, rawInput, ctx) => {

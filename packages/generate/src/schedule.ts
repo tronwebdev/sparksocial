@@ -17,6 +17,22 @@ export const ContentScheduleInput = z.object({
   contentItemId: z.string().min(1),
   genomeId: z.string().min(1),
   scheduledAt: z.string().datetime(),
+  /**
+   * Publish a post whose date is already in the past, immediately.
+   *
+   * There was no lower bound on `scheduledAt` at all, and the calendar's drop
+   * handler only blocked the `unscheduled` column and already-published slots.
+   * So dragging a scheduled post onto an earlier day made it due on the spot,
+   * and the scheduler published it within a minute — a backward drag was an
+   * "publish now" button that did not say so. CAL-05's undo is the right
+   * affordance for moving a post *later*; it is not sufficient for a move that
+   * fires before anyone can click it.
+   *
+   * Still allowed, because backfilling a date is a real thing to want (a post
+   * that should have gone out on Tuesday, an imported archive). It just has to
+   * be said out loud.
+   */
+  publishImmediatelyIfPast: z.boolean().default(false),
 });
 
 export const ContentScheduleOutput = z.object({
@@ -43,6 +59,15 @@ export const contentSchedule = defineTool({
   surfaces: ['CAL-04', 'CAL-05'],
 
   async handler(input, ctx) {
+    const when = new Date(input.scheduledAt);
+    if (when.getTime() < Date.now() && !input.publishImmediatelyIfPast) {
+      throw new ToolError(
+        'INVALID_INPUT',
+        'That date has already passed, so this post would publish immediately. Pick a future date, or pass publishImmediatelyIfPast to send it now.',
+        { scheduledAt: input.scheduledAt, contentItemId: input.contentItemId },
+      );
+    }
+
     const draft = await ctx.db.content.schedule({
       id: input.contentItemId,
       genomeId: input.genomeId,

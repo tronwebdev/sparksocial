@@ -20,7 +20,14 @@ export type Decision =
   | { kind: 'deny'; reason: string; ruleId: string };
 
 export interface PolicyInput {
-  tool: { name: string; effect: Effect; autonomy: Autonomy; scopes: Role[] };
+  tool: {
+    name: string;
+    effect: Effect;
+    autonomy: Autonomy;
+    scopes: Role[];
+    /** True for the tools that spend a vendor's money making a file — rule 4b. */
+    producesMedia?: boolean;
+  };
   caller: 'user' | 'agent';
   role: Role;
   now: Date;
@@ -36,8 +43,42 @@ export interface PolicyInput {
     /** Publishing freeze windows — crisis pause, holiday, etc. */
     quietWindows?: Array<{ from: Date; to: Date; reason: string }>;
     agentPaused?: boolean;
-    /** Permission toggles (PRD §6). */
-    permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean };
+    /**
+     * Permission toggles (PRD §6's "Permission Controls (workspace-configurable)").
+     *
+     * `requireApprovalForMedia` was the one of the five with no representation
+     * anywhere, and it is the one guarding the money: `content.generate_avatar_video`
+     * is 50¢ a call and `content.generate_dub` 60¢. The spend ceiling and
+     * `spendCredits` both apply, and neither can express "a person signs off
+     * before we render video" — which is a different question from "can we
+     * afford it".
+     */
+    permissions?: {
+      spendCredits?: boolean;
+      automationAutoPublish?: boolean;
+      requireApprovalForMedia?: boolean;
+    };
+    /**
+     * §6's first permission control: "Publish permission (per role)".
+     *
+     * Roles already gate publishing — `publish.now` declares
+     * `['owner','admin','editor']` — but that list is compiled into the tool, so
+     * a workspace wanting editors to draft and only admins to publish had no way
+     * to say it. This narrows the tool's own scopes for `publish`-effect calls
+     * and can only ever narrow: a role absent from the tool's `scopes` is still
+     * refused by rule 2 first, so this cannot be used to grant anything.
+     */
+    publishRoles?: Role[];
+    /**
+     * §10's "queue caps" — the mitigation for "automation floods
+     * feeds/calendars". How much unreviewed work may sit waiting before SPARK
+     * stops adding to it.
+     *
+     * Passed in rather than counted here, because `evaluate` performs no I/O
+     * (CLAUDE.md invariant 3). Undefined means no cap, which is the behaviour
+     * every brand had before this existed.
+     */
+    maxPendingReview?: number;
   };
 
   /** Populated for publish-effect calls. */
@@ -47,6 +88,27 @@ export interface PolicyInput {
     guardrailFlags?: string[];
     isAutomationOutput?: boolean;
     reviewBeforePublish?: boolean;
+    /**
+     * PRD §7.2 lists four scopes at which approvals may be switched on:
+     * globally, **per campaign**, per content type/platform, and by guardrail
+     * trigger. Three were real. This is the fourth.
+     *
+     * A campaign's own mode *overrides* the brand's for its own posts, in either
+     * direction — a cautious launch campaign can require review inside an
+     * otherwise autopublishing brand, and a routine one can autopublish inside a
+     * brand that reviews everything. Overriding downward is the case that makes
+     * this a real control rather than a second lock: without it, a brand had to
+     * pick one posture for every campaign it runs at once.
+     *
+     * Undefined falls through to `brand.approvalMode`, which is every campaign
+     * created before this existed.
+     */
+    campaignApprovalMode?: 'autopublish' | 'review_first_week' | 'review_everything';
+    /**
+     * How many items are already waiting on a human for this brand — §10's queue
+     * cap reads it against `brand.maxPendingReview`.
+     */
+    pendingReviewCount?: number;
   };
 
   budget: { remainingCents: number; estimatedCents: number };
@@ -117,6 +179,21 @@ function evaluateRules(input: PolicyInput): Decision {
     };
   }
 
+  /* 2b ─ Workspace-configurable publish permission (PRD §6).
+   *
+   *      After rule 2, never instead of it: `publishRoles` narrows the tool's
+   *      declared scopes and must not be able to widen them. A workspace that
+   *      lists a role the tool never allowed still gets rule 2's refusal. */
+  if (tool.effect === 'publish' && brand.publishRoles && brand.publishRoles.length > 0) {
+    if (!brand.publishRoles.includes(role)) {
+      return {
+        kind: 'deny',
+        reason: `This workspace restricts publishing to ${brand.publishRoles.join(', ')}; caller is ${role}.`,
+        ruleId: 'permission.publish_role',
+      };
+    }
+  }
+
   /* 3 ── Tools SPARK may never call. */
   if (tool.autonomy === 'human_only' && caller === 'agent') {
     return { kind: 'deny', reason: 'This action must be taken by a person.', ruleId: 'autonomy.human_only' };
@@ -149,6 +226,44 @@ function evaluateRules(input: PolicyInput): Decision {
         ruleId: 'budget.exceeded',
       };
     }
+  }
+
+  /* 4b ─ Media generation, when the workspace requires sign-off (PRD §6).
+   *
+   *      Read off the tool rather than guessed from its family: `content.*` and
+   *      `compose.*` both hold tools that produce pixels and tools that do not,
+   *      so a family check would either gate `content.draft` (text, cheap) or
+   *      miss `compose.render` (video, expensive). `producesMedia` is declared
+   *      by the seven tools that spend a vendor's money making a file.
+   *
+   *      Placed after the budget rule on purpose: "you cannot afford this" is a
+   *      better answer than "ask someone" when both are true. */
+  if (tool.producesMedia && brand.permissions?.requireApprovalForMedia) {
+    return {
+      kind: 'approval',
+      reason: 'This workspace requires approval before generating media.',
+      ruleId: 'permission.media_generation',
+    };
+  }
+
+  /* 4c ─ Queue cap (PRD §10: "automation floods feeds/calendars").
+   *
+   *      Only for the agent, and only for work that *adds* to the queue. A
+   *      person is allowed to keep working through a backlog they can see; the
+   *      failure this guards against is SPARK filling a review queue faster than
+   *      anyone can empty it, which is how the queue stops being read at all. */
+  if (
+    caller === 'agent' &&
+    (tool.effect === 'publish' || tool.effect === 'write') &&
+    brand.maxPendingReview !== undefined &&
+    subject?.pendingReviewCount !== undefined &&
+    subject.pendingReviewCount >= brand.maxPendingReview
+  ) {
+    return {
+      kind: 'deny',
+      reason: `${subject.pendingReviewCount} items are already waiting for review; the cap for this workspace is ${brand.maxPendingReview}.`,
+      ruleId: 'brand.review_queue_full',
+    };
   }
 
   /* 5 ── Destructive work always routes to an owner/admin approval. */
@@ -198,16 +313,30 @@ function evaluateRules(input: PolicyInput): Decision {
       }
     }
 
-    switch (brand.approvalMode) {
+    /* PRD §7.2's per-campaign scope. The campaign's own mode wins in either
+     * direction — see `subject.campaignApprovalMode`. */
+    const effectiveMode = subject?.campaignApprovalMode ?? brand.approvalMode;
+
+    switch (effectiveMode) {
       case 'review_everything':
-        return { kind: 'approval', reason: 'Workspace reviews all content before publishing.', ruleId: 'approval_mode.review_everything' };
+        return {
+          kind: 'approval',
+          reason: subject?.campaignApprovalMode
+            ? 'This campaign reviews all content before publishing.'
+            : 'Workspace reviews all content before publishing.',
+          ruleId: subject?.campaignApprovalMode
+            ? 'campaign.review_everything'
+            : 'approval_mode.review_everything',
+        };
       case 'review_first_week': {
         const age = daysBetween(now, brand.createdAt);
         if (age < REVIEW_FIRST_WEEK_DAYS) {
           return {
             kind: 'approval',
             reason: `Reviewing everything for the first week (day ${age + 1} of ${REVIEW_FIRST_WEEK_DAYS}).`,
-            ruleId: 'approval_mode.review_first_week',
+            ruleId: subject?.campaignApprovalMode
+              ? 'campaign.review_first_week'
+              : 'approval_mode.review_first_week',
           };
         }
         break; // graduated — fall through to autopublish

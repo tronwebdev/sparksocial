@@ -99,6 +99,23 @@ export interface ScopedDb {
       offer: Partial<Genome['offer']>;
     }): Promise<{ id: string; version: number }>;
     /**
+     * Merges a partial voice patch — the write side of `genome.voice.set`.
+     *
+     * Added late, and the gap it closes is why: `voice` was writable only at
+     * `createDraft` time, so the only thing that could ever populate
+     * `pov_statements`, `banned_phrases` or a real `tone_vector` was the crawl.
+     * A brand whose site did not read — or whose crawl failed upstream — was
+     * stuck with an all-0.5 neutral tone and no point of view, permanently, and
+     * every beat the copy writer produced for it was consequently the kind of
+     * line that would suit any business in the category. There was no tool to
+     * fix it and no screen that could have called one.
+     */
+    patchVoice(args: {
+      genomeId: string;
+      orgId: string;
+      voice: Partial<Genome['voice']>;
+    }): Promise<{ id: string; version: number }>;
+    /**
      * Merges a partial `learned` patch — the write side of the learning loop
      * (plan §6.7). Same single-field-merge shape as `patchOffer`; only the
      * keys present in `patch` change. The only writer of this is
@@ -211,6 +228,8 @@ export interface ScopedDb {
   ctaLinks: CtaLinkStore;
   /** Post performance snapshots — `analytics.sync`'s one write. See {@link AnalyticsStore}. */
   analytics: AnalyticsStore;
+  /** PRD §5's success metrics — read-only aggregates. See {@link MetricsStore}. */
+  metrics: MetricsStore;
   /** The engagement inbox — `engage.ingest`/`.classify`. See {@link EngagementStore}. */
   engagement: EngagementStore;
   /** Sales opportunities surfaced from the engagement inbox. See {@link OpportunityStore}. */
@@ -232,6 +251,10 @@ export interface ScopedDb {
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
   trends: TrendWatchlistStore;
+  /** The `DISC-02` metric history. Cross-tenant by design. See {@link TrendObservationStore}. */
+  trendObservations: TrendObservationStore;
+  /** Accounts this brand studies — §8.9's influencer watchlist. See {@link InfluencerWatchStore}. */
+  influencers: InfluencerWatchStore;
   /** Thompson-sampling arms and outcomes — the learning loop (plan §6.7). See {@link LearningStore}. */
   learning: LearningStore;
   /** Automation recipes and their output queue (plan §12 P5). See {@link RecipeStore}. */
@@ -312,8 +335,62 @@ export interface BrandGovernance {
   restrictedContentTypes?: string[];
   /** Publishing freeze windows — crisis pause, holiday, etc. */
   quietWindows?: Array<{ from: Date; to: Date; reason: string }>;
-  /** Permission toggles PRD §6 names — `spendCredits`/`automationAutoPublish`. */
-  permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean };
+  /** Permission toggles PRD §6 names. `requireApprovalForMedia` guards the 50–60¢ vendor calls. */
+  permissions?: {
+    spendCredits?: boolean;
+    automationAutoPublish?: boolean;
+    requireApprovalForMedia?: boolean;
+  };
+  /** §6's "Publish permission (per role)". Narrows a publish tool's scopes, never widens them. */
+  publishRoles?: Role[];
+  /** §10's queue cap: how much unreviewed work may accumulate before SPARK stops adding. */
+  maxPendingReview?: number;
+
+  /**
+   * ── The brand's own governance (PRD §8.2 ONB-03, §8.12, §9) ───────────────
+   *
+   * Distinct from the approval ladder above, which is about *who signs off*.
+   * This is about *what the brand will not say* — and it did not exist in any
+   * layer of this system until now, which left §9's whole guardrail-enforcement
+   * section with nothing to enforce. See `brands` in `schema.ts`.
+   */
+  /** Subjects SPARK may not post about. Flag under normal mode, block under strict. */
+  restrictedTopics?: string[];
+  /** Assertions this brand does not make. Same soft/hard escalation as topics. */
+  claimsToAvoid?: string[];
+  /** §9's strict compliance mode: a restricted topic or claim blocks rather than flags. */
+  strictMode: boolean;
+  /** ONB-03's voice sliders. Overrides the genome's inferred `tone_vector` where set. */
+  toneVector?: { formal: number; playful: number; technical: number; bold: number };
+  /** Words never to use, checked verbatim by `guard.brand_voice`. */
+  bannedPhrases?: string[];
+  logoUrl?: string;
+  brandColors?: string[];
+
+  /**
+   * ── Scheduling (PRD §8.2 required, §8.7 a Calendar input) ─────────────────
+   */
+  /**
+   * ── PRD §8.8's engagement configuration ──────────────────────────────────
+   *
+   * *"Inputs/Config: Engagement autonomy level. Enabled engagement types
+   * (comments/DMs/story replies). Approval rules for sending replies."*
+   *
+   * None of it existed, which is what made `autonomyConfigured` forgeable:
+   * there was nothing on the server to compare a claim against.
+   *
+   * `off` is the default and is not the same as unset — a brand that has never
+   * chosen leaves SPARK suggesting replies for a person to send, which is the
+   * conservative rung and matches how `approvalMode` defaults.
+   */
+  engagementAutonomy: 'off' | 'suggest' | 'auto';
+  /** Which surfaces SPARK may answer on. Empty means every enabled type. */
+  engagementTypes?: string[];
+
+  /** IANA zone name. Defaults to `UTC` so every brand has a defined one. */
+  timezone: string;
+  /** Local hours-of-day posts are placed into. Empty falls back to `DEFAULT_POSTING_WINDOWS`. */
+  postingWindows?: number[];
 }
 
 /**
@@ -367,7 +444,46 @@ export interface BrandGovernanceStore {
       restrictedPlatforms?: string[] | null;
       restrictedContentTypes?: string[] | null;
       quietWindows?: Array<{ from: Date; to: Date; reason: string }> | null;
-      permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean } | null;
+      permissions?: {
+        spendCredits?: boolean;
+        automationAutoPublish?: boolean;
+        requireApprovalForMedia?: boolean;
+      } | null;
+      publishRoles?: Role[] | null;
+      maxPendingReview?: number | null;
+    };
+  }): Promise<BrandGovernance>;
+
+  /**
+   * `brand.governance.set` — the brand's own rules: voice, restricted topics,
+   * claims to avoid, strict mode, brand kit, timezone, posting windows.
+   *
+   * Kept separate from {@link setPolicy} rather than folded into it, because the
+   * two answer different questions and are edited by different people at
+   * different times. `setPolicy` is "who has to sign this off" and is an
+   * operator's setting; this is "what may we say and when do we say it", is
+   * captured in onboarding, and is the brand's own statement about itself.
+   * Merging them would mean one screen owning both, and a partial patch from
+   * either able to clear the other's fields.
+   *
+   * Same merge semantics as `setPolicy`: `undefined` leaves a field alone,
+   * `null` clears it.
+   */
+  setGovernance(args: {
+    brandId: string;
+    orgId: string;
+    patch: {
+      restrictedTopics?: string[] | null;
+      claimsToAvoid?: string[] | null;
+      strictMode?: boolean;
+      toneVector?: { formal: number; playful: number; technical: number; bold: number } | null;
+      bannedPhrases?: string[] | null;
+      logoUrl?: string | null;
+      brandColors?: string[] | null;
+      timezone?: string;
+      postingWindows?: number[] | null;
+      engagementAutonomy?: 'off' | 'suggest' | 'auto';
+      engagementTypes?: string[] | null;
     };
   }): Promise<BrandGovernance>;
 }
@@ -511,6 +627,14 @@ export interface ContentDraft {
   url?: string;
   /** Set only when `status === 'blocked'` — see `ContentStore.markBlocked`. */
   blockedReason?: string;
+  /** Failed publish attempts so far. See `ContentStore.recordPublishFailure`. */
+  publishAttempts?: number;
+  /** The last thing that went wrong, verbatim from the failing tool. */
+  lastPublishError?: string;
+  /** `DISC-02`'s A/B group. Absent on an ordinary post — a test is a deliberate act, not a default. */
+  variantGroupId?: string;
+  /** Which arm: `a`, `b`, … */
+  variantLabel?: string;
   /**
    * The resolved beats/copy payload. `unknown` at this layer for the same
    * reason `CampaignPlan.plan` is — the shape belongs to whichever package
@@ -520,6 +644,8 @@ export interface ContentDraft {
   copy?: unknown;
   why?: Explanation;
   scheduledAt?: Date;
+  /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
+  publishedAt?: Date;
   createdAt: Date;
 }
 
@@ -558,7 +684,53 @@ export interface ContentStore {
     copy: unknown;
     why: Explanation;
     campaignId?: string;
+    /**
+     * The recipe that produced this, when one did — `policy.ts` rule 7's
+     * automation branch reads it back through `publishOrigin`. Without it a
+     * recipe's output was indistinguishable from a person's once it became a
+     * content item, so "automation auto-publish is disabled" could not be
+     * enforced against the only thing it was about.
+     */
+    recipeId?: string;
+    /** The brief, for a row whose copy will be written later (by the scheduler). */
+    intent?: string;
+    /**
+     * The trend this post came out of — PRD §5's "Trend-to-post conversion
+     * rate" counts these. A vendor's id, not a row we own.
+     */
+    sourceTrendId?: string;
+    /**
+     * Create it already scheduled.
+     *
+     * A recipe that publishes unattended has to be able to put a post on the
+     * calendar without a human opening the Draft Panel first. The copy is
+     * written by the scheduler when the slot comes due — same path a campaign
+     * slot takes.
+     */
+    scheduledAt?: Date;
+    /** `content.variant.split`'s two writes — the only caller that sets these. */
+    variantGroupId?: string;
+    variantLabel?: string;
   }): Promise<ContentDraft>;
+
+  /**
+   * Every arm of one A/B test, ordered by label — `content.variant.result`'s
+   * read. Ordered rather than unordered so a two-arm verdict does not swap sides
+   * between refreshes, which reads as a bug even when the numbers agree.
+   */
+  variantGroup(variantGroupId: string, genomeId: string, orgId: string): Promise<ContentDraft[]>;
+
+  /**
+   * Tags an existing draft as an arm of a test — `content.variant.split`'s
+   * second write.
+   *
+   * Its own method rather than two more fields on `updateDraft`, which takes
+   * `copy` and `why` as *required*: tagging arm A must not touch either. Arm A is
+   * usually a draft somebody has already reviewed and possibly scheduled, and a
+   * generic update would either rewrite its copy or force the caller to pass the
+   * copy back unchanged — an invitation to pass it back subtly changed.
+   */
+  tagVariant(args: { id: string; genomeId: string; orgId: string; variantGroupId: string; variantLabel: string }): Promise<ContentDraft | undefined>;
 
   get(id: string, genomeId: string, orgId: string): Promise<ContentDraft | undefined>;
 
@@ -637,6 +809,103 @@ export interface ContentStore {
    */
   markBlocked(args: { id: string; orgId: string; reason: string }): Promise<void>;
 
+  /**
+   * Records one failed publish attempt and returns the running total — PRD
+   * §10's retry flow needs an end, and an end needs a count.
+   *
+   * Returns the count rather than deciding what to do with it: whether five
+   * attempts is too many is the scheduler's policy, not storage's, and the same
+   * counter will want a different ceiling when a queue replaces the poll loop.
+   */
+  recordPublishFailure(args: { id: string; orgId: string; error: string }): Promise<{ attempts: number }>;
+
+  /**
+   * Where this item came from, for `policy.ts` rule 7's automation branch —
+   * `publish.now`'s `policySubject` reads it before the handler runs.
+   *
+   * Deliberately narrow: it answers "was this a recipe's doing, and did that
+   * recipe ask for review" and nothing else. A wider "get the item" would
+   * tempt the policy layer into deciding things from content it has no
+   * business reading. `undefined` when the item does not exist — which
+   * `policySubject` treats as "not automation" rather than as fatal, since
+   * `publish.now`'s own handler will fail on the missing row a moment later
+   * with a better message than the policy engine could give.
+   */
+  publishOrigin(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+  }): Promise<{
+    recipeId?: string;
+    reviewBeforePublish: boolean;
+    /**
+     * The item's campaign's own approval mode, when it set one — PRD §7.2's
+     * per-campaign scope. Absent means the brand's mode applies.
+     */
+    campaignApprovalMode?: ApprovalMode;
+  } | undefined>;
+
+  /**
+   * How many items are waiting on a human for this genome — `needs_review`,
+   * per PRD §7.4.
+   *
+   * Read by the publish tools' `policySubject` for §10's queue cap. A count
+   * rather than a list: the policy engine decides whether the pile is too deep,
+   * and has no business seeing what is in it.
+   */
+  pendingReviewCount(genomeId: string, orgId: string): Promise<number>;
+
+  /**
+   * ── PRD §7.4's two missing states ────────────────────────────────────────
+   *
+   * *"Unified statuses across content: Draft → Needs Review → Approved →
+   * Scheduled → Published. Failed / Blocked."*
+   *
+   * `content_items.status` only ever held `draft`, `scheduled`, `published`,
+   * `failed` or `blocked`. `needs_review` existed solely as an *engagement*
+   * category and `approved` only on approval and recipe-output rows, so a post
+   * held by the approval ladder stayed `scheduled` while a `tool_calls` row sat
+   * at `gated` — the Review queue was assembled from audit rows and the content
+   * item itself had no idea it was waiting on anyone.
+   *
+   * Two things followed. §8.7's "filters by status" could not offer a Needs
+   * Review filter, because no item was ever in that state. And a held item
+   * stayed `scheduled`, so `findDue` re-selected it on every tick and re-held
+   * it, forever.
+   */
+
+  /**
+   * A publish was held for a human. Sets `status: 'needs_review'` and records
+   * why, so the calendar can say what is waiting and on what rule.
+   *
+   * Deliberately takes the item *out* of `scheduled`: it is no longer due, it is
+   * pending a decision, and re-attempting it every minute until somebody
+   * notices is not the same thing as waiting for them.
+   */
+  markNeedsReview(args: { id: string; orgId: string; reason: string }): Promise<void>;
+
+  /**
+   * A human approved it. Sets `status: 'approved'`.
+   *
+   * Usually momentary — `approval.decide` replays the held call straight away
+   * and a successful replay moves it to `published` within the same request. It
+   * persists exactly when it matters most: when the replay *failed*, so the
+   * calendar shows "a person approved this and it still did not go out", which
+   * is otherwise indistinguishable from "nobody has looked at it".
+   */
+  markApproved(args: { id: string; orgId: string }): Promise<void>;
+
+  /**
+   * A reviewer said no. Returns the item to `draft` with the reason recorded.
+   *
+   * `draft`, not a `rejected` state of its own: PRD §7.4's ladder has no such
+   * rung, and the honest description of a post a reviewer turned down is that it
+   * is editable again. A terminal `rejected` would make the ordinary next
+   * action — fix the copy and resubmit — impossible without a second tool to
+   * undo it.
+   */
+  markRejected(args: { id: string; orgId: string; reason: string }): Promise<void>;
+
   /** Write side of `compose.render` — one row per aspect ratio rendered. */
   recordRender(args: {
     contentItemId: string;
@@ -672,6 +941,8 @@ export interface ContentMetricsSnapshot {
   shares: number;
   views: number;
   impressions: number;
+  /** `CC-04`'s "Saves" — the strongest usefulness signal on Instagram and TikTok. */
+  saves: number;
   syncedAt: Date;
 }
 
@@ -694,6 +965,7 @@ export interface AnalyticsStore {
     shares: number;
     views: number;
     impressions: number;
+    saves: number;
     raw: unknown;
   }): Promise<ContentMetricsSnapshot>;
   /** Every synced platform snapshot across a set of posts — `campaign.report_vs_outcome`'s roll-up. */
@@ -741,6 +1013,21 @@ export interface EngagementMessage {
   intentScore?: number;
   suggestedReply?: string;
   why?: Explanation;
+  /**
+   * When this stopped needing anyone's attention. PRD §5's "Reply SLA" is the
+   * interval from `receivedAt` to here — absent while the message is still open,
+   * which is how the metric tells "unanswered" from "answered instantly".
+   */
+  resolvedAt?: Date;
+  /**
+   * Which conversation this belongs to — `ENG-02.4`. Absent on rows written
+   * before threading existed, which is why `engage.thread` treats a missing key
+   * as "this message is its own thread" rather than as an error.
+   */
+  threadKey?: string;
+  /** What we sent back, and when. The outbound half of a thread. */
+  sentReply?: string;
+  sentAt?: Date;
   createdAt: Date;
 }
 
@@ -768,9 +1055,24 @@ export interface EngagementStore {
     text: string;
     contentItemId?: string;
     receivedAt?: Date;
+    /**
+     * The conversation this belongs to. Derived by `engage.ingest` when the
+     * platform supplies nothing, so the derivation rule lives in one place
+     * rather than in each store.
+     */
+    threadKey?: string;
   }): Promise<EngagementMessage>;
 
   get(id: string, genomeId: string, orgId: string): Promise<EngagementMessage | undefined>;
+
+  /**
+   * One conversation, **oldest first** — `engage.thread`'s read (`ENG-02.4`).
+   *
+   * The opposite order to `list` and `audit`, deliberately: a feed answers "what
+   * is new" and a transcript is read downward. Sorting here rather than in the
+   * caller keeps one rule in one place.
+   */
+  thread(genomeId: string, orgId: string, args: { threadKey: string; limit: number }): Promise<EngagementMessage[]>;
 
   /** The triage write — sorts a message into the feed's tabs. */
   classify(args: {
@@ -815,11 +1117,18 @@ export interface EngagementStore {
    * `replied` — no new column for the sent text or the outbound platform
    * message id: the enum already on the row
    * (`new|classified|replied|auto_handled|escalated|dismissed`) has a slot
-   * for exactly this, and the reply text itself is exactly the `text` the
-   * caller supplied, already captured on the audit row (`tool_calls.input`)
-   * the same way every other write's input is.
+   * for exactly this.
+   *
+   * This comment used to end by arguing the sent text needed no column either —
+   * *"the reply text itself is exactly the `text` the caller supplied, already
+   * captured on the audit row"*. True, and not sufficient once `ENG-02.4` asked
+   * for the conversation: `tool_calls` is deliberately a projection that never
+   * returns inputs, and a thread missing its outbound turns is half a
+   * transcript. `sentReply` is optional on this call because the send has
+   * already happened by the time it runs — a caller that cannot supply the text
+   * must still be able to record that the message was answered.
    */
-  markReplied(args: { id: string; genomeId: string; orgId: string }): Promise<EngagementMessage | undefined>;
+  markReplied(args: { id: string; genomeId: string; orgId: string; sentReply?: string }): Promise<EngagementMessage | undefined>;
 
   /**
    * `engage.autohandle`'s write, once the unattended send succeeds. A
@@ -829,7 +1138,7 @@ export interface EngagementStore {
    * collapsing them onto `replied` would erase that distinction from every
    * read that groups by status (`engage.list`, `engage.audit.query`).
    */
-  markAutoHandled(args: { id: string; genomeId: string; orgId: string }): Promise<EngagementMessage | undefined>;
+  markAutoHandled(args: { id: string; genomeId: string; orgId: string; sentReply?: string }): Promise<EngagementMessage | undefined>;
 
   /**
    * Flips `status` to `escalated` — `engage.escalate`'s write, and also
@@ -896,6 +1205,38 @@ export interface CreditStore {
    * subtraction is a cost with no benefit.
    */
   budget(orgId: string, now: Date): Promise<{ monthlyCapCents: number; spentCents: number }>;
+
+  /**
+   * What the money went on this period, biggest first — `org.usage.get`'s read,
+   * and PRD §12's "what consumes credits" answered from what was actually
+   * charged rather than from a table of list prices.
+   *
+   * Separate from {@link budget} on purpose: that one runs on the hot path of
+   * every single request and must stay a single cheap subtraction. This is a
+   * `group by` a settings panel asks for occasionally, and putting it on the
+   * same call would make every tool invocation pay for it.
+   */
+  spendByTool(
+    orgId: string,
+    now: Date,
+    limit: number,
+  ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
+
+  /**
+   * What the money went on this period, biggest first — `org.usage.get`'s read,
+   * and PRD §12's "what consumes credits" answered from what was actually
+   * charged rather than from a table of list prices.
+   *
+   * Separate from {@link budget} on purpose: that one runs on the hot path of
+   * every single request and must stay a single cheap subtraction. This is a
+   * `group by` a settings panel asks for occasionally, and putting it on the
+   * same call would make every tool invocation pay for it.
+   */
+  spendByTool(
+    orgId: string,
+    now: Date,
+    limit: number,
+  ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
 
   /**
    * Append one charge. Idempotent on `callId` — a second write for the same
@@ -985,6 +1326,78 @@ export interface CampaignRecord {
    */
   targetCount?: number;
   targetLabel?: string;
+  /**
+   * `CMP-01.4`'s connected-account selection. Empty or absent means "wherever
+   * each chosen format is meant for" — see `campaigns.platforms` in `schema.ts`
+   * on the scheduler fallback this replaces.
+   */
+  platforms?: string[];
+  /**
+   * PRD §7.2's per-campaign approval scope. Absent means the brand's own mode
+   * applies — see `campaigns.approvalMode` in `schema.ts`.
+   */
+  approvalMode?: ApprovalMode;
+}
+
+/**
+ * PRD §5's success metrics, as counts.
+ *
+ * Read-only and aggregate-only — there is no write side, because every number
+ * here is derived from rows some other tool already wrote. That is the point:
+ * §5 asked for fourteen metrics and the raw material for nearly all of them was
+ * already being recorded, with nothing aggregating any of it.
+ *
+ * Two readers rather than one, because they read two different kinds of thing.
+ * `successMetrics` is genome-scoped domain data and goes through `scoped.ts`;
+ * `toolActivity` reads `tool_calls`, which is the audit log rather than tenant
+ * content and is deliberately outside `SCOPED_TABLES`.
+ */
+export interface MetricsStore {
+  successMetrics(
+    genomeId: string,
+    orgId: string,
+    since: Date,
+  ): Promise<{
+    connectedAccounts: number;
+    campaignCount: number;
+    firstCampaignStartAt: Date | null;
+    firstPublishedAt: Date | null;
+    publishedInWindow: number;
+    postsWithTrackedLink: number;
+    postsFromTrends: number;
+    recipeCount: number;
+    outputsApproved: number;
+    outputsRejected: number;
+    messagesInWindow: number;
+    messagesResolved: number;
+    meanReplySeconds: number | null;
+    opportunitiesInWindow: number;
+    opportunitiesRouted: number;
+    publishedEverBlocked: number;
+    rolledBack: number;
+    needsReview: number;
+  }>;
+
+  /**
+   * What was attempted and what was refused, from the audit log.
+   *
+   * `publishHeld` counts policy holds (`decision: 'approval'`) and `publishBlocked`
+   * counts hard guardrail failures — §5's "% of blocked/flagged prevented from
+   * publishing" is the two together over every attempt, since both are the
+   * governance layer stopping something.
+   */
+  toolActivity(
+    orgId: string,
+    genomeId: string,
+    since: Date,
+  ): Promise<{
+    publishAttempts: number;
+    publishBlocked: number;
+    publishHeld: number;
+    draftCalls: number;
+    trendsRanked: number;
+    repurposeCalls: number;
+  }>;
 }
 
 export interface CampaignSlotInput {
@@ -992,6 +1405,16 @@ export interface CampaignSlotInput {
   mode: string;
   pillar: string;
   scheduledAt: Date;
+  /**
+   * Which account this slot posts to.
+   *
+   * Written at placement time from the campaign's own `platforms`, rather than
+   * left for the scheduler to guess from the playbook. `content_items.platform`
+   * existed and nothing ever populated it, which is the entire reason
+   * `apps/api/src/scheduler.ts` carried a *"falling back to the playbook's first
+   * declared platform"* branch.
+   */
+  platform?: string;
 }
 
 /**
@@ -1013,6 +1436,8 @@ export interface CampaignStore {
     plan: unknown;
     targetCount?: number;
     targetLabel?: string;
+    platforms?: string[];
+    approvalMode?: ApprovalMode;
   }): Promise<{ id: string }>;
   /** Undefined rather than throwing when out of scope. */
   get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
@@ -1036,6 +1461,8 @@ export interface CampaignStore {
       pillar: string | null;
       status: string;
       scheduledAt: Date | null;
+      /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
+      platform: string | null;
     }>
   >;
   setStatus(campaignId: string, orgId: string, status: string): Promise<void>;
@@ -1051,11 +1478,74 @@ export interface TrendWatchlistEntry {
   createdAt: Date;
 }
 
+/** One account a brand is studying — §8.9's influencer watchlist. */
+export interface InfluencerWatch {
+  id: string;
+  platform: string;
+  /** Normalised: lowercase, no leading `@`. */
+  handle: string;
+  displayName?: string;
+  note?: string;
+  createdAt: Date;
+}
+
+/**
+ * §8.9's *second* watchlist, kept apart from {@link TrendWatchlistStore}.
+ *
+ * A watched keyword joins to a trend id; a watched account joins to a handle on
+ * a platform. Different keys, different readers, and two of six shared columns —
+ * one store with a `kind` discriminator would be a union pretending to be a
+ * table.
+ *
+ * Genome-scoped, and more sharply than most: **which accounts a brand studies is
+ * often a list of its competitors.** That is exactly the material an agency
+ * cannot let surface in another client's workspace.
+ */
+export interface InfluencerWatchStore {
+  /** Upsert by (genome, platform, handle) — watching the same account twice is one watch. */
+  add(args: { genomeId: string; orgId: string; platform: string; handle: string; displayName?: string; note?: string }): Promise<InfluencerWatch>;
+  remove(args: { genomeId: string; orgId: string; platform: string; handle: string }): Promise<void>;
+  list(genomeId: string, orgId: string): Promise<InfluencerWatch[]>;
+}
+
 export interface TrendWatchlistStore {
   /** Upsert by (genome, trend) — watching the same trend twice is one watch, not two. */
   add(args: { genomeId: string; orgId: string; trendId: string; source: string; topic: string; note?: string }): Promise<TrendWatchlistEntry>;
   remove(args: { genomeId: string; orgId: string; trendId: string }): Promise<void>;
   list(genomeId: string, orgId: string): Promise<TrendWatchlistEntry[]>;
+}
+
+/**
+ * One hourly sample of one trend's metrics — PRD §8.9's *"metrics + time
+ * series"* on the `DISC-02` detail screen.
+ *
+ * Not genome-scoped, unlike everything around it: these are measurements of
+ * the outside world, and the series is only worth anything if it accumulates
+ * across every caller. See `trend_observations` in `schema.ts`.
+ */
+export interface TrendObservation {
+  source: string;
+  trendId: string;
+  topic: string;
+  /** Truncated to the hour by the store, so recording is idempotent. */
+  observedAt: Date;
+  volume: number;
+  /** 0–1, as `TrendMetrics` carries them — the integer encoding is storage's business. */
+  velocity: number;
+  saturation: number;
+  /** Signed period-over-period change. */
+  growth: number;
+}
+
+export interface TrendObservationStore {
+  /**
+   * Records a batch, bucketed to the hour, last-write-wins within a bucket.
+   * Safe to call on every read path: the unique index collapses duplicates, so
+   * a thousand `trend.rank` calls in an hour leave one row per trend.
+   */
+  record(observations: TrendObservation[]): Promise<void>;
+  /** Oldest first — a chart reads left to right. */
+  series(args: { source: string; trendId: string; sinceDays: number; limit?: number }): Promise<TrendObservation[]>;
 }
 
 /** One (genome, pillar) Thompson-sampling arm — `learning.*`'s storage (plan §6.7). */
@@ -1152,6 +1642,8 @@ export interface AssetFolderRecord {
   genomeId: string;
   name: string;
   createdAt: Date;
+  /** How many assets are in it — `LIB-01`'s folder list shows this. Zero for a new folder. */
+  assetCount: number;
 }
 
 export interface AssetFolderStore {
@@ -1174,6 +1666,8 @@ export interface OAuthConnectionRecord {
   scopes?: string[];
   /** Human-readable "@handle" or page/channel name, when cheaply available right after token exchange. */
   accountLabel?: string;
+  /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
+  expiryNotifiedAt?: Date;
 }
 
 export interface OAuthConnectionStore {
@@ -1190,6 +1684,24 @@ export interface OAuthConnectionStore {
     accountLabel?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
+
+  /**
+   * Connections whose token expires before `before` and that have not been
+   * warned about since it was last saved — PRD §10's connection alerts.
+   *
+   * **Cross-tenant by necessity**, like `findDueContentItems`: the caller is a
+   * clock, and a clock has no session to be scoped to. Every row carries its own
+   * `orgId`/`genomeId` so the notification it produces goes through the tenant's
+   * own governance, and this is the only method on this store that is not
+   * genome-keyed — deliberately narrow for that reason.
+   */
+  findExpiring(args: { before: Date; limit: number }): Promise<(OAuthConnectionRecord & { orgId: string })[]>;
+
+  /**
+   * Latches the alert so the next tick does not repeat it. Cleared by `save`,
+   * which is what makes a reconnection re-arm the warning.
+   */
+  markExpiryNotified(args: { id: string; orgId: string; at: Date }): Promise<void>;
 }
 
 /** One ingested chunk of claim-grounding source text — `brand.knowledge.attach`'s storage. */
@@ -1221,6 +1733,12 @@ export interface OrgSettingsRecord {
   plan: 'starter' | 'growth' | 'agency';
   defaultApprovalMode: string;
   ssoRequired: boolean;
+  /** §8.12's other half of "security (SSO/2FA)". */
+  twoFactorRequired: boolean;
+  /** §8.12's data residency commitment. `any` when none has been made. */
+  dataResidency: string;
+  /** §8.12's retention policy, in days. Absent means keep indefinitely. */
+  retentionDays?: number;
   monthlyCapCents: number;
   updatedAt: Date;
 }
@@ -1229,7 +1747,14 @@ export interface OrgSettingsStore {
   /** Upsert-on-read, like `brands.get` — a missing row resolves to the schema defaults, never to "unset". */
   get(orgId: string): Promise<OrgSettingsRecord>;
   setPlan(args: { orgId: string; plan: 'starter' | 'growth' | 'agency'; monthlyCapCents: number }): Promise<OrgSettingsRecord>;
-  setGovernance(args: { orgId: string; defaultApprovalMode: string }): Promise<OrgSettingsRecord>;
+  setGovernance(args: {
+    orgId: string;
+    defaultApprovalMode?: string;
+    twoFactorRequired?: boolean;
+    dataResidency?: string;
+    /** `null` clears the policy back to "keep indefinitely". */
+    retentionDays?: number | null;
+  }): Promise<OrgSettingsRecord>;
   setSso(args: { orgId: string; required: boolean }): Promise<OrgSettingsRecord>;
 }
 
@@ -1309,11 +1834,73 @@ export interface RunDetail extends RunSummary {
 export type GuardrailId =
   | 'claim_grounding'
   | 'compliance_profile'
+  /** PRD §9's restricted topics and claims-to-avoid — see `guardrails/src/restrictedTopics.ts`. */
+  | 'restricted_topics'
   | 'brand_voice'
   | 'avatar_saturation'
   | 'duplicate'
   | 'platform_policy'
   | 'rights';
+
+/* ── The publish context the policy engine reads ────────────────────── */
+
+/**
+ * What `policy.ts` rule 7 needs to know about *this* publish, beyond the tool
+ * and the brand: which platform, what kind of content, and whether it came out
+ * of an automation recipe.
+ *
+ * ── Why the tool derives this and the caller does not ──────────────────────
+ *
+ * These four fields were read by the policy engine from `InvokeRequest.subject`
+ * from the day rule 7 was written, and nothing ever set them. The write side
+ * was complete — `approval.policy.set` persists `restrictedPlatforms`, the
+ * settings panel edits it, `loadBrandGovernance` loads it — so a workspace
+ * could switch on "Instagram requires review", see it saved, and publish to
+ * Instagram unreviewed forever.
+ *
+ * The obvious repair is to have the caller pass `subject`, and it is the wrong
+ * one: every rule here *adds* a restriction, so a caller that omits the field
+ * is a caller that escapes the restriction. "Restrict autopublish on Instagram"
+ * has to mean the restriction holds for a caller that would rather it did not.
+ *
+ * So the tool declares how its own input maps to this shape, and `invoke.ts`
+ * computes it from *validated input* after the tool has been resolved. There is
+ * no request field to omit. `guardrailFlags` stays on the request — flags
+ * describe the invocation's context (untrusted content in the turn) rather than
+ * the post, and can only ever escalate.
+ */
+export interface PolicySubject {
+  platform?: string;
+  contentType?: string;
+  isAutomationOutput?: boolean;
+  reviewBeforePublish?: boolean;
+  /**
+   * `policy.ts` rule 6's input — PRD §8.8's eligibility gate and autonomy
+   * requirement for the `engage.*` publish family.
+   *
+   * Here for exactly the reason the four fields above are: it used to arrive on
+   * `InvokeRequest` and was forwarded verbatim from the HTTP request body, so a
+   * client could post `engagement: { eligible: true, autonomyConfigured: true }`
+   * and send unattended replies for a campaign that had never published
+   * anything. Unlike the fields above it failed *closed* when omitted — rule 6
+   * denies without it — which is why nothing ever looked broken. Forgeable is
+   * worse than broken: broken gets reported.
+   *
+   * Derived by the tool from the message's own campaign and the brand's stored
+   * autonomy setting. There is no request field left to forge.
+   */
+  engagement?: { eligible: boolean; autonomyConfigured: boolean };
+  /**
+   * PRD §7.2's per-campaign approval scope. Overrides `brand.approvalMode` for
+   * this post in either direction — see `policy.ts` rule 7.
+   */
+  campaignApprovalMode?: 'autopublish' | 'review_first_week' | 'review_everything';
+  /**
+   * How many items already sit at `needs_review` for this brand — §10's queue
+   * cap (`brand.maxPendingReview`) reads it in rule 4c.
+   */
+  pendingReviewCount?: number;
+}
 
 /* ── The contract ──────────────────────────────────────────────────── */
 
@@ -1343,6 +1930,34 @@ export interface ToolDef<I extends ZodTypeAny = ZodTypeAny, O extends ZodTypeAny
   /** Pre-flight cost estimate in cents, checked against remaining budget. */
   estimateCents?: (input: z.infer<I>) => number;
 
+  /**
+   * The publish context `policy.ts` rule 7 evaluates against brand governance —
+   * see {@link PolicySubject} on why this belongs to the tool and not the caller.
+   *
+   * Required (by `defineTool`'s own check) on every `effect: 'publish'` tool, so
+   * that adding a new publish path cannot silently opt out of platform and
+   * content-type restrictions. Async and given `ctx` because some of it is a
+   * fact about a stored row rather than about the input — whether a content item
+   * came from a recipe, and whether that recipe asked for review — and rule 7
+   * has to know before the handler runs.
+   */
+  policySubject?: (input: z.infer<I>, ctx: ToolCtx) => Promise<PolicySubject>;
+
+  /**
+   * True for a tool whose whole job is spending a vendor's money to produce a
+   * media file — an image, a video, a voiceover, a dub, a render.
+   *
+   * Declared rather than inferred, because there is no reliable way to infer it:
+   * `content.*` holds `content.draft` (text, ~1¢) next to
+   * `content.generate_avatar_video` (50¢), and `compose.*` holds a Canva
+   * passthrough next to a Remotion video render. A family check would gate the
+   * cheap ones or miss the expensive ones.
+   *
+   * Read by `policy.ts` rule 4b for PRD §6's "Approval required for media
+   * generation (optional)" permission.
+   */
+  producesMedia?: boolean;
+
   /** When false, callers must supply an idempotency key. */
   idempotent: boolean;
 
@@ -1363,6 +1978,16 @@ export const defineTool = <I extends ZodTypeAny, O extends ZodTypeAny>(
   }
   if ((def.effect === 'spend') && !def.estimateCents) {
     throw new Error(`"${def.name}": spend tools must provide estimateCents`);
+  }
+  /* Rule 7's restrictions are only as good as the weakest publish tool. Making
+   * this a boot-time failure rather than a review-time convention is what stops
+   * the next publish path from quietly reintroducing the gap `PolicySubject`
+   * documents. */
+  if (def.effect === 'publish' && !def.policySubject) {
+    throw new Error(
+      `"${def.name}": publish tools must provide policySubject, or brand platform/content-type ` +
+        `restrictions cannot be enforced against them (see PolicySubject in defineTool.ts)`,
+    );
   }
   return def;
 };

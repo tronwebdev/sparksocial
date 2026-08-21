@@ -7,6 +7,7 @@ import { UserMenu } from '@/components/shell/UserMenu';
 import { AssetUploadForm } from '@/components/assets/AssetUploadForm';
 import { AssetSearchGrid } from '@/components/assets/AssetSearchGrid';
 import { AssetGapsPanel } from '@/components/assets/AssetGapsPanel';
+import { FolderLibrary } from '@/components/assets/FolderLibrary';
 
 /**
  * Was a placeholder tagged `phase="P2"`. Asset Graph — ingest, caption,
@@ -34,6 +35,9 @@ export default function AssetsPage() {
         </section>
 
         <AssetGapsPanel refreshKey={refreshKey} />
+        {/* LIB-01/LIB-02 — the folder list and detail. Above the semantic search
+            because a library is browsed before it is queried. */}
+        <FolderLibrary refreshKey={refreshKey} />
         <AssetSearchGrid refreshKey={refreshKey} />
       </div>
     </>

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
+import { deriveThreadKey } from './thread.js';
 
 /**
  * `engage.ingest` — the inbox's one write side. PRD §8.8's feed consolidates
@@ -31,6 +32,16 @@ export const EngageIngestInput = z.object({
   /** The post this replies to, when known. */
   contentItemId: z.string().optional(),
   receivedAt: z.string().datetime().optional(),
+  /**
+   * The platform's own conversation id, when it gives one — `ENG-02.4`'s thread.
+   *
+   * Optional because most of the five do not supply one on every event shape,
+   * and a required field would force a webhook adapter to invent a value. Absent
+   * means the key is derived (`deriveThreadKey`), which is conservative by
+   * construction: it always includes the author, so two people can never be
+   * merged into one conversation.
+   */
+  threadKey: z.string().min(1).max(200).optional(),
 });
 
 export const EngageIngestOutput = z.object({
@@ -78,6 +89,20 @@ export const engageIngest = defineTool({
       text: input.text,
       ...(input.contentItemId ? { contentItemId: input.contentItemId } : {}),
       ...(input.receivedAt ? { receivedAt: new Date(input.receivedAt) } : {}),
+      /**
+       * Derived here rather than in the store, so the rule lives in one place
+       * and both the Postgres and in-memory stores file a message the same way.
+       * A platform-supplied id always wins — it knows what a conversation is
+       * and this only guesses.
+       */
+      threadKey:
+        input.threadKey ??
+        deriveThreadKey({
+          platform: input.platform,
+          kind: input.kind,
+          authorHandle: input.authorHandle,
+          ...(input.contentItemId ? { contentItemId: input.contentItemId } : {}),
+        }),
     });
 
     return { id: message.id, status: message.status };

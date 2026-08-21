@@ -12,6 +12,13 @@ export interface RawPostMetrics {
   shares: number;
   views: number;
   impressions: number;
+  /**
+   * `CC-04`'s "Saves". Optional on the seam, because not every platform reports
+   * it and a vendor client that cannot must not have to invent a number —
+   * absent normalizes to zero, which is the honest reading of "this platform
+   * does not tell us".
+   */
+  saves?: number;
   /** The vendor's unnormalized response, kept verbatim for anything the normalization missed. */
   raw: unknown;
 }

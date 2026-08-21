@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type ScopedDb, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import type { ResolvedBeat } from '@sparksocial/generate';
-import { dimensionsFor, zipTimeline, type TimedBeat } from './timeline.js';
+import { dimensionsFor, zipTimeline, type BrandKit, type TimedBeat } from './timeline.js';
 
 /**
  * `compose.static` — the second of the plan's three `compose.*` tools
@@ -43,7 +43,7 @@ export const ComposeStaticOutput = z.object({
 
 export interface StaticRunner {
   /** Renders one frame (Satori's whole job — it has no concept of a timeline) as a still image and returns a public URL. */
-  renderStill(props: { beats: TimedBeat[]; width: number; height: number }): Promise<string>;
+  renderStill(props: { beats: TimedBeat[]; width: number; height: number; brandKit?: BrandKit }): Promise<string>;
 }
 
 export interface ComposeStaticDeps {
@@ -70,6 +70,12 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
     scopes: ['owner', 'admin', 'editor'],
     // Same reasoning as `compose.render`: a re-render is a new render, not a safe replay.
     idempotent: false,
+
+    // PRD §6's \"approval required for media generation\" permission —
+
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+
+    producesMedia: true,
 
     estimateCents: () => COST_CENTS_PER_RENDER,
 
@@ -106,11 +112,12 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
       const timeline = zipTimeline({ resolvedBeats, playbookBeats: playbook.structure.beats, assetInfo });
       const aspects = playbook.output.aspect_ratios;
       const renders: Array<{ aspect: string; url: string; beatId?: string }> = [];
+      const brandKit = await brandKitFor(ctx);
 
       if (mediaType === 'image') {
         for (const aspect of aspects) {
           const { width, height } = dimensionsFor(aspect);
-          const url = await deps.runner.renderStill({ beats: timeline, width, height });
+          const url = await deps.runner.renderStill({ beats: timeline, width, height, ...(brandKit ? { brandKit } : {}) });
           renders.push({ aspect, url });
         }
       } else {
@@ -118,7 +125,7 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
         for (const aspect of aspects) {
           const { width, height } = dimensionsFor(aspect);
           for (const beat of timeline) {
-            const url = await deps.runner.renderStill({ beats: [beat], width, height });
+            const url = await deps.runner.renderStill({ beats: [beat], width, height, ...(brandKit ? { brandKit } : {}) });
             renders.push({ aspect, url, beatId: beat.beatId });
           }
         }
@@ -160,4 +167,30 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
       };
     },
   });
+}
+
+/**
+ * §8.6's "Apply Brand Kit", resolved from the brand rather than passed in.
+ *
+ * Not an input on either compose tool, deliberately: the kit is a property of
+ * the brand, and a caller able to pass its own colours could render a post in a
+ * palette nobody set on the brand — which is exactly the drift `brand.rules`
+ * exists to prevent. A missing brand is not an error here; it means "no kit",
+ * and the renderers fall back to their own defaults.
+ */
+async function brandKitFor(ctx: { brandId?: string; orgId: string; db: ScopedDb; logger: ToolCtx['logger'] }): Promise<BrandKit | undefined> {
+  if (!ctx.brandId) return undefined;
+  try {
+    const brand = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
+    const colors = brand.brandColors ?? [];
+    if (!brand.logoUrl && colors.length === 0) return undefined;
+    return { ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}), colors };
+  } catch (e) {
+    // A render is worth more than its styling. Losing the kit produces a
+    // correct post in default colours; failing the call produces nothing.
+    ctx.logger.warn('brand kit unavailable, rendering with defaults', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return undefined;
+  }
 }

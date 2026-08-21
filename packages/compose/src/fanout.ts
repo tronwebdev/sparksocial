@@ -95,6 +95,9 @@ export function makeComposeFanout(deps: ComposeFanoutDeps = {}) {
     // Canva's own pricing for Autofill/Export API calls is not published per-call;
     // this is a placeholder ceiling, same honest-approximation posture
     // `compose.render`'s own estimate takes for compute it does not meter.
+    // PRD §6's \"approval required for media generation\" permission —
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+    producesMedia: true,
     estimateCents: () => 2,
 
     async handler(input, ctx) {

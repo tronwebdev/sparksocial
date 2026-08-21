@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError, Explanation } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
+import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
+import { resolveEngagementEligibility } from './eligibility.js';
 
 /**
  * `engage.reply.send` — the second half of the "approve & send" loop
@@ -31,6 +33,57 @@ import type { ReplySender } from './replySender.js';
  * message for the same reason `publish.now` keys on `contentItemId:platform`.
  */
 
+/**
+ * The policy context `policy.ts` rules 6 and 7 evaluate for an outbound reply.
+ *
+ * ── Why the engagement gate moved here ─────────────────────────────────────
+ *
+ * `engagement` used to arrive on `InvokeRequest`, forwarded verbatim from the
+ * HTTP request body (`app.ts`). So a client could post
+ * `engagement: { eligible: true, autonomyConfigured: true }` and send unattended
+ * replies for a campaign that had never published anything — PRD §8.8's entire
+ * eligibility gate, bypassed by two booleans the caller chose.
+ *
+ * It failed *closed* when the field was absent (rule 6 denies without it), which
+ * is why nothing ever looked broken. Forgeable is worse than broken: broken gets
+ * reported.
+ *
+ * Both halves are now facts the server owns:
+ *
+ *   - `eligible` is recomputed here from the genome's most recent campaign,
+ *     using the same rule and the same two constants `engage.eligibility.check`
+ *     exposes as a tool. One rule, two readers — a second implementation is how
+ *     the screen and the gate come to disagree.
+ *   - `autonomyConfigured` is `brands.engagementAutonomy !== 'off'`. A brand that
+ *     has never chosen leaves SPARK suggesting replies for a person to send,
+ *     which is what rule 6's `approval` outcome does with it.
+ *
+ * Rule 6 runs before rule 7, so an ineligible brand is denied before the
+ * platform and content-type restrictions are even consulted.
+ */
+async function replyPolicySubject(
+  input: { messageId: string; genomeId: string },
+  ctx: ToolCtx,
+): Promise<PolicySubject> {
+  const [message, eligibility, brand] = await Promise.all([
+    ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
+    resolveEngagementEligibility(ctx, input.genomeId),
+    ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
+  ]);
+
+  return {
+    ...(message?.platform ? { platform: message.platform } : {}),
+    // Not a media type: a workspace that wants replies reviewed while posts
+    // flow freely (or the reverse) has to be able to name them separately, and
+    // nothing else in the system produces this string.
+    contentType: 'engagement_reply',
+    engagement: {
+      eligible: eligibility.eligible,
+      autonomyConfigured: (brand?.engagementAutonomy ?? 'off') !== 'off',
+    },
+  };
+}
+
 export const EngageReplySendInput = z.object({
   genomeId: z.string().min(1),
   messageId: z.string().min(1),
@@ -49,6 +102,12 @@ export const EngageReplySendOutput = z.object({
 
 export interface EngageReplySendDeps {
   sender: ReplySender;
+  /**
+   * Checks the reply before it goes out — see `replyGuard.ts`. A person has read
+   * these words, so only a hard *block* stops them; a flag is noise they have
+   * already judged.
+   */
+  guard?: ReplyGuard;
 }
 
 export function makeEngageReplySend(deps: EngageReplySendDeps) {
@@ -64,6 +123,7 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
     output: EngageReplySendOutput,
 
     effect: 'publish',
+    policySubject: replyPolicySubject,
     autonomy: 'confirm',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: false,
@@ -81,6 +141,15 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
         throw new ToolError('NOT_FOUND', 'No inbox message with that id in this genome.');
       }
 
+      // A human is sending words they can see, so only a block stops this —
+      // see `enforceReplyGuard` on why `unattended` is the whole difference
+      // between this call site and `engage.autohandle`'s.
+      await enforceReplyGuard(
+        deps.guard,
+        { genomeId: input.genomeId, platform: message.platform, text: input.text, unattended: false },
+        ctx,
+      );
+
       const receipt = await deps.sender.send({
         platform: message.platform,
         kind: message.kind,
@@ -93,6 +162,10 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
         id: message.id,
         genomeId: input.genomeId,
         orgId: ctx.orgId,
+        // The outbound half of `ENG-02.4`'s transcript. Stored on the row rather
+        // than left in `tool_calls.input`, which is a projection that never
+        // returns inputs — see `EngagementStore.markReplied`.
+        sentReply: input.text,
       });
       // The reply is already delivered by this point — a store failure here
       // must not be reported as a send failure (that would invite a retry

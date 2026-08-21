@@ -59,15 +59,36 @@ export interface RateBudget {
   windowMs: number;
 }
 
+const DAY = 24 * 3_600_000;
+
 export const DEFAULT_BUDGETS: Record<Platform, RateBudget> = {
   // Conservative by design. These are product-level throttles well under the
   // platforms' published limits — the aim is "never the reason an account got
   // flagged", not maximum throughput.
-  instagram: { perWindow: 25, windowMs: 24 * 3_600_000 },
-  tiktok: { perWindow: 15, windowMs: 24 * 3_600_000 },
-  linkedin: { perWindow: 20, windowMs: 24 * 3_600_000 },
-  x: { perWindow: 50, windowMs: 24 * 3_600_000 },
-  youtube_shorts: { perWindow: 10, windowMs: 24 * 3_600_000 },
+  instagram: { perWindow: 25, windowMs: DAY },
+  // Stories are expected to be frequent and are ephemeral, so the ceiling is
+  // higher than the feed's — the reputational risk a throttle guards against is
+  // mostly a feed phenomenon.
+  instagram_story: { perWindow: 40, windowMs: DAY },
+  tiktok: { perWindow: 15, windowMs: DAY },
+  linkedin: { perWindow: 20, windowMs: DAY },
+  x: { perWindow: 50, windowMs: DAY },
+  youtube_shorts: { perWindow: 10, windowMs: DAY },
+  // Long-form is slow to produce and slow to consume; more than a few a day is
+  // a mistake rather than a strategy.
+  youtube_long: { perWindow: 3, windowMs: DAY },
+  facebook: { perWindow: 25, windowMs: DAY },
+  // Groups are the highest-moderation-risk surface here: posting too often is
+  // how an account gets removed by a group admin rather than by the platform.
+  facebook_group: { perWindow: 5, windowMs: DAY },
+  threads: { perWindow: 25, windowMs: DAY },
+  pinterest: { perWindow: 25, windowMs: DAY },
+  google_business: { perWindow: 10, windowMs: DAY },
+  // Reddit's own communities enforce this harder than Reddit does — the PRD's
+  // Track 7 flags automated posting there as a per-community risk, and this is
+  // the throttle that keeps a mistake small.
+  reddit: { perWindow: 3, windowMs: DAY },
+  bluesky: { perWindow: 50, windowMs: DAY },
 };
 
 /**

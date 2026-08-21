@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError, Autonomy } from '@sparksocial/shared';
+import { Explanation, ToolError, Autonomy, Role } from '@sparksocial/shared';
 
 /**
  * `approval.policy.*` — the fine-grained escalation rules `policy.ts` (§9)
@@ -27,7 +27,17 @@ const QuietWindow = z
     message: '"to" must be after "from".',
     path: ['to'],
   });
-const Permissions = z.object({ spendCredits: z.boolean().optional(), automationAutoPublish: z.boolean().optional() });
+const Permissions = z.object({
+  spendCredits: z.boolean().optional(),
+  automationAutoPublish: z.boolean().optional(),
+  /**
+   * PRD §6's "Approval required for media generation (optional)" — the one of
+   * the five permission controls that had no representation anywhere, and the
+   * one guarding the expensive calls (`content.generate_avatar_video` is 50¢,
+   * `content.generate_dub` 60¢).
+   */
+  requireApprovalForMedia: z.boolean().optional(),
+});
 
 const PolicyOutput = z.object({
   brandId: z.string(),
@@ -36,6 +46,8 @@ const PolicyOutput = z.object({
   restrictedContentTypes: z.array(z.string()).nullable(),
   quietWindows: z.array(z.object({ from: z.string(), to: z.string(), reason: z.string() })).nullable(),
   permissions: Permissions.nullable(),
+  publishRoles: z.array(Role).nullable(),
+  maxPendingReview: z.number().int().nullable(),
 });
 
 function shape(brandId: string, g: {
@@ -43,7 +55,9 @@ function shape(brandId: string, g: {
   restrictedPlatforms?: string[];
   restrictedContentTypes?: string[];
   quietWindows?: Array<{ from: Date; to: Date; reason: string }>;
-  permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean };
+  permissions?: { spendCredits?: boolean; automationAutoPublish?: boolean; requireApprovalForMedia?: boolean };
+  publishRoles?: Role[];
+  maxPendingReview?: number;
 }): z.infer<typeof PolicyOutput> {
   return {
     brandId,
@@ -56,6 +70,8 @@ function shape(brandId: string, g: {
     restrictedContentTypes: g.restrictedContentTypes ?? null,
     quietWindows: g.quietWindows ? g.quietWindows.map((w) => ({ from: w.from.toISOString(), to: w.to.toISOString(), reason: w.reason })) : null,
     permissions: g.permissions ?? null,
+    publishRoles: g.publishRoles ?? null,
+    maxPendingReview: g.maxPendingReview ?? null,
   };
 }
 
@@ -94,6 +110,10 @@ export const ApprovalPolicySetInput = z
     familyOverrides: FamilyOverrides.nullable().optional(),
     restrictedPlatforms: z.array(z.string()).nullable().optional(),
     restrictedContentTypes: z.array(z.string()).nullable().optional(),
+    /** §6's "Publish permission (per role)". Narrows a publish tool's scopes; never widens them. */
+    publishRoles: z.array(Role).max(6).nullable().optional(),
+    /** §10's queue cap — how much unreviewed work may pile up before SPARK stops adding. */
+    maxPendingReview: z.number().int().min(1).max(500).nullable().optional(),
     quietWindows: z.array(QuietWindow).nullable().optional(),
     permissions: Permissions.nullable().optional(),
   })
@@ -102,6 +122,8 @@ export const ApprovalPolicySetInput = z
       v.familyOverrides !== undefined ||
       v.restrictedPlatforms !== undefined ||
       v.restrictedContentTypes !== undefined ||
+      v.publishRoles !== undefined ||
+      v.maxPendingReview !== undefined ||
       v.quietWindows !== undefined ||
       v.permissions !== undefined,
     { message: 'Provide at least one field to change.' },
@@ -136,6 +158,8 @@ export const approvalPolicySet = defineTool({
       ...(input.familyOverrides !== undefined ? { familyOverrides: input.familyOverrides } : {}),
       ...(input.restrictedPlatforms !== undefined ? { restrictedPlatforms: input.restrictedPlatforms } : {}),
       ...(input.restrictedContentTypes !== undefined ? { restrictedContentTypes: input.restrictedContentTypes } : {}),
+      ...(input.publishRoles !== undefined ? { publishRoles: input.publishRoles } : {}),
+      ...(input.maxPendingReview !== undefined ? { maxPendingReview: input.maxPendingReview } : {}),
       ...(input.quietWindows !== undefined
         ? { quietWindows: input.quietWindows ? input.quietWindows.map((w) => ({ from: new Date(w.from), to: new Date(w.to), reason: w.reason })) : null }
         : {}),

@@ -69,6 +69,10 @@ function publisher() {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
+    // Required of every publish tool by `defineTool` — see `PolicySubject`.
+    // These tests exercise the approval ladder, not platform restrictions, so
+    // there is no platform to report.
+    policySubject: async () => ({}),
     async handler(input) {
       ran += 1;
       return { posted: input.text };
@@ -179,6 +183,7 @@ describe('approval.decide', () => {
       autonomy: 'auto',
       scopes: ['owner', 'admin', 'editor'],
       idempotent: true,
+      policySubject: async () => ({}),
       async handler(input) {
         captured.push(input);
         return { ok: true };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
@@ -54,6 +54,29 @@ export function DraftPanel({
   // way, and telling the second case apart matters because its fix is "ask
   // SPARK to start a capture session," not "add assets."
   const [captureOnly, setCaptureOnly] = useState(false);
+  /** Formats one upload away — listed, never offered as a button. */
+  const [uploadUnlockable, setUploadUnlockable] = useState<RankedPlaybook[]>([]);
+
+  /**
+   * The single upload that unlocks the most formats.
+   *
+   * `asset.gaps` computes the same thing server-side for the Assets Library, but
+   * this panel only has `playbook.resolve` — and calling a second tool to render
+   * one sentence would be a worse trade than deriving it from the ranking it
+   * already holds. Ties break on the role that appears first in the ranking,
+   * which is the higher-scoring format.
+   */
+  const bestUpload = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const pb of uploadUnlockable) {
+      for (const role of pb.missing_roles) counts.set(role, (counts.get(role) ?? 0) + 1);
+    }
+    let best: { role: string; count: number } | null = null;
+    for (const [role, count] of counts) {
+      if (!best || count > best.count) best = { role, count };
+    }
+    return best;
+  }, [uploadUnlockable]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(null);
   const [intent, setIntent] = useState('');
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>('instagram');
@@ -70,9 +93,14 @@ export function DraftPanel({
   const [renderError, setRenderError] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
   const [rollbackError, setRollbackError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [variants, setVariants] = useState<Array<{ beats: ResolvedBeat[] }> | null>(null);
   const [variantsLoading, setVariantsLoading] = useState(false);
   const [variantsError, setVariantsError] = useState<string | null>(null);
+  /** §8.9's A/B test. The index being split, so only that row shows a spinner. */
+  const [splitting, setSplitting] = useState<number | null>(null);
+  const [splitNote, setSplitNote] = useState<string | null>(null);
   const [applyingVariant, setApplyingVariant] = useState<number | null>(null);
   const [repurposeOpen, setRepurposeOpen] = useState(false);
   const [repurposePlaybooks, setRepurposePlaybooks] = useState<PlaybookSummary[] | null>(null);
@@ -165,8 +193,22 @@ export function DraftPanel({
       // `direct_finish` playbooks go through WhatsApp capture (§6.3), never this
       // panel — filtered here, not upstream, because `playbook.resolve`'s ranking
       // is shared with the calendar and capture-gap surfaces, which do need them.
-      const usable = res.output.ranked.filter((p) => p.mode !== 'direct_finish');
+      const inPanel = res.output.ranked.filter((p) => p.mode !== 'direct_finish');
+
+      /**
+       * Only what `content.draft` can actually write today is pickable.
+       *
+       * The resolver used to discard a playbook whose assets were missing unless
+       * it could be filmed, so everything reaching this panel was by definition
+       * draftable and no split was needed. It now reports upload-unlockable
+       * formats too — which is the point, they are how a brand with an empty
+       * library gets started — but offering one as a button would produce a
+       * `content.draft` call that fails on the missing asset. So they are listed
+       * separately, with the file that unlocks them.
+       */
+      const usable = inPanel.filter((p) => !p.unlockable);
       setPlaybooks(usable);
+      setUploadUnlockable(inPanel.filter((p) => p.unlockable && p.unlocked_by === 'upload'));
       // Only worth showing once the filter leaves nothing to pick — the resolver's
       // own `why` already names exactly what a fresh, asset-less genome is missing
       // (CLAUDE.md invariant 4), so surface that instead of a silent empty gap.
@@ -422,6 +464,35 @@ export function DraftPanel({
     setVariants(null);
   }
 
+  /**
+   * §8.9's A/B test — the other thing to do with a variant.
+   *
+   * "Use this" replaces the copy and throws the take away, which is a *choice*.
+   * This keeps both: the current draft becomes arm A, the take becomes arm B, and
+   * both publish and are measured. `content.variant.split` is `human_only`
+   * because running a test means deliberately publishing something you think is
+   * worse to find out whether you are right.
+   */
+  async function splitTest(index: number, beats: ResolvedBeat[]) {
+    if (!draft || !genomeId || splitting !== null) return;
+    setSplitting(index);
+    setSplitNote(null);
+    const res = await invoke<{ variantGroupId: string; arms: Array<{ contentItemId: string; label: string }> }>(
+      'content.variant.split',
+      { genomeId, contentItemId: draft.contentItemId, variantBeats: beats },
+    );
+    setSplitting(null);
+    if (res.status !== 'succeeded') {
+      setSplitNote(res.status === 'failed' ? res.error.message : 'Setting up the test needs approval first.');
+      return;
+    }
+    setVariants(null);
+    setSplitNote(
+      'Set up. This draft is arm A and the take you picked is arm B — schedule them close together, ' +
+        'since a day apart is a different audience rather than a different post.',
+    );
+  }
+
   useEffect(() => {
     if (!repurposeOpen || !genomeId || repurposePlaybooks !== null) return;
     void (async () => {
@@ -612,6 +683,44 @@ export function DraftPanel({
     setDraft((d) => (d ? { ...d, status: 'rolled_back' } : d));
   }
 
+  /**
+   * The human end of PRD §10's retry flow.
+   *
+   * The scheduler stops retrying at a ceiling and blocks the item; the only way
+   * back was to edit the database. `content.schedule` already resets the attempt
+   * count (see `scheduleContentItem` in `scoped.ts`), so rescheduling *is* the
+   * retry — this button does not need a second mechanism, it needs to exist.
+   *
+   * Tomorrow morning rather than a date picker: the fix for a stalled post is
+   * almost always "I have reconnected the account, send it", and the calendar is
+   * where a specific date gets chosen. 9am is `DEFAULT_POSTING_WINDOWS`' first
+   * slot, so this lands where the brand already posts.
+   */
+  async function rescheduleTomorrow() {
+    if (!draft || !genomeId || rescheduling) return;
+    setRescheduling(true);
+    setRescheduleError(null);
+
+    const when = new Date();
+    when.setDate(when.getDate() + 1);
+    when.setHours(9, 0, 0, 0);
+
+    const res = await invoke<{ contentItemId: string; scheduledAt: string }>('content.schedule', {
+      contentItemId: draft.contentItemId,
+      genomeId,
+      scheduledAt: when.toISOString(),
+    });
+    setRescheduling(false);
+    if (res.status !== 'succeeded') {
+      setRescheduleError(res.status === 'failed' ? res.error.message : 'Rescheduling was held for review.');
+      return;
+    }
+    // Mirror the write locally rather than refetching: `content.schedule` clears
+    // the attempt count and the last error, so leaving them on screen would show
+    // a stall that no longer exists.
+    setDraft((d) => (d ? { ...d, status: 'scheduled', publishAttempts: 0, lastPublishError: undefined, blockedReason: undefined } : d));
+  }
+
   if (!open) return null;
 
   return (
@@ -653,14 +762,61 @@ export function DraftPanel({
                     <p className="text-[13px] text-ink">
                       {playbooksWhy ?? "Nothing is ready to post yet — this brand's Asset Graph is empty."}
                     </p>
-                    <p className="mt-1 text-[12.5px] text-ink-muted">
-                      {captureOnly
-                        ? "Those formats need filming first — ask SPARK to start this week's capture session " +
-                          '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
-                          'unlock a format postable straight from here.'
-                        : "Add assets in the Assets Library, or fill in more of your brand's onboarding answers, " +
-                          'then come back here.'}
-                    </p>
+                    {/* Uploads first, because they are the cheap route and the
+                        one this panel can actually turn into a post today. The
+                        filming line used to be the only advice here, which sent
+                        a brand with an empty library to book an afternoon when a
+                        logo file would have unlocked more formats than the shoot. */}
+                    {uploadUnlockable.length > 0 ? (
+                      <>
+                        {/* Named by the single most useful upload, not by the
+                            total.
+
+                            "14 formats need one file you already have" was
+                            wrong twice over: those fourteen want four different
+                            roles between them, and the six shown were whichever
+                            scored highest, which buried the one file that
+                            unlocks the most. Leading with the best single
+                            upload turns the block into one action. */}
+                        <p className="mt-1 text-[12.5px] text-ink-muted">
+                          Nothing needs filming to get started.{' '}
+                          {bestUpload
+                            ? `Uploading ${aOrAn(roleWords([bestUpload.role]))} unlocks ${bestUpload.count} of these ${uploadUnlockable.length} formats — more than any other single file.`
+                            : `${uploadUnlockable.length} formats are one upload away.`}{' '}
+                          Add it in the Assets Library and come straight back.
+                        </p>
+                        <ul className="mt-2 grid grid-cols-1 gap-1">
+                          {(bestUpload
+                            ? uploadUnlockable.filter((pb) => pb.missing_roles.includes(bestUpload.role))
+                            : uploadUnlockable
+                          )
+                            .slice(0, 6)
+                            .map((pb) => (
+                              <li key={pb.playbook_id} className="text-[12.5px] text-ink-muted">
+                                <span className="font-medium text-ink">{pb.name}</span>
+                                {pb.missing_roles.length > 1
+                                  ? ` — also needs ${roleWords(pb.missing_roles.filter((r) => r !== bestUpload?.role))}`
+                                  : null}
+                              </li>
+                            ))}
+                        </ul>
+                        {captureOnly ? (
+                          <p className="mt-2 text-[12.5px] text-ink-muted">
+                            Filming unlocks more on top of that — ask SPARK to start this week&rsquo;s capture
+                            session (Ask Spark, top right).
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-[12.5px] text-ink-muted">
+                        {captureOnly
+                          ? "Those formats need filming first — ask SPARK to start this week's capture session " +
+                            '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
+                            'unlock a format postable straight from here.'
+                          : "Add assets in the Assets Library, or fill in more of your brand's onboarding answers, " +
+                            'then come back here.'}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -688,6 +844,21 @@ export function DraftPanel({
                 {busy ? 'Generating…' : 'Generate post'}
               </Button>
             </div>
+          ) : null}
+
+          {/* ── Why this post is not moving (PRD §10 / §7.4) ─────────────────
+              Above the beats, below nothing: a stalled post is the first thing
+              to say about itself, and the reason used to live only in a server
+              log. `blocked` and `needs_review` share one banner because they
+              share one column and one question — "why is this not going out" —
+              but not one remedy, so the actions differ. */}
+          {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'needs_review') ? (
+            <StallNotice
+              draft={draft}
+              rescheduling={rescheduling}
+              error={rescheduleError}
+              onReschedule={() => void rescheduleTomorrow()}
+            />
           ) : null}
 
           {phase === 'editor' && draft && draft.status === 'published' ? (
@@ -756,13 +927,17 @@ export function DraftPanel({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-[13px] font-medium text-ink">Not sure this is the best take?</p>
-                    <p className="text-[12px] text-ink-muted">Preview a couple of alternative takes on the written copy — nothing is saved until you pick one.</p>
+                    <p className="text-[12px] text-ink-muted">
+                      Preview alternative takes on the written copy. Use one, or keep both and let them compete —
+                      nothing is saved until you choose.
+                    </p>
                   </div>
                   <Button size="sm" variant="outline" disabled={variantsLoading} onClick={() => void loadVariants()}>
                     {variantsLoading ? 'Generating…' : 'See variants'}
                   </Button>
                 </div>
                 {variantsError ? <p className="mt-2 text-[12px] text-destructive">{variantsError}</p> : null}
+                {splitNote ? <p className="mt-2 text-[12px] text-ink-muted">{splitNote}</p> : null}
                 {variants && variants.length > 0 ? (
                   <ul className="mt-3 grid grid-cols-1 gap-2">
                     {variants.map((v, i) => (
@@ -773,14 +948,26 @@ export function DraftPanel({
                             .map((b) => b.text)
                             .join('\n\n') || '(no written copy in this take)'}
                         </p>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          disabled={applyingVariant !== null}
-                          onClick={() => void applyVariant(i, v.beats)}
-                        >
-                          {applyingVariant === i ? 'Applying…' : 'Use this'}
-                        </Button>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            disabled={applyingVariant !== null || splitting !== null}
+                            onClick={() => void applyVariant(i, v.beats)}
+                          >
+                            {applyingVariant === i ? 'Applying…' : 'Use this'}
+                          </Button>
+                          {/* The two genuinely different things to do with a
+                              take: replace the copy, or keep both and find out.
+                              Only the second is a test. */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={applyingVariant !== null || splitting !== null}
+                            onClick={() => void splitTest(i, v.beats)}
+                          >
+                            {splitting === i ? 'Setting up…' : 'Test both'}
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1055,4 +1242,91 @@ export function DraftPanel({
       </div>
     </div>
   );
+}
+
+/**
+ * Why a post stopped, and the one action that restarts it.
+ *
+ * Two states share this banner because they share one stored column
+ * (`blocked_reason`, see `markContentBlocked`'s comment) and one question. They
+ * do not share a remedy: `needs_review` is waiting on a person in the Review
+ * queue and this panel is not that queue, so it says so and offers nothing;
+ * `blocked` has nothing left waiting on it, which is what makes rescheduling the
+ * right and only button.
+ *
+ * The attempt count appears only once something has actually been tried. "0
+ * attempts" on a post blocked by a guardrail is true and misleading — it invites
+ * the reader to look for a transport problem that was never there.
+ */
+function StallNotice({
+  draft,
+  rescheduling,
+  error,
+  onReschedule,
+}: {
+  draft: DraftView;
+  rescheduling: boolean;
+  error: string | null;
+  onReschedule: () => void;
+}) {
+  const blocked = draft.status === 'blocked';
+  const attempts = draft.publishAttempts ?? 0;
+
+  return (
+    <div
+      className={`mb-1 rounded-lg border px-4 py-3 ${blocked ? 'border-destructive/30 bg-destructive/10' : 'border-warn/40 bg-warn/10'}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-ink">
+            {blocked ? 'This post stopped and will not retry' : 'Waiting for approval'}
+          </p>
+          <p className="mt-1 text-[13px] text-ink-muted">
+            {draft.blockedReason ?? (blocked ? 'No reason was recorded.' : 'Someone has to approve it in the Review queue.')}
+          </p>
+
+          {attempts > 0 ? (
+            <p className="mt-1.5 text-[12px] text-ink-muted">
+              Tried {attempts} {attempts === 1 ? 'time' : 'times'}
+              {draft.lastPublishError ? (
+                <>
+                  {' \u00b7 last error: '}
+                  <span className="font-mono text-[11px] text-ink">{draft.lastPublishError}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+
+        {blocked ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {error ? <p className="text-[12px] text-destructive">{error}</p> : null}
+            <Button size="sm" variant="outline" disabled={rescheduling} onClick={onReschedule}>
+              {rescheduling ? 'Rescheduling\u2026' : 'Try again tomorrow'}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Asset roles as words, for a sentence.
+ *
+ * Mirrors `ASSET_ROLE_WORDS` in `@sparksocial/shared` rather than importing it,
+ * for the reason `assets/roles.ts` documents at length: that package has no
+ * build output, so a `next build` that reaches it fails on "Can't resolve
+ * './types.js'".
+ */
+function roleWords(roles: readonly string[]): string {
+  const words = roles.map((r) => r.replace(/_/g, ' '));
+  if (words.length <= 1) return words[0] ?? '';
+  if (words.length === 2) return `${words[0]} and ${words[1]}`;
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
+
+/** "a brand kit", "an audio clip" — the article the role's own words need. */
+function aOrAn(words: string): string {
+  return `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words}`;
 }

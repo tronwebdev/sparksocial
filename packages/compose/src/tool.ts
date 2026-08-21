@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type ScopedDb, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import type { ResolvedBeat } from '@sparksocial/generate';
-import { dimensionsFor, zipTimeline, type TimedBeat } from './timeline.js';
+import { dimensionsFor, zipTimeline, type TimedBeat, type BrandKit } from './timeline.js';
 
 /**
  * `compose.render` — the render step plan §6.5 names as `compose.render`
@@ -42,9 +42,9 @@ export const ComposeRenderOutput = z.object({
 
 export interface RenderRunner {
   /** Renders the full beat sequence and returns a public URL to the finished file. */
-  renderVideo(props: { beats: TimedBeat[]; width: number; height: number }): Promise<string>;
+  renderVideo(props: { beats: TimedBeat[]; width: number; height: number; brandKit?: BrandKit }): Promise<string>;
   /** Renders one frame (the first) of the given beats as a still image and returns a public URL. */
-  renderStill(props: { beats: TimedBeat[]; width: number; height: number }): Promise<string>;
+  renderStill(props: { beats: TimedBeat[]; width: number; height: number; brandKit?: BrandKit }): Promise<string>;
 }
 
 export interface ComposeDeps {
@@ -71,6 +71,12 @@ export function makeComposeRender(deps: ComposeDeps) {
     scopes: ['owner', 'admin', 'editor'],
     /** A re-render is a new render (new footage, a fixed typo, another take) — not a safe replay. Same reasoning as `content.draft`. */
     idempotent: false,
+
+    // PRD §6's \"approval required for media generation\" permission —
+
+    // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
+
+    producesMedia: true,
 
     estimateCents: (raw) => {
       const parsed = ComposeRenderInput.safeParse(raw);
@@ -113,17 +119,18 @@ export function makeComposeRender(deps: ComposeDeps) {
 
       const aspects = playbook.output.aspect_ratios;
       const renders: Array<{ aspect: string; url: string; beatId?: string }> = [];
+      const brandKit = await brandKitFor(ctx);
 
       if (mediaType === 'video') {
         for (const aspect of aspects) {
           const { width, height } = dimensionsFor(aspect);
-          const url = await deps.runner.renderVideo({ beats: timeline, width, height });
+          const url = await deps.runner.renderVideo({ beats: timeline, width, height, ...(brandKit ? { brandKit } : {}) });
           renders.push({ aspect, url });
         }
       } else if (mediaType === 'image') {
         for (const aspect of aspects) {
           const { width, height } = dimensionsFor(aspect);
-          const url = await deps.runner.renderStill({ beats: timeline, width, height });
+          const url = await deps.runner.renderStill({ beats: timeline, width, height, ...(brandKit ? { brandKit } : {}) });
           renders.push({ aspect, url });
         }
       } else {
@@ -131,7 +138,7 @@ export function makeComposeRender(deps: ComposeDeps) {
         for (const aspect of aspects) {
           const { width, height } = dimensionsFor(aspect);
           for (const beat of timeline) {
-            const url = await deps.runner.renderStill({ beats: [beat], width, height });
+            const url = await deps.runner.renderStill({ beats: [beat], width, height, ...(brandKit ? { brandKit } : {}) });
             renders.push({ aspect, url, beatId: beat.beatId });
           }
         }
@@ -190,4 +197,30 @@ function explain(
     evidence: [],
     alternatives: [],
   };
+}
+
+/**
+ * §8.6's "Apply Brand Kit", resolved from the brand rather than passed in.
+ *
+ * Not an input on either compose tool, deliberately: the kit is a property of
+ * the brand, and a caller able to pass its own colours could render a post in a
+ * palette nobody set on the brand — which is exactly the drift `brand.rules`
+ * exists to prevent. A missing brand is not an error here; it means "no kit",
+ * and the renderers fall back to their own defaults.
+ */
+async function brandKitFor(ctx: { brandId?: string; orgId: string; db: ScopedDb; logger: ToolCtx['logger'] }): Promise<BrandKit | undefined> {
+  if (!ctx.brandId) return undefined;
+  try {
+    const brand = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
+    const colors = brand.brandColors ?? [];
+    if (!brand.logoUrl && colors.length === 0) return undefined;
+    return { ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}), colors };
+  } catch (e) {
+    // A render is worth more than its styling. Losing the kit produces a
+    // correct post in default colours; failing the call produces nothing.
+    ctx.logger.warn('brand kit unavailable, rendering with defaults', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return undefined;
+  }
 }

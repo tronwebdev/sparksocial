@@ -63,6 +63,69 @@ export interface RecipeRunResult {
   error?: string;
 }
 
+/**
+ * The config PRD §8.10 lists as common to every recipe kind, regardless of
+ * where its material comes from: *"recipe name, target accounts, goal + CTA
+ * URL, frequency schedule, start/end options, review-before-publish checkbox"*.
+ *
+ * Name and frequency already live on the `recipes` row itself. The rest are
+ * here, merged into all three kind-specific schemas rather than repeated in
+ * each, so a new recipe kind inherits them by construction.
+ *
+ * ── `reviewBeforePublish` defaults to true, and the PRD says otherwise ─────
+ *
+ * §8.10's stated default is "publish automatically if approvals are OFF and
+ * content not flagged". That default is honoured at the *workspace* level,
+ * where it belongs and where a human has already made the choice: an
+ * unattended publish still has to satisfy `policy.ts` rule 7, which consults
+ * `approvalMode` and `permissions.automationAutoPublish`. What is true per
+ * *recipe* is that a newly created one has never had a single output looked at
+ * by anybody, so it opts into review until its owner turns that off — the same
+ * reasoning `review_first_week` applies to a whole brand. Turning it off is one
+ * boolean, and then the recipe genuinely publishes unattended.
+ */
+export const RecipeCommonConfig = z.object({
+  /** Route review through a person before anything goes out. AUTO-02.5 / 03.5 / 04.4's checkbox. */
+  reviewBeforePublish: z.boolean().default(true),
+  /**
+   * Which connected accounts this recipe posts to. Empty means "whatever the
+   * chosen playbook declares" — the same honest default the scheduler applies
+   * to a campaign slot with no platform of its own.
+   */
+  targetPlatforms: z.array(z.string()).default([]),
+  /** The goal every output is written toward, and the link it points at. */
+  goal: z.string().max(200).optional(),
+  ctaUrl: z.string().url().optional(),
+  /** Not before / not after. A recipe outside its window produces nothing and says so. */
+  startAt: z.string().datetime().optional(),
+  endAt: z.string().datetime().optional(),
+});
+export type RecipeCommonConfig = z.infer<typeof RecipeCommonConfig>;
+
+/**
+ * Whether a recipe is inside its configured start/end window right now.
+ * Exported because `recipe.run` has to answer this before doing any work, and
+ * the scheduler has to answer it before deciding a recipe is even due.
+ */
+export function withinRunWindow(config: unknown, now: Date): { ok: true } | { ok: false; reason: string } {
+  const parsed = RecipeCommonConfig.partial().safeParse(config);
+  if (!parsed.success) return { ok: true };
+  const { startAt, endAt } = parsed.data;
+  if (startAt && now < new Date(startAt)) {
+    return { ok: false, reason: `This recipe does not start until ${startAt}.` };
+  }
+  if (endAt && now > new Date(endAt)) {
+    return { ok: false, reason: `This recipe finished on ${endAt}.` };
+  }
+  return { ok: true };
+}
+
+/** Reads the review flag off any recipe kind's config, defaulting to the safe answer. */
+export function requiresReview(config: unknown): boolean {
+  const parsed = RecipeCommonConfig.partial().safeParse(config);
+  return parsed.success ? parsed.data.reviewBeforePublish !== false : true;
+}
+
 export async function runRecipe(kind: string, config: unknown, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   switch (kind) {
     case 'auto_trend':
@@ -78,7 +141,7 @@ export async function runRecipe(kind: string, config: unknown, ctx: RecipeRunCon
 
 /* ── auto_trend ──────────────────────────────────────────────────────── */
 
-export const AutoTrendConfig = z.object({
+export const AutoTrendConfig = RecipeCommonConfig.extend({
   region: z.string().optional(),
   language: z.string().optional(),
   minScore: z.number().min(0).max(1).default(0.4),
@@ -114,7 +177,7 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
 
 /* ── rss ─────────────────────────────────────────────────────────────── */
 
-export const RssConfig = z.object({
+export const RssConfig = RecipeCommonConfig.extend({
   feedUrl: z.string().url(),
   maxItems: z.number().int().min(1).max(20).default(5),
 });
@@ -146,7 +209,7 @@ async function runRss(rawConfig: unknown, ctx: RecipeRunContext): Promise<Recipe
 
 /* ── bulk_connector ──────────────────────────────────────────────────── */
 
-export const BulkConnectorConfig = z.object({
+export const BulkConnectorConfig = RecipeCommonConfig.extend({
   source: z.enum(['csv', 'canva', 'drive', 'folder']),
   csvUrl: z.string().url().optional(),
   csvText: z.string().optional(),

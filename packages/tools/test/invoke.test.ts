@@ -67,6 +67,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
         patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
         patchOffer: async () => ({ id: 'gen_1', version: 1 }),
+        patchVoice: async () => ({ id: 'gen_1', version: 1 }),
         patchLearned: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => undefined,
         listForOrg: async () => [],
@@ -95,6 +96,14 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        recordPublishFailure: async () => ({ attempts: 1 }),
+        variantGroup: async () => [],
+        tagVariant: async () => undefined,
+        publishOrigin: async () => undefined,
+        pendingReviewCount: async () => 0,
+        markNeedsReview: async () => {},
+        markApproved: async () => {},
+        markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
       },
@@ -112,6 +121,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         classify: async () => undefined,
         list: async () => [],
         audit: async () => [],
+        thread: async () => [],
         markReplied: async () => undefined,
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
@@ -123,6 +133,15 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       },
       trends: {
         add: async () => { throw new Error('trends.add not stubbed in this test'); },
+        remove: async () => {},
+        list: async () => [],
+      },
+      trendObservations: {
+        record: async () => {},
+        series: async () => [],
+      },
+      influencers: {
+        add: async () => { throw new Error('influencers.add not stubbed in this test'); },
         remove: async () => {},
         list: async () => [],
       },
@@ -147,6 +166,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async () => undefined,
         save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
         remove: async () => {},
+        findExpiring: async () => [],
+        markExpiryNotified: async () => {},
       },
       knowledge: {
         attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },
@@ -154,7 +175,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         listAll: async () => [],
       },
       orgSettings: {
-        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, monthlyCapCents: 50_000, updatedAt: new Date() }),
+        get: async () => ({ orgId: 'org_1', plan: 'starter', defaultApprovalMode: 'review_first_week', ssoRequired: false, twoFactorRequired: false, dataResidency: 'any', monthlyCapCents: 50_000, updatedAt: new Date() }),
         setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
         setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
         setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
@@ -183,22 +204,44 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setApprovalMode: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setAgentPaused: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setFrequency: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
         setPolicy: async ({ brandId }: { brandId: string }) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
+        }),
+        setGovernance: async ({ brandId }: { brandId: string }) => ({
+          brandId, name: '', approvalMode: 'autopublish' as const,
+          createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
         }),
       },
       // Unused by these tests; present because ScopedDb requires them, which is
@@ -222,6 +265,36 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         pending: async () => [],
         get: async () => undefined,
         resolve: async () => {},
+      },
+      metrics: {
+        successMetrics: async () => ({
+          connectedAccounts: 0,
+          campaignCount: 0,
+          firstCampaignStartAt: null,
+          firstPublishedAt: null,
+          publishedInWindow: 0,
+          postsWithTrackedLink: 0,
+          postsFromTrends: 0,
+          recipeCount: 0,
+          outputsApproved: 0,
+          outputsRejected: 0,
+          messagesInWindow: 0,
+          messagesResolved: 0,
+          meanReplySeconds: null,
+          opportunitiesInWindow: 0,
+          opportunitiesRouted: 0,
+          publishedEverBlocked: 0,
+          rolledBack: 0,
+          needsReview: 0,
+        }),
+        toolActivity: async () => ({
+          publishAttempts: 0,
+          publishBlocked: 0,
+          publishHeld: 0,
+          draftCalls: 0,
+          trendsRanked: 0,
+          repurposeCalls: 0,
+        }),
       },
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -339,6 +412,18 @@ describe('input validation', () => {
     // The failure is still audited — a rejected call is a fact about the system.
     expect(h.rows).toHaveLength(1);
     expect(h.rows[0]!.status).toBe('failed');
+    /**
+     * And it is audited as `not_evaluated`, not `deny`.
+     *
+     * Found by running the real server: the skeleton row defaulted to `deny`,
+     * so every schema rejection and every missing idempotency key was recorded
+     * as though the policy engine had refused it — with no `ruleId`, because no
+     * rule ran. The audit screen tints non-allow rows as governance refusals, so
+     * a typo'd request appeared there as a policy denial. Two different facts,
+     * and the column now distinguishes them.
+     */
+    expect(h.rows[0]!.decision).toBe('not_evaluated');
+    expect(h.rows[0]!.ruleId).toBeUndefined();
   });
 
   it('audits an unknown tool rather than throwing into the caller', async () => {
@@ -360,6 +445,9 @@ describe('idempotency', () => {
     const res = await invokeTool(request({ tool: 'publish.now' }), h.deps);
     expect(res.status === 'failed' && res.error.code).toBe('INVALID_INPUT');
     expect(res.status === 'failed' && res.error.message).toContain('idempotency key');
+    // Same reasoning as the schema rejection above: refused by the middleware,
+    // never seen by policy.
+    expect(h.rows[0]!.decision).toBe('not_evaluated');
   });
 
   it('replays the prior result instead of repeating the side effect', async () => {
@@ -538,5 +626,315 @@ describe('execution, cost and explainability', () => {
     await invokeTool(request({ tool: 'nope.missing' }), h.deps);
 
     expect(emit.mock.calls.map((c) => c[0])).toEqual(['tool.succeeded', 'tool.deny', 'tool.failed']);
+  });
+});
+
+/* ── policySubject: the tool derives the publish context, not the caller ──── */
+
+describe('policySubject — brand platform/content-type restrictions actually fire', () => {
+  /**
+   * The bug this closes: `policy.ts` rule 7 read `subject.platform` and
+   * `subject.contentType` from the *request*, and nothing in the product ever
+   * set them. `approval.policy.set` persisted `restrictedPlatforms`, the settings
+   * panel edited it, `loadBrandGovernance` loaded it — and it was compared
+   * against a field that was always `undefined`. A workspace could switch on
+   * "Instagram requires review", see it saved, and publish to Instagram
+   * unreviewed forever.
+   */
+  const publisher = (subject: () => Promise<{ platform?: string; contentType?: string }>) => ({
+    ...Echo,
+    name: 'publish.now',
+    effect: 'publish' as const,
+    policySubject: subject,
+  });
+
+  it('routes a restricted platform to approval, from the tool own derivation', async () => {
+    register(publisher(async () => ({ platform: 'instagram' })));
+    const { deps } = harness();
+
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedPlatforms: ['instagram'] } }),
+      deps,
+    );
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('brand.restricted_platform');
+    }
+  });
+
+  it('lets an unrestricted platform through', async () => {
+    register(publisher(async () => ({ platform: 'tiktok' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedPlatforms: ['instagram'] } }),
+      deps,
+    );
+    expect(out.status).toBe('succeeded');
+  });
+
+  it('cannot be bypassed by a caller omitting the platform', async () => {
+    // The whole point of moving this off the request. `subject` no longer
+    // carries platform at all, so there is nothing for a caller to leave out.
+    register(publisher(async () => ({ platform: 'instagram' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({
+        tool: 'publish.now',
+        brand: { ...brand, restrictedPlatforms: ['instagram'] },
+        subject: {},
+      }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+  });
+
+  it('routes a restricted content type to approval', async () => {
+    register(publisher(async () => ({ platform: 'tiktok', contentType: 'carousel' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', brand: { ...brand, restrictedContentTypes: ['carousel'] } }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('brand.restricted_content_type');
+    }
+  });
+
+  it('fails the call when the derivation throws, rather than publishing unrestricted', async () => {
+    // An unreadable content item is not a reason to skip the restrictions that
+    // item was subject to.
+    register(
+      publisher(async () => {
+        throw new Error('content item is gone');
+      }),
+    );
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'publish.now' }), deps);
+    expect(out.status).toBe('failed');
+  });
+
+  it('still merges caller-supplied guardrail flags, which only ever escalate', async () => {
+    // Containment flags describe the *turn*, not the post, so they stay on the
+    // request — see `InvokeRequest.subject`.
+    register(publisher(async () => ({ platform: 'tiktok' })));
+    const { deps } = harness();
+    const out = await invokeTool(
+      request({ tool: 'publish.now', subject: { guardrailFlags: ['untrusted_context'] } }),
+      deps,
+    );
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('guardrail.flagged');
+    }
+  });
+});
+
+/* ── Idempotency: the claim closes the concurrency window ─────────────────── */
+
+describe('reserveIdempotent — two concurrent calls do not both take the side effect', () => {
+  /**
+   * `lookupIdempotent` only ever saw keys whose audit row was already written,
+   * and the row is written *after* the handler returns. Two simultaneous
+   * `publish.now` calls with one key therefore both missed the lookup and both
+   * posted; the platform adapter own dedupe was the only thing between that and
+   * a duplicate post on someone feed.
+   */
+  const NonIdempotentPublish = {
+    ...Echo,
+    name: 'publish.now',
+    effect: 'publish' as const,
+    idempotent: false,
+    policySubject: async () => ({}),
+  };
+
+  function claimingHarness() {
+    const claimed = new Set<string>();
+    const { rows, deps } = harness({
+      reserveIdempotent: async (key) => {
+        if (claimed.has(key)) return 'in_flight';
+        claimed.add(key);
+        return 'reserved';
+      },
+      releaseIdempotent: async (key) => void claimed.delete(key),
+    });
+    return { rows, deps, claimed };
+  }
+
+  /** Echo's output shape, so an overridden handler still passes output validation. */
+  const echoed = {
+    copy: 'posted',
+    why: { summary: 'ok', factors: [], evidence: [], alternatives: [] },
+  };
+
+  it('refuses the second caller with IN_FLIGHT instead of running the handler twice', async () => {
+    let ran = 0;
+    register({
+      ...NonIdempotentPublish,
+      handler: async () => {
+        ran += 1;
+        return echoed;
+      },
+    });
+    const { deps } = claimingHarness();
+
+    const first = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k1' }), deps);
+    const second = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k1' }), deps);
+
+    expect(first.status).toBe('succeeded');
+    expect(second.status).toBe('failed');
+    if (second.status === 'failed') expect(second.error.code).toBe('IN_FLIGHT');
+    expect(ran).toBe(1);
+  });
+
+  it('gives the key back after a failure, so a genuine retry can proceed', async () => {
+    let attempts = 0;
+    register({
+      ...NonIdempotentPublish,
+      handler: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error('transport down');
+        return echoed;
+      },
+    });
+    const { deps } = claimingHarness();
+
+    const failed = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k2' }), deps);
+    expect(failed.status).toBe('failed');
+
+    const retried = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k2' }), deps);
+    expect(retried.status).toBe('succeeded');
+    expect(attempts).toBe(2);
+  });
+
+  it('does not burn the key on a gated call, so the approved replay is not a duplicate', async () => {
+    // The claim sits after the gate on purpose: a held call took no side effect.
+    register(NonIdempotentPublish);
+    const { deps, claimed } = claimingHarness();
+
+    const gated = await invokeTool(
+      request({
+        tool: 'publish.now',
+        idempotencyKey: 'k3',
+        brand: { ...brand, approvalMode: 'review_everything' },
+      }),
+      deps,
+    );
+
+    expect(gated.status).toBe('gated');
+    expect(claimed.has('k3')).toBe(false);
+  });
+});
+
+/* ── Cost is recorded even when the handler throws ────────────────────────── */
+
+describe('recordCost on failure', () => {
+  it('bills a spend whose handler reached the vendor and then threw', async () => {
+    // A timeout after a render has started has spent the money regardless of
+    // what we report. Skipping the ledger absorbed that silently — the 50c
+    // avatar-video and 60c dubbing tools being the expensive cases.
+    const billed: ToolCallRecord[] = [];
+    register({
+      ...Echo,
+      name: 'content.generate_avatar_video',
+      estimateCents: () => 50,
+      handler: async () => {
+        throw new Error('vendor timed out after starting the render');
+      },
+    });
+    const { deps } = harness({ recordCost: async (r) => void billed.push(r) });
+
+    const out = await invokeTool(request({ tool: 'content.generate_avatar_video' }), deps);
+
+    expect(out.status).toBe('failed');
+    expect(billed).toHaveLength(1);
+    expect(billed[0]!.costCents).toBe(50);
+  });
+
+  it('bills nothing when there was no estimate to bill', async () => {
+    const billed: ToolCallRecord[] = [];
+    register({
+      ...Echo,
+      name: 'free.thing',
+      handler: async () => {
+        throw new Error('nope');
+      },
+    });
+    const { deps } = harness({ recordCost: async (r) => void billed.push(r) });
+
+    await invokeTool(request({ tool: 'free.thing' }), deps);
+    expect(billed).toHaveLength(0);
+  });
+});
+
+/* ── The engagement gate cannot be self-certified ─────────────────────────── */
+
+describe('policy rule 6 — engagement eligibility is derived, never asserted', () => {
+  /**
+   * `engagement` used to sit on `InvokeRequest` and was forwarded verbatim from
+   * the HTTP request body, so a client could post
+   * `engagement: { eligible: true, autonomyConfigured: true }` and send
+   * unattended replies for a campaign that had never published anything.
+   *
+   * It failed *closed* when omitted — rule 6 denies without it — which is why
+   * it never presented as a broken feature. Forgeable is worse than broken.
+   */
+  const replier = (engagement?: { eligible: boolean; autonomyConfigured: boolean }) => ({
+    ...Echo,
+    name: 'engage.reply.send',
+    effect: 'publish' as const,
+    policySubject: async () => (engagement ? { engagement } : {}),
+  });
+
+  it('denies when the tool derives ineligible, whatever the request said', async () => {
+    register(replier({ eligible: false, autonomyConfigured: true }));
+    const { deps } = harness();
+
+    // The request cannot carry `engagement` any more — this is the shape a
+    // caller trying the old bypass would send, and it is simply ignored.
+    const out = await invokeTool(
+      { ...request({ tool: 'engage.reply.send' }), ...({ engagement: { eligible: true, autonomyConfigured: true } } as object) },
+      deps,
+    );
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.kind).toBe('deny');
+      expect(out.decision.ruleId).toBe('engage.ineligible');
+    }
+  });
+
+  it('holds for approval when eligible but autonomy is unconfigured', async () => {
+    register(replier({ eligible: true, autonomyConfigured: false }));
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.kind).toBe('approval');
+      expect(out.decision.ruleId).toBe('engage.unconfigured');
+    }
+  });
+
+  it('allows once the tool derives both', async () => {
+    register(replier({ eligible: true, autonomyConfigured: true }));
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+    expect(out.status).toBe('succeeded');
+  });
+
+  it('denies an engage publish whose tool derives nothing at all', async () => {
+    // A `policySubject` that omits `engagement` must not read as permission.
+    // Failing closed is the whole reason the old bypass went unnoticed, and it
+    // is still the right behaviour — it just can no longer be overridden.
+    register(replier());
+    const { deps } = harness();
+    const out = await invokeTool(request({ tool: 'engage.reply.send' }), deps);
+
+    expect(out.status).toBe('gated');
+    if (out.status === 'gated' && out.decision.kind !== 'allow') {
+      expect(out.decision.ruleId).toBe('engage.ineligible');
+    }
   });
 });

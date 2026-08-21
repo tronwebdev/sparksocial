@@ -26,6 +26,7 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
       effect: (over.tool?.effect ?? 'write') as Effect,
       autonomy: (over.tool?.autonomy ?? 'auto') as Autonomy,
       scopes: (over.tool?.scopes ?? ['owner', 'admin', 'editor']) as Role[],
+      ...(over.tool?.producesMedia ? { producesMedia: true } : {}),
     },
     caller: over.caller ?? 'agent',
     role: (over.role ?? 'owner') as Role,
@@ -39,6 +40,8 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
       ...(over.brand?.quietWindows ? { quietWindows: over.brand.quietWindows } : {}),
       ...(over.brand?.agentPaused !== undefined ? { agentPaused: over.brand.agentPaused } : {}),
       ...(over.brand?.permissions ? { permissions: over.brand.permissions } : {}),
+      ...(over.brand?.publishRoles ? { publishRoles: over.brand.publishRoles as Role[] } : {}),
+      ...(over.brand?.maxPendingReview !== undefined ? { maxPendingReview: over.brand.maxPendingReview } : {}),
     },
     ...(over.subject ? { subject: over.subject } : {}),
     budget: {
@@ -521,5 +524,266 @@ describe('9 — a granted approval', () => {
 
   it('leaves an already-allowed call allowed', () => {
     expect(evaluate({ ...input(), approval: GRANT })).toEqual({ kind: 'allow' });
+  });
+});
+
+/* ── PRD §6: publish permission, per role, per workspace ──────────────────── */
+
+describe('rule 2b — publishRoles narrows a publish tool and never widens it', () => {
+  /**
+   * §6's first permission control is "Publish permission (per role)". Roles did
+   * gate publishing — `publish.now` declares `['owner','admin','editor']` — but
+   * that list is compiled into the tool, so a workspace wanting editors to draft
+   * and only admins to publish had no way to say so.
+   */
+  const pub = { name: 'publish.now', effect: 'publish' as const, autonomy: 'auto' as const };
+
+  it('denies a role the workspace excluded, even though the tool allows it', () => {
+    const d = evaluate(
+      input({
+        tool: { ...pub, scopes: ['owner', 'admin', 'editor'] },
+        role: 'editor',
+        brand: { publishRoles: ['owner', 'admin'] },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'deny', ruleId: 'permission.publish_role' });
+  });
+
+  it('allows a role the workspace listed', () => {
+    const d = evaluate(
+      input({
+        tool: { ...pub, scopes: ['owner', 'admin', 'editor'] },
+        role: 'admin',
+        brand: { publishRoles: ['owner', 'admin'] },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('cannot widen: a role the tool never allowed is still refused by rule 2', () => {
+    // The ordering matters. If this ran before rule 2, a workspace could grant
+    // publishing to a viewer by listing it here.
+    const d = evaluate(
+      input({
+        tool: { ...pub, scopes: ['owner', 'admin'] },
+        role: 'viewer',
+        brand: { publishRoles: ['viewer'] },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'deny', ruleId: 'role.scope' });
+  });
+
+  it('an empty list is not a lockout — it means "unset"', () => {
+    // A cleared field must not read as "nobody may publish", which would take a
+    // workspace down by way of a settings screen.
+    const d = evaluate(
+      input({ tool: { ...pub, scopes: ['owner'] }, role: 'owner', brand: { publishRoles: [] } }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('does not touch non-publish tools', () => {
+    const d = evaluate(
+      input({
+        tool: { name: 'content.draft', effect: 'write', autonomy: 'auto', scopes: ['editor'] },
+        role: 'editor',
+        brand: { publishRoles: ['owner'] },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+});
+
+/* ── PRD §6: approval required before generating media ────────────────────── */
+
+describe('rule 4b — media generation can require a person', () => {
+  const media = {
+    name: 'content.generate_avatar_video',
+    effect: 'external' as const,
+    autonomy: 'auto' as const,
+    scopes: ['owner' as const],
+    producesMedia: true,
+  };
+
+  it('routes to approval when the workspace requires it', () => {
+    const d = evaluate(
+      input({ tool: media, role: 'owner', brand: { permissions: { requireApprovalForMedia: true } } }),
+    );
+    expect(d).toMatchObject({ kind: 'approval', ruleId: 'permission.media_generation' });
+  });
+
+  it('allows when the workspace has not asked for it', () => {
+    expect(evaluate(input({ tool: media, role: 'owner' })).kind).toBe('allow');
+  });
+
+  it('leaves a tool that produces no media alone', () => {
+    const d = evaluate(
+      input({
+        tool: { name: 'content.draft', effect: 'write', autonomy: 'auto', scopes: ['owner'] },
+        role: 'owner',
+        brand: { permissions: { requireApprovalForMedia: true } },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('answers "you cannot afford this" ahead of "ask someone"', () => {
+    // Both are true and the budget answer is the more useful one.
+    const d = evaluate(
+      input({
+        tool: media,
+        role: 'owner',
+        brand: { permissions: { requireApprovalForMedia: true } },
+        budget: { remainingCents: 10, estimatedCents: 50 },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'deny', ruleId: 'budget.exceeded' });
+  });
+});
+
+/* ── PRD §10: the review queue has a ceiling ──────────────────────────────── */
+
+describe('rule 4c — queue cap', () => {
+  const writer = {
+    name: 'content.draft',
+    effect: 'write' as const,
+    autonomy: 'auto' as const,
+    scopes: ['owner' as const, 'editor' as const],
+  };
+
+  it('stops the agent adding to a full review queue', () => {
+    const d = evaluate(
+      input({
+        tool: writer,
+        caller: 'agent',
+        role: 'owner',
+        brand: { maxPendingReview: 20 },
+        subject: { pendingReviewCount: 20 },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'deny', ruleId: 'brand.review_queue_full' });
+  });
+
+  it('lets a person keep working through a backlog they can see', () => {
+    // The failure this guards against is SPARK filling a queue faster than
+    // anyone empties it. A human clearing that queue must not be blocked by it.
+    const d = evaluate(
+      input({
+        tool: writer,
+        caller: 'user',
+        role: 'owner',
+        brand: { maxPendingReview: 20 },
+        subject: { pendingReviewCount: 50 },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('allows the agent below the cap', () => {
+    const d = evaluate(
+      input({
+        tool: writer,
+        caller: 'agent',
+        role: 'owner',
+        brand: { maxPendingReview: 20 },
+        subject: { pendingReviewCount: 19 },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('no cap set means no cap', () => {
+    const d = evaluate(
+      input({ tool: writer, caller: 'agent', role: 'owner', subject: { pendingReviewCount: 9_999 } }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('a cap with no count to compare against does not fire', () => {
+    // The count is derived per call; a tool that does not report one must not be
+    // blocked by a cap it cannot be measured against.
+    const d = evaluate(input({ tool: writer, caller: 'agent', role: 'owner', brand: { maxPendingReview: 1 } }));
+    expect(d.kind).toBe('allow');
+  });
+
+  it('does not apply to reads — a full queue is exactly when you need to look at it', () => {
+    const d = evaluate(
+      input({
+        tool: { name: 'queue.review.list', effect: 'read', autonomy: 'auto', scopes: ['owner'] },
+        caller: 'agent',
+        role: 'owner',
+        brand: { maxPendingReview: 1 },
+        subject: { pendingReviewCount: 500 },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+});
+
+/* ── PRD §7.2: approvals, per campaign ────────────────────────────────────── */
+
+describe('rule 7 — a campaign’s own approval mode overrides the brand’s', () => {
+  const pub = {
+    name: 'publish.now',
+    effect: 'publish' as const,
+    autonomy: 'auto' as const,
+    scopes: ['owner' as const],
+  };
+
+  it('a cautious campaign requires review inside an autopublishing brand', () => {
+    const d = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        brand: { approvalMode: 'autopublish' },
+        subject: { campaignApprovalMode: 'review_everything' },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'approval', ruleId: 'campaign.review_everything' });
+  });
+
+  it('a routine campaign publishes freely inside a brand that reviews everything', () => {
+    // The downward direction is what makes this a control rather than a second
+    // lock. Without it, a brand has to pick one posture for every campaign.
+    const d = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        brand: { approvalMode: 'review_everything' },
+        subject: { campaignApprovalMode: 'autopublish' },
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('falls through to the brand when the campaign sets nothing', () => {
+    const d = evaluate(input({ tool: pub, role: 'owner', brand: { approvalMode: 'review_everything' } }));
+    expect(d).toMatchObject({ kind: 'approval', ruleId: 'approval_mode.review_everything' });
+  });
+
+  it('attributes a first-week hold to the campaign when the campaign chose it', () => {
+    const d = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        now: new Date('2026-08-03T00:00:00Z'),
+        brand: { approvalMode: 'autopublish', createdAt: new Date('2026-08-01T00:00:00Z') },
+        subject: { campaignApprovalMode: 'review_first_week' },
+      }),
+    );
+    expect(d).toMatchObject({ kind: 'approval', ruleId: 'campaign.review_first_week' });
+  });
+
+  it('a graduated first-week campaign publishes', () => {
+    const d = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        now: new Date('2026-09-01T00:00:00Z'),
+        brand: { approvalMode: 'review_everything', createdAt: new Date('2026-08-01T00:00:00Z') },
+        subject: { campaignApprovalMode: 'review_first_week' },
+      }),
+    );
+    expect(d.kind).toBe('allow');
   });
 });

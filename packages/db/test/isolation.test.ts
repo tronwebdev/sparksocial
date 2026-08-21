@@ -66,7 +66,7 @@ describe('static check — raw queries cannot bypass the scoped layer', () => {
     expect([...SCOPED_TABLE_NAMES].sort()).toEqual(
       [
         'assets', 'assetFolders', 'contentItems', 'contentLinks', 'contentMetrics', 'engagementMessages', 'knowledgeChunks', 'memories', 'opportunities', 'renders',
-        'trendWatchlist', 'learningArms', 'learningOutcomes', 'recipes', 'recipeRuns', 'recipeOutputs', 'oauthConnections',
+        'trendWatchlist', 'influencerWatchlist', 'learningArms', 'learningOutcomes', 'recipes', 'recipeRuns', 'recipeOutputs', 'oauthConnections',
       ].sort(),
     );
   });
@@ -109,6 +109,47 @@ describe('static check — raw queries cannot bypass the scoped layer', () => {
       ).toEqual([]);
     },
   );
+
+  /**
+   * CLAUDE.md's frontend rule, actually enforced.
+   *
+   *   *"`apps/web` imports `@sparksocial/shared` and nothing else from
+   *   `packages/`. Importing `@sparksocial/db` would let a component build a raw
+   *   query and bypass the scoped layer; `packages/db/test/isolation.test.ts`
+   *   walks `.tsx` and fails the build if it happens."*
+   *
+   * It did not. The check above catches a component importing a scoped *table*,
+   * which is the worst case but not the rule — `import { createScopedDb } from
+   * '@sparksocial/db'` in a component passed cleanly. The rule was being held
+   * up by discipline alone, and discipline is what the rest of this file exists
+   * to replace.
+   *
+   * Every capability reaches the frontend over HTTP through
+   * `POST /v1/tools/:name`. A workspace import is how that stops being true.
+   */
+  it('apps/web imports @sparksocial/shared and nothing else from packages/', () => {
+    const ALLOWED_WORKSPACE_IMPORTS = new Set(['@sparksocial/shared']);
+    const offenders: string[] = [];
+
+    for (const file of sourceFiles()) {
+      if (!file.startsWith(join('apps', 'web'))) continue;
+      const src = stripComments(readFileSync(join(REPO_ROOT, file), 'utf8'));
+
+      // Covers `import … from '@sparksocial/x'`, `import '@sparksocial/x'`,
+      // `export … from`, and `await import(...)` alike — anything that names a
+      // workspace package in a module specifier.
+      for (const [, spec] of src.matchAll(/['"](@sparksocial\/[a-z-]+)(?:\/[^'"]*)?['"]/g)) {
+        if (!ALLOWED_WORKSPACE_IMPORTS.has(spec)) offenders.push(`${file} → ${spec}`);
+      }
+    }
+
+    expect(
+      offenders,
+      `apps/web may only import @sparksocial/shared. Reach every other capability over HTTP ` +
+        `through POST /v1/tools/:name — a direct workspace import is how a component ends up ` +
+        `building its own query.\n  ${offenders.join('\n  ')}`,
+    ).toEqual([]);
+  });
 
   it('the db barrel does not re-export the scoped tables', () => {
     // If `index.ts` re-exported `./schema.js`, any module could reach a table via

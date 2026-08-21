@@ -14,6 +14,8 @@ import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
 import { ChatDrawer } from './ChatDrawer';
 import { DraftPanel } from './draft-panel/DraftPanel';
 import { DraftList } from './DraftList';
+import { PerformancePanel } from './PerformancePanel';
+import { PlanQueue } from './PlanQueue';
 
 /**
  * CC-01 — Command Center Overview (`ui build/SparkSocial Command Center.dc.html`,
@@ -23,15 +25,27 @@ import { DraftList } from './DraftList';
  * Traded prototype pixel-fidelity for real data, the same call `CalendarBoard`
  * and `RunTimeline` already made: this renders from the actual tool registry
  * (`agent.status`, `campaign.list`, `calendar.get`, `queue.review.list`,
- * `approval.decide`) rather than the mockup's placeholder rows. What's not
- * here yet — the "performance" metrics tile and the engagement feed entry —
- * has no real data behind it until P4, so it is left out rather than faked.
+ * `approval.decide`) rather than the mockup's placeholder rows.
+ *
+ * The performance tile is here now (`PerformancePanel`, CC-04). This comment
+ * used to say it was *"left out rather than faked"* because nothing real backed
+ * it until P4 — correct when written, and `analytics.success_metrics` is that
+ * real backing. The engagement feed entry is still the one §CC-01 item absent
+ * here, and deliberately: it has its own screen at `/command-center`, and a
+ * second copy of a live feed is a second thing that can be wrong.
  *
  * "Upcoming actions" is two lists, not one, because they answer different
- * questions: the review queue is *blocked on a person*; the calendar preview
- * is *already scheduled*. Merging them into one row style was the prototype's
+ * questions: the review queue is *blocked on a person*; the plan queue is
+ * *already scheduled*. Merging them into one row style was the prototype's
  * choice for a mockup with fixed placeholder rows — a real queue needs the
  * distinction visible, because the action is different (approve vs. nothing).
+ *
+ * With `PlanQueue`, all four of §7.5's first-class queues are reachable: Plan
+ * and Review here, Automation on `/automation`, Engagement on
+ * `/command-center`. The plan used to count as covered because the *calendar*
+ * existed — but a calendar answers "what does the month look like" and a queue
+ * answers "what happens next", and only the second one tells you that tomorrow
+ * morning is about to go out unwritten.
  */
 
 export function CommandCenterOverview() {
@@ -152,7 +166,18 @@ export function CommandCenterOverview() {
 
       {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
 
-      <ReviewQueueList items={review} onDecide={decide} />
+      {/* §7.5's four queues, in the order a person needs them: what happens
+          next, then what is blocked on them. `PlanQueue` links to the second by
+          anchor, which is why the wrapper carries an id. */}
+      <PlanQueue genomeId={genome?.genomeId} />
+
+      <div id="review">
+        <ReviewQueueList items={review} onDecide={decide} />
+      </div>
+
+      {/* Below the queue, above the drafts: what needs a person comes first,
+          then how the brand is doing, then the material itself. */}
+      <PerformancePanel genomeId={genome?.genomeId} />
 
       <DraftList
         genomeId={genome?.genomeId}

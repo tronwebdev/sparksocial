@@ -21,13 +21,14 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
       pillar: string | null;
       status: string;
       scheduledAt: Date | null;
+      platform: string | null;
     }>
   >();
 
   return {
     size: () => rows.size,
 
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel }) {
+    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode }) {
       const id = randomUUID();
       rows.set(id, {
         id,
@@ -41,6 +42,8 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
         plan,
         ...(targetCount !== undefined ? { targetCount } : {}),
         ...(targetLabel !== undefined ? { targetLabel } : {}),
+        ...(platforms?.length ? { platforms } : {}),
+        ...(approvalMode ? { approvalMode } : {}),
       });
       slots.set(id, []);
       return { id };
@@ -74,6 +77,11 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
           pillar: s.pillar,
           status: 'scheduled',
           scheduledAt: s.scheduledAt,
+          // Carried through rather than dropped: `CampaignSlotInput` has
+          // supplied it since `CMP-01.4`, and losing it here made the dev store
+          // reproduce exactly the "no platform on the slot" case the scheduler's
+          // playbook fallback exists for.
+          platform: s.platform ?? null,
         })),
       ]);
       return next.length;

@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { ReplyAction } from './ReplyAction';
 import { EngagementCardActions } from './EngagementCardActions';
 import { OpportunityActions } from './OpportunityActions';
+import { ConversationDrawer } from './ConversationDrawer';
 
 /**
  * `ENG-02` — the engagement inbox feed: comments, DMs and story replies,
@@ -16,8 +18,11 @@ import { OpportunityActions } from './OpportunityActions';
  * (`ReplyAction`, PRD §8.8) attached to each card, plus `EngagementCardActions`
  * (`engage.escalate`/`.takeover`) on every card and `OpportunityActions`
  * (`engage.opportunity.create`/`.route`) on the Sales Opportunities tab only.
- * `engage.audit.query` (master plan §3.2) is a deliberate follow-up: no
- * dedicated audit UI here, per its own tool comment.
+ * `ENG-02.4`'s conversation drawer (`ConversationDrawer`) opens from every card:
+ * one message is not enough to judge a lead, which is the reason §8.8 asks for
+ * it, and that is as true of a comment about to be replied to as of a
+ * hot-classified DM. `engage.audit.query` has its own screen on `/account` —
+ * this comment used to say there was no audit UI, which stopped being true.
  *
  * Each tab is a `category` filter on `engage.list`, except **Needs Review**:
  * a message SPARK hasn't classified yet has `category: null`, and there is
@@ -30,9 +35,8 @@ import { OpportunityActions } from './OpportunityActions';
 
 type EngagementCategory = 'needs_review' | 'suggested_reply' | 'auto_handled' | 'sales_opportunity';
 
-interface EngagementWhy {
-  summary: string;
-}
+/** The shape `WhyPopover` renders — `Explanation` as it arrives over HTTP. */
+type EngagementWhy = Explanation;
 
 /** Exported for `ReplyAction`, the only other file that needs this shape. */
 export interface EngagementItem {
@@ -67,6 +71,8 @@ export function EngagementFeed() {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const [tab, setTab] = useState<EngagementCategory>('needs_review');
+  /** `ENG-02.4`'s drawer. The message whose conversation is open, or undefined. */
+  const [openThread, setOpenThread] = useState<string | undefined>();
   const [items, setItems] = useState<EngagementItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -183,26 +189,42 @@ export function EngagementFeed() {
                 </div>
               ) : null}
 
-              {item.why?.summary ? (
-                <p className="mt-2 text-[13px] italic text-ink-muted">Why: {item.why.summary}</p>
-              ) : null}
+              {/* PRD §7.3 names engagement classification explicitly as something
+                  that must be explainable. The classifier returns weighted
+                  factors and its evidence; only the summary was ever shown. */}
+              <WhyPopover why={item.why} />
 
               <ReplyAction item={item} genomeId={genomeId} onReplied={handleResolved} />
               <EngagementCardActions item={item} genomeId={genomeId} onResolved={handleResolved} />
               {tab === 'sales_opportunity' ? <OpportunityActions item={item} genomeId={genomeId} /> : null}
 
-              <p className="mt-2 text-[12px] text-ink-muted">
-                {new Date(item.receivedAt).toLocaleString('en', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12px] text-ink-muted">
+                  {new Date(item.receivedAt).toLocaleString('en', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+                {/* On every card, not just the Sales tab. §8.8 names the drawer
+                    under `ENG-02.4`, and the reason it exists — one message is
+                    not enough to judge — is just as true of a comment somebody
+                    is about to reply to. */}
+                <button
+                  type="button"
+                  onClick={() => setOpenThread(item.id)}
+                  className="text-[12px] font-medium text-brand-purple underline decoration-dotted underline-offset-2 hover:no-underline"
+                >
+                  See the conversation
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      <ConversationDrawer genomeId={genomeId} messageId={openThread} onClose={() => setOpenThread(undefined)} />
     </section>
   );
 }

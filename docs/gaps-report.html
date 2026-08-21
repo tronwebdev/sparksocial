@@ -1,0 +1,524 @@
+<title>SparkSocial Remaining Gaps</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Tokens derived from apps/web/src/styles/tokens.css — the product's own ramp */
+  :root {
+    --ink:       #0c0c0c;
+    --ink-soft:  #3a4142;
+    --muted:     #6a7677;
+    --faint:     #9aa5a6;
+    --canvas:    #f6f7f7;
+    --surface:   #ffffff;
+    --surface-2: #eff1f1;
+    --rule:      rgba(12, 12, 12, 0.11);
+    --rule-soft: rgba(12, 12, 12, 0.06);
+
+    --accent:    #043133;
+    --accent-2:  #0baac7;
+
+    --fe:        #a341ff;  /* ss-purple — frontend work */
+    --be:        #0baac7;  /* ss-teal — backend work */
+    --both:      #e48915;  /* ss-amber — both */
+    --ext:       #6a7677;  /* not code */
+    --done:      #0e9e0c;
+
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Onest', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:       #f1f3f3;
+      --ink-soft:  #c3cbcb;
+      --muted:     #8e9a9a;
+      --faint:     #6b7676;
+      --canvas:    #0c0e0e;
+      --surface:   #141818;
+      --surface-2: #1c2121;
+      --rule:      rgba(241, 243, 243, 0.14);
+      --rule-soft: rgba(241, 243, 243, 0.07);
+      --accent:    #7fd6de;
+      --accent-2:  #35c3dc;
+      --fe:        #c68cff;
+      --be:        #35c3dc;
+      --both:      #f0ab48;
+      --ext:       #8e9a9a;
+      --done:      #4ecb46;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:       #f1f3f3;
+    --ink-soft:  #c3cbcb;
+    --muted:     #8e9a9a;
+    --faint:     #6b7676;
+    --canvas:    #0c0e0e;
+    --surface:   #141818;
+    --surface-2: #1c2121;
+    --rule:      rgba(241, 243, 243, 0.14);
+    --rule-soft: rgba(241, 243, 243, 0.07);
+    --accent:    #7fd6de;
+    --accent-2:  #35c3dc;
+    --fe:        #c68cff;
+    --be:        #35c3dc;
+    --both:      #f0ab48;
+    --ext:       #8e9a9a;
+    --done:      #4ecb46;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 52px;
+  }
+
+  /* ── Masthead ── */
+  .mast { display: flex; flex-direction: column; gap: 16px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 42px);
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst { margin: 0; max-width: 68ch; font-size: 17px; color: var(--ink-soft); }
+  .method { display: flex; flex-wrap: wrap; gap: 8px 10px; padding-top: 2px; }
+  .method span {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 4px 8px;
+    background: var(--surface);
+  }
+
+  /* ── Work-type strip ── */
+  .verdict {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .stat { background: var(--surface); padding: 18px 20px; display: flex; flex-direction: column; gap: 3px; }
+  .stat b {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .stat small { font-size: 12px; color: var(--muted); line-height: 1.35; }
+  .stat.fe b   { color: var(--fe); }
+  .stat.be b   { color: var(--be); }
+  .stat.both b { color: var(--both); }
+  .stat.ext b  { color: var(--ext); }
+  .stat.done b { color: var(--done); }
+
+  /* ── Sections ── */
+  section { display: flex; flex-direction: column; gap: 20px; }
+  h2 {
+    font-size: 13px;
+    font-family: var(--mono);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid currentColor;
+  }
+  h2.fe   { color: var(--fe); }
+  h2.be   { color: var(--be); }
+  h2.both { color: var(--both); }
+  h2.ext  { color: var(--ext); }
+  h2.plain { color: var(--accent); }
+  h2.done { color: var(--done); }
+
+  .sec-intro { margin: 0; max-width: 80ch; color: var(--ink-soft); }
+  h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.012em; margin: 0; text-wrap: balance; }
+  p { margin: 0; max-width: 78ch; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border-radius: 3px;
+    padding: 1px 4px;
+    word-break: break-word;
+  }
+
+  /* ── Gap cards ── */
+  .gaps { display: flex; flex-direction: column; gap: 12px; }
+  .g {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--faint);
+    border-radius: 4px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .g.fe   { border-left-color: var(--fe); }
+  .g.be   { border-left-color: var(--be); }
+  .g.both { border-left-color: var(--both); }
+  .g.ext  { border-left-color: var(--ext); }
+  .g.done { border-left-color: var(--done); }
+
+  .g-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; }
+  .g-head h3 { flex: 1 1 300px; }
+  .ref {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .tag.exists { background: rgba(14,158,12,0.14); color: var(--done); }
+  .tag.none   { background: var(--surface-2); color: var(--muted); }
+  .tag.shipped { background: rgba(14,158,12,0.14); color: var(--done); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .tag.exists,
+    :root:not([data-theme="light"]) .tag.shipped { background: rgba(78,203,70,0.16); }
+  }
+  :root[data-theme="dark"] .tag.exists,
+  :root[data-theme="dark"] .tag.shipped { background: rgba(78,203,70,0.16); }
+
+  .g p { color: var(--ink-soft); }
+  .g p strong { color: var(--ink); font-weight: 600; }
+
+  .orient {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+  }
+  .orient dl { margin: 0; display: flex; flex-direction: column; gap: 11px; }
+  .orient dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .orient dd { margin: 0; color: var(--ink-soft); max-width: 80ch; }
+  .orient .k-fe   { color: var(--fe); }
+  .orient .k-be   { color: var(--be); }
+  .orient .k-both { color: var(--both); }
+  .orient .k-ext  { color: var(--ext); }
+
+  /* ── Closed-work ledger ── */
+  .ledger { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .ledger th, .ledger td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  .ledger th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ledger td:first-child { color: var(--ink); }
+  .ledger td:last-child { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .scroller { overflow-x: auto; }
+
+  .correction {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--both);
+    border-radius: 4px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .correction p { color: var(--ink-soft); }
+  .correction strong { color: var(--ink); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 78ch;
+  }
+  a { color: var(--accent-2); }
+  a:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">docs/PRD.md v1.0 · gaps only · fifth pass</p>
+    <h1>What SparkSocial still does not do</h1>
+    <p class="standfirst">Every code gap the second pass found is closed — backend, frontend-only, and the three features that needed both halves. What is left is eight things no amount of code shortens, and one browser pass over everything built this week. That is the honest state: the product is no longer waiting on engineering.</p>
+    <div class="method">
+      <span>9 open, was 28</span>
+      <span>1,975 tests / 150 files: pass</span>
+      <span>tsc + next build: clean</span>
+      <span>32 migrations applied</span>
+      <span>tree at 9c9c30c</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="stat done"><b>23</b><small>Closed — every code gap on the second pass</small></div>
+    <div class="stat fe"><b>0</b><small>Frontend only — none left</small></div>
+    <div class="stat be"><b>0</b><small>Backend — none left</small></div>
+    <div class="stat both"><b>0</b><small>Both halves — none left</small></div>
+    <div class="stat ext"><b>8</b><small>Not code — approvals, keys, a decision</small></div>
+  </div>
+
+  <section>
+    <h2 class="plain">The direct answer: engineering is not the constraint any more</h2>
+    <div class="orient">
+      <dl>
+        <div>
+          <dt class="k-be">Backend — 10 items, all closed</dt>
+          <dd>Per-campaign approvals, media-generation sign-off, configurable publish roles, a review-queue cap, PRD §5's fourteen success metrics, the credit-ledger read, the <code>saves</code> metric, org data governance, the DISC-02 time series, and connection alerting with a retry ceiling.</dd>
+        </div>
+        <div>
+          <dt class="k-fe">Frontend only — 10 items, all closed</dt>
+          <dd>Brand-knowledge upload, teams and roles, the audit log, brand import/export, calendar filters, the Plan queue, §8.12's two settings layers, connecting accounts during onboarding, the personalisation step, and the brand kit. <strong>Three of them could not be built as screens at all</strong> — <code>knowledge.*</code> had three ingestion tools and no way to ask what a brand knows; <code>team.*</code> had three writes and no way to see who is in the org; the calendar could not filter by an account because nothing selected the column. Those needed <code>knowledge.list</code>, <code>team.list</code>, and <code>platform</code>/<code>mediaType</code> on <code>calendar.get</code> first.</dd>
+        </div>
+        <div>
+          <dt class="k-both">Both halves — 3 items, all closed</dt>
+          <dd>The conversation drawer (<code>ENG-02.4</code>), the influencer watchlist (§8.9) and the A/B test (<code>DISC-02</code>). Each needed new storage <em>and</em> a new surface, and in each the hard part was deciding what the product is allowed to claim — see the three cards below.</dd>
+        </div>
+        <div>
+          <dt class="k-ext">Not code — 8 items, open</dt>
+          <dd>Platform approvals, vendor keys, dashboard configuration, and one product decision that is yours. <strong>This is where the alpha actually lives</strong>, exactly as CLAUDE.md has said from the start.</dd>
+        </div>
+        <div>
+          <dt style="color: var(--accent-2)">One thing owed, and it is not code</dt>
+          <dd><strong>Nothing built this week has been opened in a browser.</strong> Every <code>(app)</code> route sits behind Clerk and signing in is not something an agent should do, so fifteen new surfaces are typechecked and prerendering and none of them has been <em>looked at</em>. The cases worth deliberately reaching are listed at the bottom of this page.</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ══ THE THREE DECISIONS ═══════════════════════════════════ -->
+  <section>
+    <h2 class="done">The last three, and the judgement each needed</h2>
+    <p class="sec-intro">All three were storage <em>and</em> a surface, and in each the interesting part was deciding what the product is allowed to claim. Recorded because those are the decisions worth disagreeing with.</p>
+
+    <div class="gaps">
+      <article class="g done">
+        <div class="g-head"><h3>The conversation drawer</h3><span class="tag shipped">Closed</span><span class="ref">ENG-02.4 · §8.8</span></div>
+        <p><strong>The judgement: never merge two people.</strong> Rows were keyed by the platform's per-message id, so nothing said which belonged to one exchange — a lead that took four messages read as four strangers. When a platform supplies no conversation id, the key is derived, and the derivation <em>always</em> includes the author handle. The cost is that a group thread fragments; the alternative is a stranger's words appearing in somebody else's drawer, and only one of those is a privacy failure.</p>
+        <p>It also reversed a documented decision. <code>markReplied</code>'s comment argued the sent text needed no column because the audit row had it — right for "was this answered?", wrong once the question became "show me the conversation", since <code>tool_calls</code> never returns inputs. A transcript built from the feed alone showed a customer talking to nobody. The comment now says so rather than being quietly deleted.</p>
+      </article>
+
+      <article class="g done">
+        <div class="g-head"><h3>The influencer watchlist</h3><span class="tag shipped">Closed</span><span class="ref">§8.9</span></div>
+        <p><strong>The judgement: refuse by name rather than return nothing.</strong> Reading a watched account's posts is a listening capability on the same approval clock as the inbox, so <code>InfluencerSource</code> is a seam with no configured implementation here. <code>trend.influencer.review</code> therefore says it cannot look — because "your competitors posted nothing" and "we cannot see their posts" are different facts and only one is true.</p>
+        <p>Watching also had to <em>mean</em> something, or this would have been another table nothing consults — the exact shape of gap the rest of this page has been closing. A watched account's posts are scored by the same <code>scoreTrend</code> machinery <code>trend.rank</code> uses, because two scorers for one question drift. And the watchlist is closed to <code>viewer</code> and <code>client</code>, unlike the trend feed: a list of the accounts a brand studies is frequently a list of its competitors.</p>
+      </article>
+
+      <article class="g done">
+        <div class="g-head"><h3>A/B variants</h3><span class="tag shipped">Closed</span><span class="ref">DISC-02 · §8.9</span></div>
+        <p><strong>The judgement: two posts are not a sample, and the tool has to say so.</strong> A verdict from two engagement numbers is a comfortable lie — the bigger number really is bigger. So there are three named ways to have no winner (waiting to publish, waiting for reach, genuinely too close), a 200-impression floor, a deliberately coarse 1.5× threshold that admits it is a heuristic, and "two posts is a hint, not proof" travels <em>in the explanation</em> rather than in a doc comment nobody reading a dashboard will see.</p>
+        <p>One correction worth recording: the first version computed its own reward and wrote to the learning loop, with a comment explaining why that was fine. It was not. <code>learning.record_outcome</code> scores against the brand's own recent baseline and refuses a caller-supplied number, and a second formula would drift from it — the same "two scorers, one question" mistake the influencer card names. The result tool is now a read that names the winning post; recording is a separate, explicit call.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══ NOT CODE ══════════════════════════════════════════════════════ -->
+  <section>
+    <h2 class="ext">Not code — approvals, keys, or a decision</h2>
+    <p class="sec-intro">Eight items no amount of engineering closes, and the reason each is stuck. This is where the alpha actually lives.</p>
+
+    <div class="gaps">
+      <article class="g ext">
+        <div class="g-head"><h3>Platform approvals gate publishing, and always did</h3><span class="tag none">External</span><span class="ref">§8 · Part A</span></div>
+        <p>The real constraint on shipping, restated because it is easy to lose behind a list of code gaps. The PRD&rsquo;s own integrations register puts LinkedIn at weeks-to-months and says it &ldquo;rejects anything resembling a generic scheduler&rdquo;; Meta App Review is one to three weeks; TikTok has a sandbox audit whose posts are invisible until it clears. Fourteen platforms are <em>nameable</em> and every unconfigured one routes to the stub adapter, so calendar → guardrails → policy → publish runs end to end today without a single vendor account. Whether they are <em>reachable</em> is a filing question.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>No webhook feeds the engagement inbox</h3><span class="tag none">External</span><span class="ref">§8.8</span></div>
+        <p><code>engage.ingest</code> works, is tested, and upserts on <code>(org, genome, platform, external_id)</code> so a webhook retry cannot duplicate a message. Nothing calls it with real traffic, because that needs the Meta listening scopes from the same App Review above. The PRD is right to bundle those scopes into one review cycle rather than two.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>WhatsApp Business verification</h3><span class="tag none">External</span><span class="ref">§6.2 / §6.3</span></div>
+        <p>Needed before a real number can send; the Direct+Finish loop runs end to end on the stub transport until then. Worth restating that this loop deliberately has <em>no</em> web surface — <code>direct.brief.generate</code>, <code>direct.session.send</code>, <code>direct.media.ingest</code> and <code>whatsapp.*</code> are reachable from no screen by design, because the loop <em>is</em> WhatsApp. A brief goes out as a message, the owner films and replies, the reply lands as an asset. A page in the middle would defeat the point.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>The agency portal&rsquo;s three capabilities</h3><span class="tag none">Needs a spec</span><span class="ref">§8.13</span></div>
+        <p>Website wizard, lead/job finder, trainings. §8.13 names them and then says their outputs are <em>&ldquo;defined by separate PRD if deeper&rdquo;</em> — so there is nothing to build against, and building anyway would be inventing product rather than implementing it. They appear on Account Home marked as not built, which is the honest state. <strong>This is the one item on the page blocked on a decision rather than on time, and the decision is yours.</strong></p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>Vendor keys — no code path missing</h3><span class="tag none">Needs a key</span><span class="ref">.env.example</span></div>
+        <p>fal.ai (account locked on billing, blocks real image generation); HeyGen (key configured, tool live, never spent real credits confirming a render completes); Ayrshare (adapter ready, no key, and deliberately out of default routing behind <code>PUBLISH_USE_AGGREGATOR=true</code> — reserved for the long-tail platforms post-GA per plan §8); Product Hunt, Pinterest, Google Drive and Canva (code-complete, unit-tested, never live-verified). Setup steps in <code>apps/api/.env.example</code>.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>Clerk dashboard configuration</h3><span class="tag none">External</span><span class="ref">SET-ORG-01</span></div>
+        <p>Six custom org roles and the OAuth providers, dashboard-only, no code path. <code>team.invite</code> and <code>team.role.set</code> make real Clerk calls that have deliberately never been fired at a real recipient.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>Azure Blob storage, unprovisioned</h3><span class="tag none">External</span><span class="ref">CLAUDE.md</span></div>
+        <p>Code-ready; local disk stands in. Per CLAUDE.md the sandbox cannot reach Azure, so this runs from a developer machine — the same reason migrations are applied by hand rather than by an agent.</p>
+      </article>
+
+      <article class="g ext">
+        <div class="g-head"><h3>Compliance vertical, and pricing from real cost data</h3><span class="tag none">Product decision</span><span class="ref">§10 · §12</span></div>
+        <p>Which verticals — health, finance, legal — to support and how strictly; <code>genome.compliance.classify</code> exists and is the thing that decision configures. And <code>tool_calls.cost_cents</code> carries real per-call cost, <code>org.usage.get</code> now reads the spend side of it, and nothing aggregates it into the report a pricing decision would rest on. The <code>org_budgets</code> cap is a placeholder figure.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══ CLOSED ════════════════════════════════════════════════════════ -->
+  <section>
+    <h2 class="done">Everything closed, by commit</h2>
+    <p class="sec-intro">Twenty-three gaps across five passes. Listed because a gap tracker that only ever grows is not being read against the code — and because three of the frontend ten turned out not to be frontend work at all until a read tool existed for them.</p>
+
+    <div class="scroller">
+      <table class="ledger">
+        <thead>
+          <tr><th>What</th><th>How it was closed</th><th>Commit</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Approvals per campaign (§7.2)</td><td><code>campaigns.approvalMode</code>, read by <code>policy.ts</code> rule 7 via <code>policySubject</code></td><td>3dd5eff</td></tr>
+          <tr><td>Approval for media generation (§6)</td><td><code>requireApprovalForMedia</code> + <code>producesMedia</code>, policy rule 4b</td><td>3dd5eff</td></tr>
+          <tr><td>Publish permission per role (§6)</td><td><code>brands.publishRoles</code>, policy rule 2b — narrows, never widens</td><td>3dd5eff</td></tr>
+          <tr><td>Queue cap (§10)</td><td><code>maxPendingReview</code>, policy rule 4c</td><td>3dd5eff</td></tr>
+          <tr><td>PRD §5&rsquo;s fourteen metrics</td><td><code>analytics.success_metrics</code>; every rate returns null, not zero, on an empty denominator</td><td>fa37bbc</td></tr>
+          <tr><td>Credit-ledger read (§12)</td><td><code>org.usage.get</code> with warning and critical thresholds</td><td>61aac57</td></tr>
+          <tr><td>The <code>saves</code> metric (CC-04)</td><td>column + adapter mapping</td><td>61aac57</td></tr>
+          <tr><td>Org data governance (§8.12)</td><td>2FA, residency, retention; <code>setGovernance</code> became a merge patch and the tool dropped to <code>human_only</code></td><td>ddfa27b</td></tr>
+          <tr><td>Trend time series (DISC-02 · §8.9)</td><td><code>trend_observations</code>, hour-bucketed and cross-tenant by design; <code>trend.observe</code> on a clock</td><td>236d61a</td></tr>
+          <tr><td>Connection alerts (§10)</td><td><code>connection-watcher.ts</code> via <code>human.notify</code>, latched so it warns once</td><td>fd527a7</td></tr>
+          <tr><td>Retry flow with an end (§10)</td><td>attempt count in SQL, ceiling at five, then blocked with the reason and a notification</td><td>fd527a7</td></tr>
+          <tr><td>Health indicators (§10)</td><td><code>integration.health</code> gained a real status and a <code>needsAttention</code> list</td><td>fd527a7</td></tr>
+          <tr><td>The stalled-post explanation</td><td><code>content.get</code> carries the retry state; <code>StallNotice</code> renders it with a reschedule</td><td>116b17a</td></tr>
+          <tr><td>A screen for §5 (CC-04)</td><td><code>PerformancePanel</code> on <code>/agents</code>; nulls render as em dashes with reasons</td><td>116b17a</td></tr>
+          <tr><td>The reads three frontend gaps needed</td><td><code>knowledge.list</code> (grouped by document, not chunk) and <code>team.list</code> (Clerk membership joined to <code>brand_members</code> in one call)</td><td>ffe1cb9</td></tr>
+          <tr><td>Brand knowledge upload (ONB-02)</td><td><code>KnowledgePanel</code>: crawl, paste, a file reader for text formats, and a claim tester so the corpus is legible</td><td>020c919</td></tr>
+          <tr><td>Teams and roles (SET-WS-01)</td><td><code>TeamPanel</code> on <code>/account</code>; keeps Clerk membership and brand assignment visibly separate</td><td>020c919</td></tr>
+          <tr><td>The audit log (SET-ORG-01, §10)</td><td><code>AuditPanel</code>: two tabs, filters, refusals tinted and carrying their <code>ruleId</code></td><td>020c919</td></tr>
+          <tr><td>Brand import / export (SET-WS-01)</td><td><code>BrandTransferPanel</code>; export downloads a Blob, import validates section-by-section</td><td>020c919</td></tr>
+          <tr><td>§8.12's two settings layers</td><td><code>/account</code> is the org layer, <code>/settings</code> the brand layer; the org panels moved rather than being duplicated</td><td>020c919</td></tr>
+          <tr><td>Calendar filters (CAL-01, §8.7)</td><td><code>platform</code> + <code>mediaType</code> on <code>calendar.get</code>, then filters whose options come from the data</td><td>a232869</td></tr>
+          <tr><td>§7.5's Plan queue</td><td><code>PlanQueue</code>: scheduled work soonest first, leading with how much of it is unwritten</td><td>a232869</td></tr>
+          <tr><td>Connect accounts in onboarding (ONB-04)</td><td><code>ConnectAccountsStep</code>, via a popup so the flow's unsaved answers survive</td><td>0e2d239</td></tr>
+          <tr><td>The personalisation step (ONB-05)</td><td><code>PersonalizeStep</code>: avatar/voice ids and the consent record as one action, because the guardrail needs both</td><td>0e2d239</td></tr>
+          <tr><td>The brand kit reaching pixels (§8.6)</td><td><code>resolveKit</code> in <code>@sparksocial/compose</code>, applied by both renderers; logo upload and a colour editor with a legibility preview</td><td>0e2d239</td></tr>
+          <tr><td>The conversation drawer (ENG-02.4)</td><td><code>thread_key</code> + <code>sent_reply</code>, <code>engage.thread</code>, and a drawer on every card — not just the Sales tab</td><td>64f7cd2</td></tr>
+          <tr><td>The influencer watchlist (§8.9)</td><td><code>influencer_watchlist</code>, <code>trend.influencer.watch</code>/<code>.review</code>, and a Discovery tab</td><td>64f7cd2</td></tr>
+          <tr><td>A/B variants (DISC-02)</td><td><code>variant_group_id</code>, <code>content.variant.split</code>/<code>.result</code>, "Test both" beside "Use this"</td><td>9c9c30c</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══ CORRECTIONS ═══════════════════════════════════════════════════ -->
+  <section>
+    <h2 class="plain">Corrections found along the way</h2>
+    <p class="sec-intro">Recorded rather than quietly edited. A gap tracker that has been wrong once should say where, for the same reason the codebase treats a stale comment as worse than none.</p>
+
+    <div class="gaps">
+      <div class="correction">
+        <h3>The &ldquo;one real security hole&rdquo; was not a hole</h3>
+        <p>The repo&rsquo;s <code>docs/GAPS.md</code> listed brand-level isolation as an outright gap: <code>team.permission.set</code> writes <code>brand_members</code> rows and supposedly nothing read them, so any org member could reach any brand in the org. <strong>Not true.</strong> <code>apps/api/src/clerk-auth.ts</code> reads them — every role other than <code>owner</code>/<code>admin</code> needs an explicit row for the claimed brand and is refused with <code>ISOLATION_VIOLATION</code>, absent rather than forbidden, so probing a genome id cannot confirm a brand exists that the caller is not assigned to. It landed in <code>e343534</code>. The entry was inherited from an older draft and never re-checked against source, which is the exact failure that file&rsquo;s own methodology note warns about.</p>
+        <p><code>makeDevResolveCtx</code> has no such check, correctly: it trusts request headers by design, and <code>index.ts</code> refuses to boot in production without a real auth resolver unless <code>ALLOW_DEV_AUTH=true</code> is set deliberately.</p>
+      </div>
+
+      <div class="correction">
+        <h3>The month grid was counted as unbuilt work</h3>
+        <p>Listed as &ldquo;the calendar is a card list, not a month grid&rdquo;. <code>MonthGrid</code> exists and is a grid; what it deliberately does <em>not</em> do is lay slots over a real month calendar, for the reason its own comment states. Overstating a gap costs the same as understating one, so the entry has been narrowed to the filters, which are genuinely absent.</p>
+      </div>
+
+      <div class="correction">
+        <h3><code>docs/GAPS.md</code> was substantially out of date, and now is not</h3>
+        <p>The previous pass flagged this as housekeeping. The file has been rewritten to contain only open items — 461 lines down to roughly 200 — with closed work deleted rather than ticked, and its own methodology note now says every claim was verified against the tree rather than carried forward. It and this page agree.</p>
+      </div>
+
+      <div class="correction">
+        <h3>Three &ldquo;frontend&rdquo; gaps were not frontend gaps</h3>
+        <p>Brand-knowledge upload, teams and roles, and the calendar&rsquo;s account filter were all filed as <em>frontend only &mdash; the tool is already there</em>. Two of the three had <strong>only writes</strong>: <code>knowledge.*</code> could ingest a document and never answer &ldquo;what does this brand know?&rdquo;, and <code>team.*</code> could invite, promote and assign with no way to see whom. A settings panel built on those would have been close to useless &mdash; you cannot change somebody&rsquo;s role without first knowing whose. The third could not filter by account because <code>campaignSlots</code> never selected the column. The classification was right about where the <em>work</em> was and wrong about whether a screen was sufficient.</p>
+      </div>
+
+      <div class="correction">
+        <h3>Four doc comments claimed the opposite of what is now true</h3>
+        <p>Each was accurate when written and became a false claim as the tools underneath it landed: onboarding said its connect and avatar steps had <em>&ldquo;no tool behind them yet&rdquo;</em>; <code>AccountHome</code> said the credit ledger had no read tool; <code>settings/page.tsx</code> described itself as holding the org half; <code>team.ts</code> said nothing enforced brand isolation at the query layer. All four fixed in the commits that falsified them &mdash; the last one had already been cited on this page as evidence of an open security hole.</p>
+      </div>
+
+      <div class="correction">
+        <h3><code>npm run migrate</code> could not find a connection string</h3>
+        <p>Migrations 0029&ndash;0031 sat unapplied because the command failed with nothing but its driver choice printed. <code>drizzle.config.ts</code> read <code>process.env.DATABASE_URL</code> and nothing bridged <code>apps/api/.env</code>, so a fresh shell fell through to a <code>placeholder</code> host — turning &ldquo;you have no connection string&rdquo; into a connection failure against a host that does not exist. Fixed at the config, which every entry point shares, and the fallback now throws with the two places the value can come from. Thirty-two migrations are applied and <code>drizzle-kit generate</code> reports no schema drift.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ VERIFICATION OWED ═════════════════════════════════════════════ -->
+  <section>
+    <h2 class="plain">The one thing owed, and it is not code</h2>
+    <p class="sec-intro"><strong>Nothing built this week has been opened in a browser.</strong> Twelve new surfaces are typechecked and prerendering in <code>next build</code>, and none of them has been <em>looked at</em>: every <code>(app)</code> route sits behind Clerk, and signing in is not something an agent should do. This is one sitting, not twelve tasks &mdash; but it is worth doing deliberately rather than by clicking around, because the states most likely to be wrong are the empty ones nobody navigates to by accident.</p>
+
+    <div class="gaps">
+      <article class="g">
+        <div class="g-head"><h3>The five cases a screenshot settles and a type system cannot</h3><span class="ref">before the alpha</span></div>
+        <p><strong><code>PerformancePanel</code> with no campaign.</strong> Should be em dashes with reasons attached, never a column of confident zeros &mdash; nine of the fourteen metrics are nullable and that behaviour is the whole design of the component.</p>
+        <p><strong><code>StallNotice</code>.</strong> Needs a genuinely blocked item to render against. Cheapest way to make one: schedule a post to a platform with no connection and let the scheduler reach its five-attempt ceiling.</p>
+        <p><strong><code>KnowledgePanel</code> with nothing attached.</strong> The warning that every specific claim will be held is the most important state on that screen, and it is the state a brand is actually in on day one.</p>
+        <p><strong>The brand-kit preview.</strong> A light background against the default white type is exactly the unreadable pair <code>resolveKit</code> deliberately refuses to guess around &mdash; the preview exists to make that visible before it reaches a render.</p>
+        <p><strong><code>ConnectAccountsStep</code>.</strong> The popup path, and the refusal-by-name for a platform with no configured developer app &mdash; which is most of them in this environment, and therefore the path most people will see.</p>
+        <p><strong><code>ConversationDrawer</code> on a keyless message.</strong> Rows written before threading existed report as their own conversation; the drawer should say so rather than render a one-turn transcript nobody can tell from a real one.</p>
+        <p><strong><code>VariantResult</code> in each of its three undecided states.</strong> The whole design is that "waiting to publish", "not enough reach" and "too close" read as different situations calling for different actions.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    Fifth pass over <code>docs/PRD.md</code> §1&ndash;§12 and Parts A&ndash;C, checked against the tree at <code>9c9c30c</code>. Twenty-three of the twenty-eight gaps the second pass found are closed and the remaining five are all in the "not code" column, plus one browser pass owed. 1,975 tests across 150 files pass, <code>tsc</code> is clean on both configs, <code>next build</code> compiles and prerenders 24 routes. Migrations 0032&ndash;0034 are generated and <strong>not yet applied</strong> — all additive, so an un-migrated database keeps working until something reads the new columns. Engineering is no longer the constraint; platform approvals are, which they always were.
+  </footer>
+
+</div>

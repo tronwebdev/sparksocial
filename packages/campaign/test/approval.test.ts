@@ -22,6 +22,9 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     createdAt: daysAgo(2),
     agentPaused: false,
     postsPerWeek: 3,
+      strictMode: false,
+      timezone: 'UTC',
+      engagementAutonomy: 'off' as const,
     ...initial,
   };
   return {
@@ -43,6 +46,7 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
       return row;
     },
     setPolicy: async () => row,
+    setGovernance: async () => row,
   };
 }
 

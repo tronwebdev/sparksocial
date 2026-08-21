@@ -47,6 +47,12 @@ export function normalizeAyrshareMetrics(body: unknown, platform: string): RawPo
     shares: pickNumber(block, ['shareCount', 'shares', 'retweetCount', 'repostCount']),
     views: pickNumber(block, ['videoViewCount', 'viewCount', 'views', 'playCount']),
     impressions: pickNumber(block, ['impressionsCount', 'impressionCount', 'impressions']),
+    // `CC-04`'s "Saves". The key differs per platform even through one
+    // aggregator — Instagram reports `savedCount`, TikTok `favouriteCount` (and
+    // spells it both ways) — so the candidate list is wider than the others'.
+    // `pickNumber` returns 0 when none match, which is the right answer for a
+    // platform that does not report it.
+    saves: pickNumber(block, ['savedCount', 'saveCount', 'saves', 'bookmarkCount', 'favouriteCount', 'favoriteCount']),
     raw: body,
   };
 }
