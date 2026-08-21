@@ -183,6 +183,15 @@ az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-typ
   --role Contributor --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG}" \
   --output none 2>/dev/null || echo "  (Contributor already assigned)"
 
+# Contributor on the resource group does *not* include reading vault secrets:
+# the vault is RBAC-authorized, and data-plane access is a separate role from
+# management-plane rights. Without this the deploy fails at the migration step
+# with a 403 on `database-url`, which reads like a missing secret rather than a
+# missing permission.
+az role assignment create --assignee-object-id "$SP_ID" --assignee-principal-type ServicePrincipal \
+  --role "Key Vault Secrets User" --scope "$KV_ID" \
+  --output none 2>/dev/null || echo "  (Key Vault Secrets User already assigned to CI)"
+
 # One credential per trust context. `ref:refs/heads/main` covers pushes to main;
 # `environment:` covers the manual workflow_dispatch runs.
 for SUBJECT in "repo:${GITHUB_REPO}:ref:refs/heads/main" "repo:${GITHUB_REPO}:environment:${ENVIRONMENT}"; do
@@ -211,15 +220,23 @@ password to store):
   gh variable set AZURE_CONTAINERAPP_NAME      --body "$APP"
   gh variable set AZURE_CONTAINERAPP_WEB_NAME  --body "$WEB_APP"
   gh variable set AZURE_STORAGE_ACCOUNT        --body "$STORAGE"
+  gh variable set AZURE_KEY_VAULT_NAME         --body "$KV"
 
 Then push to main, or run the "Deploy to Azure" workflow manually.
 
 Still to do before the app is useful:
+  • Put the application secrets in Key Vault. Nothing else reads them — the
+    deploy wires each as a keyvaultref, so a key absent from the vault leaves
+    its feature cleanly unavailable rather than half-configured:
+      ./infra/azure/secrets.sh                      # set vs missing
+      ./infra/azure/secrets.sh set OPENAI_API_KEY
+      ./infra/azure/secrets.sh import apps/api/.env
+    OAUTH_STATE_SECRET is not a vendor key and gates *all* social connect.
+    Generate one:  openssl rand -base64 32
   • Add your IP to the Postgres firewall to run migrations:
       az postgres flexible-server firewall-rule create -g $RG -n $PG \\
         --rule-name dev --start-ip-address <your-ip> --end-ip-address <your-ip>
   • CREATE EXTENSION vector;   (pgvector is allow-listed, not yet created)
-  • Wire the app to read DATABASE_URL from Key Vault via its managed identity.
   • Set the web app's own secrets as GitHub Actions secrets (build-time
     NEXT_PUBLIC_* values, baked into the image, not read at runtime):
       gh secret set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY --body "<from Clerk>"
