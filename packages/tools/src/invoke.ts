@@ -39,7 +39,22 @@ export interface ToolCallRecord {
   input: unknown;
   output?: unknown;
   effect: RegisteredTool['effect'];
-  decision: Decision['kind'];
+  /**
+   * What the policy engine decided — or `not_evaluated` when the call never
+   * reached it.
+   *
+   * A schema rejection, a missing idempotency key and a `policySubject` that
+   * threw all fail *before* the gate runs. Those used to be written as `deny`,
+   * because `deny` was the skeleton's fail-closed default, which conflated "the
+   * governance layer refused this" with "the governance layer never saw it".
+   * The audit screen tints non-allow rows and shows their `ruleId` on the
+   * argument that a denial is governance working — so a typo'd input appeared
+   * there as a policy refusal with no rule behind it.
+   *
+   * Safe to distinguish because nothing gates on this field: it is the record of
+   * a decision, never the decision itself.
+   */
+  decision: Decision['kind'] | 'not_evaluated';
   ruleId?: string;
   reason?: string;
   costCents: number;
@@ -405,7 +420,9 @@ function skeleton(
     role: req.ctx.role,
     input,
     effect: tool.effect,
-    decision: 'deny',
+    // Not `deny`: this row is written before the policy gate runs, and every
+    // path that leaves it unchanged is one where policy was never consulted.
+    decision: 'not_evaluated',
     costCents,
     ...(req.idempotencyKey ? { idempotencyKey: req.idempotencyKey } : {}),
     status: 'pending',

@@ -74,12 +74,22 @@ const LIMITS = [50, 100, 200] as const;
 
 const money = (cents: number) => (cents === 0 ? '—' : `$${(cents / 100).toFixed(2)}`);
 
-/** `allow` is the uninteresting case, so everything else gets the colour. */
+/**
+ * `allow` is the uninteresting case, so a real refusal gets the colour.
+ *
+ * `not_evaluated` deliberately does not: it means the call failed before the
+ * policy gate — a schema rejection, a missing idempotency key — and colouring it
+ * like a governance refusal is exactly the conflation this panel used to show.
+ * A typo is not the governance layer doing its job.
+ */
 function decisionTone(decision: string): 'success' | 'warn' | 'destructive' | 'neutral' {
-  if (decision === 'allow') return 'neutral';
+  if (decision === 'allow' || decision === 'not_evaluated') return 'neutral';
   if (decision === 'deny') return 'destructive';
   return 'warn';
 }
+
+/** Reads as what it is, rather than as a policy verdict nobody made. */
+const DECISION_LABEL: Record<string, string> = { not_evaluated: 'rejected before policy' };
 
 export function AuditPanel() {
   const { genome } = useSelectedGenome();
@@ -138,7 +148,12 @@ export function AuditPanel() {
     void load();
   }, [load]);
 
-  const shown = refusalsOnly ? (calls ?? []).filter((c) => c.decision !== 'allow') : (calls ?? []);
+  // `not_evaluated` is excluded from "refusals only" for the same reason it is
+  // not tinted: the point of that toggle is to find what governance stopped, and
+  // a malformed request was stopped by a schema.
+  const shown = refusalsOnly
+    ? (calls ?? []).filter((c) => c.decision !== 'allow' && c.decision !== 'not_evaluated')
+    : (calls ?? []);
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
@@ -260,7 +275,9 @@ export function AuditPanel() {
                   {shown.map((c) => (
                     <tr
                       key={c.id}
-                      className={`border-b border-rule-soft ${c.decision !== 'allow' ? 'bg-warn/5' : ''}`}
+                      className={`border-b border-rule-soft ${
+                        c.decision !== 'allow' && c.decision !== 'not_evaluated' ? 'bg-warn/5' : ''
+                      }`}
                     >
                       <td className="py-2 pr-3 whitespace-nowrap tabular-nums text-ink-muted">
                         {new Date(c.at).toLocaleString('en', {
@@ -273,7 +290,7 @@ export function AuditPanel() {
                       <td className="py-2 pr-3 font-mono text-[12px] text-ink">{c.tool}</td>
                       <td className="py-2 pr-3 text-ink-muted">{c.caller === 'agent' ? 'SPARK' : 'a person'}</td>
                       <td className="py-2 pr-3">
-                        <Badge variant={decisionTone(c.decision)}>{c.decision}</Badge>
+                        <Badge variant={decisionTone(c.decision)}>{DECISION_LABEL[c.decision] ?? c.decision}</Badge>
                         {c.ruleId ? (
                           <span className="ml-2 font-mono text-[11px] text-ink-muted">{c.ruleId}</span>
                         ) : null}

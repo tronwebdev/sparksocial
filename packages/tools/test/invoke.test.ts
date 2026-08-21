@@ -411,6 +411,18 @@ describe('input validation', () => {
     // The failure is still audited — a rejected call is a fact about the system.
     expect(h.rows).toHaveLength(1);
     expect(h.rows[0]!.status).toBe('failed');
+    /**
+     * And it is audited as `not_evaluated`, not `deny`.
+     *
+     * Found by running the real server: the skeleton row defaulted to `deny`,
+     * so every schema rejection and every missing idempotency key was recorded
+     * as though the policy engine had refused it — with no `ruleId`, because no
+     * rule ran. The audit screen tints non-allow rows as governance refusals, so
+     * a typo'd request appeared there as a policy denial. Two different facts,
+     * and the column now distinguishes them.
+     */
+    expect(h.rows[0]!.decision).toBe('not_evaluated');
+    expect(h.rows[0]!.ruleId).toBeUndefined();
   });
 
   it('audits an unknown tool rather than throwing into the caller', async () => {
@@ -432,6 +444,9 @@ describe('idempotency', () => {
     const res = await invokeTool(request({ tool: 'publish.now' }), h.deps);
     expect(res.status === 'failed' && res.error.code).toBe('INVALID_INPUT');
     expect(res.status === 'failed' && res.error.message).toContain('idempotency key');
+    // Same reasoning as the schema rejection above: refused by the middleware,
+    // never seen by policy.
+    expect(h.rows[0]!.decision).toBe('not_evaluated');
   });
 
   it('replays the prior result instead of repeating the side effect', async () => {
