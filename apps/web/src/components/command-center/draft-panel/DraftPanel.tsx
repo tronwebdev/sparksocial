@@ -75,6 +75,9 @@ export function DraftPanel({
   const [variants, setVariants] = useState<Array<{ beats: ResolvedBeat[] }> | null>(null);
   const [variantsLoading, setVariantsLoading] = useState(false);
   const [variantsError, setVariantsError] = useState<string | null>(null);
+  /** §8.9's A/B test. The index being split, so only that row shows a spinner. */
+  const [splitting, setSplitting] = useState<number | null>(null);
+  const [splitNote, setSplitNote] = useState<string | null>(null);
   const [applyingVariant, setApplyingVariant] = useState<number | null>(null);
   const [repurposeOpen, setRepurposeOpen] = useState(false);
   const [repurposePlaybooks, setRepurposePlaybooks] = useState<PlaybookSummary[] | null>(null);
@@ -422,6 +425,35 @@ export function DraftPanel({
     }
     setApplyingVariant(null);
     setVariants(null);
+  }
+
+  /**
+   * §8.9's A/B test — the other thing to do with a variant.
+   *
+   * "Use this" replaces the copy and throws the take away, which is a *choice*.
+   * This keeps both: the current draft becomes arm A, the take becomes arm B, and
+   * both publish and are measured. `content.variant.split` is `human_only`
+   * because running a test means deliberately publishing something you think is
+   * worse to find out whether you are right.
+   */
+  async function splitTest(index: number, beats: ResolvedBeat[]) {
+    if (!draft || !genomeId || splitting !== null) return;
+    setSplitting(index);
+    setSplitNote(null);
+    const res = await invoke<{ variantGroupId: string; arms: Array<{ contentItemId: string; label: string }> }>(
+      'content.variant.split',
+      { genomeId, contentItemId: draft.contentItemId, variantBeats: beats },
+    );
+    setSplitting(null);
+    if (res.status !== 'succeeded') {
+      setSplitNote(res.status === 'failed' ? res.error.message : 'Setting up the test needs approval first.');
+      return;
+    }
+    setVariants(null);
+    setSplitNote(
+      'Set up. This draft is arm A and the take you picked is arm B — schedule them close together, ' +
+        'since a day apart is a different audience rather than a different post.',
+    );
   }
 
   useEffect(() => {
@@ -811,13 +843,17 @@ export function DraftPanel({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-[13px] font-medium text-ink">Not sure this is the best take?</p>
-                    <p className="text-[12px] text-ink-muted">Preview a couple of alternative takes on the written copy — nothing is saved until you pick one.</p>
+                    <p className="text-[12px] text-ink-muted">
+                      Preview alternative takes on the written copy. Use one, or keep both and let them compete —
+                      nothing is saved until you choose.
+                    </p>
                   </div>
                   <Button size="sm" variant="outline" disabled={variantsLoading} onClick={() => void loadVariants()}>
                     {variantsLoading ? 'Generating…' : 'See variants'}
                   </Button>
                 </div>
                 {variantsError ? <p className="mt-2 text-[12px] text-destructive">{variantsError}</p> : null}
+                {splitNote ? <p className="mt-2 text-[12px] text-ink-muted">{splitNote}</p> : null}
                 {variants && variants.length > 0 ? (
                   <ul className="mt-3 grid grid-cols-1 gap-2">
                     {variants.map((v, i) => (
@@ -828,14 +864,26 @@ export function DraftPanel({
                             .map((b) => b.text)
                             .join('\n\n') || '(no written copy in this take)'}
                         </p>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          disabled={applyingVariant !== null}
-                          onClick={() => void applyVariant(i, v.beats)}
-                        >
-                          {applyingVariant === i ? 'Applying…' : 'Use this'}
-                        </Button>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            disabled={applyingVariant !== null || splitting !== null}
+                            onClick={() => void applyVariant(i, v.beats)}
+                          >
+                            {applyingVariant === i ? 'Applying…' : 'Use this'}
+                          </Button>
+                          {/* The two genuinely different things to do with a
+                              take: replace the copy, or keep both and find out.
+                              Only the second is a test. */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={applyingVariant !== null || splitting !== null}
+                            onClick={() => void splitTest(i, v.beats)}
+                          >
+                            {splitting === i ? 'Setting up…' : 'Test both'}
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>

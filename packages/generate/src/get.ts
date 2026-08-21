@@ -54,6 +54,9 @@ export const ContentGetOutput = z.object({
    */
   publishAttempts: z.number(),
   lastPublishError: z.string().optional(),
+  /** `DISC-02`'s A/B group, when this draft is an arm — so the panel can say so rather than looking like an ordinary post. */
+  variantGroupId: z.string().optional(),
+  variantLabel: z.string().optional(),
 });
 
 export const contentGet = defineTool({
@@ -103,6 +106,8 @@ export const contentGet = defineTool({
       ...(draft.blockedReason ? { blockedReason: draft.blockedReason } : {}),
       publishAttempts: draft.publishAttempts ?? 0,
       ...(draft.lastPublishError ? { lastPublishError: draft.lastPublishError } : {}),
+      ...(draft.variantGroupId ? { variantGroupId: draft.variantGroupId } : {}),
+      ...(draft.variantLabel ? { variantLabel: draft.variantLabel } : {}),
     };
   },
 });

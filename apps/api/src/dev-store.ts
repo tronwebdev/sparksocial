@@ -493,7 +493,7 @@ export function createDevStore(
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
 
-      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt }) {
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
         const row: ContentDraft & {
           orgId: string;
           recipeId?: string;
@@ -517,9 +517,26 @@ export function createDevStore(
           ...(intent ? { intent } : {}),
           ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
+          ...(variantGroupId ? { variantGroupId } : {}),
+          ...(variantLabel ? { variantLabel } : {}),
         };
         drafts.set(row.id, row);
         return row;
+      },
+
+      async tagVariant({ id, genomeId, orgId: org, variantGroupId, variantLabel }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
+        row.variantGroupId = variantGroupId;
+        row.variantLabel = variantLabel;
+        return row;
+      },
+
+      /** Ordered by label, like the SQL one — a two-arm verdict must not swap sides between calls. */
+      async variantGroup(variantGroupId, genomeId, org) {
+        return [...drafts.values()]
+          .filter((r) => r.orgId === org && r.genomeId === genomeId && r.variantGroupId === variantGroupId)
+          .sort((a, b) => (a.variantLabel ?? '').localeCompare(b.variantLabel ?? ''));
       },
 
       async get(id, genomeId, org) {

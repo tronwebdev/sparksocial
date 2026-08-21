@@ -16,7 +16,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.recentContent(db, { orgId, brandId: orgId, genomeId }, windowDays);
     },
 
-    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt }) {
+    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
       const row = await scoped.createContentDraft(
         db,
         { orgId, brandId: orgId, genomeId },
@@ -31,9 +31,21 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
           ...(intent ? { intent } : {}),
           ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
+          ...(variantGroupId ? { variantGroupId } : {}),
+          ...(variantLabel ? { variantLabel } : {}),
         },
       );
       return toDraft(row);
+    },
+
+    async tagVariant({ id, genomeId, orgId, variantGroupId, variantLabel }) {
+      const row = await scoped.tagContentVariant(db, { orgId, brandId: orgId, genomeId }, { id, variantGroupId, variantLabel });
+      return row ? toDraft(row) : undefined;
+    },
+
+    async variantGroup(variantGroupId, genomeId, orgId) {
+      const rows = await scoped.contentVariantGroup(db, { orgId, brandId: orgId, genomeId }, variantGroupId);
+      return rows.map(toDraft);
     },
 
     async get(id, genomeId, orgId) {
@@ -141,6 +153,8 @@ function toDraft(row: scoped.ContentDraftRow): ContentDraft {
     // carried the column.
     publishAttempts: row.publishAttempts,
     ...(row.lastPublishError ? { lastPublishError: row.lastPublishError } : {}),
+    ...(row.variantGroupId ? { variantGroupId: row.variantGroupId } : {}),
+    ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
     ...(row.copy !== null ? { copy: row.copy } : {}),
     ...(row.why !== null ? { why: row.why as Explanation } : {}),
     ...(row.scheduledAt ? { scheduledAt: row.scheduledAt } : {}),

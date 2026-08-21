@@ -614,6 +614,10 @@ export interface ContentDraft {
   publishAttempts?: number;
   /** The last thing that went wrong, verbatim from the failing tool. */
   lastPublishError?: string;
+  /** `DISC-02`'s A/B group. Absent on an ordinary post — a test is a deliberate act, not a default. */
+  variantGroupId?: string;
+  /** Which arm: `a`, `b`, … */
+  variantLabel?: string;
   /**
    * The resolved beats/copy payload. `unknown` at this layer for the same
    * reason `CampaignPlan.plan` is — the shape belongs to whichever package
@@ -687,7 +691,29 @@ export interface ContentStore {
      * slot takes.
      */
     scheduledAt?: Date;
+    /** `content.variant.split`'s two writes — the only caller that sets these. */
+    variantGroupId?: string;
+    variantLabel?: string;
   }): Promise<ContentDraft>;
+
+  /**
+   * Every arm of one A/B test, ordered by label — `content.variant.result`'s
+   * read. Ordered rather than unordered so a two-arm verdict does not swap sides
+   * between refreshes, which reads as a bug even when the numbers agree.
+   */
+  variantGroup(variantGroupId: string, genomeId: string, orgId: string): Promise<ContentDraft[]>;
+
+  /**
+   * Tags an existing draft as an arm of a test — `content.variant.split`'s
+   * second write.
+   *
+   * Its own method rather than two more fields on `updateDraft`, which takes
+   * `copy` and `why` as *required*: tagging arm A must not touch either. Arm A is
+   * usually a draft somebody has already reviewed and possibly scheduled, and a
+   * generic update would either rewrite its copy or force the caller to pass the
+   * copy back unchanged — an invitation to pass it back subtly changed.
+   */
+  tagVariant(args: { id: string; genomeId: string; orgId: string; variantGroupId: string; variantLabel: string }): Promise<ContentDraft | undefined>;
 
   get(id: string, genomeId: string, orgId: string): Promise<ContentDraft | undefined>;
 

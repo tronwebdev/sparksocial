@@ -46,6 +46,8 @@ import { makeComposeRender, makeComposeStatic, makeComposeFanout } from '@sparks
 import {
   makeContentDraft,
   makeDraftVariants,
+  contentVariantSplit,
+  contentVariantResult,
   makeDraftRepurpose,
   makeContentGenerateImage,
   makeContentGenerateBroll,
@@ -347,6 +349,13 @@ export function registerAlphaTools(): void {
   // Both reuse content.draft's own plan-then-write pipeline — see
   // packages/generate/src/variants.ts's own comment.
   register(makeDraftVariants({ text: textWriter(devTextWriter()), embed }));
+  /**
+   * §8.9's A/B test, the half `draft.variants` did not cover: two posts that
+   * both go out and are measured separately. `.split` is `human_only` — running
+   * a test means deliberately publishing something you think is worse.
+   */
+  register(contentVariantSplit);
+  register(contentVariantResult);
   register(makeDraftRepurpose({ text: textWriter(devTextWriter()), embed }));
   register(contentGet);
   register(contentBeatUpdate);

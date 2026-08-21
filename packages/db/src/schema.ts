@@ -239,6 +239,28 @@ export const contentItems = pgTable(
      */
     publishAttempts: integer('publish_attempts').notNull().default(0),
     lastPublishError: text('last_publish_error'),
+    /**
+     * ── PRD §8.9 / `DISC-02`'s A/B test ─────────────────────────────────────
+     *
+     * §8.9 marks A/B optional, and half of it already existed: `draft.variants`
+     * writes alternative takes on the same playbook and the Draft Panel shows
+     * them. What was missing is the part that makes it a *test* rather than a
+     * choice — two posts that go out, each measured, with the result feeding
+     * `learning.record_outcome`.
+     *
+     * Two rows in the same group are the same intent written differently. Null
+     * on every ordinary post, which is the overwhelming majority: an A/B test is
+     * a deliberate act, not a default state, and a non-null default would make
+     * every post look like a one-armed experiment.
+     */
+    variantGroupId: uuid('variant_group_id'),
+    /**
+     * `a`, `b`, … — which arm this row is. Plain text rather than an enum
+     * because the group is not limited to two by anything except good sense
+     * (`draft.variants` will produce four), and a two-value CHECK would need a
+     * migration the first time somebody wanted three.
+     */
+    variantLabel: text('variant_label'),
     copy: jsonb('copy'),
     /**
      * The copy's embedding at publish time — the guardrail layer's `duplicate`
@@ -256,6 +278,8 @@ export const contentItems = pgTable(
   },
   (t) => [
     index('content_items_scope_idx').on(t.orgId, t.genomeId),
+    // `content.variant.result`'s read: the arms of one test.
+    index('content_items_variant_idx').on(t.orgId, t.genomeId, t.variantGroupId),
     // The guardrail layer's trailing-window read (`recentContent`) filters
     // scope *and* `published_at >= cutoff` on every draft evaluated. Carrying
     // the date in the index keeps that from widening into a scan of the

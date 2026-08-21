@@ -239,6 +239,13 @@
       "when": 1787278759875,
       "tag": "0033_clean_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1787280296526,
+      "tag": "0034_quick_anthem",
+      "breakpoints": true
     }
   ]
 }

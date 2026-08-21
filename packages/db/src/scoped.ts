@@ -1129,6 +1129,9 @@ export interface ContentDraftRow {
   /** §10's retry state — see `recordContentPublishFailure`. */
   publishAttempts: number;
   lastPublishError: string | null;
+  /** `DISC-02`'s A/B group. Null on an ordinary post, which is nearly all of them. */
+  variantGroupId: string | null;
+  variantLabel: string | null;
   copy: unknown;
   why: unknown;
   scheduledAt: Date | null;
@@ -1152,6 +1155,8 @@ const contentDraftColumns = {
   // it has been tried and what happened, or the only record is a console line.
   publishAttempts: contentItems.publishAttempts,
   lastPublishError: contentItems.lastPublishError,
+  variantGroupId: contentItems.variantGroupId,
+  variantLabel: contentItems.variantLabel,
   copy: contentItems.copy,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
@@ -1182,6 +1187,9 @@ export async function createContentDraft(
     intent?: string;
     sourceTrendId?: string;
     scheduledAt?: Date;
+    /** `DISC-02`'s A/B group — set only by `content.variant.split`. */
+    variantGroupId?: string;
+    variantLabel?: string;
   },
 ): Promise<ContentDraftRow> {
   assertScope(scope);
@@ -1197,6 +1205,8 @@ export async function createContentDraft(
       ...(args.recipeId ? { recipeId: args.recipeId } : {}),
       ...(args.intent ? { intent: args.intent } : {}),
       ...(args.sourceTrendId ? { sourceTrendId: args.sourceTrendId } : {}),
+      ...(args.variantGroupId ? { variantGroupId: args.variantGroupId } : {}),
+      ...(args.variantLabel ? { variantLabel: args.variantLabel } : {}),
       // A row created with a date is created scheduled; the column default
       // (`draft`) is right for everything else.
       ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
@@ -1205,6 +1215,47 @@ export async function createContentDraft(
     })
     .returning(contentDraftColumns);
   return row!;
+}
+
+/**
+ * Tags a draft as an arm of a test, touching nothing else.
+ *
+ * Deliberately not part of {@link updateContentDraft}: that writes `copy` and
+ * `why`, and arm A is typically a draft somebody has already reviewed. A test
+ * being set up must not be able to alter the words being tested.
+ */
+export async function tagContentVariant(
+  db: Database,
+  scope: Scope,
+  args: { id: string; variantGroupId: string; variantLabel: string },
+): Promise<ContentDraftRow | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(contentItems)
+    .set({ variantGroupId: args.variantGroupId, variantLabel: args.variantLabel })
+    .where(and(eq(contentItems.id, args.id), scopePredicate('contentItems', scope)))
+    .returning(contentDraftColumns);
+  return row;
+}
+
+/**
+ * The arms of one A/B test — `content.variant.result`'s read.
+ *
+ * Ordered by label so `a` is always first, which is what makes a two-arm
+ * comparison stable across calls. Sorting by `createdAt` would put the arms in
+ * whichever order they happened to be written, and a verdict that swapped sides
+ * between refreshes reads as a bug even when the numbers are identical.
+ */
+export async function contentVariantGroup(
+  db: Database,
+  scope: Scope,
+  variantGroupId: string,
+): Promise<ContentDraftRow[]> {
+  return db
+    .select(contentDraftColumns)
+    .from(contentItems)
+    .where(and(scopePredicate('contentItems', scope), eq(contentItems.variantGroupId, variantGroupId)))
+    .orderBy(asc(contentItems.variantLabel));
 }
 
 /** Read side of {@link createContentDraft}/{@link updateContentDraft} — one row, scoped. */
