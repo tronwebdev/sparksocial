@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Img, Sequence, Video, registerRoot, Composition, type AnyZodObject } from 'remotion';
-import { framesFor, type TimedBeat } from './timeline.js';
+import { framesFor, resolveKit, type BrandKit, type TimedBeat } from './timeline.js';
 
 /**
  * The one Remotion composition every playbook renders through — plan §6.5's
@@ -22,26 +22,46 @@ export interface BeatCompositionProps extends Record<string, unknown> {
   beats: TimedBeat[];
   width: number;
   height: number;
+  /**
+   * §8.6's "Apply Brand Kit". A prop rather than a bundle-time constant,
+   * because it varies per brand and the bundle is shared — see
+   * `remotion-runner.ts`'s comment on why the bundle is cached.
+   */
+  brandKit?: BrandKit;
 }
 
-export const BeatComposition: React.FC<BeatCompositionProps> = ({ beats }) => {
+export const BeatComposition: React.FC<BeatCompositionProps> = ({ beats, width, brandKit }) => {
+  const kit = resolveKit(brandKit);
   let from = 0;
   const sequences = beats.map((beat) => {
     const durationInFrames = Math.max(1, Math.round(beat.durationSec * FPS));
-    const el = h(Sequence, { key: beat.beatId, from, durationInFrames }, renderBeat(beat));
+    const el = h(Sequence, { key: beat.beatId, from, durationInFrames }, renderBeat(beat, kit));
     from += durationInFrames;
     return el;
   });
-  return h(AbsoluteFill, { style: { backgroundColor: '#0C0C0C' } }, sequences);
+  return h(
+    AbsoluteFill,
+    { style: { backgroundColor: kit.ground } },
+    sequences,
+    /**
+     * Outside the sequences, so the mark is present for the whole video rather
+     * than appearing and vanishing with each beat. That is also why it is not
+     * rendered inside `renderBeat` the way Satori's still does it — a still has
+     * one beat and no timeline to be inconsistent across.
+     */
+    kit.logoUrl ? logoOverlay(kit.logoUrl, width) : null,
+  );
 };
 
-function renderBeat(beat: TimedBeat): React.ReactElement {
+type ResolvedKit = ReturnType<typeof resolveKit>;
+
+function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
   if (beat.kind === 'image') {
     return h(
       AbsoluteFill,
       null,
       h(Img, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
-      beat.caption ? captionOverlay(beat.caption) : null,
+      beat.caption ? captionOverlay(beat.caption, kit.type) : null,
     );
   }
   if (beat.kind === 'video') {
@@ -49,7 +69,7 @@ function renderBeat(beat: TimedBeat): React.ReactElement {
       AbsoluteFill,
       null,
       h(Video, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
-      beat.caption ? captionOverlay(beat.caption) : null,
+      beat.caption ? captionOverlay(beat.caption, kit.type) : null,
     );
   }
   if (beat.kind === 'audio') {
@@ -62,13 +82,14 @@ function renderBeat(beat: TimedBeat): React.ReactElement {
     { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
     h(
       'div',
-      { style: { color: '#FFFFFF', fontSize: 64, fontFamily: 'sans-serif', textAlign: 'center', lineHeight: 1.3 } },
+      { style: { color: kit.type, fontSize: 64, fontFamily: 'sans-serif', textAlign: 'center', lineHeight: 1.3 } },
       beat.text,
     ),
   );
 }
 
-function captionOverlay(caption: string): React.ReactElement {
+/** The scrim stays neutral for the same reason as Satori's: legibility over arbitrary photography. */
+function captionOverlay(caption: string, typeColor: string): React.ReactElement {
   return h(
     AbsoluteFill,
     { style: { justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 96 } },
@@ -76,7 +97,7 @@ function captionOverlay(caption: string): React.ReactElement {
       'div',
       {
         style: {
-          color: '#FFFFFF',
+          color: typeColor,
           fontSize: 40,
           fontFamily: 'sans-serif',
           textAlign: 'center',
@@ -88,6 +109,15 @@ function captionOverlay(caption: string): React.ReactElement {
       },
       caption,
     ),
+  );
+}
+
+/** Bottom-left at 12% of frame width — same placement and reasoning as `satori-runner.ts`'s `logoNode`. */
+function logoOverlay(url: string, width: number): React.ReactElement {
+  return h(
+    AbsoluteFill,
+    { style: { justifyContent: 'flex-end', alignItems: 'flex-start', padding: Math.round(width * 0.06) } },
+    h(Img, { src: url, style: { width: Math.round(width * 0.12) } }),
   );
 }
 
@@ -109,7 +139,7 @@ export function BeatsRoot(): React.ReactElement | null {
     fps: FPS,
     width: 1080,
     height: 1920,
-    defaultProps: { beats: [] as TimedBeat[], width: 1080, height: 1920 },
+    defaultProps: { beats: [] as TimedBeat[], width: 1080, height: 1920, brandKit: undefined as BrandKit | undefined },
     calculateMetadata: ({ props }) => ({
       durationInFrames: framesFor(props.beats),
       width: props.width,

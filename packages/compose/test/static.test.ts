@@ -22,7 +22,16 @@ function runner(over: Partial<StaticRunner> = {}): StaticRunner {
   return { renderStill: vi.fn(async () => 'https://blob/still.png'), ...over };
 }
 
-function ctx(over: { get?: ReturnType<typeof vi.fn>; info?: ReturnType<typeof vi.fn>; recordRender?: ReturnType<typeof vi.fn> } = {}): ToolCtx {
+function ctx(
+  over: {
+    get?: ReturnType<typeof vi.fn>;
+    info?: ReturnType<typeof vi.fn>;
+    recordRender?: ReturnType<typeof vi.fn>;
+    /** `brands.get` — the §8.6 brand kit's source. Absent means the default fake below. */
+    brand?: () => Promise<unknown>;
+    brandId?: string | undefined;
+  } = {},
+): ToolCtx {
   return {
     orgId: 'org_1',
     brandId: 'ws_1',
@@ -60,9 +69,13 @@ function ctx(over: { get?: ReturnType<typeof vi.fn>; info?: ReturnType<typeof vi
         listRenders: async () => [],
       },
       runs: { list: async () => [], get: async () => undefined },
+      brands: {
+        get: over.brand ?? (async () => ({ brandId: 'ws_1', approvalMode: 'autopublish', agentPaused: false, brandColors: [] })),
+      },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => Promise<unknown>) => fn(), event: () => {} },
+    ...('brandId' in over ? { brandId: over.brandId } : {}),
   } as unknown as ToolCtx;
 }
 
@@ -201,5 +214,61 @@ describe('compose.static', () => {
     const tool = makeComposeStatic({ runner: runner() });
     expect(tool.effect).toBe('write');
     expect(tool.idempotent).toBe(false);
+  });
+});
+
+describe('compose.static — §8.6\'s brand kit', () => {
+  const kit = (over: Record<string, unknown> = {}) => async () => ({
+    brandId: 'ws_1',
+    approvalMode: 'autopublish',
+    agentPaused: false,
+    logoUrl: 'https://cdn/logo.png',
+    brandColors: ['#101820', '#F2AA4C'],
+    ...over,
+  });
+
+  it('hands the brand\'s logo and palette to the renderer', async () => {
+    // The gap this closes: both fields have existed on the row and been
+    // writable for a while, and no renderer ever read either — so §8.6's
+    // "Apply Brand Kit" toggle had nothing on the other side of it.
+    const r = runner();
+    const out = await makeComposeStatic({ runner: r }).handler(
+      { genomeId: 'gen_1', contentItemId: 'c1' },
+      ctx({ brand: kit() }),
+    );
+    expect(out.renders.length).toBeGreaterThan(0);
+    expect(r.renderStill).toHaveBeenCalledWith(
+      expect.objectContaining({ brandKit: { logoUrl: 'https://cdn/logo.png', colors: ['#101820', '#F2AA4C'] } }),
+    );
+  });
+
+  it('sends no kit at all when the brand has neither a logo nor colours', async () => {
+    // An empty kit and no kit mean the same thing to a renderer, and only one of
+    // them lets `resolveKit`'s defaults apply without a branch at the far end.
+    const r = runner();
+    await makeComposeStatic({ runner: r }).handler({ genomeId: 'gen_1', contentItemId: 'c1' }, ctx());
+    expect(r.renderStill).toHaveBeenCalledWith(expect.not.objectContaining({ brandKit: expect.anything() }));
+  });
+
+  it('renders in default colours when the brand read fails, rather than failing the render', async () => {
+    // A render is worth more than its styling: losing the kit produces a correct
+    // post in default colours, failing the call produces nothing.
+    const r = runner();
+    const out = await makeComposeStatic({ runner: r }).handler(
+      { genomeId: 'gen_1', contentItemId: 'c1' },
+      ctx({ brand: async () => { throw new Error('brands unavailable'); } }),
+    );
+    expect(out.renders.length).toBeGreaterThan(0);
+    expect(r.renderStill).toHaveBeenCalledWith(expect.not.objectContaining({ brandKit: expect.anything() }));
+  });
+
+  it('does not attempt a brand read with no brand on the session', async () => {
+    const r = runner();
+    const brand = vi.fn(kit());
+    await makeComposeStatic({ runner: r }).handler(
+      { genomeId: 'gen_1', contentItemId: 'c1' },
+      ctx({ brand, brandId: undefined }),
+    );
+    expect(brand).not.toHaveBeenCalled();
   });
 });

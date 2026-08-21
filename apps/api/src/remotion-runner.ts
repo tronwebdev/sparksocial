@@ -74,7 +74,10 @@ export function createRemotionRunner(opts: RemotionRunnerOptions = {}): RenderRu
     }));
 
   async function renderOne(
-    inputProps: { beats: unknown; width: number; height: number },
+    // `brandKit` is optional and passed straight through to the composition's
+    // own prop of the same name — the bundle is shared across brands, so the
+    // kit has to travel with the render rather than be baked in.
+    inputProps: { beats: unknown; width: number; height: number; brandKit?: unknown },
     mode: 'video' | 'image',
   ): Promise<string> {
     const serveUrl = await getBundle();
@@ -101,11 +104,11 @@ export function createRemotionRunner(opts: RemotionRunnerOptions = {}): RenderRu
   }
 
   return {
-    async renderVideo({ beats, width, height }) {
-      return renderOne({ beats, width, height }, 'video');
+    async renderVideo({ beats, width, height, brandKit }) {
+      return renderOne({ beats, width, height, ...(brandKit ? { brandKit } : {}) }, 'video');
     },
-    async renderStill({ beats, width, height }) {
-      return renderOne({ beats, width, height }, 'image');
+    async renderStill({ beats, width, height, brandKit }) {
+      return renderOne({ beats, width, height, ...(brandKit ? { brandKit } : {}) }, 'image');
     },
   };
 }

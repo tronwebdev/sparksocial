@@ -111,3 +111,52 @@ const FPS = 30;
 export function framesFor(beats: Array<{ durationSec: number }>, fps = FPS): number {
   return Math.max(1, Math.round(beats.reduce((sum, b) => sum + b.durationSec, 0) * fps));
 }
+
+/**
+ * §8.6's "Apply Brand Kit", as the renderers see it.
+ *
+ * `brands.logo_url` and `brands.brand_colors` have existed on the row, and
+ * `brand.governance.set` has written them, and no renderer ever read either —
+ * so the toggle §8.6 describes had nothing on the other side of it. Both
+ * `compose.static` and `compose.render` now resolve this from the brand and
+ * hand it to their runner.
+ *
+ * ── Why the palette is positional and short ───────────────────────────────
+ *
+ * `brandColors` is an ordered list a person typed, not a semantic map, so the
+ * meanings are assigned by position and documented rather than guessed at from
+ * lightness: **first is the ground, second is the type on it, third is the
+ * accent.** Anything beyond the third is ignored by the renderers rather than
+ * being blended into something nobody chose. A brand that gives one colour gets
+ * that ground and keeps the default type colour, which is the only combination
+ * guaranteed to stay legible without knowing what the colour is.
+ */
+export interface BrandKit {
+  /** Drawn as a corner mark on media beats and above the type on text beats. Absent means no mark. */
+  logoUrl?: string;
+  /** Ordered: ground, type, accent. Empty means "use the defaults". */
+  colors: string[];
+}
+
+/** The renderers' fallbacks — the values both files used as literals before a brand kit could reach them. */
+export const DEFAULT_GROUND = '#0C0C0C';
+export const DEFAULT_TYPE = '#FFFFFF';
+
+/**
+ * Resolves a kit to the two colours a renderer actually needs.
+ *
+ * Deliberately does not derive contrast. Picking a readable type colour from an
+ * arbitrary ground is a real algorithm, and a wrong guess produces white text on
+ * cream — worse than the default, and silently so. If the brand named a second
+ * colour it is used as given, on the basis that they can see their own palette;
+ * if not, the default stays.
+ */
+export function resolveKit(kit: BrandKit | undefined): { ground: string; type: string; accent?: string; logoUrl?: string } {
+  const colors = kit?.colors ?? [];
+  return {
+    ground: colors[0] ?? DEFAULT_GROUND,
+    type: colors[1] ?? DEFAULT_TYPE,
+    ...(colors[2] ? { accent: colors[2] } : {}),
+    ...(kit?.logoUrl ? { logoUrl: kit.logoUrl } : {}),
+  };
+}

@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { StepShell } from '@/components/onboarding/StepShell';
 import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
 import { QuestionStep } from '@/components/onboarding/QuestionStep';
+import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
+import { PersonalizeStep } from '@/components/onboarding/PersonalizeStep';
 import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
 import { invoke } from '@/lib/tools';
 
@@ -20,12 +22,17 @@ import { invoke } from '@/lib/tools';
  *
  * ── Two tool calls, and nothing invented around them ───────────────────────
  *
- * The flow makes exactly two: `genome.bootstrap_from_url` (the crawl and
- * inference) and `genome.dimensions.set` (the answers). Invariant 1 says every
- * capability is a tool, and the corollary for a UI is that a screen may not
- * collect something no tool accepts — the prototype's logo, brand-kit and
- * agent-avatar steps have no tool behind them yet, so they are not drawn here
- * pretending to save. Adding them means adding the tools first.
+ * Invariant 1 says every capability is a tool, and the corollary for a UI is
+ * that a screen may not collect something no tool accepts.
+ *
+ * That rule used to exclude the prototype's connect, brand-kit and
+ * agent-avatar steps outright — *"no tool behind them yet"*, true when written.
+ * The tools exist now, so `ONB-04` (connect accounts) and `ONB-05`
+ * (personalisation) are drawn, and the rule bites in a narrower place instead:
+ * `ONB-05` has no alias field, because nothing in the registry accepts one, and
+ * a text box that quietly discards what you typed is worse than its absence.
+ * Both steps are skippable, since neither is required to finish setup and one
+ * of them depends on platform approvals nobody here controls.
  *
  * The brand name is the exception worth naming: it is collected because it is
  * the one thing a person expects to be asked first, and it is used *locally* to
@@ -43,6 +50,16 @@ import { invoke } from '@/lib/tools';
 
 /** Brand name · URL · chips · then one screen per unresolved dimension. */
 const FIXED_STEPS = 3;
+
+/**
+ * `ONB-04` and `ONB-05`, after the questions rather than before them.
+ *
+ * The five questions are what the whole engine routes on, and they are the only
+ * part of setup that cannot be done later. Putting two optional, externally
+ * blocked steps in front of them would be putting the skippable work first and
+ * risking the essential work to a drop-off.
+ */
+const TRAILING_STEPS = 2;
 
 /** The `identity.*` fields `genome.identity.set` accepts flat, matching `GenomeIdentity`'s scalar keys. */
 const IDENTITY_SCALAR_FIELDS = new Set(['business_name', 'category', 'sub_category', 'one_liner', 'price_tier']);
@@ -74,6 +91,8 @@ export default function OnboardingPage() {
   // Set once the crawl has failed, so the manual path is offered rather than
   // pre-empting the faster one before it has been tried.
   const [crawlFailed, setCrawlFailed] = useState(false);
+  /** Lifted out of `ConnectAccountsStep` so the footer can say Continue rather than Skip. */
+  const [connectedCount, setConnectedCount] = useState(0);
 
   // Which dimensions still need asking depends on what the crawl resolved, so
   // the flow's length is not known until step 1 has run.
@@ -81,7 +100,7 @@ export default function OnboardingPage() {
     () => (draft ? questionsFor(draft.unresolved) : QUESTIONS),
     [draft],
   );
-  const total = FIXED_STEPS + questions.length;
+  const total = FIXED_STEPS + questions.length + TRAILING_STEPS;
 
   async function bootstrap() {
     /**
@@ -206,9 +225,18 @@ export default function OnboardingPage() {
       return;
     }
 
-    // The cookie the tool proxy forwards as `x-genome-id`. Set here because
-    // this is the moment the workspace has a genome to be scoped to.
+    /**
+     * The cookie the tool proxy forwards as `x-genome-id`. Set here rather than
+     * at the end of the flow because the two steps that follow *are* tool
+     * calls — `integration.health` and `genome.consent.grant` are both
+     * genome-scoped, and without this they would be scoped to nothing.
+     */
     document.cookie = `spark_genome=${encodeURIComponent(draft.genomeId)}; path=/; samesite=lax`;
+    setStep(FIXED_STEPS + questions.length);
+  }
+
+  /** `ONB-06`'s completion, minus the prototype's hold-to-confirm gesture. */
+  function done() {
     router.push('/');
   }
 
@@ -394,7 +422,7 @@ export default function OnboardingPage() {
               disabled={selected.length === 0 || busy}
               onClick={() => (last ? void finish() : setStep(step + 1))}
             >
-              {busy ? 'Saving…' : last ? 'Finish setup' : 'Continue'}
+              {busy ? 'Saving…' : last ? 'Save answers' : 'Continue'}
             </Button>
           </div>
         }
@@ -404,6 +432,49 @@ export default function OnboardingPage() {
           selected={selected}
           onChange={(values) => setAnswers({ ...answers, [question.id]: values })}
         />
+      </StepShell>
+    );
+  }
+
+  /* ── ONB-04 · Connect the accounts (skippable) ──────────────────── */
+  if (draft && step === FIXED_STEPS + questions.length) {
+    return (
+      <StepShell
+        step={step}
+        total={total}
+        onBack={back}
+        eyebrow={draft.businessName}
+        title="Where should SPARK post?"
+        footer={
+          <div className="flex flex-col gap-3">
+            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+            <Button className="w-full md:w-auto" onClick={() => setStep(step + 1)}>
+              {connectedCount > 0 ? 'Continue' : 'Skip for now'}
+            </Button>
+          </div>
+        }
+      >
+        <ConnectAccountsStep genomeId={draft.genomeId} onConnectedCountChange={setConnectedCount} />
+      </StepShell>
+    );
+  }
+
+  /* ── ONB-05 · Personalise (skippable) ──────────────────────────────── */
+  if (draft && step === FIXED_STEPS + questions.length + 1) {
+    return (
+      <StepShell
+        step={step}
+        total={total}
+        onBack={back}
+        eyebrow={draft.businessName}
+        title="Does SPARK have a face to use?"
+        footer={
+          <Button className="w-full md:w-auto" onClick={done}>
+            Finish setup
+          </Button>
+        }
+      >
+        <PersonalizeStep genomeId={draft.genomeId} />
       </StepShell>
     );
   }

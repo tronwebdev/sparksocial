@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { ResolvedBeat } from '@sparksocial/generate';
-import { dimensionsFor, framesFor, zipTimeline } from '../src/timeline.js';
+import { dimensionsFor, framesFor, zipTimeline, resolveKit, DEFAULT_GROUND, DEFAULT_TYPE } from '../src/timeline.js';
 
 const playbookBeats = [
   { id: 'hook', duration_sec: 3 },
@@ -109,5 +109,36 @@ describe('framesFor', () => {
 
   it('never returns fewer than 1 frame, even for a zero-duration beat list', () => {
     expect(framesFor([], 30)).toBe(1);
+  });
+});
+
+describe('resolveKit — §8.6\'s brand kit', () => {
+  it('reads the palette positionally: ground, type, accent', () => {
+    const out = resolveKit({ colors: ['#101820', '#F2AA4C', '#00A3AD'] });
+    expect(out).toMatchObject({ ground: '#101820', type: '#F2AA4C', accent: '#00A3AD' });
+  });
+
+  it('keeps the default type colour when the brand named only one', () => {
+    // Deriving a readable type colour from an arbitrary ground is a real
+    // algorithm, and a wrong guess is white on cream — worse than the default
+    // and silently so.
+    const out = resolveKit({ colors: ['#F5F0E6'] });
+    expect(out.ground).toBe('#F5F0E6');
+    expect(out.type).toBe(DEFAULT_TYPE);
+  });
+
+  it('falls back entirely with no kit at all', () => {
+    expect(resolveKit(undefined)).toEqual({ ground: DEFAULT_GROUND, type: DEFAULT_TYPE });
+  });
+
+  it('ignores colours past the third rather than blending them', () => {
+    const out = resolveKit({ colors: ['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff'] });
+    expect(out.accent).toBe('#ff0000');
+    expect(Object.values(out)).not.toContain('#00ff00');
+  });
+
+  it('omits the logo rather than reporting an empty string', () => {
+    expect(resolveKit({ colors: [] }).logoUrl).toBeUndefined();
+    expect(resolveKit({ colors: [], logoUrl: 'https://cdn/logo.png' }).logoUrl).toBe('https://cdn/logo.png');
   });
 });

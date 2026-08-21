@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
+import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 
 /**
@@ -118,6 +119,11 @@ export function GovernancePanel() {
   const [windows, setWindows] = useState<number[]>([]);
   const [usingDefaultWindows, setUsingDefaultWindows] = useState(true);
   const [logoUrl, setLogoUrl] = useState('');
+  const [brandColors, setBrandColors] = useState<string[]>([]);
+  const { genome } = useSelectedGenome();
+  const genomeId = genome?.genomeId;
+  const logoInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   const [engagementAutonomy, setEngagementAutonomy] = useState<'off' | 'suggest' | 'auto'>('off');
   const [engagementTypes, setEngagementTypes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -138,10 +144,72 @@ export function GovernancePanel() {
       setWindows(g.postingWindows);
       setUsingDefaultWindows(g.usingDefaultWindows);
       setLogoUrl(g.logoUrl ?? '');
+      setBrandColors(g.brandColors);
       setEngagementAutonomy(g.engagementAutonomy);
       setEngagementTypes(g.engagementTypes);
     })();
   }, []);
+
+  /**
+   * `asset.upload_url` → PUT the bytes → use the read URL as the logo.
+   *
+   * Deliberately does *not* call `asset.ingest_url` afterwards, unlike
+   * `AssetUploadForm`. A logo is not a content asset: putting it in the Asset
+   * Graph would make it eligible for retrieval into posts as though it were
+   * footage, and it would count against the reuse cooldown. It needs to be a
+   * URL a renderer can fetch, and nothing more.
+   */
+  async function uploadLogo(file: File) {
+    if (!genomeId) {
+      setMessage({ kind: 'err', text: 'Pick a brand first.' });
+      return;
+    }
+    const contentType = file.type;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(contentType)) {
+      setMessage({ kind: 'err', text: 'PNG, JPEG or WebP. A vector logo needs exporting to one of those first.' });
+      return;
+    }
+
+    setUploading(true);
+    setMessage(null);
+
+    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+      genomeId,
+      filename: file.name,
+      contentType,
+      sizeBytes: file.size,
+    });
+    if (presigned.status !== 'succeeded') {
+      setUploading(false);
+      setMessage({
+        kind: 'err',
+        text: presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.',
+      });
+      return;
+    }
+
+    try {
+      // `x-ms-blob-type` is Azure's requirement for a SAS upload, not ours —
+      // same header `AssetUploadForm` sends, and omitting it 400s.
+      const put = await fetch(presigned.output.uploadUrl, {
+        method: 'PUT',
+        headers: { 'content-type': contentType, 'x-ms-blob-type': 'BlockBlob' },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
+    } catch (e) {
+      setUploading(false);
+      setMessage({ kind: 'err', text: e instanceof Error ? e.message : 'The upload could not reach storage.' });
+      return;
+    }
+
+    setUploading(false);
+    setLogoUrl(presigned.output.readUrl);
+    // Not saved yet, and said so: the field is part of one form with a single
+    // Save, and a logo that persisted on upload while the colours beside it did
+    // not would be two different rules on one panel.
+    setMessage({ kind: 'ok', text: 'Uploaded. Save brand rules to apply it.' });
+  }
 
   async function save() {
     setBusy(true);
@@ -165,6 +233,10 @@ export function GovernancePanel() {
       // the default could then never move.
       postingWindows: usingDefaultWindows ? null : windows,
       logoUrl: logoUrl.trim() ? logoUrl.trim() : null,
+      // Same `null`-clears rule as the lists above: an empty palette and "no
+      // palette" mean the same thing to a renderer, and only one of them lets
+      // the default come back.
+      brandColors: brandColors.length ? brandColors : null,
       engagementAutonomy,
       // Empty means every type, which is a different fact from "none" — so it
       // clears rather than storing an empty list.
@@ -441,18 +513,108 @@ export function GovernancePanel() {
             </div>
           </div>
 
-          {/* ── Brand kit ──────────────────────────────────────────────── */}
+          {/* ── Brand kit ──────────────────────────────────────────────────
+              §8.6's "Apply Brand Kit". Both fields have existed on the row and
+              been writable for a while, and until now nothing rendered with
+              either: `compose.static` and `compose.render` read them now, so
+              what is set here reaches actual pixels. */}
           <div className="max-w-xl">
-            <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-logo">
-              Logo URL
+            <p className="text-[12px] font-medium text-ink-muted">Brand kit</p>
+            <p className="mt-1 text-[12px] text-ink-muted">
+              Used when SPARK renders an image or video: the first colour is the background, the second is the
+              text on it, the third is an accent. The logo goes bottom-left. Photos and video are never tinted —
+              a brand colour over somebody&rsquo;s product shot ruins the shot.
+            </p>
+
+            <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="gov-logo">
+              Logo
             </label>
-            <Input
-              id="gov-logo"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://…"
-              className="mt-1.5"
-            />
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <Input
+                id="gov-logo"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://… or upload"
+                className="min-w-[200px] flex-1"
+              />
+              <input
+                ref={logoInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadLogo(file);
+                  e.target.value = '';
+                }}
+              />
+              <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
+                {uploading ? 'Uploading…' : 'Upload'}
+              </Button>
+            </div>
+            {logoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={logoUrl}
+                alt="Brand logo"
+                className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
+              />
+            ) : null}
+
+            <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {brandColors.map((c, i) => (
+                <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
+                  <input
+                    type="color"
+                    value={normaliseHex(c)}
+                    onChange={(e) => setBrandColors(brandColors.map((x, j) => (j === i ? e.target.value : x)))}
+                    className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+                    aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
+                  />
+                  <span className="font-mono text-[11px] text-ink-muted">
+                    {COLOR_ROLE[i] ?? 'extra'}
+                    {/* A stored value the colour input cannot show (`red`, an
+                        `rgb()`) is named here rather than silently displayed as
+                        the fallback swatch — otherwise the panel would claim the
+                        brand's colour is grey. */}
+                    {normaliseHex(c) !== c.trim().toLowerCase() ? (
+                      <span className="ml-1 text-warn">{c}</span>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                    className="text-[13px] text-ink-muted hover:text-ink"
+                    aria-label={`Remove ${c}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {brandColors.length < 3 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBrandColors([...brandColors, DEFAULT_NEW_COLOR])}
+                >
+                  Add {COLOR_ROLE[brandColors.length] ?? 'colour'}
+                </Button>
+              ) : null}
+            </div>
+            {brandColors.length > 0 ? (
+              /* A swatch row is not a preview. Showing the two colours against
+                 each other is the one check that catches the mistake that
+                 matters — a type colour nobody can read on its own ground. */
+              <div
+                className="mt-2 flex h-16 items-center justify-center rounded-lg border border-border"
+                style={{ backgroundColor: brandColors[0] ?? '#0C0C0C' }}
+              >
+                <span className="text-[15px] font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
+                  This is how text will read
+                </span>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -469,4 +631,27 @@ export function GovernancePanel() {
       )}
     </section>
   );
+}
+
+/**
+ * The palette is positional, and the labels say so rather than leaving somebody
+ * to discover it. Matches `resolveKit` in `@sparksocial/compose` exactly — if
+ * these ever disagree, the panel is lying about what the renderer will do.
+ */
+const COLOR_ROLE = ['background', 'text', 'accent'] as const;
+
+/** A mid grey: visibly unset, and legible against either default while it is being changed. */
+const DEFAULT_NEW_COLOR = '#808080';
+
+/**
+ * `<input type="color">` accepts only `#rrggbb`. A stored value could be
+ * anything a person typed — `red`, `#fff`, an `rgb()` — so anything that is not
+ * already six-digit hex falls back rather than making the swatch render black
+ * and silently rewrite the stored colour on the next save.
+ */
+function normaliseHex(value: string): string {
+  const v = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v;
+  if (/^#[0-9a-f]{3}$/i.test(v)) return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  return DEFAULT_NEW_COLOR;
 }
