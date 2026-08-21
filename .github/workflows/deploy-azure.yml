@@ -45,9 +45,167 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  # ── Preflight ──────────────────────────────────────────────────────────
+  #
+  # Every prerequisite, checked in one run and reported together.
+  #
+  # Without this, configuring a fresh environment is a queue of one-at-a-time
+  # failures: deploy, read an error, fix one thing, wait for the build again.
+  # Each cycle costs a full `npm ci` and image build to learn a single fact that
+  # was knowable in seconds. Worse, the failures arrive in dependency order
+  # rather than importance order, so the last thing you discover — a missing
+  # role assignment — is often the one that needed a different person.
+  #
+  # It is deliberately read-only. A preflight that fixed things would be a
+  # second, undocumented provisioner competing with `bootstrap.sh`.
+  preflight:
+    name: Preflight
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check everything at once
+        run: |
+          # Collects problems rather than exiting on the first, so one run tells
+          # you the whole list. `FAIL` is what blocks the deploy; `WARN` is a
+          # feature that will be unavailable but does not stop anything.
+          FAILURES=()
+          WARNINGS=()
+          note_fail() { FAILURES+=("$1"); echo "  FAIL  $1"; }
+          note_warn() { WARNINGS+=("$1"); echo "  warn  $1"; }
+          note_ok()   { echo "  ok    $1"; }
+
+          RG="${{ vars.AZURE_RESOURCE_GROUP }}"
+          APP="${{ vars.AZURE_CONTAINERAPP_NAME }}"
+          WEB="${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}"
+          KV="${{ vars.AZURE_KEY_VAULT_NAME }}"
+
+          echo "── GitHub variables ──────────────────────────────────────────"
+          for pair in "AZURE_RESOURCE_GROUP:$RG" "AZURE_CONTAINERAPP_NAME:$APP" \
+                      "AZURE_CONTAINERAPP_WEB_NAME:$WEB" "AZURE_KEY_VAULT_NAME:$KV"; do
+            name="${pair%%:*}"; value="${pair#*:}"
+            if [ -z "$value" ]; then
+              note_fail "GitHub variable $name is not set (Settings > Secrets and variables > Actions > Variables)"
+            else
+              note_ok "$name = $value"
+            fi
+          done
+          if [ ${#FAILURES[@]} -gt 0 ]; then
+            echo
+            echo "::error::Cannot check Azure without the variables above."
+            exit 1
+          fi
+
+          echo
+          echo "── Container Apps ────────────────────────────────────────────"
+          for app in "$APP" "$WEB"; do
+            if FQDN="$(az containerapp show -n "$app" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null)" && [ -n "$FQDN" ]; then
+              note_ok "$app is at https://$FQDN"
+            else
+              note_fail "Container App '$app' not found in '$RG', or it has no ingress"
+            fi
+          done
+
+          # The identity is what reads Key Vault at revision start. Without it
+          # the references have nothing to authenticate as.
+          IDENTITY_ID="$(az containerapp show -n "$APP" -g "$RG" --query 'identity.userAssignedIdentities | keys(@) | [0]' -o tsv 2>/dev/null || true)"
+          if [ -z "$IDENTITY_ID" ] || [ "$IDENTITY_ID" = "null" ]; then
+            note_fail "$APP has no user-assigned managed identity (Container App > Settings > Identity > User assigned)"
+            IDENTITY_PRINCIPAL=""
+          else
+            note_ok "managed identity ${IDENTITY_ID##*/}"
+            IDENTITY_PRINCIPAL="$(az identity show --ids "$IDENTITY_ID" --query principalId -o tsv 2>/dev/null || true)"
+          fi
+
+          echo
+          echo "── Key Vault ─────────────────────────────────────────────────"
+          if ! KV_ID="$(az keyvault show -n "$KV" --query id -o tsv 2>/dev/null)"; then
+            note_fail "Key Vault '$KV' not found, or this identity cannot see it"
+            KV_ID=""
+          else
+            note_ok "vault $KV exists"
+
+            # RBAC versus access policies changes how permissions are granted,
+            # and getting it wrong looks identical to a missing assignment.
+            RBAC="$(az keyvault show -n "$KV" --query properties.enableRbacAuthorization -o tsv 2>/dev/null || echo unknown)"
+            if [ "$RBAC" = "true" ]; then
+              note_ok "vault uses Azure RBAC"
+            else
+              note_warn "vault uses access policies, not RBAC — grant Get/List on secrets via Access policies instead of the 'Key Vault Secrets User' role"
+            fi
+          fi
+
+          echo
+          echo "── Data-plane access ─────────────────────────────────────────"
+          # Proven by doing, not by reading role assignments: a list call is the
+          # thing the deploy actually needs, and it accounts for inherited and
+          # deny assignments that enumerating roles would miss.
+          if HELD="$(az keyvault secret list --vault-name "$KV" --query '[].name' -o tsv 2>/dev/null)"; then
+            note_ok "CI can list secrets in $KV"
+          else
+            HELD=""
+            note_fail "CI cannot read $KV — give this workflow's app registration 'Key Vault Secrets User' on the vault"
+          fi
+
+          if [ -n "$IDENTITY_PRINCIPAL" ] && [ -n "$KV_ID" ]; then
+            if az role assignment list --assignee "$IDENTITY_PRINCIPAL" --scope "$KV_ID" --include-inherited \
+                 --query "[?roleDefinitionName=='Key Vault Secrets User'] | length(@)" -o tsv 2>/dev/null | grep -qv '^0$'; then
+              note_ok "the app identity holds Key Vault Secrets User"
+            else
+              note_warn "could not confirm 'Key Vault Secrets User' for the app identity — if the app starts but cannot read secrets, this is why"
+            fi
+          fi
+
+          echo
+          echo "── Secrets ───────────────────────────────────────────────────"
+          # Azure Key Vault secret names permit alphanumerics and dashes only.
+          # Checked here because a name with an underscore is rejected at
+          # creation time in the portal, and the resulting "it would not let me
+          # save it" is easy to attribute to the wrong character.
+          while read -r ENV_NAME KV_NAME TIER; do
+            [ -n "$ENV_NAME" ] || continue
+
+            if ! printf '%s' "$KV_NAME" | grep -qE '^[0-9a-zA-Z-]+$'; then
+              note_fail "manifest name '$KV_NAME' is not a legal Key Vault secret name (alphanumerics and dashes only)"
+              continue
+            fi
+
+            if printf '%s\n' "$HELD" | grep -qx "$KV_NAME"; then
+              note_ok "$KV_NAME"
+            elif [ "$TIER" = required ]; then
+              note_fail "required secret '$KV_NAME' is missing (for $ENV_NAME)"
+            else
+              note_warn "'$KV_NAME' absent — $ENV_NAME unset, its feature unavailable"
+            fi
+          done < <(grep -vE '^[[:space:]]*(#|$)' infra/azure/secrets.manifest | awk '{print $1, $2, $3}')
+
+          echo
+          echo "═════════════════════════════════════════════════════════════"
+          echo "${#FAILURES[@]} blocking, ${#WARNINGS[@]} optional-feature warnings"
+
+          if [ ${#FAILURES[@]} -gt 0 ]; then
+            echo
+            echo "Fix these before the deploy can run:"
+            for f in "${FAILURES[@]}"; do echo "  - $f"; done
+            echo "::error::Preflight found ${#FAILURES[@]} blocking problem(s) — see the list above."
+            exit 1
+          fi
+
+          echo "Preflight passed. Anything listed as a warning above will simply be unavailable."
+
   deploy-api:
     name: Build & deploy API
-    needs: verify
+    needs: preflight
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'staging' }}
 
@@ -86,16 +244,40 @@ jobs:
 
       - run: npm ci
 
+      # Read from Key Vault, not from a GitHub secret.
+      #
+      # This step used `secrets.DATABASE_URL`, which meant the connection string
+      # existed in two places that had to agree — and the copy the *app* reads
+      # was the vault's. Two sources for one credential is how a rotation half
+      # lands: the app picks up the new one, CI keeps migrating the old database.
+      #
+      # The runner has no managed identity, but it does have the federated
+      # `azure/login` above, so it can read the vault directly. That requires the
+      # CI service principal to hold "Key Vault Secrets User" on the vault —
+      # bootstrap grants it to the app identity and the operator, so this one is
+      # an extra assignment. The error below says so rather than leaving a 403 to
+      # be interpreted.
       - name: Apply database migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::DATABASE_URL is not set for this environment. Refusing to deploy code"
-            echo "::error::against an unmigrated database — set it in the environment's secrets."
+          KV="${{ vars.AZURE_KEY_VAULT_NAME }}"
+          if [ -z "$KV" ]; then
+            echo "::error::AZURE_KEY_VAULT_NAME is not set. It is a GitHub *variable*, not a secret:"
+            echo "::error::  gh variable set AZURE_KEY_VAULT_NAME --body sparksocial-staging-kv"
             exit 1
           fi
-          npm run migrate -w @sparksocial/db
+
+          if ! DATABASE_URL="$(az keyvault secret show --vault-name "$KV" --name database-url --query value -o tsv 2>/dev/null)"; then
+            echo "::error::Could not read 'database-url' from $KV."
+            echo "::error::Either it is not set — run infra/azure/secrets.sh set DATABASE_URL —"
+            echo "::error::or the CI service principal lacks Key Vault Secrets User on the vault:"
+            echo "::error::  az role assignment create --assignee <AZURE_CLIENT_ID> \\"
+            echo "::error::    --role 'Key Vault Secrets User' --scope \$(az keyvault show -n $KV --query id -o tsv)"
+            exit 1
+          fi
+
+          # Not exported into the environment of anything but this command, and
+          # never echoed. `set -x` is deliberately absent from this step.
+          DATABASE_URL="$DATABASE_URL" npm run migrate -w @sparksocial/db
 
       - name: Build and push image to ACR
         run: |
@@ -153,6 +335,73 @@ jobs:
             --server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
             --identity "$IDENTITY_ID"
 
+          # -- Secrets, as Key Vault references ----------------------------
+          #
+          # Every credential used to be a plaintext env var on the Container App,
+          # readable by anyone holding Reader on the resource, with nine of them
+          # duplicated into GitHub as well. Now the app resolves each one at
+          # revision start through its own managed identity, and CI never handles
+          # a value -- it only names them.
+          #
+          # Built from `infra/azure/secrets.manifest`, so adding a secret is one
+          # line in one file. Only what the vault actually holds is wired: an
+          # absent optional secret leaves its env var *unset* rather than empty,
+          # which is what keeps its tool cleanly unregistered instead of
+          # registered-then-failing. That distinction is why the manifest exists.
+          KV="${{ vars.AZURE_KEY_VAULT_NAME }}"
+          if [ -z "$KV" ]; then
+            echo "::error::AZURE_KEY_VAULT_NAME is not set (a GitHub variable, not a secret)."
+            exit 1
+          fi
+          VAULT_URI="$(az keyvault show -n "$KV" --query properties.vaultUri -o tsv)"
+          VAULT_URI="${VAULT_URI%/}"
+          HELD="$(az keyvault secret list --vault-name "$KV" --query '[].name' -o tsv)"
+
+          SECRET_ARGS=()
+          ENV_ARGS=()
+          MISSING_REQUIRED=0
+
+          while read -r ENV_NAME KV_NAME TIER; do
+            [ -n "$ENV_NAME" ] || continue
+            if printf '%s\n' "$HELD" | grep -qx "$KV_NAME"; then
+              # Versionless URI on purpose: rotating a key is then a vault write
+              # plus a restart, with no deploy and no workflow edit.
+              SECRET_ARGS+=("$KV_NAME=keyvaultref:$VAULT_URI/secrets/$KV_NAME,identityref:$IDENTITY_ID")
+              ENV_ARGS+=("$ENV_NAME=secretref:$KV_NAME")
+            elif [ "$TIER" = required ]; then
+              echo "::error::Required secret '$KV_NAME' is not in $KV. Run: infra/azure/secrets.sh set $ENV_NAME"
+              MISSING_REQUIRED=1
+            else
+              echo "  optional '$KV_NAME' absent - $ENV_NAME stays unset, its feature unavailable"
+            fi
+          done < <(grep -vE '^[[:space:]]*(#|$)' infra/azure/secrets.manifest | awk '{print $1, $2, $3}')
+
+          [ "$MISSING_REQUIRED" -eq 0 ] || exit 1
+          echo "Wiring ${#SECRET_ARGS[@]} secrets from $KV"
+
+          # The API's own public URL, for the two OAuth redirect URIs below.
+          # Resolved here rather than passed in: it is a property of the app
+          # being deployed, and hardcoding it into a variable is how it drifts
+          # after a rename.
+          API_FQDN="$(az containerapp show \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv)"
+          if [ -z "$API_FQDN" ]; then
+            echo "::error::The API Container App has no ingress FQDN — OAuth redirect URIs cannot be set."
+            exit 1
+          fi
+          API_URL="https://$API_FQDN"
+          echo "API is at $API_URL"
+
+          az containerapp secret set \
+            --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --secrets "${SECRET_ARGS[@]}"
+
+          # Non-secret configuration stays a plain env var: these are not
+          # credentials, and vaulting them would only obscure what the app is
+          # pointed at.
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
@@ -160,13 +409,13 @@ jobs:
             --set-env-vars \
               REVISION="${{ github.sha }}" \
               NODE_ENV=production \
-              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
-              CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
               CLERK_AUTHORIZED_PARTIES="${{ steps.web-url.outputs.url }}" \
-              DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              WEB_APP_URL="${{ steps.web-url.outputs.url }}" \
               AZURE_STORAGE_ACCOUNT="${{ vars.AZURE_STORAGE_ACCOUNT }}" \
               AZURE_STORAGE_CONTAINER="${{ vars.AZURE_STORAGE_CONTAINER || 'assets' }}" \
-              ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+              SOCIAL_REDIRECT_URI="$API_URL/oauth/social/callback" \
+              CANVA_REDIRECT_URI="$API_URL/oauth/canva/callback" \
+              "${ENV_ARGS[@]}"
 
       # The cheapest possible answer to "did the deploy actually land?" — read
       # the commit SHA back off the running service rather than trusting that
@@ -194,7 +443,7 @@ jobs:
 
   deploy-web:
     name: Build & deploy web
-    needs: verify
+    needs: preflight
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment || 'staging' }}
 
@@ -261,6 +510,23 @@ jobs:
             --server "${{ vars.AZURE_ACR_NAME }}.azurecr.io" \
             --identity "$IDENTITY_ID"
 
+          # The web app needs exactly one secret -- Clerk's server key, for the
+          # two transport proxies -- so it gets the same Key Vault treatment as
+          # the API rather than a plaintext copy. Same vault, same identity; the
+          # only difference is that one secret is all it reads.
+          KV="${{ vars.AZURE_KEY_VAULT_NAME }}"
+          if [ -z "$KV" ]; then
+            echo "::error::AZURE_KEY_VAULT_NAME is not set (a GitHub variable, not a secret)."
+            exit 1
+          fi
+          VAULT_URI="$(az keyvault show -n "$KV" --query properties.vaultUri -o tsv)"
+          VAULT_URI="${VAULT_URI%/}"
+
+          az containerapp secret set \
+            --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --secrets "clerk-secret-key=keyvaultref:$VAULT_URI/secrets/clerk-secret-key,identityref:$IDENTITY_ID"
+
           az containerapp update \
             --name "${{ vars.AZURE_CONTAINERAPP_WEB_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
@@ -269,7 +535,7 @@ jobs:
               REVISION="${{ github.sha }}" \
               NODE_ENV=production \
               SPARK_API_URL="${{ steps.api-url.outputs.url }}" \
-              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}"
+              CLERK_SECRET_KEY=secretref:clerk-secret-key
 
       # apps/web has no /health endpoint reporting its own commit SHA the way
       # the API does, so this checks reachability rather than convergence —
