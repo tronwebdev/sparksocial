@@ -9,7 +9,7 @@ import { consentGrant, consentRevoke, consentList } from '@sparksocial/genome/co
 import { avatarConfigSet } from '@sparksocial/genome/avatarConfig';
 import { genomeComplianceClassify } from '@sparksocial/genome/compliance';
 import { genomeAvatarOverrideSet } from '@sparksocial/genome/avatarOverride';
-import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim } from '@sparksocial/genome/knowledge';
+import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim, knowledgeList } from '@sparksocial/genome/knowledge';
 import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { playbookList, playbookGet, playbookExplain } from '@sparksocial/playbooks/browse';
 import {
@@ -102,6 +102,7 @@ import {
   brandImport,
   makeTeamInvite,
   makeTeamRoleSet,
+  makeTeamList,
   teamPermissionSet,
   whitelabelLinkCreate,
   makeBrandOAuthConnect,
@@ -273,6 +274,7 @@ export function registerAlphaTools(): void {
   register(makeKnowledgeIngestSite({ embed }));
   register(makeKnowledgeIngestDocs({ embed }));
   register(knowledgeGroundClaim);
+  register(knowledgeList);
 
   // Campaign (§6.8): outcome in, a plan and an honest gap report out.
   register(campaignProposePlan);
@@ -750,6 +752,10 @@ export function registerAgencyTools(deps: {
   if (deps.clerk) {
     register(makeTeamInvite({ clerk: deps.clerk }));
     register(makeTeamRoleSet({ clerk: deps.clerk }));
+    // The read, gated on the same client as the writes: without Clerk there is
+    // no membership list to join brand assignments against, and a team screen
+    // showing only `brand_members` rows would omit every member who has none.
+    register(makeTeamList({ clerk: deps.clerk }));
   }
   register(teamPermissionSet);
 
