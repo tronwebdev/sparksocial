@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { languageModelAvailable, modelClient } from './model-client.js';
 import { ToolError, callVendor } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { Playbook } from '@sparksocial/playbooks';
 import type { BeatOutlineEntry, TextWriter } from '@sparksocial/generate';
-import { envSet } from './env.js';
 
 /**
  * Production copy writer for `content.draft` — the sibling of
@@ -82,7 +82,11 @@ export interface TextWriterOptions {
 }
 
 export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
-  const anthropic = opts.anthropic ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const anthropic = opts.anthropic ?? modelClient();
   const model = opts.model ?? MODEL;
 
   return {
@@ -121,7 +125,14 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
         throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', { promptRef });
       }
 
-      return tidy(text);
+      /**
+       * The literal CTA, if a later beat carries one, so a trailing duplicate
+       * can be removed rather than merely discouraged. Instruction adherence
+       * varies by model — and with the OpenAI fallback in play, a beat may be
+       * written by a different vendor than the prompt was tuned against.
+       */
+      const laterCta = outline.find((o) => o.beatId !== beatId && o.kind === 'literal' && o.text)?.text;
+      return tidy(text, laterCta);
     },
   };
 }
@@ -139,7 +150,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
  * belt to that braces, because a rendered image cannot be corrected after the
  * fact the way a caption can.
  */
-function tidy(text: string): string {
+function tidy(text: string, laterCta?: string): string {
   let out = text.trim();
   const pairs: Array<[string, string]> = [
     ['"', '"'],
@@ -153,6 +164,23 @@ function tidy(text: string): string {
       break;
     }
   }
+  /**
+   * Drop a closing sentence that just restates the CTA beat.
+   *
+   * Only the final sentence, and only when it *is* the CTA rather than merely
+   * containing those words, so a body that legitimately mentions booking
+   * mid-paragraph is untouched. The post already ends on the real CTA beat; this
+   * removes the stutter, not the ask.
+   */
+  if (laterCta) {
+    const cta = laterCta.trim().toLowerCase();
+    const sentences = out.split(/(?<=[.!?])\s+/);
+    const last = sentences[sentences.length - 1]?.replace(/[.!?\s]+$/, '').trim().toLowerCase();
+    if (sentences.length > 1 && last && (last === cta || last.endsWith(cta))) {
+      out = sentences.slice(0, -1).join(' ').trim();
+    }
+  }
+
   return out;
 }
 
@@ -272,7 +300,16 @@ function prompt(
     audience?.segments?.length
       ? `Audience: ${audience.segments.map((s) => s.label).join(', ')}`
       : '',
-    offer?.primary_cta ? `Primary call to action: ${offer.primary_cta}` : '',
+    /**
+     * Withheld when a later beat carries it.
+     *
+     * The prompt used to state the CTA *and* forbid writing one, which is a
+     * contradiction the model resolves by ignoring one half. Observed on a real
+     * draft: a 30-second body ended "Book a chair." with the very next beat
+     * reading "Book a chair". Naming a thing and banning it in the same breath is
+     * a prompt bug, not a model failure.
+     */
+    offer?.primary_cta && !ctaHandled ? `Primary call to action: ${offer.primary_cta}` : '',
     '',
     `Playbook: ${playbook.name} — ${playbook.description}`,
     `Publishing to: ${playbook.output.platforms.join(', ')} as ${playbook.output.media_type}`,
@@ -307,9 +344,9 @@ function prompt(
  * time, rather than a broken tool.
  */
 export function textWriter(fallback: TextWriter): TextWriter {
-  if (!envSet('ANTHROPIC_API_KEY')) {
+  if (!languageModelAvailable()) {
     console.warn(
-      '[warn] ANTHROPIC_API_KEY unset — drafted copy comes from fixed templates. Every brand receives the ' +
+      '[warn] No language model configured (ANTHROPIC_API_KEY or OPENAI_API_KEY) — drafted copy comes from fixed templates. Every brand receives the ' +
         'same line for a given beat category, every time.',
     );
     return fallback;

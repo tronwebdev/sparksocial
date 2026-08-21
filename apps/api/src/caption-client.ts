@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { languageModelAvailable, modelClient } from './model-client.js';
 import { ToolError, callVendor, untrusted } from '@sparksocial/shared';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import type { CaptionClient } from '@sparksocial/assetgraph';
@@ -79,7 +80,11 @@ export interface CaptionClientOptions {
 }
 
 export function createCaptionClient(opts: CaptionClientOptions = {}): CaptionClient {
-  const anthropic = opts.anthropic ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const anthropic = opts.anthropic ?? modelClient();
   const model = opts.model ?? CAPTION_MODEL;
   const doFetch = opts.fetchImpl ?? fetch;
 
@@ -327,9 +332,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * looks exactly like a working Asset Graph.
  */
 export function captionClient(local?: { source: LocalByteSource; urlPrefix: string }): CaptionClient {
-  if (!envSet('ANTHROPIC_API_KEY')) {
+  if (!languageModelAvailable()) {
     console.warn(
-      '[warn] ANTHROPIC_API_KEY unset — asset captions are placeholders. Every asset will embed to ' +
+      '[warn] No language model configured (ANTHROPIC_API_KEY or OPENAI_API_KEY) — asset captions are placeholders. Every asset will embed to ' +
         'roughly the same point and retrieval will return a stable, meaningless ranking.',
     );
     return { async caption(url, mediaType) { return `${mediaType} at ${url}`; } };

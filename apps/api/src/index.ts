@@ -30,6 +30,7 @@ import { createDevApprovalStore } from './dev-approvals.js';
 import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
 import { envList, envNum, envSet, envStr } from './env.js';
+import { describeModelVendors } from './model-client.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -450,6 +451,9 @@ if (localStorage) {
 
 const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`SparkSocial API listening on :${info.port} (${env})${pg ? ' [postgres]' : ' [in-memory]'}`);
+  // Which vendor is actually reachable, because a silent fallback means an
+  // instance can write every post with the substitute model and read as healthy.
+  console.log(`  language models: ${describeModelVendors()}`);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {

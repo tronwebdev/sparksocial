@@ -177,6 +177,39 @@ describe('what comes back is publishable as-is', () => {
     expect(out).toBe('She said "best fade in Northside" and rebooked.');
   });
 
+  it('drops a closing sentence that just restates the CTA beat', async () => {
+    // Seen on a real draft through the OpenAI fallback: the 30s body ended
+    // "…enduring confidence. Book a chair." with the next beat reading
+    // "Book a chair". The prompt forbids it; this makes it not matter.
+    const out = await call(spy('A fade should hold its shape for weeks. Book a chair.'));
+    expect(out).toBe('A fade should hold its shape for weeks.');
+  });
+
+  it('leaves the CTA words alone mid-paragraph, where they are not a stutter', async () => {
+    const out = await call(spy('Book a chair before Friday and we will have time to do it properly. Most people wait too long.'));
+    expect(out).toMatch(/^Book a chair before Friday/);
+    expect(out).toMatch(/wait too long\.$/);
+  });
+
+  it('does not strip the only sentence, even if it is the CTA', async () => {
+    // A one-sentence beat that happens to be the CTA is a beat, not a stutter —
+    // removing it would return empty and fail the caller's own emptiness check.
+    const out = await call(spy('Book a chair.'));
+    expect(out).toBe('Book a chair.');
+  });
+
+  it('stops handing the model the CTA when a later beat carries it', async () => {
+    // Naming it and banning it in the same prompt is the contradiction that
+    // produced the duplicate in the first place.
+    const withCta = spy();
+    await call(withCta);
+    expect(withCta.sent()).not.toContain('Primary call to action');
+
+    const noCta = spy();
+    await call(noCta, { outline: [{ beatId: 'body', kind: 'copy', promptRef: 'teach.one_idea' }] });
+    expect(noCta.sent()).toContain('Primary call to action: Book a chair');
+  });
+
   it('still rejects an empty beat rather than publishing whitespace', async () => {
     await expect(call(spy('   '))).rejects.toMatchObject({ code: 'UPSTREAM_FAILED' });
   });

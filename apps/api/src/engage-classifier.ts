@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { languageModelAvailable, modelClient } from './model-client.js';
 import { ToolError, callVendor, renderUntrusted } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { EngagementCategory, type EngagementClassifier, type ClassificationResult } from '@sparksocial/engage';
-import { envSet } from './env.js';
 
 /**
  * Production classifier for `engage.classify` — the sibling of
@@ -42,7 +42,11 @@ export interface EngageClassifierOptions {
 }
 
 export function createEngageClassifier(opts: EngageClassifierOptions = {}): EngagementClassifier {
-  const anthropic = opts.anthropic ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const anthropic = opts.anthropic ?? modelClient();
   const model = opts.model ?? MODEL;
 
   return {
@@ -144,9 +148,9 @@ function prompt(genome: Genome, kind: string, authorHandle: string, text: string
  * ingest → classify → feed path without an API key.
  */
 export function engageClassifier(fallback: EngagementClassifier): EngagementClassifier {
-  if (!envSet('ANTHROPIC_API_KEY')) {
+  if (!languageModelAvailable()) {
     console.warn(
-      '[warn] ANTHROPIC_API_KEY unset — engagement classification uses fixed keyword rules, not real judgment.',
+      '[warn] No language model configured (ANTHROPIC_API_KEY or OPENAI_API_KEY) — engagement classification uses fixed keyword rules, not real judgment.',
     );
     return fallback;
   }

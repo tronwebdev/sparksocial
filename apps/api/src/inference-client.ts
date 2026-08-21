@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { modelClient } from './model-client.js';
 import { ToolError, callVendor } from '@sparksocial/shared';
 import {
   CaptureCapability,
@@ -145,7 +146,11 @@ export interface AnthropicInferenceOptions {
 }
 
 export function anthropicInferenceClient(opts: AnthropicInferenceOptions = {}) {
-  const client = opts.client ?? new Anthropic();
+  // `modelClient()` rather than a bare `new Anthropic()`: same primary vendor,
+  // with a one-shot retry on the OpenAI fallback when the account behind the
+  // key cannot serve the call. See `model-client.ts` for why that decision
+  // has to be made per call rather than at configuration time.
+  const client = opts.client ?? modelClient();
   const model = opts.model ?? MODEL;
 
   return {

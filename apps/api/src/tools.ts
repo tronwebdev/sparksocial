@@ -177,6 +177,7 @@ import {
 } from '@sparksocial/engage';
 import { devBriefWriter, devMediaIngestDeps, devInferenceClient, devTextWriter, devEngageClassifier, devReplyWriter } from './dev-vendors.js';
 import { anthropicInferenceClient } from './inference-client.js';
+import { languageModelAvailable } from './model-client.js';
 import { buildRateLimiter } from './rate-limiter.js';
 import { embedClient } from './embed-client.js';
 import { captionClient } from './caption-client.js';
@@ -215,7 +216,7 @@ import { readFile } from 'node:fs/promises';
  * confident profile of a business nobody looked at.
  */
 function inferenceClient() {
-  if (envSet('ANTHROPIC_API_KEY')) return anthropicInferenceClient();
+  if (languageModelAvailable()) return anthropicInferenceClient();
   console.warn(
     '[warn] ANTHROPIC_API_KEY unset — genome.bootstrap_from_url will return a fixed development ' +
       'profile derived from the hostname, ignoring the crawled site.',
