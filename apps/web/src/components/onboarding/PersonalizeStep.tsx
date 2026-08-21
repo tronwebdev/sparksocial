@@ -72,7 +72,21 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
     for (const kind of [wantsAvatar ? 'avatar_clone' : null, wantsVoice ? 'voice_clone' : null].filter(
       (k): k is string => k !== null,
     )) {
-      const res = await invoke('genome.consent.grant', { kind, subject: subject.trim() });
+      const res = await invoke(
+        'genome.consent.grant',
+        { kind, subject: subject.trim() },
+        /**
+         * `genome.consent.grant` is `idempotent: false` — a second grant is a
+         * second attestation — so the middleware requires a key and refuses the
+         * call without one. Omitting it made this step fail every time, which is
+         * exactly what live testing caught and no unit test would: the failure is
+         * in the middleware, not the tool.
+         *
+         * Unique per submission, same shape `ConsentPanel` uses, so a double
+         * click is neither replayed as a no-op nor rejected.
+         */
+        `consent:${kind}:${subject.trim()}:${Date.now()}`,
+      );
       if (res.status !== 'succeeded') {
         setBusy(false);
         setMessage({

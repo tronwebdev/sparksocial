@@ -84,3 +84,31 @@ export async function invokeOrThrow<T>(name: string, input: unknown): Promise<T>
   if (result.status === 'gated') throw new Error(`${name} was gated: ${result.decision.kind}`);
   throw new Error(`${name} failed: ${result.error.code} — ${result.error.message}`);
 }
+
+/**
+ * One place to turn any `ToolResult` failure into a line for a person.
+ *
+ * Deliberately thin: it does **not** rewrite tool messages. Every code in the
+ * set is already written for a human by whoever threw it — `INVALID_INPUT` names
+ * the field, `NOT_FOUND` names the thing, and `explainCrawlFailure` writes a real
+ * sentence for "blocked" versus "unreachable", each with a different next step.
+ * Replacing those with something generic would lose the only useful part.
+ *
+ * What this exists for is the `gated` branch, which every caller was
+ * hand-rolling and half of them got subtly different.
+ *
+ * ── The one that got away, and where it was fixed ─────────────────────────
+ *
+ * A vendor payload *did* reach onboarding —
+ * `400 {"type":"error",...,"request_id":"req_011Ce…"}` on the second step of
+ * setup. The fix belonged at the boundary that produced it
+ * (`apps/api/src/inference-client.ts`, which now catches the SDK error and keeps
+ * the body in `details`), not here: sniffing messages for JSON in the client
+ * would have hidden the symptom and left every other caller of that client
+ * exposed.
+ */
+export function humanError(result: ToolResult<unknown>, gatedFallback = 'That needs approval before it can run.'): string {
+  if (result.status === 'succeeded') return '';
+  if (result.status === 'gated') return result.decision.reason ?? gatedFallback;
+  return result.error.message || 'That did not work.';
+}

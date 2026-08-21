@@ -11,7 +11,7 @@ import { QuestionStep } from '@/components/onboarding/QuestionStep';
 import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
 import { PersonalizeStep } from '@/components/onboarding/PersonalizeStep';
 import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
-import { invoke } from '@/lib/tools';
+import { humanError, invoke } from '@/lib/tools';
 
 /**
  * ONB-01 → ONB-06 — `Onboarding.dc.html`.
@@ -135,14 +135,12 @@ export default function OnboardingPage() {
     setBusy(false);
 
     if (result.status !== 'succeeded') {
-      setError(
-        result.status === 'gated'
-          ? 'That needs approval before it can run.'
-          : // The API's message names the actual cause — blocked, not found,
-            // unreachable — and each has a different next step, so it is shown
-            // rather than replaced with a generic failure.
-            result.error.message,
-      );
+      // The API's message names the actual cause — blocked, not found,
+      // unreachable — and each has a different next step, so it is shown rather
+      // than replaced with a generic failure. That holds only because the
+      // messages *are* sentences: a vendor payload used to reach this line, and
+      // was fixed at `inference-client.ts` rather than papered over here.
+      setError(humanError(result));
       setCrawlFailed(true);
       return;
     }
@@ -190,7 +188,7 @@ export default function OnboardingPage() {
     setManualBusy(false);
 
     if (result.status !== 'succeeded') {
-      setError(result.status === 'failed' ? result.error.message : 'That needs approval before it can run.');
+      setError(humanError(result, 'That needs approval before it can run.'));
       return;
     }
 
@@ -221,7 +219,7 @@ export default function OnboardingPage() {
     setBusy(false);
 
     if (result.status !== 'succeeded') {
-      setError(result.status === 'failed' ? result.error.message : 'That needs approval before it can run.');
+      setError(humanError(result, 'That needs approval before it can run.'));
       return;
     }
 
@@ -267,7 +265,7 @@ export default function OnboardingPage() {
       const result = await invoke('genome.identity.set', { genomeId: draft.genomeId, identity: patch });
       setBusy(false);
       if (result.status !== 'succeeded') {
-        setError(result.status === 'failed' ? result.error.message : 'That correction needs approval before it can run.');
+        setError(humanError(result, 'That correction needs approval before it can run.'));
         return;
       }
       // The completion screen and every later step's eyebrow read this from
