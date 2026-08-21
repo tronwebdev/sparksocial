@@ -293,112 +293,52 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">docs/PRD.md v1.0 · gaps only · third pass</p>
+    <p class="eyebrow">docs/PRD.md v1.0 · gaps only · fourth pass</p>
     <h1>What SparkSocial still does not do</h1>
-    <p class="standfirst">Every backend gap on the previous version of this page is closed. What is left is almost entirely screens for capabilities that already exist, plus a list of things no amount of code shortens. Each gap says what kind of work it is, because that is what decides who picks it up — and every claim here was re-checked against the tree rather than carried forward.</p>
+    <p class="standfirst">Every backend gap and every frontend-only gap on the previous versions of this page is closed. What is left is three features that need storage <em>and</em> a surface, eight things no amount of code shortens, and one browser pass over everything built this week. Each gap says what kind of work it is, because that is what decides who picks it up.</p>
     <div class="method">
-      <span>21 open, was 28</span>
-      <span>1,892 tests / 147 files: pass</span>
+      <span>11 open, was 28</span>
+      <span>1,919 tests / 147 files: pass</span>
       <span>tsc + next build: clean</span>
       <span>32 migrations applied</span>
-      <span>tree at 116b17a</span>
+      <span>tree at 0e2d239</span>
     </div>
   </header>
 
   <div class="verdict">
-    <div class="stat done"><b>10</b><small>Closed — every backend gap on the last page</small></div>
-    <div class="stat fe"><b>10</b><small>Frontend only — the tools already exist</small></div>
+    <div class="stat done"><b>20</b><small>Closed — every backend and frontend-only gap</small></div>
+    <div class="stat fe"><b>0</b><small>Frontend only — none left</small></div>
     <div class="stat be"><b>0</b><small>Backend — none left</small></div>
     <div class="stat both"><b>3</b><small>Both halves — real features</small></div>
     <div class="stat ext"><b>8</b><small>Not code — approvals, keys, a decision</small></div>
   </div>
 
   <section>
-    <h2 class="plain">The direct answer: no, not all of them — but all the backend ones</h2>
+    <h2 class="plain">The direct answer: the code gaps are closed; the blocked ones are not</h2>
     <div class="orient">
       <dl>
         <div>
           <dt class="k-be">Backend — 10 items, all closed</dt>
-          <dd>Per-campaign approvals, media-generation sign-off, configurable publish roles, a review-queue cap, PRD §5's fourteen success metrics, the credit-ledger read, the <code>saves</code> metric, org data governance, the DISC-02 time series, and connection alerting with a retry ceiling. Nine commits, listed in the ledger below.</dd>
+          <dd>Per-campaign approvals, media-generation sign-off, configurable publish roles, a review-queue cap, PRD §5's fourteen success metrics, the credit-ledger read, the <code>saves</code> metric, org data governance, the DISC-02 time series, and connection alerting with a retry ceiling.</dd>
         </div>
         <div>
-          <dt class="k-fe">Frontend only — 10 items, open</dt>
-          <dd>A registered, tested, callable tool exists and no screen calls it. These are the cheapest gaps in the product and the ones most easily mistaken for missing features. One of the ten — brand-knowledge upload — is more consequential than it looks, and is called out first for that reason.</dd>
+          <dt class="k-fe">Frontend only — 10 items, all closed</dt>
+          <dd>Brand-knowledge upload, teams and roles, the audit log, brand import/export, calendar filters, the Plan queue, §8.12's two settings layers, connecting accounts during onboarding, the personalisation step, and the brand kit. <strong>Three of them could not be built as screens at all</strong> — <code>knowledge.*</code> had three ingestion tools and no way to ask what a brand knows; <code>team.*</code> had three writes and no way to see who is in the org; the calendar could not filter by an account because nothing selected the column. Those needed <code>knowledge.list</code>, <code>team.list</code>, and <code>platform</code>/<code>mediaType</code> on <code>calendar.get</code> first.</dd>
         </div>
         <div>
-          <dt class="k-both">Both — 3 items, open</dt>
-          <dd>New storage <em>and</em> a new surface. Real features rather than wiring, and unchanged from the last pass.</dd>
+          <dt class="k-both">Both halves — 3 items, open</dt>
+          <dd>New storage <em>and</em> a new surface. Real features rather than wiring, and unchanged across all four passes — which is itself the signal that they are the next real work.</dd>
         </div>
         <div>
           <dt class="k-ext">Not code — 8 items, open</dt>
-          <dd>Platform approvals, vendor keys, dashboard configuration, and one product decision that is yours. <strong>The binding constraint on the alpha is still here, not in the code</strong>, exactly as CLAUDE.md has said from the start. This column reads 8 where the last page said 4, and nothing regressed: four items the repo&rsquo;s own <code>docs/GAPS.md</code> tracked and this page did not — vendor keys, Clerk dashboard config, unprovisioned Blob storage, and the compliance/pricing decisions — are now on both, so the two documents no longer disagree about the total.</dd>
+          <dd>Platform approvals, vendor keys, dashboard configuration, and one product decision that is yours. <strong>This is where the alpha actually lives</strong>, exactly as CLAUDE.md has said from the start.</dd>
         </div>
         <div>
-          <dt style="color: var(--accent-2)">The chips</dt>
-          <dd><span class="tag exists">Tool exists</span> means the capability is built, tested and callable today — the gap is only that nothing reaches it. <span class="tag none">Nothing built</span> means what it says. <span class="tag shipped">Closed</span> marks work finished since the last pass.</dd>
+          <dt style="color: var(--accent-2)">One thing owed, and it is not code</dt>
+          <dd><strong>Nothing built this week has been opened in a browser.</strong> Every <code>(app)</code> route sits behind Clerk and signing in is not something an agent should do, so twelve new surfaces are typechecked and prerendering and none of them has been <em>looked at</em>. The cases worth deliberately reaching are listed at the bottom of this page.</dd>
         </div>
       </dl>
     </div>
-  </section>
-
-  <!-- ══ FRONTEND ONLY ══════════════════════════════════════════════════ -->
-  <section>
-    <h2 class="fe">Frontend only — the tool is already there</h2>
-    <p class="sec-intro">Ten capabilities that exist, are tested, and are reachable from no screen. <code>apps/web</code> reaches everything through <code>invoke()</code>, so &ldquo;no screen calls it&rdquo; is a grep rather than a judgement. Ordered by what a customer notices first.</p>
-
-    <div class="gaps">
-      <article class="g fe">
-        <div class="g-head"><h3>Brand knowledge documents cannot be uploaded from anywhere</h3><span class="tag exists">Tool exists</span><span class="ref">ONB-02 · §8.12</span></div>
-        <p><code>knowledge.ingest_site</code>, <code>knowledge.ingest_docs</code> and <code>brand.knowledge.attach</code> are all real, cost-estimated and tested; no component calls any of them. <strong>This is the most consequential item on the page</strong>, and it does not look like it: <code>claim_grounding</code> reads exactly this corpus, so a brand with nothing attached has every specific claim it makes flagged as ungrounded. The guardrail is working correctly and the brand has no way to feed it.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>Teams and roles</h3><span class="tag exists">Tool exists</span><span class="ref">SET-WS-01</span></div>
-        <p><code>team.invite</code>, <code>team.role.set</code>, <code>team.permission.set</code>. The <code>Role</code> enum carries all six roles the PRD names and every tool declares its scopes, so enforcement is real — including the brand-level check, see the correction at the bottom — and the administration of it is unreachable. An agency cannot add a second person to a workspace without the API.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>The audit log</h3><span class="tag exists">Tool exists</span><span class="ref">SET-ORG-01 · §10</span></div>
-        <p><code>org.audit.query</code> and <code>engage.audit.query</code>. Every tool call writes a row for every outcome including denials, so the data is complete and dense, and §10 names audit logs as the mitigation for engagement misfires. Needs a filter and pagination design more than it needs code, which is the argument for doing it properly rather than as a table dump.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>Import / export a workspace</h3><span class="tag exists">Tool exists</span><span class="ref">SET-WS-01</span></div>
-        <p><code>brand.export</code> and <code>brand.import</code>. For an agency this is how a client gets onboarded from a template, or handed back on the way out.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>The calendar has no status, platform or type filters</h3><span class="tag exists">Tool exists</span><span class="ref">CAL-01 · §8.7</span></div>
-        <p>Both fields exist now — <code>needs_review</code> and per-slot <code>platform</code> — and <code>CalendarBoard</code> has no filter of any kind. <strong>The month view has come off this list.</strong> <code>MonthGrid</code> groups by ISO date rather than laying slots over a real month calendar, and its own comment gives the reason: a campaign window is thirty days from whenever it started, and an empty first row of a September grid would imply the campaign is idle rather than that it began on the 4th. That is a reasoned deviation from the PRD, not an unbuilt screen, and listing it as a gap overstated the work left.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>A Plan Queue, as distinct from a draft list</h3><span class="tag exists">Tool exists</span><span class="ref">§7.5</span></div>
-        <p>§7.5 makes four queues first-class: Plan, Review, Automation, Engagement. Three have a surface — <code>queue.review.list</code>, <code>recipe.output.list</code>, <code>engage.list</code>. <code>DraftList</code> (CC-03) covers <em>everything in flight across every status</em>, which is close and is not the same thing: a plan queue is what SPARK intends to do <strong>next, in order</strong>. <code>content.list</code> already returns the material.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>Settings is one flat page, not two layers</h3><span class="tag exists">Tool exists</span><span class="ref">SET-ORG-01 / SET-WS-01</span></div>
-        <p>§8.12 describes an org layer and a workspace layer. Ten panels now scroll together on <code>/settings</code>, with the org-level ones — billing, plan, SSO, governance, and the usage panel — sitting inside brand settings. <code>/account</code> exists as a destination for the org half, which is the part that used to be missing.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>Social accounts cannot be connected during onboarding</h3><span class="tag exists">Tool exists</span><span class="ref">ONB-04</span></div>
-        <p><code>integration.connect</code> works and lives in settings. Connecting later is supported and is not the flow §8.2 describes, which puts it before the first campaign — where it matters, because a campaign created with nothing connected holds everything it produces.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>The agent personalization step</h3><span class="tag exists">Tool exists</span><span class="ref">ONB-05</span></div>
-        <p>Alias, avatar, optional cameo import, optional voice record. <code>genome.avatar_config.set</code> and <code>genome.consent.*</code> are real and reachable from settings; the onboarding step that introduces them is not. The consent question is already asked properly in the five-question flow, which is the part that actually governs whether an avatar may ever be used.</p>
-      </article>
-
-      <article class="g fe">
-        <div class="g-head"><h3>Logo upload, and the brand kit past a URL</h3><span class="tag exists">Tool exists</span><span class="ref">ONB-01 · §8.6</span></div>
-        <p><code>brands.logoUrl</code> and <code>brandColors</code> exist and the panel takes a pasted URL. §8.6&rsquo;s &ldquo;Apply Brand Kit&rdquo; toggle needs the colours actually reaching <code>compose.static</code> / <code>compose.render</code> — checked, and they do not — and an upload rather than a paste, for which <code>asset.upload_url</code> already does the upload half.</p>
-      </article>
-    </div>
-
-    <p class="sec-intro"><strong>Dropped as not worth tracking:</strong> ONB-06&rsquo;s &ldquo;Press &amp; Hold to Continue&rdquo;. The completion screen exists; the prototype&rsquo;s hold-to-confirm interaction does not. It was listed for completeness and is not a gap anybody should spend a day on.</p>
   </section>
 
   <!-- ══ BOTH ══════════════════════════════════════════════════════════ -->
@@ -474,8 +414,8 @@
 
   <!-- ══ CLOSED ════════════════════════════════════════════════════════ -->
   <section>
-    <h2 class="done">Closed since the last pass</h2>
-    <p class="sec-intro">Ten gaps, closed by fourteen pieces of work across six commits — some gaps needed more than one. Listed because a gap tracker that only ever grows is not being read against the code. The last two rows were on no previous list: they were found while closing the others.</p>
+    <h2 class="done">Closed across the last two passes</h2>
+    <p class="sec-intro">Twenty gaps. Listed because a gap tracker that only ever grows is not being read against the code — and because three of the frontend ten turned out not to be frontend work at all until a read tool existed for them.</p>
 
     <div class="scroller">
       <table class="ledger">
@@ -497,6 +437,17 @@
           <tr><td>Health indicators (§10)</td><td><code>integration.health</code> gained a real status and a <code>needsAttention</code> list</td><td>fd527a7</td></tr>
           <tr><td>The stalled-post explanation</td><td><code>content.get</code> carries the retry state; <code>StallNotice</code> renders it with a reschedule</td><td>116b17a</td></tr>
           <tr><td>A screen for §5 (CC-04)</td><td><code>PerformancePanel</code> on <code>/agents</code>; nulls render as em dashes with reasons</td><td>116b17a</td></tr>
+          <tr><td>The reads three frontend gaps needed</td><td><code>knowledge.list</code> (grouped by document, not chunk) and <code>team.list</code> (Clerk membership joined to <code>brand_members</code> in one call)</td><td>ffe1cb9</td></tr>
+          <tr><td>Brand knowledge upload (ONB-02)</td><td><code>KnowledgePanel</code>: crawl, paste, a file reader for text formats, and a claim tester so the corpus is legible</td><td>020c919</td></tr>
+          <tr><td>Teams and roles (SET-WS-01)</td><td><code>TeamPanel</code> on <code>/account</code>; keeps Clerk membership and brand assignment visibly separate</td><td>020c919</td></tr>
+          <tr><td>The audit log (SET-ORG-01, §10)</td><td><code>AuditPanel</code>: two tabs, filters, refusals tinted and carrying their <code>ruleId</code></td><td>020c919</td></tr>
+          <tr><td>Brand import / export (SET-WS-01)</td><td><code>BrandTransferPanel</code>; export downloads a Blob, import validates section-by-section</td><td>020c919</td></tr>
+          <tr><td>§8.12's two settings layers</td><td><code>/account</code> is the org layer, <code>/settings</code> the brand layer; the org panels moved rather than being duplicated</td><td>020c919</td></tr>
+          <tr><td>Calendar filters (CAL-01, §8.7)</td><td><code>platform</code> + <code>mediaType</code> on <code>calendar.get</code>, then filters whose options come from the data</td><td>a232869</td></tr>
+          <tr><td>§7.5's Plan queue</td><td><code>PlanQueue</code>: scheduled work soonest first, leading with how much of it is unwritten</td><td>a232869</td></tr>
+          <tr><td>Connect accounts in onboarding (ONB-04)</td><td><code>ConnectAccountsStep</code>, via a popup so the flow's unsaved answers survive</td><td>0e2d239</td></tr>
+          <tr><td>The personalisation step (ONB-05)</td><td><code>PersonalizeStep</code>: avatar/voice ids and the consent record as one action, because the guardrail needs both</td><td>0e2d239</td></tr>
+          <tr><td>The brand kit reaching pixels (§8.6)</td><td><code>resolveKit</code> in <code>@sparksocial/compose</code>, applied by both renderers; logo upload and a colour editor with a legibility preview</td><td>0e2d239</td></tr>
         </tbody>
       </table>
     </div>
@@ -504,7 +455,7 @@
 
   <!-- ══ CORRECTIONS ═══════════════════════════════════════════════════ -->
   <section>
-    <h2 class="plain">Corrections to the previous pass</h2>
+    <h2 class="plain">Corrections found along the way</h2>
     <p class="sec-intro">Recorded rather than quietly edited. A gap tracker that has been wrong once should say where, for the same reason the codebase treats a stale comment as worse than none.</p>
 
     <div class="gaps">
@@ -525,6 +476,16 @@
       </div>
 
       <div class="correction">
+        <h3>Three &ldquo;frontend&rdquo; gaps were not frontend gaps</h3>
+        <p>Brand-knowledge upload, teams and roles, and the calendar&rsquo;s account filter were all filed as <em>frontend only &mdash; the tool is already there</em>. Two of the three had <strong>only writes</strong>: <code>knowledge.*</code> could ingest a document and never answer &ldquo;what does this brand know?&rdquo;, and <code>team.*</code> could invite, promote and assign with no way to see whom. A settings panel built on those would have been close to useless &mdash; you cannot change somebody&rsquo;s role without first knowing whose. The third could not filter by account because <code>campaignSlots</code> never selected the column. The classification was right about where the <em>work</em> was and wrong about whether a screen was sufficient.</p>
+      </div>
+
+      <div class="correction">
+        <h3>Four doc comments claimed the opposite of what is now true</h3>
+        <p>Each was accurate when written and became a false claim as the tools underneath it landed: onboarding said its connect and avatar steps had <em>&ldquo;no tool behind them yet&rdquo;</em>; <code>AccountHome</code> said the credit ledger had no read tool; <code>settings/page.tsx</code> described itself as holding the org half; <code>team.ts</code> said nothing enforced brand isolation at the query layer. All four fixed in the commits that falsified them &mdash; the last one had already been cited on this page as evidence of an open security hole.</p>
+      </div>
+
+      <div class="correction">
         <h3><code>npm run migrate</code> could not find a connection string</h3>
         <p>Migrations 0029&ndash;0031 sat unapplied because the command failed with nothing but its driver choice printed. <code>drizzle.config.ts</code> read <code>process.env.DATABASE_URL</code> and nothing bridged <code>apps/api/.env</code>, so a fresh shell fell through to a <code>placeholder</code> host — turning &ldquo;you have no connection string&rdquo; into a connection failure against a host that does not exist. Fixed at the config, which every entry point shares, and the fallback now throws with the two places the value can come from. Thirty-two migrations are applied and <code>drizzle-kit generate</code> reports no schema drift.</p>
       </div>
@@ -533,24 +494,23 @@
 
   <!-- ══ VERIFICATION OWED ═════════════════════════════════════════════ -->
   <section>
-    <h2 class="plain">Verification owed</h2>
-    <p class="sec-intro">Two surfaces are built, typechecked and prerendering in <code>next build</code>, and have never been opened in a browser. Every <code>(app)</code> route sits behind Clerk, and signing in is not something an agent should do. This is not a code gap; it is an honest note about what &ldquo;done&rdquo; currently rests on.</p>
+    <h2 class="plain">The one thing owed, and it is not code</h2>
+    <p class="sec-intro"><strong>Nothing built this week has been opened in a browser.</strong> Twelve new surfaces are typechecked and prerendering in <code>next build</code>, and none of them has been <em>looked at</em>: every <code>(app)</code> route sits behind Clerk, and signing in is not something an agent should do. This is one sitting, not twelve tasks &mdash; but it is worth doing deliberately rather than by clicking around, because the states most likely to be wrong are the empty ones nobody navigates to by accident.</p>
 
     <div class="gaps">
       <article class="g">
-        <div class="g-head"><h3><code>StallNotice</code></h3><span class="ref">Draft Panel · §10 / §7.4</span></div>
-        <p>Needs a genuinely blocked item to render against. The cheapest way to produce one: schedule a post to a platform with no connection and let the scheduler reach its five-attempt ceiling.</p>
-      </article>
-
-      <article class="g">
-        <div class="g-head"><h3><code>PerformancePanel</code></h3><span class="ref">/agents · CC-04 / §5</span></div>
-        <p>The case worth checking is the <em>empty</em> one. A brand with no campaign should show em dashes with reasons attached, never a column of confident zeros — that behaviour is the whole design of the component and it is exactly the kind of thing a screenshot confirms in five seconds and a type system cannot.</p>
+        <div class="g-head"><h3>The five cases a screenshot settles and a type system cannot</h3><span class="ref">before the alpha</span></div>
+        <p><strong><code>PerformancePanel</code> with no campaign.</strong> Should be em dashes with reasons attached, never a column of confident zeros &mdash; nine of the fourteen metrics are nullable and that behaviour is the whole design of the component.</p>
+        <p><strong><code>StallNotice</code>.</strong> Needs a genuinely blocked item to render against. Cheapest way to make one: schedule a post to a platform with no connection and let the scheduler reach its five-attempt ceiling.</p>
+        <p><strong><code>KnowledgePanel</code> with nothing attached.</strong> The warning that every specific claim will be held is the most important state on that screen, and it is the state a brand is actually in on day one.</p>
+        <p><strong>The brand-kit preview.</strong> A light background against the default white type is exactly the unreadable pair <code>resolveKit</code> deliberately refuses to guess around &mdash; the preview exists to make that visible before it reaches a render.</p>
+        <p><strong><code>ConnectAccountsStep</code>.</strong> The popup path, and the refusal-by-name for a platform with no configured developer app &mdash; which is most of them in this environment, and therefore the path most people will see.</p>
       </article>
     </div>
   </section>
 
   <footer>
-    Third pass over <code>docs/PRD.md</code> §1&ndash;§12 and Parts A&ndash;C, checked against the tree at <code>116b17a</code>. Every one of the previous pass&rsquo;s 28 gaps was re-tested by reading source or grepping for absence — which is how the two corrections above were found. 1,892 tests across 147 files pass; <code>tsc</code> is clean on both configs; <code>next build</code> compiles and prerenders 24 routes; 32 migrations are applied with no schema drift. The remaining backend count is zero, and the remaining constraint is platform approvals, which it always was.
+    Fourth pass over <code>docs/PRD.md</code> §1&ndash;§12 and Parts A&ndash;C, checked against the tree at <code>0e2d239</code>. Twenty of the twenty-eight gaps the second pass found are closed; the backend and frontend-only columns are both zero. 1,919 tests across 147 files pass, <code>tsc</code> is clean on both configs, <code>next build</code> compiles and prerenders 24 routes, and 32 migrations are applied with no schema drift. What is left is three features that need storage and a surface, eight items blocked outside this repo, and one browser pass. The binding constraint is platform approvals, which it always was.
   </footer>
 
 </div>

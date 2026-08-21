@@ -27,71 +27,21 @@ consolidations documented in `STATUS.md`, not missing capabilities.
 | Kind | Count | Note |
 | --- | --- | --- |
 | Backend | **0** | All ten closed 20–21 Aug. |
-| Frontend | 10 | A registered, tested tool exists and no screen calls it. |
+| Frontend only | **0** | All ten closed 21 Aug. |
 | Backend *and* frontend | 3 | New storage *and* a new surface. Real features. |
 | Not code | 8 | Approvals, vendor keys, or a product decision. |
-| Verification owed | 2 | Built and typechecked; never opened in a browser. |
+| Verification owed | 1 | Every screen built this week. None has been opened in a browser. |
 
 The binding constraint on the alpha is still platform approvals, not code — CLAUDE.md has
 said so since the start and nothing here changes it.
 
+Closing the frontend ten needed four small backend additions, because three of those gaps
+could not exist as write-only screens: `knowledge.list`, `team.list`, `platform` and
+`mediaType` on `calendar.get`, and §8.6's brand kit actually reaching
+`compose.static`/`compose.render` — both fields had been writable for a while and no
+renderer read either.
+
 ---
-
-## Frontend only — the tool is already there
-
-Ten capabilities that exist, are tested, and are reachable from no screen. `apps/web` reaches
-everything through `invoke()` (CLAUDE.md's frontend rule), so "no screen calls it" is a
-grep, not a judgement. Ordered by what a customer notices first.
-
-- [ ] **Brand knowledge documents cannot be uploaded from anywhere.** `knowledge.ingest_site`,
-      `knowledge.ingest_docs` and `brand.knowledge.attach` are all real, cost-estimated and
-      tested; no component calls any of them. **The most consequential item on this list**, and
-      it does not look like it: `claim_grounding` reads exactly this corpus, so a brand with
-      nothing attached has every specific claim it makes flagged as ungrounded. The guardrail
-      is working correctly and the brand has no way to feed it.
-- [ ] **Teams and roles.** `team.invite`, `team.role.set`, `team.permission.set`. The `Role`
-      enum carries all six roles the PRD names and every tool declares its scopes — enforcement
-      is real (including the brand-level check, see the correction below) and the
-      administration of it is unreachable. An agency cannot add a second person without the API.
-- [ ] **The audit log.** `org.audit.query` and `engage.audit.query`. Every tool call writes a
-      row for every outcome including denials, so the data is complete and dense, and §10 lists
-      audit logs as the mitigation for engagement misfires. Needs a filter and pagination
-      design more than it needs code.
-- [ ] **Import / export a workspace.** `brand.export` and `brand.import`. For an agency this is
-      how a client is onboarded from a template, or handed back on the way out.
-- [ ] **Calendar filters.** §8.7 asks for status, platform and content-type filters;
-      `CalendarBoard` has none. Both fields exist now (`needs_review`, per-slot `platform`), so
-      this is buildable. *Not* on this list any more: the month view. `MonthGrid` groups by ISO
-      date rather than laying slots over a real month calendar, and its own comment gives the
-      reason — a campaign window is thirty days from whenever it started, and an empty first row
-      of a September grid would imply the campaign is idle rather than that it began on the 4th.
-      That is a reasoned deviation from the PRD, not an unbuilt screen.
-- [ ] **A Plan Queue, as distinct from a draft list.** §7.5 makes four queues first-class:
-      Plan, Review, Automation, Engagement. Three have a surface — `queue.review.list`,
-      `recipe.output.list`, `engage.list`. `DraftList` (CC-03) covers *everything in flight
-      across every status*, which is close but is not the same thing: a plan queue is what SPARK
-      intends to do **next, in order**. `content.list` already returns the material.
-- [ ] **Settings is one flat page, not two layers.** §8.12 describes an org layer and a
-      workspace layer; ten panels scroll together on `/settings`, with the org-level ones
-      (billing, plan, SSO, governance, usage) sitting inside brand settings. `/account` exists
-      as a destination for the org half.
-- [ ] **Social accounts cannot be connected during onboarding.** `integration.connect` works and
-      lives in settings. Connecting later is supported and is not the flow §8.2 describes, which
-      puts it before the first campaign — where it matters, because a campaign created with
-      nothing connected holds everything it produces.
-- [ ] **The agent personalization step (ONB-05).** Alias, avatar, optional cameo import,
-      optional voice record. `genome.avatar_config.set` and `genome.consent.*` are real and
-      reachable from settings; the onboarding step that introduces them is not. The consent
-      question is already asked properly in the five-question flow, which is the part that
-      actually governs whether an avatar may ever be used.
-- [ ] **Logo upload, and the brand kit past a URL.** `brands.logoUrl` and `brandColors` exist
-      and the panel takes a pasted URL. §8.6's "Apply Brand Kit" toggle needs the colours
-      actually reaching `compose.static` / `compose.render` — verified absent — and an upload
-      rather than a paste, for which `asset.upload_url` already does the upload half.
-
-Dropped from this list as not worth tracking: ONB-06's "Press & Hold to Continue". The
-completion screen exists; the prototype's hold-to-confirm interaction does not. It was
-listed for completeness and is not a gap anybody should spend a day on.
 
 ## Both halves — new storage and a new surface
 
@@ -173,15 +123,28 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
 
 ## Verification owed
 
-Built, typechecked, prerendering in `next build`, and **never opened in a browser**. Every
-`(app)` route sits behind Clerk and signing in is not something an agent should do.
+**Nothing built this week has been opened in a browser.** Every `(app)` route sits behind
+Clerk and signing in is not something an agent should do, so all of it is typechecked and
+prerendering in `next build`, and none of it has been *looked at*. One item, not twelve,
+because the fix is one sitting:
 
-- [ ] **`StallNotice`** (Draft Panel, §10/§7.4) — needs a genuinely blocked item to render
-      against. Cheapest way to produce one: schedule a post to a platform with no connection and
-      let the scheduler reach its five-attempt ceiling.
-- [ ] **`PerformancePanel`** (`/agents`, CC-04/§5) — the case worth checking is the *empty*
-      one. A brand with no campaign should show em dashes with reasons, never a column of
-      confident zeros.
+- [ ] A pass over `/account` (team, audit, brand transfer, plan, usage), `/settings`
+      (knowledge, brand kit), `/agents` (plan queue, performance), `/calendar` (filters),
+      the Draft Panel's stall notice, and the two new onboarding steps.
+
+      The cases worth deliberately reaching — the ones a type system cannot check and a
+      screenshot settles in seconds:
+
+      - **`PerformancePanel` with no campaign** — em dashes with reasons, never a column of
+        confident zeros.
+      - **`StallNotice`** — needs a genuinely blocked item. Schedule a post to a platform
+        with no connection and let the scheduler reach its five-attempt ceiling.
+      - **`KnowledgePanel` with nothing attached** — the warning that every specific claim
+        will be held is the most important state on that screen.
+      - **The brand-kit preview** — a light background against the default white type is
+        exactly the unreadable pair `resolveKit` deliberately refuses to guess around.
+      - **`ConnectAccountsStep`** — the popup path, and the refusal-by-name for a platform
+        with no configured developer app, which is most of them in this environment.
 
 ## Open decisions
 
