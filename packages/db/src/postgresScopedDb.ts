@@ -15,7 +15,7 @@ import { createBrandRepository } from './brandRepository.js';
 import { createHumanLoopRepository } from './humanLoopRepository.js';
 import { createConsentRepository } from './consentRepository.js';
 import { createToolCallReadRepository } from './toolCallReadRepository.js';
-import { createTrendRepository } from './trendRepository.js';
+import { createTrendRepository, createInfluencerWatchRepository } from './trendRepository.js';
 import { createTrendObservationRepository } from './trendObservationRepository.js';
 import { createLearningRepository } from './learningRepository.js';
 import { createRecipeRepository } from './recipeRepository.js';
@@ -40,6 +40,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     campaigns: createCampaignRepository(db),
     trends: createTrendRepository(db),
     trendObservations: createTrendObservationRepository(db),
+    influencers: createInfluencerWatchRepository(db),
     learning: createLearningRepository(db),
     recipes: createRecipeRepository(db),
     oauthConnections: createOAuthConnectionRepository(db),

@@ -338,6 +338,35 @@ export const engagementMessages = pgTable(
     text: text('text').notNull(),
     /** The post this is a reply to, when known — not every DM is. */
     contentItemId: uuid('content_item_id'),
+    /**
+     * ── PRD §8.8 / `ENG-02.4`'s conversation ────────────────────────────────
+     *
+     * §8.8 asks for the thread behind a sales opportunity, and the feed could
+     * only ever show one message at a time: rows were keyed by the platform's
+     * per-message id and nothing said which of them belonged to the same
+     * exchange. A lead that took four messages to become a lead read as four
+     * unrelated strangers.
+     *
+     * The platform's own conversation id when it supplies one (`engage.ingest`
+     * takes it); otherwise derived — see `deriveThreadKey` in
+     * `packages/engage/src/thread.ts`. Stored rather than derived at read time
+     * so the read is one indexed equality, and so a platform that starts
+     * supplying real ids does not silently re-group history.
+     */
+    threadKey: text('thread_key'),
+    /**
+     * What we sent back, and when.
+     *
+     * `EngagementStore.markReplied`'s comment used to argue this needed no
+     * column: the status enum already recorded *that* a reply went out and the
+     * text was on the audit row. That reasoning was right for its question
+     * ("was this answered?") and is not enough for this one ("show me the
+     * conversation") — a thread with the outbound half missing is half a
+     * transcript, and `tool_calls` is deliberately a projection that never
+     * returns inputs. A conversation view needs the turn, so the turn is stored.
+     */
+    sentReply: text('sent_reply'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
     /**
      * new | classified | replied | auto_handled | escalated | dismissed |
@@ -374,6 +403,8 @@ export const engagementMessages = pgTable(
     // `ENG-02`'s tabs read.
     index('engagement_messages_feed_idx').on(t.orgId, t.genomeId, t.status, t.receivedAt.desc()),
     uniqueIndex('engagement_messages_external_idx').on(t.orgId, t.genomeId, t.platform, t.externalId),
+    // `engage.thread`'s read: one conversation, oldest first.
+    index('engagement_messages_thread_idx').on(t.orgId, t.genomeId, t.threadKey, t.receivedAt),
   ],
 );
 
@@ -1068,6 +1099,46 @@ export const trendWatchlist = pgTable(
  * is dense without being informative. The unique index makes recording
  * idempotent, which is what lets any caller record freely.
  */
+/**
+ * `influencer_watchlist` — the second of PRD §8.9's two watchlists.
+ *
+ * §8.9 lists *"Watchlist keywords"* and *"Influencer watchlist"* among
+ * Discovery's inputs. The keyword one has been real since P5
+ * (`trend_watchlist`); this one had no storage, no tool and no screen.
+ *
+ * Genome-scoped, unlike `trend_observations` beside it. A trend's volume is a
+ * fact about TikTok; **which accounts a brand studies is competitive
+ * intelligence** — often literally a list of its rivals — and is exactly the
+ * kind of thing that must never surface in another client's workspace.
+ *
+ * Kept as its own table rather than a `kind` column on `trend_watchlist`: a
+ * watched keyword and a watched account are joined to different things (one to
+ * a trend id, one to a handle on a platform) and read by different tools, and
+ * the shared columns would be two of six.
+ */
+export const influencerWatchlist = pgTable(
+  'influencer_watchlist',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    platform: text('platform').notNull(),
+    /** Stored normalised — lowercase, no leading `@`. See `normaliseHandle` in `packages/trends/src/influencer.ts`. */
+    handle: text('handle').notNull(),
+    /** The account's display name, when a source reported one. */
+    displayName: text('display_name'),
+    /** Why this account is worth watching — a competitor, a customer, a format to study. Free text. */
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('influencer_watchlist_scope_idx').on(t.orgId, t.genomeId),
+    // Watching the same account twice is one watch. Normalising the handle
+    // before it reaches here is what makes this constraint mean what it says.
+    uniqueIndex('influencer_watchlist_unique_idx').on(t.genomeId, t.platform, t.handle),
+  ],
+);
+
 export const trendObservations = pgTable(
   'trend_observations',
   {

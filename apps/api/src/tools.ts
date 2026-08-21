@@ -132,6 +132,8 @@ import {
   makeTrendWatchlist,
   makeTrendExplain,
   makeTrendObserve,
+  trendInfluencerWatch,
+  makeTrendInfluencerReview,
 } from '@sparksocial/trends';
 import {
   recipeValidate,
@@ -167,6 +169,7 @@ import {
   engageOpportunityCreate,
   engageOpportunityRoute,
   engageAuditQuery,
+  engageThread,
   createStubReplySender,
 } from '@sparksocial/engage';
 import { devBriefWriter, devMediaIngestDeps, devInferenceClient, devTextWriter, devEngageClassifier, devReplyWriter } from './dev-vendors.js';
@@ -502,6 +505,16 @@ export function registerAlphaTools(): void {
   register(makeTrendExplain(trendSource));
   register(makeTrendObserve(trendSource));
 
+  /**
+   * §8.9's influencer watchlist. The watch tool is unconditional — a watchlist is
+   * storage and needs no vendor. The review tool is registered with `undefined`
+   * because reading a named account's posts needs platform listening access
+   * nobody has cleared in this build; it refuses by name rather than returning a
+   * fabricated feed, the same rule every other unconfigured seam here follows.
+   */
+  register(trendInfluencerWatch);
+  register(makeTrendInfluencerReview(undefined));
+
   // Automation Recipes (§12 P5, `AUTO-01`→`AUTO-04.4`). `auto_trend` reuses
   // the same trend source as the `trend.*` family above; `rss` and the csv
   // sub-kind of `bulk_connector` fetch real public URLs (SSRF-checked —
@@ -574,6 +587,7 @@ export function registerAlphaTools(): void {
   register(engageOpportunityCreate);
   register(engageOpportunityRoute);
   register(engageAuditQuery);
+  register(engageThread);
 
   // Agent Timeline (§4.5): read-only. What SPARK did, and why — the surface
   // that makes autopublish something a user can reasonably agree to.

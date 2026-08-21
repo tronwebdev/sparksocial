@@ -162,6 +162,10 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
         id: message.id,
         genomeId: input.genomeId,
         orgId: ctx.orgId,
+        // The outbound half of `ENG-02.4`'s transcript. Stored on the row rather
+        // than left in `tool_calls.input`, which is a projection that never
+        // returns inputs — see `EngagementStore.markReplied`.
+        sentReply: input.text,
       });
       // The reply is already delivered by this point — a store failure here
       // must not be reported as a send failure (that would invite a retry

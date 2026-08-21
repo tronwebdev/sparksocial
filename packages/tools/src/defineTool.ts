@@ -236,6 +236,8 @@ export interface ScopedDb {
   trends: TrendWatchlistStore;
   /** The `DISC-02` metric history. Cross-tenant by design. See {@link TrendObservationStore}. */
   trendObservations: TrendObservationStore;
+  /** Accounts this brand studies — §8.9's influencer watchlist. See {@link InfluencerWatchStore}. */
+  influencers: InfluencerWatchStore;
   /** Thompson-sampling arms and outcomes — the learning loop (plan §6.7). See {@link LearningStore}. */
   learning: LearningStore;
   /** Automation recipes and their output queue (plan §12 P5). See {@link RecipeStore}. */
@@ -974,6 +976,15 @@ export interface EngagementMessage {
    * which is how the metric tells "unanswered" from "answered instantly".
    */
   resolvedAt?: Date;
+  /**
+   * Which conversation this belongs to — `ENG-02.4`. Absent on rows written
+   * before threading existed, which is why `engage.thread` treats a missing key
+   * as "this message is its own thread" rather than as an error.
+   */
+  threadKey?: string;
+  /** What we sent back, and when. The outbound half of a thread. */
+  sentReply?: string;
+  sentAt?: Date;
   createdAt: Date;
 }
 
@@ -1001,9 +1012,24 @@ export interface EngagementStore {
     text: string;
     contentItemId?: string;
     receivedAt?: Date;
+    /**
+     * The conversation this belongs to. Derived by `engage.ingest` when the
+     * platform supplies nothing, so the derivation rule lives in one place
+     * rather than in each store.
+     */
+    threadKey?: string;
   }): Promise<EngagementMessage>;
 
   get(id: string, genomeId: string, orgId: string): Promise<EngagementMessage | undefined>;
+
+  /**
+   * One conversation, **oldest first** — `engage.thread`'s read (`ENG-02.4`).
+   *
+   * The opposite order to `list` and `audit`, deliberately: a feed answers "what
+   * is new" and a transcript is read downward. Sorting here rather than in the
+   * caller keeps one rule in one place.
+   */
+  thread(genomeId: string, orgId: string, args: { threadKey: string; limit: number }): Promise<EngagementMessage[]>;
 
   /** The triage write — sorts a message into the feed's tabs. */
   classify(args: {
@@ -1048,11 +1074,18 @@ export interface EngagementStore {
    * `replied` — no new column for the sent text or the outbound platform
    * message id: the enum already on the row
    * (`new|classified|replied|auto_handled|escalated|dismissed`) has a slot
-   * for exactly this, and the reply text itself is exactly the `text` the
-   * caller supplied, already captured on the audit row (`tool_calls.input`)
-   * the same way every other write's input is.
+   * for exactly this.
+   *
+   * This comment used to end by arguing the sent text needed no column either —
+   * *"the reply text itself is exactly the `text` the caller supplied, already
+   * captured on the audit row"*. True, and not sufficient once `ENG-02.4` asked
+   * for the conversation: `tool_calls` is deliberately a projection that never
+   * returns inputs, and a thread missing its outbound turns is half a
+   * transcript. `sentReply` is optional on this call because the send has
+   * already happened by the time it runs — a caller that cannot supply the text
+   * must still be able to record that the message was answered.
    */
-  markReplied(args: { id: string; genomeId: string; orgId: string }): Promise<EngagementMessage | undefined>;
+  markReplied(args: { id: string; genomeId: string; orgId: string; sentReply?: string }): Promise<EngagementMessage | undefined>;
 
   /**
    * `engage.autohandle`'s write, once the unattended send succeeds. A
@@ -1062,7 +1095,7 @@ export interface EngagementStore {
    * collapsing them onto `replied` would erase that distinction from every
    * read that groups by status (`engage.list`, `engage.audit.query`).
    */
-  markAutoHandled(args: { id: string; genomeId: string; orgId: string }): Promise<EngagementMessage | undefined>;
+  markAutoHandled(args: { id: string; genomeId: string; orgId: string; sentReply?: string }): Promise<EngagementMessage | undefined>;
 
   /**
    * Flips `status` to `escalated` — `engage.escalate`'s write, and also
@@ -1400,6 +1433,36 @@ export interface TrendWatchlistEntry {
   topic: string;
   note?: string;
   createdAt: Date;
+}
+
+/** One account a brand is studying — §8.9's influencer watchlist. */
+export interface InfluencerWatch {
+  id: string;
+  platform: string;
+  /** Normalised: lowercase, no leading `@`. */
+  handle: string;
+  displayName?: string;
+  note?: string;
+  createdAt: Date;
+}
+
+/**
+ * §8.9's *second* watchlist, kept apart from {@link TrendWatchlistStore}.
+ *
+ * A watched keyword joins to a trend id; a watched account joins to a handle on
+ * a platform. Different keys, different readers, and two of six shared columns —
+ * one store with a `kind` discriminator would be a union pretending to be a
+ * table.
+ *
+ * Genome-scoped, and more sharply than most: **which accounts a brand studies is
+ * often a list of its competitors.** That is exactly the material an agency
+ * cannot let surface in another client's workspace.
+ */
+export interface InfluencerWatchStore {
+  /** Upsert by (genome, platform, handle) — watching the same account twice is one watch. */
+  add(args: { genomeId: string; orgId: string; platform: string; handle: string; displayName?: string; note?: string }): Promise<InfluencerWatch>;
+  remove(args: { genomeId: string; orgId: string; platform: string; handle: string }): Promise<void>;
+  list(genomeId: string, orgId: string): Promise<InfluencerWatch[]>;
 }
 
 export interface TrendWatchlistStore {

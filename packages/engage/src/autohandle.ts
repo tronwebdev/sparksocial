@@ -190,6 +190,10 @@ export function makeEngageAutohandle(deps: EngageAutohandleDeps) {
         id: message.id,
         genomeId: input.genomeId,
         orgId: ctx.orgId,
+        // The outbound half of `ENG-02.4`'s transcript, and it matters more here
+        // than on the attended path: nobody read this before it went out, so the
+        // thread is the only place a person can see what SPARK actually said.
+        sentReply: message.suggestedReply,
       });
       if (!updated) {
         ctx.logger.error('auto-reply sent but engagement_messages was not updated — status may show stale', {

@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -25,7 +25,7 @@ import type { Database } from './client.js';
 /** Tables that carry client-confidential material and must always be genome-scoped. */
 const SCOPED_TABLES = {
   assets, assetFolders, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities,
-  trendWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
+  trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
 } as const;
 export type ScopedTable = keyof typeof SCOPED_TABLES;
 
@@ -779,6 +779,11 @@ export interface EngagementMessageRow {
   intentScore: number | null;
   suggestedReply: string | null;
   why: unknown;
+  /** `ENG-02.4`'s conversation key. Null on rows written before threading existed. */
+  threadKey: string | null;
+  /** What we sent back, and when — the outbound half of a thread. */
+  sentReply: string | null;
+  sentAt: Date | null;
   createdAt: Date;
 }
 
@@ -799,6 +804,9 @@ const engagementMessageColumns = {
   resolvedAt: engagementMessages.resolvedAt,
   suggestedReply: engagementMessages.suggestedReply,
   why: engagementMessages.why,
+  threadKey: engagementMessages.threadKey,
+  sentReply: engagementMessages.sentReply,
+  sentAt: engagementMessages.sentAt,
   createdAt: engagementMessages.createdAt,
 };
 
@@ -820,6 +828,8 @@ export async function ingestEngagementMessage(
     text: string;
     contentItemId?: string;
     receivedAt?: Date;
+    /** Derived by the caller (`engage.ingest`) so the rule lives in one place. */
+    threadKey?: string;
   },
 ): Promise<EngagementMessageRow> {
   assertScope(scope);
@@ -834,6 +844,7 @@ export async function ingestEngagementMessage(
     text: args.text,
     contentItemId: args.contentItemId ?? null,
     receivedAt: args.receivedAt ?? new Date(),
+    threadKey: args.threadKey ?? null,
   };
   const [row] = await db
     .insert(engagementMessages)
@@ -844,7 +855,10 @@ export async function ingestEngagementMessage(
       // classification already sitting on this row (status/category/etc.)
       // must not be clobbered back to "new" by the platform redelivering
       // the same comment.
-      set: { text: values.text, authorName: values.authorName },
+      // `threadKey` refreshes with the delivery fields, unlike the
+      // classification: a platform that starts supplying a real conversation id
+      // should correct a derived one, and a redelivery is the moment it would.
+      set: { text: values.text, authorName: values.authorName, threadKey: values.threadKey },
     })
     .returning(engagementMessageColumns);
   return row!;
@@ -895,14 +909,19 @@ export async function classifyEngagementMessage(
 export async function markEngagementMessageReplied(
   db: Database,
   scope: Scope,
-  args: { id: string },
+  args: { id: string; sentReply?: string },
 ): Promise<EngagementMessageRow | undefined> {
   assertScope(scope);
+  const now = new Date();
   const [row] = await db
     .update(engagementMessages)
     // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
     // as an interval over. Set wherever a message stops needing attention.
-    .set({ status: 'replied', resolvedAt: new Date() })
+    //
+    // `sentReply` is optional because the send already happened by the time
+    // this runs: a caller that cannot supply the text must still be able to
+    // record that the message was answered rather than leaving it open.
+    .set({ status: 'replied', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
@@ -912,17 +931,43 @@ export async function markEngagementMessageReplied(
 export async function markEngagementMessageAutoHandled(
   db: Database,
   scope: Scope,
-  args: { id: string },
+  args: { id: string; sentReply?: string },
 ): Promise<EngagementMessageRow | undefined> {
   assertScope(scope);
+  const now = new Date();
   const [row] = await db
     .update(engagementMessages)
     // `resolvedAt` is the second endpoint PRD §5's "Reply SLA" is defined
     // as an interval over. Set wherever a message stops needing attention.
-    .set({ status: 'auto_handled', resolvedAt: new Date() })
+    .set({ status: 'auto_handled', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
   return row;
+}
+
+/**
+ * One conversation, oldest first — `engage.thread`'s read (`ENG-02.4`).
+ *
+ * Ascending, unlike every other engagement read in this file. The feed answers
+ * "what is new" and sorts newest-first for it; a transcript is read downward,
+ * and reversing it in the client would put the ordering rule somewhere a second
+ * caller could get wrong.
+ *
+ * Scoped like the rest. A thread key is not a capability: it identifies a
+ * conversation *within* a genome, and two genomes could hold the same derived
+ * key for the same public commenter on their respective posts.
+ */
+export async function threadEngagementMessages(
+  db: Database,
+  scope: Scope,
+  args: { threadKey: string; limit: number },
+): Promise<EngagementMessageRow[]> {
+  return db
+    .select(engagementMessageColumns)
+    .from(engagementMessages)
+    .where(and(scopePredicate('engagementMessages', scope), eq(engagementMessages.threadKey, args.threadKey)))
+    .orderBy(asc(engagementMessages.receivedAt))
+    .limit(args.limit);
 }
 
 /**
@@ -1544,6 +1589,84 @@ const trendWatchlistColumns = {
 };
 
 /** Upsert-by-(genome, trend) — watching the same trend twice is one watch, not two. */
+export interface InfluencerWatchRow {
+  id: string;
+  platform: string;
+  handle: string;
+  displayName: string | null;
+  note: string | null;
+  createdAt: Date;
+}
+
+const influencerWatchColumns = {
+  id: influencerWatchlist.id,
+  platform: influencerWatchlist.platform,
+  handle: influencerWatchlist.handle,
+  displayName: influencerWatchlist.displayName,
+  note: influencerWatchlist.note,
+  createdAt: influencerWatchlist.createdAt,
+};
+
+/**
+ * §8.9's influencer watchlist — upsert by `(genome, platform, handle)`.
+ *
+ * Watching the same account twice is one watch. The handle arrives already
+ * normalised (`normaliseHandle` in `packages/trends/src/influencer.ts`), which
+ * is what makes the unique index mean "this account" rather than "this spelling
+ * of this account".
+ */
+export async function addInfluencerWatch(
+  db: Database,
+  scope: Scope,
+  args: { platform: string; handle: string; displayName?: string; note?: string },
+): Promise<InfluencerWatchRow> {
+  assertScope(scope);
+  const [row] = await db
+    .insert(influencerWatchlist)
+    .values({
+      orgId: scope.orgId,
+      genomeId: scope.genomeId,
+      platform: args.platform,
+      handle: args.handle,
+      displayName: args.displayName ?? null,
+      note: args.note ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [influencerWatchlist.genomeId, influencerWatchlist.platform, influencerWatchlist.handle],
+      // Re-watching updates the note rather than erroring: the second attempt is
+      // almost always somebody correcting why they were watching.
+      set: { note: args.note ?? null, ...(args.displayName ? { displayName: args.displayName } : {}) },
+    })
+    .returning(influencerWatchColumns);
+  return row!;
+}
+
+export async function removeInfluencerWatch(
+  db: Database,
+  scope: Scope,
+  args: { platform: string; handle: string },
+): Promise<void> {
+  assertScope(scope);
+  await db
+    .delete(influencerWatchlist)
+    .where(
+      and(
+        scopePredicate('influencerWatchlist', scope),
+        eq(influencerWatchlist.platform, args.platform),
+        eq(influencerWatchlist.handle, args.handle),
+      ),
+    );
+}
+
+/** Newest first — the account somebody just added is the one they are looking for. */
+export async function listInfluencerWatchlist(db: Database, scope: Scope): Promise<InfluencerWatchRow[]> {
+  return db
+    .select(influencerWatchColumns)
+    .from(influencerWatchlist)
+    .where(scopePredicate('influencerWatchlist', scope))
+    .orderBy(desc(influencerWatchlist.createdAt));
+}
+
 export async function addToTrendWatchlist(
   db: Database,
   scope: Scope,

@@ -25,6 +25,7 @@ import type {
   RecipeOutputRecord,
   RecipeRecord,
   RenderRecord,
+  InfluencerWatch,
   TrendObservation,
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
@@ -200,6 +201,8 @@ export function createDevStore(
   const trendWatchlist: (TrendWatchlistEntry & { orgId: string; genomeId: string })[] = [];
   /** `DISC-02`'s time series, keyed by [source, trendId, hour] — the same bucket the Postgres unique index enforces. */
   const trendObservationRows = new Map<string, TrendObservation>();
+  /** §8.9's influencer watchlist, keyed `org:genome:platform:handle` — the real unique index. */
+  const influencerWatches = new Map<string, InfluencerWatch & { orgId: string; genomeId: string }>();
   // Keyed on `${genomeId}:${pillar}` — one arm per (genome, pillar), same unique target as the real schema.
   const learningArms = new Map<string, LearningArm & { orgId: string; genomeId: string }>();
   const scoredContentItems = new Set<string>(); // idempotency for recordOutcome, mirrors the real unique index on contentItemId
@@ -726,7 +729,7 @@ export function createDevStore(
     },
 
     engagement: {
-      async ingest({ genomeId, orgId: org, platform, externalId, kind, authorHandle, authorName, text, contentItemId, receivedAt }) {
+      async ingest({ genomeId, orgId: org, platform, externalId, kind, authorHandle, authorName, text, contentItemId, receivedAt, threadKey }) {
         const externalKey = `${org}:${genomeId}:${platform}:${externalId}`;
         const existingId = engagementByExternalId.get(externalKey);
         if (existingId) {
@@ -736,6 +739,10 @@ export function createDevStore(
           const existing = engagementMessages.get(existingId)!;
           existing.text = text;
           if (authorName) existing.authorName = authorName;
+          // Refreshed with the delivery fields, like the real upsert: a platform
+          // that starts supplying a real conversation id should correct a
+          // derived one.
+          if (threadKey) existing.threadKey = threadKey;
           return existing;
         }
 
@@ -751,6 +758,7 @@ export function createDevStore(
           text,
           ...(contentItemId ? { contentItemId } : {}),
           receivedAt: receivedAt ?? new Date(),
+          ...(threadKey ? { threadKey } : {}),
           status: 'new',
           createdAt: new Date(),
         };
@@ -788,21 +796,40 @@ export function createDevStore(
           .slice(0, limit);
       },
 
-      async markReplied({ id, genomeId, orgId: org }) {
+      /**
+       * Oldest first, unlike `list` above — see `EngagementStore.thread` on why
+       * a transcript and a feed sort in opposite directions.
+       */
+      async thread(genomeId, org, { threadKey, limit }) {
+        return [...engagementMessages.values()]
+          .filter((r) => r.orgId === org && r.genomeId === genomeId && r.threadKey === threadKey)
+          .sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime())
+          .slice(0, limit);
+      },
+
+      async markReplied({ id, genomeId, orgId: org, sentReply }) {
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'replied';
         // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
         row.resolvedAt = new Date();
+        if (sentReply) {
+          row.sentReply = sentReply;
+          row.sentAt = row.resolvedAt;
+        }
         return row;
       },
 
-      async markAutoHandled({ id, genomeId, orgId: org }) {
+      async markAutoHandled({ id, genomeId, orgId: org, sentReply }) {
         const row = engagementMessages.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;
         row.status = 'auto_handled';
         // `resolvedAt` is PRD §5's Reply SLA endpoint — see the schema column.
         row.resolvedAt = new Date();
+        if (sentReply) {
+          row.sentReply = sentReply;
+          row.sentAt = row.resolvedAt;
+        }
         return row;
       },
 
@@ -876,6 +903,37 @@ export function createDevStore(
       },
       async list(genomeId, org) {
         return trendWatchlist.filter((w) => w.genomeId === genomeId && w.orgId === org);
+      },
+    },
+
+    /**
+     * §8.9's influencer watchlist. Upsert by (genome, platform, handle), like
+     * the real unique index — watching the same account twice is one watch.
+     */
+    influencers: {
+      async add({ genomeId, orgId: org, platform, handle, displayName, note }) {
+        const key = `${org}:${genomeId}:${platform}:${handle}`;
+        const existing = influencerWatches.get(key);
+        const row = {
+          id: existing?.id ?? `inf_${randomUUID()}`,
+          orgId: org,
+          genomeId,
+          platform,
+          handle,
+          createdAt: existing?.createdAt ?? new Date(),
+          ...(displayName ?? existing?.displayName ? { displayName: displayName ?? existing!.displayName! } : {}),
+          ...(note ? { note } : {}),
+        };
+        influencerWatches.set(key, row);
+        return row;
+      },
+      async remove({ genomeId, orgId: org, platform, handle }) {
+        influencerWatches.delete(`${org}:${genomeId}:${platform}:${handle}`);
+      },
+      async list(genomeId, org) {
+        return [...influencerWatches.values()]
+          .filter((w) => w.orgId === org && w.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       },
     },
 

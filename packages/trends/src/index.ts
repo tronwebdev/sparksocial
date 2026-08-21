@@ -8,4 +8,5 @@ export * from './sources/youtube.js';
 export * from './sources/hackernews.js';
 export * from './sources/producthunt.js';
 export * from './sources/pinterest.js';
+export * from './influencer.js';
 export * from './tool.js';

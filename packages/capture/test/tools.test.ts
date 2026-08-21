@@ -87,6 +87,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         classify: async () => undefined,
         list: async () => [],
         audit: async () => [],
+        thread: async () => [],
         markReplied: async () => undefined,
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
@@ -104,6 +105,11 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       trendObservations: {
         record: async () => {},
         series: async () => [],
+      },
+      influencers: {
+        add: async () => { throw new Error('influencers.add not stubbed in this test'); },
+        remove: async () => {},
+        list: async () => [],
       },
       learning: {
         list: async () => [],

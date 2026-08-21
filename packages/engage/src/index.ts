@@ -13,3 +13,4 @@ export * from './escalate.js';
 export * from './takeover.js';
 export * from './opportunity.js';
 export * from './auditQuery.js';
+export * from './thread.js';

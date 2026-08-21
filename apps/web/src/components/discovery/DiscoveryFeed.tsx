@@ -8,6 +8,7 @@ import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { TrendCard, type RankedTrendItem, type WatchlistTrendItem } from './TrendCard';
 import { TrendDetail } from './TrendDetail';
+import { InfluencerWatchlist } from './InfluencerWatchlist';
 
 /**
  * Discovery — `DISC-01`/`DISC-02`, plan §12 P5. Two tabs: `trend.rank`'s
@@ -24,15 +25,22 @@ import { TrendDetail } from './TrendDetail';
  * anything.
  */
 
-const TABS: Array<{ key: 'trending' | 'watchlist'; label: string }> = [
+/**
+ * §8.9 names two watchlists among Discovery's inputs — keywords and accounts.
+ * They are separate tabs rather than one merged list because a saved trend and a
+ * watched competitor are answers to different questions ("is this still worth
+ * joining?" versus "what are they doing?") and are acted on differently.
+ */
+const TABS: Array<{ key: 'trending' | 'watchlist' | 'influencers'; label: string }> = [
   { key: 'trending', label: 'Trending' },
-  { key: 'watchlist', label: 'Watchlist' },
+  { key: 'watchlist', label: 'Saved trends' },
+  { key: 'influencers', label: 'Accounts you watch' },
 ];
 
 export function DiscoveryFeed() {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const genomeId = genome?.genomeId;
-  const [tab, setTab] = useState<'trending' | 'watchlist'>('trending');
+  const [tab, setTab] = useState<'trending' | 'watchlist' | 'influencers'>('trending');
   const [trends, setTrends] = useState<RankedTrendItem[] | null>(null);
   const [excluded, setExcluded] = useState<Array<{ trendId: string; topic: string; because: string }>>([]);
   const [watchlist, setWatchlist] = useState<WatchlistTrendItem[] | null>(null);
@@ -71,7 +79,10 @@ export function DiscoveryFeed() {
   useEffect(() => {
     if (!genomeId) return;
     if (tab === 'trending') void loadTrending(genomeId);
-    else void loadWatchlist(genomeId);
+    // The influencers tab loads its own data — it owns two tools this component
+    // has no other use for, and lifting them here would put a third unrelated
+    // loading state in one effect.
+    else if (tab === 'watchlist') void loadWatchlist(genomeId);
   }, [genomeId, tab, loadTrending, loadWatchlist]);
 
   function handleWatchChanged(trendId: string, watched: boolean) {
@@ -129,7 +140,7 @@ export function DiscoveryFeed() {
         ))}
       </div>
 
-      {tab === 'trending' ? (
+      {tab === 'influencers' ? <InfluencerWatchlist genomeId={genomeId} /> : tab === 'trending' ? (
         trends === null ? (
           <div className="mt-4 grid grid-cols-1 gap-2">
             {[0, 1, 2].map((i) => (

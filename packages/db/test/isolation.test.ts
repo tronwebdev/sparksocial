@@ -66,7 +66,7 @@ describe('static check — raw queries cannot bypass the scoped layer', () => {
     expect([...SCOPED_TABLE_NAMES].sort()).toEqual(
       [
         'assets', 'assetFolders', 'contentItems', 'contentLinks', 'contentMetrics', 'engagementMessages', 'knowledgeChunks', 'memories', 'opportunities', 'renders',
-        'trendWatchlist', 'learningArms', 'learningOutcomes', 'recipes', 'recipeRuns', 'recipeOutputs', 'oauthConnections',
+        'trendWatchlist', 'influencerWatchlist', 'learningArms', 'learningOutcomes', 'recipes', 'recipeRuns', 'recipeOutputs', 'oauthConnections',
       ].sort(),
     );
   });

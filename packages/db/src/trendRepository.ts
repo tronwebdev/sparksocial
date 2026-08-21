@@ -1,4 +1,4 @@
-import type { TrendWatchlistStore } from '@sparksocial/tools/defineTool';
+import type { InfluencerWatchStore, TrendWatchlistStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import * as scoped from './scoped.js';
 
@@ -32,6 +32,44 @@ function toEntry(row: scoped.TrendWatchlistRow) {
     source: row.source,
     topic: row.topic,
     createdAt: row.createdAt,
+    ...(row.note ? { note: row.note } : {}),
+  };
+}
+
+/**
+ * `influencer_watchlist` backed by Postgres — §8.9's second watchlist. Same file
+ * as the keyword one because they are the same feature to a reader, and separate
+ * stores because they key on different things.
+ */
+export function createInfluencerWatchRepository(db: Database): InfluencerWatchStore {
+  return {
+    async add({ genomeId, orgId, platform, handle, displayName, note }) {
+      const row = await scoped.addInfluencerWatch(
+        db,
+        { orgId, brandId: orgId, genomeId },
+        { platform, handle, ...(displayName ? { displayName } : {}), ...(note ? { note } : {}) },
+      );
+      return toWatch(row);
+    },
+
+    async remove({ genomeId, orgId, platform, handle }) {
+      await scoped.removeInfluencerWatch(db, { orgId, brandId: orgId, genomeId }, { platform, handle });
+    },
+
+    async list(genomeId, orgId) {
+      const rows = await scoped.listInfluencerWatchlist(db, { orgId, brandId: orgId, genomeId });
+      return rows.map(toWatch);
+    },
+  };
+}
+
+function toWatch(row: scoped.InfluencerWatchRow) {
+  return {
+    id: row.id,
+    platform: row.platform,
+    handle: row.handle,
+    createdAt: row.createdAt,
+    ...(row.displayName ? { displayName: row.displayName } : {}),
     ...(row.note ? { note: row.note } : {}),
   };
 }
