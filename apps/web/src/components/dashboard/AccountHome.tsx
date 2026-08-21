@@ -43,11 +43,12 @@ interface Brand {
  * `org.create`'s output — the org's own settings, upsert-on-read, which is what
  * `AgencyPanel` reads too.
  *
- * The *spent* half of billing is deliberately absent. There is no read tool for
- * the credit ledger: a balance only ever comes back from `org.credits.grant`,
- * and calling a grant in order to display a number would be spending money to
- * render a dashboard. So this tile shows the plan and its cap — which are facts
- * about the org — and links to settings for the rest.
+ * This tile shows the plan and its cap — facts about the org. The *spent* half
+ * used to be described here as impossible: "there is no read tool for the credit
+ * ledger, and calling a grant in order to display a number would be spending
+ * money to render a dashboard." `org.usage.get` closed that, and `UsagePanel`
+ * renders it directly below this component on the same page, so the tile stays
+ * as it is rather than growing a second copy of the number.
  */
 interface OrgSettings {
   plan: string;
