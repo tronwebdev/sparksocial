@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 
@@ -68,13 +69,6 @@ function expiryNote(p: PlatformStatus): string | null {
     : `Expires in under ${Math.max(1, Math.round(p.hoursUntilExpiry))} hours — reconnect now.`;
 }
 
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  youtube_shorts: 'YouTube Shorts',
-};
 
 export function PublishHealthPanel() {
   const { genome } = useSelectedGenome();
@@ -107,7 +101,7 @@ export function PublishHealthPanel() {
     const social = params.get('social');
     if (!social) return;
     const provider = params.get('provider');
-    const label = provider ? (PLATFORM_LABEL[provider] ?? provider) : 'Platform';
+    const label = provider ? platformLabel(provider) : 'Platform';
     if (social === 'connected') setMessage({ kind: 'ok', text: `${label} connected.` });
     else if (social === 'denied') setMessage({ kind: 'err', text: 'Connection was cancelled.' });
     else if (social === 'failed') setMessage({ kind: 'err', text: 'Connection failed — check apps/api logs for the vendor error.' });
@@ -185,9 +179,16 @@ export function PublishHealthPanel() {
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {platforms.map((p) => (
-              <li key={p.platform} className="flex items-center justify-between gap-3 rounded border border-border p-3">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-medium text-ink">{PLATFORM_LABEL[p.platform] ?? p.platform}</p>
+              /* `flex-wrap` with a floor on the text column, not a plain row.
+                 Two of these sit side by side in the grid, and `min-w-0` let
+                 the text box shrink to a few pixels while the badge and button
+                 kept their width — so "Not connected · via aggregator:stub"
+                 overflowed its own box and rendered *underneath* the badge.
+                 A floor plus wrapping drops the controls to a second line
+                 instead, which is legible at every width. */
+              <li key={p.platform} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded border border-border p-3">
+                <div className="min-w-[9rem] flex-1 break-words">
+                  <p className="text-[14px] font-medium text-ink">{platformLabel(p.platform)}</p>
                   <p className="mt-0.5 text-[12px] text-ink-muted">
                     {p.connected ? `Connected${p.accountLabel ? ` — ${p.accountLabel}` : ''}` : 'Not connected'}
                     {p.supported ? ` · via ${p.via}` : ' · no adapter configured'}

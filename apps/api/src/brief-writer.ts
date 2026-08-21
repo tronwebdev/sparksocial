@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, callVendor } from '@sparksocial/shared';
 import { DraftCaptureBrief } from '@sparksocial/capture';
 import type { BriefWriter } from '@sparksocial/capture';
 import { envSet } from './env.js';
@@ -99,20 +99,25 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
 
   return {
     async write({ playbook, genome, feedback }): Promise<DraftCaptureBrief> {
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 1_500,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: prompt(playbook, genome, feedback) }],
-        tools: [
-          {
-            name: TOOL_NAME,
-            description: 'Record the capture brief.',
-            input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
-          },
-        ],
-        tool_choice: { type: 'tool', name: TOOL_NAME },
-      });
+      const response = await callVendor(
+        'brief writer',
+        'SPARK could not write the capture brief — the service that writes it is not responding. Nothing was saved, so trying again is safe.',
+        () =>
+          anthropic.messages.create({
+            model,
+            max_tokens: 1_500,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: prompt(playbook, genome, feedback) }],
+            tools: [
+              {
+                name: TOOL_NAME,
+                description: 'Record the capture brief.',
+                input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+              },
+            ],
+            tool_choice: { type: 'tool', name: TOOL_NAME },
+          }),
+      );
 
       const block = response.content.find(
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,

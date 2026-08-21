@@ -74,6 +74,44 @@ describe('§13 — zero anti-pattern selections', () => {
   });
 });
 
+describe('every ranked playbook is in exactly one of the three states', () => {
+  /**
+   * `producible now` / `one upload away` / `needs filming` must partition
+   * `ranked`, because three separate sentences are built by counting them and a
+   * playbook falling in two buckets or none makes all three lie.
+   *
+   * This is not hypothetical. Narrowing `unlockable` to the capture route made
+   * `playbook.resolve`'s summary read "21 formats fit this local business, 7 of
+   * them once something gets filmed" — which a reader takes as fourteen ready to
+   * post, when none were. A partition check would have caught it: 0 + 7 never
+   * accounted for 21.
+   */
+  it.each(GOLDEN_SET.map((c) => [c.label, c] as const))('%s — the counts add up', (_label, testCase) => {
+    const { ranked } = resolve(testCase.genome, testCase.assets);
+    const now = ranked.filter((r) => !r.unlockable).length;
+    const upload = ranked.filter((r) => r.unlockedBy === 'upload').length;
+    const capture = ranked.filter((r) => r.unlockedBy === 'capture').length;
+
+    expect(now + upload + capture).toBe(ranked.length);
+    // And no entry claims a route while being producible, or the reverse.
+    for (const r of ranked) {
+      expect(Boolean(r.unlockedBy), `${r.playbook.playbook_id}`).toBe(r.unlockable);
+    }
+  });
+
+  it('holds for a brand that has uploaded nothing — the state every account starts in', () => {
+    const { ranked } = resolve(lagosBarbershop.genome, {});
+    const now = ranked.filter((r) => !r.unlockable).length;
+    const upload = ranked.filter((r) => r.unlockedBy === 'upload').length;
+    const capture = ranked.filter((r) => r.unlockedBy === 'capture').length;
+
+    expect(now).toBe(0);
+    expect(upload).toBeGreaterThan(0); // the whole point: a route that is not a shoot
+    expect(capture).toBeGreaterThan(0);
+    expect(now + upload + capture).toBe(ranked.length);
+  });
+});
+
 describe('§6 — the capture loop is reachable, not discarded', () => {
   it('craft capture is the barbershop\'s TOP format, outranking everything producible today', () => {
     const { ranked } = resolve(lagosBarbershop.genome, lagosBarbershop.assets);

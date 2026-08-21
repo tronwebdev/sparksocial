@@ -1,3 +1,4 @@
+import { assetRoleWordList } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 import type { Trend } from './trend.js';
@@ -86,7 +87,11 @@ function overlap(
 
 function buildIntent(trend: Trend, r: ResolvedPlaybook): string {
   const base = `Join the trend "${trend.topic}" with a ${r.playbook.name.toLowerCase()} post`;
-  return r.unlockable
-    ? `${base} — needs footage first (${r.missingRoles.join(', ')})`
-    : base;
+  if (!r.unlockable) return base;
+  // "footage" only when footage is actually what is missing — a brand kit or a
+  // testimonial screenshot is a file, and calling it footage sends the owner to
+  // fetch a camera for something already on their laptop.
+  return r.unlockedBy === 'capture'
+    ? `${base} — needs footage first (${assetRoleWordList(r.missingRoles)})`
+    : `${base} — needs ${assetRoleWordList(r.missingRoles)} uploaded first`;
 }

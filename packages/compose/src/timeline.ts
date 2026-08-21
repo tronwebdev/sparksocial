@@ -143,19 +143,61 @@ export const DEFAULT_GROUND = '#0C0C0C';
 export const DEFAULT_TYPE = '#FFFFFF';
 
 /**
+ * WCAG 2.1 relative luminance of a `#rrggbb` colour.
+ *
+ * Returns `null` for anything it cannot parse, so a malformed kit colour falls
+ * back to the default pairing instead of being scored as black.
+ */
+function relativeLuminance(hex: string): number | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const channels = [0, 2, 4].map((i) => parseInt(m[1]!.slice(i, i + 2), 16) / 255);
+  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)) as [
+    number,
+    number,
+    number,
+  ];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * Black or white against `ground`, whichever WCAG contrast ratio is higher.
+ *
+ * Only ever those two. The thing genuinely worth refusing to guess is a *brand*
+ * colour — inventing a hue nobody chose is how a render stops looking like the
+ * brand — and this invents nothing.
+ */
+function readableTypeOn(ground: string): string {
+  const l = relativeLuminance(ground);
+  if (l === null) return DEFAULT_TYPE;
+  // Contrast against white is 1.05/(L+0.05); against black, (L+0.05)/0.05.
+  return 1.05 / (l + 0.05) >= (l + 0.05) / 0.05 ? '#FFFFFF' : '#0C0C0C';
+}
+
+/**
  * Resolves a kit to the two colours a renderer actually needs.
  *
- * Deliberately does not derive contrast. Picking a readable type colour from an
- * arbitrary ground is a real algorithm, and a wrong guess produces white text on
- * cream — worse than the default, and silently so. If the brand named a second
- * colour it is used as given, on the basis that they can see their own palette;
- * if not, the default stays.
+ * A brand that named a second colour gets it as given — they can see their own
+ * palette, and this is not the place to overrule it. A brand that named only a
+ * ground gets black or white against it, whichever is more readable.
+ *
+ * That last part used to be `DEFAULT_TYPE` unconditionally, under a comment
+ * saying contrast was deliberately not derived because "a wrong guess produces
+ * white text on cream". The behaviour it described *was* white text on cream:
+ * `DEFAULT_TYPE` is `#FFFFFF`, so a brand supplying a single light ground —
+ * `#F5F0E6` is the case in the test below — rendered unreadable type and
+ * published it without a word. Always picking white is as much a guess as
+ * picking by luminance; it is just the guess that is wrong half the time.
+ *
+ * Deriving it cannot do worse than the constant on any input: for a dark ground
+ * the luminance test returns `#FFFFFF`, which is what the constant gave anyway.
  */
 export function resolveKit(kit: BrandKit | undefined): { ground: string; type: string; accent?: string; logoUrl?: string } {
   const colors = kit?.colors ?? [];
+  const ground = colors[0] ?? DEFAULT_GROUND;
   return {
-    ground: colors[0] ?? DEFAULT_GROUND,
-    type: colors[1] ?? DEFAULT_TYPE,
+    ground,
+    type: colors[1] ?? readableTypeOn(ground),
     ...(colors[2] ? { accent: colors[2] } : {}),
     ...(kit?.logoUrl ? { logoUrl: kit.logoUrl } : {}),
   };

@@ -99,6 +99,23 @@ export interface ScopedDb {
       offer: Partial<Genome['offer']>;
     }): Promise<{ id: string; version: number }>;
     /**
+     * Merges a partial voice patch — the write side of `genome.voice.set`.
+     *
+     * Added late, and the gap it closes is why: `voice` was writable only at
+     * `createDraft` time, so the only thing that could ever populate
+     * `pov_statements`, `banned_phrases` or a real `tone_vector` was the crawl.
+     * A brand whose site did not read — or whose crawl failed upstream — was
+     * stuck with an all-0.5 neutral tone and no point of view, permanently, and
+     * every beat the copy writer produced for it was consequently the kind of
+     * line that would suit any business in the category. There was no tool to
+     * fix it and no screen that could have called one.
+     */
+    patchVoice(args: {
+      genomeId: string;
+      orgId: string;
+      voice: Partial<Genome['voice']>;
+    }): Promise<{ id: string; version: number }>;
+    /**
      * Merges a partial `learned` patch — the write side of the learning loop
      * (plan §6.7). Same single-field-merge shape as `patchOffer`; only the
      * keys present in `patch` change. The only writer of this is

@@ -3,7 +3,7 @@ import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import type { EmbedClient } from '@sparksocial/assemble';
-import { resolvePlan, resolveBeat, ResolvedBeat, type ContentDraftDeps } from './draft.js';
+import { resolvePlan, resolveBeat, buildOutline, ResolvedBeat, type ContentDraftDeps } from './draft.js';
 import type { TextWriter } from './types.js';
 
 /**
@@ -69,7 +69,7 @@ export function makeDraftVariants(deps: ContentDraftDeps) {
 
       const variants = await Promise.all(
         Array.from({ length: input.count }, () =>
-          Promise.all(plan.beats.map((beat) => resolveBeat(beat, { genome, playbook, intent: '' }, deps.text))).then((beats) => ({ beats })),
+          Promise.all(plan.beats.map((beat) => resolveBeat(beat, { genome, playbook, intent: '', outline: buildOutline(plan.beats) }, deps.text))).then((beats) => ({ beats })),
         ),
       );
 
@@ -165,7 +165,7 @@ export function makeDraftRepurpose(deps: DraftRepurposeDeps) {
       );
 
       const beats = await Promise.all(
-        plan.beats.map((beat) => resolveBeat(beat, { genome, playbook: targetPlaybook, intent: derivedIntent }, deps.text)),
+        plan.beats.map((beat) => resolveBeat(beat, { genome, playbook: targetPlaybook, intent: derivedIntent, outline: buildOutline(plan.beats) }, deps.text)),
       );
 
       const why: Explanation = {

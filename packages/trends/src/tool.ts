@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { Explanation, ToolError, assetRoleWordList } from '@sparksocial/shared';
 import { rankTrends, scoreTrend, type RankedTrend } from './rank.js';
 import { assessSafety } from './safety.js';
 import { suggestRepurpose } from './repurpose.js';
@@ -587,7 +587,7 @@ export function makeTrendRepurpose(source: TrendSource) {
             .slice(0, 3)
             .map((r) => ({
               option: r.playbook.name,
-              rejectedBecause: r.unlockable ? `needs ${r.missingRoles.join(', ')} first` : 'lower match on this trend',
+              rejectedBecause: r.unlockable ? `needs ${assetRoleWordList(r.missingRoles)} first` : 'lower match on this trend',
             })),
         },
       };

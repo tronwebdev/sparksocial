@@ -114,28 +114,80 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
 
 ## Verification owed
 
-**Nothing built this week has been opened in a browser.** Every `(app)` route sits behind
-Clerk and signing in is not something an agent should do, so all of it is typechecked and
-prerendering in `next build`, and none of it has been *looked at*. One item, not twelve,
-because the fix is one sitting:
+**Done.** A signed-in browser pass ran on 2026-08-21 against the real API and dev Postgres,
+covering `/home`, `/agents`, `/account`, `/settings`, `/calendar`, `/discovery`, `/assets`,
+`/automation` and `/command-center`, plus the campaign wizard end to end and the Draft Panel.
+The five cases this section said to reach deliberately were reached; what they turned up is
+below, because the point of the pass was to find things a type system cannot check.
 
-- [ ] A pass over `/account` (team, audit, brand transfer, plan, usage), `/settings`
-      (knowledge, brand kit), `/agents` (plan queue, performance), `/calendar` (filters),
-      the Draft Panel's stall notice, and the two new onboarding steps.
+Confirmed working as designed: `PerformancePanel` with no campaign (em dashes with reasons
+beside real zeros, and the 7d/30d/90d toggle moves the window), `KnowledgePanel`'s
+nothing-attached warning, `ConnectAccountsStep`'s refusal-by-name, `PlanQueue` and the audit
+log's "rejected before policy" rows, and the calendar showing no filters while it is empty.
 
-      The cases worth deliberately reaching — the ones a type system cannot check and a
-      screenshot settles in seconds:
+### Found by looking, fixed in this pass
 
-      - **`PerformancePanel` with no campaign** — em dashes with reasons, never a column of
-        confident zeros.
-      - **`StallNotice`** — needs a genuinely blocked item. Schedule a post to a platform
-        with no connection and let the scheduler reach its five-attempt ceiling.
-      - **`KnowledgePanel` with nothing attached** — the warning that every specific claim
-        will be held is the most important state on that screen.
-      - **The brand-kit preview** — a light background against the default white type is
-        exactly the unreadable pair `resolveKit` deliberately refuses to guess around.
-      - **`ConnectAccountsStep`** — the popup path, and the refusal-by-name for a platform
-        with no configured developer app, which is most of them in this environment.
+- [x] **Every semantic-colour tint in the product rendered transparent.** `tailwind.config.ts`
+      mapped colours to bare `var(--ss-*)`, which Tailwind 3 cannot inject an alpha channel
+      into, so it emitted no `bg-warn/10` rule at all — 36 utilities across 10 files, every
+      amber "held for review" block, green publish receipt and red rollback notice with no
+      fill. It fails open, which is why it survived: measured `rgba(0, 0, 0, 0)` in the
+      browser. Fixed with a `color-mix` helper, which leaves the 22 `.tsx` sites that use
+      `var(--ss-*)` directly working — switching `tokens.css` to RGB channels would have
+      broken all of them.
+- [x] **`genome.create` declared `idempotent: true` and inserted a genome on every call.**
+      The registry flag only stops the middleware demanding a key. Re-running onboarding —
+      routine, since `genome.bootstrap_from_url` fails when the vendor is down — left one
+      brand with two genomes and the switcher listing the same name twice with nothing to
+      tell them apart. The tool's own comment described preventing exactly this. Now reuses
+      the brand's genome and merges the identity, so a retry that corrects the name works;
+      verified against Postgres (three calls, two genomes) and covered by 8 unit tests.
+- [x] **Six `Explanation` sentences printed raw asset-role enums**, and one printed
+      `1 gap(s)`. `ASSET_ROLE_WORDS` / `assetRoleWordList` in `packages/shared` now supply the
+      words, and `ResolvedPlaybook.missingRoles` is `AssetRole[]` rather than `string[]` —
+      the playbook schema already typed it that way, and widening it is what cost the callers
+      the safety that let this happen.
+- [x] **The platform label map existed three times**, two copies covering only the five
+      native platforms, so Settings listed `youtube_long` and `facebook_group` beside a
+      properly-named "YouTube Shorts". One `apps/web/src/lib/platforms.ts`, with a fallback
+      that prettifies an unmapped platform instead of printing a token.
+- [x] **Connection cards overlapped their own status pill.** `min-w-0` on the text column let
+      it shrink below its content while the badge kept its width, so the text ran underneath.
+- [x] **The campaign wizard's mix chart carried no information.** Bar widths divided by
+      `buildableNow`, which is `0` for any brand before its first capture session, so every
+      width came out `count * 100%` and the track clipped all five to full. It was also
+      labelled "0 posts SPARK can make right now" above rows summing to 13. Now scaled and
+      labelled by the mix total, which is what `planCampaign` sizes the mix to.
+- [x] **"Posts planned: 0" on the confirm step** — same substitution, on the screen that asks
+      you to commit. Now "0 of 13" with a note about what closes the gap, which matches the
+      calendar that appears next.
+- [x] **`playbook.resolve`'s summary had no case for "all formats need filming".** It fell
+      into the partial branch and read "7 formats fit this local business, 7 of them once
+      something gets filmed", implying some subset was postable today. None was — and that is
+      the state every brand is in before its first capture session.
+- [x] **`engage.eligibility`'s `why.summary` was the `reason` string verbatim**, printed
+      directly above the popover, so "Show reasoning" returned the line just read. It now
+      explains why the gate has two conditions, which is the part not on the screen.
+- [x] **The brand-kit pairing this section flagged was real, and worse than described.**
+      `resolveKit` was documented as refusing to derive contrast because "a wrong guess
+      produces white text on cream" — but `DEFAULT_TYPE` is `#FFFFFF`, so a brand naming one
+      light ground got precisely white on cream, rendered and published silently. Always
+      choosing white is as much a guess as choosing by luminance. Now picks black or white by
+      WCAG relative luminance — never a derived hue, so it still invents no brand colour, and
+      it cannot do worse than the constant on any input. Tested to clear 4.5:1.
+
+### Still owed
+
+- [ ] **`StallNotice`** — still not reached. It needs a post to exhaust the scheduler's
+      five-attempt ceiling against an unconnected platform, which no screen can force; it
+      wants a seeded fixture or a wait.
+- [ ] **`apps/web` cannot actually import `@sparksocial/shared`,** though CLAUDE.md permits
+      it. The package has no build output — `exports` points at `./src/*.ts`, whose imports
+      carry `.js` specifiers — so a `next build` reaching it fails on
+      "Can't resolve './types.js'". Every existing reference in `apps/web` is a comment saying
+      the values are mirrored instead; that pattern is load-bearing, not incidental. Either
+      give the package a build or amend the rule, because as written it invites a change that
+      breaks the build.
 
 ## Open decisions
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
@@ -54,6 +54,29 @@ export function DraftPanel({
   // way, and telling the second case apart matters because its fix is "ask
   // SPARK to start a capture session," not "add assets."
   const [captureOnly, setCaptureOnly] = useState(false);
+  /** Formats one upload away — listed, never offered as a button. */
+  const [uploadUnlockable, setUploadUnlockable] = useState<RankedPlaybook[]>([]);
+
+  /**
+   * The single upload that unlocks the most formats.
+   *
+   * `asset.gaps` computes the same thing server-side for the Assets Library, but
+   * this panel only has `playbook.resolve` — and calling a second tool to render
+   * one sentence would be a worse trade than deriving it from the ranking it
+   * already holds. Ties break on the role that appears first in the ranking,
+   * which is the higher-scoring format.
+   */
+  const bestUpload = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const pb of uploadUnlockable) {
+      for (const role of pb.missing_roles) counts.set(role, (counts.get(role) ?? 0) + 1);
+    }
+    let best: { role: string; count: number } | null = null;
+    for (const [role, count] of counts) {
+      if (!best || count > best.count) best = { role, count };
+    }
+    return best;
+  }, [uploadUnlockable]);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(null);
   const [intent, setIntent] = useState('');
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>('instagram');
@@ -170,8 +193,22 @@ export function DraftPanel({
       // `direct_finish` playbooks go through WhatsApp capture (§6.3), never this
       // panel — filtered here, not upstream, because `playbook.resolve`'s ranking
       // is shared with the calendar and capture-gap surfaces, which do need them.
-      const usable = res.output.ranked.filter((p) => p.mode !== 'direct_finish');
+      const inPanel = res.output.ranked.filter((p) => p.mode !== 'direct_finish');
+
+      /**
+       * Only what `content.draft` can actually write today is pickable.
+       *
+       * The resolver used to discard a playbook whose assets were missing unless
+       * it could be filmed, so everything reaching this panel was by definition
+       * draftable and no split was needed. It now reports upload-unlockable
+       * formats too — which is the point, they are how a brand with an empty
+       * library gets started — but offering one as a button would produce a
+       * `content.draft` call that fails on the missing asset. So they are listed
+       * separately, with the file that unlocks them.
+       */
+      const usable = inPanel.filter((p) => !p.unlockable);
       setPlaybooks(usable);
+      setUploadUnlockable(inPanel.filter((p) => p.unlockable && p.unlocked_by === 'upload'));
       // Only worth showing once the filter leaves nothing to pick — the resolver's
       // own `why` already names exactly what a fresh, asset-less genome is missing
       // (CLAUDE.md invariant 4), so surface that instead of a silent empty gap.
@@ -725,14 +762,61 @@ export function DraftPanel({
                     <p className="text-[13px] text-ink">
                       {playbooksWhy ?? "Nothing is ready to post yet — this brand's Asset Graph is empty."}
                     </p>
-                    <p className="mt-1 text-[12.5px] text-ink-muted">
-                      {captureOnly
-                        ? "Those formats need filming first — ask SPARK to start this week's capture session " +
-                          '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
-                          'unlock a format postable straight from here.'
-                        : "Add assets in the Assets Library, or fill in more of your brand's onboarding answers, " +
-                          'then come back here.'}
-                    </p>
+                    {/* Uploads first, because they are the cheap route and the
+                        one this panel can actually turn into a post today. The
+                        filming line used to be the only advice here, which sent
+                        a brand with an empty library to book an afternoon when a
+                        logo file would have unlocked more formats than the shoot. */}
+                    {uploadUnlockable.length > 0 ? (
+                      <>
+                        {/* Named by the single most useful upload, not by the
+                            total.
+
+                            "14 formats need one file you already have" was
+                            wrong twice over: those fourteen want four different
+                            roles between them, and the six shown were whichever
+                            scored highest, which buried the one file that
+                            unlocks the most. Leading with the best single
+                            upload turns the block into one action. */}
+                        <p className="mt-1 text-[12.5px] text-ink-muted">
+                          Nothing needs filming to get started.{' '}
+                          {bestUpload
+                            ? `Uploading ${aOrAn(roleWords([bestUpload.role]))} unlocks ${bestUpload.count} of these ${uploadUnlockable.length} formats — more than any other single file.`
+                            : `${uploadUnlockable.length} formats are one upload away.`}{' '}
+                          Add it in the Assets Library and come straight back.
+                        </p>
+                        <ul className="mt-2 grid grid-cols-1 gap-1">
+                          {(bestUpload
+                            ? uploadUnlockable.filter((pb) => pb.missing_roles.includes(bestUpload.role))
+                            : uploadUnlockable
+                          )
+                            .slice(0, 6)
+                            .map((pb) => (
+                              <li key={pb.playbook_id} className="text-[12.5px] text-ink-muted">
+                                <span className="font-medium text-ink">{pb.name}</span>
+                                {pb.missing_roles.length > 1
+                                  ? ` — also needs ${roleWords(pb.missing_roles.filter((r) => r !== bestUpload?.role))}`
+                                  : null}
+                              </li>
+                            ))}
+                        </ul>
+                        {captureOnly ? (
+                          <p className="mt-2 text-[12.5px] text-ink-muted">
+                            Filming unlocks more on top of that — ask SPARK to start this week&rsquo;s capture
+                            session (Ask Spark, top right).
+                          </p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-[12.5px] text-ink-muted">
+                        {captureOnly
+                          ? "Those formats need filming first — ask SPARK to start this week's capture session " +
+                            '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
+                            'unlock a format postable straight from here.'
+                          : "Add assets in the Assets Library, or fill in more of your brand's onboarding answers, " +
+                            'then come back here.'}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1225,4 +1309,24 @@ function StallNotice({
       </div>
     </div>
   );
+}
+
+/**
+ * Asset roles as words, for a sentence.
+ *
+ * Mirrors `ASSET_ROLE_WORDS` in `@sparksocial/shared` rather than importing it,
+ * for the reason `assets/roles.ts` documents at length: that package has no
+ * build output, so a `next build` that reaches it fails on "Can't resolve
+ * './types.js'".
+ */
+function roleWords(roles: readonly string[]): string {
+  const words = roles.map((r) => r.replace(/_/g, ' '));
+  if (words.length <= 1) return words[0] ?? '';
+  if (words.length === 2) return `${words[0]} and ${words[1]}`;
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
+
+/** "a brand kit", "an audio clip" — the article the role's own words need. */
+function aOrAn(words: string): string {
+  return `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words}`;
 }

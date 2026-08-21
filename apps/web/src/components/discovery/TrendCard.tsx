@@ -130,10 +130,17 @@ export function TrendCard({
           <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
             Suggested — {suggestion.playbookName}
           </p>
-          <p className="mt-1 text-[14px] text-ink">{suggestion.intent}</p>
-          {suggestion.unlockable ? (
-            <p className="mt-1 text-[12px] text-warn">Needs {suggestion.missingRoles.join(', ')} first.</p>
-          ) : null}
+          {/* `intent` already ends with what is missing and how to get it —
+              "needs footage first (physical capture)" or "needs a brand kit
+              uploaded first" — worded server-side by `buildIntent`, where the
+              upload-versus-film distinction is known.
+
+              A second line restated it from `missingRoles`, in raw
+              `snake_case`, so the card read "…needs footage first (physical
+              capture)" and then "Needs physical_capture first." */}
+          <p className={`mt-1 text-[14px] ${suggestion.unlockable ? 'text-ink-muted' : 'text-ink'}`}>
+            {suggestion.intent}
+          </p>
         </div>
       ) : null}
       {repurposeError ? <p className="mt-2 text-[13px] text-ink-muted">{repurposeError}</p> : null}

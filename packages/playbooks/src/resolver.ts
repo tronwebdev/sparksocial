@@ -1,4 +1,4 @@
-import { LEARNED_CONFIDENCE_THRESHOLD, type Genome } from '@sparksocial/shared';
+import { LEARNED_CONFIDENCE_THRESHOLD, assetRoleWordList, unlockRouteFor, type AssetRole, type Genome } from '@sparksocial/shared';
 import type { AssetInventory } from './golden.js';
 import { PLAYBOOKS } from './records.js';
 import type { Playbook } from './schema.js';
@@ -21,8 +21,25 @@ export interface ResolvedPlaybook {
   score: number;
   /** True when the assets do not exist yet but a capture brief could create them. */
   unlockable: boolean;
-  /** Which required roles are missing. Feeds `asset.gaps` and the capture session. */
-  missingRoles: string[];
+  /**
+   * Which required roles are missing. Feeds `asset.gaps` and the capture session.
+   *
+   * `AssetRole[]`, not `string[]`: it is filtered straight out of
+   * `required_asset_roles`, which the playbook schema already types as
+   * `z.array(AssetRole)`. Widening it here cost the callers the exhaustiveness
+   * that made these values safe to look up by name — which is how three of them
+   * ended up interpolating the raw enum into a sentence instead.
+   */
+  missingRoles: AssetRole[];
+  /**
+   * How `missingRoles` gets closed — present only when something is missing.
+   *
+   * `'capture'` is the Direct+Finish loop: film it. `'upload'` is a file the
+   * owner already has. The two want completely different words on screen, and
+   * conflating them is what made the product ask a barber to give up a Saturday
+   * when a logo upload would have unlocked more.
+   */
+  unlockedBy?: 'upload' | 'capture';
   /** Human-readable scoring breakdown for the `why` payload. */
   factors: Array<{ label: string; detail: string; weight?: number }>;
 }
@@ -90,13 +107,23 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
     const held = pre.required_asset_roles.reduce((n, role) => n + (assets[role] ?? 0), 0);
     const hasAssets = missingRoles.length === 0 && held >= pre.min_assets;
 
-    if (!hasAssets && p.mode !== 'direct_finish') {
-      rejected.push({
-        playbook_id: p.playbook_id,
-        because: `missing ${missingRoles.join(', ')} and cannot be filmed to order`,
-      });
-      continue;
-    }
+    /**
+     * Nothing is discarded for a missing asset any more.
+     *
+     * This used to reject every non-`direct_finish` playbook whose assets were
+     * absent, reasoning that they "cannot be filmed to order". They cannot — but
+     * they can be *supplied* to order, which is a different and much cheaper
+     * thing, and the code had no way to say so. A brand with an empty library
+     * lost fourteen playbooks here silently, including the one that best fitted
+     * its own stated objective.
+     *
+     * A missing role is now always a route rather than a verdict, and
+     * `assetAvailabilityFactor` is what keeps the ordering honest: an upload
+     * route is handicapped well below a filmed one, so surfacing these cannot
+     * push a local brand's month toward library filler — the §6 invariant the
+     * golden set exists to protect.
+     */
+    const unlockedBy = hasAssets ? undefined : unlockRouteFor(missingRoles);
 
     /* 5 ── Score. §5.2's four multiplicands. */
     const objectiveFit = p.objective_fit[d.objective] ?? 0;
@@ -105,7 +132,7 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
       continue;
     }
 
-    const availability = assetAvailabilityFactor(hasAssets, p);
+    const availability = assetAvailabilityFactor(hasAssets, unlockedBy);
     const saturation = 1 - saturationPenalty(p);
     const learned = learnedMultiplier(genome, p);
 
@@ -121,13 +148,16 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
       score,
       unlockable: !hasAssets,
       missingRoles,
+      ...(unlockedBy ? { unlockedBy } : {}),
       factors: [
         { label: 'objective fit', detail: `${p.name} scores ${objectiveFit.toFixed(2)} for ${d.objective}`, weight: objectiveFit },
         {
           label: 'assets',
           detail: hasAssets
             ? 'everything this needs already exists'
-            : `needs ${missingRoles.join(', ')} — reachable with a capture brief`,
+            : unlockedBy === 'capture'
+              ? `needs ${assetRoleWordList(missingRoles)} — reachable with a capture brief`
+              : `needs ${assetRoleWordList(missingRoles)} — a file you upload, no filming`,
           weight: availability,
         },
         { label: 'saturation', detail: `${p.saturation_risk} risk of looking like every other AI account`, weight: saturation },
@@ -144,9 +174,24 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
  * never surfaces. A local business has nothing digital on day one; if this
  * discount were harsh, its whole month would rank below a generic quote card.
  */
-function assetAvailabilityFactor(hasAssets: boolean, p: Playbook): number {
+function assetAvailabilityFactor(hasAssets: boolean, unlockedBy: 'upload' | 'capture' | undefined): number {
   if (hasAssets) return 1;
-  return p.mode === 'direct_finish' ? 0.85 : 0;
+  /**
+   * `0.85` for filming, `0.35` for uploading — a wide gap on purpose.
+   *
+   * Filming stays close to 1 because §6 is explicit that a local brand's month
+   * should be footage it was told how to shoot, and that unlockable capture work
+   * must outrank anything producible today rather than merely appear.
+   *
+   * The upload route used to be `0`, which was consistent only because those
+   * playbooks were thrown away before scoring. Now that they are offered it has
+   * to be a real number, and it has to stay far enough below `0.85` that every
+   * filmable format still outranks every uploadable one for a brand that can
+   * film. It also has to be non-zero, or a SaaS brand — which no capture
+   * playbook fits on dimensions at all — would get its entire library tied at
+   * zero and ordered arbitrarily.
+   */
+  return unlockedBy === 'capture' ? 0.85 : 0.35;
 }
 
 /**

@@ -146,7 +146,24 @@ export const engageEligibilityCheck = defineTool({
       publishedCount,
       reason,
       why: {
-        summary: reason,
+        /**
+         * The rule, not the progress.
+         *
+         * This was `reason` verbatim — the same sentence `EngagementGate`
+         * prints directly above the popover — so "Show reasoning" answered
+         * with the line the reader had just finished reading. What is not
+         * anywhere on that screen is why the gate has two conditions instead
+         * of one, which is the part that makes the wait look deliberate
+         * rather than arbitrary. The numbers stay in `factors`.
+         */
+        summary: eligible
+          ? `Both conditions are met, so SPARK may answer in its own voice: a campaign has to run ` +
+            `${MIN_DAYS_SINCE_START} days and publish ${MIN_PUBLISHED_POSTS} posts before it has seen ` +
+            `how this audience actually responds.`
+          : `SPARK answers in its own voice only after a campaign has run ${MIN_DAYS_SINCE_START} days ` +
+            `and published ${MIN_PUBLISHED_POSTS} posts — both, because days with nothing published show ` +
+            `it nothing about this audience, and posts with no time behind them show it nothing about how ` +
+            `they replied.`,
         factors: [
           { label: 'Days since campaign start', weight: clearedTime ? 1 : 0, detail: `${daysSinceStart}/${MIN_DAYS_SINCE_START}` },
           { label: 'Published posts', weight: clearedVolume ? 1 : 0, detail: `${publishedCount}/${MIN_PUBLISHED_POSTS}` },

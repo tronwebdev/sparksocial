@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -65,22 +66,17 @@ const APPROVAL_MODES = [
   { value: 'review_everything', label: 'Review everything', hint: 'Nothing goes out unseen.' },
 ] as const;
 
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  instagram_story: 'Instagram Stories',
-  tiktok: 'TikTok',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  youtube_shorts: 'YouTube Shorts',
-  youtube_long: 'YouTube',
-  facebook: 'Facebook',
-  facebook_group: 'Facebook Groups',
-  threads: 'Threads',
-  pinterest: 'Pinterest',
-  google_business: 'Google Business',
-  reddit: 'Reddit',
-  bluesky: 'Bluesky',
-};
+
+/**
+ * How many posts the proposed mix adds up to.
+ *
+ * Not `plan.windowDays` and not `plan.buildableNow`: the pillar counts are the
+ * only thing that describes the shape of the plan, and the widths in CMP-01.2
+ * are shares of that shape.
+ */
+function mixTotal(mix: Array<{ count: number }>): number {
+  return mix.reduce((n, m) => n + m.count, 0);
+}
 
 interface ProposedPlan {
   objective: string;
@@ -384,9 +380,25 @@ export function CampaignWizard({
               <WhyPopover why={plan.why} label="How this plan was worked out" />
             </div>
 
+            {/* The mix describes the *plan's* balance, so it is both labelled
+                and scaled by the plan total.
+
+                It used to be labelled `{plan.buildableNow} posts SPARK can make
+                right now` — which read "0 posts SPARK can make right now" above
+                five rows summing to 13 — and each bar was divided by
+                `buildableNow` too, so with nothing buildable yet every width
+                came out as `count * 100%` and the track's `overflow-hidden`
+                clipped all five to full. The chart carried no information in
+                exactly the case a new brand always starts in.
+
+                How many are buildable today is a different fact, and the
+                summary above already states it against the alternative
+                ("0 posts from what you have now — 13 if you film 3 × 5
+                minutes"), which is the comparison that tells someone what to
+                do next. */}
             <div>
               <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
-                {plan.buildableNow} posts SPARK can make right now
+                {mixTotal(plan.mix)} posts, balanced like this
               </p>
               <ul className="mt-2 grid grid-cols-1 gap-1.5">
                 {plan.mix
@@ -398,7 +410,7 @@ export function CampaignWizard({
                         <span
                           className="block h-full rounded-full bg-primary"
                           style={{
-                            width: `${Math.round((m.count / Math.max(1, plan.buildableNow)) * 100)}%`,
+                            width: `${Math.round((m.count / Math.max(1, mixTotal(plan.mix))) * 100)}%`,
                           }}
                         />
                       </span>
@@ -510,7 +522,7 @@ export function CampaignWizard({
                           )}
                         >
                           <span className="block text-[14px] font-medium text-ink">
-                            {PLATFORM_LABEL[p.platform] ?? p.platform}
+                            {platformLabel(p.platform)}
                           </span>
                           <span className="mt-0.5 block text-[12px] text-ink-muted">
                             {p.accountLabel ?? 'Connected'}
@@ -601,15 +613,38 @@ export function CampaignWizard({
             <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
               <Row label="Goal" value={OBJECTIVES.find((o) => o.value === objective)?.label ?? objective} />
               <Row label="Over" value={`${windowDays} days`} />
+              {/* Both numbers, because either alone misleads here.
+                  `plan.buildableNow` on its own — what this showed — said
+                  "Posts planned: 0" for any brand without assets yet, which is
+                  every brand at this point in onboarding, and made the plan
+                  look empty on the screen that asks you to commit to it. The
+                  plan total on its own overstates it the other way: activation
+                  places `plan.mix`, but `placeCalendar` can only fill a slot a
+                  ready playbook serves, so with nothing filmed the calendar
+                  that appears next genuinely reads "0 posts".
+
+                  "0 of 13" matches that calendar and still shows the size of
+                  what was planned, and the note says what closes the gap. */}
               <Row
                 label="Posts planned"
-                value={plan ? `${plan.buildableNow}` : '—'}
+                value={
+                  plan
+                    ? plan.buildableNow === mixTotal(plan.mix)
+                      ? `${mixTotal(plan.mix)}`
+                      : `${plan.buildableNow} of ${mixTotal(plan.mix)}`
+                    : '—'
+                }
+                note={
+                  plan && plan.buildableNow < mixTotal(plan.mix)
+                    ? 'Filming unlocks the rest — SPARK will ask, and the calendar fills in as you send clips.'
+                    : undefined
+                }
               />
               <Row
                 label="Posting to"
                 value={
                   selected.length
-                    ? selected.map((p) => PLATFORM_LABEL[p] ?? p).join(', ')
+                    ? selected.map((p) => platformLabel(p)).join(', ')
                     : 'Nothing connected yet'
                 }
               />
@@ -644,11 +679,15 @@ export function CampaignWizard({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
     <div className="bg-surface p-3">
       <dt className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</dt>
       <dd className="mt-0.5 break-words text-[14px] text-ink">{value}</dd>
+      {/* The confirm step is the last chance to say something that changes the
+          decision, and "how many of these need filming first" is the only fact
+          here that does. */}
+      {note ? <dd className="mt-0.5 break-words text-[12px] text-ink-muted">{note}</dd> : null}
     </div>
   );
 }

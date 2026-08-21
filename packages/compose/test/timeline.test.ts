@@ -118,13 +118,46 @@ describe('resolveKit — §8.6\'s brand kit', () => {
     expect(out).toMatchObject({ ground: '#101820', type: '#F2AA4C', accent: '#00A3AD' });
   });
 
-  it('keeps the default type colour when the brand named only one', () => {
-    // Deriving a readable type colour from an arbitrary ground is a real
-    // algorithm, and a wrong guess is white on cream — worse than the default
-    // and silently so.
+  it('picks dark type over a light ground the brand named on its own', () => {
+    // This asserted `DEFAULT_TYPE` — white — on the grounds that deriving
+    // contrast was a guess best not made. `DEFAULT_TYPE` being `#FFFFFF`, what
+    // it actually pinned was white type on cream: unreadable, rendered, and
+    // published without a word to anybody.
     const out = resolveKit({ colors: ['#F5F0E6'] });
     expect(out.ground).toBe('#F5F0E6');
-    expect(out.type).toBe(DEFAULT_TYPE);
+    expect(out.type).toBe('#0C0C0C');
+  });
+
+  it('still picks white over a dark ground, exactly as the constant did', () => {
+    expect(resolveKit({ colors: ['#101820'] }).type).toBe(DEFAULT_TYPE);
+  });
+
+  it('never overrules a type colour the brand named itself, readable or not', () => {
+    // They can see their own palette. Silently correcting it is how a render
+    // stops looking like the brand.
+    expect(resolveKit({ colors: ['#F5F0E6', '#FFFFFF'] }).type).toBe('#FFFFFF');
+  });
+
+  it('falls back to the default rather than scoring an unparseable colour as black', () => {
+    expect(resolveKit({ colors: ['not-a-colour'] }).type).toBe(DEFAULT_TYPE);
+  });
+
+  it('clears the WCAG AA threshold for body text on both defaults and a light ground', () => {
+    // 4.5:1 is the bar the pairing has to clear to be worth deriving at all.
+    const ratio = (a: string, b: string) => {
+      const lum = (hex: string) => {
+        const ch = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+        const [r, g, bl] = ch.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+        return 0.2126 * r! + 0.7152 * g! + 0.0722 * bl!;
+      };
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+      return (hi! + 0.05) / (lo! + 0.05);
+    };
+
+    for (const ground of ['#F5F0E6', '#FFFFFF', '#101820', DEFAULT_GROUND]) {
+      const out = resolveKit({ colors: [ground] });
+      expect(ratio(out.ground, out.type)).toBeGreaterThan(4.5);
+    }
   });
 
   it('falls back entirely with no kit at all', () => {

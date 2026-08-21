@@ -72,7 +72,14 @@ export function makeSessionBatch(deps: BriefWriter) {
 
       // Highest-impact first: an unlockable playbook that's also the top-ranked
       // format is worth more of the owner's five minutes than a low-priority one.
-      const candidates = ranked.filter((r) => r.unlockable);
+      //
+      // `unlockedBy === 'capture'`, not `unlockable` alone. The resolver now also
+      // reports formats unlocked by *uploading* a file, which is what lets a brand
+      // with an empty library get started at all — but a filming brief for "needs
+      // a work artifact" is not a thing the writer can produce, and asking it to
+      // try threw `UPSTREAM_FAILED` after three attempts at an impossible shot
+      // list. This is the seam that keeps the capture loop about capture.
+      const candidates = ranked.filter((r) => r.unlockable && r.unlockedBy === 'capture');
 
       const briefs: z.infer<typeof CaptureBrief>[] = [];
       const deferred: string[] = [];

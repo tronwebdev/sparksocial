@@ -328,6 +328,17 @@ export function createDevStore(
         return { id: genomeId, version: row.genome.version };
       },
 
+      async patchVoice({ genomeId, orgId: org, voice }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          voice: { ...row.genome.voice, ...voice },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
       async patchLearned({ genomeId, orgId: org, patch }) {
         const row = genomes.get(genomeId);
         if (!row || row.orgId !== org) return { id: genomeId, version: 1 };

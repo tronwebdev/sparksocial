@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -55,13 +56,6 @@ interface PlatformStatus {
 /** The five with a native OAuth flow. Others publish through the aggregator and have nothing to connect here. */
 const NATIVE = ['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts'] as const;
 
-const LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  linkedin: 'LinkedIn',
-  x: 'X',
-  youtube_shorts: 'YouTube Shorts',
-};
 
 export function ConnectAccountsStep({
   genomeId,
@@ -135,7 +129,7 @@ export function ConnectAccountsStep({
               className="flex items-center justify-between gap-3 rounded-xl border border-border p-4"
             >
               <div className="min-w-0">
-                <p className="text-[15px] font-medium text-ink">{LABEL[p.platform] ?? p.platform}</p>
+                <p className="text-[15px] font-medium text-ink">{platformLabel(p.platform)}</p>
                 <p className="text-[13px] text-ink-muted">
                   {p.connected ? (p.accountLabel ?? 'Connected') : 'Not connected'}
                 </p>

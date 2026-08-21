@@ -12,7 +12,7 @@ import {
   type RetrievedAsset,
 } from '@sparksocial/assemble';
 import { buildSynthesizePlan } from './plan.js';
-import type { TextWriter } from './types.js';
+import type { BeatOutlineEntry, TextWriter } from './types.js';
 
 /**
  * `content.draft` — the tool `assemble.plan` was always half of (plan §6.5,
@@ -232,8 +232,10 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const plan = await resolvePlan(playbook, genome, input, ctx, deps.embed);
 
+      const outline = buildOutline(plan.beats);
+
       const beats: ResolvedBeat[] = await Promise.all(
-        plan.beats.map((beat) => resolveBeat(beat, { genome, playbook, intent: input.intent }, deps.text)),
+        plan.beats.map((beat) => resolveBeat(beat, { genome, playbook, intent: input.intent, outline }, deps.text)),
       );
 
       const why = explain(plan, playbook.name, beats);
@@ -364,9 +366,27 @@ export async function resolvePlan(
   return plan;
 }
 
+/**
+ * The running order of a post, for the writer of each beat.
+ *
+ * Built once per post and shared, so beats are still written independently and
+ * in parallel — what they share is the outline, not each other's output. Three
+ * call sites need it (`content.draft`, `content.variants`, `content.repurpose`),
+ * which is why it is a function rather than three copies of the same map.
+ */
+export function buildOutline(beats: readonly PlannedBeat[]): BeatOutlineEntry[] {
+  return beats.map((b) =>
+    b.kind === 'copy'
+      ? { beatId: b.beatId, kind: 'copy' as const, promptRef: b.promptRef }
+      : b.kind === 'text'
+        ? { beatId: b.beatId, kind: 'literal' as const, text: b.text }
+        : { beatId: b.beatId, kind: 'literal' as const },
+  );
+}
+
 export async function resolveBeat(
   beat: PlannedBeat,
-  ground: { genome: Genome; playbook: Playbook; intent: string },
+  ground: { genome: Genome; playbook: Playbook; intent: string; outline: BeatOutlineEntry[] },
   text: TextWriter,
 ): Promise<ResolvedBeat> {
   if (beat.kind === 'asset') {
@@ -381,6 +401,9 @@ export async function resolveBeat(
     playbook: ground.playbook,
     promptRef: beat.promptRef,
     ...(ground.intent ? { intent: ground.intent } : {}),
+    beatId: beat.beatId,
+    durationSec: beat.durationSec,
+    outline: ground.outline,
   });
   return { kind: 'text', beatId: beat.beatId, text: written };
 }

@@ -25,6 +25,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
         patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
         patchOffer: async () => ({ id: 'gen_1', version: 1 }),
+        patchVoice: async () => ({ id: 'gen_1', version: 1 }),
         patchLearned: async () => ({ id: 'gen_1', version: 1 }),
         get: async () => lagosBarbershop.genome,
         listForOrg: async () => [],

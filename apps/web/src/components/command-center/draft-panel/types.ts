@@ -44,6 +44,9 @@ export interface RankedPlaybook {
   content_pillar: string;
   score: number;
   unlockable: boolean;
+  missing_roles: string[];
+  /** `'upload'` — a file the owner supplies. `'capture'` — the WhatsApp capture loop. */
+  unlocked_by?: 'upload' | 'capture';
 }
 
 /** `playbook.list`'s real output shape (`packages/playbooks/src/browse.ts`'s `PlaybookSummary`) — camelCase, distinct from `RankedPlaybook`'s snake_case (`playbook.resolve`'s shape). Do not conflate the two. */

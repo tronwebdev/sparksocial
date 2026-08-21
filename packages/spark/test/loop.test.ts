@@ -60,6 +60,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         patchConstraints: async () => ({ id: 'g', version: 1 }),
         patchIdentity: async () => ({ id: 'g', version: 1 }),
         patchOffer: async () => ({ id: 'g', version: 1 }),
+        patchVoice: async () => ({ id: 'g', version: 1 }),
         patchLearned: async () => ({ id: 'g', version: 1 }),
         get: async () => undefined,
         listForOrg: async () => [],

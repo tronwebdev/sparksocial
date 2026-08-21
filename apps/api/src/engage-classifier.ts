@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError, renderUntrusted } from '@sparksocial/shared';
+import { ToolError, callVendor, renderUntrusted } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { EngagementCategory, type EngagementClassifier, type ClassificationResult } from '@sparksocial/engage';
 import { envSet } from './env.js';
@@ -47,20 +47,25 @@ export function createEngageClassifier(opts: EngageClassifierOptions = {}): Enga
 
   return {
     async classify({ genome, kind, authorHandle, text }): Promise<ClassificationResult> {
-      const response = await anthropic.messages.create({
-        model,
-        max_tokens: 500,
-        system: SYSTEM,
-        messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, text) }],
-        tools: [
-          {
-            name: TOOL_NAME,
-            description: 'Record the classification.',
-            input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
-          },
-        ],
-        tool_choice: { type: 'tool', name: TOOL_NAME },
-      });
+      const response = await callVendor(
+        'engagement classifier',
+        'SPARK could not read this message — the service that sorts the inbox is not responding. It stays in Needs Review so nothing is missed.',
+        () =>
+          anthropic.messages.create({
+            model,
+            max_tokens: 500,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, text) }],
+            tools: [
+              {
+                name: TOOL_NAME,
+                description: 'Record the classification.',
+                input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+              },
+            ],
+            tool_choice: { type: 'tool', name: TOOL_NAME },
+          }),
+      );
 
       const block = response.content.find(
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,

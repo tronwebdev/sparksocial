@@ -9,6 +9,7 @@ import { StepShell } from '@/components/onboarding/StepShell';
 import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
 import { QuestionStep } from '@/components/onboarding/QuestionStep';
 import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
+import { GroundingStep } from '@/components/onboarding/GroundingStep';
 import { PersonalizeStep } from '@/components/onboarding/PersonalizeStep';
 import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
 import { humanError, invoke } from '@/lib/tools';
@@ -55,11 +56,19 @@ const FIXED_STEPS = 3;
  * `ONB-04` and `ONB-05`, after the questions rather than before them.
  *
  * The five questions are what the whole engine routes on, and they are the only
- * part of setup that cannot be done later. Putting two optional, externally
- * blocked steps in front of them would be putting the skippable work first and
- * risking the essential work to a drop-off.
+ * part of setup that cannot be done later. Putting optional, externally blocked
+ * steps in front of them would be putting the skippable work first and risking
+ * the essential work to a drop-off.
+ *
+ * Three now, not two: `GroundingStep` sits first of the three, because unlike
+ * connecting an account or registering an avatar it is not blocked on anything
+ * external, and it is the step that decides whether the brand can draft a post
+ * at all. Onboarding previously established what a brand *could* do without ever
+ * asking for anything it already had — no CTA (which fourteen playbooks need to
+ * finish a post), no point of view (which is most of what makes copy sound like
+ * the brand), and no assets (which every golden fixture assumed).
  */
-const TRAILING_STEPS = 2;
+const TRAILING_STEPS = 3;
 
 /** The `identity.*` fields `genome.identity.set` accepts flat, matching `GenomeIdentity`'s scalar keys. */
 const IDENTITY_SCALAR_FIELDS = new Set(['business_name', 'category', 'sub_category', 'one_liner', 'price_tier']);
@@ -434,8 +443,29 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── ONB-04 · Connect the accounts (skippable) ──────────────────── */
+  /* ── ONB-04 · Give SPARK something to write from (skippable) ─────── */
   if (draft && step === FIXED_STEPS + questions.length) {
+    return (
+      <StepShell
+        step={step}
+        total={total}
+        onBack={back}
+        eyebrow={draft.businessName}
+        title="What has SPARK got to work with?"
+        subtitle="All optional, all changeable later — but each one is the difference between a post that could be any business and a post that is yours."
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(step + 1)}>
+            Continue
+          </Button>
+        }
+      >
+        <GroundingStep genomeId={draft.genomeId} />
+      </StepShell>
+    );
+  }
+
+  /* ── ONB-05 · Connect the accounts (skippable) ──────────────────── */
+  if (draft && step === FIXED_STEPS + questions.length + 1) {
     return (
       <StepShell
         step={step}
@@ -457,8 +487,8 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── ONB-05 · Personalise (skippable) ──────────────────────────────── */
-  if (draft && step === FIXED_STEPS + questions.length + 1) {
+  /* ── ONB-06 · Personalise (skippable) ──────────────────────────────── */
+  if (draft && step === FIXED_STEPS + questions.length + 2) {
     return (
       <StepShell
         step={step}

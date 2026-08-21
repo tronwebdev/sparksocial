@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
-import { resolve } from './resolver.js';
+import { resolve, type ResolvedPlaybook } from './resolver.js';
 import { deriveMix } from './mix.js';
 import type { AssetInventory } from './golden.js';
 
@@ -25,6 +25,15 @@ const RankedPlaybook = z.object({
   score: z.number(),
   unlockable: z.boolean(),
   missing_roles: z.array(z.string()),
+  /**
+   * How `missing_roles` gets closed, absent when nothing is missing.
+   *
+   * The Draft Panel needs this to know whether to offer a format as pickable, or
+   * to say what file would unlock it. Without it the panel could only ask "is
+   * this direct_finish?", which is why an upload-unlockable format had no way to
+   * appear at all.
+   */
+  unlocked_by: z.enum(['upload', 'capture']).optional(),
 });
 
 export const playbookResolve = defineTool({
@@ -88,9 +97,18 @@ export const playbookResolve = defineTool({
       score: Number(r.score.toFixed(4)),
       unlockable: r.unlockable,
       missing_roles: r.missingRoles,
+      ...(r.unlockedBy ? { unlocked_by: r.unlockedBy } : {}),
     });
 
-    const unlockable = ranked.filter((r) => r.unlockable);
+    /**
+     * Still only the capture route, because this field is what the capture loop
+     * consumes — its own comment above says so, and `direct.brief.generate`
+     * cannot write a brief for "upload your logo".
+     *
+     * `r.unlockable` alone would now include upload-unlockable playbooks and
+     * quietly hand the capture loop work it cannot brief.
+     */
+    const unlockable = ranked.filter((r) => r.unlockable && r.unlockedBy === 'capture');
     ctx.logger.info('playbooks resolved', {
       genomeId: input.genomeId,
       ranked: ranked.length,
@@ -104,11 +122,7 @@ export const playbookResolve = defineTool({
       unlockable: unlockable.map(shape),
       mix: { source: mix.source, weights: mix.weights as Record<string, number> },
       why: {
-        summary:
-          `${ranked.length} formats fit this ${mix.profile.replace('_', ' ')}` +
-          (unlockable.length
-            ? `, ${unlockable.length} of them once something gets filmed.`
-            : ' from assets already on hand.'),
+        summary: resolveSummary(mix.profile, ranked),
         factors: [
           ...(ranked[0] ? ranked[0].factors : []),
           { label: 'mix', detail: mix.why },
@@ -131,3 +145,48 @@ export const playbookResolve = defineTool({
     };
   },
 });
+
+/**
+ * The one sentence every format picker leads with.
+ *
+ * Three states, not two, and the count of each is the whole message: what is
+ * postable now, what one upload away, and what needs filming. Getting this
+ * wrong is how the product ends up recommending the most expensive action
+ * available.
+ *
+ * Its history is the argument for spelling all three out. It began as
+ * "N formats fit this X, M of them once something gets filmed", which had no
+ * case for *everything* needing assets and so told a brand-new brand that some
+ * subset was ready when none was. Narrowing `unlockable` to the capture route —
+ * correct, because the capture loop cannot brief an upload — then broke it the
+ * other way: with 14 upload-unlockable and 7 filmable it read "21 formats fit
+ * this local business, 7 of them once something gets filmed", which reads as
+ * fourteen ready to go. Zero were.
+ */
+function resolveSummary(profile: string, ranked: readonly ResolvedPlaybook[]): string {
+  const subject = profile.replace('_', ' ');
+  const now = ranked.filter((r) => !r.unlockable).length;
+  const uploads = ranked.filter((r) => r.unlockedBy === 'upload').length;
+  const films = ranked.filter((r) => r.unlockedBy === 'capture').length;
+
+  if (uploads === 0 && films === 0) {
+    return `${ranked.length} formats fit this ${subject} from assets already on hand.`;
+  }
+
+  // Named in ascending order of effort, so the cheapest thing to do next is the
+  // first thing read.
+  const parts: string[] = [];
+  if (now > 0) parts.push(`${now} ready to post now`);
+  if (uploads > 0) parts.push(`${uploads} one upload away`);
+  if (films > 0) parts.push(`${films} needing something filmed`);
+
+  // No index arithmetic on `parts`: the "ready now" clause is only pushed when
+  // there is something ready, so there is never a leading entry to drop. An
+  // earlier attempt to strip one dropped the *uploads* clause instead, and the
+  // sentence lost the only cheap route it had to offer.
+  const head =
+    now === 0
+      ? `${ranked.length} formats fit this ${subject}, none ready to post yet`
+      : `${ranked.length} formats fit this ${subject}`;
+  return `${head} — ${parts.join(', ')}.`;
+}

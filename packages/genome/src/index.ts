@@ -2,6 +2,7 @@ export * from './bootstrap.js';
 export * from './dimensions.js';
 export * from './identity.js';
 export * from './offer.js';
+export * from './voice.js';
 export * from './list.js';
 export * from './crawl.js';
 export * from './infer.js';

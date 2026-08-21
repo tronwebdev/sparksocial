@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError, untrusted } from '@sparksocial/shared';
+import { ToolError, callVendor, untrusted } from '@sparksocial/shared';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import type { CaptionClient } from '@sparksocial/assetgraph';
 import { envSet, envStr } from './env.js';
@@ -119,11 +119,28 @@ export function createCaptionClient(opts: CaptionClientOptions = {}): CaptionCli
   };
 }
 
+/**
+ * The captioner's three paths — remote image, local image, transcript summary —
+ * through the one wrapper, so a thrown vendor error cannot reach the Assets
+ * Library as a raw response body. See `callVendor` for what that looked like.
+ */
+function captionCall(
+  anthropic: Anthropic,
+  body: Anthropic.MessageCreateParamsNonStreaming,
+): Promise<Anthropic.Message> {
+  return callVendor(
+    'captioner',
+    'SPARK could not describe this file — the service that looks at images and video is not ' +
+      'responding. Your file uploaded fine; add it again once that service is back.',
+    () => anthropic.messages.create(body),
+  );
+}
+
 async function captionImage(
   deps: { anthropic: Anthropic; model: string },
   url: string,
 ): Promise<string> {
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,
@@ -162,7 +179,7 @@ async function captionLocalImage(
     throw new ToolError('INVALID_INPUT', `Unsupported image type for captioning: ${found.contentType}.`);
   }
 
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,
@@ -195,7 +212,7 @@ async function summarise(
   transcript: string,
   mediaType: 'video' | 'audio',
 ): Promise<string> {
-  const response = await deps.anthropic.messages.create({
+  const response = await captionCall(deps.anthropic, {
     model: deps.model,
     max_tokens: 300,
     system: SYSTEM,

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { callVendor } from '@sparksocial/shared';
 import type { ZodTypeAny } from 'zod';
 import { AGENTS, MODELS } from './agents.js';
 import type { ExposedTool, ModelClient, ModelTurn } from './loop.js';
@@ -67,8 +68,19 @@ export function anthropicModelClient(opts: AnthropicModelClientOptions = {}): Mo
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
       };
 
-      const response = await client.beta.messages.create(
-        params as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming,
+      /**
+       * Wrapped for the same reason as every other vendor call (see
+       * `callVendor`): an SDK throw carries the raw response body as its
+       * message, and a run's error text is shown on the Agent Timeline.
+       */
+      const response = await callVendor(
+        'agent model',
+        'SPARK could not think this step through — the model service is not responding. The run ' +
+          'stopped where it was; nothing half-finished was published.',
+        () =>
+          client.beta.messages.create(
+            params as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming,
+          ),
       );
 
       if (response.stop_reason === 'refusal') {

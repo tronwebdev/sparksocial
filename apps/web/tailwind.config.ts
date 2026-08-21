@@ -8,7 +8,27 @@ import type { Config } from 'tailwindcss';
  * shadcn's conventional names (`background`, `foreground`, `ring`, `input`, …) are
  * mapped onto the same variables so `npx shadcn add <x>` output drops in without
  * rewriting, instead of growing a second colour vocabulary alongside ours.
+ *
+ * ── Why every colour goes through `alpha()` ───────────────────────────────
+ *
+ * A bare `var(--x)` cannot take Tailwind's opacity modifier. Tailwind builds
+ * `bg-warn/10` by injecting an alpha channel into the colour, which it can only
+ * do if the value tells it where the alpha goes — so with a plain variable it
+ * emits something invalid and the browser resolves it to **transparent**.
+ *
+ * That was live for a long time and invisible precisely because it fails open:
+ * every tinted panel in the product — the amber "held for review" blocks, the
+ * green publish receipts, the red rollback notices, 36 utilities across 10 files
+ * — rendered with no fill at all. Found by measuring a computed style in the
+ * browser (`bg-warn/10` → `rgba(0, 0, 0, 0)`), not by reading the CSS.
+ *
+ * `color-mix` fixes it without touching `tokens.css`, which matters: 22 places
+ * in `.tsx` use `var(--ss-*)` directly, and switching the variables to
+ * space-separated RGB channels — the other standard fix — would have broken
+ * every one of them. With no modifier Tailwind substitutes `1`, so
+ * `calc(1 * 100%)` returns the colour exactly as before.
  */
+const alpha = (token: string) => `color-mix(in srgb, var(${token}) calc(<alpha-value> * 100%), transparent)`;
 const config: Config = {
   darkMode: ['class'],
   content: ['./src/**/*.{ts,tsx}'],
@@ -16,49 +36,49 @@ const config: Config = {
     extend: {
       colors: {
         // shadcn aliases → SparkSocial tokens
-        background: 'var(--ss-bg)',
-        foreground: 'var(--ss-fg)',
-        border: 'var(--ss-border)',
-        input: 'var(--ss-field)',
-        ring: 'var(--ss-ring)',
+        background: alpha('--ss-bg'),
+        foreground: alpha('--ss-fg'),
+        border: alpha('--ss-border'),
+        input: alpha('--ss-field'),
+        ring: alpha('--ss-ring'),
         primary: {
-          DEFAULT: 'var(--ss-primary)',
-          foreground: 'var(--ss-fg-on-primary)',
+          DEFAULT: alpha('--ss-primary'),
+          foreground: alpha('--ss-fg-on-primary'),
         },
         muted: {
-          DEFAULT: 'var(--ss-surface-muted)',
-          foreground: 'var(--ss-fg-muted)',
+          DEFAULT: alpha('--ss-surface-muted'),
+          foreground: alpha('--ss-fg-muted'),
         },
         accent: {
-          DEFAULT: 'var(--ss-accent-cyan)',
-          foreground: 'var(--ss-fg)',
+          DEFAULT: alpha('--ss-accent-cyan'),
+          foreground: alpha('--ss-fg'),
         },
         destructive: {
-          DEFAULT: 'var(--ss-danger)',
-          foreground: 'var(--ss-white)',
+          DEFAULT: alpha('--ss-danger'),
+          foreground: alpha('--ss-white'),
         },
 
         // SparkSocial semantics
         surface: {
-          DEFAULT: 'var(--ss-surface)',
-          muted: 'var(--ss-surface-muted)',
+          DEFAULT: alpha('--ss-surface'),
+          muted: alpha('--ss-surface-muted'),
         },
-        canvas: 'var(--ss-canvas)',
+        canvas: alpha('--ss-canvas'),
         ink: {
-          DEFAULT: 'var(--ss-fg)',
-          muted: 'var(--ss-fg-muted)',
-          subtle: 'var(--ss-fg-subtle)',
-          placeholder: 'var(--ss-fg-placeholder)',
-          heading: 'var(--ss-fg-heading)',
+          DEFAULT: alpha('--ss-fg'),
+          muted: alpha('--ss-fg-muted'),
+          subtle: alpha('--ss-fg-subtle'),
+          placeholder: alpha('--ss-fg-placeholder'),
+          heading: alpha('--ss-fg-heading'),
         },
         brand: {
-          purple: 'var(--ss-accent-purple)',
-          cyan: 'var(--ss-accent-cyan)',
-          pink: 'var(--ss-accent-pink)',
+          purple: alpha('--ss-accent-purple'),
+          cyan: alpha('--ss-accent-cyan'),
+          pink: alpha('--ss-accent-pink'),
         },
-        success: 'var(--ss-success)',
-        warn: 'var(--ss-warn)',
-        info: 'var(--ss-info)',
+        success: alpha('--ss-success'),
+        warn: alpha('--ss-warn'),
+        info: alpha('--ss-info'),
       },
 
       fontFamily: {

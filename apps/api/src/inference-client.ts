@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, callVendor } from '@sparksocial/shared';
 import {
   CaptureCapability,
   Objective,
@@ -150,50 +150,26 @@ export function anthropicInferenceClient(opts: AnthropicInferenceOptions = {}) {
 
   return {
     async infer({ prompt }: { prompt: string; sourceUrl: string }): Promise<unknown> {
-      let response: Anthropic.Messages.Message;
-      try {
-        response = await client.messages.create({
-          model,
-          max_tokens: MAX_TOKENS,
-          system: SYSTEM,
-          messages: [{ role: 'user', content: prompt }],
-          tools: [
-            {
-              name: TOOL_NAME,
-              description: 'Record the inferred brand genome. Omit dimensions the site does not evidence.',
-              input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
-            },
-          ],
-          // Forced: the model cannot answer in prose, so there is nothing to parse.
-          tool_choice: { type: 'tool', name: TOOL_NAME },
-        });
-      } catch (e) {
-        /**
-         * The vendor's own message is a raw HTTP body, and it was reaching a
-         * screen.
-         *
-         * Caught by clicking through onboarding: a disabled API key made the
-         * second step of setup show a business owner
-         * `400 {"type":"error","error":{...},"request_id":"req_011Ce…"}`. The
-         * page renders `error.message` verbatim on purpose — `explainCrawlFailure`
-         * writes a real sentence for "blocked", "not found", "unreachable", and
-         * each has a different next step — so the defect is here, in the one
-         * place that turned a vendor payload into that field.
-         *
-         * The detail is kept, in `details` and in the log, where it is useful to
-         * whoever configured the key and invisible to whoever did not.
-         */
-        const detail = e instanceof Error ? e.message : String(e);
-        // `console.warn` rather than a ctx logger: this client is constructed
-        // once at boot and has no request context, same as the schedulers in
-        // this directory.
-        console.warn('[warn] inference vendor call failed', { detail });
-        throw new ToolError(
-          'UPSTREAM_FAILED',
-          'SPARK could not read your site — the service that interprets pages is not responding.',
-          { vendor: 'anthropic', detail },
-        );
-      }
+      const response = await callVendor(
+        'inference',
+        'SPARK could not read your site — the service that interprets pages is not responding.',
+        () =>
+          client.messages.create({
+            model,
+            max_tokens: MAX_TOKENS,
+            system: SYSTEM,
+            messages: [{ role: 'user', content: prompt }],
+            tools: [
+              {
+                name: TOOL_NAME,
+                description: 'Record the inferred brand genome. Omit dimensions the site does not evidence.',
+                input_schema: SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+              },
+            ],
+            // Forced: the model cannot answer in prose, so there is nothing to parse.
+            tool_choice: { type: 'tool', name: TOOL_NAME },
+          }),
+      );
 
       const block = response.content.find(
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,

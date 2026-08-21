@@ -76,9 +76,19 @@ export const genomeCreate = defineTool({
   autonomy: 'auto',
   scopes: ['owner', 'admin', 'editor'],
   /**
-   * `true`. Onboarding retries are common — a dropped connection, a double tap
-   * on Continue — and a second draft genome for one brand is a workspace with
-   * two half-configured brands and no way to tell which one is live.
+   * `true`, and the handler is what makes it true.
+   *
+   * Onboarding retries are common — a dropped connection, a double tap on
+   * Continue, or the `genome.bootstrap_from_url` path failing upstream and the
+   * owner starting again from the questions. This flag only tells the invoke
+   * middleware not to demand an idempotency key; it does not make a handler
+   * safe to replay. For a while this one wasn't: every call inserted another
+   * genome, so a brand ended up with two, the workspace switcher listed both
+   * under the same name, and nothing said which was live — precisely the state
+   * this comment claimed to prevent. Found by re-running onboarding after an
+   * upstream failure and reading the rows back.
+   *
+   * `createFor` below reuses the brand's existing genome instead.
    */
   idempotent: true,
   surfaces: ['ONB-01'],
@@ -87,6 +97,46 @@ export const genomeCreate = defineTool({
   estimateCents: () => 0,
 
   async handler(input, ctx) {
+    /**
+     * One genome per brand.
+     *
+     * A brand wanting its own genome gets its own `brandId` — that is what the
+     * "Add brand" flow does — so a `genome.create` naming a brand that already
+     * has one is a repeat of onboarding, not a request for a second brand.
+     * Reuse it and merge what the owner typed this time, which also means a
+     * retry that *corrects* the name takes effect rather than being stranded on
+     * a duplicate row.
+     *
+     * `listForOrg` rather than a new `findByBrand` on the repository: an org
+     * has a handful of brands, this is the onboarding path and not a hot read,
+     * and `listForOrg` is already scoped by `orgId`. Ordered by `updatedAt`
+     * desc, so `find` returns the live one for any brand that already has the
+     * duplicates this bug created.
+     */
+    const existing = (await ctx.db.genomes.listForOrg(ctx.orgId)).find((g) => g.brandId === input.brandId);
+
+    if (existing) {
+      await ctx.db.genomes.patchIdentity({
+        genomeId: existing.id,
+        orgId: ctx.orgId,
+        identity: {
+          business_name: input.businessName,
+          category: input.category,
+          one_liner: input.oneLiner ?? '',
+          geography: { scope: 'local', locale: input.locale, radius_km: null },
+          languages: [input.locale.split('-')[0] ?? 'en'],
+        },
+      });
+
+      ctx.logger.info('genome.create reused the existing genome for this brand', {
+        brandId: input.brandId,
+        genomeId: existing.id,
+        businessName: input.businessName,
+      });
+
+      return createOutput(input, existing.id);
+    }
+
     const draft = await ctx.db.genomes.createDraft({
       brandId: input.brandId,
       orgId: ctx.orgId,
@@ -119,33 +169,49 @@ export const genomeCreate = defineTool({
       businessName: input.businessName,
     });
 
-    return {
-      draftGenomeId: draft.id,
-      identity: {
-        businessName: input.businessName,
-        category: input.category,
-        oneLiner: input.oneLiner ?? '',
-      },
-      unresolved: ROUTING_DIMENSIONS,
-      why: {
-        summary: `Started ${input.businessName} from what you told us. Nothing was inferred, so the next questions cover everything that matters.`,
-        factors: [
-          { label: 'source', detail: 'your answers' },
-          { label: 'still to ask', detail: ROUTING_DIMENSIONS.join(', ') },
-        ],
-        evidence: [],
-        // Naming the path not taken, because the owner may not know it exists
-        // — and if their site becomes readable later, it is the better one.
-        alternatives: [
-          {
-            option: 'Read your website instead',
-            rejectedBecause: 'no readable site was available, so the questions come from you rather than from your pages',
-          },
-        ],
-      },
-    };
+    return createOutput(input, draft.id);
   },
 });
+
+/**
+ * The same answer whether the genome was just inserted or reused.
+ *
+ * Shared rather than duplicated because the `why` is the part that must not
+ * drift: both paths did the same thing from the owner's side — started this
+ * brand from their answers, with the four routing dimensions still to ask —
+ * and a reused genome that reported a different reason would make a retry look
+ * like a different kind of event than the first attempt.
+ */
+function createOutput(
+  input: z.infer<typeof GenomeCreateInput>,
+  genomeId: string,
+): z.infer<typeof GenomeCreateOutput> {
+  return {
+    draftGenomeId: genomeId,
+    identity: {
+      businessName: input.businessName,
+      category: input.category,
+      oneLiner: input.oneLiner ?? '',
+    },
+    unresolved: ROUTING_DIMENSIONS,
+    why: {
+      summary: `Started ${input.businessName} from what you told us. Nothing was inferred, so the next questions cover everything that matters.`,
+      factors: [
+        { label: 'source', detail: 'your answers' },
+        { label: 'still to ask', detail: ROUTING_DIMENSIONS.join(', ') },
+      ],
+      evidence: [],
+      // Naming the path not taken, because the owner may not know it exists
+      // — and if their site becomes readable later, it is the better one.
+      alternatives: [
+        {
+          option: 'Read your website instead',
+          rejectedBecause: 'no readable site was available, so the questions come from you rather than from your pages',
+        },
+      ],
+    },
+  };
+}
 
 /** Kept for symmetry with `bootstrap.ts`, which throws the same way. */
 export function requireBrand(brandId: string | undefined): string {
