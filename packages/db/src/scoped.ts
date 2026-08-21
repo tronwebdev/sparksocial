@@ -1435,6 +1435,14 @@ export async function campaignSlots(
     pillar: string | null;
     status: string;
     scheduledAt: Date | null;
+    /**
+     * Set at placement time by `CMP-01.4`'s account selection, and null for a
+     * slot placed on a day rather than on an account (the date picker and
+     * drag-and-drop paths). Selected here for §8.7's platform filter — the
+     * column existed and this projection never read it, so the calendar could
+     * not group by the thing it schedules to.
+     */
+    platform: string | null;
   }>
 > {
   return db
@@ -1445,6 +1453,7 @@ export async function campaignSlots(
       pillar: contentItems.pillar,
       status: contentItems.status,
       scheduledAt: contentItems.scheduledAt,
+      platform: contentItems.platform,
     })
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.campaignId, campaignId)))

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +52,10 @@ interface Slot {
   playbookName: string | null;
   mode: string | null;
   status: string;
+  /** Null for a slot placed on a day rather than on an account. */
+  platform: string | null;
+  /** Resolved from the playbook by `calendar.get`, not stored. Null when the playbook no longer resolves. */
+  mediaType: string | null;
 }
 
 interface CalendarView {
@@ -104,7 +108,21 @@ export function CalendarBoard() {
   });
   const [undo, setUndo] = useState<{ slotId: string; from: string; label: string } | null>(null);
   const [mixPreview, setMixPreview] = useState<MixImpactPreview | null>(null);
+  /** §8.7's three filters. `all` rather than an empty string so the select's value is never ambiguous. */
+  const [filters, setFilters] = useState<SlotFilterState>({ status: 'all', platform: 'all', mediaType: 'all' });
   const [previewOverride, setPreviewOverride] = useState<Record<string, number> | null>(null);
+
+  /**
+   * Filtering is client-side, deliberately.
+   *
+   * `calendar.get` returns a campaign's whole slot list in one read — a 30-day
+   * campaign at three posts a week is ninety rows — so a filter that went back
+   * to the server would spend a round trip to remove rows the browser already
+   * has. It also keeps drag-and-drop honest: `moveSlot` writes through
+   * `content.schedule` and then reloads, and a server-side filter would make a
+   * slot dragged out of the current filter vanish mid-gesture.
+   */
+  const visibleSlots = useMemo(() => filterSlots(view?.slots ?? [], filters), [view?.slots, filters]);
   const [previewing, setPreviewing] = useState(false);
   const [pickerDate, setPickerDate] = useState('');
   // The objective and the proposed plan moved to `CampaignWizard` (CMP-01.1/.2)
@@ -377,8 +395,10 @@ export function CalendarBoard() {
         </div>
       ) : null}
 
+      <SlotFilters slots={view.slots} value={filters} onChange={setFilters} />
+
       <MonthGrid
-        slots={view.slots}
+        slots={visibleSlots}
         busy={busy}
         onAddToDay={openTriggerFor}
         onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
@@ -500,5 +520,170 @@ function MonthGrid({
         ))}
       </ol>
     </section>
+  );
+}
+
+/* ── §8.7's filters ─────────────────────────────────────────────────────── */
+
+interface SlotFilterState {
+  status: string;
+  platform: string;
+  mediaType: string;
+}
+
+/**
+ * §8.7 asks the calendar for status, platform and content-type filters. It had
+ * none, which mattered most at exactly the scale a calendar is for: ninety slots
+ * across a month, and no way to answer "what is waiting on me" or "what is going
+ * to Instagram" without reading all of them.
+ *
+ * ── Options come from the data, not from an enum ──────────────────────────
+ *
+ * A fixed list of five platforms and four media types would offer filters that
+ * match nothing — a campaign posting only to TikTok would still show an
+ * Instagram option that empties the board. Deriving them from the slots means
+ * every option has at least one thing behind it, and it cannot drift when a
+ * platform is added to the registry.
+ *
+ * `platform: null` gets its own option rather than being hidden: the date-picker
+ * and drag-and-drop paths place a post on a day without choosing an account, so
+ * "no account yet" is a real and actionable state — those are the slots the
+ * scheduler will fall back to a playbook default for.
+ */
+function SlotFilters({
+  slots,
+  value,
+  onChange,
+}: {
+  slots: Slot[];
+  value: SlotFilterState;
+  onChange: (next: SlotFilterState) => void;
+}) {
+  const statuses = distinct(slots.map((s) => s.status));
+  const platforms = distinct(slots.map((s) => s.platform ?? UNSET));
+  const mediaTypes = distinct(slots.map((s) => s.mediaType ?? UNSET));
+
+  const active = value.status !== 'all' || value.platform !== 'all' || value.mediaType !== 'all';
+  const shown = filterSlots(slots, value).length;
+
+  // One option means no choice. A select that can only be set to what it
+  // already shows is furniture.
+  const useful = statuses.length > 1 || platforms.length > 1 || mediaTypes.length > 1;
+  if (!useful) return null;
+
+  return (
+    <section className="flex flex-wrap items-end gap-3 rounded border border-border bg-surface p-4">
+      <span className="pb-2 text-[13px] font-medium text-ink-muted">Show</span>
+
+      {statuses.length > 1 ? (
+        <FilterSelect
+          id="cal-status"
+          label="Status"
+          value={value.status}
+          options={statuses}
+          onChange={(status) => onChange({ ...value, status })}
+        />
+      ) : null}
+
+      {platforms.length > 1 ? (
+        <FilterSelect
+          id="cal-platform"
+          label="Account"
+          value={value.platform}
+          options={platforms}
+          onChange={(platform) => onChange({ ...value, platform })}
+        />
+      ) : null}
+
+      {mediaTypes.length > 1 ? (
+        <FilterSelect
+          id="cal-type"
+          label="Type"
+          value={value.mediaType}
+          options={mediaTypes}
+          onChange={(mediaType) => onChange({ ...value, mediaType })}
+        />
+      ) : null}
+
+      {active ? (
+        <div className="flex items-center gap-3 pb-1.5">
+          <span className="text-[13px] tabular-nums text-ink-muted">
+            {shown} of {slots.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange({ status: 'all', platform: 'all', mediaType: 'all' })}
+            className="text-[13px] font-medium text-brand-purple underline"
+          >
+            Clear
+          </button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-[12px] text-ink-muted" htmlFor={id}>
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] capitalize text-ink"
+      >
+        <option value="all">All</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {optionLabel(o)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * The sentinel for "this slot has no account yet". A literal rather than `null`
+ * because it has to survive a round trip through an `<option value>`, which is
+ * always a string.
+ */
+const UNSET = '__unset__';
+
+function optionLabel(value: string): string {
+  if (value === UNSET) return 'No account yet';
+  return value.replace(/_/g, ' ');
+}
+
+function distinct(values: string[]): string[] {
+  return [...new Set(values)].sort((a, b) => {
+    // The unset bucket sorts last: it is a gap to fill, not a category.
+    if (a === UNSET) return 1;
+    if (b === UNSET) return -1;
+    return a.localeCompare(b);
+  });
+}
+
+function filterSlots(slots: Slot[], f: SlotFilterState): Slot[] {
+  return slots.filter(
+    (s) =>
+      (f.status === 'all' || s.status === f.status) &&
+      (f.platform === 'all' || (s.platform ?? UNSET) === f.platform) &&
+      (f.mediaType === 'all' || (s.mediaType ?? UNSET) === f.mediaType),
   );
 }

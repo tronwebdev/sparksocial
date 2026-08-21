@@ -1385,6 +1385,8 @@ export interface CampaignStore {
       pillar: string | null;
       status: string;
       scheduledAt: Date | null;
+      /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
+      platform: string | null;
     }>
   >;
   setStatus(campaignId: string, orgId: string, status: string): Promise<void>;

@@ -330,6 +330,60 @@ describe('calendar.get', () => {
 
     await expect(calendarGet.handler({ campaignId }, other)).rejects.toThrow(ToolError);
   });
+
+  it("carries the platform a slot was placed on — §8.7's account filter", async () => {
+    const s = store();
+    const c = ctx(s);
+    const created = await campaignCreate.handler(
+      {
+        genomeId: 'gen_barber',
+        name: 'With accounts',
+        objective: 'bookings',
+        windowDays: 30,
+        startAt: START.toISOString(),
+        platforms: ['instagram'],
+      },
+      c,
+    );
+    await calendarGenerate.handler({ campaignId: created.campaignId }, c);
+
+    const out = await calendarGet.handler({ campaignId: created.campaignId }, c);
+    expect(out.slots.length).toBeGreaterThan(0);
+    // Not *every* slot: `placeCalendar` only assigns an account a playbook
+    // actually declares support for, so a text-only format in an
+    // Instagram-only campaign is correctly left unassigned rather than
+    // scheduled somewhere it cannot post.
+    const assigned = out.slots.filter((slot) => slot.platform !== null);
+    expect(assigned.length).toBeGreaterThan(0);
+    expect(assigned.every((slot) => slot.platform === 'instagram')).toBe(true);
+  });
+
+  it('reports platform null for a slot placed without an account, rather than guessing one', async () => {
+    // The date-picker and drag-and-drop paths place a post on a day without
+    // choosing where it goes. A fabricated default would make §8.7's filter lie
+    // about exactly the slots that still need a decision.
+    const s = store();
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+    await calendarGenerate.handler({ campaignId }, c);
+
+    const out = await calendarGet.handler({ campaignId }, c);
+    expect(out.slots.every((slot) => slot.platform === null)).toBe(true);
+  });
+
+  it('resolves the content type from the playbook rather than storing it', async () => {
+    // Same reasoning `content.draft` gives: a persisted copy could drift from
+    // the playbook definition, so both read it the same way.
+    const s = store();
+    const c = ctx(s);
+    const { campaignId } = await create(c);
+    await calendarGenerate.handler({ campaignId }, c);
+
+    const out = await calendarGet.handler({ campaignId }, c);
+    const types = new Set(out.slots.map((slot) => slot.mediaType));
+    expect(types.size).toBeGreaterThan(0);
+    for (const t of types) expect(['video', 'image', 'carousel', 'text']).toContain(t);
+  });
 });
 
 describe('campaign.list', () => {

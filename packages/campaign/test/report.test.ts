@@ -29,7 +29,7 @@ const PLAN: CampaignPlan = {
 };
 
 function slot(pillar: string, status: string) {
-  return { id: `slot_${Math.random()}`, playbookId: 'pb_x', mode: 'assemble', pillar, status, scheduledAt: null };
+  return { id: `slot_${Math.random()}`, playbookId: 'pb_x', mode: 'assemble', pillar, status, scheduledAt: null, platform: null };
 }
 
 function campaignStore(over: {

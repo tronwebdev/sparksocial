@@ -21,6 +21,7 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
       pillar: string | null;
       status: string;
       scheduledAt: Date | null;
+      platform: string | null;
     }>
   >();
 
@@ -76,6 +77,11 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
           pillar: s.pillar,
           status: 'scheduled',
           scheduledAt: s.scheduledAt,
+          // Carried through rather than dropped: `CampaignSlotInput` has
+          // supplied it since `CMP-01.4`, and losing it here made the dev store
+          // reproduce exactly the "no platform on the slot" case the scheduler's
+          // playbook fallback exists for.
+          platform: s.platform ?? null,
         })),
       ]);
       return next.length;

@@ -456,6 +456,21 @@ export const CalendarGetOutput = z.object({
       playbookName: z.string().nullable(),
       mode: z.string().nullable(),
       status: z.string(),
+      /**
+       * §8.7's platform filter. Null for a slot placed on a day rather than on
+       * an account — the date-picker and drag-and-drop paths place a post
+       * without choosing where it goes, and a fabricated default here would
+       * make the filter lie about them.
+       */
+      platform: z.string().nullable(),
+      /**
+       * §8.7's content-type filter, resolved from the playbook rather than
+       * stored: `content.draft` computes it the same way for the same reason —
+       * a persisted copy could drift from the playbook definition. Null when
+       * the playbook no longer resolves, which is a display hint failing, not a
+       * read failing.
+       */
+      mediaType: z.string().nullable(),
     }),
   ),
 });
@@ -505,6 +520,10 @@ export const calendarGet = defineTool({
         playbookName: s.playbookId ? (byId(s.playbookId)?.name ?? null) : null,
         mode: s.mode,
         status: s.status,
+        // `?? null` because the column is nullable but an in-memory store that
+        // never set the key yields `undefined`, which the schema rejects.
+        platform: s.platform ?? null,
+        mediaType: s.playbookId ? (byId(s.playbookId)?.output.media_type ?? null) : null,
       })),
     };
   },
