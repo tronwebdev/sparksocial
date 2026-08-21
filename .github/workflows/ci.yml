@@ -83,7 +83,29 @@ jobs:
       # CLAUDE.md: never commit tokens, PATs, or connection strings. Azure auth
       # is Key Vault + Managed Identity in cloud and `az login` locally, so a
       # connection string appearing in the tree is always a mistake.
+      #
+      # The gitleaks CLI, not `gitleaks/gitleaks-action@v2`. The action requires
+      # a paid GITLEAKS_LICENSE for organization-owned repositories, and without
+      # one it fails the job *after* reporting a clean scan:
+      #
+      #   No committed secrets
+      #   🛑 missing gitleaks license.
+      #
+      # A security gate that goes red on billing rather than on findings is worse
+      # than no gate, because the red stops meaning anything. The CLI is MIT and
+      # does the same detection; what the action adds on top is PR comments and a
+      # job summary, neither of which is why this job exists.
+      #
+      # Pinned rather than floating: a scanner that silently changes version is a
+      # scanner whose passes are not comparable between commits.
       - name: Scan history for credentials
-        uses: gitleaks/gitleaks-action@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.18.4
+        run: |
+          set -euo pipefail
+          base="https://github.com/gitleaks/gitleaks/releases/download"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL "${base}/v${GITLEAKS_VERSION}/${tarball}" | tar -xz gitleaks
+          # --redact so a finding names the file and the rule without reprinting
+          # the secret itself into a build log.
+          ./gitleaks detect --source . --redact --verbose --exit-code 1
