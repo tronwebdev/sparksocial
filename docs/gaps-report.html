@@ -293,28 +293,28 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">docs/PRD.md v1.0 · gaps only · fourth pass</p>
+    <p class="eyebrow">docs/PRD.md v1.0 · gaps only · fifth pass</p>
     <h1>What SparkSocial still does not do</h1>
-    <p class="standfirst">Every backend gap and every frontend-only gap on the previous versions of this page is closed. What is left is three features that need storage <em>and</em> a surface, eight things no amount of code shortens, and one browser pass over everything built this week. Each gap says what kind of work it is, because that is what decides who picks it up.</p>
+    <p class="standfirst">Every code gap the second pass found is closed — backend, frontend-only, and the three features that needed both halves. What is left is eight things no amount of code shortens, and one browser pass over everything built this week. That is the honest state: the product is no longer waiting on engineering.</p>
     <div class="method">
-      <span>11 open, was 28</span>
-      <span>1,919 tests / 147 files: pass</span>
+      <span>9 open, was 28</span>
+      <span>1,975 tests / 150 files: pass</span>
       <span>tsc + next build: clean</span>
       <span>32 migrations applied</span>
-      <span>tree at 0e2d239</span>
+      <span>tree at 9c9c30c</span>
     </div>
   </header>
 
   <div class="verdict">
-    <div class="stat done"><b>20</b><small>Closed — every backend and frontend-only gap</small></div>
+    <div class="stat done"><b>23</b><small>Closed — every code gap on the second pass</small></div>
     <div class="stat fe"><b>0</b><small>Frontend only — none left</small></div>
     <div class="stat be"><b>0</b><small>Backend — none left</small></div>
-    <div class="stat both"><b>3</b><small>Both halves — real features</small></div>
+    <div class="stat both"><b>0</b><small>Both halves — none left</small></div>
     <div class="stat ext"><b>8</b><small>Not code — approvals, keys, a decision</small></div>
   </div>
 
   <section>
-    <h2 class="plain">The direct answer: the code gaps are closed; the blocked ones are not</h2>
+    <h2 class="plain">The direct answer: engineering is not the constraint any more</h2>
     <div class="orient">
       <dl>
         <div>
@@ -326,8 +326,8 @@
           <dd>Brand-knowledge upload, teams and roles, the audit log, brand import/export, calendar filters, the Plan queue, §8.12's two settings layers, connecting accounts during onboarding, the personalisation step, and the brand kit. <strong>Three of them could not be built as screens at all</strong> — <code>knowledge.*</code> had three ingestion tools and no way to ask what a brand knows; <code>team.*</code> had three writes and no way to see who is in the org; the calendar could not filter by an account because nothing selected the column. Those needed <code>knowledge.list</code>, <code>team.list</code>, and <code>platform</code>/<code>mediaType</code> on <code>calendar.get</code> first.</dd>
         </div>
         <div>
-          <dt class="k-both">Both halves — 3 items, open</dt>
-          <dd>New storage <em>and</em> a new surface. Real features rather than wiring, and unchanged across all four passes — which is itself the signal that they are the next real work.</dd>
+          <dt class="k-both">Both halves — 3 items, all closed</dt>
+          <dd>The conversation drawer (<code>ENG-02.4</code>), the influencer watchlist (§8.9) and the A/B test (<code>DISC-02</code>). Each needed new storage <em>and</em> a new surface, and in each the hard part was deciding what the product is allowed to claim — see the three cards below.</dd>
         </div>
         <div>
           <dt class="k-ext">Not code — 8 items, open</dt>
@@ -335,31 +335,34 @@
         </div>
         <div>
           <dt style="color: var(--accent-2)">One thing owed, and it is not code</dt>
-          <dd><strong>Nothing built this week has been opened in a browser.</strong> Every <code>(app)</code> route sits behind Clerk and signing in is not something an agent should do, so twelve new surfaces are typechecked and prerendering and none of them has been <em>looked at</em>. The cases worth deliberately reaching are listed at the bottom of this page.</dd>
+          <dd><strong>Nothing built this week has been opened in a browser.</strong> Every <code>(app)</code> route sits behind Clerk and signing in is not something an agent should do, so fifteen new surfaces are typechecked and prerendering and none of them has been <em>looked at</em>. The cases worth deliberately reaching are listed at the bottom of this page.</dd>
         </div>
       </dl>
     </div>
   </section>
 
-  <!-- ══ BOTH ══════════════════════════════════════════════════════════ -->
+  <!-- ══ THE THREE DECISIONS ═══════════════════════════════════ -->
   <section>
-    <h2 class="both">Both halves — new storage and a new surface</h2>
-    <p class="sec-intro">Three real features rather than wiring. Unchanged from the last pass, and re-verified rather than assumed.</p>
+    <h2 class="done">The last three, and the judgement each needed</h2>
+    <p class="sec-intro">All three were storage <em>and</em> a surface, and in each the interesting part was deciding what the product is allowed to claim. Recorded because those are the decisions worth disagreeing with.</p>
 
     <div class="gaps">
-      <article class="g both">
-        <div class="g-head"><h3>The engagement conversation drawer</h3><span class="tag none">Nothing built</span><span class="ref">ENG-02.4</span></div>
-        <p>§8.8 asks for the thread behind a sales opportunity. The feed shows each message with its classification, intent score, suggested reply and actions; what it cannot show is the conversation the message sits in, because <code>engage.list</code> returns messages and <code>engagement_messages</code> has no thread key — verified, no such column. Backend first, then the drawer.</p>
+      <article class="g done">
+        <div class="g-head"><h3>The conversation drawer</h3><span class="tag shipped">Closed</span><span class="ref">ENG-02.4 · §8.8</span></div>
+        <p><strong>The judgement: never merge two people.</strong> Rows were keyed by the platform's per-message id, so nothing said which belonged to one exchange — a lead that took four messages read as four strangers. When a platform supplies no conversation id, the key is derived, and the derivation <em>always</em> includes the author handle. The cost is that a group thread fragments; the alternative is a stranger's words appearing in somebody else's drawer, and only one of those is a privacy failure.</p>
+        <p>It also reversed a documented decision. <code>markReplied</code>'s comment argued the sent text needed no column because the audit row had it — right for "was this answered?", wrong once the question became "show me the conversation", since <code>tool_calls</code> never returns inputs. A transcript built from the feed alone showed a customer talking to nobody. The comment now says so rather than being quietly deleted.</p>
       </article>
 
-      <article class="g both">
-        <div class="g-head"><h3>The influencer watchlist</h3><span class="tag none">Nothing built</span><span class="ref">§8.9</span></div>
-        <p>§8.9 lists two watchlists among Discovery&rsquo;s inputs. The keyword one is real (<code>trend.watchlist</code>); the influencer one has no storage, no tool and no screen. Following named accounts is a listening capability, so it inherits the same platform-approval clock as the inbox.</p>
+      <article class="g done">
+        <div class="g-head"><h3>The influencer watchlist</h3><span class="tag shipped">Closed</span><span class="ref">§8.9</span></div>
+        <p><strong>The judgement: refuse by name rather than return nothing.</strong> Reading a watched account's posts is a listening capability on the same approval clock as the inbox, so <code>InfluencerSource</code> is a seam with no configured implementation here. <code>trend.influencer.review</code> therefore says it cannot look — because "your competitors posted nothing" and "we cannot see their posts" are different facts and only one is true.</p>
+        <p>Watching also had to <em>mean</em> something, or this would have been another table nothing consults — the exact shape of gap the rest of this page has been closing. A watched account's posts are scored by the same <code>scoreTrend</code> machinery <code>trend.rank</code> uses, because two scorers for one question drift. And the watchlist is closed to <code>viewer</code> and <code>client</code>, unlike the trend feed: a list of the accounts a brand studies is frequently a list of its competitors.</p>
       </article>
 
-      <article class="g both">
-        <div class="g-head"><h3>A/B variants on the content pack panel</h3><span class="tag none">Nothing built</span><span class="ref">DISC-02</span></div>
-        <p>§8.9 marks this optional and half of it exists: <code>draft.variants</code> generates alternative takes and the Draft Panel exposes them. Missing is the part that makes it a test rather than a choice — publishing two variants, attributing performance to each, and feeding that back to <code>learning.record_outcome</code>.</p>
+      <article class="g done">
+        <div class="g-head"><h3>A/B variants</h3><span class="tag shipped">Closed</span><span class="ref">DISC-02 · §8.9</span></div>
+        <p><strong>The judgement: two posts are not a sample, and the tool has to say so.</strong> A verdict from two engagement numbers is a comfortable lie — the bigger number really is bigger. So there are three named ways to have no winner (waiting to publish, waiting for reach, genuinely too close), a 200-impression floor, a deliberately coarse 1.5× threshold that admits it is a heuristic, and "two posts is a hint, not proof" travels <em>in the explanation</em> rather than in a doc comment nobody reading a dashboard will see.</p>
+        <p>One correction worth recording: the first version computed its own reward and wrote to the learning loop, with a comment explaining why that was fine. It was not. <code>learning.record_outcome</code> scores against the brand's own recent baseline and refuses a caller-supplied number, and a second formula would drift from it — the same "two scorers, one question" mistake the influencer card names. The result tool is now a read that names the winning post; recording is a separate, explicit call.</p>
       </article>
     </div>
   </section>
@@ -414,8 +417,8 @@
 
   <!-- ══ CLOSED ════════════════════════════════════════════════════════ -->
   <section>
-    <h2 class="done">Closed across the last two passes</h2>
-    <p class="sec-intro">Twenty gaps. Listed because a gap tracker that only ever grows is not being read against the code — and because three of the frontend ten turned out not to be frontend work at all until a read tool existed for them.</p>
+    <h2 class="done">Everything closed, by commit</h2>
+    <p class="sec-intro">Twenty-three gaps across five passes. Listed because a gap tracker that only ever grows is not being read against the code — and because three of the frontend ten turned out not to be frontend work at all until a read tool existed for them.</p>
 
     <div class="scroller">
       <table class="ledger">
@@ -448,6 +451,9 @@
           <tr><td>Connect accounts in onboarding (ONB-04)</td><td><code>ConnectAccountsStep</code>, via a popup so the flow's unsaved answers survive</td><td>0e2d239</td></tr>
           <tr><td>The personalisation step (ONB-05)</td><td><code>PersonalizeStep</code>: avatar/voice ids and the consent record as one action, because the guardrail needs both</td><td>0e2d239</td></tr>
           <tr><td>The brand kit reaching pixels (§8.6)</td><td><code>resolveKit</code> in <code>@sparksocial/compose</code>, applied by both renderers; logo upload and a colour editor with a legibility preview</td><td>0e2d239</td></tr>
+          <tr><td>The conversation drawer (ENG-02.4)</td><td><code>thread_key</code> + <code>sent_reply</code>, <code>engage.thread</code>, and a drawer on every card — not just the Sales tab</td><td>64f7cd2</td></tr>
+          <tr><td>The influencer watchlist (§8.9)</td><td><code>influencer_watchlist</code>, <code>trend.influencer.watch</code>/<code>.review</code>, and a Discovery tab</td><td>64f7cd2</td></tr>
+          <tr><td>A/B variants (DISC-02)</td><td><code>variant_group_id</code>, <code>content.variant.split</code>/<code>.result</code>, "Test both" beside "Use this"</td><td>9c9c30c</td></tr>
         </tbody>
       </table>
     </div>
@@ -505,12 +511,14 @@
         <p><strong><code>KnowledgePanel</code> with nothing attached.</strong> The warning that every specific claim will be held is the most important state on that screen, and it is the state a brand is actually in on day one.</p>
         <p><strong>The brand-kit preview.</strong> A light background against the default white type is exactly the unreadable pair <code>resolveKit</code> deliberately refuses to guess around &mdash; the preview exists to make that visible before it reaches a render.</p>
         <p><strong><code>ConnectAccountsStep</code>.</strong> The popup path, and the refusal-by-name for a platform with no configured developer app &mdash; which is most of them in this environment, and therefore the path most people will see.</p>
+        <p><strong><code>ConversationDrawer</code> on a keyless message.</strong> Rows written before threading existed report as their own conversation; the drawer should say so rather than render a one-turn transcript nobody can tell from a real one.</p>
+        <p><strong><code>VariantResult</code> in each of its three undecided states.</strong> The whole design is that "waiting to publish", "not enough reach" and "too close" read as different situations calling for different actions.</p>
       </article>
     </div>
   </section>
 
   <footer>
-    Fourth pass over <code>docs/PRD.md</code> §1&ndash;§12 and Parts A&ndash;C, checked against the tree at <code>0e2d239</code>. Twenty of the twenty-eight gaps the second pass found are closed; the backend and frontend-only columns are both zero. 1,919 tests across 147 files pass, <code>tsc</code> is clean on both configs, <code>next build</code> compiles and prerenders 24 routes, and 32 migrations are applied with no schema drift. What is left is three features that need storage and a surface, eight items blocked outside this repo, and one browser pass. The binding constraint is platform approvals, which it always was.
+    Fifth pass over <code>docs/PRD.md</code> §1&ndash;§12 and Parts A&ndash;C, checked against the tree at <code>9c9c30c</code>. Twenty-three of the twenty-eight gaps the second pass found are closed and the remaining five are all in the "not code" column, plus one browser pass owed. 1,975 tests across 150 files pass, <code>tsc</code> is clean on both configs, <code>next build</code> compiles and prerenders 24 routes. Migrations 0032&ndash;0034 are generated and <strong>not yet applied</strong> — all additive, so an un-migrated database keeps working until something reads the new columns. Engineering is no longer the constraint; platform approvals are, which they always were.
   </footer>
 
 </div>

@@ -28,7 +28,7 @@ consolidations documented in `STATUS.md`, not missing capabilities.
 | --- | --- | --- |
 | Backend | **0** | All ten closed 20–21 Aug. |
 | Frontend only | **0** | All ten closed 21 Aug. |
-| Backend *and* frontend | 3 | New storage *and* a new surface. Real features. |
+| Backend *and* frontend | **0** | All three closed 21 Aug. |
 | Not code | 8 | Approvals, vendor keys, or a product decision. |
 | Verification owed | 1 | Every screen built this week. None has been opened in a browser. |
 
@@ -41,25 +41,16 @@ could not exist as write-only screens: `knowledge.list`, `team.list`, `platform`
 `compose.static`/`compose.render` — both fields had been writable for a while and no
 renderer read either.
 
+The three both-halves features are closed too: `ENG-02.4`'s conversation drawer
+(`thread_key` + `sent_reply` on `engagement_messages`, `engage.thread`), §8.9's influencer
+watchlist (`influencer_watchlist`, `trend.influencer.watch`/`.review`), and `DISC-02`'s A/B
+test (`variant_group_id` on `content_items`, `content.variant.split`/`.result`). Migrations
+0032–0034, all additive and **not yet applied** — run `npm run migrate -w @sparksocial/db`.
+
+**Every code gap the second pass found is now closed.** What is left is eight items blocked
+outside this repo and one browser pass.
+
 ---
-
-## Both halves — new storage and a new surface
-
-Three real features rather than wiring.
-
-- [ ] **The engagement conversation drawer (ENG-02.4).** §8.8 asks for the thread behind a
-      sales opportunity. The feed shows each message with its classification, intent score,
-      suggested reply and actions; it cannot show the conversation the message sits in, because
-      `engage.list` returns messages and `engagement_messages` has no thread key (verified — no
-      such column). Backend first, then the drawer.
-- [ ] **The influencer watchlist.** §8.9 lists two watchlists among Discovery's inputs. The
-      keyword one is real (`trend.watchlist`); the influencer one has no storage, no tool and no
-      screen. Following named accounts is a listening capability, so it inherits the same
-      platform-approval clock as the inbox.
-- [ ] **A/B variants on the content pack panel (DISC-02).** §8.9 marks this optional and half of
-      it exists: `draft.variants` generates alternative takes and the Draft Panel exposes them.
-      Missing is the part that makes it a test rather than a choice — publishing two variants,
-      attributing performance to each, and feeding that to `learning.record_outcome`.
 
 ## Not code — approvals, keys, or a decision
 
