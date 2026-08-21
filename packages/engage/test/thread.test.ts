@@ -208,6 +208,36 @@ describe('engage.thread', () => {
     expect(out.turns.find((t) => t.text === 'large please')!.intentScore).toBeCloseTo(0.82);
   });
 
+  it('marks an outbound turn with how it was sent', async () => {
+    /**
+     * Caught by looking at a real thread, not by a unit test: the outbound turn
+     * carried no `status`, so the drawer's "sent by SPARK, unattended" label was
+     * unreachable. That distinction is the whole reason the status enum keeps
+     * `auto_handled` apart from `replied` — whether anybody read the words before
+     * they went out is the first thing somebody reviewing a conversation wants.
+     */
+    const rows = [
+      row({
+        id: 'm1',
+        threadKey: 'dm:instagram:ada',
+        status: 'auto_handled',
+        sentReply: 'SPARK answered this one',
+        sentAt: new Date('2026-08-20T10:05:00Z'),
+      }),
+    ];
+    const out = await engageThread.handler({ genomeId: 'gen_1', messageId: 'm1', limit: 50 }, ctx(rows));
+    const outbound = out.turns.find((t) => t.direction === 'outbound')!;
+    expect(outbound.status).toBe('auto_handled');
+  });
+
+  it('distinguishes an attended reply from an unattended one', async () => {
+    const rows = [
+      row({ id: 'm1', threadKey: 'k', status: 'replied', sentReply: 'a person sent this', sentAt: new Date('2026-08-20T10:05:00Z') }),
+    ];
+    const out = await engageThread.handler({ genomeId: 'gen_1', messageId: 'm1', limit: 50 }, ctx(rows));
+    expect(out.turns.find((t) => t.direction === 'outbound')!.status).toBe('replied');
+  });
+
   it('says when it truncated rather than silently dropping the oldest turns', async () => {
     const out = await engageThread.handler({ genomeId: 'gen_1', messageId: 'm1', limit: 1 }, ctx(conversation()));
     expect(out.truncated).toBe(true);

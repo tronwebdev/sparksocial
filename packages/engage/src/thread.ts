@@ -70,6 +70,18 @@ const Turn = z.object({
   /** Inbound only: the triage verdict, when one was made. */
   category: z.string().optional(),
   intentScore: z.number().optional(),
+  /**
+   * The row's lifecycle status, on **both** directions — it means something
+   * different either way and both are worth showing.
+   *
+   * On an inbound turn it is where the message got to (`new`, `classified`,
+   * `escalated`). On an outbound turn it is *how the reply was sent*: `replied`
+   * means a person read the words first, `auto_handled` means SPARK sent them
+   * unattended. That distinction is the reason the status enum keeps the two
+   * apart rather than collapsing them onto `replied`, and a transcript that
+   * dropped it would flatten the one fact somebody reviewing a conversation most
+   * needs — whether anybody checked before it went out.
+   */
   status: z.string().optional(),
 });
 
@@ -194,6 +206,10 @@ export const engageThread = defineTool({
             at: (m.sentAt ?? m.resolvedAt ?? m.receivedAt).toISOString(),
             text: m.sentReply,
             messageId: m.id,
+            // Carried so the drawer can mark an unattended send. Omitting it
+            // made that label unreachable — the component read `turn.status` on
+            // an outbound turn that never had one.
+            status: m.status,
           },
         ];
       })
