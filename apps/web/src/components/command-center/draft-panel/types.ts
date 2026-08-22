@@ -25,6 +25,15 @@ export interface DraftView {
   mediaType: 'video' | 'image' | 'carousel' | 'text';
   beats: ResolvedBeat[];
   status?: string;
+  /**
+   * The campaign this post belongs to, when it belongs to one.
+   *
+   * Absent is a real and common state — a one-off post created outside the
+   * campaign flow — and it has a consequence worth surfacing: autonomy is a
+   * property of the campaign, so a post with none is held for review rather
+   * than published.
+   */
+  campaignId?: string;
   /** The publish receipt — present once `status` is 'published' or 'rolled_back'. */
   platform?: string;
   externalId?: string;

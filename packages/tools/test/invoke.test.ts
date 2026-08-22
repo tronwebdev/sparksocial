@@ -21,6 +21,22 @@ const NOW = new Date('2026-08-15T12:00:00Z');
 
 /* ── Fixtures ──────────────────────────────────────────────────────── */
 
+/**
+ * A publish-effect `Echo`, in a campaign of a given posture.
+ *
+ * Autonomy became a property of the campaign on 22 August: `policy.ts` reads
+ * `subject.campaignApprovalMode` and treats its absence as "requires review".
+ * So a publish fake with no `policySubject` is now gated before it reaches the
+ * handler, whatever the brand says — which is why several tests here needed to
+ * start naming a campaign.
+ */
+const publishAs = (mode: 'autopublish' | 'review_first_week' | 'review_everything') => ({
+  ...Echo,
+  name: 'publish.now',
+  effect: 'publish' as const,
+  policySubject: async () => ({ campaignApprovalMode: mode }),
+});
+
 const Echo = defineTool({
   name: 'draft.copy.write',
   version: 3,
@@ -384,20 +400,20 @@ describe('P1 exit criterion — one capability, two callers, identical rows', ()
 
   it('both callers get the identical policy decision for the identical situation', async () => {
     const h = harness();
-    const gatedBrand: InvokeRequest['brand'] = { ...brand, approvalMode: 'review_everything' };
 
-    // `publish` effect so approval mode actually bites for both.
+    // `publish` effect so the approval ladder actually bites for both, and the
+    // review posture on the *campaign*, which is where autonomy lives.
     __resetRegistry();
-    register({ ...Echo, name: 'publish.now', effect: 'publish' });
+    register(publishAs('review_everything'));
 
-    await invokeTool(request({ tool: 'publish.now', caller: 'user', brand: gatedBrand }), h.deps);
-    await invokeTool(request({ tool: 'publish.now', caller: 'agent', brand: gatedBrand }), h.deps);
+    await invokeTool(request({ tool: 'publish.now', caller: 'user', brand }), h.deps);
+    await invokeTool(request({ tool: 'publish.now', caller: 'agent', brand }), h.deps);
 
     const [ui, agent] = h.rows as [ToolCallRecord, ToolCallRecord];
     expect(ui.decision).toBe('approval');
     expect(agent.decision).toBe('approval');
     expect(ui.ruleId).toBe(agent.ruleId);
-    expect(ui.ruleId).toBe('approval_mode.review_everything');
+    expect(ui.ruleId).toBe('campaign.review_everything');
   });
 
   it('records the tool version, so a row stays interpretable after the schema moves', async () => {
@@ -564,17 +580,14 @@ describe('gating', () => {
   it('the audit row carries the rule id, so the Review queue can say why', async () => {
     const h = harness();
     __resetRegistry();
-    register({ ...Echo, name: 'publish.now', effect: 'publish' });
+    register(publishAs('review_everything'));
 
-    await invokeTool(
-      request({ tool: 'publish.now', brand: { ...brand, approvalMode: 'review_everything' } }),
-      h.deps,
-    );
+    await invokeTool(request({ tool: 'publish.now', brand }), h.deps);
 
     expect(h.rows[0]).toMatchObject({
       status: 'gated',
       decision: 'approval',
-      ruleId: 'approval_mode.review_everything',
+      ruleId: 'campaign.review_everything',
     });
     expect(h.rows[0]!.reason).toContain('reviews all content');
   });
@@ -657,7 +670,11 @@ describe('policySubject — brand platform/content-type restrictions actually fi
     ...Echo,
     name: 'publish.now',
     effect: 'publish' as const,
-    policySubject: subject,
+    // The campaign is folded in around whatever the test derives. Without it the
+    // publish is held for review before the platform rules are reached, and
+    // "lets an unrestricted platform through" fails for a reason that has
+    // nothing to do with platforms — see `publishAs`.
+    policySubject: async () => ({ campaignApprovalMode: 'autopublish' as const, ...(await subject()) }),
   });
 
   it('routes a restricted platform to approval, from the tool own derivation', async () => {
@@ -758,7 +775,9 @@ describe('reserveIdempotent — two concurrent calls do not both take the side e
     name: 'publish.now',
     effect: 'publish' as const,
     idempotent: false,
-    policySubject: async () => ({}),
+    // In an autopublishing campaign, so the handler is actually reached — this
+    // suite is about the idempotency claim, not the approval ladder.
+    policySubject: async () => ({ campaignApprovalMode: 'autopublish' as const }),
   };
 
   function claimingHarness() {
@@ -822,17 +841,15 @@ describe('reserveIdempotent — two concurrent calls do not both take the side e
 
   it('does not burn the key on a gated call, so the approved replay is not a duplicate', async () => {
     // The claim sits after the gate on purpose: a held call took no side effect.
-    register(NonIdempotentPublish);
+    // The hold comes from the campaign now — `brand.approvalMode` is no longer
+    // read by rule 7, so setting it here would have quietly stopped gating.
+    register({
+      ...NonIdempotentPublish,
+      policySubject: async () => ({ campaignApprovalMode: 'review_everything' as const }),
+    });
     const { deps, claimed } = claimingHarness();
 
-    const gated = await invokeTool(
-      request({
-        tool: 'publish.now',
-        idempotencyKey: 'k3',
-        brand: { ...brand, approvalMode: 'review_everything' },
-      }),
-      deps,
-    );
+    const gated = await invokeTool(request({ tool: 'publish.now', idempotencyKey: 'k3', brand }), deps);
 
     expect(gated.status).toBe('gated');
     expect(claimed.has('k3')).toBe(false);
@@ -896,7 +913,12 @@ describe('policy rule 6 — engagement eligibility is derived, never asserted', 
     ...Echo,
     name: 'engage.reply.send',
     effect: 'publish' as const,
-    policySubject: async () => (engagement ? { engagement } : {}),
+    // The campaign is always named; `engagement` is what these tests vary.
+    // Otherwise rule 7 holds the reply before rule 6 is ever consulted.
+    policySubject: async () => ({
+      campaignApprovalMode: 'autopublish' as const,
+      ...(engagement ? { engagement } : {}),
+    }),
   });
 
   it('denies when the tool derives ineligible, whatever the request said', async () => {

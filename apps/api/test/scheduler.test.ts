@@ -17,7 +17,40 @@ import { memoryInvokeDeps } from '../src/app.js';
  * scheduler goes through `invokeTool`'s real middleware chain (policy included)
  * rather than calling a handler directly.
  */
-function fakePublishNow(opts: { effect?: 'publish' | 'external'; throws?: boolean; guardrailBlocked?: boolean } = {}) {
+/**
+ * A `content` stub that lets a publish reach the handler.
+ *
+ * Autonomy became a property of the campaign on 22 August, so `policy.ts` reads
+ * `subject.campaignApprovalMode` and treats its absence as "requires review".
+ * A due item with no campaign therefore never reaches `publish.now` at all — it
+ * is held and written back with `markNeedsReview` — which would make every
+ * failure-path test in this file assert the wrong branch.
+ *
+ * The campaign mode itself lives on the fake `publish.now`'s `policySubject`,
+ * where the real tool also puts it. What this adds is `markNeedsReview`: the
+ * scheduler calls it whenever a publish *is* held, and a `content` stub missing
+ * it fails with "not a function" rather than with anything the test was written
+ * to check.
+ *
+ * Spread *first* in each override, so a test that sets its own member wins.
+ */
+const publishable = () => ({
+  markNeedsReview: async () => {},
+});
+
+function fakePublishNow(
+  opts: {
+    effect?: 'publish' | 'external';
+    throws?: boolean;
+    guardrailBlocked?: boolean;
+    /**
+     * The campaign this item belongs to, as `policy.ts` sees it. Defaults to
+     * `autopublish` so a publish reaches the handler; pass a review mode to
+     * exercise the held path, or `null` for an item in no campaign at all.
+     */
+    campaignApprovalMode?: 'autopublish' | 'review_first_week' | 'review_everything' | null;
+  } = {},
+) {
   const calls: Array<Record<string, unknown>> = [];
   const tool = defineTool({
     name: 'publish.now',
@@ -37,10 +70,23 @@ function fakePublishNow(opts: { effect?: 'publish' | 'external'; throws?: boolea
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
-    // Mirrors the real `publish.now`'s own derivation closely enough for the
-    // scheduler's purposes: the platform comes off the validated input, which
-    // is what lets `brand.restricted_platform` fire on a scheduled publish.
-    policySubject: async (input) => ({ platform: input.platform }),
+    /**
+     * Mirrors the real `publish.now`'s derivation closely enough for the
+     * scheduler's purposes. The platform comes off the validated input, which
+     * is what lets `brand.restricted_platform` fire on a scheduled publish.
+     *
+     * `campaignApprovalMode` is here for the same reason the real tool reads it
+     * from `publishOrigin`: autonomy became a property of the campaign on
+     * 22 August, so `policy.ts` treats its absence as "requires review". Without
+     * it every publish in this file is held before it reaches the handler, and
+     * the failure-path tests all assert the wrong branch.
+     *
+     * Overridable, so the tests that are *about* being held can say so.
+     */
+    policySubject: async (input) => ({
+      platform: input.platform,
+      ...(opts.campaignApprovalMode === null ? {} : { campaignApprovalMode: opts.campaignApprovalMode ?? 'autopublish' }),
+    }),
     async handler(input) {
       calls.push(input);
       if (opts.throws) throw new Error('publish transport down');
@@ -92,12 +138,12 @@ function makeDeps(
     // re-selecting and re-holding it once a minute forever.
     content: {
       markBlocked: async () => {},
-      markNeedsReview: async () => {},
       // §10's retry counter. One attempt by default: every existing test in
       // this file exercises a *first* failure, and returning the ceiling here
       // would make all of them assert give-up behaviour they were not written
       // for.
       recordPublishFailure: async () => ({ attempts: 1 }),
+      ...publishable(),
     },
   } as unknown as ScopedDb;
 
@@ -194,7 +240,7 @@ describe('scheduler', () => {
     register(tool);
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => undefined }, content: { markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => undefined }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -211,7 +257,7 @@ describe('scheduler', () => {
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ playbookId: null })],
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -228,7 +274,7 @@ describe('scheduler', () => {
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ playbookId: 'pb_does_not_exist' })],
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -278,7 +324,7 @@ describe('scheduler', () => {
         genomes: { get: async () => genome() },
         // The re-read after drafting: the scheduler trusts the row, not the
         // tool's return value, because the row is what gets published.
-        content: { markBlocked, get: async () => ({ copy: [drafted] }) },
+        content: { ...publishable(), markBlocked, get: async () => ({ copy: [drafted] }) },
       } as unknown as ScopedDb,
     });
 
@@ -299,7 +345,7 @@ describe('scheduler', () => {
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -339,7 +385,7 @@ describe('scheduler', () => {
     register(tool);
     const markBlocked = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => genome() }, content: { markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
@@ -356,7 +402,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 1 }) },
+        content: { ...publishable(), markBlocked, recordPublishFailure: async () => ({ attempts: 1 }) },
       } as unknown as ScopedDb,
     });
 
@@ -374,7 +420,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked: async () => {}, recordPublishFailure },
+        content: { ...publishable(), markBlocked: async () => {}, recordPublishFailure },
       } as unknown as ScopedDb,
     });
 
@@ -399,7 +445,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked: async () => {}, recordPublishFailure },
+        content: { ...publishable(), markBlocked: async () => {}, recordPublishFailure },
       } as unknown as ScopedDb,
     });
 
@@ -420,7 +466,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
@@ -462,7 +508,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markBlocked: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
@@ -499,7 +545,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
@@ -510,19 +556,17 @@ describe('scheduler', () => {
 
   it('logs rather than throws when the approval ladder holds the publish for review', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
-    const { tool, calls } = fakePublishNow();
+    // The hold comes from the *campaign* now. Setting `loadBrandGovernance` to
+    // `review_everything` used to force this and no longer does anything —
+    // `policy.ts` stopped reading the brand's mode on 22 August.
+    const { tool, calls } = fakePublishNow({ campaignApprovalMode: 'review_everything' });
     register(tool);
     const markNeedsReview = vi.fn(async () => {});
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { markBlocked: async () => {}, markNeedsReview },
+        content: { ...publishable(), markBlocked: async () => {}, markNeedsReview },
       } as unknown as ScopedDb,
-      loadBrandGovernance: async () => ({
-        createdAt: new Date('2020-01-01T00:00:00Z'),
-        approvalMode: 'review_everything',
-        agentPaused: false,
-      }),
     });
 
     await runOnce(deps);
@@ -649,11 +693,32 @@ describe('scheduler + the real publish.now + the real dev store', () => {
       source: 'user',
     });
 
+    /**
+     * The post belongs to an autopublishing campaign, and it has to.
+     *
+     * Autonomy became a property of the campaign on 22 August, so an item in no
+     * campaign is held for review and never publishes — which is precisely what
+     * this end-to-end test would otherwise prove. Attaching a campaign also
+     * makes the fixture more like production than it was: a scheduled slot comes
+     * from `calendar.generate`, which always creates one.
+     */
+    const { id: campaignId } = await store.campaigns.create({
+      orgId,
+      genomeId,
+      name: 'Scheduler e2e',
+      objective: 'bookings',
+      windowDays: 30,
+      startAt: new Date(),
+      plan: {},
+      approvalMode: 'autopublish',
+    });
+
     const draft = await store.content.createDraft({
       genomeId,
       orgId,
       playbookId: 'pb_workflow_clip',
       mode: 'synthesize',
+      campaignId,
       copy: [{ kind: 'text', beatId: 'b1', text: 'due for a real publish' }],
       why: { summary: 'test', factors: [], evidence: [], alternatives: [] },
     });

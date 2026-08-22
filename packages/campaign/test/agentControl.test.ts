@@ -139,6 +139,11 @@ describe('the switch actually reaches the policy engine', () => {
     role: 'owner' as const,
     now: new Date('2026-08-15T12:00:00Z'),
     brand: { createdAt: new Date('2026-01-01T00:00:00Z'), approvalMode: 'autopublish' as const, agentPaused },
+    // Autonomy is a property of the campaign as of 22 August, so a publish with
+    // no campaign is held for review. This file is about the kill switch, so the
+    // item sits in an autopublishing campaign and `agentPaused` stays the only
+    // thing being varied.
+    subject: { campaignApprovalMode: 'autopublish' as const },
     budget: { remainingCents: 10_000, estimatedCents: 0 },
   });
 

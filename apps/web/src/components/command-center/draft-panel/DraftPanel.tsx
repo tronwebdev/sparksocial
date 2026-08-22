@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -852,6 +853,32 @@ export function DraftPanel({
               log. `blocked` and `needs_review` share one banner because they
               share one column and one question — "why is this not going out" —
               but not one remedy, so the actions differ. */}
+          {/* A one-off post cannot publish itself, and nothing used to say so.
+              Autonomy is a property of the campaign as of 22 August, so a post
+              belonging to none is held for review however the brand is
+              configured. That is a deliberate consequence of the model and a
+              surprising one to meet at the moment you press schedule, which is
+              why it is stated here instead — before the work, not after it.
+
+              Only while editing: once the post is published or already held,
+              its own banner is the more specific thing to read. */}
+          {phase === 'editor' && draft && !draft.campaignId && draft.status !== 'published' ? (
+            <div className="rounded-lg border border-warn/40 bg-warn/10 p-3.5">
+              <p className="text-[13px] font-medium text-ink">This post is not part of a campaign</p>
+              <p className="mt-1 text-[12.5px] text-ink-muted">
+                It will wait for your approval rather than going out on its own — autonomy is set per
+                campaign, and this post has none. Add it to a campaign from the{' '}
+                <Link
+                  href="/calendar"
+                  className="font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                >
+                  calendar
+                </Link>{' '}
+                if you want it published unattended.
+              </p>
+            </div>
+          ) : null}
+
           {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'needs_review') ? (
             <StallNotice
               draft={draft}

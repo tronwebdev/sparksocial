@@ -39,7 +39,10 @@ const Publish = defineTool({
   idempotent: false,
   // Required of every publish tool by `defineTool` — see `PolicySubject`. These
   // tests are about containment flags, not platform restrictions.
-  policySubject: async () => ({}),
+  // In an autopublishing campaign: autonomy moved to the campaign on 22 August,
+  // so a publish fake with no campaign is held before the containment rules this
+  // file is about are ever reached.
+  policySubject: async () => ({ campaignApprovalMode: 'autopublish' as const }),
   async handler() {
     return { ok: true };
   },
@@ -361,8 +364,15 @@ describe('the agent goes through the same door as the UI', () => {
 
   it('a gated call is reported to the model as needing approval, not as a failure', async () => {
     const h = harness();
-    // review_everything makes the publish gate.
-    const gated = { ...brand, approvalMode: 'review_everything' as const };
+    // The hold comes from the campaign now — `brand.approvalMode` stopped being
+    // read by rule 7 on 22 August, so this re-registers the publish fake in a
+    // reviewing campaign instead of setting it on the brand.
+    __resetRegistry();
+    register({
+      ...Publish,
+      policySubject: async () => ({ campaignApprovalMode: 'review_everything' as const }),
+    });
+    const gated = brand;
     const model = vi.fn<ModelClient['turn']>()
       .mockResolvedValueOnce({ toolCalls: [{ id: 'tc1', name: 'publish.now', input: { text: 'hi' } }] })
       .mockResolvedValueOnce({ toolCalls: [], text: 'Queued for review.' });

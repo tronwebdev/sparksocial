@@ -21,7 +21,11 @@ const publishAsAgent = (brand: Awaited<ReturnType<ReturnType<typeof makeBrandGov
   role: 'owner' as const,
   now: new Date(),
   brand,
-  ...(subject ? { subject } : {}),
+  // Autonomy is a property of the campaign as of 22 August, so a publish with
+  // no campaign is held whatever the brand says. This file is about the brand
+  // *loader* carrying its fields through, so the item is in an autopublishing
+  // campaign and the brand's own fields stay the thing under test.
+  subject: { campaignApprovalMode: 'autopublish' as const, ...subject },
   budget: { remainingCents: 10_000, estimatedCents: 0 },
 });
 

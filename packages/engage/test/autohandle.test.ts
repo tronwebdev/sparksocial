@@ -137,6 +137,11 @@ describe('engage.autohandle', () => {
       role: 'owner' as const,
       now: new Date('2026-08-15T12:00:00Z'),
       brand: { createdAt: new Date('2026-01-01T00:00:00Z'), approvalMode: 'autopublish' as const, agentPaused: false },
+      // Autonomy is a property of the campaign as of 22 August, so a
+      // publish-effect call with no campaign is held for review whatever the
+      // brand says. This suite is about engagement eligibility, so the item is in an
+      // autopublishing campaign.
+      subject: { campaignApprovalMode: 'autopublish' as const },
       budget: { remainingCents: 10_000, estimatedCents: 0 },
     };
 

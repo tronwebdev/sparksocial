@@ -238,6 +238,24 @@ function scopeGrantedByCapability(
   return undefined;
 }
 
+/**
+ * What governs a publish with no campaign behind it.
+ *
+ * Autonomy is a property of a campaign (decided 22 August), so a post that
+ * belongs to no campaign has nobody's answer to apply. The choice is between
+ * inheriting the brand's old setting and requiring review, and it has to be
+ * review: inheriting would mean a brand set to `autopublish` silently
+ * autopublishes every one-off post forever, which is exactly the "publishes
+ * something nobody looked at" failure the whole governance model exists to
+ * prevent.
+ *
+ * The cost is real and worth naming: **a standalone post always waits for
+ * approval.** That is a behaviour change for anybody drafting one-offs outside a
+ * campaign, and it is the intended consequence of putting autonomy on campaigns
+ * rather than brands.
+ */
+const NO_CAMPAIGN_MODE = 'review_everything' as const;
+
 function evaluateRules(input: PolicyInput): Decision {
   const { tool, caller, role, now, brand, subject, budget, engagement } = input;
   const family = toolFamily(tool.name);
@@ -414,30 +432,47 @@ function evaluateRules(input: PolicyInput): Decision {
       }
     }
 
-    /* PRD §7.2's per-campaign scope. The campaign's own mode wins in either
-     * direction — see `subject.campaignApprovalMode`. */
-    const effectiveMode = subject?.campaignApprovalMode ?? brand.approvalMode;
+    /**
+     * §7.2's per-campaign scope, and as of 22 August the *only* scope:
+     * autonomy is a property of a campaign, not of a brand.
+     *
+     * `brand.approvalMode` is no longer consulted here. It remains on the brand
+     * as the template a new campaign is seeded from, so an owner still answers
+     * the question once — but the answer that governs a given post is the one
+     * on the campaign that post belongs to. A post belonging to none falls to
+     * {@link NO_CAMPAIGN_MODE}, which requires review; see there for why
+     * inheriting the brand's setting instead would be unsafe.
+     */
+    const effectiveMode = subject?.campaignApprovalMode ?? NO_CAMPAIGN_MODE;
+    const fromCampaign = subject?.campaignApprovalMode !== undefined;
 
     switch (effectiveMode) {
       case 'review_everything':
         return {
           kind: 'approval',
-          reason: subject?.campaignApprovalMode
+          reason: fromCampaign
             ? 'This campaign reviews all content before publishing.'
-            : 'Workspace reviews all content before publishing.',
-          ruleId: subject?.campaignApprovalMode
-            ? 'campaign.review_everything'
-            : 'approval_mode.review_everything',
+            : // Not "the workspace reviews everything" — it may not. The reason
+              // has to name the actual cause, or somebody will go and change a
+              // brand setting that is no longer read.
+              'This post belongs to no campaign, and autonomy is set per campaign.',
+          ruleId: fromCampaign ? 'campaign.review_everything' : 'campaign.absent',
         };
       case 'review_first_week': {
+        /**
+         * Still measured from the *brand's* creation, not the campaign's.
+         *
+         * The rung means "until this account has a track record", and that is a
+         * property of the account. Measuring from each campaign's start would
+         * restart the probation every time somebody launched one, which turns a
+         * one-week safeguard into a permanent one.
+         */
         const age = daysBetween(now, brand.createdAt);
         if (age < REVIEW_FIRST_WEEK_DAYS) {
           return {
             kind: 'approval',
             reason: `Reviewing everything for the first week (day ${age + 1} of ${REVIEW_FIRST_WEEK_DAYS}).`,
-            ruleId: subject?.campaignApprovalMode
-              ? 'campaign.review_first_week'
-              : 'approval_mode.review_first_week',
+            ruleId: 'campaign.review_first_week',
           };
         }
         break; // graduated — fall through to autopublish
@@ -445,7 +480,8 @@ function evaluateRules(input: PolicyInput): Decision {
       case 'autopublish':
         break;
     }
-    // PRD §7.1 — autopublish is the default once nothing above intervened.
+    // §7.1 — autopublish once nothing above intervened, and only ever because a
+    // campaign said so.
   }
 
   /* 8 ── Workspace override for the family, then the tool's own default. */

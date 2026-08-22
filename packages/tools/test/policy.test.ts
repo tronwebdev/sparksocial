@@ -43,7 +43,18 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
       ...(over.brand?.publishRoles ? { publishRoles: over.brand.publishRoles as Role[] } : {}),
       ...(over.brand?.maxPendingReview !== undefined ? { maxPendingReview: over.brand.maxPendingReview } : {}),
     },
-    ...(over.subject ? { subject: over.subject } : {}),
+    /**
+     * A permissive campaign, unless a test says otherwise.
+     *
+     * Autonomy is per campaign as of 22 August, so `brand.approvalMode` no
+     * longer reaches rule 7 and a publish with no campaign requires review.
+     * Most tests here are about some *other* rule and simply need the publish to
+     * get through — they used to get that from the brand's `autopublish`
+     * default, and they get it from here now. The tests that are genuinely about
+     * approval modes set this explicitly, and the ones about a *missing*
+     * campaign pass `subject: {}`.
+     */
+    subject: { campaignApprovalMode: 'autopublish', ...over.subject } as PolicyInput['subject'],
     budget: {
       remainingCents: over.budget?.remainingCents ?? 10_000,
       estimatedCents: over.budget?.estimatedCents ?? 0,
@@ -345,17 +356,18 @@ describe('7 — publishing governance', () => {
 
   describe('approval modes', () => {
     it('review_everything gates every publish', () => {
-      const d = evaluate(input({ tool: pub, brand: { approvalMode: 'review_everything' } }));
-      expect(ruleOf(d)).toBe('approval_mode.review_everything');
+      const d = evaluate(input({ tool: pub, subject: { campaignApprovalMode: 'review_everything' } }));
+      expect(ruleOf(d)).toBe('campaign.review_everything');
     });
 
     it('review_first_week gates inside the window and reports the day number', () => {
       const d = evaluate(input({
         tool: pub,
         now: new Date('2026-08-03T12:00:00Z'), // day 3 of 7
-        brand: { approvalMode: 'review_first_week', createdAt: BRAND_CREATED },
+        subject: { campaignApprovalMode: 'review_first_week' },
+        brand: { createdAt: BRAND_CREATED },
       }));
-      expect(ruleOf(d)).toBe('approval_mode.review_first_week');
+      expect(ruleOf(d)).toBe('campaign.review_first_week');
       expect(d.kind === 'approval' && d.reason).toContain('day 3 of 7');
     });
 
@@ -363,13 +375,14 @@ describe('7 — publishing governance', () => {
       const d = evaluate(input({
         tool: pub,
         now: new Date('2026-08-08T00:00:00Z'), // exactly 7 days after createdAt
-        brand: { approvalMode: 'review_first_week', createdAt: BRAND_CREATED },
+        subject: { campaignApprovalMode: 'review_first_week' },
+        brand: { createdAt: BRAND_CREATED },
       }));
       expect(d.kind).toBe('allow');
     });
 
     it('autopublish is the PRD §7.1 default when nothing else intervenes', () => {
-      const d = evaluate(input({ tool: pub, brand: { approvalMode: 'autopublish' } }));
+      const d = evaluate(input({ tool: pub, subject: { campaignApprovalMode: 'autopublish' } }));
       expect(d.kind).toBe('allow');
     });
   });
@@ -432,7 +445,7 @@ describe('8 — family overrides and the tool default', () => {
 
 describe('purity', () => {
   it('is deterministic and does not mutate its input', () => {
-    const i = input({ tool: { effect: 'publish' }, brand: { approvalMode: 'review_everything' } });
+    const i = input({ tool: { effect: 'publish' }, subject: { campaignApprovalMode: 'review_everything' } });
     const snapshot = JSON.stringify(i);
     const a = evaluate(i);
     const b = evaluate(i);
@@ -446,12 +459,14 @@ describe('purity', () => {
     const gated = evaluate(input({
       tool: { effect: 'publish' },
       now: new Date('2026-08-02T00:00:00Z'),
-      brand: { approvalMode: 'review_first_week', createdAt: BRAND_CREATED },
+      subject: { campaignApprovalMode: 'review_first_week' },
+      brand: { createdAt: BRAND_CREATED },
     }));
     const graduated = evaluate(input({
       tool: { effect: 'publish' },
       now: new Date('2026-08-20T00:00:00Z'),
-      brand: { approvalMode: 'review_first_week', createdAt: BRAND_CREATED },
+      subject: { campaignApprovalMode: 'review_first_week' },
+      brand: { createdAt: BRAND_CREATED },
     }));
     expect(gated.kind).toBe('approval');
     expect(graduated.kind).toBe('allow');
@@ -477,14 +492,15 @@ describe('9 — a granted approval', () => {
     const cases: Array<[string, PolicyInput]> = [
       ['effect.destructive', input({ tool: { effect: 'destructive' } })],
       [
-        'approval_mode.review_everything',
-        input({ tool: { effect: 'publish' }, brand: { approvalMode: 'review_everything' } }),
+        'campaign.review_everything',
+        input({ tool: { effect: 'publish' }, subject: { campaignApprovalMode: 'review_everything' } }),
       ],
       [
-        'approval_mode.review_first_week',
+        'campaign.review_first_week',
         input({
           tool: { effect: 'publish' },
-          brand: { approvalMode: 'review_first_week', createdAt: new Date('2026-08-13T00:00:00Z') },
+          subject: { campaignApprovalMode: 'review_first_week' },
+          brand: { createdAt: new Date('2026-08-13T00:00:00Z') },
         }),
       ],
       ['autonomy.approval', input({ tool: { autonomy: 'approval' } })],
@@ -723,7 +739,7 @@ describe('rule 4c — queue cap', () => {
 
 /* ── PRD §7.2: approvals, per campaign ────────────────────────────────────── */
 
-describe('rule 7 — a campaign’s own approval mode overrides the brand’s', () => {
+describe('rule 7 — autonomy is the campaign’s, and only the campaign’s', () => {
   const pub = {
     name: 'publish.now',
     effect: 'publish' as const,
@@ -757,9 +773,73 @@ describe('rule 7 — a campaign’s own approval mode overrides the brand’s', 
     expect(d.kind).toBe('allow');
   });
 
-  it('falls through to the brand when the campaign sets nothing', () => {
-    const d = evaluate(input({ tool: pub, role: 'owner', brand: { approvalMode: 'review_everything' } }));
-    expect(d).toMatchObject({ kind: 'approval', ruleId: 'approval_mode.review_everything' });
+  it('requires review when the post belongs to no campaign', () => {
+    /**
+     * The decision of 22 August, and the branch most worth pinning: autonomy is
+     * a property of a campaign, so a post with none has nobody's answer to
+     * apply. It must not inherit the brand's — a brand set to `autopublish`
+     * would then silently autopublish every one-off post forever, which is the
+     * exact failure the governance model exists to prevent.
+     *
+     * Built without the harness so the default campaign mode is genuinely
+     * absent; a spread cannot express "remove this key".
+     */
+    const base = input({ tool: pub, role: 'owner' });
+    const d = evaluate({ ...base, subject: { ...base.subject, campaignApprovalMode: undefined } });
+
+    expect(d).toMatchObject({ kind: 'approval', ruleId: 'campaign.absent' });
+  });
+
+  it('names the real cause, not a brand setting nobody reads any more', () => {
+    // Somebody who reads "the workspace reviews everything" will go and change
+    // `brand.approvalMode` and watch nothing happen.
+    const base = input({ tool: pub, role: 'owner', brand: { approvalMode: 'autopublish' } });
+    const d = evaluate({ ...base, subject: { ...base.subject, campaignApprovalMode: undefined } });
+
+    expect(d.kind).toBe('approval');
+    expect(d.kind === 'approval' ? d.reason : '').toMatch(/belongs to no campaign/);
+  });
+
+  it('ignores the brand’s mode entirely, in both directions', () => {
+    // The whole point of "per campaign only": the brand column is a template
+    // for new campaigns and is not consulted here.
+    const lenient = evaluate(
+      input({ tool: pub, role: 'owner', brand: { approvalMode: 'review_everything' }, subject: { campaignApprovalMode: 'autopublish' } }),
+    );
+    const strict = evaluate(
+      input({ tool: pub, role: 'owner', brand: { approvalMode: 'autopublish' }, subject: { campaignApprovalMode: 'review_everything' } }),
+    );
+
+    expect(lenient.kind).toBe('allow');
+    expect(strict).toMatchObject({ kind: 'approval', ruleId: 'campaign.review_everything' });
+  });
+
+  it('measures the first week from the brand, not the campaign', () => {
+    /**
+     * The rung means "until this account has a track record", which is a
+     * property of the account. Measuring from each campaign's start would
+     * restart probation on every launch and turn a one-week safeguard into a
+     * permanent one.
+     */
+    const young = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        subject: { campaignApprovalMode: 'review_first_week' },
+        brand: { createdAt: new Date(NOW.getTime() - 2 * 86_400_000) },
+      }),
+    );
+    const graduated = evaluate(
+      input({
+        tool: pub,
+        role: 'owner',
+        subject: { campaignApprovalMode: 'review_first_week' },
+        brand: { createdAt: new Date(NOW.getTime() - 30 * 86_400_000) },
+      }),
+    );
+
+    expect(young).toMatchObject({ kind: 'approval', ruleId: 'campaign.review_first_week' });
+    expect(graduated.kind).toBe('allow');
   });
 
   it('attributes a first-week hold to the campaign when the campaign chose it', () => {

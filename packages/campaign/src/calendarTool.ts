@@ -121,6 +121,15 @@ export const campaignCreate = defineTool({
     const inventory = (await ctx.db.assets.inventory(input.genomeId, ctx.orgId)) as AssetInventory;
     const startAt = input.startAt ? new Date(input.startAt) : new Date();
 
+    /**
+     * The brand's approval mode, read once, as this campaign's starting posture.
+     * See the `approvalMode` field below for why it is copied rather than
+     * referenced.
+     */
+    const brandTemplate = ctx.brandId
+      ? (await ctx.db.brands.get(ctx.brandId, ctx.orgId)).approvalMode
+      : 'review_everything';
+
     // The plan is snapshotted at creation, not recomputed on read: the resolver
     // and the Asset Graph both move underneath a live campaign, and reopening
     // it in week three must show the numbers the owner actually agreed to.
@@ -141,9 +150,22 @@ export const campaignCreate = defineTool({
       plan,
       ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
       ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
-      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
       ...(input.platforms.length ? { platforms: input.platforms } : {}),
-      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
+      /**
+       * Autonomy is a property of a campaign (decided 22 August), so this
+       * column is the operative one and `policy.ts` no longer reads the brand's.
+       *
+       * The brand's mode is the **template**: a campaign that does not name a
+       * mode inherits it here, once, at creation. Not at read time — a campaign
+       * whose autonomy silently tracked a brand setting changed months later is
+       * not a per-campaign control, and the owner who set the campaign up would
+       * have no way to see it had moved.
+       *
+       * Falling back to nothing would be worse than either: `policy.ts` treats
+       * an absent campaign mode as "requires review", so every post of every
+       * campaign created without an explicit mode would queue for approval.
+       */
+      approvalMode: input.approvalMode ?? brandTemplate,
     });
 
     ctx.logger.info('campaign created', {

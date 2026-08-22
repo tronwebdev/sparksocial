@@ -69,10 +69,16 @@ function publisher() {
     autonomy: 'auto',
     scopes: ['owner', 'admin', 'editor'],
     idempotent: true,
-    // Required of every publish tool by `defineTool` — see `PolicySubject`.
-    // These tests exercise the approval ladder, not platform restrictions, so
-    // there is no platform to report.
-    policySubject: async () => ({}),
+    /**
+     * Required of every publish tool by `defineTool` — see `PolicySubject`.
+     * These tests exercise the approval ladder, not platform restrictions, so
+     * there is no platform to report.
+     *
+     * The reviewing campaign is what holds these calls now: autonomy became a
+     * property of the campaign on 22 August, so the `review_everything` on
+     * `brand` is no longer what rule 7 reads.
+     */
+    policySubject: async () => ({ campaignApprovalMode: 'review_everything' as const }),
     async handler(input) {
       ran += 1;
       return { posted: input.text };
@@ -101,7 +107,7 @@ describe('a held call reaches the queue', () => {
     expect(pending).toHaveLength(1);
     expect(pending[0]!.tool).toBe('test.publish');
     // The queue shows the reason, so the reviewer knows what they are deciding.
-    expect(pending[0]!.ruleId).toBe('approval_mode.review_everything');
+    expect(pending[0]!.ruleId).toBe('campaign.review_everything');
   });
 
   it('enqueues once for a repeated hold, not twice', async () => {

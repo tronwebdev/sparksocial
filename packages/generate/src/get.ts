@@ -25,6 +25,15 @@ export const ContentGetOutput = z.object({
   mode: z.string(),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   status: z.string(),
+  /**
+   * The campaign this post belongs to, when it belongs to one.
+   *
+   * Exposed because autonomy is a property of the campaign (22 August): a post
+   * with no campaign is held for review rather than published, and a screen that
+   * offers to schedule one has to be able to say so. Absent is a real and common
+   * state — a one-off post created outside the campaign flow.
+   */
+  campaignId: z.string().optional(),
   beats: z.array(ResolvedBeat),
   why: Explanation.optional(),
   // The publish receipt — set once `status` is 'published' (or 'rolled_back',
@@ -97,6 +106,7 @@ export const contentGet = defineTool({
       mode: draft.mode,
       mediaType,
       status: draft.status,
+      ...(draft.campaignId ? { campaignId: draft.campaignId } : {}),
       beats: parsed.success ? parsed.data : [],
       ...(draft.why ? { why: draft.why } : {}),
       ...(draft.platform ? { platform: draft.platform } : {}),
