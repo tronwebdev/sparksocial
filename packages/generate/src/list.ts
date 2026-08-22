@@ -23,6 +23,16 @@ const ContentListItem = z.object({
   playbookId: z.string(),
   playbookName: z.string(),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']).optional(),
+  /**
+   * Which account this is going to, when one has been chosen.
+   *
+   * Absent on a calendar slot that has not been assigned a platform yet —
+   * `calendar.generate` writes the playbook and the date and leaves this to the
+   * slot's own platform choice, so "no platform yet" is a real state and not a
+   * missing value. Added so the Plan queue can filter by channel, which the
+   * Command Center prototype offers and had no data behind it.
+   */
+  platform: z.string().optional(),
   status: z.string(),
   /** The first written beat, truncated — enough to recognise the post in a list row. */
   summary: z.string(),
@@ -74,6 +84,7 @@ export const contentList = defineTool({
           playbookId: r.playbookId,
           playbookName: playbook?.name ?? r.playbookId,
           ...(playbook ? { mediaType: playbook.output.media_type } : {}),
+          ...(r.platform ? { platform: r.platform } : {}),
           status: r.status,
           summary: firstText ? truncate(firstText.text) : '(no copy yet)',
           ...(r.scheduledAt ? { scheduledAt: r.scheduledAt.toISOString() } : {}),

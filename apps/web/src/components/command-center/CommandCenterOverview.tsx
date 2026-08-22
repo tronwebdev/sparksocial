@@ -18,6 +18,8 @@ import { DraftPanel } from './draft-panel/DraftPanel';
 import { DraftList } from './DraftList';
 import { PerformancePanel } from './PerformancePanel';
 import { PlanQueue } from './PlanQueue';
+import { AgentIdentityCard } from './AgentIdentityCard';
+import { QuickActions } from './QuickActions';
 
 /**
  * CC-01 — Command Center Overview (`ui build/SparkSocial Command Center.dc.html`,
@@ -160,6 +162,32 @@ export function CommandCenterOverview() {
         </div>
       </header>
 
+      {/* ── The shell band (`F1`) ───────────────────────────────────────
+          Who the agent is, what it is working toward, and what you came here to
+          do. The prototype keeps these three together and persistent, and it is
+          the arrangement eighteen draft-panel prototypes render behind their
+          drawer — which is why one missing band looked like eighteen gaps.
+
+          Two columns from `xl`: below that the identity and the campaign each
+          want the full width for their own wrapping, and stacking them is
+          better than two cramped columns. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <AgentIdentityCard
+          genomeId={genome?.genomeId}
+          campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
+          paused={Boolean(status?.paused)}
+        />
+        <CampaignFocusCard
+          campaign={campaign}
+          calendarView={calendarView}
+          genomeName={genome?.name}
+          genomeId={genome?.genomeId}
+          onRefresh={() => void loadCampaign()}
+        />
+      </div>
+
+      <QuickActions onOpenChat={() => setChatOpen(true)} />
+
       <AgentControlBar status={status} onChange={setStatus} />
       <ApprovalModeControl />
 
@@ -168,14 +196,6 @@ export function CommandCenterOverview() {
       ) : null}
 
       <PendingQuestionsPanel />
-
-      <CampaignFocusCard
-        campaign={campaign}
-        calendarView={calendarView}
-        genomeName={genome?.name}
-        genomeId={genome?.genomeId}
-        onRefresh={() => void loadCampaign()}
-      />
 
       {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
 
@@ -190,13 +210,17 @@ export function CommandCenterOverview() {
 
       {/* Below the queue, above the drafts: what needs a person comes first,
           then how the brand is doing, then the material itself. */}
-      <PerformancePanel genomeId={genome?.genomeId} />
+      <div id="performance">
+        <PerformancePanel genomeId={genome?.genomeId} />
+      </div>
 
-      <DraftList
+      <div id="drafts">
+        <DraftList
         genomeId={genome?.genomeId}
         refreshKey={draftListRefresh}
         onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-      />
+        />
+      </div>
 
       <ChatDrawer
         genomeId={genome?.genomeId}

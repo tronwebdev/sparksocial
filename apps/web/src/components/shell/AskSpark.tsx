@@ -19,20 +19,28 @@ import { cn } from '@/lib/utils';
  * button on the dashboard and left the other forty-seven screens without one.
  * It belongs in the shell, which is why it lives here.
  *
- * ── Why it hides on the Command Center ────────────────────────────────────
+ * ── Why it hides on `/agents`, and the trap in that ───────────────────────
  *
- * That screen already owns a `ChatDrawer`, wired to its own draft panel so you
- * can edit while chatting. Rendering a second one from the shell would put two
- * independent conversations one keystroke apart, each unaware of the other. So
- * the shell defers there rather than competing.
+ * `/agents` renders `CommandCenterOverview`, which already owns a `ChatDrawer`
+ * wired to its own draft panel so you can edit while chatting. A second drawer
+ * from the shell would put two independent conversations one keystroke apart,
+ * each unaware of the other, so the shell defers there.
+ *
+ * The trap: the screen *titled* "Agent Command Center" is at `/agents`, while
+ * `/command-center` is the engagement inbox — M2's naming collision. This
+ * component first suppressed itself on `/command-center`, which is precisely
+ * backwards: it hid Ask Spark on the inbox, which has no chat and needs it, and
+ * doubled it on the one screen that already had one. Found by opening the page.
+ * The route name is the thing to fix (M2); until then this comment is the
+ * warning.
  *
  * ── The draft handoff ─────────────────────────────────────────────────────
  *
- * A conversation can produce a draft, and the Command Center's own drawer opens
- * it in place. From anywhere else there is no draft panel to open, so this
- * navigates to `/command-center?draft=<id>` — which required teaching that
- * screen to read the parameter. Worth it beyond this button: the draft panel is
- * now addressable, so a link in a notification or a bug report can point at one.
+ * A conversation can produce a draft, and `/agents`' own drawer opens it in
+ * place. From anywhere else there is no draft panel to open, so this navigates
+ * to `/agents?draft=<id>` — which required teaching that screen to read the
+ * parameter. Worth it beyond this button: the draft panel is now addressable, so
+ * a link in a notification or a bug report can point at one.
  */
 export function AskSpark() {
   const pathname = usePathname();
@@ -40,8 +48,8 @@ export function AskSpark() {
   const { genome } = useSelectedGenome();
   const [open, setOpen] = useState(false);
 
-  // The Command Center brings its own. See above.
-  if (pathname.startsWith('/command-center')) return null;
+  // `/agents` brings its own drawer. Not `/command-center` — see the header.
+  if (pathname.startsWith('/agents')) return null;
 
   return (
     <>
@@ -77,7 +85,8 @@ export function AskSpark() {
           // Close first: the drawer is fixed-position, and leaving it mounted
           // across a route change means it animates in again over the new page.
           setOpen(false);
-          router.push(`/command-center?draft=${encodeURIComponent(contentItemId)}`);
+          // `/agents`, because that is where the draft panel lives.
+          router.push(`/agents?draft=${encodeURIComponent(contentItemId)}`);
         }}
       />
     </>
