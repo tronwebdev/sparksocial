@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
-import { ToolError, callVendor, renderUntrusted } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, renderUntrusted, withShapeRetry } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { EngagementCategory, type EngagementClassifier, type ClassificationResult } from '@sparksocial/engage';
 
@@ -50,7 +50,13 @@ export function createEngageClassifier(opts: EngageClassifierOptions = {}): Enga
   const model = opts.model ?? MODEL;
 
   return {
-    async classify({ genome, kind, authorHandle, text }): Promise<ClassificationResult> {
+    async classify(args): Promise<ClassificationResult> {
+      return withShapeRetry(() => attemptClassify(args));
+    },
+  };
+
+  /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
+  async function attemptClassify({ genome, kind, authorHandle, text }: Parameters<EngagementClassifier['classify']>[0]): Promise<ClassificationResult> {
       const response = await callVendor(
         'engagement classifier',
         'SPARK could not read this message — the service that sorts the inbox is not responding. It stays in Needs Review so nothing is missed.',
@@ -75,15 +81,17 @@ export function createEngageClassifier(opts: EngageClassifierOptions = {}): Enga
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
       );
       if (!block) {
-        throw new ToolError('UPSTREAM_FAILED', 'The engagement classifier returned no classification.', {
-          stopReason: response.stop_reason,
-        });
+        /* A missing tool call is a coin-flip unless the budget ran out —
+           see `missingToolCall`. */
+        throw missingToolCall(response.stop_reason);
       }
 
       const raw = block.input as Record<string, unknown>;
       const category = EngagementCategory.safeParse(raw.category);
       if (!category.success || typeof raw.intent_score !== 'number' || typeof raw.reason !== 'string') {
-        throw new ToolError('UPSTREAM_FAILED', 'The engagement classifier returned an unusable shape.', { raw });
+        throw new ShapeMismatch(
+          new ToolError('UPSTREAM_FAILED', 'The engagement classifier returned an unusable shape.', { raw }),
+        );
       }
 
       return {
@@ -92,8 +100,7 @@ export function createEngageClassifier(opts: EngageClassifierOptions = {}): Enga
         ...(typeof raw.suggested_reply === 'string' && raw.suggested_reply.trim() ? { suggestedReply: raw.suggested_reply.trim() } : {}),
         reason: raw.reason,
       };
-    },
-  };
+  }
 }
 
 /**
@@ -155,4 +162,18 @@ export function engageClassifier(fallback: EngagementClassifier): EngagementClas
     return fallback;
   }
   return createEngageClassifier();
+}
+
+/**
+ * A forced tool call that came back without one.
+ *
+ * Two causes, opposite fixes, told apart by `stop_reason`. `max_tokens` means
+ * the model was cut off mid-call — retrying spends another call to be truncated
+ * again, and the real fix is a bigger budget, so it surfaces immediately. Any
+ * other stop reason means the model declined to call a tool it was told to call,
+ * which is the same coin-flip as a malformed answer and worth one retry.
+ */
+function missingToolCall(stopReason: string | null): Error {
+  const detail = new ToolError('UPSTREAM_FAILED', 'The engagement classifier returned no classification.', { stopReason });
+  return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
 }

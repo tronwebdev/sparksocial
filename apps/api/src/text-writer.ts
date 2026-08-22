@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
-import { ToolError, callVendor } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, withShapeRetry } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { Playbook } from '@sparksocial/playbooks';
 import type { BeatOutlineEntry, TextWriter } from '@sparksocial/generate';
@@ -91,29 +91,14 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
 
   return {
     async write(args): Promise<string> {
-      /**
-       * Two attempts, for the reason `brief-writer.ts` spells out: a forced
-       * tool call makes a shape mismatch rare rather than impossible, and the
-       * fallback vendor obeys `input_schema` slightly less reliably than the one
-       * this prompt was tuned against. A flake here is a failed "Generate post"
-       * in front of a person, so it is worth one quiet retry before surfacing.
-       *
-       * The vendor outage case is not retried here — `callVendor` already
-       * handles that by moving to the second vendor.
-       */
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const written = await attemptWrite(args, attempt === 2);
-        if (written !== null) return written;
-      }
-      throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', {});
+      return withShapeRetry(() => attemptWrite(args));
     },
   };
 
-  /** One attempt. `null` on a shape mismatch unless `final`, which throws. */
-  async function attemptWrite(
-    { genome, playbook, promptRef, intent, beatId, durationSec, outline }: Parameters<TextWriter['write']>[0],
-    final: boolean,
-  ): Promise<string | null> {
+  /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
+  async function attemptWrite({
+    genome, playbook, promptRef, intent, beatId, durationSec, outline,
+  }: Parameters<TextWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'copy writer',
         'SPARK could not write this post — the service that writes copy is not responding. Nothing was saved, so trying again is safe.',
@@ -138,15 +123,16 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
       );
       if (!block) {
-        throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned no text.', {
-          stopReason: response.stop_reason,
-        });
+        /* A missing tool call is a coin-flip unless the budget ran out —
+           see `missingToolCall`. */
+        throw missingToolCall(response.stop_reason);
       }
 
       const text = (block.input as Record<string, unknown>).text;
       if (typeof text !== 'string' || !text.trim()) {
-        if (!final) return null;
-        throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', { promptRef });
+        throw new ShapeMismatch(
+          new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', { promptRef }),
+        );
       }
 
       /**
@@ -375,4 +361,18 @@ export function textWriter(fallback: TextWriter): TextWriter {
     return fallback;
   }
   return createTextWriter();
+}
+
+/**
+ * A forced tool call that came back without one.
+ *
+ * Two causes, opposite fixes, told apart by `stop_reason`. `max_tokens` means
+ * the model was cut off mid-call — retrying spends another call to be truncated
+ * again, and the real fix is a bigger budget, so it surfaces immediately. Any
+ * other stop reason means the model declined to call a tool it was told to call,
+ * which is the same coin-flip as a malformed answer and worth one retry.
+ */
+function missingToolCall(stopReason: string | null): Error {
+  const detail = new ToolError('UPSTREAM_FAILED', 'The copy writer returned no text.', { stopReason });
+  return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
 }

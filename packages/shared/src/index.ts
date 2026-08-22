@@ -6,3 +6,4 @@ export * from './embedding.js';
 export * from './oauthState.js';
 export * from './time.js';
 export * from './vendorCall.js';
+export * from './shapeRetry.js';

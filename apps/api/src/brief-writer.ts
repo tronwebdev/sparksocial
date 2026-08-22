@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
-import { ToolError, callVendor } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, withShapeRetry } from '@sparksocial/shared';
 import { DraftCaptureBrief } from '@sparksocial/capture';
 import type { BriefWriter } from '@sparksocial/capture';
 
@@ -103,35 +103,14 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
 
   return {
     async write({ playbook, genome, feedback }): Promise<DraftCaptureBrief> {
-      /**
-       * Two attempts, because a shape mismatch is a coin-flip rather than a
-       * verdict.
-       *
-       * `input_schema` is guidance to the model, not a guarantee from the API,
-       * and a substitute vendor obeys it slightly less reliably than the one
-       * the prompt was tuned against. Observed: `direct.session.batch` failed
-       * with "returned an unusable shape" and the identical call succeeded
-       * immediately after. One retry converts that flake into a non-event;
-       * a second failure is a real signal and is surfaced.
-       *
-       * Only the shape is retried. A vendor outage is already handled by
-       * `callVendor` falling over to the second vendor, and retrying *that*
-       * here would multiply attempts against an account that is down.
-       */
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        const brief = await attemptWrite({ playbook, genome, feedback }, attempt === 2);
-        if (brief) return brief;
-      }
-      // Unreachable: the second attempt either returns or throws.
-      throw new ToolError('UPSTREAM_FAILED', 'The brief writer returned an unusable shape.', {});
+      return withShapeRetry(() => attemptWrite({ playbook, genome, feedback }));
     },
   };
 
-  /** One attempt. Returns `null` on a shape mismatch unless `final`, which throws. */
+  /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
   async function attemptWrite(
     { playbook, genome, feedback }: Parameters<BriefWriter['write']>[0],
-    final: boolean,
-  ): Promise<DraftCaptureBrief | null> {
+  ): Promise<DraftCaptureBrief> {
       const response = await callVendor(
         'brief writer',
         'SPARK could not write the capture brief — the service that writes it is not responding. Nothing was saved, so trying again is safe.',
@@ -156,9 +135,9 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
       );
       if (!block) {
-        throw new ToolError('UPSTREAM_FAILED', 'The brief writer returned no brief.', {
-          stopReason: response.stop_reason,
-        });
+        /* A missing tool call is a coin-flip unless the budget ran out —
+           see `missingToolCall`. */
+        throw missingToolCall(response.stop_reason);
       }
 
       /**
@@ -182,10 +161,11 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
       });
 
       if (!parsed.success) {
-        if (!final) return null;
-        throw new ToolError('UPSTREAM_FAILED', 'The brief writer returned an unusable shape.', {
-          issues: parsed.error.issues.slice(0, 5),
-        });
+        throw new ShapeMismatch(
+          new ToolError('UPSTREAM_FAILED', 'The brief writer returned an unusable shape.', {
+            issues: parsed.error.issues.slice(0, 5),
+          }),
+        );
       }
 
       return parsed.data;
@@ -297,4 +277,18 @@ export function briefWriter(fallback: BriefWriter): BriefWriter {
     return fallback;
   }
   return createBriefWriter();
+}
+
+/**
+ * A forced tool call that came back without one.
+ *
+ * Two causes, opposite fixes, told apart by `stop_reason`. `max_tokens` means
+ * the model was cut off mid-call — retrying spends another call to be truncated
+ * again, and the real fix is a bigger budget, so it surfaces immediately. Any
+ * other stop reason means the model declined to call a tool it was told to call,
+ * which is the same coin-flip as a malformed answer and worth one retry.
+ */
+function missingToolCall(stopReason: string | null): Error {
+  const detail = new ToolError('UPSTREAM_FAILED', 'The brief writer returned no brief.', { stopReason });
+  return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
 }

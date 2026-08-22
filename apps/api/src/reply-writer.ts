@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
-import { ToolError, callVendor, renderUntrusted } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, renderUntrusted, withShapeRetry } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { ReplyWriter } from '@sparksocial/engage';
 
@@ -45,7 +45,13 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
   const model = opts.model ?? MODEL;
 
   return {
-    async write({ genome, kind, authorHandle, messageText }): Promise<string> {
+    async write(args): Promise<string> {
+      return withShapeRetry(() => attemptWrite(args));
+    },
+  };
+
+  /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
+  async function attemptWrite({ genome, kind, authorHandle, messageText }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'reply writer',
         'SPARK could not draft a reply — the service that writes replies is not responding. The message is still in your inbox, unanswered.',
@@ -70,19 +76,20 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
       );
       if (!block) {
-        throw new ToolError('UPSTREAM_FAILED', 'The reply writer returned no text.', {
-          stopReason: response.stop_reason,
-        });
+        /* A missing tool call is a coin-flip unless the budget ran out —
+           see `missingToolCall`. */
+        throw missingToolCall(response.stop_reason);
       }
 
       const text = (block.input as Record<string, unknown>).text;
       if (typeof text !== 'string' || !text.trim()) {
-        throw new ToolError('UPSTREAM_FAILED', 'The reply writer returned an unusable shape.', { kind });
+        throw new ShapeMismatch(
+          new ToolError('UPSTREAM_FAILED', 'The reply writer returned an unusable shape.', { kind }),
+        );
       }
 
       return text.trim();
-    },
-  };
+  }
 }
 
 /**
@@ -142,4 +149,18 @@ export function replyWriter(fallback: ReplyWriter): ReplyWriter {
     return fallback;
   }
   return createReplyWriter();
+}
+
+/**
+ * A forced tool call that came back without one.
+ *
+ * Two causes, opposite fixes, told apart by `stop_reason`. `max_tokens` means
+ * the model was cut off mid-call — retrying spends another call to be truncated
+ * again, and the real fix is a bigger budget, so it surfaces immediately. Any
+ * other stop reason means the model declined to call a tool it was told to call,
+ * which is the same coin-flip as a malformed answer and worth one retry.
+ */
+function missingToolCall(stopReason: string | null): Error {
+  const detail = new ToolError('UPSTREAM_FAILED', 'The reply writer returned no text.', { stopReason });
+  return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
 }
