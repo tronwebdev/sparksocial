@@ -1,5 +1,7 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
+
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,7 +59,18 @@ export function CommandCenterOverview() {
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>({ open: false });
+  /**
+   * `?draft=<id>` opens the panel on load.
+   *
+   * Added for the shell's Ask Spark (`F2`), which can produce a draft from a
+   * screen that has no draft panel of its own and so navigates here. Useful
+   * beyond that button: a draft is now addressable, so a notification or a bug
+   * report can link to one.
+   */
+  const initialDraft = useSearchParams().get('draft') ?? undefined;
+  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>(
+    initialDraft ? { open: true, contentItemId: initialDraft } : { open: false },
+  );
   const [draftListRefresh, setDraftListRefresh] = useState(0);
 
   const loadStatus = useCallback(async () => {

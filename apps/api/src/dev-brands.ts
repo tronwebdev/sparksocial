@@ -171,6 +171,10 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       // Sales Assist. Null clears rather than storing an empty value, matching
       // every other nullable field here — "no rule" and "an empty rule" read
       // the same on a screen and must not diverge between the two stores.
+      if (patch.agentName !== undefined) {
+        if (patch.agentName === null) delete row.agentName;
+        else row.agentName = patch.agentName;
+      }
       if (patch.salesQualification !== undefined) {
         if (patch.salesQualification === null) delete row.salesQualification;
         else row.salesQualification = patch.salesQualification;

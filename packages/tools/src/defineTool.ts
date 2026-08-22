@@ -388,6 +388,8 @@ export interface BrandGovernance {
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   /** Which surfaces SPARK may answer on. Empty means every enabled type. */
   engagementTypes?: string[];
+  /** What the owner calls their agent — see `agentIdentity.ts`. */
+  agentName?: string;
   /** Sales Assist — see the `brands` table. */
   salesQualification?: string[];
   salesHandoff?: Record<string, string>;
@@ -491,6 +493,7 @@ export interface BrandGovernanceStore {
       postingWindows?: number[] | null;
       engagementAutonomy?: 'off' | 'suggest' | 'auto';
       engagementTypes?: string[] | null;
+      agentName?: string | null;
       salesQualification?: string[] | null;
       salesHandoff?: Record<string, string> | null;
       salesDestination?: string | null;

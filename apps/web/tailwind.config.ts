@@ -126,6 +126,20 @@ const config: Config = {
         'toast-in': 'ss-toast-in 0.22s ease-out',
         'drawer-in': 'ss-drawer-in 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
         'drawer-in-left': 'ss-drawer-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+        // F5's ten. Durations and easings are the prototypes' own where they
+        // applied them inline; the four they only declared get timings picked to
+        // match the ones they did.
+        shimmer: 'ss-shimmer 1.6s ease-in-out infinite',
+        'fade-in': 'ss-fade-in 0.2s ease',
+        'modal-in': 'ss-modal-in 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+        'pop-in': 'ss-pop-in 0.35s ease',
+        pulse: 'ss-pulse 1.8s ease-in-out infinite',
+        dot: 'ss-dot 1.1s ease-in-out infinite',
+        spin: 'ss-spin 0.8s linear infinite',
+        // The prototypes' own 6s is for a decorative ring, not a busy spinner.
+        'spin-slow': 'ss-spin 6s linear infinite',
+        upload: 'ss-upload 2.4s ease-out forwards',
+        'card-out': 'ss-card-out 0.2s ease forwards',
       },
 
       transitionTimingFunction: {

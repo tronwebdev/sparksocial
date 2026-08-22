@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { DEFAULT_POSTING_WINDOWS, Explanation, ToolError, isCompleteSalesHandoff, resolveSalesHandoff } from '@sparksocial/shared';
+import {
+  DEFAULT_POSTING_WINDOWS,
+  Explanation,
+  ToolError,
+  agentIdentity,
+  isCompleteSalesHandoff,
+  resolveSalesHandoff,
+} from '@sparksocial/shared';
 
 /**
  * `brand.governance.get` / `.set` — PRD §8.2 (`ONB-03`), §8.12 (`SET-WS-01`), §9.
@@ -123,6 +130,14 @@ export const BrandGovernanceSetInput = z.object({
   /** comment | dm | story_reply. Null clears back to "all of them". */
   engagementTypes: z.array(z.enum(['comment', 'dm', 'story_reply'])).max(3).nullable().optional(),
 
+  /**
+   * What the owner calls their agent (`F4`). Null clears it back to unnamed.
+   *
+   * The only stored part of the agent's identity — its voice and risk tolerance
+   * are derived from `toneVector` and `approvalMode`. See `agentIdentity.ts`.
+   */
+  agentName: z.string().min(1).max(60).nullable().optional(),
+
   /* ── Sales Assist (`SET-WS-EI-SALES`) ─────────────────────────────────── */
 
   /**
@@ -162,6 +177,18 @@ export const BrandGovernanceOutput = z.object({
   usingDefaultWindows: z.boolean(),
   engagementAutonomy: z.enum(['off', 'suggest', 'auto']),
   engagementTypes: z.array(z.string()),
+  /**
+   * The agent as a person would describe it: its name, two or three voice
+   * adjectives, and a risk tolerance. Derived on read rather than stored, so it
+   * can never disagree with the settings it is describing.
+   */
+  agentIdentity: z.object({
+    name: z.string(),
+    named: z.boolean(),
+    voice: z.array(z.string()),
+    riskTolerance: z.enum(['Low', 'Moderate', 'High']),
+    riskBecause: z.string(),
+  }),
   salesQualification: z.array(z.string()),
   /** Always populated — the effective rules, including the defaults when none are set. */
   salesHandoff: SalesHandoff,
@@ -276,6 +303,12 @@ export const brandGovernanceSet = defineTool({
                 : `${after.engagementAutonomy} — replies are gated by eligibility as well`,
           },
           {
+            label: 'agent',
+            detail: after.agentName
+              ? `called ${after.agentName}`
+              : 'unnamed — the Command Center and campaign summaries will say "your agent"',
+          },
+          {
             label: 'sales assist',
             detail: after.salesEscalationKeywords?.length
               ? `${after.salesQualification?.length ?? 0} qualification move(s), ${after.salesEscalationKeywords.length} escalation word(s)`
@@ -314,6 +347,8 @@ function toOutput(gov: {
   postingWindows?: number[];
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   engagementTypes?: string[];
+  agentName?: string;
+  approvalMode?: 'autopublish' | 'review_first_week' | 'review_everything';
   salesQualification?: string[];
   salesHandoff?: Record<string, string>;
   salesDestination?: string;
@@ -337,6 +372,11 @@ function toOutput(gov: {
     usingDefaultWindows: own === undefined,
     engagementAutonomy: gov.engagementAutonomy,
     engagementTypes: gov.engagementTypes ?? [],
+    agentIdentity: agentIdentity({
+      agentName: gov.agentName,
+      toneVector: gov.toneVector,
+      approvalMode: gov.approvalMode,
+    }),
     salesQualification: gov.salesQualification ?? [],
     // Resolved, not raw, for the same reason as `postingWindows`: a screen
     // saying "hot leads go to…" has to show what will actually happen.

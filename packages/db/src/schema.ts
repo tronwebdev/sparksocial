@@ -631,6 +631,15 @@ export const brands = pgTable(
      * genome's were inferred from a website.
      */
     toneVector: jsonb('tone_vector').$type<{ formal: number; playful: number; technical: number; bold: number }>(),
+    /**
+     * What the owner calls their agent (`F4`).
+     *
+     * The only *stored* part of the agent's identity. Its voice descriptor is
+     * derived from `toneVector` and its risk tolerance from `approvalMode` — see
+     * `packages/shared/src/agentIdentity.ts` for why storing either would create
+     * a second copy free to disagree with the setting that is actually enforced.
+     */
+    agentName: text('agent_name'),
     /** Words and phrases never to use. Checked verbatim by `guard.brand_voice`. */
     bannedPhrases: jsonb('banned_phrases').$type<string[]>(),
     /** ONB-01's logo, and the brand kit colours §8.6's "Apply Brand Kit" toggle applies. */

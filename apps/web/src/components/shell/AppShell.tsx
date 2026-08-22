@@ -3,6 +3,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Wordmark } from '@/components/brand/Wordmark';
 import { SidebarNav } from './SidebarNav';
 import { PlanCard } from './PlanCard';
+import { AskSpark } from './AskSpark';
 
 /**
  * The two-column app frame: a 322px sidebar on white, and a rounded content canvas
@@ -37,9 +38,13 @@ export function AppShell({ children, chrome = 'shell' }: AppShellProps) {
             <Wordmark className="max-xl:[&>span]:hidden" />
           </div>
           <SidebarNav />
-          <div className="mt-auto">
-            <PlanCard />
+          {/* F2: the assistant affordance 48 of 61 prototypes put in the
+              sidebar. Above the plan card and below the nav, which is where
+              they put it. */}
+          <div className="mt-auto flex flex-col gap-3 px-[22px] pb-3 max-xl:px-3">
+            <AskSpark />
           </div>
+          <PlanCard />
         </aside>
 
         <main
