@@ -182,16 +182,21 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
     name: 'analyst',
     responsibility: 'Metrics ingestion, outcome reporting, mix reweighting, memory distillation.',
     /**
-     * `learning.*` (Thompson-sampling mix reweighting, memory distillation —
-     * the plan's outcome loop) was in this list from the start and matched
-     * nothing in the real registry, same bug pattern already fixed on
-     * director/producer: no `learning_*` schema, no tools, nothing to grant a
-     * scope to. It is a materially larger feature than `analytics.sync` (P4)
-     * landing next to it, tracked separately rather than claimed here.
-     * `analytics.*` is real as of `analytics.sync` (P4) — the analyst's one
-     * actual capability today is pulling metrics, not yet acting on them.
+     * `learning.*` was dropped from this list once, correctly: it named a family
+     * that matched nothing in the registry, the same bug already fixed on
+     * director/producer. That is no longer the case — six `learning.*` tools and
+     * their two tables exist — so the analyst gets it back, and its
+     * `responsibility` line above ("outcome reporting, mix reweighting") stops
+     * describing something it had no way to do.
+     *
+     * Granting the whole family is safe because scopes and autonomy answer
+     * different questions. `learning.freeze` and `learning.reset` are
+     * `human_only`, so policy rule 3 refuses them for an agent whatever its
+     * scopes say — wiping a brand's accumulated learning stays a decision a
+     * person takes. What the analyst gains is `record_outcome`, `reweight`,
+     * `confidence` and `explain`: reading the loop and turning it, not resetting it.
      */
-    toolScopes: ['analytics.*'],
+    toolScopes: ['analytics.*', 'learning.*'],
     model: 'sonnet',
     effort: 'medium',
   },

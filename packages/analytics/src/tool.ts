@@ -8,12 +8,16 @@ import type { AnalyticsSource } from './source.js';
  * performance for one already-published post from the platform and stores a
  * snapshot in `content_metrics`, upserted by `(contentItemId, platform)`.
  *
- * Deliberately the only tool in the `analytics.*`/`learning.*` family built
- * so far. `analytics.post_metrics`/`campaign_report`/`cta_traffic` are reads
- * over what this writes and can be added without touching this tool;
- * `learning.*` (Thompson-sampling mix reweighting, PRD's outcome loop) is a
- * materially larger feature with no schema yet and is out of scope here — the
- * `analyst` agent's `toolScopes` still names it, tracked separately.
+ * `analytics.post_metrics`/`campaign_report`/`cta_traffic` are reads over what
+ * this writes and were added without touching this tool.
+ *
+ * This comment used to say `learning.*` was "a materially larger feature with no
+ * schema yet and out of scope here". That stopped being true: six `learning.*`
+ * tools, `learning_arms`/`learning_outcomes`, and — since
+ * `apps/api/src/outcome-observer.ts` — a clock that calls this tool and then
+ * `learning.record_outcome` as posts mature. Left corrected rather than deleted,
+ * because a comment describing the past as the present is how the next person
+ * rebuilds something that already exists.
  */
 
 export const AnalyticsSyncInput = z.object({
