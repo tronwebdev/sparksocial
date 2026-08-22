@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { openAIMessages, type MessagesClient } from './openai-messages.js';
+import { openAIMessages, type MessagesClient } from '@sparksocial/shared';
 import { envSet } from './env.js';
 
 /**

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { callVendor } from '@sparksocial/shared';
+import { callVendor, openAIMessages, type MessagesClient } from '@sparksocial/shared';
 import type { ZodTypeAny } from 'zod';
 import { AGENTS, MODELS } from './agents.js';
 import type { ExposedTool, ModelClient, ModelTurn } from './loop.js';
@@ -33,6 +33,14 @@ export interface AnthropicModelClientOptions {
   client?: Anthropic;
   /** Bounded so a runaway turn cannot consume the whole budget. */
   maxTokens?: number;
+  /**
+   * Second vendor, tried when the first cannot serve the turn. Defaults to the
+   * OpenAI shim, which is `null` when no key is configured. Pass `null` to
+   * insist on a single vendor; pass a stub in tests.
+   */
+  fallback?: MessagesClient | null;
+  /** Injected for tests; defaults to `console.warn`. */
+  warn?: (message: string, meta: Record<string, unknown>) => void;
 }
 
 export function anthropicModelClient(opts: AnthropicModelClientOptions = {}): ModelClient {
@@ -40,6 +48,8 @@ export function anthropicModelClient(opts: AnthropicModelClientOptions = {}): Mo
   // `ant auth login` profile — never hardcode a key, and never read one from the repo.
   const client = opts.client ?? new Anthropic();
   const maxTokens = opts.maxTokens ?? 16_000;
+  const fallback = opts.fallback === undefined ? openAIMessages() : opts.fallback;
+  const warn = opts.warn ?? ((m: string, meta: Record<string, unknown>) => console.warn(m, meta));
 
   return {
     async turn({ agent, system, messages, tools }): Promise<ModelTurn> {
@@ -72,15 +82,17 @@ export function anthropicModelClient(opts: AnthropicModelClientOptions = {}): Mo
        * Wrapped for the same reason as every other vendor call (see
        * `callVendor`): an SDK throw carries the raw response body as its
        * message, and a run's error text is shown on the Agent Timeline.
+       *
+       * The fallback sits *inside* the wrap, not outside, so the message a
+       * failed run shows is only reached once both vendors have declined —
+       * "the model service is not responding" is a lie if a second vendor was
+       * never asked.
        */
       const response = await callVendor(
         'agent model',
-        'SPARK could not think this step through — the model service is not responding. The run ' +
+        'SPARK could not think this step through — no model service is responding. The run ' +
           'stopped where it was; nothing half-finished was published.',
-        () =>
-          client.beta.messages.create(
-            params as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming,
-          ),
+        () => createWithFallback(params),
       );
 
       if (response.stop_reason === 'refusal') {
@@ -103,6 +115,65 @@ export function anthropicModelClient(opts: AnthropicModelClientOptions = {}): Mo
       };
     },
   };
+
+  /**
+   * One turn against the primary vendor, or the second vendor if the first
+   * throws anything at all.
+   *
+   * ── Why the agent loop needed this last ───────────────────────────────
+   *
+   * The five writers got a fallback first, which left SPARK in a strange
+   * state during the disabled-organisation outage: a person could generate a
+   * post, but asking the agent to do the same thing failed — the same
+   * capability reachable one way and not the other. The fallback belongs
+   * wherever a vendor is called, and the agent loop is the largest such site.
+   *
+   * ── Why any error, and not a status allowlist ─────────────────────────
+   *
+   * `model-client.ts` explains this at length: the outage this exists for
+   * returned **400**, which no "is this retryable?" test distinguishes from a
+   * genuinely malformed request. So anything the primary throws moves to the
+   * second vendor. An unnecessary retry costs one call on a request that had
+   * already failed.
+   *
+   * ── What is lost by falling over ──────────────────────────────────────
+   *
+   * Adaptive thinking, `output_config.effort` and server-side `fallbacks`
+   * have no OpenAI equivalent and are dropped by the shim, which logs that it
+   * did. A turn served this way genuinely reasons less — the agent may
+   * take more steps, or ask a person something it would have worked out. That
+   * is a real degradation and is the reason it is loud rather than silent; it
+   * is still the better end of the trade against SPARK being unavailable.
+   *
+   * Tool names survive the trip: `encodeToolName` yields at most 30 characters
+   * across the registry, inside OpenAI's 64-character limit on a function
+   * name as well as Anthropic's 128.
+   */
+  async function createWithFallback(
+    params: Record<string, unknown>,
+  ): Promise<Anthropic.Beta.Messages.BetaMessage> {
+    try {
+      return await client.beta.messages.create(
+        params as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming,
+      );
+    } catch (e) {
+      if (!fallback) throw e;
+
+      const detail = e instanceof Error ? e.message : String(e);
+      // Once per turn rather than once per process: which vendor drove a given
+      // run is the first question when an agent's judgement looks off, and
+      // `agent_runs` does not record it.
+      warn('[warn] primary model vendor failed — retrying the agent turn on the fallback', {
+        model: params['model'],
+        detail: detail.slice(0, 300),
+      });
+
+      const response = await fallback.messages.create(
+        params as unknown as Parameters<MessagesClient['messages']['create']>[0],
+      );
+      return response as unknown as Anthropic.Beta.Messages.BetaMessage;
+    }
+  }
 }
 
 /**

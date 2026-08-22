@@ -145,3 +145,162 @@ describe('tool name encoding — Anthropic forbids "." in tools[].name', () => {
     expect(turn.toolCalls[0]!.name).toBe('queue.review.list');
   });
 });
+
+/**
+ * The agent loop's own vendor fallback.
+ *
+ * The five writers got one first, which left SPARK in an odd half-state during
+ * the disabled-organisation outage: a person could generate a post by hand, but
+ * asking the agent to do the same thing failed. Same capability, reachable one
+ * way and not the other.
+ */
+describe('vendor fallback', () => {
+  const quiet = () => vi.fn();
+
+  /** A stub in the shim's shape — `messages.create`, not `beta.messages.create`. */
+  function fakeFallback(response: unknown) {
+    const create = vi.fn(async (_body: unknown) => response);
+    return { client: { messages: { create } } as never, create };
+  }
+
+  const turn = { agent: 'spark' as const, system: 'x', messages: [], tools: [tool] };
+
+  it('serves the turn from the second vendor when the first throws', async () => {
+    const primary = vi.fn(async () => {
+      // The exact shape of the outage: a 400, not a 401 or a 5xx.
+      throw new Error('400 {"error":{"message":"This organization has been disabled."}}');
+    });
+    const { client: fallback, create } = fakeFallback({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'from the fallback' }],
+      usage: { input_tokens: 11, output_tokens: 22 },
+    });
+
+    const result = await anthropicModelClient({
+      client: fakeAnthropic(primary) as never,
+      fallback,
+      warn: quiet(),
+    }).turn(turn);
+
+    expect(result.text).toBe('from the fallback');
+    expect(result.usage).toEqual({ input: 11, output: 22 });
+    expect(create).toHaveBeenCalledOnce();
+  });
+
+  it('does not call the second vendor when the first succeeds', async () => {
+    const primary = vi.fn(async () => ({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'from the primary' }],
+      usage: { input_tokens: 1, output_tokens: 2 },
+    }));
+    const { client: fallback, create } = fakeFallback({});
+
+    const result = await anthropicModelClient({
+      client: fakeAnthropic(primary) as never,
+      fallback,
+    }).turn(turn);
+
+    expect(result.text).toBe('from the primary');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('carries tool calls back through the fallback, with names decoded', async () => {
+    // The encoding exists because Anthropic's `name` pattern forbids `.`; the
+    // decode has to happen on the fallback path too, or the loop receives a
+    // `human__ask` that matches nothing in the registry and the run dies with
+    // "unknown tool" instead of asking the person a question.
+    const primary = vi.fn(async () => {
+      throw new Error('down');
+    });
+    const { client: fallback } = fakeFallback({
+      stop_reason: 'tool_use',
+      content: [{ type: 'tool_use', id: 'call_1', name: 'human__ask', input: { question: 'which one?' } }],
+      usage: { input_tokens: 3, output_tokens: 4 },
+    });
+
+    const result = await anthropicModelClient({
+      client: fakeAnthropic(primary) as never,
+      fallback,
+      warn: quiet(),
+    }).turn(turn);
+
+    expect(result.toolCalls).toEqual([{ id: 'call_1', name: 'human.ask', input: { question: 'which one?' } }]);
+  });
+
+  it('still reports a refusal from the fallback', async () => {
+    const primary = vi.fn(async () => {
+      throw new Error('down');
+    });
+    const { client: fallback } = fakeFallback({
+      stop_reason: 'refusal',
+      content: [],
+      usage: { input_tokens: 1, output_tokens: 0 },
+    });
+
+    const result = await anthropicModelClient({
+      client: fakeAnthropic(primary) as never,
+      fallback,
+      warn: quiet(),
+    }).turn(turn);
+
+    expect(result.refused).toBe(true);
+  });
+
+  it('surfaces the primary error untouched when no fallback is configured', async () => {
+    // `fallback: null` is how a deploy insists on one vendor. The error must
+    // still be the friendly `callVendor` one, not a raw SDK body.
+    const primary = vi.fn(async () => {
+      throw new Error('400 organization disabled');
+    });
+
+    const err = await anthropicModelClient({ client: fakeAnthropic(primary) as never, fallback: null })
+      .turn(turn)
+      .catch((e: unknown) => e);
+
+    expect((err as Error).message).toMatch(/no model service is responding/i);
+    expect(primary).toHaveBeenCalledOnce();
+  });
+
+  it('says out loud which vendor served the turn', async () => {
+    // A run whose reasoning looks off is the symptom; "it was served by the
+    // substitute model" is the cause, and `agent_runs` does not record it.
+    const warn = vi.fn();
+    const primary = vi.fn(async () => {
+      throw new Error('400 organization disabled');
+    });
+    const { client: fallback } = fakeFallback({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'ok' }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+    });
+
+    await anthropicModelClient({ client: fakeAnthropic(primary) as never, fallback, warn }).turn(turn);
+
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]![0]).toMatch(/fallback/i);
+    expect((warn.mock.calls[0]![1] as { detail: string }).detail).toMatch(/organization disabled/);
+  });
+
+  it('reports the fallback’s failure when both vendors decline', async () => {
+    const primary = vi.fn(async () => {
+      throw new Error('primary is down');
+    });
+    const { client: fallback } = fakeFallback(undefined);
+    (fallback as unknown as { messages: { create: unknown } }).messages.create = async () => {
+      throw new Error('the fallback is down too');
+    };
+
+    const err = await anthropicModelClient({
+      client: fakeAnthropic(primary) as never,
+      fallback,
+      warn: quiet(),
+    })
+      .turn(turn)
+      .catch((e: unknown) => e);
+
+    // The friendly wrap, because a run's error text is read by a person on the
+    // Agent Timeline — and it only claims "no model service" now that both
+    // were genuinely asked.
+    expect((err as Error).message).toMatch(/no model service is responding/i);
+  });
+});
