@@ -41,6 +41,15 @@ export interface SocialTokenResult {
   expiresAt?: Date;
   scopes?: string[];
   accountLabel?: string;
+  /**
+   * The platform's stable id for the connected account.
+   *
+   * Distinct from `accountLabel`, which is a display name and changes when the
+   * owner renames their page. This is what an inbound webhook arrives holding,
+   * and the only route from a platform event back to a genome — without it the
+   * engagement inbox has a write tool and nothing that can call it.
+   */
+  accountId?: string;
 }
 
 interface ExchangeArgs {
@@ -196,6 +205,10 @@ async function exchangeInstagram(args: ExchangeArgs): Promise<SocialTokenResult>
     accessToken: joinScopedToken(igUserId, token),
     ...(longBody?.expires_in ? { expiresAt: new Date(Date.now() + longBody.expires_in * 1000) } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    // Already resolved above for the scoped token, and previously discarded.
+    // It is the ig-user-id Meta's comment and mention webhooks identify an
+    // account by, so it is the join key the engagement webhook needs.
+    ...(igUserId ? { accountId: igUserId } : {}),
   };
 }
 
@@ -217,13 +230,16 @@ async function exchangeTikTok(args: ExchangeArgs): Promise<SocialTokenResult> {
   if (!body.access_token) throw new Error('TikTok token exchange returned no access_token.');
 
   let accountLabel: string | undefined;
+  let accountId: string | undefined;
   try {
     const info = (await (
-      await args.fetchImpl('https://open.tiktokapis.com/v2/user/info/?fields=display_name', {
+      await args.fetchImpl('https://open.tiktokapis.com/v2/user/info/?fields=display_name,open_id', {
         headers: { Authorization: `Bearer ${body.access_token}` },
       })
-    ).json()) as { data?: { user?: { display_name?: string } } };
+    ).json()) as { data?: { user?: { display_name?: string; open_id?: string } } };
     accountLabel = info.data?.user?.display_name;
+    // TikTok's per-app stable user id — the same value its webhooks carry.
+    accountId = info.data?.user?.open_id;
   } catch {
     // Best-effort.
   }
@@ -234,6 +250,7 @@ async function exchangeTikTok(args: ExchangeArgs): Promise<SocialTokenResult> {
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(body.scope ? { scopes: body.scope.split(',') } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountId ? { accountId } : {}),
   };
 }
 

@@ -32,6 +32,7 @@ import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
 import { envList, envNum, envSet, envStr } from './env.js';
 import { describeModelVendors } from './model-client.js';
+import { describeEngageWebhook } from './engage-webhook.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -323,6 +324,56 @@ const whatsappWebhook = envSet('WHATSAPP_APP_SECRET')
     }
   : undefined;
 
+/**
+ * Inbound engagement (§8.8) — the inbox's writer.
+ *
+ * Unlike WhatsApp, tenant resolution here is a real query rather than an env
+ * mapping: a platform event names the account it happened on, and
+ * `oauth_connections.account_id` maps that to a genome. That is what makes this
+ * webhook multi-tenant from the start — and why it refuses rather than guesses
+ * when one account resolves to two genomes.
+ */
+const engageWebhook =
+  envSet('META_APP_SECRET') || envSet('ENGAGE_WEBHOOK_SECRET')
+    ? {
+        invokeDeps,
+        loadBrandGovernance: makeBrandGovernance(scopedDb),
+        ...(envSet('META_APP_SECRET') ? { metaAppSecret: envStr('META_APP_SECRET', '') } : {}),
+        ...(envSet('META_VERIFY_TOKEN') ? { metaVerifyToken: envStr('META_VERIFY_TOKEN', '') } : {}),
+        ...(envSet('ENGAGE_WEBHOOK_SECRET') ? { aggregatorSecret: envStr('ENGAGE_WEBHOOK_SECRET', '') } : {}),
+        lookupAccount: pg ? pg.accounts.byAccount : devStore!.byAccount,
+        async brandForGenome(genomeId: string, orgId: string) {
+          const genome = await scopedDb.genomes.get(genomeId, orgId);
+          return genome?.workspace_id;
+        },
+        async systemCtx({ orgId, brandId, genomeId }: { orgId: string; brandId: string; genomeId: string }) {
+          const base = await makeDevResolveCtx(scopedDb, credits)(
+            new Request('http://localhost/', {
+              headers: {
+                'x-org-id': orgId,
+                'x-brand-id': brandId,
+                // The genome the account resolved to. This is what puts every
+                // subsequent query back inside the scoped layer.
+                'x-genome-id': genomeId,
+                'x-role': 'admin',
+              },
+            }),
+          );
+          // No `userId`: nobody signed in. A member of the public commented.
+          const { userId: _drop, caller: _caller, ...ctx } = base;
+          return ctx;
+        },
+      }
+    : undefined;
+
+if (!envSet('META_APP_SECRET') && !envSet('ENGAGE_WEBHOOK_SECRET')) {
+  console.warn(
+    '[warn] neither META_APP_SECRET nor ENGAGE_WEBHOOK_SECRET is set \u2014 the engagement inbox has no ' +
+      'writer. Comments and DMs will not arrive, so the feed, the classifier and auto-reply have ' +
+      'nothing to work on.',
+  );
+}
+
 if (!envSet('WHATSAPP_APP_SECRET')) {
   console.warn(
     '[warn] WHATSAPP_APP_SECRET unset — the inbound webhook is not registered. Owners can be sent ' +
@@ -425,6 +476,7 @@ const app = createApp({
   invokeDeps,
   telemetry: telemetry.status(),
   ...(whatsappWebhook ? { whatsappWebhook } : {}),
+  ...(engageWebhook ? { engageWebhook } : {}),
   ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
   ...(agentConfigured
     ? {
@@ -479,6 +531,10 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
   // Which vendor is actually reachable, because a silent fallback means an
   // instance can write every post with the substitute model and read as healthy.
   console.log(`  language models: ${describeModelVendors()}`);
+  // Which inbound routes are live. An engagement inbox with no writer looks
+  // exactly like a quiet week, so it is worth saying at boot rather than
+  // leaving somebody to wonder why the feed never fills.
+  console.log(`  engagement inbound: ${describeEngageWebhook(engageWebhook ?? {})}`);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {

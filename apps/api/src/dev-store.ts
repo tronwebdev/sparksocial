@@ -30,7 +30,7 @@ import type {
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
-import type { DueContentSource, OutcomeCandidateRow, OutcomeCandidateSource } from '@sparksocial/db';
+import type { AccountLookup, DueContentSource, OutcomeCandidateRow, OutcomeCandidateSource } from '@sparksocial/db';
 
 /**
  * DEVELOPMENT STORE — in-memory, empty until something real writes to it.
@@ -185,6 +185,7 @@ export function createDevStore(
   findDue: DueContentSource['findDue'];
   findMetricsDue: OutcomeCandidateSource['findMetricsDue'];
   findOutcomesDue: OutcomeCandidateSource['findOutcomesDue'];
+  byAccount: AccountLookup['byAccount'];
 } {
   const {
     runStore = createDevRunStore(),
@@ -1142,7 +1143,7 @@ export function createDevStore(
         const row = oauthConnectionsMap.get(`${genomeId}:${provider}`);
         return row && row.orgId === org ? row : undefined;
       },
-      async save({ genomeId, orgId: org, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel }) {
+      async save({ genomeId, orgId: org, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel, accountId }) {
         const key = `${genomeId}:${provider}`;
         const existing = oauthConnectionsMap.get(key);
         const row: OAuthConnectionRecord & { orgId: string } = {
@@ -1158,6 +1159,7 @@ export function createDevStore(
           ...(expiresAt ? { expiresAt } : {}),
           ...(scopes ? { scopes } : {}),
           ...(accountLabel ? { accountLabel } : {}),
+          ...(accountId ? { accountId } : {}),
           // Not carried over from `existing`: reconnecting re-arms the §10
           // expiry alert, because the new token has a new expiry.
         };
@@ -1457,6 +1459,17 @@ export function createDevStore(
         .sort((a, b) => a.row.publishedAt!.getTime() - b.row.publishedAt!.getTime())
         .slice(0, limit)
         .map(({ row, lastSyncedAt }) => candidate(row, lastSyncedAt));
+    },
+
+    /**
+     * The engagement webhook's reverse lookup, in memory. Returns every match
+     * rather than the first, because the route's correct answer to an ambiguous
+     * account is to refuse — see `engage-webhook.ts`.
+     */
+    async byAccount({ provider, accountId }) {
+      return [...oauthConnectionsMap.values()]
+        .filter((c) => c.provider === provider && c.accountId === accountId)
+        .map((c) => ({ orgId: c.orgId, genomeId: c.genomeId }));
     },
 
     async findOutcomesDue({ now, limit, maturationHours = 72 }) {

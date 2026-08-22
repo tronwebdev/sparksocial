@@ -1666,6 +1666,12 @@ export interface OAuthConnectionRecord {
   scopes?: string[];
   /** Human-readable "@handle" or page/channel name, when cheaply available right after token exchange. */
   accountLabel?: string;
+  /**
+   * The platform's own stable id for this account. Unlike `accountLabel` it does
+   * not change when the owner renames their page, which is what makes it usable
+   * as an inbound webhook's route back to a genome.
+   */
+  accountId?: string;
   /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
   expiryNotifiedAt?: Date;
 }
@@ -1682,6 +1688,11 @@ export interface OAuthConnectionStore {
     connectedBy: string;
     scopes?: string[];
     accountLabel?: string;
+    /**
+     * The platform's stable id for this account — the engagement webhook's only
+     * route from an inbound event back to a genome. See `oauth_connections`.
+     */
+    accountId?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
 

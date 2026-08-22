@@ -81,6 +81,7 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
       ...(tokens.expiresAt ? { expiresAt: tokens.expiresAt } : {}),
       ...(tokens.scopes ? { scopes: tokens.scopes } : {}),
       ...(tokens.accountLabel ? { accountLabel: tokens.accountLabel } : {}),
+      ...(tokens.accountId ? { accountId: tokens.accountId } : {}),
     });
 
     return c.redirect(`${deps.webAppUrl}/settings?social=connected&provider=${provider}`, 302);

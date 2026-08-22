@@ -2261,6 +2261,8 @@ export interface OAuthConnectionRow {
   updatedAt: Date;
   scopes: string[] | null;
   accountLabel: string | null;
+  /** The platform's stable account id — the engagement webhook's join key. */
+  accountId: string | null;
   expiryNotifiedAt: Date | null;
 }
 
