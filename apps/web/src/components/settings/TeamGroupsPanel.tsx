@@ -29,6 +29,20 @@ interface Group {
   members: string[];
 }
 
+/** The slice of `team.list` this screen needs to show a person rather than an id. */
+interface Member {
+  userId: string;
+  name?: string;
+  email?: string;
+  orgRole: string;
+}
+
+/** What to call somebody when Clerk has a name, an email, or neither. */
+function memberLabel(m: Member | undefined, userId: string): string {
+  if (!m) return userId;
+  return m.name ?? m.email ?? userId;
+}
+
 /**
  * The four the design names. Labels say what the capability *does to a
  * restriction*, because that is the only thing that makes the "widens only"
@@ -50,14 +64,34 @@ export function TeamGroupsPanel() {
   const [busy, setBusy] = useState<string | null>(null);
   const [memberDrafts, setMemberDrafts] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  /**
+   * The workspace roster, or null when it could not be read.
+   *
+   * Null is a real state rather than an empty list: `team.list` is registered
+   * only when Clerk is configured, and it is `owner`/`admin` only, so an editor
+   * opening this screen gets a policy denial rather than a roster. Both cases
+   * fall back to entering an id by hand, which is what this task replaces —
+   * degrading to it beats a screen with no way to add anybody at all.
+   */
+  const [roster, setRoster] = useState<Member[] | null>(null);
 
   useEffect(() => {
     void refresh();
+    void (async () => {
+      const res = await invoke<{ members: Member[] }>('team.list', { limit: 200 });
+      setRoster(res.status === 'succeeded' ? res.output.members : null);
+    })();
   }, []);
 
   async function refresh() {
     const res = await invoke<{ groups: Group[] }>('team.group.list', {});
     setGroups(res.status === 'succeeded' ? res.output.groups : []);
+  }
+
+  /** Everyone not already in this group — the only useful thing to offer. */
+  function addable(group: Group): Member[] {
+    if (!roster) return [];
+    return roster.filter((m) => m.userId && !group.members.includes(m.userId));
   }
 
   /** Every write goes through the same reporting, so no path fails silently. */
@@ -248,33 +282,63 @@ export function TeamGroupsPanel() {
               <div className="mt-3 border-t border-border pt-3">
                 {group.members.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
-                    {group.members.map((userId) => (
-                      <Badge key={userId} variant="neutral">
-                        <span className="font-mono text-[11px]">{userId}</span>
-                        <button
-                          type="button"
-                          aria-label={`Remove ${userId}`}
-                          disabled={busy === group.id}
-                          onClick={() => void setMember(group, userId, false)}
-                          className="ml-1.5 text-ink-muted hover:text-ink disabled:opacity-50"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    ))}
+                    {group.members.map((userId) => {
+                      const person = roster?.find((m) => m.userId === userId);
+                      const label = memberLabel(person, userId);
+                      return (
+                        <Badge key={userId} variant="neutral">
+                          {/* A name when we have one, and the id in monospace when
+                              we do not — an id is still the truth, it is just not
+                              a person's name. */}
+                          <span className={person ? 'text-[12px]' : 'font-mono text-[11px]'}>{label}</span>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${label}`}
+                            disabled={busy === group.id}
+                            onClick={() => void setMember(group, userId, false)}
+                            className="ml-1.5 text-ink-muted hover:text-ink disabled:opacity-50"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-[12px] text-ink-muted">Nobody in this group.</p>
                 )}
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <Input
-                    value={memberDrafts[group.id] ?? ''}
-                    onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
-                    placeholder="User id"
-                    aria-label={`Add somebody to ${group.name}`}
-                    className="max-w-[220px]"
-                  />
+                  {roster ? (
+                    /* A select rather than a search box: a workspace roster is
+                       tens of people, not thousands, so the whole list fits and
+                       typeahead would be ceremony. `team.list` caps at 200. */
+                    <select
+                      value={memberDrafts[group.id] ?? ''}
+                      onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
+                      aria-label={`Add somebody to ${group.name}`}
+                      disabled={busy === group.id || addable(group).length === 0}
+                      className="max-w-[260px] rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-ink disabled:opacity-50"
+                    >
+                      <option value="">
+                        {addable(group).length === 0 ? 'Everyone is already in this group' : 'Add somebody…'}
+                      </option>
+                      {addable(group).map((m) => (
+                        <option key={m.userId} value={m.userId}>
+                          {memberLabel(m, m.userId)}
+                          {m.email && m.name ? ` · ${m.email}` : ''} · {m.orgRole}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      value={memberDrafts[group.id] ?? ''}
+                      onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
+                      placeholder="User id"
+                      aria-label={`Add somebody to ${group.name}`}
+                      className="max-w-[220px]"
+                    />
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -297,6 +361,13 @@ export function TeamGroupsPanel() {
             </li>
           ))}
         </ul>
+      )}
+
+      {roster === null && groups !== null && (
+        <p className="mt-4 text-[13px] text-ink-muted">
+          The workspace roster could not be read, so members are added by user id. That read needs an owner
+          or admin role and a configured identity provider.
+        </p>
       )}
 
       {message && (
