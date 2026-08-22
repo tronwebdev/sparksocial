@@ -23,6 +23,7 @@ import { startScheduler } from './scheduler.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
 import { startConnectionWatcher } from './connection-watcher.js';
+import { startOutcomeObserver } from './outcome-observer.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -392,6 +393,30 @@ const connectionWatcher = startConnectionWatcher(
   envNum('CONNECTION_WATCHER_INTERVAL_MS', 21_600_000),
 );
 
+/**
+ * The outcome observer (§6.7) — the clock the learning loop never had.
+ *
+ * `analytics.sync` and `learning.record_outcome` were both built and registered
+ * and nothing called either, so every genome's Thompson-sampling arms sat at
+ * their cold-start priors indefinitely. Started unconditionally for the same
+ * reason as the schedulers above: one no-op query per tick costs nothing, and an
+ * env flag is one more way to forget to turn it on.
+ *
+ * Every fifteen minutes. The tightest resync cadence is three hours and the
+ * maturation window is measured in days, so a shorter interval finds nothing new
+ * — the frequency is here so a post published between ticks is picked up
+ * promptly on its first sync, not to re-read the same rows.
+ */
+const outcomeObserver = startOutcomeObserver(
+  {
+    source: pg ? pg.outcomes : devStore!,
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+  },
+  envNum('OUTCOME_OBSERVER_INTERVAL_MS', 900_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -462,6 +487,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     recipeScheduler.stop();
     trendObserver.stop();
     connectionWatcher.stop();
+    outcomeObserver.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

@@ -1880,6 +1880,189 @@ export interface RecipeRow {
   updatedAt: Date;
 }
 
+/* ── the outcome loop's two clocks ──────────────────────────────────────── */
+
+/**
+ * One published post the outcome observer may act on, with the two timestamps
+ * that decide whether it should.
+ */
+export interface OutcomeCandidateRow {
+  id: string;
+  orgId: string;
+  genomeId: string;
+  platform: string;
+  pillar: string | null;
+  publishedAt: Date;
+  /** Newest snapshot across this post's platforms; null when never synced. */
+  lastSyncedAt: Date | null;
+}
+
+/**
+ * Published posts whose metrics are stale — the read behind
+ * `apps/api/src/outcome-observer.ts`'s first phase.
+ *
+ * **The third deliberate cross-tenant read in this file**, after
+ * {@link findDueContentItems} and {@link findExpiringOAuthConnections}, and it
+ * carries their justification unchanged: the caller is a clock, a clock has no
+ * session, and every row comes back carrying its own `orgId` and `genomeId` so
+ * the work it triggers runs through that tenant's own governance.
+ *
+ * ── Why the staleness test is not a fixed interval ───────────────────────
+ *
+ * Engagement is front-loaded and then almost flat. A post's numbers move by the
+ * hour on its first day and barely at all after its third week, so one interval
+ * is wrong in both directions at once: frequent enough for a fresh post wastes
+ * a paid vendor call every few hours on months-old posts forever, and slack
+ * enough for an old post misses the window where the numbers actually moved.
+ *
+ * So the cadence widens with the post's age, and the SQL does that arithmetic
+ * rather than the caller — filtering in the database keeps a tick to one query
+ * regardless of how many published posts an org has accumulated. The tiers are
+ * `age < 2 days → 3h`, `< 7 days → 1 day`, `< 30 days → 7 days`, and past
+ * `trackingDays` nothing at all: a post that old has a final number, and
+ * re-reading it forever is a standing cost with no new information in it.
+ *
+ * Never-synced posts are always due, whatever their age — a post that published
+ * while the observer was down would otherwise never be measured at all.
+ */
+export async function findMetricsSyncDue(
+  db: Database,
+  args: { now: Date; limit: number; trackingDays?: number },
+): Promise<OutcomeCandidateRow[]> {
+  const trackingDays = args.trackingDays ?? 30;
+
+  const lastSyncedAt = sql<Date | null>`max(${contentMetrics.syncedAt})`;
+
+  const rows = await db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      platform: contentItems.platform,
+      pillar: contentItems.pillar,
+      publishedAt: contentItems.publishedAt,
+      lastSyncedAt,
+    })
+    .from(contentItems)
+    .leftJoin(contentMetrics, eq(contentMetrics.contentItemId, contentItems.id))
+    .where(
+      and(
+        eq(contentItems.status, 'published'),
+        // A post with no receipt has no platform id to poll for; `analytics.sync`
+        // would reject it, so it is excluded here rather than failing per-tick.
+        isNotNull(contentItems.externalId),
+        isNotNull(contentItems.platform),
+        isNotNull(contentItems.publishedAt),
+        gte(contentItems.publishedAt, new Date(args.now.getTime() - trackingDays * 86_400_000)),
+      ),
+    )
+    .groupBy(
+      contentItems.id,
+      contentItems.orgId,
+      contentItems.genomeId,
+      contentItems.platform,
+      contentItems.pillar,
+      contentItems.publishedAt,
+    )
+    // The age-tiered cadence, as a HAVING over the aggregate: a never-synced
+    // post (max() is null) is always due.
+    .having(
+      sql`${lastSyncedAt} is null or ${lastSyncedAt} < ${args.now.toISOString()}::timestamptz - ${syncIntervalSql()}`,
+    )
+    .orderBy(asc(contentItems.publishedAt))
+    .limit(args.limit);
+
+  return rows as OutcomeCandidateRow[];
+}
+
+/**
+ * The resync interval as SQL, widening with the post's age. Written as a
+ * `case` rather than computed per row in JS because the filter has to run in
+ * the database — see {@link findMetricsSyncDue}.
+ */
+function syncIntervalSql(): SQL {
+  return sql`case
+    when ${contentItems.publishedAt} > now() - interval '2 days' then interval '3 hours'
+    when ${contentItems.publishedAt} > now() - interval '7 days' then interval '1 day'
+    else interval '7 days'
+  end`;
+}
+
+/**
+ * Published posts ready to be scored once, for the observer's second phase.
+ *
+ * Cross-tenant for the same reason as {@link findMetricsSyncDue}.
+ *
+ * ── Why a maturation window, and why it is not optional ──────────────────
+ *
+ * `learning.record_outcome` scores a post against this genome's own recent
+ * baseline and moves a Thompson-sampling arm. Scoring at publish time would
+ * read near-zero engagement on every post and record it as a *failure* — the
+ * mix engine would then learn to avoid whatever was posted most recently,
+ * which is the exact opposite of the intended signal, and it would learn it
+ * confidently because the arms would fill with real-looking observations.
+ *
+ * So a post is only scored once it has had `maturationHours` to accumulate,
+ * and only if at least one metrics snapshot exists for it. The second
+ * condition matters as much as the first: with no snapshot the reward
+ * computation divides by a baseline of 1 and produces a number that looks
+ * like data.
+ *
+ * The unique index on `learning_outcomes.content_item_id` makes a second call
+ * for the same post a safe replay, so this read only has to avoid *pointless*
+ * work rather than guarantee exactly-once.
+ *
+ * Items with no pillar are excluded: there is no arm for the mix engine to
+ * move, and `learning.record_outcome` rejects them.
+ */
+export async function findOutcomeRecordDue(
+  db: Database,
+  args: { now: Date; limit: number; maturationHours?: number },
+): Promise<OutcomeCandidateRow[]> {
+  const maturationHours = args.maturationHours ?? 72;
+  const matureBefore = new Date(args.now.getTime() - maturationHours * 3_600_000);
+
+  const rows = await db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      platform: contentItems.platform,
+      pillar: contentItems.pillar,
+      publishedAt: contentItems.publishedAt,
+      lastSyncedAt: sql<Date | null>`max(${contentMetrics.syncedAt})`,
+    })
+    .from(contentItems)
+    // An inner join, not a left one: no snapshot means nothing to score from.
+    .innerJoin(contentMetrics, eq(contentMetrics.contentItemId, contentItems.id))
+    .leftJoin(learningOutcomes, eq(learningOutcomes.contentItemId, contentItems.id))
+    .where(
+      and(
+        eq(contentItems.status, 'published'),
+        isNotNull(contentItems.pillar),
+        isNotNull(contentItems.platform),
+        isNotNull(contentItems.publishedAt),
+        lte(contentItems.publishedAt, matureBefore),
+        isNull(learningOutcomes.id),
+      ),
+    )
+    .groupBy(
+      contentItems.id,
+      contentItems.orgId,
+      contentItems.genomeId,
+      contentItems.platform,
+      contentItems.pillar,
+      contentItems.publishedAt,
+    )
+    // Oldest first: a backlog after downtime should be worked in the order the
+    // posts actually happened, so each score sees the baseline its predecessors
+    // built rather than a baseline assembled backwards.
+    .orderBy(asc(contentItems.publishedAt))
+    .limit(args.limit);
+
+  return rows as OutcomeCandidateRow[];
+}
+
 const recipeColumns = {
   id: recipes.id,
   genomeId: recipes.genomeId,
@@ -2097,6 +2280,7 @@ const oauthConnectionColumns = {
   updatedAt: oauthConnections.updatedAt,
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
+  accountId: oauthConnections.accountId,
   expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
@@ -2112,6 +2296,8 @@ export async function saveOAuthConnection(
     connectedBy: string;
     scopes?: string[];
     accountLabel?: string;
+    /** The platform's stable account id — the engagement webhook's route back to this genome. */
+    accountId?: string;
   },
 ): Promise<OAuthConnectionRow> {
   assertScope(scope);
@@ -2127,6 +2313,7 @@ export async function saveOAuthConnection(
       ...(args.expiresAt ? { expiresAt: args.expiresAt } : {}),
       ...(args.scopes ? { scopes: args.scopes } : {}),
       ...(args.accountLabel ? { accountLabel: args.accountLabel } : {}),
+      ...(args.accountId ? { accountId: args.accountId } : {}),
     })
     .onConflictDoUpdate({
       target: [oauthConnections.genomeId, oauthConnections.provider],
@@ -2137,6 +2324,7 @@ export async function saveOAuthConnection(
         expiresAt: args.expiresAt ?? null,
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
+        accountId: args.accountId ?? null,
         // Reconnecting re-arms the §10 expiry alert. The new token has a new
         // expiry, so the next warning is a new fact, not a repeat of the one
         // that prompted this reconnection.
@@ -2192,6 +2380,40 @@ export async function findExpiringOAuthConnections(
     )
     .orderBy(asc(oauthConnections.expiresAt))
     .limit(args.limit);
+}
+
+/**
+ * Which genome owns a platform account — the engagement webhook's one read.
+ *
+ * **The fourth deliberate cross-tenant read in this file**, and the one with the
+ * least choice about it. An inbound webhook arrives knowing which *account* an
+ * event happened on and nothing else: there is no session, no header, and no
+ * tenant to scope to until this query answers. Every other route in the system
+ * learns its genome before it touches data; this one learns it from here.
+ *
+ * That makes the return shape the security boundary. It hands back `orgId` and
+ * `genomeId` and the caller is required to build its `ToolCtx` from them, which
+ * is what puts the ingest back inside the scoped layer for every subsequent
+ * query — see `apps/api/src/engage-webhook.ts`.
+ *
+ * ── Why more than one row is a refusal, not a pick ────────────────────────
+ *
+ * The index is deliberately not unique: an agency workspace can connect the same
+ * client's Instagram twice under two genomes. When that happens there is no
+ * defensible way to choose, and choosing wrong files a customer's private DM
+ * into another customer's inbox — the precise failure CLAUDE.md invariant 2
+ * exists to prevent. So the ambiguity is returned as-is and the caller drops the
+ * event with a warning. Losing a comment is recoverable; leaking one is not.
+ */
+export async function findGenomesByAccount(
+  db: Database,
+  args: { provider: string; accountId: string },
+): Promise<Array<{ orgId: string; genomeId: string }>> {
+  return db
+    .select({ orgId: oauthConnections.orgId, genomeId: oauthConnections.genomeId })
+    .from(oauthConnections)
+    .where(and(eq(oauthConnections.provider, args.provider), eq(oauthConnections.accountId, args.accountId)))
+    .limit(5);
 }
 
 /** Latches the warning from {@link findExpiringOAuthConnections}. Org-scoped, unlike the read. */

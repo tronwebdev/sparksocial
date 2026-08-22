@@ -30,7 +30,7 @@ import type {
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
-import type { DueContentSource } from '@sparksocial/db';
+import type { DueContentSource, OutcomeCandidateRow, OutcomeCandidateSource } from '@sparksocial/db';
 
 /**
  * DEVELOPMENT STORE — in-memory, empty until something real writes to it.
@@ -164,11 +164,28 @@ export interface DevStoreOptions {
    * version of what happened that can disagree with the first.
    */
   allCalls?: () => ToolCallRecord[];
+  /**
+   * The clock the store stamps rows with. Defaults to the real one.
+   *
+   * Injected so the outcome observer's cadence rules are testable: every one of
+   * them is arithmetic over `published_at` and `synced_at`, and a test that
+   * cannot place a snapshot in the past can only assert that nothing is ever
+   * due. Under Postgres these columns are `defaultNow()`, which is the same
+   * reason a real `syncedAt` is not a caller-supplied field on `record` — a
+   * snapshot is stamped when the sync happens, not when someone says it did.
+   */
+  now?: () => Date;
 }
 
 export function createDevStore(
   opts: DevStoreOptions = {},
-): ScopedDb & { seedCount: number; runs: ScopedDb['runs']; findDue: DueContentSource['findDue'] } {
+): ScopedDb & {
+  seedCount: number;
+  runs: ScopedDb['runs'];
+  findDue: DueContentSource['findDue'];
+  findMetricsDue: OutcomeCandidateSource['findMetricsDue'];
+  findOutcomesDue: OutcomeCandidateSource['findOutcomesDue'];
+} {
   const {
     runStore = createDevRunStore(),
     campaignStore = createDevCampaignStore(),
@@ -178,6 +195,7 @@ export function createDevStore(
     consentStore = createDevConsentStore(),
     findCall = () => undefined,
     allCalls = () => [],
+    now = () => new Date(),
   } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -584,7 +602,7 @@ export function createDevStore(
         return row;
       },
 
-      async markPublished({ id, orgId: org, platform, embedding, externalId, via, url }) {
+      async markPublished({ id, orgId: org, platform, embedding, externalId, via, url, publishedAt }) {
         // Same `drafts`-only reach as `list`/`get`/`schedule`. `content` (the
         // published-history array `recent()` reads) is seed-only in dev mode —
         // see the note on its declaration above — so a real publish through
@@ -599,7 +617,12 @@ export function createDevStore(
         // PRD §5's "time to first post" measures to here, so the dev store has
         // to stamp it too — a metric that is real under Postgres and null in
         // development is a metric nobody trusts.
-        row.publishedAt = new Date();
+        // Honours a caller-supplied stamp, as the Postgres store does
+        // (`args.publishedAt ?? new Date()`). It previously hardcoded
+        // `new Date()` and dropped the argument, which made every dev-mode post
+        // publish "now" no matter what the caller said — invisible until the
+        // outcome observer, whose whole cadence is arithmetic on this field.
+        row.publishedAt = publishedAt ?? new Date();
         row.platform = platform;
         row.externalId = externalId;
         row.via = via;
@@ -725,7 +748,7 @@ export function createDevStore(
           views,
           impressions,
           saves,
-          syncedAt: new Date(),
+          syncedAt: now(),
         };
         metrics.set(`${contentItemId}:${platform}`, { ...snapshot, orgId: org, genomeId });
         return snapshot;
@@ -1400,5 +1423,82 @@ export function createDevStore(
           scheduledAt: r.scheduledAt!,
         }));
     },
+
+    /**
+     * The outcome observer's two reads, in memory.
+     *
+     * These exist so the learning loop is testable without Postgres. It is
+     * worth being blunt about why that matters: the loop shipped as two tools
+     * nothing ever called, and a feature whose only exercise path requires a
+     * live database and a real vendor key is a feature that stays unexercised.
+     *
+     * The cadence and maturation rules are the same ones `scoped.ts` spells
+     * out — deliberately re-expressed rather than approximated, because a dev
+     * store that selects a *different* set of posts would make the observer's
+     * tests prove nothing about production.
+     */
+    async findMetricsDue({ now, limit, trackingDays = 30 }) {
+      const trackingFloor = now.getTime() - trackingDays * 86_400_000;
+
+      return [...drafts.values()]
+        .filter((r) => r.status === 'published' && r.publishedAt && r.platform && r.externalId)
+        .filter((r) => r.publishedAt!.getTime() >= trackingFloor)
+        .map((r) => ({ row: r, lastSyncedAt: lastSyncFor(r.id) }))
+        .filter(({ row, lastSyncedAt }) => {
+          // Never synced is always due, whatever the age: a post that
+          // published while the observer was down would otherwise never be
+          // measured at all.
+          if (!lastSyncedAt) return true;
+          const ageMs = now.getTime() - row.publishedAt!.getTime();
+          const interval =
+            ageMs < 2 * 86_400_000 ? 3 * 3_600_000 : ageMs < 7 * 86_400_000 ? 86_400_000 : 7 * 86_400_000;
+          return lastSyncedAt.getTime() <= now.getTime() - interval;
+        })
+        .sort((a, b) => a.row.publishedAt!.getTime() - b.row.publishedAt!.getTime())
+        .slice(0, limit)
+        .map(({ row, lastSyncedAt }) => candidate(row, lastSyncedAt));
+    },
+
+    async findOutcomesDue({ now, limit, maturationHours = 72 }) {
+      const matureBefore = now.getTime() - maturationHours * 3_600_000;
+
+      return [...drafts.values()]
+        .filter((r) => r.status === 'published' && r.publishedAt && r.platform && r.pillar)
+        .filter((r) => r.publishedAt!.getTime() <= matureBefore)
+        // No snapshot means nothing to score from — the reward computation
+        // would divide by a baseline of 1 and produce a number that looks
+        // like data.
+        .filter((r) => lastSyncFor(r.id) !== null)
+        .filter((r) => !scoredContentItems.has(r.id))
+        // Oldest first, so each score sees the baseline its predecessors built.
+        .sort((a, b) => a.publishedAt!.getTime() - b.publishedAt!.getTime())
+        .slice(0, limit)
+        .map((r) => candidate(r, lastSyncFor(r.id)));
+    },
   };
+
+  /** Newest snapshot across a post's platforms — `max(synced_at)` in memory. */
+  function lastSyncFor(contentItemId: string): Date | null {
+    let newest: Date | null = null;
+    for (const snapshot of metrics.values()) {
+      if (snapshot.contentItemId !== contentItemId) continue;
+      if (!newest || snapshot.syncedAt > newest) newest = snapshot.syncedAt;
+    }
+    return newest;
+  }
+
+  function candidate(
+    row: ContentDraft & { orgId: string },
+    lastSyncedAt: Date | null,
+  ): OutcomeCandidateRow {
+    return {
+      id: row.id,
+      orgId: row.orgId,
+      genomeId: row.genomeId,
+      platform: row.platform!,
+      pillar: row.pillar ?? null,
+      publishedAt: row.publishedAt!,
+      lastSyncedAt,
+    };
+  }
 }

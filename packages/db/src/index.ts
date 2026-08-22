@@ -17,3 +17,4 @@ export * from './humanLoopRepository.js';
 export * from './toolCallReadRepository.js';
 export * from './creditRepository.js';
 export * from './schedulerRepository.js';
+export * from './outcomeRepository.js';

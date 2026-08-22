@@ -1416,6 +1416,21 @@ export const oauthConnections = pgTable(
     scopes: text('scopes').array(),
     accountLabel: text('account_label'),
     /**
+     * The platform's own identifier for the connected account — an Instagram
+     * Business account id, a TikTok `open_id`, an aggregator profile key.
+     *
+     * Distinct from `accountLabel`, which is a display name for a human and
+     * changes whenever the owner renames their page. This is the *stable* id,
+     * and it exists for one reason: inbound webhooks arrive knowing only which
+     * account an event happened on. Without it the engagement webhook has no
+     * route back to a genome, so a comment cannot be filed against the brand it
+     * was left on — which is why the inbox had a write tool and no writer.
+     *
+     * Nullable: connections predating this column have none, and some providers
+     * (Canva) have no account concept worth recording.
+     */
+    accountId: text('account_id'),
+    /**
      * ── PRD §10's connection alerts ────────────────────────────────────────
      *
      * §10 pairs "connection health indicators" with "alerts + retry flows"
@@ -1434,6 +1449,14 @@ export const oauthConnections = pgTable(
   (t) => [
     index('oauth_connections_scope_idx').on(t.orgId, t.genomeId),
     uniqueIndex('oauth_connections_unique_idx').on(t.genomeId, t.provider),
+    /**
+     * The engagement webhook's reverse lookup: account id → genome. Deliberately
+     * not unique — one Instagram account can legitimately be connected by two
+     * genomes in an agency workspace managing the same client twice, and a
+     * unique index would fail the second connection at save time rather than
+     * surfacing the ambiguity where it actually matters, at resolution.
+     */
+    index('oauth_connections_account_idx').on(t.provider, t.accountId),
     // The watcher's one cross-tenant read: "which connections are near expiry",
     // ordered by when. Without this it is a full scan on every tick.
     index('oauth_connections_expiry_idx').on(t.expiresAt),

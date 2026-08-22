@@ -5,8 +5,10 @@ import {
   createCreditRepository,
   createRunRecorder,
   createDueContentSource,
+  createOutcomeCandidateSource,
   lookupToolCall,
   type DueContentItem,
+  type OutcomeCandidateSource,
 } from '@sparksocial/db';
 import type { CreditStore, InvokeDeps, ToolCallRecord } from '@sparksocial/tools';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
@@ -31,6 +33,8 @@ export function connectPostgresStore(): {
   lookupCall: (callId: string, orgId: string) => Promise<ToolCallRecord | undefined>;
   /** The scheduler's read — see scheduler.ts. */
   findDue: (before: Date, limit: number) => Promise<DueContentItem[]>;
+  /** The learning loop's two cross-tenant reads — see outcome-observer.ts. */
+  outcomes: OutcomeCandidateSource;
   close: () => Promise<void>;
 } {
   const { db, pool } = connect();
@@ -41,6 +45,7 @@ export function connectPostgresStore(): {
     runRecorder: createRunRecorder(db),
     lookupCall: (callId, orgId) => lookupToolCall(db, callId, orgId),
     findDue: createDueContentSource(db).findDue,
+    outcomes: createOutcomeCandidateSource(db),
     close: () => pool.end(),
   };
 }
