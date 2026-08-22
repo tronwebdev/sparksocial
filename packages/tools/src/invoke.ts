@@ -1,7 +1,7 @@
 import { ZodError } from 'zod';
 import { ToolError, type Explanation, type Role } from '@sparksocial/shared/types';
 import { getTool, type RegisteredTool } from './registry.js';
-import { evaluate, type Decision } from './policy.js';
+import { evaluate, isTeamCapability, type Decision, type TeamCapability } from './policy.js';
 import type { GuardrailId, PolicySubject, ToolCtx } from './defineTool.js';
 
 /**
@@ -273,6 +273,36 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     }
   }
 
+  /* 4d ─ Team-group capabilities (`SET-WS-TEAM-GROUPS`).
+   *
+   *      Resolved here rather than inside `evaluate`, because `evaluate` does no
+   *      I/O (CLAUDE.md invariant 3) — it takes the resolved list and stays a
+   *      pure function of its inputs.
+   *
+   *      Only for a `user` call with a known user. An agent turn never carries
+   *      group capabilities: SPARK acting "as" a member of the publishing group
+   *      would let a workspace widen the agent's reach by editing a team screen,
+   *      which is the opposite of what that screen is for. And a call with no
+   *      `userId` has nobody whose memberships could be looked up.
+   *
+   *      A failure here is swallowed to an empty list rather than failing the
+   *      call. Every capability widens, so losing them can only ever refuse
+   *      something that would have been allowed — the safe direction — whereas
+   *      failing the call would take the whole registry down with one bad query
+   *      on a feature most workspaces will not use. */
+  let capabilities: TeamCapability[] = [];
+  if (req.caller === 'user' && req.ctx.userId) {
+    try {
+      const resolved = await req.ctx.db.teamGroups.capabilitiesForUser(req.ctx.orgId, req.ctx.userId);
+      capabilities = resolved.filter(isTeamCapability);
+    } catch (e) {
+      req.ctx.logger.warn('could not resolve team-group capabilities; proceeding on role alone', {
+        userId: req.ctx.userId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   /* 5 ── Policy. Role scope, autonomy, budget, quiet windows, approval mode —
    *      all resolved in the one pure function. */
   const decision = evaluate({
@@ -286,6 +316,7 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     caller: req.caller,
     role: req.ctx.role,
     now: at,
+    ...(capabilities.length ? { capabilities } : {}),
     brand: req.brand,
     subject: { ...derived, guardrailFlags },
     ...(derived.engagement ? { engagement: derived.engagement } : {}),

@@ -107,6 +107,11 @@ import {
   makeTeamRoleSet,
   makeTeamList,
   teamPermissionSet,
+  teamGroupList,
+  teamGroupCreate,
+  teamGroupUpdate,
+  teamGroupDelete,
+  teamGroupMemberSet,
   whitelabelLinkCreate,
   makeBrandOAuthConnect,
   brandOAuthStatus,
@@ -784,6 +789,13 @@ export function registerAgencyTools(deps: {
     register(makeTeamList({ clerk: deps.clerk }));
   }
   register(teamPermissionSet);
+  // The Groups tab (`SET-WS-TEAM-GROUPS`). Capability bundles that widen what
+  // their members may do on top of their role — see `teamGroups.ts`.
+  register(teamGroupList);
+  register(teamGroupCreate);
+  register(teamGroupUpdate);
+  register(teamGroupDelete);
+  register(teamGroupMemberSet);
 
   register(whitelabelLinkCreate);
 

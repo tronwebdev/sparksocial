@@ -171,6 +171,10 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (patch.timezone !== undefined) set.timezone = patch.timezone;
       if (patch.postingWindows !== undefined) set.postingWindows = patch.postingWindows ?? null;
       if (patch.engagementAutonomy !== undefined) set.engagementAutonomy = patch.engagementAutonomy;
+      if (patch.salesQualification !== undefined) set.salesQualification = patch.salesQualification;
+      if (patch.salesHandoff !== undefined) set.salesHandoff = patch.salesHandoff;
+      if (patch.salesDestination !== undefined) set.salesDestination = patch.salesDestination;
+      if (patch.salesEscalationKeywords !== undefined) set.salesEscalationKeywords = patch.salesEscalationKeywords;
       if (patch.engagementTypes !== undefined) set.engagementTypes = patch.engagementTypes ?? null;
 
       await db
@@ -218,6 +222,10 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     strictMode: row.strictMode,
     timezone: row.timezone,
     engagementAutonomy: row.engagementAutonomy as BrandGovernance['engagementAutonomy'],
+    ...(row.salesQualification ? { salesQualification: row.salesQualification } : {}),
+    ...(row.salesHandoff ? { salesHandoff: row.salesHandoff } : {}),
+    ...(row.salesDestination ? { salesDestination: row.salesDestination } : {}),
+    ...(row.salesEscalationKeywords ? { salesEscalationKeywords: row.salesEscalationKeywords } : {}),
     ...(row.restrictedTopics ? { restrictedTopics: row.restrictedTopics } : {}),
     ...(row.claimsToAvoid ? { claimsToAvoid: row.claimsToAvoid } : {}),
     ...(row.toneVector ? { toneVector: row.toneVector } : {}),

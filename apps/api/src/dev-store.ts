@@ -20,6 +20,7 @@ import type {
   HumanLoopStore,
   LearningArm,
   OAuthConnectionRecord,
+  TeamGroup,
   OrgSettingsRecord,
   Opportunity,
   RecipeOutputRecord,
@@ -230,6 +231,10 @@ export function createDevStore(
   const recipeOutputs: (RecipeOutputRecord & { orgId: string })[] = [];
   // Keyed on `${genomeId}:${provider}` — one connection per (genome, provider), same unique target as the real schema.
   const oauthConnectionsMap = new Map<string, OAuthConnectionRecord & { orgId: string }>();
+  const groups = new Map<string, TeamGroup & { orgId: string }>();
+  /** `${groupId}:${userId}` — the same uniqueness the real index enforces. */
+  const groupMembers = new Set<string>();
+  let nextGroup = 1;
   const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
   // Typed as the record itself rather than a hand-listed copy of its fields —
   // the inline literal is how this drifted when §8.12's 2FA/residency/retention
@@ -1138,6 +1143,67 @@ export function createDevStore(
       },
     },
 
+    teamGroups: {
+      async list(org) {
+        return [...groups.values()]
+          .filter((g) => g.orgId === org)
+          .map((g) => ({ ...g, memberCount: memberIdsFor(g.id).length }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      },
+      async create({ orgId: org, name, capabilities }) {
+        const id = `grp_${nextGroup++}`;
+        const now = new Date();
+        const row = { id, orgId: org, name, capabilities, memberCount: 0, createdAt: now, updatedAt: now };
+        groups.set(id, row);
+        return { ...row };
+      },
+      async update({ orgId: org, id, name, capabilities }) {
+        const row = groups.get(id);
+        if (!row || row.orgId !== org) return undefined;
+        if (name !== undefined) row.name = name;
+        if (capabilities !== undefined) row.capabilities = capabilities;
+        row.updatedAt = new Date();
+        return { ...row, memberCount: memberIdsFor(id).length };
+      },
+      async remove({ orgId: org, id }) {
+        const row = groups.get(id);
+        if (!row || row.orgId !== org) return false;
+        // Memberships go with the group, as the real delete's transaction does:
+        // an orphaned membership either grants nothing or, after an id reuse,
+        // grants something nobody chose.
+        for (const key of [...groupMembers]) if (key.startsWith(`${id}:`)) groupMembers.delete(key);
+        groups.delete(id);
+        return true;
+      },
+      async members(org, groupId) {
+        const row = groups.get(groupId);
+        return row && row.orgId === org ? memberIdsFor(groupId) : [];
+      },
+      async addMember({ orgId: org, groupId, userId }) {
+        const row = groups.get(groupId);
+        if (!row || row.orgId !== org) return;
+        groupMembers.add(`${groupId}:${userId}`);
+      },
+      async removeMember({ orgId: org, groupId, userId }) {
+        const row = groups.get(groupId);
+        if (!row || row.orgId !== org) return;
+        groupMembers.delete(`${groupId}:${userId}`);
+      },
+      async capabilitiesForUser(org, userId) {
+        // The union, not the intersection — see `TeamGroupStore`. Adding
+        // somebody to a second group must not silently remove access.
+        const union = new Set<string>();
+        for (const key of groupMembers) {
+          const [groupId, member] = key.split(':');
+          if (member !== userId) continue;
+          const row = groups.get(groupId!);
+          if (!row || row.orgId !== org) continue;
+          for (const capability of row.capabilities) union.add(capability);
+        }
+        return [...union].sort();
+      },
+    },
+
     oauthConnections: {
       async get(genomeId, org, provider) {
         const row = oauthConnectionsMap.get(`${genomeId}:${provider}`);
@@ -1489,6 +1555,13 @@ export function createDevStore(
         .map((r) => candidate(r, lastSyncFor(r.id)));
     },
   };
+
+  function memberIdsFor(groupId: string): string[] {
+    return [...groupMembers]
+      .filter((k) => k.startsWith(`${groupId}:`))
+      .map((k) => k.slice(groupId.length + 1))
+      .sort();
+  }
 
   /** Newest snapshot across a post's platforms — `max(synced_at)` in memory. */
   function lastSyncFor(contentItemId: string): Date | null {

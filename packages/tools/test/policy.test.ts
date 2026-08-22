@@ -49,6 +49,7 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
       estimatedCents: over.budget?.estimatedCents ?? 0,
     },
     ...(over.engagement ? { engagement: over.engagement } : {}),
+    ...(over.capabilities ? { capabilities: over.capabilities } : {}),
     ...(over.approval ? { approval: over.approval } : {}),
   } as PolicyInput;
 }
@@ -785,5 +786,241 @@ describe('rule 7 — a campaign’s own approval mode overrides the brand’s', 
       }),
     );
     expect(d.kind).toBe('allow');
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * TEAM-GROUP CAPABILITIES (`SET-WS-TEAM-GROUPS`).
+ *
+ * The safety argument for the whole feature is one sentence: every capability
+ * widens and none narrows. That means a mistake in group configuration cannot
+ * lock a workspace out of its own account, and it means rule 2 still has the
+ * final say on whether a tool is reachable at all.
+ *
+ * These tests exist to keep that sentence true. Each capability is checked at
+ * exactly one decision point, and each of those points is tested from both
+ * sides — with the capability and without it.
+ */
+describe('team-group capabilities', () => {
+  describe('rule 2 — reaching a tool the caller’s role cannot', () => {
+    it('lets `approve` act as an approver', () => {
+      const d = evaluate(
+        input({
+          caller: 'user',
+          role: 'editor',
+          tool: { scopes: ['owner', 'admin', 'approver'] },
+          capabilities: ['approve'],
+        }),
+      );
+      expect(d.kind).toBe('allow');
+    });
+
+    it('refuses the same call without the capability', () => {
+      const d = evaluate(input({ caller: 'user', role: 'editor', tool: { scopes: ['owner', 'admin', 'approver'] } }));
+      expect(ruleOf(d)).toBe('role.scope');
+    });
+
+    it('cannot reach a tool that names no role the capability confers', () => {
+      // The asymmetry that makes groups safe: `approve` acts as `approver`, and
+      // `approver` is worth nothing on an owner-only tool.
+      const d = evaluate({
+        ...input({ caller: 'user', role: 'editor', capabilities: ['approve'] }),
+        tool: { name: 'org.security.sso.configure', effect: 'write', autonomy: 'auto', scopes: ['owner'] },
+      });
+      expect(ruleOf(d)).toBe('role.scope');
+    });
+
+    it('lets `manage_brand` act as an admin inside the brand family', () => {
+      const d = evaluate({
+        ...input({ caller: 'user', role: 'editor', capabilities: ['manage_brand'] }),
+        tool: { name: 'brand.governance.set', effect: 'write', autonomy: 'auto', scopes: ['owner', 'admin'] },
+      });
+      expect(d.kind).toBe('allow');
+    });
+
+    it('lets `manage_brand` act as an admin inside the genome family', () => {
+      const d = evaluate({
+        ...input({ caller: 'user', role: 'editor', capabilities: ['manage_brand'] }),
+        tool: { name: 'genome.voice.set', effect: 'write', autonomy: 'auto', scopes: ['owner', 'admin'] },
+      });
+      expect(d.kind).toBe('allow');
+    });
+
+    it('does NOT let `manage_brand` reach the org or team families', () => {
+      // The reason the grant is family-scoped. "Manage brand" on a settings
+      // screen is not consent to invite staff or reconfigure SSO, and granting
+      // `admin` outright would have meant exactly that.
+      for (const name of ['team.invite', 'org.security.sso.configure']) {
+        const d = evaluate({
+          ...input({ caller: 'user', role: 'editor', capabilities: ['manage_brand'] }),
+          tool: { name, effect: 'write', autonomy: 'auto', scopes: ['owner', 'admin'] },
+        });
+        expect(ruleOf(d)).toBe('role.scope');
+      }
+    });
+
+    it('ignores capabilities that grant no role at this decision point', () => {
+      // `publish` and `spend_credits` are about permission toggles further down,
+      // not about reaching a tool. Neither may serve as a general scope bypass.
+      const d = evaluate(
+        input({
+          caller: 'user',
+          role: 'viewer',
+          tool: { scopes: ['owner', 'admin', 'editor'] },
+          capabilities: ['publish', 'spend_credits'],
+        }),
+      );
+      expect(ruleOf(d)).toBe('role.scope');
+    });
+
+    it('ignores an unrecognised capability', () => {
+      const d = evaluate(
+        input({
+          caller: 'user',
+          role: 'editor',
+          tool: { scopes: ['owner', 'admin', 'approver'] },
+          capabilities: ['not_a_capability' as never],
+        }),
+      );
+      expect(ruleOf(d)).toBe('role.scope');
+    });
+  });
+
+  describe('rule 2b — the workspace’s publish-by-role restriction', () => {
+    const publishTool = { effect: 'publish' as const, scopes: ['owner', 'admin', 'editor'] as Role[] };
+
+    it('lets a `publish` group member through a restriction their role fails', () => {
+      // The workspace naming these people directly is a more specific statement
+      // than its by-role list, and should win over it.
+      const d = evaluate(
+        input({
+          caller: 'user',
+          role: 'editor',
+          tool: publishTool,
+          brand: { publishRoles: ['owner', 'admin'] },
+          capabilities: ['publish'],
+        }),
+      );
+      expect(d.kind).toBe('allow');
+    });
+
+    it('refuses the same call without the capability', () => {
+      const d = evaluate(
+        input({ caller: 'user', role: 'editor', tool: publishTool, brand: { publishRoles: ['owner', 'admin'] } }),
+      );
+      expect(ruleOf(d)).toBe('permission.publish_role');
+    });
+
+    it('still cannot publish with a tool its role was never allowed to call', () => {
+      // Rule 2 runs first and is not negotiable — the capability cannot rescue
+      // a caller the tool itself refuses.
+      const d = evaluate(
+        input({
+          caller: 'user',
+          role: 'viewer',
+          tool: { effect: 'publish', scopes: ['owner', 'admin', 'editor'] },
+          brand: { publishRoles: ['viewer'] },
+          capabilities: ['publish'],
+        }),
+      );
+      expect(ruleOf(d)).toBe('role.scope');
+    });
+  });
+
+  describe('rule 4a — spending', () => {
+    it('lets `spend_credits` past a workspace with spending switched off', () => {
+      const d = evaluate(
+        input({
+          caller: 'user',
+          tool: { effect: 'spend' },
+          brand: { permissions: { spendCredits: false } },
+          budget: { estimatedCents: 50, remainingCents: 10_000 },
+          capabilities: ['spend_credits'],
+        }),
+      );
+      expect(d.kind).toBe('allow');
+    });
+
+    it('refuses the same call without the capability', () => {
+      const d = evaluate(
+        input({
+          caller: 'user',
+          tool: { effect: 'spend' },
+          brand: { permissions: { spendCredits: false } },
+          budget: { estimatedCents: 50, remainingCents: 10_000 },
+        }),
+      );
+      expect(ruleOf(d)).toBe('permission.spend');
+    });
+
+    it('does not lift the monthly ceiling', () => {
+      // "Spending is switched off" is a policy an owner can delegate. "There is
+      // no money left" is a fact, and a group that could spend past the cap
+      // would make the cap advisory.
+      const d = evaluate(
+        input({
+          caller: 'user',
+          tool: { effect: 'spend' },
+          budget: { estimatedCents: 5_000, remainingCents: 100 },
+          capabilities: ['spend_credits'],
+        }),
+      );
+      expect(ruleOf(d)).toBe('budget.exceeded');
+    });
+  });
+
+  describe('rule 4b — media sign-off', () => {
+    it('lets `approve` generate media without waiting for somebody else', () => {
+      // The person who would have approved it is approving it by doing it.
+      const d = evaluate(
+        input({
+          caller: 'user',
+          tool: { producesMedia: true },
+          brand: { permissions: { requireApprovalForMedia: true } },
+          capabilities: ['approve'],
+        }),
+      );
+      expect(d.kind).toBe('allow');
+    });
+
+    it('holds the same call for approval without the capability', () => {
+      const d = evaluate(
+        input({
+          caller: 'user',
+          tool: { producesMedia: true },
+          brand: { permissions: { requireApprovalForMedia: true } },
+        }),
+      );
+      expect(ruleOf(d)).toBe('permission.media_generation');
+    });
+  });
+
+  describe('an agent never carries them', () => {
+    it('ignores capabilities entirely on an agent turn', () => {
+      // SPARK acting "as" a member of the publishing group would let a workspace
+      // widen the agent's reach by editing a team screen, which is the opposite
+      // of what that screen is for.
+      const d = evaluate(
+        input({
+          caller: 'agent',
+          role: 'editor',
+          tool: { effect: 'publish', scopes: ['owner', 'admin', 'editor'] },
+          brand: { publishRoles: ['owner'] },
+          capabilities: ['publish'],
+        }),
+      );
+      expect(ruleOf(d)).toBe('permission.publish_role');
+    });
+  });
+
+  it('treats absent and empty as the same thing — exactly the caller’s role', () => {
+    for (const capabilities of [undefined, []]) {
+      const d = evaluate(
+        input({ caller: 'user', role: 'editor', tool: { scopes: ['owner', 'admin', 'approver'] }, capabilities }),
+      );
+      expect(ruleOf(d)).toBe('role.scope');
+    }
   });
 });

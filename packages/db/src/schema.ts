@@ -667,6 +667,43 @@ export const brands = pgTable(
     engagementAutonomy: text('engagement_autonomy').notNull().default('off'),
     /** comment | dm | story_reply. Empty means all of them. */
     engagementTypes: jsonb('engagement_types').$type<string[]>(),
+    /**
+     * ── Sales Assist (`SET-WS-EI-SALES`) ──────────────────────────────────
+     *
+     * How this brand wants a lead handled once the classifier has called a
+     * message `sales_opportunity`. Four columns rather than one blob because
+     * they are read by different code at different moments, and a single
+     * `sales_config` jsonb would make every one of them parse the whole thing.
+     *
+     * `salesQualification` — which of the four qualification moves the agent
+     * may make (ask questions, share a booking link, share pricing, collect
+     * contact details). Absent means none configured, which is not the same as
+     * all four: an agent that shares a pricing link nobody authorised is worse
+     * than one that asks a person.
+     */
+    salesQualification: jsonb('sales_qualification').$type<string[]>(),
+    /**
+     * Per-temperature handoff, `{hot,warm,cold}` → destination. The design's
+     * three destinations are `crm_notify`, `save_notify` and `nurture_only`,
+     * and the point of keying by temperature is that a hot lead and a cold one
+     * are the same *kind* of row with very different urgency.
+     */
+    salesHandoff: jsonb('sales_handoff').$type<Record<string, string>>(),
+    /**
+     * Where `crm_notify` sends. Free text, matching `opportunities.routed_to`
+     * — there is no CRM integration to structure this against yet, and
+     * inventing a shape now would be a seam pointing at nothing.
+     */
+    salesDestination: text('sales_destination'),
+    /**
+     * Words that force a human. "Messages containing these will always be
+     * escalated" is the design's own wording, and *always* is the whole value:
+     * this is a deterministic override of the classifier, not an instruction in
+     * a prompt the model may weigh against other things. A refund demand or a
+     * lawsuit threat auto-answered by an agent is the failure worth spending a
+     * column to prevent.
+     */
+    salesEscalationKeywords: jsonb('sales_escalation_keywords').$type<string[]>(),
 
     timezone: text('timezone').notNull().default('UTC'),
     /**
@@ -1316,6 +1353,68 @@ export const brandMembers = pgTable(
   (t) => [
     index('brand_members_org_idx').on(t.orgId),
     uniqueIndex('brand_members_unique_idx').on(t.brandId, t.userId),
+  ],
+);
+
+/**
+ * TEAM GROUPS (`SET-WS-TEAM-GROUPS`) — named capability bundles.
+ *
+ * `brand_members` already answers "which brands may this person touch, and as
+ * what role". It cannot answer the question the design's Groups tab asks:
+ * *"these four people may publish and approve, whatever their role says"*.
+ * Roles are a fixed ladder compiled into every tool's `scopes`; a workspace that
+ * wants a Video team who can publish but not spend, and a Design team who can
+ * approve but not publish, has no way to express it.
+ *
+ * A group is therefore a set of **capabilities** plus a set of members, and it
+ * only ever widens: see `policy.ts`, where each capability is checked at the one
+ * decision point it belongs to. Nothing here can grant access to a tool whose
+ * own `scopes` refuse the caller — rule 2 runs first and is not negotiable.
+ */
+export const teamGroups = pgTable(
+  'team_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    name: text('name').notNull(),
+    /**
+     * Any of `publish` | `spend_credits` | `manage_brand` | `approve` — the four
+     * the design names. Stored as a list rather than four booleans because the
+     * set is read whole on every policy evaluation and is expected to grow;
+     * four columns would make each addition a migration and a code change in
+     * every store.
+     */
+    capabilities: jsonb('capabilities').$type<string[]>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('team_groups_org_idx').on(t.orgId),
+    // Two groups called "Design Team" in one workspace is a mistake every time,
+    // and the person who made it cannot tell them apart on the screen.
+    uniqueIndex('team_groups_name_idx').on(t.orgId, t.name),
+  ],
+);
+
+export const teamGroupMembers = pgTable(
+  'team_group_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    userId: text('user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /**
+     * The hot path: "which capabilities does this user have", resolved once per
+     * tool call. Indexed on `(orgId, userId)` rather than on `groupId` because
+     * that is the direction the policy layer reads it — the group-detail screen
+     * reads the other way but does so once, on a click.
+     */
+    index('team_group_members_user_idx').on(t.orgId, t.userId),
+    index('team_group_members_group_idx').on(t.groupId),
+    uniqueIndex('team_group_members_unique_idx').on(t.groupId, t.userId),
   ],
 );
 

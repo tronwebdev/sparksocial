@@ -10,6 +10,7 @@ import { ConnectionsPanel } from '@/components/settings/ConnectionsPanel';
 import { PolicyPanel } from '@/components/settings/PolicyPanel';
 import { GovernancePanel } from '@/components/settings/GovernancePanel';
 import { LearningPanel } from '@/components/settings/LearningPanel';
+import { TeamGroupsPanel } from '@/components/settings/TeamGroupsPanel';
 import { KnowledgePanel } from '@/components/settings/KnowledgePanel';
 
 /**
@@ -61,6 +62,9 @@ export default function SettingsPage() {
         <PublishHealthPanel />
         <PolicyPanel />
         <LearningPanel />
+        {/* The Groups tab. Sits next to the policy panels because it is the other
+            half of the same question: who may do what, and under which rules. */}
+        <TeamGroupsPanel />
       </div>
     </>
   );

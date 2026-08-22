@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -2617,4 +2617,172 @@ export async function readSuccessMetrics(
     rolledBack: byStatus('rolled_back'),
     needsReview: byStatus('needs_review'),
   };
+}
+
+/* ── team groups (`SET-WS-TEAM-GROUPS`) ──────────────────────────────────── */
+
+export interface TeamGroupRow {
+  id: string;
+  name: string;
+  capabilities: string[];
+  memberCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Groups are **org-scoped, not genome-scoped**, and that is a deliberate
+ * exception worth stating rather than leaving to be noticed.
+ *
+ * `assertScope` exists because assets, chunks, memories and content belong to
+ * one client and must never cross. A group is a statement about the agency's own
+ * staff — "these four people may publish" — and the people it names work across
+ * several clients by design. Scoping it per genome would force the same team to
+ * be recreated once per client, and the copies would drift, which is a worse
+ * outcome than the one the predicate protects against here: there is no client
+ * material in these two tables at all.
+ *
+ * Everything still keys on `orgId`, so one workspace can never read another's
+ * groups.
+ */
+export async function listTeamGroups(db: Database, orgId: string): Promise<TeamGroupRow[]> {
+  const rows = await db
+    .select({
+      id: teamGroups.id,
+      name: teamGroups.name,
+      capabilities: teamGroups.capabilities,
+      createdAt: teamGroups.createdAt,
+      updatedAt: teamGroups.updatedAt,
+      memberCount: sql<string>`count(${teamGroupMembers.id})`,
+    })
+    .from(teamGroups)
+    .leftJoin(teamGroupMembers, eq(teamGroupMembers.groupId, teamGroups.id))
+    .where(eq(teamGroups.orgId, orgId))
+    .groupBy(teamGroups.id, teamGroups.name, teamGroups.capabilities, teamGroups.createdAt, teamGroups.updatedAt)
+    .orderBy(asc(teamGroups.name));
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    capabilities: r.capabilities ?? [],
+    memberCount: Number(r.memberCount ?? 0),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
+export async function listTeamGroupMembers(db: Database, orgId: string, groupId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: teamGroupMembers.userId })
+    .from(teamGroupMembers)
+    .where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.groupId, groupId)))
+    .orderBy(asc(teamGroupMembers.userId));
+  return rows.map((r) => r.userId);
+}
+
+export async function createTeamGroup(
+  db: Database,
+  orgId: string,
+  args: { name: string; capabilities: string[] },
+): Promise<TeamGroupRow> {
+  const [row] = await db
+    .insert(teamGroups)
+    .values({ orgId, name: args.name, capabilities: args.capabilities })
+    .returning();
+  if (!row) throw new ToolError('UPSTREAM_FAILED', 'Failed to create the group.', { name: args.name });
+  return { ...row, capabilities: row.capabilities ?? [], memberCount: 0 };
+}
+
+export async function updateTeamGroup(
+  db: Database,
+  orgId: string,
+  args: { id: string; name?: string; capabilities?: string[] },
+): Promise<TeamGroupRow | undefined> {
+  const [row] = await db
+    .update(teamGroups)
+    .set({
+      ...(args.name !== undefined ? { name: args.name } : {}),
+      ...(args.capabilities !== undefined ? { capabilities: args.capabilities } : {}),
+      updatedAt: sql`now()`,
+    })
+    .where(and(eq(teamGroups.id, args.id), eq(teamGroups.orgId, orgId)))
+    .returning();
+  if (!row) return undefined;
+
+  const members = await listTeamGroupMembers(db, orgId, args.id);
+  return { ...row, capabilities: row.capabilities ?? [], memberCount: members.length };
+}
+
+/**
+ * Deleting a group deletes its memberships.
+ *
+ * No foreign key does this, so it is done here in one transaction: an orphaned
+ * `team_group_members` row is worse than a missing one, because
+ * {@link capabilitiesForUser} joins through the group and a membership pointing
+ * at nothing would either grant nothing (confusing) or, after an id reuse, grant
+ * something nobody chose.
+ */
+export async function deleteTeamGroup(db: Database, orgId: string, id: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await tx.delete(teamGroupMembers).where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.groupId, id)));
+    const deleted = await tx
+      .delete(teamGroups)
+      .where(and(eq(teamGroups.id, id), eq(teamGroups.orgId, orgId)))
+      .returning({ id: teamGroups.id });
+    return deleted.length > 0;
+  });
+}
+
+/** Idempotent by the unique index — adding somebody twice is not two memberships. */
+export async function addTeamGroupMember(
+  db: Database,
+  orgId: string,
+  args: { groupId: string; userId: string },
+): Promise<void> {
+  await db
+    .insert(teamGroupMembers)
+    .values({ orgId, groupId: args.groupId, userId: args.userId })
+    .onConflictDoNothing({ target: [teamGroupMembers.groupId, teamGroupMembers.userId] });
+}
+
+export async function removeTeamGroupMember(
+  db: Database,
+  orgId: string,
+  args: { groupId: string; userId: string },
+): Promise<void> {
+  await db
+    .delete(teamGroupMembers)
+    .where(
+      and(
+        eq(teamGroupMembers.orgId, orgId),
+        eq(teamGroupMembers.groupId, args.groupId),
+        eq(teamGroupMembers.userId, args.userId),
+      ),
+    );
+}
+
+/**
+ * Every capability this user has from any group — the read the policy layer
+ * makes once per tool call.
+ *
+ * The union, not the intersection: groups are additive by construction, and
+ * somebody in both the Video team and the Design team has both teams'
+ * capabilities. Intersecting would mean adding a person to a second group
+ * silently *removed* access, which is the opposite of what adding somebody to a
+ * group looks like it should do.
+ *
+ * One query with a join rather than "list groups, then filter": this runs on
+ * every call through `invokeTool`, and a per-group round trip would put the
+ * group count into the latency of every tool in the registry.
+ */
+export async function capabilitiesForUser(db: Database, orgId: string, userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ capabilities: teamGroups.capabilities })
+    .from(teamGroupMembers)
+    .innerJoin(teamGroups, eq(teamGroups.id, teamGroupMembers.groupId))
+    .where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.userId, userId)));
+
+  const union = new Set<string>();
+  for (const row of rows) for (const capability of row.capabilities ?? []) union.add(capability);
+  return [...union].sort();
 }

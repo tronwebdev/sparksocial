@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { DEFAULT_POSTING_WINDOWS, Explanation, ToolError } from '@sparksocial/shared';
+import { DEFAULT_POSTING_WINDOWS, Explanation, ToolError, isCompleteSalesHandoff, resolveSalesHandoff } from '@sparksocial/shared';
 
 /**
  * `brand.governance.get` / `.set` — PRD §8.2 (`ONB-03`), §8.12 (`SET-WS-01`), §9.
@@ -61,6 +61,31 @@ const ToneVector = z.object({
  * timezone, the settings screen sets the restricted topics, and neither may
  * silently wipe the other's work.
  */
+/**
+ * The four qualification moves `Settings WS EI Sales` offers.
+ *
+ * An enum rather than free text because each one authorises the agent to *do*
+ * something specific — sharing a pricing page is a different promise from asking
+ * a question — and a typo in a free-text list would silently authorise nothing
+ * while looking configured.
+ */
+export const SalesQualification = z.enum([
+  'ask_qualifying_questions',
+  'share_booking_link',
+  'share_pricing_link',
+  'collect_contact_details',
+]);
+
+/** The design's three handoff destinations, in descending urgency. */
+export const SalesHandoffDestination = z.enum(['crm_notify', 'save_notify', 'nurture_only']);
+
+/** One destination per lead temperature — the same row, very different urgency. */
+export const SalesHandoff = z.object({
+  hot: SalesHandoffDestination,
+  warm: SalesHandoffDestination,
+  cold: SalesHandoffDestination,
+});
+
 export const BrandGovernanceSetInput = z.object({
   /**
    * Optional, defaulting to the brand on the session — the same contract
@@ -97,6 +122,28 @@ export const BrandGovernanceSetInput = z.object({
   engagementAutonomy: z.enum(['off', 'suggest', 'auto']).optional(),
   /** comment | dm | story_reply. Null clears back to "all of them". */
   engagementTypes: z.array(z.enum(['comment', 'dm', 'story_reply'])).max(3).nullable().optional(),
+
+  /* ── Sales Assist (`SET-WS-EI-SALES`) ─────────────────────────────────── */
+
+  /**
+   * Which qualification moves the agent is allowed to make. Null clears to none,
+   * and none is the safe default: an agent quoting a pricing page nobody
+   * authorised is worse than one that hands the conversation to a person.
+   */
+  salesQualification: z.array(SalesQualification).max(4).nullable().optional(),
+  /** All three temperatures or none — a partial map would leave a lead with no rule. */
+  salesHandoff: SalesHandoff.nullable().optional(),
+  /** Where `crm_notify` sends. Free text, matching `opportunities.routed_to`. */
+  salesDestination: z.string().min(1).max(200).nullable().optional(),
+  /**
+   * Words that always force a human, whatever the classifier decided.
+   *
+   * Capped at 50 and lowercased on the way in. The cap is not arbitrary: this
+   * list is checked against every inbound message, and an unbounded list turns
+   * the hot path into a scan somebody can make arbitrarily slow from a settings
+   * screen.
+   */
+  salesEscalationKeywords: z.array(z.string().min(2).max(40)).max(50).nullable().optional(),
 });
 
 export const BrandGovernanceOutput = z.object({
@@ -115,8 +162,17 @@ export const BrandGovernanceOutput = z.object({
   usingDefaultWindows: z.boolean(),
   engagementAutonomy: z.enum(['off', 'suggest', 'auto']),
   engagementTypes: z.array(z.string()),
+  salesQualification: z.array(z.string()),
+  /** Always populated — the effective rules, including the defaults when none are set. */
+  salesHandoff: SalesHandoff,
+  /** True when `salesHandoff` is the system default rather than this brand's own choice. */
+  usingDefaultHandoff: z.boolean(),
+  salesDestination: z.string().optional(),
+  salesEscalationKeywords: z.array(z.string()),
   why: Explanation,
 });
+
+
 
 export const brandGovernanceGet = defineTool({
   name: 'brand.governance.get',
@@ -170,7 +226,31 @@ export const brandGovernanceSet = defineTool({
   surfaces: ['ONB-03', 'SET-WS-01'],
 
   async handler(input, ctx) {
-    const { brandId: named, ...patch } = input;
+    const { brandId: named, ...rest } = input;
+    /**
+     * Escalation words are lowercased and trimmed here rather than by a Zod
+     * `.transform()` on the field.
+     *
+     * A transform wraps the field in a `ZodEffects`, and the registry's
+     * Zod-to-JSON-Schema walk decides "is this field optional" by looking for
+     * `ZodOptional`/`ZodDefault` at the top — so a transformed optional field is
+     * advertised to the model as **required**. Normalising in the handler keeps
+     * the declared shape honest, and puts it beside the other normalisation.
+     *
+     * The matcher is case-insensitive regardless (`escalation.ts`); this is so
+     * the list round-trips to the settings screen in one canonical form instead
+     * of showing the owner "Refund, refund, REFUND" as three separate words.
+     */
+    const patch = {
+      ...rest,
+      ...(rest.salesEscalationKeywords
+        ? {
+            salesEscalationKeywords: [
+              ...new Set(rest.salesEscalationKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean)),
+            ],
+          }
+        : {}),
+    };
     const brandId = requireBrand(named ?? ctx.brandId);
     const before = await ctx.db.brands.get(brandId, ctx.orgId);
     const after = await ctx.db.brands.setGovernance({ brandId, orgId: ctx.orgId, patch });
@@ -194,6 +274,12 @@ export const brandGovernanceSet = defineTool({
               after.engagementAutonomy === 'off'
                 ? 'off — SPARK drafts, a person sends'
                 : `${after.engagementAutonomy} — replies are gated by eligibility as well`,
+          },
+          {
+            label: 'sales assist',
+            detail: after.salesEscalationKeywords?.length
+              ? `${after.salesQualification?.length ?? 0} qualification move(s), ${after.salesEscalationKeywords.length} escalation word(s)`
+              : `${after.salesQualification?.length ?? 0} qualification move(s), no escalation words`,
           },
           {
             label: 'restricted topics',
@@ -228,6 +314,10 @@ function toOutput(gov: {
   postingWindows?: number[];
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   engagementTypes?: string[];
+  salesQualification?: string[];
+  salesHandoff?: Record<string, string>;
+  salesDestination?: string;
+  salesEscalationKeywords?: string[];
 }) {
   const own = gov.postingWindows?.length ? gov.postingWindows : undefined;
   return {
@@ -247,6 +337,13 @@ function toOutput(gov: {
     usingDefaultWindows: own === undefined,
     engagementAutonomy: gov.engagementAutonomy,
     engagementTypes: gov.engagementTypes ?? [],
+    salesQualification: gov.salesQualification ?? [],
+    // Resolved, not raw, for the same reason as `postingWindows`: a screen
+    // saying "hot leads go to…" has to show what will actually happen.
+    salesHandoff: resolveSalesHandoff(gov.salesHandoff),
+    usingDefaultHandoff: !isCompleteSalesHandoff(gov.salesHandoff),
+    ...(gov.salesDestination ? { salesDestination: gov.salesDestination } : {}),
+    salesEscalationKeywords: gov.salesEscalationKeywords ?? [],
     why: {
       summary: 'The rules this brand publishes under.',
       factors: [],

@@ -253,6 +253,20 @@
       "when": 1787367245199,
       "tag": "0035_left_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787369355011,
+      "tag": "0036_opposite_madame_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787371107481,
+      "tag": "0037_wakeful_warstar",
+      "breakpoints": true
     }
   ]
 }

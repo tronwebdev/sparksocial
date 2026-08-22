@@ -247,6 +247,8 @@ export interface ScopedDb {
    * row itself carries no confidential material — see {@link CampaignStore}.
    */
   campaigns: CampaignStore;
+  /** Named capability bundles — `team.group.*` (`SET-WS-TEAM-GROUPS`). See {@link TeamGroupStore}. */
+  teamGroups: TeamGroupStore;
   /** Org-level plan/governance/SSO config — `org.*` (plan §6.9, §12 P6). See {@link OrgSettingsStore}. */
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
@@ -386,6 +388,11 @@ export interface BrandGovernance {
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   /** Which surfaces SPARK may answer on. Empty means every enabled type. */
   engagementTypes?: string[];
+  /** Sales Assist — see the `brands` table. */
+  salesQualification?: string[];
+  salesHandoff?: Record<string, string>;
+  salesDestination?: string;
+  salesEscalationKeywords?: string[];
 
   /** IANA zone name. Defaults to `UTC` so every brand has a defined one. */
   timezone: string;
@@ -484,6 +491,10 @@ export interface BrandGovernanceStore {
       postingWindows?: number[] | null;
       engagementAutonomy?: 'off' | 'suggest' | 'auto';
       engagementTypes?: string[] | null;
+      salesQualification?: string[] | null;
+      salesHandoff?: Record<string, string> | null;
+      salesDestination?: string | null;
+      salesEscalationKeywords?: string[] | null;
     };
   }): Promise<BrandGovernance>;
 }
@@ -1775,6 +1786,47 @@ export interface BrandMember {
   brandId: string;
   role: Role;
   createdAt: Date;
+}
+
+/** One capability bundle — `SET-WS-TEAM-GROUPS`. */
+export interface TeamGroup {
+  id: string;
+  name: string;
+  capabilities: string[];
+  memberCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * TEAM GROUPS — named capability bundles, org-scoped rather than genome-scoped.
+ *
+ * `BrandMemberStore` answers "which brands may this person touch, and as what
+ * role". This answers the different question the design's Groups tab asks:
+ * "these people may publish and approve, whatever their role says". Roles are a
+ * fixed ladder compiled into every tool's `scopes`; a workspace wanting a video
+ * team that can publish but not spend had no way to express it.
+ *
+ * Groups only ever widen — see `policy.ts`. Nothing here can reach a tool whose
+ * own `scopes` refuse the caller, because rule 2 runs first.
+ */
+export interface TeamGroupStore {
+  list(orgId: string): Promise<TeamGroup[]>;
+  create(args: { orgId: string; name: string; capabilities: string[] }): Promise<TeamGroup>;
+  /** A partial patch. Returns undefined when no group in this org has that id. */
+  update(args: { orgId: string; id: string; name?: string; capabilities?: string[] }): Promise<TeamGroup | undefined>;
+  /** Also removes the group's memberships. False when there was nothing to delete. */
+  remove(args: { orgId: string; id: string }): Promise<boolean>;
+  members(orgId: string, groupId: string): Promise<string[]>;
+  /** Idempotent — adding somebody twice is not two memberships. */
+  addMember(args: { orgId: string; groupId: string; userId: string }): Promise<void>;
+  removeMember(args: { orgId: string; groupId: string; userId: string }): Promise<void>;
+  /**
+   * The union of every capability this user has from any group — read once per
+   * tool call by the policy layer. The union, not the intersection: adding
+   * somebody to a second group must not silently remove access.
+   */
+  capabilitiesForUser(orgId: string, userId: string): Promise<string[]>;
 }
 
 export interface BrandMemberStore {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError, Explanation } from '@sparksocial/shared';
+import { ToolError, Explanation, resolveSalesHandoff, salesRouteFor } from '@sparksocial/shared';
 
 /**
  * `engage.opportunity.create` / `.route` — the master plan's own schema
@@ -39,6 +39,14 @@ export const EngageOpportunityCreateOutput = z.object({
   messageId: z.string(),
   temperature: Temperature,
   recommendedAction: z.string(),
+  /**
+   * Where this lead was sent, when the brand's Sales Assist handoff rule named a
+   * destination. Absent means it is sitting in the Sales Opportunities tab, which
+   * is the honest state for `save_notify` and `nurture_only`.
+   */
+  routedTo: z.string().optional(),
+  /** Which handoff rule applied — `crm_notify` | `save_notify` | `nurture_only`. */
+  handoff: z.string(),
   why: Explanation,
 });
 
@@ -87,18 +95,60 @@ export const engageOpportunityCreate = defineTool({
       recommendedAction: input.recommendedAction,
     });
 
-    ctx.logger.info('raised a sales opportunity', { opportunityId: opportunity.id, messageId: message.id });
+    /**
+     * `Settings WS EI Sales`'s handoff rule, applied.
+     *
+     * Before this, a raised opportunity always sat unrouted until somebody
+     * called `.route` by hand — which made "Hot → send to CRM + notify me" a
+     * sentence on a settings screen and nothing else.
+     *
+     * Routing reuses the existing `.route` write rather than taking a
+     * `routedTo` on `create`: the row genuinely is created and *then* routed,
+     * and keeping one writer for `routed_to` means re-routing later cannot
+     * diverge from routing now.
+     */
+    const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+    const handoff = resolveSalesHandoff(brand?.salesHandoff);
+    const destination = salesRouteFor(input.temperature, handoff, brand?.salesDestination);
+
+    if (destination) {
+      await ctx.db.opportunities.route({
+        id: opportunity.id,
+        genomeId: input.genomeId,
+        orgId: ctx.orgId,
+        routedTo: destination,
+      });
+    }
+
+    ctx.logger.info('raised a sales opportunity', {
+      opportunityId: opportunity.id,
+      messageId: message.id,
+      handoff: handoff[input.temperature],
+      routed: Boolean(destination),
+    });
 
     return {
       opportunityId: opportunity.id,
       messageId: message.id,
       temperature: input.temperature,
       recommendedAction: input.recommendedAction,
+      ...(destination ? { routedTo: destination } : {}),
+      handoff: handoff[input.temperature],
       why: {
-        summary: `Raised as a ${input.temperature} opportunity: ${input.recommendedAction}`,
+        summary: destination
+          ? `Raised as a ${input.temperature} opportunity and sent to ${destination}: ${input.recommendedAction}`
+          : `Raised as a ${input.temperature} opportunity: ${input.recommendedAction}`,
         factors: [
           { label: 'Classified sales_opportunity', weight: message.intentScore ?? 1 },
           { label: `Temperature: ${input.temperature}`, weight: input.temperature === 'hot' ? 1 : input.temperature === 'warm' ? 0.5 : 0 },
+          {
+            label: `Handoff rule: ${handoff[input.temperature]}`,
+            detail: destination
+              ? `sent to ${destination}`
+              : brand?.salesHandoff
+                ? 'kept in the Sales Opportunities tab'
+                : 'this brand has not set its own handoff rules, so the defaults applied',
+          },
         ],
         evidence: [{ kind: 'metric' as const, id: message.id, note: message.text.slice(0, 200) }],
         alternatives: [],

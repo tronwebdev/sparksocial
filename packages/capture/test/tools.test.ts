@@ -95,6 +95,18 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
       },
+      teamGroups: {
+        list: async () => [],
+        create: async () => { throw new Error('teamGroups.create not stubbed in this test'); },
+        update: async () => undefined,
+        remove: async () => false,
+        members: async () => [],
+        addMember: async () => {},
+        removeMember: async () => {},
+        // Empty is the honest default: a caller with no group memberships gets
+        // exactly its role's access, which is what every existing test asserts.
+        capabilitiesForUser: async () => [],
+      },
       opportunities: {
         create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
         get: async () => undefined,

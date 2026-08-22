@@ -304,3 +304,38 @@ describe('vendor fallback', () => {
     expect((err as Error).message).toMatch(/no model service is responding/i);
   });
 });
+
+describe('input_schema — a transformed optional field is still optional', () => {
+  it('does not report a `.transform()`ed optional field as required', async () => {
+    /**
+     * A transform wraps the field in a `ZodEffects`, which hides the
+     * `ZodOptional` underneath it. Before this, such a field was advertised as
+     * **required** — an over-constrained schema, which is the bad direction: the
+     * model invents a value for a field the tool never wanted.
+     *
+     * Found while adding `brand.governance.set`'s escalation keyword list, which
+     * is exactly this shape.
+     */
+    const schema = z.object({
+      needed: z.string(),
+      words: z
+        .array(z.string())
+        .optional()
+        .transform((v) => v?.map((w) => w.toLowerCase())),
+    });
+    const transformedTool: ExposedTool = { name: 'brand.governance.set', description: 'x', inputSchema: schema };
+
+    const create = vi.fn(async (_params: unknown) => ({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'ok' }],
+      usage: { input_tokens: 1, output_tokens: 1 },
+    }));
+    const client = anthropicModelClient({ client: fakeAnthropic(create) as never, fallback: null });
+
+    await client.turn({ agent: 'spark', system: 'x', messages: [], tools: [transformedTool] });
+
+    const sent = (create.mock.calls[0]![0] as { tools: Array<{ input_schema: { required?: string[] } }> }).tools[0]!
+      .input_schema;
+    expect(sent.required).toEqual(['needed']);
+  });
+});

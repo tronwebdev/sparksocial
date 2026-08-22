@@ -287,7 +287,11 @@ export function parseMeta(raw: string): InboundEngagement[] {
 
       const from = v['from'] as { id?: string; username?: string } | undefined;
       out.push({
-        accountId: accountId || str((v['media'] as { id?: string } | undefined)?.id),
+        // `entry.id` and nothing else: it is the ig-user-id the subscription
+        // belongs to. There is no second field that means the same thing — a
+        // media id would never resolve to a genome, so falling back to one just
+        // turns a dropped event into a confusing lookup miss.
+        accountId,
         platform: 'instagram',
         externalId: id,
         kind: 'comment',

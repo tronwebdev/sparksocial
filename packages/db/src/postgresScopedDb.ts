@@ -1,3 +1,4 @@
+import { createTeamGroupRepository } from './teamGroupRepository.js';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { createGenomeRepository } from './genomeRepository.js';
@@ -44,6 +45,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     learning: createLearningRepository(db),
     recipes: createRecipeRepository(db),
     oauthConnections: createOAuthConnectionRepository(db),
+    teamGroups: createTeamGroupRepository(db),
     knowledge: createKnowledgeRepository(db),
     orgSettings: createOrgSettingsRepository(db),
     brandMembers: createBrandMemberRepository(db),

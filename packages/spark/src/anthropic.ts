@@ -279,7 +279,18 @@ function zodToJsonSchema(schema: ZodTypeAny): Record<string, unknown> {
   }
 }
 
+/**
+ * Whether a field may be omitted.
+ *
+ * Unwraps `ZodEffects` first, for the same reason `zodToJsonSchema` does: a
+ * `.transform()` or `.refine()` on a field hides whatever it wraps, so
+ * `z.string().optional().transform(...)` would otherwise be reported as
+ * **required** and the model would be told to supply a field the tool does not
+ * want. The failure is quiet and in the wrong direction — an over-constrained
+ * schema makes the model invent values.
+ */
 function isOptional(schema: ZodTypeAny): boolean {
-  const typeName = (schema as unknown as { _def: { typeName?: string } })._def?.typeName;
-  return typeName === 'ZodOptional' || typeName === 'ZodDefault';
+  const def = (schema as unknown as { _def: { typeName?: string; schema?: ZodTypeAny } })._def;
+  if (def?.typeName === 'ZodEffects' && def.schema) return isOptional(def.schema);
+  return def?.typeName === 'ZodOptional' || def?.typeName === 'ZodDefault';
 }
