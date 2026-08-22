@@ -2,12 +2,24 @@
 #
 # Fingerprints, not paths or rules: allowlisting a whole file would suppress the
 # *next* secret committed to it too, which is the failure mode that makes a
-# secret scanner decorative. Each line below pins one occurrence in one commit.
+# secret scanner decorative. Each line pins one occurrence in one commit.
 #
 # Get a fingerprint from the scanner itself:
 #   gitleaks detect --source . --redact --verbose
 #
 # Format:  <commit-sha>:<path>:<rule-id>:<line>
+#
+# ── One secret, several fingerprints ─────────────────────────────────────
+#
+# gitleaks scans diffs, so the same value is reported once per commit that
+# introduces it — and a merge commit introduces it again into the branch it
+# merges into. The TikTok credentials below therefore appear twice: at
+# `ecf5cfe` where they were written, and at `8b4e81f`, the merge of PR #1.
+#
+# That is finite and now closed: the values are gone from `HEAD`, so no future
+# commit can add them again and no new fingerprint can appear. If a scan ever
+# reports a *third* SHA for these lines, something has re-introduced them and
+# that is a real finding, not noise to append here.
 
 # ── Accepted: public by design ───────────────────────────────────────────
 #
@@ -16,6 +28,7 @@
 # published to every visitor by design and grants nothing. It identifies the
 # project; it does not authorise anything against it.
 ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/web/.env.example:generic-api-key:31
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/web/.env.example:generic-api-key:31
 
 # ── Accepted: a test fixture, and a pleasing one ─────────────────────────
 #
@@ -24,30 +37,23 @@ ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/web/.env.example:generic-api-key:3
 # scanner working correctly on a string that was never a secret.
 6ac2f7bf573d9ddbf1c9cf01ea1d0d1b4fd2397f:apps/api/test/langfuse-mask.test.ts:generic-api-key:54
 
-# ── NOT accepted yet: a real credential, awaiting rotation ───────────────
+# ── Accepted after rotation, 2026-08-22 ──────────────────────────────────
 #
-# `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` were committed with real
-# values in `ecf5cfe`. They have since been emptied from the working tree,
-# which does **not** undo the exposure — the values are still readable in that
-# commit by anyone who can read the repository.
+# `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` were committed with real values
+# in `ecf5cfe` and carried into `main` by the PR #1 merge. They have since been
+# emptied from the working tree, which on its own does **not** undo an exposure —
+# the values stayed readable in those commits by anyone who could read the
+# repository.
 #
-# These two lines are left commented ON PURPOSE. Uncommenting them would turn
-# the secret-scan job green while a live credential sits in history, which is
-# precisely the state a scanner exists to prevent. CI stays red until someone
-# does the real work.
+# What closed it was rotation in the TikTok developer console. These lines are
+# accepted because the values in history are now dead credentials: historical
+# noise rather than a live secret. Deleting them from history was considered and
+# is mostly theatre — any clone or fork taken before a rewrite keeps the old
+# objects, so rotation is the fix either way.
 #
-# To close it:
-#   1. Rotate the client secret in the TikTok developer console. Until this is
-#      done nothing below matters — the value in history stays usable.
-#   2. Put the new secret in Key Vault as `tiktok-client-secret` (never here,
-#      never in `.env.example`).
-#   3. Then uncomment the two lines, with the rotation date, so the record says
-#      the historical value is inert rather than unnoticed.
-#
-# Rewriting history to excise them is an option and mostly theatre: any clone
-# or fork taken before the rewrite keeps the old objects, so rotation is the
-# fix either way.
-#
-# Rotated on: ____________  (fill in, then uncomment)
-# ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:114
-# ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:115
+# The replacement secret lives in Key Vault as `tiktok-client-secret`. It must
+# never appear here or in `.env.example`.
+ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:114
+ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:115
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/api/.env.example:generic-api-key:114
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/api/.env.example:generic-api-key:115
