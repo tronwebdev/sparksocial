@@ -1,4 +1,22 @@
-import { ToolError } from '@sparksocial/shared';
+/**
+ * Deep import, not the barrel, and this is load-bearing.
+ *
+ * `composition.ts` imports this file, and Remotion *bundles* that entry for a
+ * browser with webpack. `@sparksocial/shared`'s barrel re-exports
+ * `oauthState.ts`, which imports `node:crypto` — unbundlable for a browser — so
+ * pulling the barrel in here failed every video render with
+ *
+ *   Module build failed: UnhandledSchemeError: Reading from "node:crypto"
+ *   is not handled by plugins (Unhandled scheme).
+ *
+ * `compose.render` had therefore never produced a video; the unit tests inject a
+ * fake runner and never bundle, so nothing caught it. Found by running the
+ * Assemble pipeline end to end for the first time.
+ *
+ * Anything this file imports has to survive being bundled for a browser. Keep
+ * the imports narrow and never reach for the barrel.
+ */
+import { ToolError } from '@sparksocial/shared/types';
 import type { ResolvedBeat } from '@sparksocial/generate';
 
 /**

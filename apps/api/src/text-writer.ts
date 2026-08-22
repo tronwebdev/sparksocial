@@ -90,7 +90,30 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
   const model = opts.model ?? MODEL;
 
   return {
-    async write({ genome, playbook, promptRef, intent, beatId, durationSec, outline }): Promise<string> {
+    async write(args): Promise<string> {
+      /**
+       * Two attempts, for the reason `brief-writer.ts` spells out: a forced
+       * tool call makes a shape mismatch rare rather than impossible, and the
+       * fallback vendor obeys `input_schema` slightly less reliably than the one
+       * this prompt was tuned against. A flake here is a failed "Generate post"
+       * in front of a person, so it is worth one quiet retry before surfacing.
+       *
+       * The vendor outage case is not retried here — `callVendor` already
+       * handles that by moving to the second vendor.
+       */
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const written = await attemptWrite(args, attempt === 2);
+        if (written !== null) return written;
+      }
+      throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', {});
+    },
+  };
+
+  /** One attempt. `null` on a shape mismatch unless `final`, which throws. */
+  async function attemptWrite(
+    { genome, playbook, promptRef, intent, beatId, durationSec, outline }: Parameters<TextWriter['write']>[0],
+    final: boolean,
+  ): Promise<string | null> {
       const response = await callVendor(
         'copy writer',
         'SPARK could not write this post — the service that writes copy is not responding. Nothing was saved, so trying again is safe.',
@@ -122,6 +145,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
 
       const text = (block.input as Record<string, unknown>).text;
       if (typeof text !== 'string' || !text.trim()) {
+        if (!final) return null;
         throw new ToolError('UPSTREAM_FAILED', 'The copy writer returned an unusable shape.', { promptRef });
       }
 
@@ -133,8 +157,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
        */
       const laterCta = outline.find((o) => o.beatId !== beatId && o.kind === 'literal' && o.text)?.text;
       return tidy(text, laterCta);
-    },
-  };
+  }
 }
 
 /**

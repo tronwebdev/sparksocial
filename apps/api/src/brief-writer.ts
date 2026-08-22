@@ -103,6 +103,35 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
 
   return {
     async write({ playbook, genome, feedback }): Promise<DraftCaptureBrief> {
+      /**
+       * Two attempts, because a shape mismatch is a coin-flip rather than a
+       * verdict.
+       *
+       * `input_schema` is guidance to the model, not a guarantee from the API,
+       * and a substitute vendor obeys it slightly less reliably than the one
+       * the prompt was tuned against. Observed: `direct.session.batch` failed
+       * with "returned an unusable shape" and the identical call succeeded
+       * immediately after. One retry converts that flake into a non-event;
+       * a second failure is a real signal and is surfaced.
+       *
+       * Only the shape is retried. A vendor outage is already handled by
+       * `callVendor` falling over to the second vendor, and retrying *that*
+       * here would multiply attempts against an account that is down.
+       */
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const brief = await attemptWrite({ playbook, genome, feedback }, attempt === 2);
+        if (brief) return brief;
+      }
+      // Unreachable: the second attempt either returns or throws.
+      throw new ToolError('UPSTREAM_FAILED', 'The brief writer returned an unusable shape.', {});
+    },
+  };
+
+  /** One attempt. Returns `null` on a shape mismatch unless `final`, which throws. */
+  async function attemptWrite(
+    { playbook, genome, feedback }: Parameters<BriefWriter['write']>[0],
+    final: boolean,
+  ): Promise<DraftCaptureBrief | null> {
       const response = await callVendor(
         'brief writer',
         'SPARK could not write the capture brief — the service that writes it is not responding. Nothing was saved, so trying again is safe.',
@@ -153,14 +182,14 @@ export function createBriefWriter(opts: BriefWriterOptions = {}): BriefWriter {
       });
 
       if (!parsed.success) {
+        if (!final) return null;
         throw new ToolError('UPSTREAM_FAILED', 'The brief writer returned an unusable shape.', {
           issues: parsed.error.issues.slice(0, 5),
         });
       }
 
       return parsed.data;
-    },
-  };
+  }
 }
 
 /**

@@ -861,7 +861,31 @@ export function DraftPanel({
             />
           ) : null}
 
-          {phase === 'editor' && draft && draft.status === 'published' ? (
+          {/* A stub publish must not wear a success banner.
+              `aggregator:stub` records the post and returns a well-formed
+              receipt without contacting any platform — deliberately, so the
+              whole path stays testable. The cost is that this panel used to say
+              "Live on Instagram" in green, with a view-post link, above a grey
+              "via aggregator:stub" nobody reads. A tester reports that as a
+              success, and the report is worse than no report.
+
+              Detected by name rather than by a flag: `aggregator:stub` is the
+              one adapter that does not deliver, and it is named at registration
+              in `tools.ts`. */}
+          {phase === 'editor' && draft && draft.status === 'published' && draft.via === 'aggregator:stub' ? (
+            <div className="mb-1 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
+              <p className="text-[13px] font-medium text-ink">Recorded, but not published anywhere</p>
+              <p className="mt-1 text-[12.5px] text-ink-muted">
+                No publishing account is configured, so this went to the built-in stub. Everything up to
+                the moment of sending ran for real — guardrails, approval, scheduling, the receipt — and
+                nothing reached{' '}
+                <span className="capitalize">{draft.platform?.replace('_', ' ') ?? 'the platform'}</span>.
+                Set an aggregator key to publish for real.
+              </p>
+            </div>
+          ) : null}
+
+          {phase === 'editor' && draft && draft.status === 'published' && draft.via !== 'aggregator:stub' ? (
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
               <p className="text-[13px] text-ink">
                 Live on <span className="font-medium capitalize">{draft.platform?.replace('_', ' ')}</span>
