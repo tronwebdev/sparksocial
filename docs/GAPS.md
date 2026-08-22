@@ -181,13 +181,14 @@ log's "rejected before policy" rows, and the calendar showing no filters while i
 - [ ] **`StallNotice`** — still not reached. It needs a post to exhaust the scheduler's
       five-attempt ceiling against an unconnected platform, which no screen can force; it
       wants a seeded fixture or a wait.
-- [ ] **`apps/web` cannot actually import `@sparksocial/shared`,** though CLAUDE.md permits
-      it. The package has no build output — `exports` points at `./src/*.ts`, whose imports
-      carry `.js` specifiers — so a `next build` reaching it fails on
-      "Can't resolve './types.js'". Every existing reference in `apps/web` is a comment saying
-      the values are mirrored instead; that pattern is load-bearing, not incidental. Either
-      give the package a build or amend the rule, because as written it invites a change that
-      breaks the build.
+- [x] **`apps/web` can now import `@sparksocial/shared`,** which CLAUDE.md always permitted
+      and the build always refused. The cause was not the missing build output: it was webpack
+      taking the package's `./types.js` specifiers literally, where `tsx` (how `apps/api` runs)
+      resolves them to `.ts`. `next.config.ts` now sets `resolve.extensionAlias` so webpack
+      tries `.ts`/`.tsx` first, and `oauthState` is no longer re-exported from the barrel —
+      one server-only module importing `node:crypto` made the whole barrel unusable in any
+      browser bundle. Proven by deriving `assets/roles.ts` from `ASSET_ROLE_WORDS` and running
+      a real `npm run build:web`: compiled, 24/24 static pages.
 
 ## Open decisions
 

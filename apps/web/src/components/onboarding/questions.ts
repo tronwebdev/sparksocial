@@ -14,6 +14,14 @@
  * rejects the input, which is the correct failure and better than a UI that
  * offers a choice the tool will not accept.
  *
+ * Written out rather than imported, which is now a *choice* and no longer a
+ * workaround: importing `@sparksocial/shared` from `apps/web` used to break the
+ * build (see `next.config.ts`'s `extensionAlias`) and works today. What keeps
+ * them here is that each value is paired with owner-facing prose and an order,
+ * neither of which belongs in a shared enum — importing the enum would give us
+ * the keys and none of the copy. Contrast `assets/roles.ts`, which imports the
+ * shared labels because there the words genuinely are shared.
+ *
  * ── Why the wording is what it is ──────────────────────────────────────────
  *
  * Every label is phrased for a business owner, never in the engine's

@@ -40,7 +40,15 @@ import { cn } from '@/lib/utils';
  * screen-reader behaviour for free.
  */
 
-/** Mirrors `Explanation` in `@sparksocial/shared`. Structural, not imported: `apps/web` may only import `@sparksocial/shared`'s types via HTTP-shaped views. */
+/**
+ * Mirrors `Explanation` in `@sparksocial/shared`, structurally.
+ *
+ * Not because the import is impossible — it works now, see `next.config.ts` —
+ * but because what arrives here has been through JSON: dates are strings and
+ * optional fields may be absent in ways the Zod type does not model. A local
+ * interface describing the *wire* shape is honest about that; importing the
+ * schema type would claim a guarantee the transport does not give.
+ */
 export interface Explanation {
   summary: string;
   factors?: Array<{ label: string; weight?: number; detail?: string }>;

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
-import { generatePkce, signOAuthState, verifyOAuthState, type OAuthStatePayload } from '@sparksocial/shared';
+import { generatePkce, signOAuthState, verifyOAuthState, type OAuthStatePayload } from '@sparksocial/shared/oauthState';
 import { Platform, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, DEFAULT_BUDGETS, type RateLimiter } from './retry.js';
 import { joinScopedToken } from './native/scopedToken.js';
