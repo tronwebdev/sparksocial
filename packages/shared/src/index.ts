@@ -26,5 +26,6 @@ export * from './shapeRetry.js';
 export * from './openaiMessages.js';
 export * from './salesAssist.js';
 export * from './campaignAutonomy.js';
+export * from './brandKitProgress.js';
 export * from './agentIdentity.js';
 

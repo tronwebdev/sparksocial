@@ -5,6 +5,7 @@ import {
   Explanation,
   ToolError,
   agentIdentity,
+  brandKitProgress,
   isCompleteSalesHandoff,
   resolveSalesHandoff,
 } from '@sparksocial/shared';
@@ -196,6 +197,28 @@ export const BrandGovernanceOutput = z.object({
   usingDefaultHandoff: z.boolean(),
   salesDestination: z.string().optional(),
   salesEscalationKeywords: z.array(z.string()),
+  /**
+   * How finished the brand kit is — derived on read like `agentIdentity`, and for
+   * the same reason: a stored percentage can disagree with the fields it claims
+   * to summarise. The cockpit's setup chip reads this; so does the Brand Kit
+   * settings panel, so the two cannot report different numbers.
+   */
+  brandKit: z.object({
+    steps: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        done: z.boolean(),
+        because: z.string(),
+      }),
+    ),
+    completed: z.number().int(),
+    total: z.number().int(),
+    pct: z.number().int(),
+    next: z
+      .object({ id: z.string(), label: z.string(), done: z.boolean(), because: z.string() })
+      .optional(),
+  }),
   why: Explanation,
 });
 
@@ -384,6 +407,14 @@ function toOutput(gov: {
     usingDefaultHandoff: !isCompleteSalesHandoff(gov.salesHandoff),
     ...(gov.salesDestination ? { salesDestination: gov.salesDestination } : {}),
     salesEscalationKeywords: gov.salesEscalationKeywords ?? [],
+    // Derived here rather than by each caller, so the cockpit's chip and the
+    // Brand Kit panel cannot report different percentages for the same brand.
+    brandKit: brandKitProgress({
+      ...(gov.brandColors ? { brandColors: gov.brandColors } : {}),
+      ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
+      ...(gov.toneVector ? { toneVector: gov.toneVector } : {}),
+      timezone: gov.timezone,
+    }),
     why: {
       summary: 'The rules this brand publishes under.',
       factors: [],

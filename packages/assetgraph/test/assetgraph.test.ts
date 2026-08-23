@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import type { ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError, type Role } from '@sparksocial/shared';
 import { lagosBarbershop, torontoSaas } from '@sparksocial/playbooks';
@@ -72,6 +72,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       analytics: {
         record: async () => { throw new Error('analytics.record not stubbed in this test'); },
         listForItems: async () => [],
+        publishedInWindow: async () => [],
       },
       ctaLinks: {
         create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
@@ -103,6 +104,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       opportunities: {
         create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
         get: async () => undefined,
+        listForGenome: async () => [],
         route: async () => undefined,
       },
       trends: {

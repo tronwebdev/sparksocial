@@ -985,6 +985,33 @@ export interface AnalyticsStore {
   }): Promise<ContentMetricsSnapshot>;
   /** Every synced platform snapshot across a set of posts — `campaign.report_vs_outcome`'s roll-up. */
   listForItems(contentItemIds: string[], orgId: string, genomeId: string): Promise<ContentMetricsSnapshot[]>;
+  /**
+   * Published posts in a trailing window with whatever snapshot each has —
+   * `analytics.brand_series`'s single read.
+   *
+   * One row per post *per platform snapshot*, and a post with no snapshot yet
+   * appears once with a null platform. Grouped by publication date rather than by
+   * measurement date, because `content_metrics` holds a current value and not a
+   * history; see `publishedWithMetrics` in `scoped.ts` for why that distinction
+   * decides what the cockpit is allowed to draw.
+   */
+  publishedInWindow(
+    orgId: string,
+    genomeId: string,
+    windowDays: number,
+  ): Promise<
+    Array<{
+      contentItemId: string;
+      publishedAt: Date;
+      platform?: string;
+      impressions: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      views: number;
+      saves: number;
+    }>
+  >;
 }
 
 /** One `link.shorten` call attributed to a content item — `analytics.cta_traffic`'s storage. */
@@ -1185,6 +1212,25 @@ export interface Opportunity {
   createdAt: Date;
 }
 
+/**
+ * An opportunity together with the message it was raised from — what a list of
+ * leads has to show to be readable.
+ *
+ * Every message field is optional because the join is a `leftJoin`. In practice
+ * the message always exists (`engage.opportunity.create` reads it before
+ * inserting), but a lead whose message was somehow unreadable should still be
+ * *countable* rather than silently dropped from a total the owner is reading.
+ */
+export interface OpportunityWithMessage extends Opportunity {
+  platform?: string;
+  authorHandle?: string;
+  authorName?: string;
+  messageText?: string;
+  /** The classifier's confidence that this was a buying signal, 0–1. */
+  intentScore?: number;
+  receivedAt?: Date;
+}
+
 /** `engage.opportunity.create`/`.route`'s storage. Genome-scoped like {@link EngagementStore}. */
 export interface OpportunityStore {
   create(args: {
@@ -1196,6 +1242,14 @@ export interface OpportunityStore {
   }): Promise<Opportunity>;
 
   get(id: string, genomeId: string, orgId: string): Promise<Opportunity | undefined>;
+
+  /**
+   * `engage.opportunity.list`'s read — leads for this genome, newest first, each
+   * with the message behind it. Added for the cockpit's Sales Opportunities
+   * panel, which had been listing *messages in the category* because this table
+   * had no reader at all.
+   */
+  listForGenome(genomeId: string, orgId: string, limit: number): Promise<OpportunityWithMessage[]>;
 
   /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */
   route(args: { id: string; genomeId: string; orgId: string; routedTo: string }): Promise<Opportunity | undefined>;

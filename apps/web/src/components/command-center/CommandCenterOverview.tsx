@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -35,7 +35,7 @@ import { QuickActions } from './QuickActions';
  * used to say it was *"left out rather than faked"* because nothing real backed
  * it until P4 — correct when written, and `analytics.success_metrics` is that
  * real backing. The engagement feed entry is still the one §CC-01 item absent
- * here, and deliberately: it has its own screen at `/command-center`, and a
+ * here, and deliberately: it has its own screen at `/engagement`, and a
  * second copy of a live feed is a second thing that can be wrong.
  *
  * "Upcoming actions" is two lists, not one, because they answer different
@@ -46,7 +46,7 @@ import { QuickActions } from './QuickActions';
  *
  * With `PlanQueue`, all four of §7.5's first-class queues are reachable: Plan
  * and Review here, Automation on `/automation`, Engagement on
- * `/command-center`. The plan used to count as covered because the *calendar*
+ * `/engagement`. The plan used to count as covered because the *calendar*
  * existed — but a calendar answers "what does the month look like" and a queue
  * answers "what happens next", and only the second one tells you that tomorrow
  * morning is about to go out unwritten.

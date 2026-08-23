@@ -1,4 +1,4 @@
-import { register } from '@sparksocial/tools';
+﻿import { register } from '@sparksocial/tools';
 import { makeGenomeBootstrap } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { genomeIdentitySet } from '@sparksocial/genome/identity';
@@ -162,6 +162,7 @@ import {
   analyticsPostMetrics,
   analyticsCampaignReport,
   analyticsSuccessMetrics,
+  analyticsBrandSeries,
   makeAnalyticsCtaTraffic,
 } from '@sparksocial/analytics';
 import {
@@ -176,6 +177,7 @@ import {
   engageTakeover,
   engageOpportunityCreate,
   engageOpportunityRoute,
+  engageOpportunityList,
   engageAuditQuery,
   engageThread,
   createStubReplySender,
@@ -502,6 +504,10 @@ export function registerAlphaTools(): void {
   // material for nearly all of them and nothing aggregated any of it — which is
   // the gap that made every other gap hard to prioritise.
   register(analyticsSuccessMetrics);
+  // The cockpit's KPI row and its Performance Insights panel (`DASH-B-01`, M1).
+  // Grouped by publication date, because `content_metrics` is a current value and
+  // not a history — the tool's own header argues that out.
+  register(analyticsBrandSeries);
 
   // Trend discovery (§8.9, DISC-01/DISC-02, §12 P5). Ranked on what is LEFT
   // of a trend, not its size. `buildTrendSource` merges every configured
@@ -603,6 +609,7 @@ export function registerAlphaTools(): void {
   register(engageTakeover);
   register(engageOpportunityCreate);
   register(engageOpportunityRoute);
+  register(engageOpportunityList);
   register(engageAuditQuery);
   register(engageThread);
 

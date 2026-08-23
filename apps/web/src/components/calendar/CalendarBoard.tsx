@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +130,22 @@ export function CalendarBoard() {
   // along with the screen that collected them.
   /** Remount counter for the CMP-01 wizard — see its `onCancel` below. */
   const [wizardRun, setWizardRun] = useState(0);
+
+  /**
+   * `?new=1` — the cockpit's Create Campaign action, arriving here.
+   *
+   * The wizard used to be reachable only as this screen's *empty state*, which
+   * meant a brand with one campaign had no way to start a second one from
+   * anywhere in the app. `/home`'s primary action needed a destination, and the
+   * honest one is the screen that already owns the wizard rather than a second
+   * copy of it behind a modal.
+   *
+   * Read once into state rather than off the URL on every render, so cancelling
+   * returns to the calendar instead of being re-opened by the parameter that is
+   * still sitting in the address bar.
+   */
+  const searchParams = useSearchParams();
+  const [creating, setCreating] = useState(searchParams.get('new') === '1');
 
   const reload = useCallback(async (campaignId: string) => {
     const got = await invoke<CalendarView>('calendar.get', { campaignId });
@@ -283,7 +300,7 @@ export function CalendarBoard() {
     );
   }
 
-  if (!view) {
+  if (!view || creating) {
     /**
      * `CMP-01` — the six-step wizard, replacing the two-click propose-then-create
      * control that used to live here.
@@ -292,16 +309,27 @@ export function CalendarBoard() {
      * why `campaign.create` accepted nothing else — no accounts, no offer, no
      * oversight choice. See `CampaignWizard`'s own header on what each step
      * writes and why the scheduler had to guess a platform without step 4.
+     *
+     * Two ways in: this screen's empty state, and `?new=1` from the cockpit's
+     * Create Campaign action. Cancel means different things in each — see below.
      */
     return (
       <CampaignWizard
         key={wizardRun}
         genomeId={genome!.genomeId}
-        onActivated={(campaignId) => void reload(campaignId)}
-        // There is nowhere to navigate back to — this *is* the empty state — so
-        // Cancel restarts the wizard at step one by remounting it. Bumping a key
-        // rather than threading a reset through six steps of state.
-        onCancel={() => setWizardRun((n) => n + 1)}
+        onActivated={(campaignId) => {
+          setCreating(false);
+          void reload(campaignId);
+        }}
+        onCancel={() => {
+          // Arrived deliberately: Cancel means "never mind", so it goes back to
+          // the calendar that is already there. As the empty state there is
+          // nowhere to go back *to*, so it restarts the wizard at step one by
+          // remounting — bumping a key rather than threading a reset through six
+          // steps of state.
+          if (view) setCreating(false);
+          else setWizardRun((n) => n + 1);
+        }}
       />
     );
   }

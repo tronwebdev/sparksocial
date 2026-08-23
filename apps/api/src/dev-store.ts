@@ -766,6 +766,39 @@ export function createDevStore(
           .filter((m) => ids.has(m.contentItemId) && m.orgId === org && m.genomeId === genomeId)
           .map(({ orgId: _orgId, genomeId: _genomeId, ...snapshot }) => snapshot);
       },
+
+      /**
+       * `analytics.brand_series`'s read, over the same left-join shape Postgres
+       * produces: one entry per snapshot, plus one platform-less entry for a
+       * published post nothing has measured yet.
+       */
+      async publishedInWindow(org, genomeId, windowDays) {
+        const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+        const published = [...drafts.values()].filter(
+          (d) => d.orgId === org && d.genomeId === genomeId && d.status === 'published' && d.publishedAt && d.publishedAt >= cutoff,
+        );
+
+        return published.flatMap((d) => {
+          const publishedAt = d.publishedAt!;
+          const snapshots = [...metrics.values()].filter(
+            (m) => m.contentItemId === d.id && m.orgId === org && m.genomeId === genomeId,
+          );
+          if (snapshots.length === 0) {
+            return [{ contentItemId: d.id, publishedAt, impressions: 0, likes: 0, comments: 0, shares: 0, views: 0, saves: 0 }];
+          }
+          return snapshots.map((m) => ({
+            contentItemId: d.id,
+            publishedAt,
+            platform: m.platform,
+            impressions: m.impressions,
+            likes: m.likes,
+            comments: m.comments,
+            shares: m.shares,
+            views: m.views,
+            saves: m.saves,
+          }));
+        });
+      },
     },
 
     ctaLinks: {
@@ -931,6 +964,31 @@ export function createDevStore(
 
       async get(id, genomeId, org) {
         return opportunities.find((o) => o.id === id && o.orgId === org && o.genomeId === genomeId);
+      },
+
+      /** Joined against the inbox the same way Postgres does — see `listOpportunities`. */
+      async listForGenome(genomeId, org, limit) {
+        return opportunities
+          .filter((o) => o.orgId === org && o.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit)
+          .map((o) => {
+            const message = engagementMessages.get(o.inboxItemId);
+            const sameTenant = message?.orgId === org && message?.genomeId === genomeId;
+            return {
+              ...o,
+              ...(sameTenant && message
+                ? {
+                    platform: message.platform,
+                    authorHandle: message.authorHandle,
+                    ...(message.authorName ? { authorName: message.authorName } : {}),
+                    messageText: message.text,
+                    ...(message.intentScore !== undefined ? { intentScore: message.intentScore } : {}),
+                    receivedAt: message.receivedAt,
+                  }
+                : {}),
+            };
+          });
       },
 
       async route({ id, genomeId, orgId: org, routedTo }) {

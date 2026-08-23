@@ -20,6 +20,19 @@ export function createOpportunityRepository(db: Database): OpportunityStore {
       return row ? toOpportunity(row) : undefined;
     },
 
+    async listForGenome(genomeId, orgId, limit) {
+      const rows = await scoped.listOpportunities(db, { orgId, brandId: orgId, genomeId }, { limit });
+      return rows.map((row) => ({
+        ...toOpportunity(row),
+        ...(row.platform ? { platform: row.platform } : {}),
+        ...(row.authorHandle ? { authorHandle: row.authorHandle } : {}),
+        ...(row.authorName ? { authorName: row.authorName } : {}),
+        ...(row.messageText ? { messageText: row.messageText } : {}),
+        ...(row.intentScore !== null ? { intentScore: row.intentScore } : {}),
+        ...(row.receivedAt ? { receivedAt: row.receivedAt } : {}),
+      }));
+    },
+
     async route({ id, genomeId, orgId, routedTo }) {
       const row = await scoped.routeOpportunity(db, { orgId, brandId: orgId, genomeId }, { id, routedTo });
       return row ? toOpportunity(row) : undefined;

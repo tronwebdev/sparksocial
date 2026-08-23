@@ -195,6 +195,114 @@ export const engageOpportunityCreate = defineTool({
 
 /* â”€â”€ engage.opportunity.route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
+/**
+ * `engage.opportunity.list` — the read this table never had.
+ *
+ * `opportunities` shipped with `create` and `route` and no way to enumerate, so
+ * the Sales Opportunities tab listed **messages the classifier put in the
+ * category** instead. Those are different sets, and the difference is the point
+ * of the table: a message can sit in `sales_opportunity` forever without anyone
+ * judging it a real lead, and an opportunity carries the temperature and the
+ * recommended action that a message does not.
+ *
+ * An enumeration, so no `why` on the tool itself — same reasoning `engage.list`
+ * gives. The decisions here were made by `engage.classify` (the category) and by
+ * whoever called `create` (the temperature), and each row carries the evidence of
+ * both: the message text, the classifier's `intentScore`, and where the handoff
+ * rule sent it.
+ */
+
+export const EngageOpportunityListInput = z.object({
+  genomeId: z.string().min(1),
+  limit: z.number().int().min(1).max(100).default(25),
+  /** Narrow to one temperature — the cockpit's "hot leads only" read. */
+  temperature: Temperature.optional(),
+});
+
+const OpportunityListItem = z.object({
+  opportunityId: z.string(),
+  messageId: z.string(),
+  temperature: Temperature,
+  recommendedAction: z.string(),
+  routedTo: z.string().optional(),
+  raisedAt: z.string(),
+  /** From the message behind it. Absent only if that message is unreadable. */
+  platform: z.string().optional(),
+  authorHandle: z.string().optional(),
+  authorName: z.string().optional(),
+  messageText: z.string().optional(),
+  intentScore: z.number().optional(),
+  receivedAt: z.string().optional(),
+});
+
+export const EngageOpportunityListOutput = z.object({
+  items: z.array(OpportunityListItem),
+  /** How many of each temperature exist — the badge counts, without a second pass. */
+  counts: z.object({ hot: z.number().int(), warm: z.number().int(), cold: z.number().int() }),
+});
+
+export const engageOpportunityList = defineTool({
+  name: 'engage.opportunity.list',
+  version: 1,
+
+  summary:
+    'List sales opportunities raised for a genome, newest first, each with the inbox message behind it ' +
+    'and where the handoff rule routed it. Free.',
+
+  input: EngageOpportunityListInput,
+  output: EngageOpportunityListOutput,
+
+  effect: 'read',
+  autonomy: 'auto',
+  // Same scopes as `engage.list`: a lead is a message somebody judged, and
+  // reading the judgement is not gated tighter than reading the message.
+  scopes: ['owner', 'admin', 'editor', 'approver', 'viewer', 'client'],
+  idempotent: true,
+
+  async handler(input, ctx) {
+    if (ctx.genomeId && input.genomeId !== ctx.genomeId) {
+      throw new ToolError('ISOLATION_VIOLATION', 'That genome is not the one selected.', {
+        claimed: input.genomeId,
+        selected: ctx.genomeId,
+      });
+    }
+
+    /**
+     * Filtered after the read rather than in SQL, deliberately: `counts` has to
+     * describe the whole set, or the badges would report the filter back to
+     * itself ("0 warm" while looking at the hot ones). The limit caps this at a
+     * hundred rows, so it is a hundred-element filter and not a scan.
+     */
+    const rows = await ctx.db.opportunities.listForGenome(input.genomeId, ctx.orgId, input.limit);
+
+    const counts = { hot: 0, warm: 0, cold: 0 };
+    for (const row of rows) {
+      if (row.temperature === 'hot') counts.hot += 1;
+      else if (row.temperature === 'warm') counts.warm += 1;
+      else counts.cold += 1;
+    }
+
+    const items = (input.temperature ? rows.filter((r) => r.temperature === input.temperature) : rows).map(
+      (row) => ({
+        opportunityId: row.id,
+        messageId: row.inboxItemId,
+        temperature: row.temperature,
+        recommendedAction: row.recommendedAction,
+        ...(row.routedTo ? { routedTo: row.routedTo } : {}),
+        raisedAt: row.createdAt.toISOString(),
+        ...(row.platform ? { platform: row.platform } : {}),
+        ...(row.authorHandle ? { authorHandle: row.authorHandle } : {}),
+        ...(row.authorName ? { authorName: row.authorName } : {}),
+        ...(row.messageText ? { messageText: row.messageText } : {}),
+        ...(row.intentScore !== undefined ? { intentScore: row.intentScore } : {}),
+        ...(row.receivedAt ? { receivedAt: row.receivedAt.toISOString() } : {}),
+      }),
+    );
+
+    return { items, counts };
+  },
+});
+
 export const EngageOpportunityRouteInput = z.object({
   genomeId: z.string().min(1),
   opportunityId: z.string().min(1),

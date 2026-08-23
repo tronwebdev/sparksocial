@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChatDrawer } from '@/components/command-center/ChatDrawer';
+import { onAskSparkOpen } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 
@@ -26,13 +27,17 @@ import { cn } from '@/lib/utils';
  * from the shell would put two independent conversations one keystroke apart,
  * each unaware of the other, so the shell defers there.
  *
- * The trap: the screen *titled* "Agent Command Center" is at `/agents`, while
- * `/command-center` is the engagement inbox — M2's naming collision. This
- * component first suppressed itself on `/command-center`, which is precisely
- * backwards: it hid Ask Spark on the inbox, which has no chat and needs it, and
- * doubled it on the one screen that already had one. Found by opening the page.
- * The route name is the thing to fix (M2); until then this comment is the
- * warning.
+ * The trap this used to describe: the screen *titled* "Agent Command Center" is
+ * at `/agents`, while the engagement inbox was at `/command-center` — M2's naming
+ * collision. This component first suppressed itself on `/command-center`, which
+ * was precisely backwards: it hid Ask Spark on the inbox, which has no chat and
+ * needs it, and doubled it on the one screen that already had one.
+ *
+ * M2 is closed — the inbox is at `/engagement` now, matching the nav item that
+ * has always pointed at it, so exactly one thing in the app is called a command
+ * center and it is the screen this defers to. The suppression below is keyed on
+ * `/agents` because that is where the other drawer is, which is now the only
+ * reading of it.
  *
  * ── The draft handoff ─────────────────────────────────────────────────────
  *
@@ -48,7 +53,19 @@ export function AskSpark() {
   const { genome } = useSelectedGenome();
   const [open, setOpen] = useState(false);
 
-  // `/agents` brings its own drawer. Not `/command-center` — see the header.
+  /**
+   * The cockpit's header lists Ask Spark as a primary action, and it opens *this*
+   * drawer rather than mounting its own — see `lib/askSpark.ts` on why a second
+   * `ChatDrawer` would be the wrong fix.
+   *
+   * Registered before the `/agents` early return would matter, because hooks
+   * cannot be conditional. On that route the component returns null and never
+   * renders a drawer, so the listener sets a flag nothing reads — harmless, and
+   * cheaper than the alternative of hoisting the whole drawer.
+   */
+  useEffect(() => onAskSparkOpen(() => setOpen(true)), []);
+
+  // `/agents` brings its own drawer. Not `/engagement` — see the header.
   if (pathname.startsWith('/agents')) return null;
 
   return (

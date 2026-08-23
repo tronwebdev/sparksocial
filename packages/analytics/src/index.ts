@@ -5,3 +5,4 @@ export * from './postMetrics.js';
 export * from './campaignReport.js';
 export * from './ctaTraffic.js';
 export * from './successMetrics.js';
+export * from './brandSeries.js';

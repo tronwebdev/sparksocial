@@ -7,6 +7,19 @@ import { EngagementGate } from '@/components/engagement/EngagementGate';
 /**
  * Engagement Intelligence (PRD §8.8, `ENG-01`→`ENG-02.4`).
  *
+ * ── Why the route moved (M2) ──────────────────────────────────────────────
+ *
+ * This screen lived at `/command-center` while the screen actually *titled*
+ * "Agent Command Center" lived at `/agents`, so "the command center" named two
+ * different places depending on whether you were reading a URL or a heading, and
+ * a bug report saying it was ambiguous. The nav item pointing here has always
+ * read "Engagement Intelligence"; the path now agrees with it, and exactly one
+ * thing in the app is a command center.
+ *
+ * No redirect from the old path. It has never been outside the app shell, every
+ * link to it was internal and is updated, and a permanent redirect for a route
+ * nobody has bookmarked is a permanent thing to maintain.
+ *
  * `ENG-01`'s eligibility gate (`EngagementGate`) wraps `ENG-02`'s four-tab feed,
  * so the three states §8.8 requires are all reachable: ineligible with the
  * reason, eligible-but-unconfigured with a way to configure, and active.

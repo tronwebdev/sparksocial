@@ -761,6 +761,99 @@ export async function getContentMetricsForItems(
     .where(and(scopePredicate('contentMetrics', scope), inArray(contentMetrics.contentItemId, contentItemIds)));
 }
 
+/**
+ * Published posts in a trailing window, each with whatever performance snapshot
+ * exists for it — the raw material for the cockpit's Performance Insights panel
+ * (`analytics.brand_series`).
+ *
+ * ── Why this is grouped by publication date rather than by measurement date ──
+ *
+ * `content_metrics` is explicitly *not* a time series: one row per
+ * `(content_item_id, platform)`, upserted on every sync, so the database holds
+ * "what the platform reports right now" and nothing about yesterday. A chart of
+ * impressions *over time* therefore cannot be drawn from it, and drawing one
+ * anyway would mean inventing the curve.
+ *
+ * What can be drawn honestly is the same question asked a different way: how did
+ * the posts published on each of the last N days do. That is a real comparison
+ * from real rows, and it is the one a brand owner is actually asking. Its caveat
+ * — a post published this morning has had hours to accumulate where Monday's has
+ * had days — is stated by the tool rather than hidden here.
+ *
+ * A `leftJoin`, so a published post with no snapshot yet counts as a post with
+ * zero measured impressions instead of vanishing. A post missing from the chart
+ * is indistinguishable from a day nothing was published, which is the more
+ * misleading of the two readings.
+ */
+export async function publishedWithMetrics(
+  db: Database,
+  scope: Scope,
+  windowDays: number,
+): Promise<
+  Array<{
+    contentItemId: string;
+    publishedAt: Date;
+    platform: string | null;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    views: number;
+    saves: number;
+  }>
+> {
+  const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+  const rows = await db
+    .select({
+      contentItemId: contentItems.id,
+      publishedAt: contentItems.publishedAt,
+      platform: contentMetrics.platform,
+      impressions: contentMetrics.impressions,
+      likes: contentMetrics.likes,
+      comments: contentMetrics.comments,
+      shares: contentMetrics.shares,
+      views: contentMetrics.views,
+      saves: contentMetrics.saves,
+    })
+    .from(contentItems)
+    .leftJoin(
+      contentMetrics,
+      and(
+        eq(contentMetrics.contentItemId, contentItems.id),
+        eq(contentMetrics.orgId, contentItems.orgId),
+        eq(contentMetrics.genomeId, contentItems.genomeId),
+      ),
+    )
+    .where(
+      and(
+        scopePredicate('contentItems', scope),
+        eq(contentItems.status, 'published'),
+        gte(contentItems.publishedAt, cutoff),
+      ),
+    )
+    .orderBy(desc(contentItems.publishedAt));
+
+  // `publishedAt` is nullable on the column and never null for a published row;
+  // narrowing here keeps the callers from re-asserting it one at a time.
+  return rows.flatMap((r) =>
+    r.publishedAt
+      ? [
+          {
+            contentItemId: r.contentItemId,
+            publishedAt: r.publishedAt,
+            platform: r.platform,
+            impressions: r.impressions ?? 0,
+            likes: r.likes ?? 0,
+            comments: r.comments ?? 0,
+            shares: r.shares ?? 0,
+            views: r.views ?? 0,
+            saves: r.saves ?? 0,
+          },
+        ]
+      : [],
+  );
+}
+
 export interface EngagementMessageRow {
   /** When it stopped needing attention — PRD §5's "Reply SLA" endpoint. */
   resolvedAt: Date | null;
@@ -1094,6 +1187,62 @@ export async function getOpportunity(db: Database, scope: Scope, id: string): Pr
     .where(and(eq(opportunities.id, id), scopePredicate('opportunities', scope)))
     .limit(1);
   return row;
+}
+
+/**
+ * The read the `opportunities_inbox_item_idx` comment anticipated — every lead
+ * for this genome, newest first, with the message it came from.
+ *
+ * `opportunities` had a writer and no list reader until the cockpit needed one,
+ * which is why the Sales Opportunities tab was showing *messages the classifier
+ * put in the category* rather than leads anybody had actually raised. Those are
+ * different sets: a message can sit in the category forever without becoming an
+ * opportunity, and an opportunity carries the temperature and the recommended
+ * action that the message does not.
+ *
+ * The join carries `orgId` and `genomeId` as well as the id. The opportunity row
+ * is already inside `scopePredicate`, so the message cannot belong to another
+ * tenant by construction — but "by construction" is an argument, and an equality
+ * check is a guarantee. Same defence-in-depth `listFolderContents` applies.
+ */
+export async function listOpportunities(
+  db: Database,
+  scope: Scope,
+  args: { limit: number },
+): Promise<
+  Array<
+    OpportunityRow & {
+      platform: string | null;
+      authorHandle: string | null;
+      authorName: string | null;
+      messageText: string | null;
+      intentScore: number | null;
+      receivedAt: Date | null;
+    }
+  >
+> {
+  return db
+    .select({
+      ...opportunityColumns,
+      platform: engagementMessages.platform,
+      authorHandle: engagementMessages.authorHandle,
+      authorName: engagementMessages.authorName,
+      messageText: engagementMessages.text,
+      intentScore: engagementMessages.intentScore,
+      receivedAt: engagementMessages.receivedAt,
+    })
+    .from(opportunities)
+    .leftJoin(
+      engagementMessages,
+      and(
+        eq(engagementMessages.id, opportunities.inboxItemId),
+        eq(engagementMessages.orgId, opportunities.orgId),
+        eq(engagementMessages.genomeId, opportunities.genomeId),
+      ),
+    )
+    .where(scopePredicate('opportunities', scope))
+    .orderBy(desc(opportunities.createdAt))
+    .limit(args.limit);
 }
 
 /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */
