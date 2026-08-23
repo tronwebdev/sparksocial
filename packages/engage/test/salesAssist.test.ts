@@ -42,7 +42,15 @@ interface Brand {
 }
 
 function ctx(
-  over: { brand?: Brand; noBrandId?: boolean; message?: Partial<typeof MESSAGE>; routed?: string[]; classified?: unknown[] } = {},
+  over: {
+    brand?: Brand;
+    noBrandId?: boolean;
+    message?: Partial<typeof MESSAGE>;
+    routed?: string[];
+    classified?: unknown[];
+    /** The campaign's engagement rung. Defaults to `sales_assist`. */
+    rung?: 'observe' | 'suggest' | 'auto_reply' | 'sales_assist';
+  } = {},
 ): ToolCtx {
   const message = { ...MESSAGE, ...over.message };
   return {
@@ -53,6 +61,20 @@ function ctx(
     approvalMode: 'autopublish',
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
     db: {
+      /**
+       * The campaign's engagement rung, which `engage.opportunity.create` reads
+       * since 22 August: the handoff rule applies only on `sales_assist` — the
+       * narrow half of "four rungs, config on top".
+       *
+       * Defaults to the top rung so the handoff tests stay about handoff rules.
+       * The rung's own gate has its own test below.
+       */
+      campaigns: {
+        listForGenome: async () => [
+          { id: 'camp_1', genomeId: 'gen_1', startAt: new Date(0), engagementRung: over.rung ?? 'sales_assist' },
+        ],
+        slots: async () => [],
+      },
       brands: { get: async () => over.brand ?? {} },
       genomes: { get: async () => GENOME },
       engagement: {
@@ -283,5 +305,64 @@ describe('engage.opportunity.create honours the handoff rule', () => {
 
     expect(out.handoff).toBe('crm_notify');
     expect(out.routedTo).toBeUndefined();
+  });
+});
+
+/* ── the rung gates the handoff, and only the handoff ────────────────────── */
+
+describe('the engagement rung decides whether Sales Assist applies', () => {
+  const input = { genomeId: 'gen_1', messageId: 'msg_1', temperature: 'hot' as const, recommendedAction: 'Call them' };
+
+  it('does not route a lead when the campaign is below the top rung', async () => {
+    // The narrow half of "four rungs, config on top" (decided 22 August). A
+    // campaign on `auto_reply` has not asked the agent to work leads, so routing
+    // one to a CRM would be the agent doing something the campaign declined.
+    for (const rung of ['observe', 'suggest', 'auto_reply'] as const) {
+      const routed: string[] = [];
+      const out = await engageOpportunityCreate.handler(
+        input,
+        ctx({ rung, brand: { salesDestination: 'sales@clientforce.ai' }, routed }),
+      );
+
+      expect(routed).toEqual([]);
+      expect(out.routedTo).toBeUndefined();
+    }
+  });
+
+  it('still raises the opportunity on every rung', async () => {
+    // Recording that somebody sounded like a customer is bookkeeping, not sales
+    // assistance. Suppressing the row as well would lose the lead entirely.
+    const out = await engageOpportunityCreate.handler(input, ctx({ rung: 'observe' }));
+    expect(out.opportunityId).toBeTruthy();
+  });
+
+  it('names the rung as the reason, not the handoff rules', async () => {
+    // Otherwise somebody changes a handoff rule and watches nothing happen.
+    const out = await engageOpportunityCreate.handler(
+      input,
+      ctx({ rung: 'suggest', brand: { salesDestination: 'sales@clientforce.ai' } }),
+    );
+
+    const detail = out.why.factors.find((f) => f.label.startsWith('Handoff rule'))?.detail ?? '';
+    expect(detail).toMatch(/suggest rung/);
+    expect(detail).not.toMatch(/has not set its own handoff rules/);
+  });
+
+  it('escalates on a keyword whatever the rung is', async () => {
+    /**
+     * The escalation list is a floor, not a feature of the top rung. A refund
+     * demand is exactly as dangerous on `auto_reply` as on `sales_assist`, so
+     * gating it would switch off a safety net by choosing a lower level of
+     * ambition — the opposite of what a lower rung should mean.
+     */
+    for (const rung of ['observe', 'suggest', 'auto_reply', 'sales_assist'] as const) {
+      const tool = makeEngageClassify({ classifier: stubClassifier({ category: 'auto_handled' }) });
+      const out = await tool.handler(
+        { genomeId: 'gen_1', messageId: 'msg_1' },
+        ctx({ rung, brand: { salesEscalationKeywords: ['refund'] } }),
+      );
+
+      expect(out.category).toBe('needs_review');
+    }
   });
 });

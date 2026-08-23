@@ -39,6 +39,16 @@ function createCtx(
     approvalMode: 'autopublish',
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
     db: {
+      // A campaign on the top rung. `engage.opportunity.create` reads the rung
+      // since 22 August — the handoff rule only applies on `sales_assist` — and
+      // this file is about raising an opportunity, not about the rung, so it sits
+      // where routing is permitted and the tests below stay about their subject.
+      campaigns: {
+        listForGenome: async () => [
+          { id: 'camp_1', genomeId: 'gen_1', startAt: new Date(0), engagementRung: 'sales_assist' },
+        ],
+        slots: async () => [],
+      },
       engagement: { get: over.messageGet ?? (async () => MESSAGE) },
       opportunities: {
         create: async (args: unknown) => {

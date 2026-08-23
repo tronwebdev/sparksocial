@@ -996,6 +996,55 @@ export const campaigns = pgTable(
      * brand that reviews everything.
      */
     approvalMode: text('approval_mode'),
+    /**
+     * ── The wizard's own fields (`CMP-01`, F8) ──────────────────────────────
+     *
+     * `promotion` | `lead_magnet` | `authority` | `launch`. Distinct from
+     * `objective`: the objective is what success looks like, the type is the
+     * shape of the content chasing it. "More enquiries" can be pursued by a lead
+     * magnet or by an authority series, and those produce different mixes.
+     *
+     * Nullable — every campaign created before the wizard asked.
+     */
+    campaignType: text('campaign_type'),
+    /**
+     * Where this campaign points people, as words or a URL.
+     *
+     * Separate from the genome's own CTA, which is the brand's standing default.
+     * A campaign running a lead magnet points at its opt-in page for its
+     * duration and then stops; overwriting the brand's CTA to express that would
+     * outlive the campaign.
+     */
+    primaryCta: text('primary_cta'),
+    /**
+     * How much of the brand's posting this campaign should account for — the
+     * prototype's "how much attention should this get?".
+     *
+     * `dominant` | `balanced` | `light`. Three words rather than a percentage on
+     * purpose: posts-per-week already comes from the brand and the plan, and a
+     * second number here would let the two disagree about how many posts a month
+     * contains.
+     */
+    weight: text('weight'),
+    /**
+     * This campaign's rung on the engagement ladder — `observe` | `suggest` |
+     * `auto_reply` | `sales_assist` (decided 22 August: four rungs, with the
+     * Sales Assist configuration sitting on top of the top one).
+     *
+     * Answering the audience is autonomy, and autonomy is a property of the
+     * campaign. `brands.engagement_autonomy` stays as the template a new
+     * campaign is seeded from — the same relationship `approval_mode` now has.
+     */
+    engagementRung: text('engagement_rung'),
+    /**
+     * The prototype's "Optimization & Learning" step.
+     *
+     * Nullable rather than defaulted, because a campaign created before this
+     * existed never answered and should not be reported as having opted in.
+     * New campaigns are seeded to true by the wizard.
+     */
+    learnFromPerformance: boolean('learn_from_performance'),
+    adjustMixAutomatically: boolean('adjust_mix_automatically'),
     /** draft | active | done | cancelled */
     status: text('status').notNull().default('draft'),
     /** The approved plan: volume, mix, capture ask, reasoning. */

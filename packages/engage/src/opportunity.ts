@@ -1,31 +1,38 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError, Explanation, resolveSalesHandoff, salesRouteFor } from '@sparksocial/shared';
+import {
+  ToolError,
+  Explanation,
+  resolveSalesHandoff,
+  salesAssistApplies,
+  salesRouteFor,
+} from '@sparksocial/shared';
+import { resolveEngagementEligibility } from './eligibility.js';
 
 /**
- * `engage.opportunity.create` / `.route` — the master plan's own schema
- * sketch (`docs/MASTER_BUILD_PLAN.md`, §3.2's "opportunities" table:
+ * `engage.opportunity.create` / `.route` â€” the master plan's own schema
+ * sketch (`docs/MASTER_BUILD_PLAN.md`, Â§3.2's "opportunities" table:
  * "inbox_item_id, temperature(hot|warm|cold), recommended_action,
  * routed_to"), built as a genuinely separate table
  * (`packages/db/src/schema.ts`'s `opportunities`) rather than columns on
- * `engagement_messages` — see that table's own comment for why.
+ * `engagement_messages` â€” see that table's own comment for why.
  *
  * Both tools are `effect: 'write'` / `autonomy: 'auto'`: raising or routing a
  * lead changes nothing outside the workspace, so neither needs `policy.ts`
  * rule 6's engagement-publish gate. `create` is `idempotent: false` (calling
  * it twice makes two real leads against the same message, a genuine
  * duplicate, not a refresh); `route` is `idempotent: true` (routing again
- * just updates the destination — the same "re-pointing, not re-doing"
+ * just updates the destination â€” the same "re-pointing, not re-doing"
  * reasoning `content.schedule`'s move gets).
  *
- * `routedTo` is deliberately a free-text string, not a structured reference —
+ * `routedTo` is deliberately a free-text string, not a structured reference â€”
  * there is no CRM integration to build here yet, same "seam, not a system"
  * choice `ReplySender` makes for per-platform reply delivery.
  */
 
 const Temperature = z.enum(['hot', 'warm', 'cold']);
 
-/* ── engage.opportunity.create ───────────────────────────────────────── */
+/* â”€â”€ engage.opportunity.create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export const EngageOpportunityCreateInput = z.object({
   genomeId: z.string().min(1),
@@ -45,7 +52,7 @@ export const EngageOpportunityCreateOutput = z.object({
    * is the honest state for `save_notify` and `nurture_only`.
    */
   routedTo: z.string().optional(),
-  /** Which handoff rule applied — `crm_notify` | `save_notify` | `nurture_only`. */
+  /** Which handoff rule applied â€” `crm_notify` | `save_notify` | `nurture_only`. */
   handoff: z.string(),
   why: Explanation,
 });
@@ -55,7 +62,7 @@ export const engageOpportunityCreate = defineTool({
   version: 1,
 
   summary:
-    'Raise a sales opportunity from an inbox message already classified sales_opportunity — records ' +
+    'Raise a sales opportunity from an inbox message already classified sales_opportunity â€” records ' +
     'temperature and a recommended next action for the Sales Opportunities tab.',
 
   input: EngageOpportunityCreateInput,
@@ -99,7 +106,7 @@ export const engageOpportunityCreate = defineTool({
      * `Settings WS EI Sales`'s handoff rule, applied.
      *
      * Before this, a raised opportunity always sat unrouted until somebody
-     * called `.route` by hand — which made "Hot → send to CRM + notify me" a
+     * called `.route` by hand â€” which made "Hot â†’ send to CRM + notify me" a
      * sentence on a settings screen and nothing else.
      *
      * Routing reuses the existing `.route` write rather than taking a
@@ -109,7 +116,27 @@ export const engageOpportunityCreate = defineTool({
      */
     const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
     const handoff = resolveSalesHandoff(brand?.salesHandoff);
-    const destination = salesRouteFor(input.temperature, handoff, brand?.salesDestination);
+
+    /**
+     * The handoff rule applies only on the top rung â€” the narrow half of
+     * "four rungs, config on top" (decided 22 August).
+     *
+     * A campaign set to `observe`, `suggest` or `auto_reply` has not asked the
+     * agent to work leads, so routing one to a CRM on its behalf would be the
+     * agent doing something the campaign declined. The opportunity is still
+     * *raised* either way â€” recording that somebody sounded like a customer is
+     * not sales assistance, it is bookkeeping â€” it simply waits in the tab.
+     *
+     * Note what is deliberately *not* gated: the escalation keyword list in
+     * `engage.classify`. That is a floor rather than a feature, and a refund
+     * demand is exactly as dangerous on `auto_reply` as on `sales_assist` â€” see
+     * `salesAssistApplies` in `campaignAutonomy.ts`.
+     */
+    const eligibility = await resolveEngagementEligibility(ctx, input.genomeId);
+    const assisting = salesAssistApplies(eligibility.rung);
+    const destination = assisting
+      ? salesRouteFor(input.temperature, handoff, brand?.salesDestination)
+      : undefined;
 
     if (destination) {
       await ctx.db.opportunities.route({
@@ -143,11 +170,20 @@ export const engageOpportunityCreate = defineTool({
           { label: `Temperature: ${input.temperature}`, weight: input.temperature === 'hot' ? 1 : input.temperature === 'warm' ? 0.5 : 0 },
           {
             label: `Handoff rule: ${handoff[input.temperature]}`,
+            /**
+             * The reason has to name the cause that actually applied, or
+             * somebody will go and change a handoff rule and watch nothing
+             * happen. Three distinct causes, in the order they are checked.
+             */
             detail: destination
               ? `sent to ${destination}`
-              : brand?.salesHandoff
-                ? 'kept in the Sales Opportunities tab'
-                : 'this brand has not set its own handoff rules, so the defaults applied',
+              : !assisting
+                ? `this campaign is on the ${eligibility.rung ?? 'observe'} rung, so handoff rules do not apply yet`
+                : handoff[input.temperature] === 'crm_notify'
+                  ? 'no destination is set, so it waits in the Sales Opportunities tab'
+                  : brand?.salesHandoff
+                    ? 'kept in the Sales Opportunities tab'
+                    : 'this brand has not set its own handoff rules, so the defaults applied',
           },
         ],
         evidence: [{ kind: 'metric' as const, id: message.id, note: message.text.slice(0, 200) }],
@@ -157,7 +193,7 @@ export const engageOpportunityCreate = defineTool({
   },
 });
 
-/* ── engage.opportunity.route ────────────────────────────────────────── */
+/* â”€â”€ engage.opportunity.route â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export const EngageOpportunityRouteInput = z.object({
   genomeId: z.string().min(1),
@@ -176,7 +212,7 @@ export const engageOpportunityRoute = defineTool({
   version: 1,
 
   summary:
-    'Route a sales opportunity to a destination — a person, an email, a CRM reference. Free text; no CRM ' +
+    'Route a sales opportunity to a destination â€” a person, an email, a CRM reference. Free text; no CRM ' +
     'integration exists yet. Re-routing just updates the destination.',
 
   input: EngageOpportunityRouteInput,
@@ -224,3 +260,4 @@ export const engageOpportunityRoute = defineTool({
     };
   },
 });
+

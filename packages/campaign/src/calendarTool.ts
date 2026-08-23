@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { ContentPillar, Explanation, GenerationMode, Objective, ToolError } from '@sparksocial/shared';
+import {
+  ContentPillar,
+  Explanation,
+  GenerationMode,
+  Objective,
+  ToolError,
+  type EngagementRung,
+} from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -58,6 +65,36 @@ export const CampaignCreateInput = z.object({
    * downward direction this would be a second lock rather than a control.
    */
   approvalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']).optional(),
+
+  /* ── The wizard's own fields (`CMP-01`, F8) ─────────────────────────────── */
+
+  /**
+   * The shape of content this campaign runs — distinct from `objective`, which
+   * is what success looks like. See the `campaigns` table.
+   */
+  campaignType: z.enum(['promotion', 'lead_magnet', 'authority', 'launch']).optional(),
+  /** Where this campaign points people, for its duration only. */
+  primaryCta: z.string().min(1).max(200).optional(),
+  /** The prototype's "how much attention should this get?". */
+  weight: z.enum(['dominant', 'balanced', 'light']).optional(),
+  /**
+   * This campaign's rung on the engagement ladder (decided 22 August: four
+   * rungs, with the Sales Assist configuration on top of the top one).
+   *
+   * Omitted inherits the brand's `engagementAutonomy` as a template — the same
+   * relationship `approvalMode` now has. See the handler.
+   */
+  engagementRung: z.enum(['observe', 'suggest', 'auto_reply', 'sales_assist']).optional(),
+  /**
+   * The prototype's "Optimization & Learning" step.
+   *
+   * Optional here and defaulted in the handler, matching `approvalMode` above.
+   * A `z.default()` would make both fields *required* on the parsed type, so
+   * every direct `handler(...)` caller — which is how this package is tested —
+   * would have to name them to say nothing.
+   */
+  learnFromPerformance: z.boolean().optional(),
+  adjustMixAutomatically: z.boolean().optional(),
 });
 
 export const CampaignCreateOutput = z.object({
@@ -126,9 +163,24 @@ export const campaignCreate = defineTool({
      * See the `approvalMode` field below for why it is copied rather than
      * referenced.
      */
-    const brandTemplate = ctx.brandId
-      ? (await ctx.db.brands.get(ctx.brandId, ctx.orgId)).approvalMode
-      : 'review_everything';
+    const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+    const brandTemplate = brand?.approvalMode ?? 'review_everything';
+
+    /**
+     * The brand's engagement autonomy, as this campaign's starting rung.
+     *
+     * The brand stores three values (`off`/`suggest`/`auto`) and a campaign has
+     * four, so the widening is done here rather than by a lossy cast. `auto`
+     * becomes `auto_reply` and not `sales_assist`: promoting a brand that only
+     * ever said "answer the safe ones" onto the rung where qualification moves
+     * and handoff rules apply would grant a capability nobody asked for.
+     */
+    const brandRung: EngagementRung =
+      brand?.engagementAutonomy === 'suggest'
+        ? 'suggest'
+        : brand?.engagementAutonomy === 'auto'
+          ? 'auto_reply'
+          : 'observe';
 
     // The plan is snapshotted at creation, not recomputed on read: the resolver
     // and the Asset Graph both move underneath a live campaign, and reopening
@@ -166,6 +218,18 @@ export const campaignCreate = defineTool({
        * campaign created without an explicit mode would queue for approval.
        */
       approvalMode: input.approvalMode ?? brandTemplate,
+      // The rung follows the same template rule, for the same reason: an absent
+      // rung means the reply path treats this campaign as `observe`, so a
+      // campaign created without one would silently stop answering an audience
+      // the brand had already agreed to answer.
+      engagementRung: input.engagementRung ?? brandRung,
+      // A campaign created here has answered, so the answer is recorded either
+      // way. The nullable columns exist for campaigns predating the question.
+      learnFromPerformance: input.learnFromPerformance ?? true,
+      adjustMixAutomatically: input.adjustMixAutomatically ?? true,
+      ...(input.campaignType ? { campaignType: input.campaignType } : {}),
+      ...(input.primaryCta ? { primaryCta: input.primaryCta } : {}),
+      ...(input.weight ? { weight: input.weight } : {}),
     });
 
     ctx.logger.info('campaign created', {

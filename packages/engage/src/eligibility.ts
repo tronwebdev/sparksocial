@@ -1,23 +1,23 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { ToolError, Explanation } from '@sparksocial/shared';
+import { ToolError, Explanation, type EngagementRung } from '@sparksocial/shared';
 
 /**
- * `engage.eligibility.check` — `ENG-01`'s gate: "ineligible (campaign still
+ * `engage.eligibility.check` â€” `ENG-01`'s gate: "ineligible (campaign still
  * learning)" vs "eligible but inactive (configure now)" vs "active".
  *
- * ── The rule itself is a v1 default, not a settled product decision ────────
- * PRD §12's open-questions list names this exact gap: *"Eligibility rule for
- * engagement intelligence (time-based, volume-based, or hybrid)?"* — still
+ * â”€â”€ The rule itself is a v1 default, not a settled product decision â”€â”€â”€â”€â”€â”€â”€â”€
+ * PRD Â§12's open-questions list names this exact gap: *"Eligibility rule for
+ * engagement intelligence (time-based, volume-based, or hybrid)?"* â€” still
  * unanswered as of this writing. Rather than leave the gate unbuildable
  * pending that decision, this ships a hybrid rule using data the product
  * already has: a campaign must be at least `MIN_DAYS_SINCE_START` days into
- * its window (time-based — SPARK has had a chance to establish voice/cadence)
- * *and* have at least `MIN_PUBLISHED_POSTS` published posts (volume-based —
+ * its window (time-based â€” SPARK has had a chance to establish voice/cadence)
+ * *and* have at least `MIN_PUBLISHED_POSTS` published posts (volume-based â€”
  * there is an actual publishing history to have generated real engagement
  * against). `MIN_DAYS_SINCE_START` deliberately matches the 14-day figure
  * the master plan's autonomy table already uses for `engage.reply.send`
- * ("confirm always in first 14 days") — the same "SPARK is still new here"
+ * ("confirm always in first 14 days") â€” the same "SPARK is still new here"
  * period, not a second unrelated number. Both constants are named and
  * exported so a product decision on the open question is a one-line change,
  * not a rewrite.
@@ -31,7 +31,7 @@ export const MIN_PUBLISHED_POSTS = 5;
  *
  * `engage.eligibility.check` exposes it as a tool for the `ENG-01` gate to
  * render. `policy.ts` rule 6 needs the same answer at a completely different
- * moment — before an `engage.*` publish handler runs — and that answer used to
+ * moment â€” before an `engage.*` publish handler runs â€” and that answer used to
  * arrive on the HTTP request, where a caller could simply assert it.
  *
  * Two readers, one rule. A second implementation is precisely how the screen
@@ -70,7 +70,7 @@ export function judgeEligibility(args: {
 
 /**
  * The same verdict for the genome's most recent campaign, for callers that have
- * a genome rather than a campaign id — `policy.ts` rule 6's derivation, via the
+ * a genome rather than a campaign id â€” `policy.ts` rule 6's derivation, via the
  * `engage.*` publish tools' `policySubject`.
  *
  * A genome with no campaign at all is ineligible, which is the honest answer:
@@ -80,16 +80,30 @@ export function judgeEligibility(args: {
 export async function resolveEngagementEligibility(
   ctx: ToolCtx,
   genomeId: string,
-): Promise<EligibilityVerdict> {
+): Promise<EligibilityVerdict & { rung?: EngagementRung }> {
   const [latest] = await ctx.db.campaigns.listForGenome(genomeId, ctx.orgId, 1);
   if (!latest) {
     return { eligible: false, daysSinceStart: 0, publishedCount: 0, reason: 'No campaign is running for this brand yet.' };
   }
   const slots = await ctx.db.campaigns.slots(latest.id, ctx.orgId, genomeId);
-  return judgeEligibility({
+  const verdict = judgeEligibility({
     startAt: latest.startAt,
     publishedCount: slots.filter((sl) => sl.status === 'published').length,
   });
+
+  /**
+   * The campaign's rung comes back with the verdict.
+   *
+   * Autonomy is a property of the campaign (decided 22 August), and answering
+   * the audience is autonomy â€” so the rung has to reach `policy.ts` rule 6.
+   * It rides along here because this function already holds the campaign: both
+   * callers are `policySubject`s on the hot path of every reply, and a second
+   * `listForGenome` to fetch one field would double that read for nothing.
+   *
+   * Absent when the campaign predates the field, which `rungAutonomy` reads as
+   * `observe` â€” the conservative end.
+   */
+  return { ...verdict, ...(latest.engagementRung ? { rung: latest.engagementRung } : {}) };
 }
 
 export const EngageEligibilityCheckInput = z.object({
@@ -109,7 +123,7 @@ export const engageEligibilityCheck = defineTool({
   name: 'engage.eligibility.check',
   version: 1,
 
-  summary: 'Whether a campaign has cleared the engagement-intelligence learning period — v1 default rule, see docs/STATUS.md.',
+  summary: 'Whether a campaign has cleared the engagement-intelligence learning period â€” v1 default rule, see docs/STATUS.md.',
 
   input: EngageEligibilityCheckInput,
   output: EngageEligibilityCheckOutput,
@@ -149,8 +163,8 @@ export const engageEligibilityCheck = defineTool({
         /**
          * The rule, not the progress.
          *
-         * This was `reason` verbatim — the same sentence `EngagementGate`
-         * prints directly above the popover — so "Show reasoning" answered
+         * This was `reason` verbatim â€” the same sentence `EngagementGate`
+         * prints directly above the popover â€” so "Show reasoning" answered
          * with the line the reader had just finished reading. What is not
          * anywhere on that screen is why the gate has two conditions instead
          * of one, which is the part that makes the wait look deliberate
@@ -161,16 +175,17 @@ export const engageEligibilityCheck = defineTool({
             `${MIN_DAYS_SINCE_START} days and publish ${MIN_PUBLISHED_POSTS} posts before it has seen ` +
             `how this audience actually responds.`
           : `SPARK answers in its own voice only after a campaign has run ${MIN_DAYS_SINCE_START} days ` +
-            `and published ${MIN_PUBLISHED_POSTS} posts — both, because days with nothing published show ` +
+            `and published ${MIN_PUBLISHED_POSTS} posts â€” both, because days with nothing published show ` +
             `it nothing about this audience, and posts with no time behind them show it nothing about how ` +
             `they replied.`,
         factors: [
           { label: 'Days since campaign start', weight: clearedTime ? 1 : 0, detail: `${daysSinceStart}/${MIN_DAYS_SINCE_START}` },
           { label: 'Published posts', weight: clearedVolume ? 1 : 0, detail: `${publishedCount}/${MIN_PUBLISHED_POSTS}` },
         ],
-        evidence: [{ kind: 'rule' as const, id: 'engage.eligibility.v1', note: 'time-based AND volume-based, PRD §12 open question' }],
+        evidence: [{ kind: 'rule' as const, id: 'engage.eligibility.v1', note: 'time-based AND volume-based, PRD Â§12 open question' }],
         alternatives: [],
       },
     };
   },
 });
+

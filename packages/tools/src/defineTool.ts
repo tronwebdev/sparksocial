@@ -2,6 +2,7 @@ import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
+import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
@@ -1330,6 +1331,18 @@ export interface CampaignRecord {
   windowDays: number;
   startAt: Date;
   status: string;
+  /**
+   * The wizard's own fields (`CMP-01`, F8). All optional: a campaign created
+   * before the wizard asked never answered, and reporting a default as though
+   * it had been chosen is how a screen ends up lying about somebody's settings.
+   */
+  campaignType?: CampaignType;
+  primaryCta?: string;
+  weight?: CampaignWeight;
+  /** Read by `engage.autohandle` via `rungAutonomy` — see `campaignAutonomy.ts`. */
+  engagementRung?: EngagementRung;
+  learnFromPerformance?: boolean;
+  adjustMixAutomatically?: boolean;
   /** The plan snapshot the owner approved. Deliberately opaque here. */
   plan: unknown;
   /**
@@ -1452,6 +1465,13 @@ export interface CampaignStore {
     targetLabel?: string;
     platforms?: string[];
     approvalMode?: ApprovalMode;
+    /** The wizard's own fields — see the `campaigns` table for each. */
+    campaignType?: CampaignType;
+    primaryCta?: string;
+    weight?: CampaignWeight;
+    engagementRung?: EngagementRung;
+    learnFromPerformance?: boolean;
+    adjustMixAutomatically?: boolean;
   }): Promise<{ id: string }>;
   /** Undefined rather than throwing when out of scope. */
   get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
