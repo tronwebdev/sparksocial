@@ -6,6 +6,7 @@ import {
   GenerationMode,
   Objective,
   ToolError,
+  rungFromBrandAutonomy,
   type EngagementRung,
 } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
@@ -169,18 +170,10 @@ export const campaignCreate = defineTool({
     /**
      * The brand's engagement autonomy, as this campaign's starting rung.
      *
-     * The brand stores three values (`off`/`suggest`/`auto`) and a campaign has
-     * four, so the widening is done here rather than by a lossy cast. `auto`
-     * becomes `auto_reply` and not `sales_assist`: promoting a brand that only
-     * ever said "answer the safe ones" onto the rung where qualification moves
-     * and handoff rules apply would grant a capability nobody asked for.
+     * The widening lives in `shared` because the wizard needs the same answer to
+     * preselect the rung it is about to send — see `rungFromBrandAutonomy`.
      */
-    const brandRung: EngagementRung =
-      brand?.engagementAutonomy === 'suggest'
-        ? 'suggest'
-        : brand?.engagementAutonomy === 'auto'
-          ? 'auto_reply'
-          : 'observe';
+    const brandRung: EngagementRung = rungFromBrandAutonomy(brand?.engagementAutonomy);
 
     // The plan is snapshotted at creation, not recomputed on read: the resolver
     // and the Asset Graph both move underneath a live campaign, and reopening

@@ -68,6 +68,35 @@ export function rungAutonomy(rung: EngagementRung | undefined): 'off' | 'suggest
 }
 
 /**
+ * The brand's three-value autonomy, widened onto the four-rung ladder.
+ *
+ * The brand is the **template** a new campaign is seeded from, and the two
+ * vocabularies are different sizes, so the widening has to be written down
+ * somewhere. It is written here because it has two readers on opposite sides of
+ * the wire: `campaign.create` applies it when the caller names no rung, and the
+ * wizard applies it to preselect the rung it is about to send. A wizard that
+ * showed `Suggest Replies` while the server seeded `Auto Reply` would be a
+ * screen that lies about what activating does.
+ *
+ * `auto` becomes `auto_reply` and **not** `sales_assist`: promoting a brand that
+ * only ever said "answer the safe ones" onto the rung where qualification moves
+ * and handoff rules apply would grant a capability nobody asked for.
+ */
+export function rungFromBrandAutonomy(
+  autonomy: 'off' | 'suggest' | 'auto' | undefined,
+): EngagementRung {
+  switch (autonomy) {
+    case 'suggest':
+      return 'suggest';
+    case 'auto':
+      return 'auto_reply';
+    case 'off':
+    default:
+      return 'observe';
+  }
+}
+
+/**
  * Whether this campaign's Sales Assist configuration applies.
  *
  * The narrow half of "config on top": the qualification moves and the handoff
