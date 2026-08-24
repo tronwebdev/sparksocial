@@ -13,8 +13,10 @@ import type { EngagementItem } from './EngagementFeed';
  * one message, so a busy/error/sent state on one card never touches its
  * siblings.
  *
- * `engage.reply.send` is gated by `policy.ts` rule 6 (eligibility +
- * workspace autonomy configuration) — a `gated` result is expected, common,
+ * `engage.reply.send` is gated by `policy.ts` rule 6 (eligibility + the
+ * campaign's engagement rung — autonomy became a property of the campaign on
+ * 22 August, so this is no longer a brand-wide setting) — a `gated` result is
+ * expected, common,
  * and shown with its own reason rather than folded into the generic error
  * path a `failed` result gets. Same "handle gated explicitly" rule
  * `AgentControlBar`/`DraftPanel` already follow for their own write calls.

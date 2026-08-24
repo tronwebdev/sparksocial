@@ -162,7 +162,7 @@ export function CalendarBoard() {
     if (!genome) return;
     let cancelled = false;
     setHydrating(true);
-    // Cleared up front, not left stale: switching brands (WorkspaceSwitcher)
+    // Cleared up front, not left stale: switching brands (BrandSwitcher)
     // re-runs this on the same mounted component, and without this a genome
     // with no campaign would keep showing the *previous* genome's calendar
     // until this effect happened to find nothing to replace it with.

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { SettingsNav } from '@/components/settings/SettingsNav';
 
@@ -30,7 +30,7 @@ import { SettingsNav } from '@/components/settings/SettingsNav';
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       {/* Single column below `lg`: a 200px rail beside a form is unusable on a
           phone, and settings is a screen people genuinely open on one. */}
       <div className="grid grid-cols-1 gap-8 p-8 lg:grid-cols-[232px_minmax(0,1fr)]">

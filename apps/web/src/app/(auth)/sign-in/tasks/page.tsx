@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { TaskChooseOrganization } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
@@ -28,10 +28,10 @@ export default function ChooseOrganizationPage() {
       <div className="flex flex-col items-center">
         <SparkMark variant="card" />
         <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">
-          Name your workspace
+          Name your account
         </h1>
         <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
-          Everything SPARK makes lives inside a workspace. You can add brands to it later.
+          Everything SPARK makes lives inside your account. You can add brands to it later.
         </p>
       </div>
 

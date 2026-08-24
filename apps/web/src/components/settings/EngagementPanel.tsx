@@ -79,6 +79,16 @@ const QUALIFICATION_OPTIONS = [
   { value: 'collect_contact_details', label: 'Collect contact details', hint: 'Asks for a name and a way to reach them.' },
 ] as const;
 
+/**
+ * The prototype says "Send to CRM + notify me" for the first of these, and this
+ * is the one F21 label that is deliberately *not* adopted.
+ *
+ * There is no CRM integration. `opportunities.routed_to` is free text and
+ * `engage.opportunity.create`'s own comment says so outright — the destination is
+ * an email address or a reference somebody reads. A label promising a CRM would
+ * be the copy claiming an integration the product does not have, which is a
+ * different kind of error from a plainer word.
+ */
 const HANDOFF_DESTINATIONS = [
   { value: 'crm_notify', label: 'Send on + notify me' },
   { value: 'save_notify', label: 'Save + notify me' },
@@ -248,13 +258,17 @@ export function EngagementPanel() {
           `engage.classify` overrides itself deterministically on a match,
           rather than asking the model to weigh it against everything else. */}
       <div>
-        <h3 className="text-[14px] font-medium text-ink">Turning interest into work</h3>
+        {/* F21's headings are the prototype's, verbatim, under the 22 August copy
+            decision: its *labels* are the spec, and the explanations under them
+            stay the build's plainer ones. This screen was the finding's own
+            example — every control matched and none of the words did. */}
+        <h3 className="text-[14px] font-medium text-ink">Sales Assist Configuration</h3>
         <p className="mt-0.5 text-[12px] text-ink-muted">
           When someone sounds like a customer rather than a commenter, this decides what SPARK may do
           about it and where the lead goes.
         </p>
 
-        <p className="mt-3 text-[12px] font-medium text-ink-muted">What SPARK may do</p>
+        <p className="mt-3 text-[12px] font-medium text-ink-muted">Lead Qualification Options</p>
         <ul className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {QUALIFICATION_OPTIONS.map((o) => {
             const on = salesQualification.includes(o.value);
@@ -286,7 +300,7 @@ export function EngagementPanel() {
           </p>
         )}
 
-        <p className="mt-4 text-[12px] font-medium text-ink-muted">Where each lead goes</p>
+        <p className="mt-4 text-[12px] font-medium text-ink-muted">Handoff Rules</p>
         <div className="mt-1.5 space-y-2">
           {TEMPERATURES.map((t) => (
             <div key={t.value} className="flex flex-wrap items-center gap-2">
@@ -294,6 +308,15 @@ export function EngagementPanel() {
                 <span aria-hidden>{t.emoji}</span>
                 <span className="text-[13px] font-medium text-ink">{t.label}</span>
                 <span className="text-[11px] text-ink-muted">{t.hint}</span>
+              </span>
+              {/* The prototype's arrow, kept. It reads its rules as a sentence —
+                  "🔥 Hot → Send to CRM + notify me" — and the arrow is what makes
+                  the row scan as one rule rather than a label beside three
+                  unrelated chips. The chips themselves stay, because the
+                  prototype's line is a *display* of a chosen rule and this has to
+                  be the thing that chooses it. */}
+              <span aria-hidden className="shrink-0 text-[13px] text-ink-muted">
+                &rarr;
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {HANDOFF_DESTINATIONS.map((d) => {
@@ -348,7 +371,7 @@ export function EngagementPanel() {
         />
 
         <label className="mt-4 block text-[12px] font-medium text-ink-muted" htmlFor="gov-escalation">
-          Always send these to you
+          Sensitive keywords
         </label>
         <p className="mt-1 text-[12px] text-ink-muted">
           A message containing any of these words goes to Needs Review and SPARK will not offer a reply for

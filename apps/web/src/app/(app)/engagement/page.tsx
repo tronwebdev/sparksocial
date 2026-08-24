@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { EngagementFeed } from '@/components/engagement/EngagementFeed';
 import { EngagementGate } from '@/components/engagement/EngagementGate';
@@ -33,7 +33,7 @@ import { EngagementGate } from '@/components/engagement/EngagementGate';
 export default function CommandCenterPage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="p-8">
         <header className="mb-6">
           <h1 className="text-[20px] font-medium text-ink">Engagement Intelligence</h1>

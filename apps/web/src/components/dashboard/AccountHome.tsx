@@ -14,7 +14,7 @@ import { invoke } from '@/lib/tools';
  *
  * ── Why there was no org-level surface at all ─────────────────────────────
  *
- * Every screen in the product was brand-scoped, reached through the workspace
+ * Every screen in the product was brand-scoped, reached through the brand
  * switcher. The multi-brand roster and billing lived inside *brand* settings
  * (`AgencyPanel`), which is the wrong place for them by one level: an agency
  * operator adding client #4 had to first pick client #3 in order to find the
@@ -87,7 +87,7 @@ export function AccountHome() {
           <h2 className="text-[18px] font-semibold text-ink">Brands</h2>
           {brands ? (
             <p className="text-[13px] text-ink-muted">
-              {brands.length} workspace{brands.length === 1 ? '' : 's'}
+              {brands.length} brand{brands.length === 1 ? '' : 's'}
             </p>
           ) : null}
         </div>

@@ -15,7 +15,7 @@ import { invoke } from '@/lib/tools';
  * on the first. Every route under `(app)` calls tools that expect a genome to
  * already exist; without this, that session reaches a shell where each panel
  * fails or renders empty, with no single place telling the user what to do
- * about it — `WorkspaceSwitcher`'s own "No brands yet" is the one honest
+ * about it — `BrandSwitcher`'s own "No brands yet" is the one honest
  * corner of that shell, and nothing forces anyone to land on it rather than
  * on `/calendar`, `/assets`, or anywhere else.
  *
@@ -60,7 +60,7 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <div className="max-w-md text-center">
-          <p className="text-[16px] font-medium text-ink">Could not open your workspace</p>
+          <p className="text-[16px] font-medium text-ink">Could not open your account</p>
           <p className="mt-1 text-[14px] text-ink-muted">{failed}</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
-        <p className="text-[14px] text-ink-muted">Opening your workspace…</p>
+        <p className="text-[14px] text-ink-muted">Opening your account…</p>
       </div>
     );
   }

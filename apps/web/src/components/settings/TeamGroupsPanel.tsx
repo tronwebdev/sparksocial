@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +65,7 @@ export function TeamGroupsPanel() {
   const [memberDrafts, setMemberDrafts] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   /**
-   * The workspace roster, or null when it could not be read.
+   * The account roster, or null when it could not be read.
    *
    * Null is a real state rather than an empty list: `team.list` is registered
    * only when Clerk is configured, and it is `owner`/`admin` only, so an editor
@@ -310,7 +310,7 @@ export function TeamGroupsPanel() {
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   {roster ? (
-                    /* A select rather than a search box: a workspace roster is
+                    /* A select rather than a search box: an account roster is
                        tens of people, not thousands, so the whole list fits and
                        typeahead would be ceremony. `team.list` caps at 200. */
                     <select
@@ -365,7 +365,7 @@ export function TeamGroupsPanel() {
 
       {roster === null && groups !== null && (
         <p className="mt-4 text-[13px] text-ink-muted">
-          The workspace roster could not be read, so members are added by user id. That read needs an owner
+          The account roster could not be read, so members are added by user id. That read needs an owner
           or admin role and a configured identity provider.
         </p>
       )}

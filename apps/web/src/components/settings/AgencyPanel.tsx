@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -122,7 +122,7 @@ export function AgencyPanel() {
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
       <h2 className="text-[18px] font-semibold text-ink">Agency</h2>
-      <p className="mt-1 text-[14px] text-ink-muted">Org plan, governance defaults, and every brand under this workspace.</p>
+      <p className="mt-1 text-[14px] text-ink-muted">Org plan, governance defaults, and every brand in this account.</p>
       {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

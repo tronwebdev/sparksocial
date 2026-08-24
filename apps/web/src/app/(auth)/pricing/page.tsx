@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { BrandPanel } from '@/components/auth/BrandPanel';
 import { Button } from '@/components/ui/button';
 
@@ -42,7 +42,7 @@ const PLANS: PlanCard[] = [
     id: 'starter',
     name: 'Starter',
     who: 'One brand, run by the person who owns it.',
-    features: ['One brand workspace', 'SPARK plans and posts for you', 'Review before publishing, or not'],
+    features: ['One brand', 'SPARK plans and posts for you', 'Review before publishing, or not'],
   },
   {
     id: 'growth',
@@ -55,7 +55,7 @@ const PLANS: PlanCard[] = [
     id: 'agency',
     name: 'Agency',
     who: 'Running social for other people.',
-    features: ['Everything in Growth', 'Unlimited brand workspaces', 'Teams, roles and approvals', 'White-label review links'],
+    features: ['Everything in Growth', 'Unlimited brands', 'Teams, roles and approvals', 'White-label review links'],
   },
 ];
 

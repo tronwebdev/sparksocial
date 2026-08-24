@@ -116,7 +116,7 @@ export function PolicyPanel() {
       restrictedContentTypes: contentTypes.length ? contentTypes : null,
       permissions: { spendCredits, automationAutoPublish, requireApprovalForMedia },
       // Empty means "the tool's own scopes stand" — a cleared list must not read
-      // as "nobody may publish", which would take a workspace down from a
+      // as "nobody may publish", which would take a brand down from a
       // settings screen.
       publishRoles: publishRoles.length ? publishRoles : null,
       maxPendingReview: Number(maxPendingReview) > 0 ? Number(maxPendingReview) : null,

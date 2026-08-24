@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,7 @@ export function ConnectionsPanel() {
       text:
         res.status === 'failed'
           ? res.error.message
-          : "That request was gated — Canva connections need an owner or admin, which you aren't in this workspace.",
+          : "That request was gated — Canva connections need an owner or admin, which you are not in this account.",
     });
   }
 

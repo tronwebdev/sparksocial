@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { AssetUploadForm } from '@/components/assets/AssetUploadForm';
 import { AssetSearchGrid } from '@/components/assets/AssetSearchGrid';
@@ -19,7 +19,7 @@ export default function AssetsPage() {
 
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="grid grid-cols-1 gap-6 p-8">
         <header>
           <h1 className="text-[20px] font-medium text-ink">Assets Library</h1>

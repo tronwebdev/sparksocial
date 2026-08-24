@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { BrandHome } from '@/components/dashboard/BrandHome';
 
@@ -19,7 +19,7 @@ import { BrandHome } from '@/components/dashboard/BrandHome';
 export default function BrandHomePage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="p-8">
         <BrandHome />
       </div>
