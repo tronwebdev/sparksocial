@@ -1,4 +1,4 @@
-﻿import { register } from '@sparksocial/tools';
+import { register } from '@sparksocial/tools';
 import { makeGenomeBootstrap } from '@sparksocial/genome/bootstrap';
 import { genomeDimensionsSet } from '@sparksocial/genome/dimensions';
 import { genomeIdentitySet } from '@sparksocial/genome/identity';
@@ -71,6 +71,7 @@ import {
   calendarGenerate,
   calendarImpactPreview,
   calendarGet,
+  calendarRecommendSlot,
   approvalGet,
   approvalSet,
   approvalPolicyGet,
@@ -306,6 +307,9 @@ export function registerAlphaTools(): void {
   register(calendarGenerate);
   register(calendarImpactPreview);
   register(calendarGet);
+  // CAL-04 — what should go on one date, and which scheduled post would sit
+  // better here. The thing behind F9's "Ask Agent to plan" and "Move existing".
+  register(calendarRecommendSlot);
 
   // Approval ladder (§6.8 Step 5, PRD §7.1): the policy engine has always
   // implemented all three rungs; these are what let a brand be on one.
