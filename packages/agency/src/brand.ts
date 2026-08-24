@@ -151,6 +151,158 @@ export function makeBrandKnowledgeAttach(embed: EmbedClient) {
   });
 }
 
+/* ── brand.knowledge.attach_document ─────────────────────────────────── */
+
+/**
+ * Reads a document at a URL and hands back its text. Injected, because
+ * extracting a PDF needs a parser and `packages/agency` has no business carrying
+ * one — the same reasoning `makeBrandKnowledgeAttach` applies to embeddings.
+ *
+ * The implementation lives in `apps/api/src/document-reader.ts`.
+ */
+export interface DocumentReader {
+  read(url: string): Promise<{ text: string; pages: number }>;
+}
+
+/**
+ * How much of one document reaches the Asset Graph.
+ *
+ * `brand.knowledge.attach` caps a single chunk at 20,000 characters, which is
+ * roughly eight pages of a brand guideline. A longer document is split rather
+ * than truncated, and the split is capped in turn: forty chunks is ~320,000
+ * characters, past which somebody has uploaded the wrong file and the honest
+ * answer is to say so rather than to embed a novel.
+ */
+const CHUNK_CHARS = 8_000;
+const MAX_CHUNKS = 40;
+
+/**
+ * `brand.knowledge.attach_document` — F6's "Upload company Docs (PDF)".
+ *
+ * The onboarding step and the Brand Kit panel both offer a document upload, and
+ * `brand.knowledge.attach` only ever took *text* — so a PDF had no way in, and
+ * the design's "Spark reads these documents to learn your brand voice, offering
+ * and facts" had nothing behind it.
+ *
+ * ── Why the file arrives as a URL ──────────────────────────────────────────
+ *
+ * The browser uploads to blob storage through `asset.upload_url` first, exactly
+ * as the logo does, and passes the read URL here. Posting the bytes through a
+ * tool call would put a multi-megabyte body on the tool-call audit path — every
+ * request is recorded in `tool_calls` — and a PDF in that table is a PDF nobody
+ * can query and everybody pays to store twice.
+ *
+ * ── Chunked, and each chunk cited ─────────────────────────────────────────
+ *
+ * Retrieval works on chunks, so a whole guideline arriving as one chunk would
+ * match every query about the brand equally and rank against nothing. Each chunk
+ * carries the same citation label — the file's own name — because a claim
+ * grounded in "page 4 of the guideline" is only useful if the answer can say
+ * which document it came from.
+ */
+export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; reader: DocumentReader }) {
+  return defineTool({
+    name: 'brand.knowledge.attach_document',
+    version: 1,
+
+    summary:
+      'Read a PDF already uploaded to storage and attach its text to a brand for claim-grounding. Splits ' +
+      'a long document into retrievable chunks. Use brand.knowledge.attach for text you already have.',
+
+    input: z.object({
+      genomeId: z.string().min(1),
+      /** A storage URL from `asset.upload_url`, not an arbitrary address. */
+      url: z.string().url(),
+      /** The file's own name, used as the citation label and the doc id prefix. */
+      filename: z.string().min(1).max(200),
+    }),
+    output: z.object({
+      docId: z.string(),
+      pages: z.number().int(),
+      chunks: z.number().int(),
+      /** Characters extracted — a scanned PDF with no text layer comes back near zero. */
+      characters: z.number().int(),
+    }),
+
+    effect: 'write',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin', 'editor'],
+    // Attaching the same document twice is two copies in retrieval, not a
+    // refresh — the same reasoning `brand.knowledge.attach` gives.
+    idempotent: false,
+
+    async handler(input, ctx) {
+      const { text, pages } = await ctx.trace.span('document.read', () => deps.reader.read(input.url));
+
+      /**
+       * A scanned PDF is the common failure and it fails *quietly*: the parse
+       * succeeds, the text is empty, and the brand is told its guideline was
+       * read. Naming it here is the difference between "upload a text PDF
+       * instead" and "why does the agent not know any of this".
+       */
+      const cleaned = text.replace(/\s+\n/g, '\n').trim();
+      if (cleaned.length < 40) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          'That PDF has no text in it — it is probably a scan. Export a text PDF, or paste the words in instead.',
+          { filename: input.filename, pages, characters: cleaned.length },
+        );
+      }
+
+      const docId = `doc:${input.filename}`.slice(0, 120);
+      const chunks = chunkText(cleaned).slice(0, MAX_CHUNKS);
+
+      for (const [i, chunk] of chunks.entries()) {
+        const embedding = await deps.embed.embed(chunk);
+        await ctx.db.knowledge.attach({
+          genomeId: input.genomeId,
+          orgId: ctx.orgId,
+          // Part number in the id, so re-attaching a corrected document is
+          // visibly a second copy rather than an invisible merge.
+          docId: `${docId}#${i + 1}`,
+          text: chunk,
+          embedding,
+          citation: { label: input.filename },
+        });
+      }
+
+      ctx.logger.info('document attached', {
+        genomeId: input.genomeId,
+        filename: input.filename,
+        pages,
+        chunks: chunks.length,
+      });
+
+      return { docId, pages, chunks: chunks.length, characters: cleaned.length };
+    },
+  });
+}
+
+/**
+ * Splits on paragraph boundaries, falling back to a hard cut.
+ *
+ * Splitting mid-sentence is what makes a retrieved chunk unquotable — the answer
+ * cites half a claim — so the break is taken at the last blank line inside the
+ * budget where there is one.
+ */
+export function chunkText(text: string, size = CHUNK_CHARS): string[] {
+  if (text.length <= size) return [text];
+
+  const out: string[] = [];
+  let rest = text;
+  while (rest.length > size) {
+    const window = rest.slice(0, size);
+    const breakAt = Math.max(window.lastIndexOf('\n\n'), window.lastIndexOf('\n'));
+    // Only honour a break in the back half: a paragraph ending at character 200
+    // of an 8,000-character budget would produce forty tiny chunks.
+    const cut = breakAt > size / 2 ? breakAt : size;
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
 /* ── brand.export / brand.import ────────────────────────────────────── */
 
 /**

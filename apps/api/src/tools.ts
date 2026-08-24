@@ -101,6 +101,7 @@ import {
   brandGovernanceGet,
   brandGovernanceSet,
   makeBrandKnowledgeAttach,
+  makeBrandKnowledgeAttachDocument,
   brandExport,
   brandImport,
   makeTeamInvite,
@@ -187,6 +188,7 @@ import { anthropicInferenceClient } from './inference-client.js';
 import { languageModelAvailable } from './model-client.js';
 import { buildRateLimiter } from './rate-limiter.js';
 import { embedClient } from './embed-client.js';
+import { createDocumentReader } from './document-reader.js';
 import { captionClient } from './caption-client.js';
 import { briefWriter } from './brief-writer.js';
 import { textWriter } from './text-writer.js';
@@ -784,6 +786,9 @@ export function registerAgencyTools(deps: {
   register(brandGovernanceGet);
   register(brandGovernanceSet);
   register(makeBrandKnowledgeAttach(embedClient()));
+  // F6's document upload. The reader is injected so the package stays free of a
+  // PDF parser — see document-reader.ts.
+  register(makeBrandKnowledgeAttachDocument({ embed: embedClient(), reader: createDocumentReader() }));
   register(brandExport);
   register(brandImport);
 
