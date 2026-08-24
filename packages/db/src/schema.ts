@@ -645,6 +645,21 @@ export const brands = pgTable(
     /** ONB-01's logo, and the brand kit colours §8.6's "Apply Brand Kit" toggle applies. */
     logoUrl: text('logo_url'),
     brandColors: jsonb('brand_colors').$type<string[]>(),
+    /**
+     * The brand's type, as a *reference* to a resolvable face — M4, decided 22
+     * August alongside "the brand kit is a record".
+     *
+     * Two ids from `packages/compose/src/fonts.ts`: a display face for headlines
+     * and a body face for captions. Ids rather than family names, because the
+     * renderers need more than a name — Satori needs the bytes and Chromium needs
+     * a URL, and the registry is where one id resolves to both.
+     *
+     * **Not an upload.** A file would imply arbitrary font embedding, which
+     * `compose` has no path for and which carries a licensing question the
+     * product cannot answer on a customer's behalf. Absent means the renderers'
+     * own defaults, which is what every brand rendered on before this column.
+     */
+    brandFonts: jsonb('brand_fonts').$type<{ display?: string; body?: string }>(),
 
     /**
      * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { brandKitProgress } from '../src/brandKitProgress.js';
 
 /**
@@ -12,17 +12,28 @@ import { brandKitProgress } from '../src/brandKitProgress.js';
 const FULL = {
   brandColors: ['#0C0C0C'],
   logoUrl: 'https://example.com/logo.png',
+  brandFonts: { display: 'playfair', body: 'lora' },
   toneVector: { formal: 0.4, playful: 0.6, technical: 0.3, bold: 0.7 },
   timezone: 'Africa/Lagos',
 };
 
 describe('brandKitProgress', () => {
-  it('is finished when all four are set, and offers no next step', () => {
+  it('is finished when all five are set, and offers no next step', () => {
     const out = brandKitProgress(FULL);
-    expect(out.completed).toBe(4);
-    expect(out.total).toBe(4);
+    expect(out.completed).toBe(5);
+    expect(out.total).toBe(5);
     expect(out.pct).toBe(100);
     expect(out.next).toBeUndefined();
+  });
+
+  it('counts either font as having answered the type step', () => {
+    // `resolveKit` falls the body face back to the display face, so a brand that
+    // named one font has genuinely finished the step — the checklist must agree
+    // with the renderer rather than asking for a second answer that changes
+    // nothing.
+    expect(brandKitProgress({ ...FULL, brandFonts: { display: 'inter' } }).completed).toBe(5);
+    expect(brandKitProgress({ ...FULL, brandFonts: { body: 'inter' } }).completed).toBe(5);
+    expect(brandKitProgress({ ...FULL, brandFonts: {} }).completed).toBe(4);
   });
 
   it('is zero for a brand nobody has configured', () => {
@@ -40,12 +51,12 @@ describe('brandKitProgress', () => {
      * for nobody — and the opposite error publishes at 3am with nothing on
      * screen suggesting why.
      */
-    expect(brandKitProgress({ ...FULL, timezone: 'UTC' }).completed).toBe(3);
-    expect(brandKitProgress({ ...FULL, timezone: 'Europe/London' }).completed).toBe(4);
+    expect(brandKitProgress({ ...FULL, timezone: 'UTC' }).completed).toBe(4);
+    expect(brandKitProgress({ ...FULL, timezone: 'Europe/London' }).completed).toBe(5);
   });
 
   it('treats an empty colour array as unset, not as a choice', () => {
-    expect(brandKitProgress({ ...FULL, brandColors: [] }).completed).toBe(3);
+    expect(brandKitProgress({ ...FULL, brandColors: [] }).completed).toBe(4);
   });
 
   it('names the first outstanding step as next, in checklist order', () => {
@@ -66,10 +77,10 @@ describe('brandKitProgress', () => {
   });
 
   it('rounds to whole percentages', () => {
-    // Four steps divide evenly, but the percentage is what a chip renders and a
-    // fractional one would show as "75.00000000000001%" the first time the list
-    // grows to three or six.
-    expect(brandKitProgress({ brandColors: ['#000'] }).pct).toBe(25);
-    expect(brandKitProgress({ brandColors: ['#000'], logoUrl: 'x' }).pct).toBe(50);
+    // Five steps divide evenly today; the rounding is there for the day the list
+    // does not, when an unrounded percentage renders as "33.33333333333333%" on
+    // the chip.
+    expect(brandKitProgress({ brandColors: ['#000'] }).pct).toBe(20);
+    expect(brandKitProgress({ brandColors: ['#000'], logoUrl: 'x' }).pct).toBe(40);
   });
 });

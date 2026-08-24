@@ -1,10 +1,11 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import {
   DEFAULT_POSTING_WINDOWS,
   Explanation,
   ToolError,
   agentIdentity,
+  BrandFontIdSchema,
   brandKitProgress,
   isCompleteSalesHandoff,
   resolveSalesHandoff,
@@ -110,6 +111,16 @@ export const BrandGovernanceSetInput = z.object({
   logoUrl: z.string().url().nullable().optional(),
   brandColors: z.array(z.string().min(3).max(32)).max(12).nullable().optional(),
   /**
+   * M4's fonts. An enum rather than free text, and the enum is `BRAND_FONTS` —
+   * the faces the renderers can actually resolve. A family name the render path
+   * cannot fetch would be a setting that saved cleanly and changed no pixel,
+   * which is the failure mode this whole field exists to avoid.
+   */
+  brandFonts: z
+    .object({ display: BrandFontIdSchema.optional(), body: BrandFontIdSchema.optional() })
+    .nullable()
+    .optional(),
+  /**
    * An IANA zone name, validated against the runtime's own zone database rather
    * than a hand-maintained list — a rejected zone here would silently push
    * every post back to UTC, so the check has to be the real one.
@@ -171,6 +182,8 @@ export const BrandGovernanceOutput = z.object({
   bannedPhrases: z.array(z.string()),
   logoUrl: z.string().optional(),
   brandColors: z.array(z.string()),
+  /** M4's chosen faces, echoed back so the picker can show what is set. */
+  brandFonts: z.object({ display: z.string().optional(), body: z.string().optional() }).optional(),
   timezone: z.string(),
   /** Always populated — the effective windows, including the default when none are set. */
   postingWindows: z.array(z.number()),
@@ -366,6 +379,7 @@ function toOutput(gov: {
   bannedPhrases?: string[];
   logoUrl?: string;
   brandColors?: string[];
+  brandFonts?: { display?: string; body?: string };
   timezone: string;
   postingWindows?: number[];
   engagementAutonomy: 'off' | 'suggest' | 'auto';
@@ -387,6 +401,7 @@ function toOutput(gov: {
     bannedPhrases: gov.bannedPhrases ?? [],
     ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
     brandColors: gov.brandColors ?? [],
+    ...(gov.brandFonts ? { brandFonts: gov.brandFonts } : {}),
     timezone: gov.timezone,
     // Resolved, not raw: a caller rendering "posts go out at…" must show the
     // times that will actually be used, and a brand that has set nothing still

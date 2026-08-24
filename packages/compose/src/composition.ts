@@ -42,6 +42,35 @@ export const BeatComposition: React.FC<BeatCompositionProps> = ({ beats, width, 
   return h(
     AbsoluteFill,
     { style: { backgroundColor: kit.ground } },
+    /**
+     * M4's fonts, as a stylesheet rather than a prop.
+     *
+     * Chromium resolves a family only if the page can load it, and the brand's
+     * chosen face is not in the container. One `@font-face` per chosen family,
+     * pointing at Google's CSS2 endpoint, is what makes `kit.displayFont` mean
+     * anything — without it the stack falls straight through to `system-ui` and
+     * the picker would be a control that changed nothing on video.
+     *
+     * `@import` inside a `<style>` rather than a `<link>`: Remotion renders this
+     * tree, not a document, so there is no `<head>` to put a link in. A failed
+     * fetch degrades to the system stack, which is the frame this composition
+     * drew before fonts existed.
+     */
+    kit.fontFaces.length > 0
+      ? h('style', {
+          key: 'brand-fonts',
+          dangerouslySetInnerHTML: {
+            __html: kit.fontFaces
+              .map(
+                (f) =>
+                  `@import url("https://fonts.googleapis.com/css2?family=${encodeURIComponent(
+                    f.family,
+                  ).replace(/%20/g, '+')}:wght@${f.weight}&display=block");`,
+              )
+              .join('\n'),
+          },
+        })
+      : null,
     sequences,
     /**
      * Outside the sequences, so the mark is present for the whole video rather
@@ -61,7 +90,7 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
       AbsoluteFill,
       null,
       h(Img, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
-      beat.caption ? captionOverlay(beat.caption, kit.type) : null,
+      beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
     );
   }
   if (beat.kind === 'video') {
@@ -69,7 +98,7 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
       AbsoluteFill,
       null,
       h(Video, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
-      beat.caption ? captionOverlay(beat.caption, kit.type) : null,
+      beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
     );
   }
   if (beat.kind === 'audio') {
@@ -82,14 +111,14 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
     { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
     h(
       'div',
-      { style: { color: kit.type, fontSize: 64, fontFamily: 'sans-serif', textAlign: 'center', lineHeight: 1.3 } },
+      { style: { color: kit.type, fontSize: 64, fontFamily: kit.displayFont, textAlign: 'center', lineHeight: 1.3 } },
       beat.text,
     ),
   );
 }
 
 /** The scrim stays neutral for the same reason as Satori's: legibility over arbitrary photography. */
-function captionOverlay(caption: string, typeColor: string): React.ReactElement {
+function captionOverlay(caption: string, typeColor: string, bodyFont: string): React.ReactElement {
   return h(
     AbsoluteFill,
     { style: { justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 96 } },
@@ -99,7 +128,7 @@ function captionOverlay(caption: string, typeColor: string): React.ReactElement 
         style: {
           color: typeColor,
           fontSize: 40,
-          fontFamily: 'sans-serif',
+          fontFamily: bodyFont,
           textAlign: 'center',
           background: 'rgba(12,12,12,0.55)',
           padding: '16px 32px',

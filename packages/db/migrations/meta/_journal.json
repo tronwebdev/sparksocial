@@ -288,6 +288,13 @@
       "when": 1787523319408,
       "tag": "0040_brief_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787529394839,
+      "tag": "0041_gorgeous_mantis",
+      "breakpoints": true
     }
   ]
 }

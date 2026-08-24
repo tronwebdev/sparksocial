@@ -1,4 +1,4 @@
-import { z, ZodTypeAny } from 'zod';
+﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
@@ -369,6 +369,8 @@ export interface BrandGovernance {
   bannedPhrases?: string[];
   logoUrl?: string;
   brandColors?: string[];
+  /** M4's font references — two ids from packages/compose/src/fonts.ts. */
+  brandFonts?: { display?: string; body?: string };
 
   /**
    * ── Scheduling (PRD §8.2 required, §8.7 a Calendar input) ─────────────────
@@ -490,6 +492,7 @@ export interface BrandGovernanceStore {
       bannedPhrases?: string[] | null;
       logoUrl?: string | null;
       brandColors?: string[] | null;
+      brandFonts?: { display?: string; body?: string } | null;
       timezone?: string;
       postingWindows?: number[] | null;
       engagementAutonomy?: 'off' | 'suggest' | 'auto';

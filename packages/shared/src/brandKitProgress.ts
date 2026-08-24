@@ -14,14 +14,14 @@
  * stall at 80% for brands that were, in every way that shows up in a post,
  * finished.
  *
- * Fonts are the one obvious absence. `brands` has no font column yet (M4, and the
- * brand-kit-as-a-record decision of 22 August), so a font step here would be a
- * box nobody could tick. It joins the list when the column does.
+ * Fonts joined the list when the column did (M4): `brands.brand_fonts` holds two
+ * face ids and both renderers resolve them, so the step is a box that can be
+ * ticked and that changes what a post looks like when it is.
  */
 
 export interface BrandKitStep {
   /** Stable key, for a UI that wants to link straight at the field. */
-  id: 'colors' | 'logo' | 'voice' | 'timezone';
+  id: 'colors' | 'logo' | 'fonts' | 'voice' | 'timezone';
   /** What the owner is being asked for, in their words. */
   label: string;
   done: boolean;
@@ -57,6 +57,7 @@ const UNSET_TIMEZONE = 'UTC';
 export function brandKitProgress(gov: {
   brandColors?: string[];
   logoUrl?: string;
+  brandFonts?: { display?: string; body?: string };
   toneVector?: { formal: number; playful: number; technical: number; bold: number };
   timezone?: string;
 }): BrandKitProgress {
@@ -72,6 +73,18 @@ export function brandKitProgress(gov: {
       label: 'Logo',
       done: Boolean(gov.logoUrl),
       because: 'formats with a logo beat fall back to text without it',
+    },
+    {
+      id: 'fonts',
+      /**
+       * Either face counts. A brand that named only a display font has made the
+       * choice that shows up most — headlines are the type people notice — and
+       * `resolveKit` falls the body face back to it, so one answer genuinely
+       * finishes the step.
+       */
+      label: 'Type',
+      done: Boolean(gov.brandFonts?.display ?? gov.brandFonts?.body),
+      because: 'posts are set in a system font until you pick one',
     },
     {
       id: 'voice',

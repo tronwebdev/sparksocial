@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Deep import, not the barrel, and this is load-bearing.
  *
  * `composition.ts` imports this file, and Remotion *bundles* that entry for a
@@ -18,6 +18,9 @@
  */
 import { ToolError } from '@sparksocial/shared/types';
 import type { ResolvedBeat } from '@sparksocial/generate';
+// Pure data and pure functions, no Node imports — safe on the bundled path this
+// file's own header warns about.
+import { brandFont, fontStack, type BrandFontFace, type BrandFonts } from '@sparksocial/shared/brandFonts';
 
 /**
  * `content.draft`'s `ResolvedBeat[]` (persisted on `content_items.copy`) knows
@@ -154,6 +157,12 @@ export interface BrandKit {
   logoUrl?: string;
   /** Ordered: ground, type, accent. Empty means "use the defaults". */
   colors: string[];
+  /**
+   * M4's fonts — a *reference* to a resolvable face, never an uploaded file. See
+   * `@sparksocial/shared/brandFonts` for which faces each renderer can actually
+   * get hold of, and why that question decides what the picker may offer.
+   */
+  fonts?: BrandFonts;
 }
 
 /** The renderers' fallbacks — the values both files used as literals before a brand kit could reach them. */
@@ -210,13 +219,40 @@ function readableTypeOn(ground: string): string {
  * Deriving it cannot do worse than the constant on any input: for a dark ground
  * the luminance test returns `#FFFFFF`, which is what the constant gave anyway.
  */
-export function resolveKit(kit: BrandKit | undefined): { ground: string; type: string; accent?: string; logoUrl?: string } {
+export function resolveKit(kit: BrandKit | undefined): {
+  ground: string;
+  type: string;
+  accent?: string;
+  logoUrl?: string;
+  /** CSS stack for headlines and text-only beats. Always a usable value. */
+  displayFont: string;
+  /** CSS stack for captions and running text. Always a usable value. */
+  bodyFont: string;
+  /** The faces the renderer has to fetch bytes for, deduped. Empty means "nothing to load". */
+  fontFaces: BrandFontFace[];
+} {
   const colors = kit?.colors ?? [];
   const ground = colors[0] ?? DEFAULT_GROUND;
+
+  /**
+   * The body face falls back to the display face rather than to the system
+   * stack. A brand that named one font meant that font — rendering its headline
+   * in Playfair and its caption in whatever the container has is worse than
+   * rendering both in Playfair, and it is not what anyone picking one font
+   * expected to happen.
+   */
+  const display = kit?.fonts?.display;
+  const body = kit?.fonts?.body ?? display;
+
+  const faces = [brandFont(display), brandFont(body)].filter((f): f is BrandFontFace => Boolean(f));
+
   return {
     ground,
     type: colors[1] ?? readableTypeOn(ground),
     ...(colors[2] ? { accent: colors[2] } : {}),
     ...(kit?.logoUrl ? { logoUrl: kit.logoUrl } : {}),
+    displayFont: fontStack(display),
+    bodyFont: fontStack(body),
+    fontFaces: [...new Map(faces.map((f) => [f.id, f])).values()],
   };
 }

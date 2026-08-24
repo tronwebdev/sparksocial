@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { BrandFontPicker } from './BrandFontPicker';
 
 /**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
@@ -81,6 +82,7 @@ interface Governance {
   bannedPhrases: string[];
   logoUrl?: string;
   brandColors: string[];
+  brandFonts?: { display?: string; body?: string };
   timezone: string;
   postingWindows: number[];
   usingDefaultWindows: boolean;
@@ -108,6 +110,7 @@ export function GovernancePanel() {
   const [agentName, setAgentName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [brandColors, setBrandColors] = useState<string[]>([]);
+  const [brandFonts, setBrandFonts] = useState<{ display?: string; body?: string }>({});
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const logoInput = useRef<HTMLInputElement>(null);
@@ -132,6 +135,7 @@ export function GovernancePanel() {
       setAgentName(g.agentName ?? '');
       setLogoUrl(g.logoUrl ?? '');
       setBrandColors(g.brandColors);
+      setBrandFonts(g.brandFonts ?? {});
     })();
   }, []);
 
@@ -223,6 +227,10 @@ export function GovernancePanel() {
       // palette" mean the same thing to a renderer, and only one of them lets
       // the default come back.
       brandColors: brandColors.length ? brandColors : null,
+      // Same rule again. "System default" on both selects is the *absence* of a
+      // choice, so it clears the column rather than storing `{}` — which would
+      // read as configured to `brandKitProgress` and tick a box nobody ticked.
+      brandFonts: brandFonts.display ?? brandFonts.body ? brandFonts : null,
     });
 
     setBusy(false);
@@ -558,6 +566,20 @@ export function GovernancePanel() {
                 </span>
               </div>
             ) : null}
+
+            {/* M4 — the prototype's "Choose Fonts", with something behind it.
+                Placed under the colours because its sample is shown on them,
+                and because type and colour are the two halves of the same
+                decision. */}
+            <label className="mt-5 block text-[12px] text-ink-muted">Type</label>
+            <div className="mt-1.5">
+              <BrandFontPicker
+                value={brandFonts}
+                onChange={setBrandFonts}
+                {...(brandColors[0] ? { ground: brandColors[0] } : {})}
+                {...(brandColors[1] ? { type: brandColors[1] } : {})}
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

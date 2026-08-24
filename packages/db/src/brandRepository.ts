@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+﻿import { and, eq } from 'drizzle-orm';
 import type { ApprovalMode, BrandGovernance, BrandGovernanceStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { brands } from './schema.js';
@@ -168,6 +168,7 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (patch.bannedPhrases !== undefined) set.bannedPhrases = patch.bannedPhrases ?? null;
       if (patch.logoUrl !== undefined) set.logoUrl = patch.logoUrl ?? null;
       if (patch.brandColors !== undefined) set.brandColors = patch.brandColors ?? null;
+      if (patch.brandFonts !== undefined) set.brandFonts = patch.brandFonts ?? null;
       if (patch.timezone !== undefined) set.timezone = patch.timezone;
       if (patch.postingWindows !== undefined) set.postingWindows = patch.postingWindows ?? null;
       if (patch.engagementAutonomy !== undefined) set.engagementAutonomy = patch.engagementAutonomy;
@@ -234,6 +235,7 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     ...(row.bannedPhrases ? { bannedPhrases: row.bannedPhrases } : {}),
     ...(row.logoUrl ? { logoUrl: row.logoUrl } : {}),
     ...(row.brandColors ? { brandColors: row.brandColors } : {}),
+    ...(row.brandFonts ? { brandFonts: row.brandFonts } : {}),
     ...(row.postingWindows ? { postingWindows: row.postingWindows } : {}),
     ...(row.engagementTypes ? { engagementTypes: row.engagementTypes } : {}),
   };
