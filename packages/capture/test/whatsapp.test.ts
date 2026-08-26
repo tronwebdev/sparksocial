@@ -37,6 +37,27 @@ function store(seed: HumanMessage[] = []): HumanLoopStore & { rows: HumanMessage
       row.answeredBy = by;
       return row;
     },
+    async listNotifications(brandId, _orgId, { limit, unreadOnly }) {
+      return rows
+        .filter((r) => r.brandId === brandId && r.kind === 'notify' && (!unreadOnly || !r.readAt))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit);
+    },
+    async unreadNotificationCount(brandId) {
+      return rows.filter((r) => r.brandId === brandId && r.kind === 'notify' && !r.readAt).length;
+    },
+    async markNotificationsRead({ brandId, ids }) {
+      if (ids && ids.length === 0) return 0;
+      const wanted = ids ? new Set(ids) : undefined;
+      let changed = 0;
+      for (const r of rows) {
+        if (r.brandId !== brandId || r.kind !== 'notify' || r.readAt) continue;
+        if (wanted && !wanted.has(r.id)) continue;
+        r.readAt = new Date();
+        changed += 1;
+      }
+      return changed;
+    },
     async markDelivered(id, _o, channel) {
       const row = rows.find((r) => r.id === id);
       if (row) row.channel = channel;

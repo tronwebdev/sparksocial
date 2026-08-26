@@ -869,11 +869,30 @@ export const humanMessages = pgTable(
     answeredAt: timestamp('answered_at', { withTimezone: true }),
     answeredBy: text('answered_by'),
     channel: text('channel'),
+    /**
+     * When the owner saw this notification.
+     *
+     * Only meaningful for `kind: 'notify'`. An `ask` is closed by being
+     * *answered* — `answeredAt` is its latch — but a notification expects no
+     * reply, so without a separate column there is no way to distinguish "new"
+     * from "seen" and the list can only ever grow. Reusing `answeredAt` was the
+     * tempting shortcut and it would have broken the answer latch, which filters
+     * on `kind = 'ask'` precisely so a notification can never be mistaken for a
+     * decision somebody made.
+     */
+    readAt: timestamp('read_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // The owner's inbox: unanswered questions for one brand, oldest first.
     index('human_messages_brand_idx').on(t.orgId, t.brandId, t.answeredAt),
+    /**
+     * The notification inbox, which sorts the other way — newest first, because
+     * the most recent thing that happened is the one worth reading. A separate
+     * index because it filters on `readAt`, and the `answeredAt` index above
+     * cannot serve a query that never mentions it.
+     */
+    index('human_messages_notify_idx').on(t.orgId, t.brandId, t.kind, t.readAt),
   ],
 );
 

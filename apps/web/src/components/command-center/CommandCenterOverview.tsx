@@ -11,6 +11,7 @@ import { AgentControlBar, type AgentStatusView } from './AgentControlBar';
 import { ApprovalModeControl } from './ApprovalModeControl';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
 import { PendingQuestionsPanel } from './PendingQuestionsPanel';
+import { NotificationsPanel } from './NotificationsPanel';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
 import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
 import { ChatDrawer } from './ChatDrawer';
@@ -196,6 +197,12 @@ export function CommandCenterOverview() {
       ) : null}
 
       <PendingQuestionsPanel />
+      {/*
+        Directly below the questions, because the two are one thought: what SPARK
+        needs from you, then what it wants you to know. Until this landed the
+        second half was written to a table nothing read.
+      */}
+      <NotificationsPanel />
 
       {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
 

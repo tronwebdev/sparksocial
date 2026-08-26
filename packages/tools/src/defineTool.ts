@@ -570,6 +570,8 @@ export interface HumanMessage {
   answeredBy?: string;
   /** Where it was delivered, e.g. `whatsapp`. Absent until sent. */
   channel?: string;
+  /** When the owner saw it. Only ever set on a `notify`. */
+  readAt?: Date;
 }
 
 export interface HumanLoopStore {
@@ -585,6 +587,28 @@ export interface HumanLoopStore {
   get(id: string, orgId: string): Promise<HumanMessage | undefined>;
   /** Unanswered `ask` items, oldest first — the owner's inbox. */
   listPending(brandId: string, orgId: string, limit: number): Promise<HumanMessage[]>;
+  /**
+   * `notify` items, newest first — the inbox that had no reader.
+   *
+   * `human.notify` has written rows since P1 and `listPending` filters
+   * `kind = 'ask'`, so every notification the system ever produced was invisible:
+   * the scheduler's stall notice, the connection watcher's token-expiry warning,
+   * and engagement escalation all wrote into a table nothing selected from.
+   */
+  listNotifications(
+    brandId: string,
+    orgId: string,
+    args: { limit: number; unreadOnly?: boolean },
+  ): Promise<HumanMessage[]>;
+  /** How many are unread, for the badge — cheaper than fetching the list to count it. */
+  unreadNotificationCount(brandId: string, orgId: string): Promise<number>;
+  /**
+   * Mark notifications seen. Omit `ids` to mark every unread one for the brand.
+   *
+   * Returns how many rows changed, so "mark all read" can report what it did
+   * rather than optimistically clearing a badge that may already have been zero.
+   */
+  markNotificationsRead(args: { brandId: string; orgId: string; ids?: string[] }): Promise<number>;
   /**
    * Record the owner's reply. Returns undefined when the id is out of scope or
    * already answered, so a replayed webhook cannot overwrite a decision.

@@ -90,6 +90,8 @@ import {
   humanAsk,
   humanNotify,
   humanPending,
+  humanNotifications,
+  humanNotificationsRead,
   humanAnswer,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
@@ -651,6 +653,9 @@ export function registerAlphaTools(): void {
   register(humanAsk);
   register(humanNotify);
   register(humanPending);
+  // The reader `human.notify` never had — see the comment in humanLoop.ts.
+  register(humanNotifications);
+  register(humanNotificationsRead);
   register(humanAnswer);
 
   // The channel those messages travel on. `whatsapp.receive` is the alpha's

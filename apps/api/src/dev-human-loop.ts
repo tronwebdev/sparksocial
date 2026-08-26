@@ -15,6 +15,9 @@ import type { HumanLoopStore, HumanMessage } from '@sparksocial/tools/defineTool
  *    first — silently changes a decision SPARK has already acted on.
  * 2. **`notify` is never answerable.** A notification is not a question; a
  *    reply to one must not read back as a decision.
+ * 3. **`readAt` is set once and only on a `notify`.** Marking read is idempotent
+ *    — a second pass reports zero rows changed rather than re-stamping a later
+ *    timestamp over the moment the owner actually saw it.
  */
 export function createDevHumanLoopStore(): HumanLoopStore & { size(): number } {
   const rows = new Map<string, HumanMessage & { orgId: string }>();
@@ -50,6 +53,42 @@ export function createDevHumanLoopStore(): HumanLoopStore & { size(): number } {
         // costing the most, and a newest-first inbox buries it.
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         .slice(0, limit);
+    },
+
+    async listNotifications(brandId, orgId, { limit, unreadOnly }) {
+      return [...rows.values()]
+        .filter(
+          (r) =>
+            r.orgId === orgId &&
+            r.brandId === brandId &&
+            r.kind === 'notify' &&
+            (!unreadOnly || !r.readAt),
+        )
+        // Newest first, the opposite of `listPending` — see the Postgres
+        // repository for why the two sorts differ on the same table.
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit);
+    },
+
+    async unreadNotificationCount(brandId, orgId) {
+      return [...rows.values()].filter(
+        (r) => r.orgId === orgId && r.brandId === brandId && r.kind === 'notify' && !r.readAt,
+      ).length;
+    },
+
+    async markNotificationsRead({ brandId, orgId, ids }) {
+      // An empty selection is "none", not "all" — see the Postgres repository.
+      if (ids && ids.length === 0) return 0;
+      const wanted = ids ? new Set(ids) : undefined;
+      let changed = 0;
+      for (const row of rows.values()) {
+        if (row.orgId !== orgId || row.brandId !== brandId) continue;
+        if (row.kind !== 'notify' || row.readAt) continue;
+        if (wanted && !wanted.has(row.id)) continue;
+        row.readAt = new Date();
+        changed += 1;
+      }
+      return changed;
     },
 
     async answer({ id, orgId, answer, by }) {
