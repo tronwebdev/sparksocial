@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import { byId, definePlaybook, GOLDEN_SET, PLAYBOOKS } from '@sparksocial/playbooks';
 import type { Genome } from '@sparksocial/shared/genome';
-import { buildRenderPlan, parseBeatSource, readGenomePath, type RetrievedAsset } from '../src/plan.js';
+import {
+  assertDraftDuration,
+  buildRenderPlan,
+  parseBeatSource,
+  readGenomePath,
+  type RetrievedAsset,
+} from '../src/plan.js';
 
 /**
  * The Assemble planner turns a playbook template into something renderable.
@@ -257,5 +263,51 @@ describe('the playbook library as data', () => {
       expect(total, `${pb.playbook_id}`).toBeGreaterThanOrEqual(band[0]);
       expect(total, `${pb.playbook_id}`).toBeLessThanOrEqual(band[1]);
     }
+  });
+});
+
+/**
+ * `assertDraftDuration` — the band check moved to where the length is now
+ * decided. `buildRenderPlan`'s own check (above) only ever sees the playbook
+ * template, which by definition stops describing a draft the moment somebody
+ * edits its storyboard.
+ */
+describe('assertDraftDuration', () => {
+  const hotTake = byId('pb_talking_head_hot_take')!;
+
+  it('accepts a draft inside the band', () => {
+    expect(() =>
+      assertDraftDuration(hotTake, [
+        { beatId: 'take', durationSec: 20 },
+        { beatId: 'cta', durationSec: 3 },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('measures a legacy draft exactly as it was before, from the playbook', () => {
+    // No durations of their own: this is every draft written before the draft
+    // owned its structure, and it has to keep passing.
+    expect(() => assertDraftDuration(hotTake, [{ beatId: 'take' }, { beatId: 'cta' }])).not.toThrow();
+  });
+
+  it('counts a beat the playbook never declared', () => {
+    // The whole point: an inserted scene has no playbook entry, so a check that
+    // joined against the playbook would score it as zero and wave it through.
+    expect(() =>
+      assertDraftDuration(hotTake, [
+        { beatId: 'take', durationSec: 20 },
+        { beatId: 'scene_1', durationSec: 12 },
+        { beatId: 'cta', durationSec: 3 },
+      ]),
+    ).toThrow(/35s/);
+  });
+
+  it('catches a draft retimed below the band as well as above it', () => {
+    expect(() => assertDraftDuration(hotTake, [{ beatId: 'take', durationSec: 2 }])).toThrow(/15–30s/);
+  });
+
+  it('has nothing to say about a format with no duration', () => {
+    const carousel = PLAYBOOKS.find((p) => !p.output.duration_sec)!;
+    expect(() => assertDraftDuration(carousel, [{ beatId: 'anything', durationSec: 9_000 }])).not.toThrow();
   });
 });

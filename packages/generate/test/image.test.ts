@@ -81,6 +81,49 @@ describe('content.generate_image', () => {
     expect(savedCopy[1]).toEqual(draftBeats[1]); // the asset beat is untouched
   });
 
+  /**
+   * Generating media into a scene must not undo the scene.
+   *
+   * This replaces the beat wholesale — the beat *becomes* the image — which was
+   * harmless while a beat held nothing but its id and its content. Since the
+   * draft owns its structure it is not harmless: writing the new object without
+   * `durationSec`/`label`/`voice` silently reset a retimed scene to the
+   * playbook's length and dropped its badge. `keepStructure` is spread first for
+   * exactly this, and the same fix applies to `_avatar_video`, `_broll`,
+   * `_voiceover` and `_dub`.
+   */
+  it('carries the scene’s duration, label and voice across the change of kind', async () => {
+    const updateDraft = vi.fn<ScopedDb['content']['updateDraft']>(async (args) => ({
+      id: args.id, genomeId: args.genomeId, playbookId: 'pb_generated_quote_card', mode: 'synthesize',
+      status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
+    }));
+    const edited = [
+      { kind: 'text' as const, beatId: 'hook', text: 'a card', durationSec: 7, label: 'Cover', voice: 'brand' as const },
+    ];
+    const tool = makeContentGenerateImage(stubImage('https://fal.example/card.png'));
+
+    await tool.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a bold quote card', aspectRatio: '1:1' },
+      ctx({
+        updateDraft,
+        get: async () => ({
+          id: 'ci_1', genomeId: 'gen_saas', playbookId: 'pb_generated_quote_card', mode: 'synthesize',
+          status: 'draft', copy: edited, createdAt: new Date(),
+        }) as Awaited<ReturnType<ScopedDb['content']['get']>>,
+      }),
+    );
+
+    expect((updateDraft.mock.calls[0]![0].copy as unknown[])[0]).toEqual({
+      kind: 'generated_image',
+      beatId: 'hook',
+      url: 'https://fal.example/card.png',
+      prompt: 'a bold quote card',
+      durationSec: 7,
+      label: 'Cover',
+      voice: 'brand',
+    });
+  });
+
   it('404s when the draft does not exist or is out of scope', async () => {
     const tool = makeContentGenerateImage(stubImage());
     await expect(

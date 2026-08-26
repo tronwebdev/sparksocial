@@ -283,4 +283,44 @@ function assertDurationInRange(playbook: Playbook, totalSec: number): void {
   }
 }
 
+/**
+ * The same band check, run against a **draft's** own beats rather than the
+ * playbook's.
+ *
+ * This is the invariant that replaces what `zipTimeline`'s drift guard used to
+ * cover. Since 24 August a beat carries its own duration and the playbook is
+ * only the seed, so a draft can be retimed or gain a scene without the playbook
+ * knowing — and nothing would have stopped somebody pushing a 15–30s format to
+ * ninety seconds. The band is the format's contract with the platform, so it is
+ * checked where the length is now decided: at the point of editing the draft.
+ *
+ * Beats with no duration of their own fall back to the playbook, so a legacy
+ * draft is measured exactly as it was before.
+ *
+ * Exported because the callers are the scene tools in `packages/generate`, not
+ * this module — the check belongs to the format and the edit belongs to the
+ * draft, and putting the rule here keeps one definition of "too long".
+ */
+export function assertDraftDuration(
+  playbook: Playbook,
+  beats: Array<{ beatId: string; durationSec?: number }>,
+): void {
+  const band = playbook.output.duration_sec;
+  if (!band) return;
+
+  const fromPlaybook = new Map(playbook.structure.beats.map((b) => [b.id, b.duration_sec]));
+  const total = round1(
+    beats.reduce((sum, b) => sum + (b.durationSec ?? fromPlaybook.get(b.beatId) ?? 0), 0),
+  );
+
+  const [min, max] = band;
+  if (total < min || total > max) {
+    throw new ToolError(
+      'INVALID_INPUT',
+      `That would make the post ${total}s, and a ${playbook.name} has to be ${min}–${max}s.`,
+      { playbookId: playbook.playbook_id, totalSec: total, min, max },
+    );
+  }
+}
+
 const round1 = (n: number) => Math.round(n * 10) / 10;

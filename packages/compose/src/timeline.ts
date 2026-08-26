@@ -56,14 +56,31 @@ export function zipTimeline(args: {
   const durationByBeatId = new Map(args.playbookBeats.map((b) => [b.id, b.duration_sec]));
 
   return args.resolvedBeats.map((beat): TimedBeat => {
-    const durationSec = durationByBeatId.get(beat.beatId);
+    /**
+     * The beat's own duration wins, and the playbook join is the fallback.
+     *
+     * This inverted on 24 August, when the draft took ownership of its structure
+     * (`ResolvedBeat` in packages/generate/src/draft.ts). Before it, duration
+     * came only from the playbook and any beat the playbook did not declare threw
+     * — which is what made adding a scene impossible, since a scene somebody adds
+     * has no playbook entry by construction.
+     *
+     * The guard that remains is narrower and still worth having: a beat with
+     * *neither* its own duration nor a playbook entry is a genuinely unresolvable
+     * row, and guessing a length for it would render a post at a duration nobody
+     * chose. The drift case the old message described — the playbook changing
+     * under a draft — is now handled rather than refused: a draft that knows its
+     * own timing renders as it was drafted, which is what an approved post should
+     * do. The cost is that the band check has to run against the draft's totals
+     * instead, which is `assertDraftDuration`'s job.
+     */
+    const durationSec = beat.durationSec ?? durationByBeatId.get(beat.beatId);
     if (durationSec === undefined) {
-      // The draft and the playbook have drifted — e.g. the playbook record
-      // changed after this draft was written. Not something to guess a
-      // duration for.
-      throw new ToolError('INVALID_INPUT', `Beat "${beat.beatId}" is not in this playbook's current beat list.`, {
-        beatId: beat.beatId,
-      });
+      throw new ToolError(
+        'INVALID_INPUT',
+        `Beat "${beat.beatId}" has no duration of its own and is not in this playbook's beat list.`,
+        { beatId: beat.beatId },
+      );
     }
 
     if (beat.kind === 'text') {

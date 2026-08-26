@@ -59,6 +59,11 @@ import {
   contentList,
   contentSchedule,
   contentBeatUpdate,
+  sceneInsert,
+  sceneRemove,
+  sceneReorder,
+  sceneRetime,
+  sceneVoice,
 } from '@sparksocial/generate';
 import {
   campaignProposePlan,
@@ -375,6 +380,12 @@ export function registerAlphaTools(): void {
   register(makeDraftRepurpose({ text: textWriter(devTextWriter()), embed }));
   register(contentGet);
   register(contentBeatUpdate);
+  // M5's storyboard — the write side of the draft owning its own structure.
+  register(sceneInsert);
+  register(sceneRemove);
+  register(sceneReorder);
+  register(sceneRetime);
+  register(sceneVoice);
   register(contentList);
   register(contentSchedule);
   const images = imageClient();

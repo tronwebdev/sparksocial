@@ -43,17 +43,73 @@ import type { BeatOutlineEntry, TextWriter } from './types.js';
  * and planning it here would produce a "draft" for a post nobody has filmed.
  */
 
+/**
+ * THE DRAFT OWNS ITS OWN STRUCTURE — decided 24 August, for `M5`'s storyboard.
+ *
+ * Every beat used to carry an id and nothing else about its shape: duration came
+ * from the *playbook* record, joined by `beatId` at render time. That made the
+ * playbook the source of truth for structure and the draft the source of truth
+ * only for content, which is why `Add scene` was impossible — `zipTimeline`
+ * throws for any beat id the playbook does not declare, and a user-added scene
+ * has no playbook entry by construction.
+ *
+ * These two fields move that boundary. A beat now states how long it runs and
+ * what it is, and the playbook becomes the *seed* rather than the authority.
+ *
+ * ── Optional, and that is deliberate ─────────────────────────────────────
+ *
+ * `content_items.copy` is untyped jsonb, so this needs no migration — but every
+ * draft written before today has no `durationSec`, and making it required would
+ * fail to parse all of them. So it is optional in the schema, stamped on every
+ * new draft, and `zipTimeline` prefers it and falls back to the playbook join.
+ * The *tools* that insert or retime a scene require it, which is where the
+ * invariant belongs: a beat nobody can date is a legacy row, and a beat somebody
+ * just created without a duration is a bug.
+ *
+ * ── The consequence worth stating ────────────────────────────────────────
+ *
+ * A draft whose playbook changes underneath it now renders as it was drafted,
+ * rather than throwing. That is the point — a post somebody approved should
+ * render as approved — but it does mean the drift guard `zipTimeline` carried
+ * stops covering these drafts, so the duration-band check has to run against the
+ * draft's own totals instead. See `assertDraftDuration`.
+ */
+const beatShape = {
+  beatId: z.string(),
+  /**
+   * How long this beat runs, in seconds. Absent only on drafts written before
+   * the draft owned its structure.
+   */
+  durationSec: z.number().min(0).optional(),
+  /**
+   * What this beat *is*, for the storyboard's badge — "Hook", "CTA", "B-roll +
+   * text overlay". Seeded from the playbook's beat id and editable, because a
+   * scene somebody added has no playbook id to derive a label from.
+   */
+  label: z.string().min(1).max(40).optional(),
+  /**
+   * Which voice this scene narrates in, when it overrides the post's default —
+   * `M5`'s per-scene "Audio override". Absent is the common case and means "the
+   * default", which is what `content.generate_voiceover` picks on its own.
+   *
+   * An enum rather than a voice id deliberately; see the comment on
+   * `content.scene.voice` in `scenes.ts` for why, and for what has to exist
+   * before it can widen.
+   */
+  voice: z.enum(['brand', 'stock']).optional(),
+};
+
 export const ResolvedBeat = z.discriminatedUnion('kind', [
   z.object({
+    ...beatShape,
     kind: z.literal('asset'),
-    beatId: z.string(),
     assetId: z.string(),
     role: AssetRole,
     caption: z.string().nullable(),
   }),
   z.object({
+    ...beatShape,
     kind: z.literal('text'),
-    beatId: z.string(),
     text: z.string(),
   }),
   /**
@@ -65,15 +121,15 @@ export const ResolvedBeat = z.discriminatedUnion('kind', [
    * `AssetRole`'s taxonomy would misdescribe it as something the brand shot.
    */
   z.object({
+    ...beatShape,
     kind: z.literal('generated_image'),
-    beatId: z.string(),
     url: z.string(),
     prompt: z.string(),
   }),
   /** A `content.generate_avatar_video`-produced clip — the cloned likeness speaking `script`. */
   z.object({
+    ...beatShape,
     kind: z.literal('generated_video'),
-    beatId: z.string(),
     url: z.string(),
     script: z.string(),
   }),
@@ -86,34 +142,38 @@ export const ResolvedBeat = z.discriminatedUnion('kind', [
    * `script`. No consent gate applies — nobody's likeness is being cloned.
    */
   z.object({
+    ...beatShape,
     kind: z.literal('generated_broll'),
-    beatId: z.string(),
     url: z.string(),
     prompt: z.string(),
   }),
   /**
    * A `content.generate_dub`-produced clip — an existing beat's own media
    * (video or audio) re-voiced into `targetLanguage` and written back into
-   * the SAME `beatId`, replacing the original-language version. Not a new
-   * sibling beat: `zipTimeline` resolves duration by looking `beatId` up in
-   * the *playbook's* fixed beat list, so an ad-hoc extra beat id with no
-   * playbook entry would break every render — a dub is a beat becoming its
-   * target-language self, the same way `content.generate_image` replacing a
-   * beat makes it become a specific image. A multi-language *variant* of a
+   * the SAME `beatId`, replacing the original-language version.
+   *
+   * Not a new sibling beat. The original reason was mechanical — an ad-hoc beat
+   * id had no playbook entry to draw a duration from, so it broke every render
+   * — and that reason is gone as of the note at the top of this file; the scene
+   * tools below now add beat ids the playbook never declared. The *semantic*
+   * reason it was really relying on stands, and is the one to keep: a dub is a
+   * beat becoming its target-language self, the same way `content.generate_image`
+   * replacing a beat makes it become a specific image. Emitting a sibling would
+   * put both languages in one cut, back to back. A multi-language *variant* of a
    * whole post is `draft.repurpose` (clone the item) followed by dubbing each
    * clone's beats — not a job for this beat-level tool.
    */
   z.object({
+    ...beatShape,
     kind: z.literal('dubbed_media'),
-    beatId: z.string(),
     url: z.string(),
     targetLanguage: z.string(),
     mediaType: z.enum(['video', 'audio']),
   }),
   /** A `content.generate_voiceover`-produced narration track, meant to sit under an `asset`/`generated_image` b-roll beat. */
   z.object({
+    ...beatShape,
     kind: z.literal('generated_audio'),
-    beatId: z.string(),
     url: z.string(),
     script: z.string(),
   }),
@@ -137,7 +197,52 @@ export const ContentDraftInput = z.object({
    * connection, which is what makes the metric a count rather than a guess.
    */
   fromTrendId: z.string().max(200).optional(),
+  /**
+   * Regenerate over hand-edited scene structure.
+   *
+   * Redrafting an existing slot rebuilds the beat list from the playbook, which
+   * is the point — "another take" is the most-used button in the Draft Panel.
+   * But since the draft owns its structure, that rebuild also discards anything
+   * `content.scene.*` did: an added scene, a retimed one, a per-scene voice. The
+   * work is invisible in the response (the new beats simply look like a normal
+   * draft), so without a gate the first regenerate after a storyboard edit
+   * silently throws the edit away.
+   *
+   * So a draft that has been edited refuses to regenerate unless this says to.
+   * A draft nobody has touched — every beat still exactly as drafted — is
+   * unaffected, which is nearly every call.
+   */
+  // Optional rather than `.default(false)`: a Zod default makes the field
+  // *required* on the parsed type, which would force every internal caller of
+  // `resolvePlan` to pass a flag that means nothing to it.
+  discardSceneEdits: z.boolean().optional(),
 });
+
+/**
+ * Has somebody edited this draft's structure by hand?
+ *
+ * Two signals, both cheap and both certain: a beat id the playbook never
+ * declared can only have been inserted, and a duration that differs from the
+ * playbook's can only have been retimed. A per-scene voice is the third.
+ *
+ * Deliberately *not* a "modified" flag on the row. A flag has to be maintained
+ * by every writer and is wrong the moment one forgets; comparing against the
+ * playbook is derived from the data itself and cannot go stale.
+ *
+ * Reordering alone is not detected, and that is a considered omission rather
+ * than an oversight: playbook beat order is not something the beat list records
+ * independently, so telling a reorder apart from a fresh draft would need the
+ * very stored flag this avoids. A reorder with no other edit loses least — the
+ * scenes all still exist, in the playbook's order.
+ */
+export function hasSceneEdits(playbook: Playbook, beats: ResolvedBeat[]): boolean {
+  const seeded = new Map(playbook.structure.beats.map((b) => [b.id, b.duration_sec]));
+  return beats.some((b) => {
+    if (!seeded.has(b.beatId)) return true;
+    if (b.voice !== undefined) return true;
+    return b.durationSec !== undefined && b.durationSec !== seeded.get(b.beatId);
+  });
+}
 
 export const ContentDraftOutput = z.object({
   contentItemId: z.string(),
@@ -229,6 +334,18 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
       if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId: input.genomeId });
+
+      if (input.contentItemId && !input.discardSceneEdits) {
+        const existing = await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId);
+        const parsed = z.array(ResolvedBeat).safeParse(existing?.copy);
+        if (parsed.success && parsed.data.length > 0 && hasSceneEdits(playbook, parsed.data)) {
+          throw new ToolError(
+            'INVALID_INPUT',
+            'This draft’s storyboard has been edited by hand. Regenerating replaces it — pass discardSceneEdits to confirm.',
+            { contentItemId: input.contentItemId },
+          );
+        }
+      }
 
       const plan = await resolvePlan(playbook, genome, input, ctx, deps.embed);
 
@@ -389,11 +506,27 @@ export async function resolveBeat(
   ground: { genome: Genome; playbook: Playbook; intent: string; outline: BeatOutlineEntry[] },
   text: TextWriter,
 ): Promise<ResolvedBeat> {
+  /**
+   * Duration and label are stamped onto every beat here, which is the moment the
+   * draft takes ownership of its own structure. `PlannedBeat.durationSec` already
+   * came from the playbook, so this copies rather than computes — the difference
+   * is that from now on the *draft* is the record of it, and a later playbook
+   * edit cannot silently retime a post somebody approved.
+   */
+  const structure = { durationSec: beat.durationSec, label: labelFor(beat.beatId) };
+
   if (beat.kind === 'asset') {
-    return { kind: 'asset', beatId: beat.beatId, assetId: beat.assetId, role: beat.role, caption: beat.caption };
+    return {
+      ...structure,
+      kind: 'asset',
+      beatId: beat.beatId,
+      assetId: beat.assetId,
+      role: beat.role,
+      caption: beat.caption,
+    };
   }
   if (beat.kind === 'text') {
-    return { kind: 'text', beatId: beat.beatId, text: beat.text };
+    return { ...structure, kind: 'text', beatId: beat.beatId, text: beat.text };
   }
   // kind === 'copy'
   const written = await text.write({
@@ -405,7 +538,61 @@ export async function resolveBeat(
     durationSec: beat.durationSec,
     outline: ground.outline,
   });
-  return { kind: 'text', beatId: beat.beatId, text: written };
+  return { ...structure, kind: 'text', beatId: beat.beatId, text: written };
+}
+
+/**
+ * Carry a beat's structure across a change of `kind`.
+ *
+ * `content.generate_image`/`_avatar_video`/`_broll`/`_voiceover`/`_dub` all
+ * *replace* a beat wholesale — the beat becomes the media that was generated for
+ * it. Before the draft owned its structure that was harmless, because a beat
+ * held nothing but its id and its content. It is not harmless now: writing the
+ * new object without these two fields would silently reset the scene's length to
+ * the playbook's and drop the label, so generating media into a retimed scene
+ * would quietly undo the retime.
+ *
+ * Spread this first, so the replacing object's own `kind` and content still win.
+ */
+export function keepStructure(
+  beat: ResolvedBeat,
+): { durationSec?: number; label?: string; voice?: 'brand' | 'stock' } {
+  return {
+    ...(beat.durationSec !== undefined ? { durationSec: beat.durationSec } : {}),
+    ...(beat.label !== undefined ? { label: beat.label } : {}),
+    ...(beat.voice !== undefined ? { voice: beat.voice } : {}),
+  };
+}
+
+/**
+ * The storyboard badge, from the beat's own id.
+ *
+ * Playbook beat ids are already the vocabulary the design uses — `hook`, `cta`,
+ * `take`, `body`, `cover`, `step_1` — so the label is a presentation of
+ * something that exists rather than a new field somebody has to fill. Anything
+ * unrecognised becomes its own id in words, which is what the panel showed
+ * before this existed.
+ *
+ * Stored rather than derived at render time because a scene somebody *added* has
+ * no playbook id to derive from, and a label that only worked for seeded beats
+ * would be a badge that vanished on the one beat the user made themselves.
+ */
+export function labelFor(beatId: string): string {
+  const base = beatId.replace(/_\d+$/, '');
+  const known: Record<string, string> = {
+    hook: 'Hook',
+    cta: 'CTA',
+    take: 'Talking head',
+    body: 'Body',
+    argument: 'Argument',
+    cover: 'Cover',
+    step: 'Step',
+    slides: 'Slides',
+    proof: 'Proof',
+    caption: 'Caption',
+    broll: 'B-roll + text overlay',
+  };
+  return known[base] ?? base.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
 /**

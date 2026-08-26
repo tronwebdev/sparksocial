@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
-import { PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -29,6 +29,13 @@ import { PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, t
  * - **preview** — the assembled post, a platform picker, and `publish.now` —
  *   real, since P4's aggregator publishing already exists.
  */
+
+/**
+ * The busy/error key for a scene *insert*, which has no beat id of its own yet.
+ * A literal rather than an empty string so it can never collide with a real
+ * beat id, and so the Add form's own error renders in the Add form.
+ */
+const SCENE_ADD_KEY = '__add_scene__';
 
 export function DraftPanel({
   genomeId,
@@ -82,6 +89,18 @@ export function DraftPanel({
   const [intent, setIntent] = useState('');
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>('instagram');
   const [busyBeatId, setBusyBeatId] = useState<string | null>(null);
+  /**
+   * The Add-scene form, and the running total the storyboard header shows.
+   *
+   * `sceneTotal` is seeded from the draft's own beats and then replaced by
+   * whatever the last scene tool returned, so the header always shows a number
+   * the server computed rather than one this component derived - the two can
+   * disagree on a legacy draft, where some beats have no duration of their own
+   * and the server falls back to the playbook.
+   */
+  const [sceneDescription, setSceneDescription] = useState('');
+  const [sceneDuration, setSceneDuration] = useState('4');
+  const [sceneTotal, setSceneTotal] = useState<number | null>(null);
   const [beatErrors, setBeatErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -224,6 +243,25 @@ export function DraftPanel({
     })();
   }, [open, phase, genomeId, playbooks]);
 
+  /* ── Storyboard arithmetic ─────────────────────────────────────────────
+   *
+   * Beats with no duration of their own contribute 0 here, and that is a
+   * deliberate under-count rather than a bug: only the server knows what such a
+   * beat falls back to in the playbook, which is exactly why `sceneTotal` -
+   * whatever the last scene tool actually returned - wins over this whenever it
+   * is available. This is the seed for a draft nobody has edited yet.
+   */
+  const localTotal = (draft?.beats ?? []).reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
+  const shownTotal = sceneTotal ?? localTotal;
+  const band = draft?.durationBand;
+  const outsideBand = band ? shownTotal < band[0] || shownTotal > band[1] : false;
+  const headroom = band ? Math.round((band[1] - shownTotal) * 10) / 10 : 0;
+
+  /** Where scene `i` starts in the cut - the left edge of its `0:00-0:04` range. */
+  function startOf(i: number): number {
+    return (draft?.beats ?? []).slice(0, i).reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
+  }
+
   async function createDraft() {
     if (!genomeId || !selectedPlaybookId || busy) return;
     setBusy(true);
@@ -248,7 +286,17 @@ export function DraftPanel({
   }
 
   const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
-    setDraft((d) => (d ? { ...d, beats: d.beats.map((b) => (b.beatId === beatId ? next : b)) } : d));
+    /**
+       * `keepStructure` first, so the replacement inherits the scene's duration,
+       * label and voice override. The generate/save tools do not echo those
+       * fields, so a bare swap would visibly reset the scene's timing until the
+       * next reload - the same defect `keepStructure` prevents server-side.
+       */
+    setDraft((d) =>
+      d
+        ? { ...d, beats: d.beats.map((b) => (b.beatId === beatId ? { ...keepStructure(b), ...next } : b)) }
+        : d,
+    );
   }, []);
 
   async function generateImage(beatId: string, prompt: string) {
@@ -394,6 +442,51 @@ export function DraftPanel({
       return;
     }
     replaceBeat(beatId, { kind: 'text', beatId, text });
+  }
+
+  /* ── The storyboard's write side (M5) ──────────────────────────────────
+   *
+   * All five scene tools answer with the whole new strip plus the totals, so
+   * each of these replaces `beats` wholesale rather than patching one entry.
+   * That is deliberate: an insert renumbers every later scene and a reorder
+   * moves two, so a per-beat optimistic update would have to reimplement the
+   * server's ordering logic and could disagree with it.
+   *
+   * The band refusal is a normal outcome here, not an exception. On a tight
+   * format there is genuinely no room for another scene, so the tool's own
+   * message - which names the resulting length and the band - is surfaced
+   * verbatim rather than replaced with something vaguer.
+   */
+  type SceneResult = { beats: ResolvedBeat[]; totalDurationSec: number; durationBand?: [number, number] };
+
+  async function runSceneTool(name: string, input: Record<string, unknown>, beatId?: string) {
+    if (!draft || !genomeId || busyBeatId) return;
+    const busyKey = beatId ?? SCENE_ADD_KEY;
+    setBusyBeatId(busyKey);
+    setBeatErrors((e) => ({ ...e, [busyKey]: '' }));
+    const res = await invoke<SceneResult>(name, { contentItemId: draft.contentItemId, genomeId, ...input });
+    setBusyBeatId(null);
+    if (res.status !== 'succeeded') {
+      setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      return;
+    }
+    setDraft((d) => (d ? { ...d, beats: res.output.beats } : d));
+    setSceneTotal(res.output.totalDurationSec);
+  }
+
+  async function addScene() {
+    if (!sceneDescription.trim()) return;
+    const seconds = Number(sceneDuration);
+    if (!Number.isFinite(seconds) || seconds < 0.5) return;
+    await runSceneTool('content.scene.insert', {
+      description: sceneDescription.trim(),
+      durationSec: seconds,
+      // Appends after the last scene. The tool also takes no anchor at all,
+      // which opens the post instead - but "add" reads as "add at the end",
+      // and the Move buttons are how a scene gets to the front.
+      ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
+    });
+    setSceneDescription('');
   }
 
   async function shortenLink() {
@@ -945,8 +1038,38 @@ export function DraftPanel({
 
           {phase === 'editor' && draft ? (
             <div className="grid grid-cols-1 gap-4">
+              {/*
+                The storyboard header - M5's "9:16 / 0:24 total / Add scene" strip.
+                The total prefers whatever the last scene tool returned, because
+                the server is the only party that knows what a beat with no
+                duration of its own falls back to.
+              */}
+              {draft.mediaType === 'video' ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <p className="text-[13px] font-medium text-ink">Storyboard</p>
+                    <span className="text-[12px] tabular-nums text-ink-muted">
+                      {clock(sceneTotal ?? localTotal)} total
+                    </span>
+                    {draft.durationBand ? (
+                      <span className="text-[12px] text-ink-muted">
+                        {outsideBand ? (
+                          <span className="text-destructive">
+                            outside this format&rsquo;s {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
+                          </span>
+                        ) : (
+                          <>
+                            {headroom}s of headroom in {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
+                          </>
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               <ul className="grid grid-cols-1 gap-3">
-                {draft.beats.map((beat) => (
+                {draft.beats.map((beat, i) => (
                   <BeatRow
                     // `BeatRow`'s own textarea state initializes once from
                     // `beat` on mount and never re-syncs on a prop change —
@@ -964,6 +1087,15 @@ export function DraftPanel({
                     mediaType={draft.mediaType}
                     busy={busyBeatId === beat.beatId}
                     error={beatErrors[beat.beatId] || undefined}
+                    index={i}
+                    startSec={startOf(i)}
+                    timed={draft.mediaType === 'video'}
+                    isFirst={i === 0}
+                    isLast={i === draft.beats.length - 1}
+                    onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
+                    onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
+                    onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
+                    onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
                     onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
                     onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
                     onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
@@ -973,6 +1105,56 @@ export function DraftPanel({
                   />
                 ))}
               </ul>
+
+              {/*
+                Add scene. Deliberately does not generate anything: the new scene
+                holds the description as its text, and turning that into footage
+                is one of the generate buttons on the row it creates. Splitting
+                "make a slot" from "fill it" is what keeps the storyboard
+                editable without spending money per keystroke.
+              */}
+              {draft.mediaType === 'video' ? (
+                <div className="rounded-lg border border-dashed border-border p-4">
+                  <p className="text-[13px] font-medium text-ink">Add a scene</p>
+                  <p className="mt-1 text-[12px] text-ink-muted">
+                    Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a
+                    written slot you can film, generate, or leave as an overlay.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <textarea
+                      value={sceneDescription}
+                      onChange={(e) => setSceneDescription(e.target.value)}
+                      disabled={busyBeatId !== null}
+                      rows={2}
+                      placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
+                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] text-ink-muted" htmlFor="new-scene-seconds">
+                        Seconds
+                      </label>
+                      <input
+                        id="new-scene-seconds"
+                        value={sceneDuration}
+                        onChange={(e) => setSceneDuration(e.target.value)}
+                        disabled={busyBeatId !== null}
+                        inputMode="decimal"
+                        className="h-9 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={busyBeatId !== null || !sceneDescription.trim()}
+                        onClick={() => void addScene()}
+                      >
+                        {busyBeatId === SCENE_ADD_KEY ? 'Adding\u2026' : 'Add scene'}
+                      </Button>
+                    </div>
+                  </div>
+                  {beatErrors[SCENE_ADD_KEY] ? (
+                    <p className="mt-2 text-[12px] text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
