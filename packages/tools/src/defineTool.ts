@@ -3,6 +3,7 @@ import type {
   Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
+import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
@@ -367,6 +368,18 @@ export interface BrandGovernance {
   toneVector?: { formal: number; playful: number; technical: number; bold: number };
   /** Words never to use, checked verbatim by `guard.brand_voice`. */
   bannedPhrases?: string[];
+  /** `SET-WS-BRAND-KITS`' watermark. Absent means `DEFAULT_WATERMARK` — see `packages/shared/src/brandKit.ts`. */
+  watermark?: Watermark;
+  /**
+   * The Brand Kits screen's Templates presets: intro/outro/bumper/caption and
+   * lower-third lines.
+   *
+   * Imported from `shared` rather than restated structurally, unlike most of the
+   * fields around it. `category` is a five-value union, and a hand-written
+   * `category: string` here compiles while silently widening it — the resolver
+   * then rejects the store's own type, which is how the two copies drift.
+   */
+  kitTemplates?: KitTemplate[];
   logoUrl?: string;
   brandColors?: string[];
   /** M4's font references — two ids from packages/compose/src/fonts.ts. */
@@ -490,6 +503,8 @@ export interface BrandGovernanceStore {
       strictMode?: boolean;
       toneVector?: { formal: number; playful: number; technical: number; bold: number } | null;
       bannedPhrases?: string[] | null;
+      watermark?: Watermark | null;
+      kitTemplates?: KitTemplate[] | null;
       logoUrl?: string | null;
       brandColors?: string[] | null;
       brandFonts?: { display?: string; body?: string } | null;

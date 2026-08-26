@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
-import { sceneInsert, sceneRemove, sceneReorder, sceneRetime, sceneVoice, nextSceneId } from '../src/scenes.js';
+import {
+  sceneInsert,
+  sceneRemove,
+  sceneReorder,
+  sceneRetime,
+  sceneVoice,
+  sceneLowerThird,
+  nextSceneId,
+} from '../src/scenes.js';
 import { contentDraftFixtureBeats } from './fixtures/scenes.js';
 import type { ResolvedBeat } from '../src/draft.js';
 
@@ -277,5 +285,40 @@ describe('nextSceneId', () => {
 describe('errors are ToolErrors', () => {
   it('throws ToolError, not Error', async () => {
     await expect(sceneRemove.handler({ ...target, beatId: 'ghost' }, ctx())).rejects.toBeInstanceOf(ToolError);
+  });
+});
+
+describe('content.scene.lower_third', () => {
+  it('superimposes a line without touching the scene’s own text', async () => {
+    const out = await sceneLowerThird.handler(
+      { ...target, beatId: 'take', text: 'What most people get wrong' },
+      ctx(),
+    );
+    const beat = out.beats.find((b) => b.beatId === 'take')!;
+    expect(beat.lowerThird).toBe('What most people get wrong');
+    // The whole point of a separate tool: the script survives the overlay.
+    expect(beat).toMatchObject({ kind: 'text', text: 'The take.', durationSec: 20 });
+  });
+
+  it('clears the overlay on null rather than storing an empty string', async () => {
+    const overlaid: ResolvedBeat[] = [
+      { kind: 'text', beatId: 'take', text: 'The take.', durationSec: 20, lowerThird: 'Old line' },
+      { kind: 'text', beatId: 'cta', text: 'Book now.', durationSec: 3 },
+    ];
+    const out = await sceneLowerThird.handler({ ...target, beatId: 'take', text: null }, ctx({ beats: overlaid }));
+    expect(out.beats[0]).not.toHaveProperty('lowerThird');
+  });
+
+  it('does not change the post’s length', async () => {
+    // An overlay is drawn on an existing scene, so it can never trip the band
+    // check — worth asserting, because every other scene tool can.
+    const out = await sceneLowerThird.handler({ ...target, beatId: 'take', text: 'A line' }, ctx());
+    expect(out.totalDurationSec).toBe(23);
+  });
+
+  it('refuses a scene that is not there', async () => {
+    await expect(
+      sceneLowerThird.handler({ ...target, beatId: 'ghost', text: 'A line' }, ctx()),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });

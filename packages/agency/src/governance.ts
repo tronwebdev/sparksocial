@@ -1,6 +1,12 @@
 ﻿import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import {
+  DEFAULT_WATERMARK,
+  KitTemplate,
+  MAX_KIT_TEMPLATES,
+  Watermark,
+} from '@sparksocial/shared/brandKit';
+import {
   DEFAULT_POSTING_WINDOWS,
   Explanation,
   ToolError,
@@ -108,6 +114,35 @@ export const BrandGovernanceSetInput = z.object({
   strictMode: z.boolean().optional(),
   toneVector: ToneVector.nullable().optional(),
   bannedPhrases: z.array(z.string().min(1).max(120)).max(200).nullable().optional(),
+
+  /* ── Brand kit render settings (`SET-WS-BRAND-KITS`) ─────────────────── */
+
+  /**
+   * `Activate Watermark`, plus how loud the mark is.
+   *
+   * Null clears back to `DEFAULT_WATERMARK`, which is what every brand rendered
+   * with before the column existed — so clearing is a real reset, not "off".
+   */
+  watermark: Watermark.nullable().optional(),
+  /**
+   * The Templates presets, replaced as a whole list.
+   *
+   * A whole-array patch rather than add/remove tools for the same reason as
+   * `bannedPhrases`: the list is small, bounded and always edited on a screen
+   * that already holds all of it, so per-item mutations would buy nothing and
+   * cost two more tools plus an ordering question.
+   *
+   * Ids are checked for uniqueness on the way in — a duplicate would make
+   * "apply preset X" ambiguous, and the panel keys its rows by id.
+   */
+  kitTemplates: z
+    .array(KitTemplate)
+    .max(MAX_KIT_TEMPLATES)
+    .refine((list) => new Set(list.map((t) => t.id)).size === list.length, {
+      message: 'Two templates share an id.',
+    })
+    .nullable()
+    .optional(),
   logoUrl: z.string().url().nullable().optional(),
   brandColors: z.array(z.string().min(3).max(32)).max(12).nullable().optional(),
   /**
@@ -180,6 +215,11 @@ export const BrandGovernanceOutput = z.object({
   strictMode: z.boolean(),
   toneVector: ToneVector.optional(),
   bannedPhrases: z.array(z.string()),
+  /** Always populated — the effective settings, including the default when the brand has never set them. */
+  watermark: Watermark,
+  /** True when `watermark` is the system default rather than this brand's own choice. */
+  usingDefaultWatermark: z.boolean(),
+  kitTemplates: z.array(KitTemplate),
   logoUrl: z.string().optional(),
   brandColors: z.array(z.string()),
   /** M4's chosen faces, echoed back so the picker can show what is set. */
@@ -377,6 +417,8 @@ function toOutput(gov: {
   strictMode: boolean;
   toneVector?: { formal: number; playful: number; technical: number; bold: number };
   bannedPhrases?: string[];
+  watermark?: Watermark;
+  kitTemplates?: KitTemplate[];
   logoUrl?: string;
   brandColors?: string[];
   brandFonts?: { display?: string; body?: string };
@@ -399,6 +441,9 @@ function toOutput(gov: {
     strictMode: gov.strictMode,
     ...(gov.toneVector ? { toneVector: gov.toneVector } : {}),
     bannedPhrases: gov.bannedPhrases ?? [],
+    watermark: gov.watermark ?? DEFAULT_WATERMARK,
+    usingDefaultWatermark: gov.watermark === undefined,
+    kitTemplates: gov.kitTemplates ?? [],
     ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
     brandColors: gov.brandColors ?? [],
     ...(gov.brandFonts ? { brandFonts: gov.brandFonts } : {}),

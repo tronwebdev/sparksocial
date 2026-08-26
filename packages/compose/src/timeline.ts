@@ -21,6 +21,7 @@ import type { ResolvedBeat } from '@sparksocial/generate';
 // Pure data and pure functions, no Node imports — safe on the bundled path this
 // file's own header warns about.
 import { brandFont, fontStack, type BrandFontFace, type BrandFonts } from '@sparksocial/shared/brandFonts';
+import { DEFAULT_WATERMARK, type Watermark } from '@sparksocial/shared/brandKit';
 
 /**
  * `content.draft`'s `ResolvedBeat[]` (persisted on `content_items.copy`) knows
@@ -36,10 +37,24 @@ import { brandFont, fontStack, type BrandFontFace, type BrandFonts } from '@spar
  * pure and testable without a store.
  */
 
+/**
+ * The lower-third, carried on every visual variant.
+ *
+ * A superimposed line in the lower third of the frame - a name, a role, the
+ * point being made. Distinct from `caption`: a caption belongs to the *asset*
+ * (it is what retrieval matched on, and it describes what is shown), while a
+ * lower-third belongs to the *post* and is chosen from the brand kit. Rendering
+ * them in the same slot would make one silently replace the other, so they are
+ * stacked - see `lowerThirdOverlay`.
+ */
+export interface LowerThird {
+  lowerThird?: string;
+}
+
 export type TimedBeat =
-  | { kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string }
-  | { kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string }
-  | { kind: 'text'; beatId: string; durationSec: number; text: string }
+  | ({ kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
+  | ({ kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
+  | ({ kind: 'text'; beatId: string; durationSec: number; text: string } & LowerThird)
   /** A narration track meant to underlay the composition, not its own visual slot — see the module comment on `generated_audio`. */
   | { kind: 'audio'; beatId: string; durationSec: number; url: string };
 
@@ -74,6 +89,13 @@ export function zipTimeline(args: {
      * do. The cost is that the band check has to run against the draft's totals
      * instead, which is `assertDraftDuration`'s job.
      */
+    /**
+     * Spread into every visual arm below. A beat that carries no lower-third
+     * contributes nothing, so the field stays absent rather than becoming an
+     * empty string the renderers would then have to test for.
+     */
+    const lower = beat.lowerThird ? { lowerThird: beat.lowerThird } : {};
+
     const durationSec = beat.durationSec ?? durationByBeatId.get(beat.beatId);
     if (durationSec === undefined) {
       throw new ToolError(
@@ -84,15 +106,15 @@ export function zipTimeline(args: {
     }
 
     if (beat.kind === 'text') {
-      return { kind: 'text', beatId: beat.beatId, durationSec, text: beat.text };
+      return { kind: 'text', beatId: beat.beatId, durationSec, text: beat.text, ...lower };
     }
 
     if (beat.kind === 'generated_image') {
-      return { kind: 'image', beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: 'image', beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     if (beat.kind === 'generated_video' || beat.kind === 'generated_broll') {
-      return { kind: 'video', beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: 'video', beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     if (beat.kind === 'generated_audio') {
@@ -100,7 +122,7 @@ export function zipTimeline(args: {
     }
 
     if (beat.kind === 'dubbed_media') {
-      return { kind: beat.mediaType, beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: beat.mediaType, beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     // kind === 'asset'
@@ -123,6 +145,7 @@ export function zipTimeline(args: {
       durationSec,
       url: info.url,
       ...(beat.caption ? { caption: beat.caption } : {}),
+      ...lower,
     };
   });
 }
@@ -172,6 +195,14 @@ export function framesFor(beats: Array<{ durationSec: number }>, fps = FPS): num
 export interface BrandKit {
   /** Drawn as a corner mark on media beats and above the type on text beats. Absent means no mark. */
   logoUrl?: string;
+  /**
+   * How that mark is drawn - `SET-WS-BRAND-KITS`' "Activate Watermark".
+   *
+   * Absent means `DEFAULT_WATERMARK`, which reproduces what both renderers did
+   * unconditionally before this existed. `enabled: false` is the state the
+   * toggle now actually reaches: a brand with a logo and no watermark.
+   */
+  watermark?: Watermark;
   /** Ordered: ground, type, accent. Empty means "use the defaults". */
   colors: string[];
   /**
@@ -247,6 +278,11 @@ export function resolveKit(kit: BrandKit | undefined): {
   bodyFont: string;
   /** The faces the renderer has to fetch bytes for, deduped. Empty means "nothing to load". */
   fontFaces: BrandFontFace[];
+  /**
+   * Resolved watermark settings. Always present, so a renderer never has to
+   * decide what a missing value means - that decision is made once, here.
+   */
+  watermark: Watermark;
 } {
   const colors = kit?.colors ?? [];
   const ground = colors[0] ?? DEFAULT_GROUND;
@@ -271,5 +307,6 @@ export function resolveKit(kit: BrandKit | undefined): {
     displayFont: fontStack(display),
     bodyFont: fontStack(body),
     fontFaces: [...new Map(faces.map((f) => [f.id, f])).values()],
+    watermark: kit?.watermark ?? DEFAULT_WATERMARK,
   };
 }

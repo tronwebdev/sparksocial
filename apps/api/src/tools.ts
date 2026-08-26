@@ -64,6 +64,7 @@ import {
   sceneReorder,
   sceneRetime,
   sceneVoice,
+  sceneLowerThird,
 } from '@sparksocial/generate';
 import {
   campaignProposePlan,
@@ -386,6 +387,7 @@ export function registerAlphaTools(): void {
   register(sceneReorder);
   register(sceneRetime);
   register(sceneVoice);
+  register(sceneLowerThird);
   register(contentList);
   register(contentSchedule);
   const images = imageClient();

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Img, Sequence, Video, registerRoot, Composition, type AnyZodObject } from 'remotion';
 import { framesFor, resolveKit, type BrandKit, type TimedBeat } from './timeline.js';
+import type { Watermark } from '@sparksocial/shared/brandKit';
 
 /**
  * The one Remotion composition every playbook renders through — plan §6.5's
@@ -35,7 +36,7 @@ export const BeatComposition: React.FC<BeatCompositionProps> = ({ beats, width, 
   let from = 0;
   const sequences = beats.map((beat) => {
     const durationInFrames = Math.max(1, Math.round(beat.durationSec * FPS));
-    const el = h(Sequence, { key: beat.beatId, from, durationInFrames }, renderBeat(beat, kit));
+    const el = h(Sequence, { key: beat.beatId, from, durationInFrames }, renderBeat(beat, kit, width));
     from += durationInFrames;
     return el;
   });
@@ -78,19 +79,22 @@ export const BeatComposition: React.FC<BeatCompositionProps> = ({ beats, width, 
      * rendered inside `renderBeat` the way Satori's still does it — a still has
      * one beat and no timeline to be inconsistent across.
      */
-    kit.logoUrl ? logoOverlay(kit.logoUrl, width) : null,
+    kit.logoUrl && kit.watermark.enabled ? logoOverlay(kit.logoUrl, width, kit.watermark) : null,
   );
 };
 
 type ResolvedKit = ReturnType<typeof resolveKit>;
 
-function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
+function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.ReactElement {
+  // Absent on an `audio` beat, which has no frame to superimpose onto.
+  const lower = 'lowerThird' in beat && beat.lowerThird ? lowerThirdOverlay(beat.lowerThird, kit, width) : null;
   if (beat.kind === 'image') {
     return h(
       AbsoluteFill,
       null,
       h(Img, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
       beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
+      lower,
     );
   }
   if (beat.kind === 'video') {
@@ -99,6 +103,7 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
       null,
       h(Video, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
       beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
+      lower,
     );
   }
   if (beat.kind === 'audio') {
@@ -114,6 +119,7 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit): React.ReactElement {
       { style: { color: kit.type, fontSize: 64, fontFamily: kit.displayFont, textAlign: 'center', lineHeight: 1.3 } },
       beat.text,
     ),
+    lower,
   );
 }
 
@@ -141,12 +147,58 @@ function captionOverlay(caption: string, typeColor: string, bodyFont: string): R
   );
 }
 
-/** Bottom-left at 12% of frame width — same placement and reasoning as `satori-runner.ts`'s `logoNode`. */
-function logoOverlay(url: string, width: number): React.ReactElement {
+/**
+ * Bottom-left — same placement and reasoning as `satori-runner.ts`'s `logoNode`,
+ * which is also where the argument against making the corner configurable lives.
+ *
+ * Size and opacity now come from the brand's watermark settings rather than being
+ * fixed at 12% and fully opaque. The caller gates on `enabled`, so reaching this
+ * function already means a mark should be drawn.
+ */
+function logoOverlay(url: string, width: number, mark: Watermark): React.ReactElement {
   return h(
     AbsoluteFill,
     { style: { justifyContent: 'flex-end', alignItems: 'flex-start', padding: Math.round(width * 0.06) } },
-    h(Img, { src: url, style: { width: Math.round(width * 0.12) } }),
+    h(Img, { src: url, style: { width: Math.round(width * mark.scale), opacity: mark.opacity } }),
+  );
+}
+
+/**
+ * The lower-third — a superimposed line, stacked *above* the caption slot.
+ *
+ * Both live in the bottom region, and a lower-third that overlapped the caption
+ * would make each unreadable on any beat that has both. So the caption keeps its
+ * 96px inset and this sits at 200px, left-aligned rather than centred, which is
+ * what distinguishes a name plate from a subtitle at a glance.
+ *
+ * The accent bar is the one place a brand's third colour is used structurally
+ * rather than decoratively — it is what makes the strip read as the brand's
+ * rather than as a generic caption. Falls back to the type colour, so a brand
+ * with one colour still gets a bar rather than an invisible one.
+ */
+function lowerThirdOverlay(text: string, kit: ResolvedKit, width: number): React.ReactElement {
+  return h(
+    AbsoluteFill,
+    { style: { justifyContent: 'flex-end', alignItems: 'flex-start', paddingBottom: 200, paddingLeft: Math.round(width * 0.06) } },
+    h(
+      'div',
+      { style: { display: 'flex', alignItems: 'stretch', maxWidth: '82%' } },
+      h('div', { style: { width: 8, background: kit.accent ?? kit.type, flexShrink: 0 } }),
+      h(
+        'div',
+        {
+          style: {
+            color: kit.type,
+            fontSize: 36,
+            fontFamily: kit.displayFont,
+            background: 'rgba(12,12,12,0.62)',
+            padding: '14px 24px',
+            lineHeight: 1.2,
+          },
+        },
+        text,
+      ),
+    ),
   );
 }
 

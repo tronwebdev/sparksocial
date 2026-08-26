@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { AssetRole, Explanation, ToolError } from '@sparksocial/shared';
+import { MAX_LOWER_THIRD } from '@sparksocial/shared/brandKit';
 import type { Genome } from '@sparksocial/shared/genome';
 import { byId, type Playbook } from '@sparksocial/playbooks';
 import {
@@ -97,6 +98,20 @@ const beatShape = {
    * before it can widen.
    */
   voice: z.enum(['brand', 'stock']).optional(),
+  /**
+   * A superimposed line in the lower third of the frame — the Brand Kits
+   * screen's `Lower-Thirds` templates, applied to one scene.
+   *
+   * On the beat rather than on the post because the design applies a preset per
+   * scene ("Use This Brand Preset" sits inside the storyboard), and because a
+   * name plate that ran for the whole video would be wrong for every video: it
+   * names who is speaking *now*.
+   *
+   * Distinct from an asset's `caption`, which describes what is shown and is
+   * what retrieval matched on. The renderers stack them rather than sharing a
+   * slot — see `lowerThirdOverlay`.
+   */
+  lowerThird: z.string().min(1).max(MAX_LOWER_THIRD).optional(),
 };
 
 export const ResolvedBeat = z.discriminatedUnion('kind', [
@@ -556,11 +571,12 @@ export async function resolveBeat(
  */
 export function keepStructure(
   beat: ResolvedBeat,
-): { durationSec?: number; label?: string; voice?: 'brand' | 'stock' } {
+): { durationSec?: number; label?: string; voice?: 'brand' | 'stock'; lowerThird?: string } {
   return {
     ...(beat.durationSec !== undefined ? { durationSec: beat.durationSec } : {}),
     ...(beat.label !== undefined ? { label: beat.label } : {}),
     ...(beat.voice !== undefined ? { voice: beat.voice } : {}),
+    ...(beat.lowerThird !== undefined ? { lowerThird: beat.lowerThird } : {}),
   };
 }
 

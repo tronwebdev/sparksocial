@@ -28,5 +28,6 @@ export * from './salesAssist.js';
 export * from './campaignAutonomy.js';
 export * from './brandKitProgress.js';
 export * from './brandFonts.js';
+export * from './brandKit.js';
 export * from './agentIdentity.js';
 

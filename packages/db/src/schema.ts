@@ -11,6 +11,7 @@ import {
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
 import type { Autonomy } from '@sparksocial/shared/types';
 
@@ -660,6 +661,27 @@ export const brands = pgTable(
      * own defaults, which is what every brand rendered on before this column.
      */
     brandFonts: jsonb('brand_fonts').$type<{ display?: string; body?: string }>(),
+    /**
+     * `Activate Watermark` - the toggle the Brand Kits screen has always drawn
+     * over a setting that did not exist.
+     *
+     * Both renderers stamped `logo_url` onto every frame whenever it was set, so
+     * a brand could not have a logo without watermarking every post. Absent means
+     * `DEFAULT_WATERMARK` (enabled, full opacity, 12% of frame width), which is
+     * byte-for-byte what those renderers did before this column - no backfill,
+     * and no brand's output changes on deploy.
+     */
+    watermark: jsonb('watermark').$type<Watermark>(),
+    /**
+     * The Templates tabs: intro, outro, bumper, caption and lower-third presets.
+     *
+     * A flat array rather than a table because these are a small bounded list
+     * read whole on every governance fetch, never queried across brands, and
+     * never joined - the same shape and the same reasoning as `banned_phrases`
+     * above. See `packages/shared/src/brandKit.ts` for why a "template" here is a
+     * line of text and not a media file.
+     */
+    kitTemplates: jsonb('kit_templates').$type<KitTemplate[]>(),
 
     /**
      * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────

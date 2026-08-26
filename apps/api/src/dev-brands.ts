@@ -146,6 +146,14 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
         if (patch.toneVector === null) delete row.toneVector;
         else row.toneVector = patch.toneVector;
       }
+      if (patch.watermark !== undefined) {
+        if (patch.watermark === null) delete row.watermark;
+        else row.watermark = patch.watermark;
+      }
+      if (patch.kitTemplates !== undefined) {
+        if (patch.kitTemplates === null) delete row.kitTemplates;
+        else row.kitTemplates = patch.kitTemplates;
+      }
       if (patch.bannedPhrases !== undefined) {
         if (patch.bannedPhrases === null) delete row.bannedPhrases;
         else row.bannedPhrases = patch.bannedPhrases;

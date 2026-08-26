@@ -4,6 +4,7 @@ import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId, type Playbook } from '@sparksocial/playbooks';
 import { assertDraftDuration } from '@sparksocial/assemble';
 import { ResolvedBeat, labelFor } from './draft.js';
+import { MAX_LOWER_THIRD } from '@sparksocial/shared/brandKit';
 
 /**
  * THE SCENE TOOLS — `M5`'s storyboard, at the tool layer.
@@ -454,6 +455,74 @@ export const sceneVoice = defineTool({
           ? 'This scene now uses the post\'s default voice.'
           : `This scene will narrate in ${input.voice === 'brand' ? "the brand's own voice" : 'a stock voice'}.`,
       factors: [{ label: 'scene', detail: input.beatId }],
+      evidence: [],
+      alternatives: [],
+    };
+
+    return saveStrip(input, loaded, beats, why, ctx);
+  },
+});
+
+
+/* ── content.scene.lower_third ───────────────────────────────────────── */
+
+/**
+ * `SET-WS-BRAND-KITS`' `Lower-Thirds` templates, applied to one scene.
+ *
+ * The brand kit stores the lines; this puts one on a scene. Kept separate from
+ * `content.beat.update` — which edits what a beat *says* — because a lower-third
+ * is superimposed on top of whatever the beat already is: a talking-head scene
+ * keeps its script and gains a name plate. Folding the two together would mean a
+ * caption edit could silently clear an overlay, or the reverse.
+ *
+ * Not gated on the format having a duration. A still can carry a lower-third —
+ * `compose.static` draws one — so gating on video would remove the overlay from
+ * the one format where it is easiest to read.
+ */
+export const SceneLowerThirdInput = z.object({
+  ...SceneTarget,
+  beatId: z.string().min(1),
+  /** The line to superimpose. Null clears it, which is how the panel removes one. */
+  text: z.string().min(1).max(MAX_LOWER_THIRD).nullable(),
+});
+
+export const sceneLowerThird = defineTool({
+  name: 'content.scene.lower_third',
+  version: 1,
+
+  summary:
+    'Put a lower-third line on one scene — a superimposed name, role or point, usually chosen from the ' +
+    "brand kit's Lower-Thirds presets. Pass null to clear it. Leaves the scene's own text and media alone. Free.",
+
+  input: SceneLowerThirdInput,
+  output: SceneOutput,
+
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  // Setting an overlay to a given value replays safely to that same value.
+  idempotent: true,
+  surfaces: ['CC-02'],
+
+  async handler(input, ctx) {
+    const loaded = await loadStrip(input, ctx);
+    const at = indexOf(loaded.beats, input.beatId);
+
+    const beats = loaded.beats.map((b, i) => {
+      if (i !== at) return b;
+      if (input.text === null) {
+        const { lowerThird: _cleared, ...rest } = b;
+        return rest as ResolvedBeat;
+      }
+      return { ...b, lowerThird: input.text };
+    });
+
+    const why: Explanation = {
+      summary:
+        input.text === null
+          ? 'Cleared this scene\u2019s lower-third.'
+          : `Added a lower-third to this scene: \u201C${input.text}\u201D.`,
+      factors: [{ label: 'scene', detail: loaded.beats[at]!.label ?? input.beatId }],
       evidence: [],
       alternatives: [],
     };
