@@ -115,3 +115,24 @@ export interface PlaybookSummary {
 
 /** PRD/plan's fixed platform set — `@sparksocial/publish`'s `Platform` enum, retyped for the same reason as `ResolvedBeat`. */
 export const PLATFORMS = ['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts'] as const;
+
+/**
+ * A brand-kit Templates preset — mirrors `KitTemplate` in
+ * `packages/shared/src/brandKit.ts`, retyped here for the same reason as
+ * `ResolvedBeat`: `apps/web` may not import that package.
+ */
+export interface KitTemplate {
+  id: string;
+  category: 'intro' | 'outro' | 'bumper' | 'caption' | 'lower_third';
+  name: string;
+  text: string;
+}
+
+/** The storyboard badge an applied preset arrives with. */
+export const KIT_TEMPLATE_LABEL: Record<KitTemplate['category'], string> = {
+  intro: 'Intro',
+  outro: 'Outro',
+  bumper: 'Bumper',
+  caption: 'Caption',
+  lower_third: 'Lower-third',
+};

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
-import { keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -101,6 +101,18 @@ export function DraftPanel({
   const [sceneDescription, setSceneDescription] = useState('');
   const [sceneDuration, setSceneDuration] = useState('4');
   const [sceneTotal, setSceneTotal] = useState<number | null>(null);
+
+  /**
+   * The brand kit's Templates presets (`SET-WS-BRAND-KITS`), fetched once so
+   * `Use This Brand Preset` has something to offer.
+   *
+   * Read through `brand.governance.get` rather than a dedicated tool: the
+   * templates live on the brand row alongside the logo and palette, and adding a
+   * second reader for one field of the same record would be two things to keep
+   * in step. Null while loading, `[]` for a brand with none — the strip renders
+   * without the control in both cases.
+   */
+  const [kitTemplates, setKitTemplates] = useState<KitTemplate[] | null>(null);
   const [beatErrors, setBeatErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -177,6 +189,10 @@ export function DraftPanel({
     },
     [genomeId],
   );
+
+  useEffect(() => {
+    void loadKitTemplates();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -260,6 +276,14 @@ export function DraftPanel({
   /** Where scene `i` starts in the cut - the left edge of its `0:00-0:04` range. */
   function startOf(i: number): number {
     return (draft?.beats ?? []).slice(0, i).reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
+  }
+
+  async function loadKitTemplates() {
+    const res = await invoke<{ kitTemplates: KitTemplate[] }>('brand.governance.get', {});
+    // A failure here is not worth surfacing: the presets are a convenience, and
+    // an error banner about the brand kit on top of a draft would be noise about
+    // something the user did not ask for.
+    setKitTemplates(res.status === 'succeeded' ? res.output.kitTemplates : []);
   }
 
   async function createDraft() {
@@ -472,6 +496,63 @@ export function DraftPanel({
     }
     setDraft((d) => (d ? { ...d, beats: res.output.beats } : d));
     setSceneTotal(res.output.totalDurationSec);
+  }
+
+  /**
+   * `Use This Brand Preset` — the apply side of the Templates tabs.
+   *
+   * Each category routes to the tool that already does the job, which is why
+   * this is a switch and not a new capability:
+   *
+   *   intro / outro / bumper -> `content.scene.insert`, at the front, the end,
+   *                             or before the last scene respectively
+   *   caption                -> `content.beat.update`, replacing a scene's words
+   *   lower_third            -> `content.scene.lower_third`, superimposed
+   *
+   * `beatId` is required for the two that act on an existing scene and ignored
+   * by the three that create one.
+   */
+  async function applyTemplate(template: KitTemplate, beatId?: string) {
+    if (!draft || !genomeId || busyBeatId) return;
+
+    if (template.category === 'caption') {
+      if (!beatId) return;
+      await saveBeatText(beatId, template.text);
+      return;
+    }
+
+    if (template.category === 'lower_third') {
+      if (!beatId) return;
+      await runSceneTool('content.scene.lower_third', { beatId, text: template.text }, beatId);
+      return;
+    }
+
+    /**
+     * A default length for a line nobody has timed yet. Three seconds is the
+     * shortest beat any playbook in the library uses for a CTA, and a preset that
+     * arrives too long is easier to notice and fix than one that flashes past.
+     * The band check may still refuse it, and its message names the numbers.
+     */
+    const seconds = 3;
+    const last = draft.beats[draft.beats.length - 1];
+    const position =
+      template.category === 'intro'
+        ? {}
+        : template.category === 'outro'
+          ? { afterBeatId: last?.beatId }
+          : // A bumper goes before the final scene, so it does not become the
+            // sign-off. With one scene there is nowhere "before the end" to put
+            // it, so it opens instead of silently going last.
+            draft.beats.length > 1
+            ? { afterBeatId: draft.beats[draft.beats.length - 2]!.beatId }
+            : {};
+
+    await runSceneTool('content.scene.insert', {
+      description: template.text,
+      durationSec: seconds,
+      label: KIT_TEMPLATE_LABEL[template.category],
+      ...position,
+    });
   }
 
   async function addScene() {
@@ -1065,6 +1146,36 @@ export function DraftPanel({
                       </span>
                     ) : null}
                   </div>
+
+                  {/*
+                    Intros, outros and bumpers — the three categories that add a
+                    scene rather than change one. They belong here rather than on
+                    a row because the tool decides where the new scene goes
+                    (front, end, or before the last), and a per-row control would
+                    imply it lands next to that row.
+                  */}
+                  {(kitTemplates ?? []).some((t) => t.category !== 'caption' && t.category !== 'lower_third') ? (
+                    <select
+                      value=""
+                      disabled={busyBeatId !== null}
+                      onChange={(e) => {
+                        const chosen = (kitTemplates ?? []).find((t) => t.id === e.target.value);
+                        if (chosen) void applyTemplate(chosen);
+                        e.target.value = '';
+                      }}
+                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+                      aria-label="Add a scene from a brand preset"
+                    >
+                      <option value="">Add from a brand preset…</option>
+                      {(kitTemplates ?? [])
+                        .filter((t) => t.category !== 'caption' && t.category !== 'lower_third')
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {KIT_TEMPLATE_LABEL[t.category]}: {t.name}
+                          </option>
+                        ))}
+                    </select>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -1096,6 +1207,10 @@ export function DraftPanel({
                     onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
                     onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
                     onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
+                    templates={(kitTemplates ?? []).filter(
+                      (t) => t.category === 'caption' || t.category === 'lower_third',
+                    )}
+                    onApplyTemplate={(t, id) => void applyTemplate(t, id)}
                     onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
                     onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
                     onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { clock, DUBBABLE_BEAT_KINDS, type DraftView, type ResolvedBeat } from './types';
+import { clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
 
 /**
  * One beat, editor phase. What action(s) it offers depends on the draft's
@@ -36,6 +36,8 @@ export function BeatRow({
   onRemove,
   onMove,
   onSetVoice,
+  templates,
+  onApplyTemplate,
 }: {
   beat: ResolvedBeat;
   mediaType: DraftView['mediaType'];
@@ -62,6 +64,9 @@ export function BeatRow({
   onRemove: (beatId: string) => void;
   onMove: (beatId: string, toIndex: number) => void;
   onSetVoice: (beatId: string, voice: 'brand' | 'stock' | 'default') => void;
+  /** The brand kit's caption and lower-third presets. Empty hides the control. */
+  templates: KitTemplate[];
+  onApplyTemplate: (template: KitTemplate, beatId: string) => void;
 }) {
   const initialText =
     beat.kind === 'text'
@@ -270,6 +275,39 @@ export function BeatRow({
             <option value="default">Default voice</option>
             <option value="stock">Stock voice</option>
             <option value="brand">Your own voice</option>
+          </select>
+        ) : null}
+
+        {/*
+          `Use This Brand Preset`, for the two categories that act on a scene
+          that already exists. Intros, outros and bumpers create a scene, so they
+          live in the storyboard header instead — offering them per row would
+          imply the new scene lands next to this one, which is not what the tool
+          does.
+
+          A select rather than a row of chips: a brand may keep eight of each,
+          and sixteen buttons on every scene would bury the controls that change
+          the cut.
+        */}
+        {templates.length > 0 ? (
+          <select
+            value=""
+            disabled={busy}
+            onChange={(e) => {
+              const chosen = templates.find((t) => t.id === e.target.value);
+              if (chosen) onApplyTemplate(chosen, beat.beatId);
+              // Reset to the placeholder so the same preset can be applied twice.
+              e.target.value = '';
+            }}
+            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+            aria-label="Apply a brand preset to this scene"
+          >
+            <option value="">Use a brand preset…</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.category === 'caption' ? 'Caption' : 'Lower-third'}: {t.name}
+              </option>
+            ))}
           </select>
         ) : null}
 

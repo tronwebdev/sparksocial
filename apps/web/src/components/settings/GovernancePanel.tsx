@@ -83,6 +83,9 @@ interface Governance {
   logoUrl?: string;
   brandColors: string[];
   brandFonts?: { display?: string; body?: string };
+  /** `SET-WS-BRAND-KITS`' `Activate Watermark`. Always present on read — the tool resolves the default. */
+  watermark: { enabled: boolean; opacity: number; scale: number };
+  usingDefaultWatermark: boolean;
   timezone: string;
   postingWindows: number[];
   usingDefaultWindows: boolean;
@@ -111,6 +114,13 @@ export function GovernancePanel() {
   const [logoUrl, setLogoUrl] = useState('');
   const [brandColors, setBrandColors] = useState<string[]>([]);
   const [brandFonts, setBrandFonts] = useState<{ display?: string; body?: string }>({});
+  /**
+   * The watermark, held as a whole object because the three fields are one
+   * decision: a brand that turns the mark off has no opinion about its opacity,
+   * and one that dials it back to 30% has necessarily turned it on.
+   */
+  const [watermark, setWatermark] = useState({ enabled: true, opacity: 1, scale: 0.12 });
+  const [usingDefaultWatermark, setUsingDefaultWatermark] = useState(true);
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const logoInput = useRef<HTMLInputElement>(null);
@@ -136,6 +146,8 @@ export function GovernancePanel() {
       setLogoUrl(g.logoUrl ?? '');
       setBrandColors(g.brandColors);
       setBrandFonts(g.brandFonts ?? {});
+      setWatermark(g.watermark);
+      setUsingDefaultWatermark(g.usingDefaultWatermark);
     })();
   }, []);
 
@@ -231,12 +243,21 @@ export function GovernancePanel() {
       // choice, so it clears the column rather than storing `{}` — which would
       // read as configured to `brandKitProgress` and tick a box nobody ticked.
       brandFonts: brandFonts.display ?? brandFonts.body ? brandFonts : null,
+      /**
+       * `null` while the brand has never touched it, for the same reason as the
+       * posting windows above: sending the resolved default back would convert
+       * "no preference" into a choice, and the default could then never move.
+       * Any edit flips `usingDefaultWatermark` false and the object goes.
+       */
+      watermark: usingDefaultWatermark ? null : watermark,
     });
 
     setBusy(false);
     if (res.status === 'succeeded') {
       setUsingDefaultWindows(res.output.usingDefaultWindows);
       setWindows(res.output.postingWindows);
+      setUsingDefaultWatermark(res.output.usingDefaultWatermark);
+      setWatermark(res.output.watermark);
       setMessage({ kind: 'ok', text: 'Saved.' });
       return;
     }
@@ -510,6 +531,78 @@ export function GovernancePanel() {
                 alt="Brand logo"
                 className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
               />
+            ) : null}
+
+            {/*
+              `Activate Watermark`, next to the logo because that is what it acts
+              on. Until 25 August this toggle existed only in the design: both
+              renderers stamped the logo onto every frame whenever one was set,
+              so there was no way to have a brand logo — which onboarding asks
+              for — without watermarking every post.
+
+              Only shown when there is a logo. A watermark control above an empty
+              logo field is a switch wired to nothing.
+            */}
+            {logoUrl ? (
+              <div className="mt-3 rounded-lg border border-border p-3">
+                <label className="flex items-center gap-2 text-[13px] text-ink">
+                  <input
+                    type="checkbox"
+                    checked={watermark.enabled}
+                    onChange={(e) => {
+                      setUsingDefaultWatermark(false);
+                      setWatermark({ ...watermark, enabled: e.target.checked });
+                    }}
+                    className="h-4 w-4"
+                  />
+                  Stamp the logo on rendered posts
+                </label>
+                <p className="mt-1 text-[12px] text-ink-muted">
+                  Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
+                  everything else &mdash; it only stops the mark appearing on images and video.
+                </p>
+
+                {watermark.enabled ? (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-opacity">
+                        Opacity &mdash; {Math.round(watermark.opacity * 100)}%
+                      </label>
+                      <input
+                        id="gov-wm-opacity"
+                        type="range"
+                        min={15}
+                        max={100}
+                        step={5}
+                        value={Math.round(watermark.opacity * 100)}
+                        onChange={(e) => {
+                          setUsingDefaultWatermark(false);
+                          setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
+                        }}
+                        className="mt-1.5 w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-scale">
+                        Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
+                      </label>
+                      <input
+                        id="gov-wm-scale"
+                        type="range"
+                        min={4}
+                        max={30}
+                        step={1}
+                        value={Math.round(watermark.scale * 100)}
+                        onChange={(e) => {
+                          setUsingDefaultWatermark(false);
+                          setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
+                        }}
+                        className="mt-1.5 w-full"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>

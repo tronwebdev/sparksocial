@@ -1,4 +1,5 @@
 import { GovernancePanel } from '@/components/settings/GovernancePanel';
+import { BrandTemplatesPanel } from '@/components/settings/BrandTemplatesPanel';
 import { KnowledgePanel } from '@/components/settings/KnowledgePanel';
 import { OfferPanel } from '@/components/settings/OfferPanel';
 import { ConsentPanel } from '@/components/settings/ConsentPanel';
@@ -21,6 +22,12 @@ export default function BrandKitSettings() {
   return (
     <>
       <GovernancePanel />
+      {/*
+        Straight after governance, because the watermark control lives there and
+        these are the other half of the same screen: governance decides how a
+        post looks, templates decide the lines it reuses.
+      */}
+      <BrandTemplatesPanel />
       <KnowledgePanel />
       <OfferPanel />
       <ConsentPanel />
