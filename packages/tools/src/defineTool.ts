@@ -153,6 +153,8 @@ export interface ScopedDb {
       embedding: number[];
       requiredRoles?: AssetRole[];
       k: number;
+      /** Rows to skip — `LIB-02`'s pagination. */
+      offset?: number;
     }): Promise<
       Array<{
         assetId: string;
@@ -165,6 +167,10 @@ export interface ScopedDb {
         url: string;
         mediaType: string;
         folderId: string | null;
+        /** Null on any row uploaded before `assets.filename` existed. */
+        filename: string | null;
+        sizeBytes: number | null;
+        createdAt: Date;
       }>
     >;
     /** §4.1 ingest — the only way a new asset enters the graph. */
@@ -178,6 +184,9 @@ export interface ScopedDb {
       caption: string;
       embedding: number[];
       source: string;
+      /** The owner's own filename and size, when the upload path knew them. */
+      filename?: string;
+      sizeBytes?: number;
     }): Promise<{ id: string }>;
     /** Concatenatable grounding text for `guard.claim_grounding` (§10). */
     captionsByRole(genomeId: string, orgId: string, roles: AssetRole[]): Promise<string[]>;
@@ -221,6 +230,33 @@ export interface ScopedDb {
       orgId: string;
       folderId: string | null;
     }): Promise<{ id: string; folderId: string | null } | undefined>;
+  /**
+   * Archive or restore one asset — the Assets Library's remove action.
+   *
+   * Not a delete: a published post stores `assetId` in its beats, so removing the
+   * row would break the render of something already live. See `assets.archivedAt`
+   * in the schema.
+   */
+  setArchived(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    archived: boolean;
+  }): Promise<{ id: string; archivedAt: Date | null } | undefined>;
+  /**
+   * Edit an asset's caption, re-embedding it.
+   *
+   * The caption is what gets embedded, so it *is* the asset as far as retrieval
+   * is concerned — editing it without re-embedding would show new words while the
+   * graph kept matching on the old ones. The embedding is computed by the tool.
+   */
+  setCaption(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    caption: string;
+    embedding: number[];
+  }): Promise<{ id: string; caption: string | null } | undefined>;
   };
   /** Named groupings for assets — `asset.folder.create`/`.move` (the latter lives on `assets`, since it writes that table). See {@link AssetFolderStore}. */
   assetFolders: AssetFolderStore;

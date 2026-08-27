@@ -96,6 +96,18 @@ export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
       /** 'cleared' only when consent/licensing is already confirmed; else 'pending'. */
       rightsStatus: z.enum(['cleared', 'pending', 'restricted']).default('pending'),
       source: z.string().optional(),
+      /**
+       * The name and size of the owner's own file, carried through from
+       * `asset.upload_url`.
+       *
+       * Both were being validated there and thrown away, so `LIB-02`'s `Assets`
+       * column, its grid labels and every size figure on the screen had no
+       * source. Optional because an asset can also arrive from a URL nobody
+       * uploaded — a generated image, a Drive link — and inventing a filename for
+       * one of those would be worse than showing the caption instead.
+       */
+      filename: z.string().min(1).max(255).optional(),
+      sizeBytes: z.number().int().positive().optional(),
     }),
     output: AssetIngestUrlOutput,
 
@@ -126,6 +138,8 @@ export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
         caption,
         embedding,
         source: input.source ?? 'ingest_url',
+        ...(input.filename ? { filename: input.filename } : {}),
+        ...(input.sizeBytes ? { sizeBytes: input.sizeBytes } : {}),
       });
 
       ctx.logger.info('asset ingested', { genomeId: input.genomeId, assetId: asset.id, role: input.assetRole });

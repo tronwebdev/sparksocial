@@ -43,6 +43,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setRights: async () => undefined,
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
+        setArchived: async () => undefined,
+        setCaption: async () => undefined,
       },
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
@@ -298,6 +300,9 @@ describe('asset.retrieve', () => {
         url: 'https://example.com/a1.jpg',
         mediaType: 'image',
         folderId: null,
+        filename: 'kitchen-before.jpg',
+        sizeBytes: 482_311,
+        createdAt: new Date('2026-08-01T09:00:00Z'),
       },
     ]);
     const tool = makeAssetRetrieve({ embed });

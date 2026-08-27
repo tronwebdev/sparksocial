@@ -18,7 +18,7 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
       return scoped.assetInventory(db, { orgId, brandId: orgId, genomeId });
     },
 
-    async retrieve({ genomeId, orgId, embedding, requiredRoles, k }) {
+    async retrieve({ genomeId, orgId, embedding, requiredRoles, k, offset }) {
       // `ScopedDb.assets.retrieve` (defineTool.ts) has no `brandId` parameter —
       // asset tools are only ever handed `genomeId`/`orgId` from `ToolCtx` — and
       // `scopePredicate` never reads `brandId` for these tables (none of the four
@@ -30,14 +30,18 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
       // through end-to-end is a reasonable follow-up, not required for this call
       // to be correct today.
       const scope: Scope = { orgId, brandId: orgId, genomeId };
-      return scoped.retrieveAssets(db, scope, { intent: '', embedding, requiredRoles, k });
+      return scoped.retrieveAssets(db, scope, { intent: '', embedding, requiredRoles, k, ...(offset ? { offset } : {}) });
     },
 
-    async create({ genomeId, orgId, url, assetRole, mediaType, rightsStatus, caption, embedding, source }) {
+    async create({ genomeId, orgId, url, assetRole, mediaType, rightsStatus, caption, embedding, source, filename, sizeBytes }) {
       return scoped.createAsset(
         db,
         { orgId, brandId: orgId, genomeId },
-        { url, assetRole, mediaType, rightsStatus, caption, embedding, source },
+        {
+          url, assetRole, mediaType, rightsStatus, caption, embedding, source,
+          ...(filename ? { filename } : {}),
+          ...(sizeBytes ? { sizeBytes } : {}),
+        },
       );
     },
 
@@ -47,6 +51,14 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
 
     async info(ids, genomeId, orgId) {
       return scoped.assetInfo(db, { orgId, brandId: orgId, genomeId }, ids);
+    },
+
+    async setArchived({ id, genomeId, orgId, archived }) {
+      return scoped.setAssetArchived(db, { orgId, brandId: orgId, genomeId }, { id, archived });
+    },
+
+    async setCaption({ id, genomeId, orgId, caption, embedding }) {
+      return scoped.setAssetCaption(db, { orgId, brandId: orgId, genomeId }, { id, caption, embedding });
     },
 
     async setRights({ id, genomeId, orgId, rightsStatus }) {

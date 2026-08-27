@@ -77,6 +77,11 @@ interface AssetRow {
   source: string;
   url: string;
   folderId: string | null;
+  /** Mirrors `assets.filename` / `size_bytes` / `archived_at` — see the schema for why each exists. */
+  filename?: string;
+  sizeBytes?: number;
+  archivedAt?: Date | null;
+  createdAt?: Date;
 }
 
 interface AssetFolderRow {
@@ -402,15 +407,20 @@ export function createDevStore(
         return counts;
       },
 
-      async retrieve({ genomeId, orgId: org, embedding, requiredRoles, k }) {
+      async retrieve({ genomeId, orgId: org, embedding, requiredRoles, k, offset }) {
         const now = new Date();
         const pool = [...assets.values()].filter(
           (a) =>
             a.genomeId === genomeId &&
             a.orgId === org &&
             a.rightsStatus === 'cleared' &&
+            // Archived assets leave retrieval, matching the scoped query's own
+            // filter — a dev store that returned them would let the Assemble
+            // planner behave differently here than in production.
+            !a.archivedAt &&
             (!requiredRoles?.length || requiredRoles.includes(a.role)),
         );
+        const from = offset ?? 0;
         return pool
           .map((a) => ({
             assetId: a.id,
@@ -423,12 +433,15 @@ export function createDevStore(
             url: a.url,
             mediaType: a.mediaType,
             folderId: a.folderId,
+            filename: a.filename ?? null,
+            sizeBytes: a.sizeBytes ?? null,
+            createdAt: a.createdAt ?? now,
           }))
           .sort((x, y) => y.score - x.score)
-          .slice(0, k);
+          .slice(from, from + k);
       },
 
-      async create({ genomeId, orgId: org, url, assetRole, mediaType, rightsStatus, caption, embedding, source }) {
+      async create({ genomeId, orgId: org, url, assetRole, mediaType, rightsStatus, caption, embedding, source, filename, sizeBytes }) {
         const id = randomUUID();
         assets.set(id, {
           id,
@@ -444,6 +457,10 @@ export function createDevStore(
           source,
           url,
           folderId: null,
+          ...(filename ? { filename } : {}),
+          ...(sizeBytes ? { sizeBytes } : {}),
+          archivedAt: null,
+          createdAt: new Date(),
         });
         return { id };
       },
@@ -483,6 +500,24 @@ export function createDevStore(
         a.usageCount += 1;
         a.lastUsedAt = new Date();
         return { id, usageCount: a.usageCount, lastUsedAt: a.lastUsedAt };
+      },
+
+      async setArchived({ id, genomeId, orgId: org, archived }) {
+        const row = assets.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        row.archivedAt = archived ? new Date() : null;
+        return { id, archivedAt: row.archivedAt };
+      },
+
+      async setCaption({ id, genomeId, orgId: org, caption, embedding }) {
+        const row = assets.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        // Both, together: the caption is what gets embedded, so a store that
+        // updated one without the other would let the library and the graph
+        // disagree about what an asset says.
+        row.caption = caption;
+        row.embedding = embedding;
+        return { id, caption: row.caption };
       },
 
       async moveToFolder({ id, genomeId, orgId: org, folderId }) {

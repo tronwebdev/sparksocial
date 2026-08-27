@@ -41,6 +41,39 @@ export const assets = pgTable(
     /** AssetRole from @sparksocial/shared — typed at the repository boundary. */
     assetRole: text('asset_role').notNull(),
     storagePath: text('storage_path').notNull(), // Azure Blob Storage
+    /**
+     * The name the owner's file had when they uploaded it.
+     *
+     * `buildKey` writes `{orgId}/{genomeId}/{yyyy}/{mm}/{uuid}.{ext}`, so the
+     * original name was discarded at the door — and `asset.upload_url` has always
+     * *accepted* a `filename`, validated it, and thrown it away. Every filename
+     * the Assets Library prototype draws (the `Assets` column, the grid card
+     * labels, the upload queue, the preview title) had no source.
+     *
+     * Nullable because every row written before this column has no name to
+     * recover; the library falls back to the caption, then to the role.
+     */
+    filename: text('filename'),
+    /**
+     * Bytes, as reported at upload.
+     *
+     * Same story: `asset.upload_url` validated `sizeBytes` against its 512MB
+     * ceiling and did not persist it, so every size figure on that screen — per
+     * asset, per folder, and the upload progress denominator — had nothing behind
+     * it. Nullable for the same reason as `filename`.
+     */
+    sizeBytes: integer('size_bytes'),
+    /**
+     * When this asset was archived, if it was.
+     *
+     * `asset.archive` rather than a delete, decided 27 August. A published post
+     * stores `assetId` in its beats and `zipTimeline` throws `NOT_FOUND` when the
+     * asset is gone, so a hard delete would break the render of posts already
+     * live. Archiving takes the asset out of retrieval and out of the library and
+     * leaves both the row and the blob, so anything already referencing it still
+     * renders, and the decision is reversible.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     muxId: text('mux_id'),
     caption: text('caption'),
     embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),

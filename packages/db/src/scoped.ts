@@ -59,6 +59,8 @@ export interface RetrieveArgs {
   k?: number;
   /** Days since last use below which an asset is penalised, not excluded. */
   cooldownDays?: number;
+  /** Rows to skip — `LIB-02`'s pagination. See the note on `.offset` in `retrieveAssets`. */
+  offset?: number;
 }
 
 /**
@@ -104,6 +106,16 @@ export function buildRetrieveQuery(scope: Scope, args: RetrieveArgs) {
     where: and(
       scopePredicate('assets', scope),          // ← non-negotiable
       eq(assets.rightsStatus, 'cleared'),
+      /**
+       * Archived assets are out of the graph as far as retrieval is concerned.
+       *
+       * Here rather than in the tool, for the same reason the rights filter is
+       * here: `assemble.plan` must never be handed an archived asset to put in a
+       * beat, and a filter a caller can forget is a filter that will be forgotten.
+       * The row and the blob survive, so a post that already references one still
+       * renders — see `assets.archivedAt`.
+       */
+      isNull(assets.archivedAt),
       // `inArray` binds each role as a parameter — no string-built SQL. An
       // earlier version spliced `requiredRoles` into an `ARRAY[...]` literal via
       // `sql.raw`; every current caller validates roles against the `AssetRole`
@@ -113,6 +125,7 @@ export function buildRetrieveQuery(scope: Scope, args: RetrieveArgs) {
     ),
     score: sql<number>`${similarity} - ${recencyPenalty} - ${diversityPenalty}`,
     limit: k,
+    offset: args.offset ?? 0,
   };
 }
 
@@ -165,6 +178,12 @@ export async function retrieveAssets(
     url: string;
     mediaType: string;
     folderId: string | null;
+    /** `LIB-02`'s `Assets` column and grid labels. Null on a row uploaded before the column existed. */
+    filename: string | null;
+    /** `LIB-02`'s size figures. Null for the same reason. */
+    sizeBytes: number | null;
+    /** `LIB-02`'s `Date Uploaded` column and its date sort. */
+    createdAt: Date;
   }>
 > {
   const q = buildRetrieveQuery(scope, args);
@@ -180,11 +199,23 @@ export async function retrieveAssets(
       url: assets.storagePath,
       mediaType: assets.mediaType,
       folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
     })
     .from(assets)
     .where(q.where)
     .orderBy(sql`${q.score} DESC`)
-    .limit(q.limit);
+    .limit(q.limit)
+    /**
+     * Offset paging, for `LIB-02`'s `Page 1 of 4`.
+     *
+     * Offset rather than a cursor because the ordering is a *computed score*, not
+     * a stable column — there is nothing to key a cursor on. That makes it
+     * unstable under concurrent writes, which is acceptable for a media library
+     * somebody is browsing and would not be for a feed.
+     */
+    .offset(q.offset);
 
   return rows.map((r) => ({ ...r, role: r.role as AssetRole }));
 }
@@ -197,6 +228,9 @@ export interface CreateAssetArgs {
   caption: string;
   embedding: number[];
   source: string;
+  /** The owner's own filename, when the upload path knew it. */
+  filename?: string;
+  sizeBytes?: number;
 }
 
 /** §4.1: the only way a new asset enters the graph. */
@@ -214,9 +248,61 @@ export async function createAsset(db: Database, scope: Scope, args: CreateAssetA
       embedding: args.embedding,
       rightsStatus: args.rightsStatus,
       source: args.source,
+      ...(args.filename ? { filename: args.filename } : {}),
+      ...(args.sizeBytes ? { sizeBytes: args.sizeBytes } : {}),
     })
     .returning({ id: assets.id });
   return row!;
+}
+
+/**
+ * Archive or restore one asset.
+ *
+ * Not a delete. A published post stores `assetId` in its beats and `zipTimeline`
+ * throws `NOT_FOUND` when the asset is missing, so removing the row would break
+ * the render of something already live. `archived_at` takes it out of retrieval
+ * (see `buildRetrieveQuery`) and out of the library while leaving both the row
+ * and the blob, so the decision is reversible and nothing already published
+ * changes.
+ *
+ * Returns undefined when the id is out of scope, so a caller cannot learn that an
+ * asset exists in another genome by archiving it.
+ */
+export async function setAssetArchived(
+  db: Database,
+  scope: Scope,
+  args: { id: string; archived: boolean },
+): Promise<{ id: string; archivedAt: Date | null } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(assets)
+    .set({ archivedAt: args.archived ? sql`now()` : null })
+    .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
+    .returning({ id: assets.id, archivedAt: assets.archivedAt });
+  return row;
+}
+
+/**
+ * Edit an asset's caption — PRD §8.11's "list view supports metadata editing".
+ *
+ * The caption is not decoration: it is the text that gets embedded, so it *is*
+ * the asset as far as retrieval is concerned. Editing it therefore has to
+ * re-embed, or the library would show new words while the graph kept matching on
+ * the old ones. The embedding is computed by the caller (the tool holds the
+ * `EmbedClient`) and passed in, so this module stays free of vendor clients.
+ */
+export async function setAssetCaption(
+  db: Database,
+  scope: Scope,
+  args: { id: string; caption: string; embedding: number[] },
+): Promise<{ id: string; caption: string | null } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(assets)
+    .set({ caption: args.caption, embedding: args.embedding })
+    .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
+    .returning({ id: assets.id, caption: assets.caption });
+  return row;
 }
 
 /** Concatenatable grounding text for `guard.claim_grounding` (§10). */

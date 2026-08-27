@@ -77,6 +77,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setRights: async () => undefined,
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
+        setArchived: async () => undefined,
+        setCaption: async () => undefined,
       },
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },

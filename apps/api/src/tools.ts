@@ -15,6 +15,8 @@ import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { playbookList, playbookGet, playbookExplain } from '@sparksocial/playbooks/browse';
 import {
   makeAssetRetrieve,
+  assetArchive,
+  makeAssetCaptionSet,
   assetGaps,
   makeAssetIngestUrl,
   makeAssetUploadUrl,
@@ -346,6 +348,10 @@ export function registerAlphaTools(): void {
     ),
   );
   register(makeAssetRetrieve(embed));
+  // LIB-02's two per-row actions: the trash icon (an archive, not a delete) and
+  // the editable meta description. See packages/assetgraph/src/manage.ts.
+  register(assetArchive);
+  register(makeAssetCaptionSet(embed));
   register(assetGaps);
   register(assetRightsSet);
   register(assetReuse);

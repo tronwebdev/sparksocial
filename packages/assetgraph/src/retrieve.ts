@@ -32,6 +32,14 @@ export const AssetRetrieveInput = z.object({
     })
     .optional(),
   k: z.number().int().min(1).max(50).default(8),
+  /**
+   * Rows to skip — `LIB-02`'s `Page 1 of 4`.
+   *
+   * Offset rather than a cursor because the ordering is a computed score with no
+   * stable column to key on. Unstable under concurrent writes, which is fine for
+   * a library somebody is browsing and would not be for a feed.
+   */
+  offset: z.number().int().min(0).max(5_000).optional(),
 });
 
 const RetrievedAsset = z.object({
@@ -54,6 +62,18 @@ const RetrievedAsset = z.object({
    */
   url: z.string(),
   mediaType: z.string(),
+  /**
+   * The three fields `LIB-02` draws and had no source for.
+   *
+   * `filename` and `sizeBytes` are null on any row uploaded before those columns
+   * existed — `asset.upload_url` accepted both and discarded them — so the
+   * library falls back to the caption for a name and shows nothing for a size
+   * rather than inventing one.
+   */
+  filename: z.string().nullable(),
+  sizeBytes: z.number().nullable(),
+  /** `Date Uploaded`, and what the date sort sorts on. */
+  createdAt: z.string(),
 });
 
 export const AssetRetrieveOutput = z.object({
@@ -102,6 +122,7 @@ export function makeAssetRetrieve(deps: EmbedClient) {
         embedding,
         requiredRoles: input.requiredRoles,
         k: input.k,
+        ...(input.offset ? { offset: input.offset } : {}),
       });
 
       ctx.logger.info('assets retrieved', { genomeId: input.genomeId, intent: input.intent, count: results.length });
@@ -118,6 +139,9 @@ export function makeAssetRetrieve(deps: EmbedClient) {
           folderId: r.folderId,
           url: r.url,
           mediaType: r.mediaType,
+          filename: r.filename,
+          sizeBytes: r.sizeBytes,
+          createdAt: r.createdAt.toISOString(),
         })),
         why: {
           summary:
