@@ -13,6 +13,7 @@ import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
 import { MixBar, type MixSlice } from './MixBar';
+import { DayActionSheet } from './DayActionSheet';
 import { pillarStyle } from './pillars';
 import { CampaignReportPanel } from './CampaignReportPanel';
 
@@ -108,6 +109,18 @@ export function CalendarBoard() {
     open: false,
   });
   const [undo, setUndo] = useState<{ slotId: string; from: string; label: string } | null>(null);
+  /**
+   * Which day's action sheet is open — `F9`/`CAL-07`.
+   *
+   * Clicking an empty day used to open the Draft Panel's trigger phase directly,
+   * which asks *you* what the post should be. That is the inverse of the design,
+   * where the agent proposes. The sheet sits in front of that route rather than
+   * replacing it: "create something specific" is still there, and is now one of
+   * three answers instead of the only one.
+   */
+  const [daySheet, setDaySheet] = useState<string | null>(null);
+  /** Calendar grid or a flat list — `CAL-08`. */
+  const [layout, setLayout] = useState<'calendar' | 'list'>('calendar');
   const [mixPreview, setMixPreview] = useState<MixImpactPreview | null>(null);
   /** §8.7's three filters. `all` rather than an empty string so the select's value is never ambiguous. */
   const [filters, setFilters] = useState<SlotFilterState>({ status: 'all', platform: 'all', mediaType: 'all' });
@@ -256,6 +269,61 @@ export function CalendarBoard() {
       });
     },
     [draftPanel.pinDate, genome],
+  );
+
+  /**
+   * Accepting the agent's suggestion: draft the named format straight onto the
+   * day, then schedule it.
+   *
+   * Two calls rather than one because there is no tool that does both — and there
+   * should not be: `content.draft` writes copy and `content.schedule` sets a date,
+   * and a combined tool would have to decide what to do when the second half
+   * fails after the first has already spent a model call.
+   */
+  const acceptRecommendation = useCallback(
+    async (day: string, playbookId: string) => {
+      if (!genome || !view) return;
+      const drafted = await invoke<{ contentItemId: string }>(
+        'content.draft',
+        { genomeId: genome.genomeId, playbookId, intent: '' },
+        crypto.randomUUID(),
+      );
+      if (drafted.status !== 'succeeded') {
+        setError(drafted.status === 'failed' ? drafted.error.message : 'That draft was gated.');
+        return;
+      }
+      const scheduled = await invoke('content.schedule', {
+        contentItemId: drafted.output.contentItemId,
+        genomeId: genome.genomeId,
+        scheduledAt: `${day}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
+      });
+      if (scheduled.status !== 'succeeded') {
+        // The draft exists and is unscheduled, which is a real and recoverable
+        // state — it shows up in the Drafts list. Said plainly rather than
+        // reported as "failed", which would imply nothing happened.
+        setError('Drafted, but could not place it on that day. It is in your drafts.');
+      }
+      await reload(view.campaignId);
+    },
+    [genome, view, reload],
+  );
+
+  /** Accepting the move suggestion — the same reschedule a drag performs. */
+  const acceptMove = useCallback(
+    async (day: string, contentItemId: string) => {
+      if (!genome || !view) return;
+      const res = await invoke('content.schedule', {
+        contentItemId,
+        genomeId: genome.genomeId,
+        scheduledAt: `${day}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
+      });
+      if (res.status !== 'succeeded') {
+        setError(res.status === 'failed' ? res.error.message : 'That move was gated.');
+        return;
+      }
+      await reload(view.campaignId);
+    },
+    [genome, view, reload],
   );
 
   const moveSlot = useCallback(
@@ -423,15 +491,62 @@ export function CalendarBoard() {
         </div>
       ) : null}
 
-      <SlotFilters slots={view.slots} value={filters} onChange={setFilters} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SlotFilters slots={view.slots} value={filters} onChange={setFilters} />
+        {/*
+          `CAL-08`'s calendar-versus-list toggle. The list is not a lesser view:
+          a month grid answers "what is this week shaped like" and a list answers
+          "what is next", and the second question is the one somebody with 40
+          scheduled posts is actually asking.
+        */}
+        <div className="flex shrink-0 items-center gap-1 rounded border border-border p-0.5">
+          {(['calendar', 'list'] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLayout(l)}
+              className={`rounded px-3 py-1.5 text-[13px] capitalize ${
+                layout === l ? 'bg-ink text-surface' : 'text-ink-muted'
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {layout === 'list' ? (
+        <SlotList
+          slots={visibleSlots}
+          onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
+        />
+      ) : (
       <MonthGrid
         slots={visibleSlots}
         busy={busy}
-        onAddToDay={openTriggerFor}
+        onAddToDay={(day) => setDaySheet(day)}
         onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
         onDropSlot={(slot, day) => void moveSlot(slot, day)}
       />
+      )}
+
+      {/*
+        `F9`'s day action sheet. Mounted here rather than inside the grid so it
+        can reach `reload` and the draft panel — accepting a suggestion writes a
+        draft and a date, and both belong to the board, not to a cell.
+      */}
+      {daySheet && view ? (
+        <DayActionSheet
+          day={daySheet}
+          campaignId={view.campaignId}
+          genomeId={genome?.genomeId ?? ''}
+          open
+          onClose={() => setDaySheet(null)}
+          onCreateSpecific={openTriggerFor}
+          onAcceptCreate={(day, playbookId) => void acceptRecommendation(day, playbookId)}
+          onAcceptMove={(day, contentItemId) => void acceptMove(day, contentItemId)}
+        />
+      ) : null}
 
       <DraftPanel
         genomeId={genome?.genomeId}
@@ -713,5 +828,75 @@ function filterSlots(slots: Slot[], f: SlotFilterState): Slot[] {
       (f.status === 'all' || s.status === f.status) &&
       (f.platform === 'all' || (s.platform ?? UNSET) === f.platform) &&
       (f.mediaType === 'all' || (s.mediaType ?? UNSET) === f.mediaType),
+  );
+}
+
+/**
+ * The flat, chronological view — `CAL-08`.
+ *
+ * Ordered soonest-first and grouped by day, with unscheduled slots last rather
+ * than dropped: a slot with a status and no date is a real state (a placement
+ * that never got a time), and hiding it here would make it findable only in the
+ * grid's `Unscheduled` column, which is the one place nobody scrolls to.
+ */
+function SlotList({
+  slots,
+  onOpenSlot,
+}: {
+  slots: Slot[];
+  onOpenSlot: (id: string) => void;
+}) {
+  const dated = slots
+    .filter((s) => Boolean(s.scheduledAt))
+    .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!));
+  const undated = slots.filter((s) => !s.scheduledAt);
+
+  if (slots.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-[13px] text-ink-muted">
+        Nothing matches those filters.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <ul className="grid grid-cols-1">
+        {[...dated, ...undated].map((slot) => {
+          const style = pillarStyle(slot.pillar);
+          return (
+            <li key={slot.id} className="border-b border-border last:border-b-0">
+              <button
+                type="button"
+                onClick={() => onOpenSlot(slot.id)}
+                className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface-muted"
+              >
+                <span className="w-[7.5rem] shrink-0 text-[13px] tabular-nums text-ink-muted">
+                  {slot.scheduledAt
+                    ? new Date(slot.scheduledAt).toLocaleDateString('en', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })
+                    : 'Unscheduled'}
+                </span>
+                <span className="min-w-0 flex-1 text-[14px] text-ink">
+                  {slot.playbookName ?? slot.playbookId ?? 'Post'}
+                </span>
+                <span className={cn('shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium', style.chip)}>
+                  {style.label}
+                </span>
+                {slot.platform ? (
+                  <span className="shrink-0 text-[12px] capitalize text-ink-muted">
+                    {slot.platform.replace('_', ' ')}
+                  </span>
+                ) : null}
+                <span className="shrink-0 text-[12px] capitalize text-ink-muted">{slot.status}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
