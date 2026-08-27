@@ -45,6 +45,22 @@ const ContentListItem = z.object({
    */
   variantGroupId: z.string().optional(),
   variantLabel: z.string().optional(),
+  /**
+   * Why this post is not moving — set when `status` is `blocked` or `needs_review`.
+   *
+   * On the list row, not only on `content.get`, because a list that can show the
+   * badge and not the cause makes somebody open every stalled item to find out
+   * which one matters. Same column both states use, as `markContentBlocked`'s own
+   * comment explains: both answer the question a person opening a stalled item
+   * asks.
+   */
+  blockedReason: z.string().optional(),
+  /**
+   * Failed publish attempts. Present so a list can distinguish "held for review"
+   * from "tried five times and gave up", which read very differently to whoever
+   * has to act on it.
+   */
+  publishAttempts: z.number().optional(),
 });
 
 export const ContentListOutput = z.object({ items: z.array(ContentListItem) });
@@ -91,6 +107,8 @@ export const contentList = defineTool({
           createdAt: r.createdAt.toISOString(),
           ...(r.variantGroupId ? { variantGroupId: r.variantGroupId } : {}),
           ...(r.variantLabel ? { variantLabel: r.variantLabel } : {}),
+      ...(r.blockedReason ? { blockedReason: r.blockedReason } : {}),
+      ...(r.publishAttempts ? { publishAttempts: r.publishAttempts } : {}),
         };
       }),
     };

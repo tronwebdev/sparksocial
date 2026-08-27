@@ -53,6 +53,9 @@ interface PlanItem {
   summary: string;
   scheduledAt?: string;
   createdAt: string;
+  /** Why it stopped — `content.list` carries this as of `5.5`. */
+  blockedReason?: string;
+  publishAttempts?: number;
 }
 
 /** `content.list`'s own placeholder for a slot with no written beats yet. */
@@ -70,16 +73,33 @@ const ALL = '__all__';
 /** How many upcoming posts is a queue, past which it is a calendar. */
 const SHOWN = 8;
 
-export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
+export function PlanQueue({
+  genomeId,
+  onOpen,
+}: {
+  genomeId: string | undefined;
+  /**
+   * Opens one post in the Draft Panel.
+   *
+   * Added for `5.5`. The held count used to be a `<Link href="#review">`,
+   * and that anchor goes to `ReviewQueueList`, which reads `queue.review.list`
+   * — the `approvals` table. That is a *different entity* from a content item
+   * with `status = 'needs_review'`: this panel counted one thing and linked to
+   * another, so a post held for review was counted here and appeared nowhere
+   * the link went. `StallNotice` has existed in `DraftPanel` since P2 and was
+   * unreachable for exactly this reason.
+   */
+  onOpen: (contentItemId: string) => void;
+}) {
   const [items, setItems] = useState<PlanItem[] | null>(null);
-  const [heldCount, setHeldCount] = useState(0);
+  const [held, setHeld] = useState<PlanItem[]>([]);
   const [channel, setChannel] = useState<string>(ALL);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
-    const [scheduled, held] = await Promise.all([
+    const [scheduled, heldRes] = await Promise.all([
       invoke<{ items: PlanItem[] }>('content.list', { genomeId, status: 'scheduled', limit: 100 }),
       invoke<{ items: PlanItem[] }>('content.list', { genomeId, status: 'needs_review', limit: 100 }),
     ]);
@@ -97,9 +117,9 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
         .filter((i) => Boolean(i.scheduledAt))
         .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!)),
     );
-    // A failed second read leaves the held count at zero rather than failing the
-    // queue: the plan is the point of this panel, and the held count is context.
-    setHeldCount(held.status === 'succeeded' ? held.output.items.length : 0);
+    // A failed second read leaves the held list empty rather than failing the
+    // queue: the plan is the point of this panel, and held items are context.
+    setHeld(heldRes.status === 'succeeded' ? heldRes.output.items : []);
   }, [genomeId]);
 
   useEffect(() => {
@@ -139,13 +159,10 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
                   : `${filtered.length} of ${items.length} scheduled to ${platformLabel(channel)}, soonest first.`}
           </p>
         </div>
-        {heldCount > 0 ? (
-          <Link
-            href="#review"
-            className="shrink-0 text-[13px] font-medium text-warn underline decoration-dotted underline-offset-2"
-          >
-            {heldCount} waiting on you
-          </Link>
+        {held.length > 0 ? (
+          <p className="shrink-0 text-[13px] font-medium text-warn">
+            {held.length} waiting on you
+          </p>
         ) : null}
       </div>
 
@@ -282,6 +299,39 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
           </Link>
         </div>
       ) : null}
+
+      {/*
+        The held posts, listed rather than counted.
+        `content.list` now returns `blockedReason`, so each row can say *why* it
+        stopped instead of making somebody open all of them to find the one that
+        matters. Clicking opens the Draft Panel, which is where `StallNotice`
+        lives — the whole of `5.5` is that this list exists and goes there.
+      */}
+      {held.length > 0 ? (
+        <div className="mt-6 border-t border-border pt-4">
+          <h3 className="text-[13px] font-medium text-ink">Stopped, and waiting on you</h3>
+          <ul className="mt-2 grid grid-cols-1 gap-1.5">
+            {held.map((h) => (
+              <li key={h.contentItemId}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(h.contentItemId)}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-ink-muted"
+                >
+                  <span className="text-[13px] text-ink">{h.summary}</span>
+                  <span className="mt-0.5 block text-[12px] text-ink-muted">
+                    {h.blockedReason ??
+                      (h.publishAttempts
+                        ? `Tried ${h.publishAttempts} time${h.publishAttempts === 1 ? '' : 's'}.`
+                        : 'Waiting for approval.')}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
     </section>
   );
 }

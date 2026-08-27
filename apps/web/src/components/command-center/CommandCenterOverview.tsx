@@ -209,7 +209,10 @@ export function CommandCenterOverview() {
       {/* §7.5's four queues, in the order a person needs them: what happens
           next, then what is blocked on them. `PlanQueue` links to the second by
           anchor, which is why the wrapper carries an id. */}
-      <PlanQueue genomeId={genome?.genomeId} />
+      <PlanQueue
+        genomeId={genome?.genomeId}
+        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
+      />
 
       <div id="review">
         <ReviewQueueList items={review} onDecide={decide} />

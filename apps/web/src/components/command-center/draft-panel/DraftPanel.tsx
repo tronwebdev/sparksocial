@@ -162,14 +162,35 @@ export function DraftPanel({
         return;
       }
 
-      // `calendar.generate` writes slots with a playbook assigned but no
-      // copy yet — content.get's own comment calls an empty beat list "the
-      // honest answer, not a parse error." Opening one is the natural place
-      // to actually fill it, rather than showing an editor with nothing in
-      // it and no way to fix that. direct_finish is the one exception:
-      // those are filmed via the capture loop, and content.draft refuses
-      // them outright ("use direct.brief.generate").
-      if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish') {
+      /**
+       * `calendar.generate` writes slots with a playbook assigned but no copy
+       * yet — `content.get`'s own comment calls an empty beat list "the honest
+       * answer, not a parse error." Opening one is the natural place to fill it
+       * rather than showing an empty editor with no way to fix that.
+       *
+       * ── Two exclusions, and the second one is the whole of 5.5 ────────────
+       *
+       * `direct_finish` is filmed through the capture loop and `content.draft`
+       * refuses it outright.
+       *
+       * A **stalled** item is excluded because auto-filling one destroys the
+       * answer the user opened it to get. Several of the scheduler's
+       * `markBlocked` reasons fire on rows that were never drafted — a missing
+       * genome, no playbook — which are exactly the rows with no beats, so this
+       * branch was the one that ran on them. Worse, `ContentDraftOutput` carries
+       * no `status`, `blockedReason` or `publishAttempts` at all, so
+       * `setDraft(filled.output)` replaced a blocked row with a view that had no
+       * status whatsoever: `StallNotice` could not render, and neither could the
+       * rolled-back banner. The panel silently redrafted the post and showed an
+       * ordinary editor.
+       *
+       * Redrafting a stalled post is a reasonable thing to want. It is just not
+       * something to do to somebody on open, without asking — the same call the
+       * storyboard's redraft guard makes.
+       */
+      const stalled = res.output.status === 'blocked' || res.output.status === 'needs_review';
+
+      if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish' && !stalled) {
         const filled = await invoke<DraftView>(
           'content.draft',
           { genomeId, playbookId: res.output.playbookId, contentItemId, intent: '' },
@@ -179,7 +200,13 @@ export function DraftPanel({
           setError(filled.status === 'failed' ? filled.error.message : 'That draft was gated.');
           return;
         }
-        setDraft(filled.output);
+        /**
+         * Merged, not replaced. `content.draft` answers with beats and says
+         * nothing about status, so spreading the read first keeps whatever
+         * `content.get` knew — the publish receipt on a rolled-back post, the
+         * campaign, the attempt count. Replacing dropped all of it.
+         */
+        setDraft({ ...res.output, ...filled.output });
         setPhase('editor');
         return;
       }
