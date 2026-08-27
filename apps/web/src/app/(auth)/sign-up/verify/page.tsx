@@ -37,6 +37,24 @@ export default function VerifyPage() {
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
+  /**
+   * `AUTH-03`'s resend cooldown, which PRD §8.1 asks for ("OTP verification with
+   * resend throttling") and which was drawn in the prototype as a live
+   * `Cooldown: 96s`.
+   *
+   * This is a *client-side* timer over a *server-side* rule. Clerk throttles
+   * resends itself and will refuse one regardless of what this component thinks —
+   * so the honest description is that the timer makes an existing limit visible,
+   * not that it enforces one. Without it the button looks broken: you press it, a
+   * silent refusal comes back, and nothing tells you to wait.
+   */
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((n) => n - 1), 1_000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,6 +107,13 @@ export default function VerifyPage() {
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setResent(true);
+      /**
+       * Sixty seconds, started only on a *successful* resend. Starting it before
+       * the call would leave somebody waiting out a cooldown for a code that was
+       * never sent — which is the same failure the timer exists to prevent, in
+       * the other direction.
+       */
+      setCooldown(60);
     } catch (err) {
       setErrors(toFieldErrors(err));
     }
@@ -99,7 +124,15 @@ export default function VerifyPage() {
       <SparkMark variant="card" />
       <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">Check your email</h1>
       <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
-        We sent a code to your inbox. Enter it below to finish setting up your account.
+        {/*
+          The address, when Clerk knows it. `signUp.emailAddress` has been
+          available from `useSignUp()` the whole time and was never read, so this
+          screen said "your inbox" to somebody who may have three — and had no way
+          to notice they typed the wrong one.
+        */}
+        We sent a code to{' '}
+        <span className="text-foreground">{signUp?.emailAddress ?? 'your inbox'}</span>. Enter it below to
+        finish setting up your account.
       </p>
 
       <form onSubmit={submit} className="mt-8 flex w-[380px] max-w-full flex-col gap-4">
@@ -125,8 +158,13 @@ export default function VerifyPage() {
       </form>
 
       <div className="mt-6 flex items-center gap-6 text-[15px]">
-        <button type="button" onClick={resend} className="text-brand-cyan underline" disabled={!isLoaded}>
-          {resent ? 'Code resent' : 'Resend'}
+        <button
+          type="button"
+          onClick={resend}
+          className="text-brand-cyan underline disabled:no-underline disabled:opacity-60"
+          disabled={!isLoaded || cooldown > 0}
+        >
+          {cooldown > 0 ? `Resend in ${cooldown}s` : resent ? 'Code resent' : 'Resend'}
         </button>
         <button type="button" onClick={() => router.push('/sign-up')} className="text-ink-muted underline">
           Cancel

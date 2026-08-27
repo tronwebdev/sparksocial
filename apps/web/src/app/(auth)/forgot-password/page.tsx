@@ -35,6 +35,7 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
 
@@ -136,12 +137,34 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               error={errors.fields.password}
             />
+            {/*
+              The confirm field the prototype draws and this form did not have.
+              Checked here rather than server-side because there is nothing to
+              check server-side — Clerk receives one password. It exists to catch
+              a typo in a value the person cannot see, which is the only failure
+              mode a password field has.
+            */}
+            <AuthField
+              label="Confirm password"
+              type="password"
+              placeholder="••••••••"
+              autoComplete="new-password"
+              leadingIcon={<LockIcon />}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              error={confirm && confirm !== password ? 'These do not match.' : undefined}
+            />
             {errors.form ? (
               <p role="alert" className="text-[14px] text-destructive">
                 {errors.form}
               </p>
             ) : null}
-            <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy}>
+            <Button
+              type="submit"
+              size="cta"
+              className="mt-2 w-full"
+              disabled={!isLoaded || busy || !password || confirm !== password}
+            >
               {busy ? 'Updating…' : 'Set new password'}
             </Button>
           </form>

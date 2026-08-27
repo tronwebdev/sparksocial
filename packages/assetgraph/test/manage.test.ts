@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
-import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
+import type { ToolCtx } from '@sparksocial/tools';
 import { assetArchive, makeAssetCaptionSet } from '../src/manage.js';
 
 /**
@@ -102,7 +102,7 @@ describe('asset.caption.set', () => {
 
   it('costs something, because it spends an embedding call', () => {
     const tool = makeAssetCaptionSet(embed);
-    expect(tool.estimateCents?.({})).toBe(1);
+    expect(tool.estimateCents?.({ genomeId: 'g', assetId: 'a', caption: 'a caption' })).toBe(1);
   });
 
   it('rejects a caption too long to embed as one idea', () => {

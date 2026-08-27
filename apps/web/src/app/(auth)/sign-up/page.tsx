@@ -49,6 +49,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +63,13 @@ export default function SignUpPage() {
         password,
         ...(firstName ? { firstName } : {}),
         ...(rest.length ? { lastName: rest.join(' ') } : {}),
+        /**
+         * Recorded where the only per-person store this app has lives. There is
+         * no user table — every tool treats `ctx.userId` as an opaque string — so
+         * this is not queryable from the backend and not auditable through
+         * `tool_calls`. Stated so nobody later assumes it is provable server-side.
+         */
+        unsafeMetadata: { termsAcceptedAt: new Date().toISOString() },
       });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       router.push('/sign-up/verify');
@@ -128,10 +136,52 @@ export default function SignUpPage() {
               </p>
             ) : null}
 
+            {/*
+              `AUTH-02`'s terms checkbox, which PRD §8.1 lists as a functional
+              requirement ("email/password signup with terms acceptance") and
+              which was drawn in the prototype and absent here.
+
+              Acceptance is recorded on the Clerk user as `unsafeMetadata`, which
+              is the only per-person store this app has — there is no user table,
+              and every tool treats `ctx.userId` as an opaque string. That is a
+              real limitation rather than a shortcut: it means acceptance cannot
+              be queried from the backend or audited through `tool_calls`. Worth
+              knowing before anything is built that depends on proving it.
+
+              Gating the button rather than validating on submit, because the
+              requirement is consent — and a consent control that lets you
+              proceed and then complains has already failed at being consent.
+            */}
+            <label className="flex items-start gap-2 text-[14px] text-ink-muted" htmlFor="signup-terms">
+              <input
+                id="signup-terms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <span>
+                I agree to the{' '}
+                <Link href="/pricing" className="text-primary underline decoration-dotted underline-offset-2">
+                  terms
+                </Link>{' '}
+                and{' '}
+                <Link href="/pricing" className="text-primary underline decoration-dotted underline-offset-2">
+                  privacy policy
+                </Link>
+                .
+              </span>
+            </label>
+
             {/* Clerk's bot-protection widget mounts here when enabled. */}
             <div id="clerk-captcha" />
 
-            <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy}>
+            <Button
+              type="submit"
+              size="cta"
+              className="mt-2 w-full"
+              disabled={!isLoaded || busy || !acceptedTerms}
+            >
               {busy ? 'Creating account…' : 'Create account'}
             </Button>
           </form>
