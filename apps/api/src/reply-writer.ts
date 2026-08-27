@@ -51,7 +51,7 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
   };
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
-  async function attemptWrite({ genome, kind, authorHandle, messageText }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
+  async function attemptWrite({ genome, kind, authorHandle, messageText, salesQualification }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'reply writer',
         'SPARK could not draft a reply — the service that writes replies is not responding. The message is still in your inbox, unanswered.',
@@ -60,7 +60,7 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
             model,
             max_tokens: 300,
             system: SYSTEM,
-            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, messageText) }],
+            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, messageText, salesQualification) }],
             tools: [
               {
                 name: TOOL_NAME,
@@ -115,8 +115,52 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
  * the content cannot forge and states plainly that directives inside are data.
  * The brand's own genome stays interpolated directly — it is ours.
  */
-function prompt(genome: Genome, kind: string, authorHandle: string, messageText: string): string {
+/**
+ * What each qualification option authorises, phrased as an instruction.
+ *
+ * Spelled out rather than passed as raw enum values: `share_booking_link` tells
+ * a model almost nothing, and a reply that invents a booking URL because the
+ * prompt implied one exists is exactly the fabrication the system prompt above
+ * forbids. Each line says what the agent may *do*, not what the setting is
+ * called.
+ */
+const QUALIFICATION_INSTRUCTION: Record<string, string> = {
+  ask_qualifying_questions: 'You may ask one question to understand what they need.',
+  share_booking_link:
+    'You may invite them to book, and say a booking link will follow — do not invent a URL.',
+  share_pricing_link:
+    'You may point them at the pricing page, and say so in words — do not invent a price or a URL.',
+  collect_contact_details: 'You may ask for an email or phone number so somebody can follow up.',
+};
+
+function prompt(
+  genome: Genome,
+  kind: string,
+  authorHandle: string,
+  messageText: string,
+  salesQualification?: readonly string[],
+): string {
   const { identity, voice } = genome;
+
+  /**
+   * `brands.sales_qualification`, finally read.
+   *
+   * The four checkboxes were stored and rendered and consulted by nothing, so
+   * the model has been free to offer any of these moves — or none — regardless of
+   * what the brand authorised. Absent means none, and the prompt states the
+   * prohibition explicitly rather than staying silent: a model given no
+   * instruction about pricing will sometimes discuss pricing, and "we did not
+   * mention it" is not a constraint.
+   */
+  const authorised = (salesQualification ?? [])
+    .map((q) => QUALIFICATION_INSTRUCTION[q])
+    .filter((line): line is string => Boolean(line));
+
+  const salesLines = authorised.length
+    ? ['What you may offer:', ...authorised.map((l) => `- ${l}`)].join('\n')
+    : 'Do not offer a price, a pricing page, a booking link, or ask for their contact details. ' +
+      'If they ask for any of those, say somebody will follow up.';
+
   return [
     `Business: ${identity.business_name} — ${identity.category}`,
     `What they do: ${identity.one_liner}`,
@@ -127,6 +171,7 @@ function prompt(genome: Genome, kind: string, authorHandle: string, messageText:
     voice.banned_phrases?.length ? `Never use: ${voice.banned_phrases.join(', ')}` : '',
     '',
     `Message type: ${kind}`,
+    salesLines,
     // Fenced as data. `source` names where it came from so the model can weigh
     // provenance, and the handle is fenced too — it is attacker-chosen text.
     renderUntrusted([`From: ${authorHandle}`, `Message: ${messageText}`].join('\n'), {

@@ -3,7 +3,7 @@ import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools
 import { ToolError, Explanation, rungAutonomy } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
-import { resolveEngagementEligibility } from './eligibility.js';
+import { resolveEngagementEligibility, engagementTypeAllows } from './eligibility.js';
 
 /**
  * `engage.reply.send` â€” the second half of the "approve & send" loop
@@ -68,9 +68,11 @@ async function replyPolicySubject(
 ): Promise<PolicySubject> {
   // The brand is no longer read here — the rung rides along with the verdict,
   // which already holds the campaign.
-  const [message, eligibility] = await Promise.all([
+  const [message, eligibility, brand] = await Promise.all([
     ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
     resolveEngagementEligibility(ctx, input.genomeId),
+    // For `engagementTypes` — see `autohandle.ts` for why the brand is read again.
+    ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
   ]);
 
   return {
@@ -84,7 +86,11 @@ async function replyPolicySubject(
       // The campaign's rung, not the brand's setting â€” see `autohandle.ts` for
       // the full reasoning. The brand remains the template a campaign is seeded
       // from; the campaign is what governs this reply.
-      autonomyConfigured: rungAutonomy(eligibility.rung) !== 'off',
+      // Same two conditions as `autohandle` — see there for why they share one
+      // field. A message kind the brand has switched off routes to approval.
+      autonomyConfigured:
+        rungAutonomy(eligibility.rung) !== 'off' &&
+        engagementTypeAllows(brand?.engagementTypes, message?.kind),
     },
   };
 }

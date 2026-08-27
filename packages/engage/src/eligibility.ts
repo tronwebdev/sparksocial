@@ -189,3 +189,42 @@ export const engageEligibilityCheck = defineTool({
   },
 });
 
+/**
+ * MAY SPARK ANSWER THIS *KIND* OF MESSAGE?
+ *
+ * `brands.engagement_types` has existed since the engagement work landed. It is
+ * validated by `brand.governance.set`, persisted, hydrated, and rendered as three
+ * checkboxes under "Where it may answer" in the settings panel — and until now
+ * **nothing read it at runtime.** Not `engage.ingest`, not `engage.classify`, not
+ * `autohandle`, not `reply.send`, not `policy.ts`. Unchecking "Direct messages"
+ * changed a stored value and nothing else; SPARK carried on auto-replying to DMs.
+ *
+ * ── Why this gates the reply and not the ingest ────────────────────────────
+ *
+ * The setting could plausibly mean "do not record these", and it must not. A
+ * brand that stops SPARK answering DMs still wants to *see* the DMs — dropping
+ * them at ingest would silently lose customer messages, which is a far worse
+ * failure than an unanswered one, and the panel's own heading says "where it may
+ * **answer**". So inbound everything is recorded, and this decides only whether a
+ * reply may go out unattended.
+ *
+ * ── Absent means all of them ───────────────────────────────────────────────
+ *
+ * `brand.governance.set` documents `null` as "clears back to all of them", so a
+ * brand that has never touched the control is unrestricted — which is what every
+ * brand has effectively been until today. An empty array is treated the same,
+ * because the panel converts an empty selection to `null` and the two therefore
+ * read identically to the person looking at the screen; making them differ here
+ * would mean the same visible state behaved two ways. Turning engagement *off*
+ * is the campaign's rung, not an empty type list.
+ */
+export function engagementTypeAllows(
+  enabled: readonly string[] | undefined,
+  kind: string | undefined,
+): boolean {
+  if (!enabled || enabled.length === 0) return true;
+  // An unknown kind is not silently permitted: if the vocabulary grows and this
+  // list has not, the conservative answer is that a person handles it.
+  if (!kind) return true;
+  return enabled.includes(kind);
+}

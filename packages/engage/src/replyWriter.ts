@@ -21,5 +21,29 @@ import type { Genome } from '@sparksocial/shared/genome';
  * nothing else.
  */
 export interface ReplyWriter {
-  write(args: { genome: Genome; kind: string; authorHandle: string; messageText: string }): Promise<string>;
+  write(args: {
+    genome: Genome;
+    kind: string;
+    authorHandle: string;
+    messageText: string;
+    /**
+     * What the brand has authorised the agent to *offer* in a reply — the four
+     * moves from `Settings WS EI Sales`' "Lead Qualification Options":
+     * `ask_qualifying_questions`, `share_booking_link`, `share_pricing_link`,
+     * `collect_contact_details`.
+     *
+     * This is the seam `brands.sales_qualification` needed and did not have. The
+     * column was validated, stored, hydrated and rendered as four checkboxes, and
+     * no runtime path read it — so ticking "Share pricing page link" changed a
+     * row and nothing else, and the model was free to offer any of the four
+     * whether or not it had been permitted.
+     *
+     * **Absent means none of them**, which is the direction `brand.governance.set`
+     * already documents: an agent quoting a pricing page nobody authorised is
+     * worse than one that hands the conversation to a person. So this narrows the
+     * writer rather than widening it, and a brand that has never opened the
+     * screen gets the careful behaviour.
+     */
+    salesQualification?: readonly string[];
+  }): Promise<string>;
 }

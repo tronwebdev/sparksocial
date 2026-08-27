@@ -3,7 +3,7 @@ import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools
 import { ToolError, Explanation, rungAutonomy } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
-import { resolveEngagementEligibility } from './eligibility.js';
+import { resolveEngagementEligibility, engagementTypeAllows } from './eligibility.js';
 
 /**
  * `engage.autohandle` â€” SPARK sending a reply with nobody in the loop.
@@ -71,11 +71,16 @@ async function replyPolicySubject(
   input: { messageId: string; genomeId: string },
   ctx: ToolCtx,
 ): Promise<PolicySubject> {
-  // The brand is no longer read here: the rung comes back with the eligibility
-  // verdict, which already holds the campaign. Two reads became one.
-  const [message, eligibility] = await Promise.all([
+  /**
+   * The brand comes back into this read, having been removed when the rung moved
+   * to the campaign. It is needed again for one field: `engagementTypes`, which
+   * decides whether SPARK may answer *this kind* of message at all. Parallel with
+   * the other two, so it costs latency only on the slowest of the three.
+   */
+  const [message, eligibility, brand] = await Promise.all([
     ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
     resolveEngagementEligibility(ctx, input.genomeId),
+    ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
   ]);
 
   return {
@@ -99,7 +104,20 @@ async function replyPolicySubject(
        * 6 already reads, so there is still one definition of "may it reply"
        * rather than two that can disagree.
        */
-      autonomyConfigured: rungAutonomy(eligibility.rung) !== 'off',
+      /**
+       * Two conditions, one field, because rule 6 asks one question: may SPARK
+       * answer unattended? A disabled message kind and an `observe` rung are
+       * different reasons for the same "no", and folding them here keeps the
+       * decision in the policy engine rather than adding a second gate in a
+       * handler (CLAUDE.md invariant 3).
+       *
+       * The consequence is the right one: SPARK still drafts a reply and a person
+       * still sends it. Unchecking "Direct messages" stops the automation, not the
+       * conversation.
+       */
+      autonomyConfigured:
+        rungAutonomy(eligibility.rung) !== 'off' &&
+        engagementTypeAllows(brand?.engagementTypes, message?.kind),
     },
   };
 }

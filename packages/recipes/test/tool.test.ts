@@ -108,7 +108,10 @@ function ctx(store: ReturnType<typeof fakeStore>['store'], over: Partial<ToolCtx
 describe('recipe.validate', () => {
   it('accepts a valid rss config', () => {
     const out = recipeValidate.handler({ kind: 'rss', config: { feedUrl: 'https://example.com/feed.xml' } }, ctx(fakeStore().store));
-    return expect(out).resolves.toEqual({ valid: true });
+    // `notApplied` is part of the contract now, and asserted rather than
+    // loosened away: an empty array is the answer for a config that sets only
+    // fields the engine honours, and a non-empty one for a config that does not.
+    return expect(out).resolves.toEqual({ valid: true, notApplied: [] });
   });
 
   it('rejects an auto_trend config with an out-of-range score', async () => {

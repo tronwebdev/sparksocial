@@ -1,6 +1,6 @@
 import { invokeTool, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import type { OutcomeCandidateRow, OutcomeCandidateSource } from '@sparksocial/db';
-import { makeDevResolveCtx } from './dev-auth.js';
+import { makeSystemCtx } from './system-ctx.js';
 
 /**
  * THE OUTCOME OBSERVER — the clock that closes PRD §6.7's learning loop.
@@ -205,17 +205,16 @@ async function invokeOne(
     return 'failed';
   }
 
-  const base = await makeDevResolveCtx(deps.db)(
-    new Request('http://localhost/', {
-      headers: {
-        'x-org-id': item.orgId,
-        'x-brand-id': genome.workspace_id,
-        'x-genome-id': item.genomeId,
-        'x-role': 'admin',
-      },
-    }),
-  );
-  const { userId: _drop, caller: _caller, ...ctx } = base;
+  // `admin`: `analytics.sync` and `learning.record_outcome` both spend nothing
+  // and publish nothing, but `learning.*` is admin-scoped for the destructive
+  // half of the family, so this is the role that reaches the readable half.
+  const ctx = await makeSystemCtx({
+    db: deps.db,
+    orgId: item.orgId,
+    brandId: genome.workspace_id,
+    genomeId: item.genomeId,
+    role: 'admin',
+  });
   const brand = await deps.loadBrandGovernance(item.orgId, genome.workspace_id);
 
   const result = await invokeTool(

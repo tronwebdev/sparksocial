@@ -14,6 +14,7 @@ import { registerCanvaOAuthCallback } from './canva-oauth.js';
 import { registerSocialOAuthCallback } from './social-oauth.js';
 import { socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
+import { makeSystemCtx } from './system-ctx.js';
 import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
@@ -310,16 +311,19 @@ const whatsappWebhook = envSet('WHATSAPP_APP_SECRET')
         return orgId && brandId ? { orgId, brandId } : undefined;
       },
       async systemCtx({ orgId, brandId }: { orgId: string; brandId: string }) {
-        const base = await makeDevResolveCtx(scopedDb, credits)(
-          new Request('http://localhost/', {
-            headers: { 'x-org-id': orgId, 'x-brand-id': brandId, 'x-role': 'admin' },
-          }),
-        );
-        // No `userId`: nobody signed in. The tool attributes the answer to
-        // `whatsapp:<number>` instead, which is the truthful record — a person
-        // texted, they did not authenticate.
-        const { userId: _drop, caller: _caller, ...ctx } = base;
-        return ctx;
+        /**
+         * No `genomeId`, and that is the fix rather than an omission: the old
+         * path set no `x-genome-id`, so the dev resolver's `'gen_dev'` default
+         * became the genome every inbound WhatsApp message ran under. Nothing in
+         * this path reads it — `whatsapp.receive` works off brand-scoped tables —
+         * so no isolation was crossed, but a context carrying another tenant's
+         * id shape is one genome-scoped query away from being a leak.
+         *
+         * No `userId` either: nobody signed in. The tool attributes the answer to
+         * `whatsapp:<number>`, which is the truthful record — a person texted,
+         * they did not authenticate.
+         */
+        return makeSystemCtx({ db: scopedDb, credits, orgId, brandId, role: 'admin' });
       },
     }
   : undefined;
@@ -347,21 +351,9 @@ const engageWebhook =
           return genome?.workspace_id;
         },
         async systemCtx({ orgId, brandId, genomeId }: { orgId: string; brandId: string; genomeId: string }) {
-          const base = await makeDevResolveCtx(scopedDb, credits)(
-            new Request('http://localhost/', {
-              headers: {
-                'x-org-id': orgId,
-                'x-brand-id': brandId,
-                // The genome the account resolved to. This is what puts every
-                // subsequent query back inside the scoped layer.
-                'x-genome-id': genomeId,
-                'x-role': 'admin',
-              },
-            }),
-          );
-          // No `userId`: nobody signed in. A member of the public commented.
-          const { userId: _drop, caller: _caller, ...ctx } = base;
-          return ctx;
+          // The engagement webhook does know its genome — inbound comments and
+          // DMs are ingested against one — so it passes it rather than omitting.
+          return makeSystemCtx({ db: scopedDb, credits, orgId, brandId, genomeId, role: 'admin' });
         },
       }
     : undefined;

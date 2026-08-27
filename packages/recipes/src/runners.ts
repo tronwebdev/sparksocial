@@ -19,6 +19,23 @@ import { parseFeed } from './rss.js';
  * (`fal`, `HeyGen`, native publish adapters).
  */
 
+/**
+ * Folds a recipe's `goal` into an output's intent.
+ *
+ * `intent` is the one string that survives all the way to `content.draft`, where
+ * it grounds every written beat — so it is the only place a recipe-level
+ * instruction can reach the copy without a new field on `recipe_outputs`. The
+ * goal goes *after* the source material, because the material is what the post is
+ * about and the goal is what it is for; leading with the goal makes every output
+ * from a recipe open the same way.
+ *
+ * Absent goal returns the intent untouched, which is what every recipe produced
+ * before this was read.
+ */
+export function withGoal(intent: string, goal?: string): string {
+  return goal?.trim() ? `${intent} — written toward: ${goal.trim()}` : intent;
+}
+
 export interface RecipeOutputPreview {
   title: string;
   intent: string;
@@ -92,9 +109,35 @@ export const RecipeCommonConfig = z.object({
    * chosen playbook declares" — the same honest default the scheduler applies
    * to a campaign slot with no platform of its own.
    */
+  /**
+   * NOT YET APPLIED. Accepted, stored, and read by nothing.
+   *
+   * An output becomes a post in two steps — `recipe.output.decide` approves it,
+   * then a caller turns it into a draft with `content.draft` — and neither step
+   * takes a platform. Routing a recipe's posts to chosen accounts needs the
+   * platform to survive that handover, which is a change to `recipe_outputs` and
+   * to the approval path, not a field read.
+   *
+   * `recipe.validate` reports this explicitly rather than letting it look
+   * configured. See the `notApplied` note there.
+   */
   targetPlatforms: z.array(z.string()).default([]),
-  /** The goal every output is written toward, and the link it points at. */
+  /**
+   * The goal every output is written toward. **Applied** — folded into the
+   * output's `intent`, which is what reaches `content.draft` and grounds the
+   * copy. See `withGoal`.
+   */
   goal: z.string().max(200).optional(),
+  /**
+   * NOT YET APPLIED, and deliberately not folded into `intent` like `goal` is.
+   *
+   * `intent` is prose a writer reads, so a URL placed there becomes *spoken*
+   * copy — the exact defect found on 22 August, when a campaign's CTA URL was
+   * written to `genome.offer.primary_cta` and sixteen playbooks read that field
+   * as the line to say out loud, so posts recited "https://…". A link belongs in
+   * a link field, and a recipe output has none: `campaigns.primary_cta` is the
+   * per-campaign one and a recipe is not a campaign.
+   */
   ctaUrl: z.string().url().optional(),
   /** Not before / not after. A recipe outside its window produces nothing and says so. */
   startAt: z.string().datetime().optional(),
@@ -167,7 +210,7 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
     if (!suggestion) continue;
     outputs.push({
       title: r.trend.topic,
-      intent: suggestion.intent,
+      intent: withGoal(suggestion.intent, config.goal),
       playbookId: suggestion.playbookId,
       referencedAssetIds: [],
     });
@@ -201,7 +244,7 @@ async function runRss(rawConfig: unknown, ctx: RecipeRunContext): Promise<Recipe
   return {
     outputs: items.map((item) => ({
       title: item.title,
-      intent: `New from the feed: "${item.title}"`,
+      intent: withGoal(`New from the feed: "${item.title}"`, config.goal),
       sourceUrl: item.link,
     })),
   };
@@ -242,7 +285,7 @@ async function runBulkConnector(rawConfig: unknown, ctx: RecipeRunContext): Prom
   }
 }
 
-async function runBulkConnectorCsv(config: { csvUrl?: string; csvText?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+async function runBulkConnectorCsv(config: { csvUrl?: string; csvText?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   let text = config.csvText;
   if (!text) {
     if (!config.csvUrl) return { outputs: [], error: 'A csvUrl or csvText is required for the csv source.' };
@@ -259,7 +302,7 @@ async function runBulkConnectorCsv(config: { csvUrl?: string; csvText?: string }
   return {
     outputs: records.map((row) => {
       const title = row.title || row.topic || Object.values(row)[0] || 'Untitled row';
-      return { title, intent: `From the imported sheet: "${title}"` };
+      return { title, intent: withGoal(`From the imported sheet: "${title}"`, config.goal) };
     }),
   };
 }
@@ -272,7 +315,7 @@ interface DriveFile {
   createdTime?: string;
 }
 
-async function runBulkConnectorDrive(config: { driveFolderId?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+async function runBulkConnectorDrive(config: { driveFolderId?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   if (!config.driveFolderId) return { outputs: [], error: 'A driveFolderId is required for the drive source.' };
   if (!ctx.driveApiKey) {
     return { outputs: [], error: 'Google Drive is not connected — GOOGLE_DRIVE_API_KEY is not configured for this workspace.' };
@@ -305,7 +348,7 @@ async function runBulkConnectorDrive(config: { driveFolderId?: string }, ctx: Re
   return {
     outputs: (body.files ?? []).map((f) => ({
       title: f.name,
-      intent: `From the connected Drive folder: "${f.name}"`,
+      intent: withGoal(`From the connected Drive folder: "${f.name}"`, config.goal),
       sourceUrl: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
     })),
   };
@@ -318,7 +361,7 @@ interface CanvaDesign {
   thumbnail?: { url?: string };
 }
 
-async function runBulkConnectorCanva(config: { canvaFolderId?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+async function runBulkConnectorCanva(config: { canvaFolderId?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   if (!ctx.getOAuthAccessToken || !ctx.fetchWithAuth) {
     return { outputs: [], error: 'Canva is not connected — no OAuth integration is wired into this run context.' };
   }
@@ -351,7 +394,7 @@ async function runBulkConnectorCanva(config: { canvaFolderId?: string }, ctx: Re
       .filter((d): d is CanvaDesign => !!d)
       .map((d) => ({
         title: d.title ?? 'Untitled design',
-        intent: `From the connected Canva folder: "${d.title ?? 'Untitled design'}"`,
+        intent: withGoal(`From the connected Canva folder: "${d.title ?? 'Untitled design'}"`, config.goal),
         sourceUrl: d.urls?.view_url ?? `https://www.canva.com/design/${d.id}`,
       })),
   };

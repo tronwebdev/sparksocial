@@ -93,11 +93,20 @@ export function makeEngageReplyDraft(deps: EngageReplyDraftDeps) {
         throw new ToolError('NOT_FOUND', 'No genome with that id in this org.');
       }
 
+      /**
+       * The brand read is for `salesQualification` alone — what the agent may
+       * offer in a reply. Absent (or a brand with no row) means none of the four
+       * moves are authorised, and the writer's prompt says so explicitly rather
+       * than leaving the model to guess.
+       */
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+
       const text = await deps.writer.write({
         genome,
         kind: message.kind,
         authorHandle: message.authorHandle,
         messageText: message.text,
+        ...(brand?.salesQualification?.length ? { salesQualification: brand.salesQualification } : {}),
       });
 
       return {
