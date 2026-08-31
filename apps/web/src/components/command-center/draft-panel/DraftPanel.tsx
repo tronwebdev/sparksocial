@@ -52,7 +52,16 @@ export function DraftPanel({
   /** Fires once, right after `content.draft` first creates a row — CAL-04's hook for pinning a fresh trigger-phase draft to the date the caller opened this panel for. */
   onDraftCreated?: (contentItemId: string) => void;
 }) {
-  const [phase, setPhase] = useState<'loading' | 'trigger' | 'editor' | 'preview'>(
+  /**
+   * `failed` is new, and its absence was the defect.
+   *
+   * There was no phase for "the load did not work", so every early return in
+   * `loadDraft` left `phase` on `'loading'` — which renders a bare skeleton. A
+   * failed open therefore showed a grey box indefinitely, with the reason sitting
+   * in `error` state and never drawn, because `error` is only rendered inside the
+   * phase blocks that never mounted.
+   */
+  const [phase, setPhase] = useState<'loading' | 'failed' | 'trigger' | 'editor' | 'preview'>(
     initialContentItemId ? 'loading' : 'trigger',
   );
   const [draft, setDraft] = useState<DraftView | null>(null);
@@ -179,6 +188,17 @@ export function DraftPanel({
       const res = await invoke<DraftView>('content.get', { contentItemId, genomeId });
       if (res.status !== 'succeeded') {
         setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        /**
+         * The phase has to move, and this line is the whole of the "empty Draft
+         * modal" defect.
+         *
+         * `phase` stayed `'loading'`, which renders a bare `<Skeleton>` — so a
+         * failed load showed a grey box forever, with the error sitting in state
+         * and never rendered, because `error` is only drawn inside the phase
+         * blocks that never mounted. Every early return in this function had the
+         * same shape.
+         */
+        setPhase('failed');
         return;
       }
 
@@ -210,6 +230,32 @@ export function DraftPanel({
        */
       const stalled = res.output.status === 'blocked' || res.output.status === 'needs_review';
 
+      /**
+       * A third exclusion: a playbook the library no longer has.
+       *
+       * This was the staging 404. `content.get` tolerates an unresolvable playbook
+       * id (it only needs it for a media-type hint); `content.draft` does not, and
+       * throws `NOT_FOUND: No playbook "…"`. Auto-filling therefore turned a post
+       * that could still be *read* into a failed request — four of them, one per
+       * affected slot, on `POST /api/tools/content.draft`.
+       *
+       * The post is not lost: its copy, its date and its receipt are all still on
+       * the row. What cannot happen is drafting *more* of it, because the format
+       * that defined its beats is gone — usually because the API is running a
+       * revision whose playbook library differs from the one that laid the
+       * calendar out.
+       */
+      if (res.output.playbookMissing) {
+        setDraft(res.output);
+        setPhase('editor');
+        setError(
+          'This post was planned with a format this version of SPARK no longer has, so it cannot be ' +
+            'redrafted. Everything already written is intact — or delete it and let the calendar plan a ' +
+            'replacement.',
+        );
+        return;
+      }
+
       if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish' && !stalled) {
         const filled = await invoke<DraftView>(
           'content.draft',
@@ -218,6 +264,7 @@ export function DraftPanel({
         );
         if (filled.status !== 'succeeded') {
           setError(filled.status === 'failed' ? filled.error.message : 'That draft was gated.');
+          setPhase('failed');
           return;
         }
         /**
@@ -971,6 +1018,39 @@ export function DraftPanel({
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {phase === 'loading' ? <Skeleton className="h-64 w-full rounded" /> : null}
+
+          {/*
+            A load that failed, said so.
+
+            The message is whatever the tool returned — those are written for a
+            person and naming the actual cause beats a generic one. Retry is
+            offered because a good share of these are transient (an expired
+            session, a cold API), and the alternative was closing the panel and
+            hoping.
+          */}
+          {phase === 'failed' ? (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+              <p className="text-[14px] font-medium text-ink">This post could not be opened</p>
+              <p className="mt-1 text-[13px] text-ink-muted">{error ?? 'Something went wrong loading it.'}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {initialContentItemId ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setError(null);
+                      void loadDraft(initialContentItemId);
+                    }}
+                  >
+                    Try again
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {phase === 'trigger' ? (
             <div className="grid grid-cols-1 gap-4">

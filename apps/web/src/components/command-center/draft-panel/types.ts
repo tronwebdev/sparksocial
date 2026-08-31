@@ -61,6 +61,8 @@ export const DUBBABLE_BEAT_KINDS = ['generated_video', 'generated_audio', 'gener
 export interface DraftView {
   contentItemId: string;
   playbookId: string;
+  /** True when the library no longer has that playbook — the post is readable, not redraftable. */
+  playbookMissing?: boolean;
   mode: string;
   mediaType: 'video' | 'image' | 'carousel' | 'text';
   beats: ResolvedBeat[];
