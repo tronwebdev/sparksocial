@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
+import { DraftChat } from './DraftChat';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
@@ -113,6 +114,25 @@ export function DraftPanel({
    * without the control in both cases.
    */
   const [kitTemplates, setKitTemplates] = useState<KitTemplate[] | null>(null);
+  /**
+   * `M10` — the generation pipeline, made visible.
+   *
+   * ── Why this is a label and not a progress bar ────────────────────────
+   *
+   * Each `content.generate_*` call is one HTTP request that returns when the
+   * vendor is done. There is no streaming, no job id, and nothing to poll — so a
+   * percentage would be animation over an unknown, and a bar that fills at a
+   * guessed rate and then sits at 90% is worse than no bar. What *is* known is
+   * which beat is being worked on and which stage the request is at, and that
+   * turns out to be the useful half: "asking fal for a 1:1 image" is a sentence
+   * somebody can act on when it takes 40 seconds.
+   *
+   * One state per beat, not two. A "saving" stage was drafted and removed: the
+   * tool call has already written the draft by the time it returns, and
+   * `replaceBeat` only updates local state — so a save label would have been
+   * exactly the invented stage this comment argues against.
+   */
+  const [stage, setStage] = useState<{ beatId: string; label: string } | null>(null);
   const [beatErrors, setBeatErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -353,6 +373,7 @@ export function DraftPanel({
   async function generateImage(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Asking for an image\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — regenerating a beat's image is the point of the
     // button, so each click needs its own key or every click after the first
@@ -368,7 +389,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -379,6 +402,7 @@ export function DraftPanel({
   async function generateAvatarVideo(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Rendering the avatar video\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -392,7 +416,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -403,6 +429,7 @@ export function DraftPanel({
   async function generateVoiceover(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Recording the voiceover\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -416,7 +443,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -431,6 +460,7 @@ export function DraftPanel({
   async function generateBroll(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Generating b-roll\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -444,7 +474,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -1297,6 +1329,31 @@ export function DraftPanel({
                   ) : null}
                 </div>
               ) : null}
+
+              {/*
+                `M10`. One line, naming the beat and what is being asked of which
+                vendor. No percentage: each generate call is a single request with
+                no job id to poll, so a bar would be animation over an unknown.
+              */}
+              {stage ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
+                  <p className="text-[13px] text-ink">
+                    {stage.label}{' '}
+                    <span className="text-ink-muted">
+                      &mdash; {draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+
+              {/* `M9` — conversational editing, over the agent runtime. */}
+              <DraftChat
+                contentItemId={draft.contentItemId}
+                genomeId={genomeId ?? ''}
+                disabled={busyBeatId !== null}
+                onChanged={() => void loadDraft(draft.contentItemId)}
+              />
 
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">

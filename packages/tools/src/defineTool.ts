@@ -416,6 +416,8 @@ export interface BrandGovernance {
    * then rejects the store's own type, which is how the two copies drift.
    */
   kitTemplates?: KitTemplate[];
+  /** The brand's default stock voice — an ElevenLabs premade id from `STOCK_VOICES`. */
+  stockVoiceId?: string;
   logoUrl?: string;
   brandColors?: string[];
   /** M4's font references — two ids from packages/compose/src/fonts.ts. */
@@ -541,6 +543,7 @@ export interface BrandGovernanceStore {
       bannedPhrases?: string[] | null;
       watermark?: Watermark | null;
       kitTemplates?: KitTemplate[] | null;
+      stockVoiceId?: string | null;
       logoUrl?: string | null;
       brandColors?: string[] | null;
       brandFonts?: { display?: string; body?: string } | null;

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { ResolvedBeat, keepStructure } from './draft.js';
+import { voiceLabel } from '@sparksocial/shared/voices';
 import type { VoiceClient } from './types.js';
 
 /**
@@ -95,7 +96,19 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
        */
       const useCloned = input.useClonedVoice ?? beats[index]!.voice === 'brand';
 
-      let voiceId = STOCK_VOICE_ID;
+      /**
+       * The brand's chosen stock voice, when it has chosen one.
+       *
+       * Read here rather than defaulted in `STOCK_VOICE_ID` so the setting is
+       * consulted at the moment it matters. Absent falls back to the same id this
+       * tool has always used, so adding the picker changed the sound of nothing
+       * until somebody picked something.
+       *
+       * `content.scene.voice` still decides *which kind* of voice — the brand's
+       * own clone, or a stock one. This decides *which* stock one.
+       */
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      let voiceId = brand?.stockVoiceId ?? STOCK_VOICE_ID;
       if (useCloned) {
         const consented = await ctx.db.consent.hasActive(input.genomeId, ctx.orgId, 'voice_clone');
         if (!consented) {
@@ -126,7 +139,9 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
       nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_audio', beatId: input.beatId, url, script: input.script };
 
       const why: Explanation = {
-        summary: `Narrated "${input.beatId}" in ${useCloned ? "the genome's own voice" : 'a stock voice'}.`,
+        summary: `Narrated "${input.beatId}" in ${
+          useCloned ? "the genome's own voice" : voiceLabel(voiceId).split(' — ')[0] ?? 'a stock voice'
+        }.`,
         factors: [{ label: 'script', detail: input.script }],
         evidence: [],
         alternatives: [],

@@ -8,6 +8,23 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { BrandFontPicker } from './BrandFontPicker';
+import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
+
+/**
+ * Palette presets.
+ *
+ * Positional, matching `resolveKit`'s documented convention: ground, type,
+ * accent. Each pair is checked for contrast by hand — the point of a preset is
+ * that it is known to be legible, which is the one thing a colour picker cannot
+ * promise. Five, for the same reason there are five voices and six fonts.
+ */
+const COLOUR_PRESETS: ReadonlyArray<{ name: string; colors: string[] }> = [
+  { name: 'Ink', colors: ['#0C0C0C', '#FFFFFF', '#4F8EF7'] },
+  { name: 'Paper', colors: ['#F7F5F0', '#1A1A1A', '#B4521F'] },
+  { name: 'Forest', colors: ['#12241B', '#EAF2EC', '#5FBF8A'] },
+  { name: 'Cobalt', colors: ['#0E1C33', '#EAF0FA', '#F2B14C'] },
+  { name: 'Clay', colors: ['#2B1D1A', '#F5EDE8', '#D98A5C'] },
+];
 
 /**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
@@ -86,6 +103,9 @@ interface Governance {
   /** `SET-WS-BRAND-KITS`' `Activate Watermark`. Always present on read — the tool resolves the default. */
   watermark: { enabled: boolean; opacity: number; scale: number };
   usingDefaultWatermark: boolean;
+  /** `M5`'s "Ai Voice" — always populated on read, the tool resolves the default. */
+  stockVoiceId: string;
+  usingDefaultVoice: boolean;
   timezone: string;
   postingWindows: number[];
   usingDefaultWindows: boolean;
@@ -121,6 +141,9 @@ export function GovernancePanel() {
    */
   const [watermark, setWatermark] = useState({ enabled: true, opacity: 1, scale: 0.12 });
   const [usingDefaultWatermark, setUsingDefaultWatermark] = useState(true);
+  const [stockVoiceId, setStockVoiceId] = useState(DEFAULT_STOCK_VOICE_ID);
+  const [usingDefaultVoice, setUsingDefaultVoice] = useState(true);
+  const [generatingLogo, setGeneratingLogo] = useState(false);
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const logoInput = useRef<HTMLInputElement>(null);
@@ -148,6 +171,8 @@ export function GovernancePanel() {
       setBrandFonts(g.brandFonts ?? {});
       setWatermark(g.watermark);
       setUsingDefaultWatermark(g.usingDefaultWatermark);
+      setStockVoiceId(g.stockVoiceId);
+      setUsingDefaultVoice(g.usingDefaultVoice);
     })();
   }, []);
 
@@ -212,6 +237,28 @@ export function GovernancePanel() {
     setMessage({ kind: 'ok', text: 'Uploaded. Save brand rules to apply it.' });
   }
 
+  async function generateLogo() {
+    if (generatingLogo) return;
+    setGeneratingLogo(true);
+    setMessage(null);
+    const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
+    setGeneratingLogo(false);
+    if (res.status !== 'succeeded') {
+      setMessage({
+        kind: 'err',
+        text: res.status === 'failed' ? res.error.message : 'That needs approval before it can spend.',
+      });
+      return;
+    }
+    /**
+     * The tool has already written `logo_url`, so this only catches the local
+     * field up. Not a save: pressing Save afterwards would send the same value
+     * back, which is harmless, and *not* pressing it must not lose the logo.
+     */
+    setLogoUrl(res.output.logoUrl);
+    setMessage({ kind: 'ok', text: 'Placeholder logo set. Replace it with a real one when you have it.' });
+  }
+
   async function save() {
     setBusy(true);
     setMessage(null);
@@ -250,6 +297,9 @@ export function GovernancePanel() {
        * Any edit flips `usingDefaultWatermark` false and the object goes.
        */
       watermark: usingDefaultWatermark ? null : watermark,
+      // Same rule as the watermark and the posting windows: `null` while the
+      // brand has expressed no preference, so the default stays movable.
+      stockVoiceId: usingDefaultVoice ? null : stockVoiceId,
     });
 
     setBusy(false);
@@ -258,6 +308,8 @@ export function GovernancePanel() {
       setWindows(res.output.postingWindows);
       setUsingDefaultWatermark(res.output.usingDefaultWatermark);
       setWatermark(res.output.watermark);
+      setUsingDefaultVoice(res.output.usingDefaultVoice);
+      setStockVoiceId(res.output.stockVoiceId);
       setMessage({ kind: 'ok', text: 'Saved.' });
       return;
     }
@@ -523,6 +575,15 @@ export function GovernancePanel() {
               <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
                 {uploading ? 'Uploading…' : 'Upload'}
               </Button>
+              {/*
+                `SET-WS-BRAND-KITS`' "Generate logo". Labelled as a placeholder
+                rather than as identity work, because that is what it is — see
+                `brand.logo.generate`'s own comment on why the prompt forbids
+                lettering and keeps to a flat single-colour shape.
+              */}
+              <Button variant="outline" size="sm" disabled={uploading || generatingLogo} onClick={() => void generateLogo()}>
+                {generatingLogo ? 'Generating…' : 'Generate a placeholder'}
+              </Button>
             </div>
             {logoUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -604,6 +665,62 @@ export function GovernancePanel() {
                 ) : null}
               </div>
             ) : null}
+
+            {/*
+              Colour presets — `3.3`'s "colour and voice presets".
+              Applied rather than suggested: clicking one *sets* the palette,
+              because a colour you cannot see is not a suggestion. The ordering is
+              the renderers' own convention, documented in `resolveKit`: first is
+              the ground, second the type on it, third the accent.
+            */}
+            <label className="mt-4 block text-[12px] text-ink-muted">Palette presets</label>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {COLOUR_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => setBrandColors(preset.colors)}
+                  title={`${preset.name} — ${preset.colors.join(', ')}`}
+                  className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px] text-ink-muted hover:text-ink"
+                >
+                  <span className="flex overflow-hidden rounded">
+                    {preset.colors.map((c) => (
+                      <span key={c} className="h-4 w-4" style={{ background: c }} />
+                    ))}
+                  </span>
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+
+            {/*
+              `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
+              `packages/shared/src/voices.ts` for why a curated list of real ids
+              beats a text field asking somebody to paste one, and why the brand's
+              own cloned voice is deliberately not an option here.
+            */}
+            <label className="mt-4 block text-[12px] text-ink-muted" htmlFor="gov-voice">
+              Narration voice
+            </label>
+            <select
+              id="gov-voice"
+              value={stockVoiceId}
+              onChange={(e) => {
+                setUsingDefaultVoice(false);
+                setStockVoiceId(e.target.value);
+              }}
+              className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-[14px] text-ink"
+            >
+              {STOCK_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} — {v.character}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[12px] text-ink-muted">
+              Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
+              separate setting that needs a consent record.
+            </p>
 
             <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">

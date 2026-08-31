@@ -128,6 +128,7 @@ import {
   makeBrandOAuthConnect,
   brandOAuthStatus,
   brandOAuthDisconnect,
+  makeBrandLogoGenerate,
 } from '@sparksocial/agency';
 import {
   createStubAdapter,
@@ -400,6 +401,8 @@ export function registerAlphaTools(): void {
   register(contentSchedule);
   const images = imageClient();
   if (images) register(makeContentGenerateImage(images));
+  // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
+  if (images) register(makeBrandLogoGenerate(images));
   const videos = videoClient();
   if (videos) register(makeContentGenerateBroll(videos));
   // Same "unset → not registered" rule as the image tool, and for the same

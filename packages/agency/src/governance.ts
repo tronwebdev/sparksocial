@@ -6,6 +6,7 @@ import {
   MAX_KIT_TEMPLATES,
   Watermark,
 } from '@sparksocial/shared/brandKit';
+import { DEFAULT_STOCK_VOICE_ID, StockVoiceIdSchema } from '@sparksocial/shared/voices';
 import {
   DEFAULT_POSTING_WINDOWS,
   Explanation,
@@ -135,6 +136,14 @@ export const BrandGovernanceSetInput = z.object({
    * Ids are checked for uniqueness on the way in — a duplicate would make
    * "apply preset X" ambiguous, and the panel keys its rows by id.
    */
+  /**
+   * The brand's default narration voice — `M5`'s "Ai Voice" picker.
+   *
+   * Validated against `STOCK_VOICES` rather than accepted as free text: a voice
+   * id the vendor does not have produces a failure at generation time, hours
+   * after the settings screen said "Saved". Null clears back to the default.
+   */
+  stockVoiceId: StockVoiceIdSchema.nullable().optional(),
   kitTemplates: z
     .array(KitTemplate)
     .max(MAX_KIT_TEMPLATES)
@@ -220,6 +229,10 @@ export const BrandGovernanceOutput = z.object({
   /** True when `watermark` is the system default rather than this brand's own choice. */
   usingDefaultWatermark: z.boolean(),
   kitTemplates: z.array(KitTemplate),
+  /** Always populated — the effective voice, including the default when unset. */
+  stockVoiceId: z.string(),
+  /** True when `stockVoiceId` is the system default rather than this brand's own choice. */
+  usingDefaultVoice: z.boolean(),
   logoUrl: z.string().optional(),
   brandColors: z.array(z.string()),
   /** M4's chosen faces, echoed back so the picker can show what is set. */
@@ -419,6 +432,7 @@ function toOutput(gov: {
   bannedPhrases?: string[];
   watermark?: Watermark;
   kitTemplates?: KitTemplate[];
+  stockVoiceId?: string;
   logoUrl?: string;
   brandColors?: string[];
   brandFonts?: { display?: string; body?: string };
@@ -444,6 +458,8 @@ function toOutput(gov: {
     watermark: gov.watermark ?? DEFAULT_WATERMARK,
     usingDefaultWatermark: gov.watermark === undefined,
     kitTemplates: gov.kitTemplates ?? [],
+    stockVoiceId: gov.stockVoiceId ?? DEFAULT_STOCK_VOICE_ID,
+    usingDefaultVoice: gov.stockVoiceId === undefined,
     ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
     brandColors: gov.brandColors ?? [],
     ...(gov.brandFonts ? { brandFonts: gov.brandFonts } : {}),

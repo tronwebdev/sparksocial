@@ -150,6 +150,10 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
         if (patch.watermark === null) delete row.watermark;
         else row.watermark = patch.watermark;
       }
+      if (patch.stockVoiceId !== undefined) {
+        if (patch.stockVoiceId === null) delete row.stockVoiceId;
+        else row.stockVoiceId = patch.stockVoiceId;
+      }
       if (patch.kitTemplates !== undefined) {
         if (patch.kitTemplates === null) delete row.kitTemplates;
         else row.kitTemplates = patch.kitTemplates;

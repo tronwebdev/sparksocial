@@ -7,3 +7,4 @@ export * from './whitelabel.js';
 export * from './canva.js';
 export * from './canvaDesign.js';
 export * from './teamGroups.js';
+export * from './logo.js';

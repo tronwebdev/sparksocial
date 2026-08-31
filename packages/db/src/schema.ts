@@ -715,6 +715,23 @@ export const brands = pgTable(
      * line of text and not a media file.
      */
     kitTemplates: jsonb('kit_templates').$type<KitTemplate[]>(),
+    /**
+     * Which stock voice this brand narrates in by default — `M5`'s "Ai Voice"
+     * picker, and the named-voice half of `3.3`.
+     *
+     * An ElevenLabs premade voice id, validated against `STOCK_VOICES` in
+     * `packages/shared/src/voices.ts`. A *reference*, never an upload, for the
+     * same reason as `brand_fonts`: the vendor hosts the voice and we hold the id.
+     *
+     * Absent means `DEFAULT_STOCK_VOICE_ID`, which is the id
+     * `packages/generate/src/voice.ts` has hard-coded since it was written — so
+     * this column changes the sound of nothing until somebody picks something.
+     *
+     * Distinct from `genome.constraints.elevenlabs_voice_id`, which is the
+     * brand's *cloned* voice and is consent-gated. A clone is not one entry in a
+     * dropdown beside five stock voices.
+     */
+    stockVoiceId: text('stock_voice_id'),
 
     /**
      * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────

@@ -1,0 +1,1 @@
+ALTER TABLE "brands" ADD COLUMN "stock_voice_id" text;
