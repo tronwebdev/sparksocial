@@ -296,11 +296,24 @@ change the plan:
   `intervalMinutes` and one 5-minute poll loop, batch-capped at 10 (the 11th due
   recipe is silently deferred). No webhook trigger, no event trigger. `endAt`
   never pauses a recipe, so it keeps being invoked forever past its end date.
-- **4.3's per-platform matrix needs a migration.** The schema has no platform
-  dimension for engagement config, though `engage.ingest` already carries one.
-  And brand-level autonomy does not govern replies — `campaigns.engagement_rung`
-  does; the brand value only seeds *new* campaigns, which any settings screen
-  editing it has to say.
+- ~~**4.3's per-platform matrix needs a migration.**~~ **Closed 31 Aug.**
+  `brand_engagement_settings` (0046) keyed `(brand_id, platform)`, overrides only —
+  no seeding and no backfill, so a brand with no rows behaves exactly as it did
+  before the table existed. `applyPlatformOverride` in
+  `packages/shared/src/engagementConfig.ts` is the reply path's single reading of
+  it, and it can only *narrow* what the campaign's rung already granted.
+  Deliberately it does **not** fall back to `brands.engagement_autonomy` the way
+  the settings screen's read does: that field's default is `off`, so falling back
+  to it in the gate would silence every brand that has never opened the screen.
+  The screen says the brand value only seeds new campaigns, and its per-platform
+  rows say they apply immediately — the two controls have different reach.
+  Four fields that had no storage at all now have it and are read: hard rules
+  (four as prompt prohibitions, `never_auto_reply_to_complaints` as an escalation
+  before any prompt runs), escalation behaviour, the three engagement voice axes,
+  and emoji level. `brands.engagement_configured_at` (0047) is recorded rather
+  than inferred, because guessing from non-default fields would tell an owner who
+  walked the whole flow and agreed with every default that they had never
+  configured it.
 - **3.4's Assets Library cannot be built as drawn.** No `sizeBytes` column, so
   every file-size figure on the screen has no source; `buildKey` discards the
   original filename into a uuid, so every filename does too; `asset_folders` has
