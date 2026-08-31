@@ -6,6 +6,7 @@ import { TeamPanel } from '@/components/account/TeamPanel';
 import { BrandTransferPanel } from '@/components/account/BrandTransferPanel';
 import { AuditPanel } from '@/components/account/AuditPanel';
 import { AgencyPanel } from '@/components/settings/AgencyPanel';
+import { AgencyRosterPanel } from '@/components/settings/AgencyRosterPanel';
 import { UsagePanel } from '@/components/settings/UsagePanel';
 
 /**
@@ -47,6 +48,10 @@ export default function AccountHomePage() {
         </header>
         <AccountHome />
         <AgencyPanel />
+        {/* Above usage and below the roster it annotates: the question this answers
+            — which client has nobody posted for — is the one an agency opens this
+            page for, and it should not be under the billing section. */}
+        <AgencyRosterPanel />
         <UsagePanel />
         <TeamPanel />
         <BrandTransferPanel />

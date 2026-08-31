@@ -41,6 +41,11 @@ export function createAnalyticsRepository(db: Database): AnalyticsStore {
       }));
     },
 
+    async orgRollup(orgId, windowDays) {
+      // No genome in the scope, by design — see `orgPublishingRollup`.
+      return scoped.orgPublishingRollup(db, { orgId }, windowDays);
+    },
+
     async publishedInWindow(orgId, genomeId, windowDays) {
       const rows = await scoped.publishedWithMetrics(db, { orgId, brandId: orgId, genomeId }, windowDays);
       return rows.map((row) => ({

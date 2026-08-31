@@ -114,6 +114,7 @@ import {
   brandGovernanceSet,
   brandEngagementPlatformsGet,
   brandEngagementPlatformsSet,
+  agencyRoster,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -853,6 +854,9 @@ export function registerAgencyTools(deps: {
   // brand that never opens the screen behaves exactly as it did before.
   register(brandEngagementPlatformsGet);
   register(brandEngagementPlatformsSet);
+  // The agency roster's roll-up — the one org-level read in the product. Owner
+  // and admin only; aggregates keyed by brand, never rows. See the tool.
+  register(agencyRoster);
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.

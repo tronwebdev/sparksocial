@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
@@ -44,6 +44,50 @@ export const assertScope = (scope: Partial<Scope>): Scope => {
     );
   }
   return scope as Scope;
+};
+
+/**
+ * THE ORG-LEVEL READ PATH — the one the agency portal needed.
+ *
+ * ── Why this exists and why it is not a relaxation ────────────────────────
+ *
+ * An agency running forty clients has one legitimate question the genome scope
+ * cannot answer: *how are all of them doing?* Every other read here is
+ * genome-scoped because a client's assets, knowledge and inbox must never
+ * surface in another client's work. A roll-up is different in kind: it reads one
+ * org's rows, groups them **by** genome, and returns per-genome aggregates to a
+ * caller who administers that org.
+ *
+ * The two properties that make it safe are the ones this function asserts:
+ *
+ *   1. **`orgId` is still mandatory.** This is not an unscoped query; it is a
+ *      query scoped one level up. Nothing crosses an org boundary, ever.
+ *   2. **It may only return aggregates keyed by genome.** A roll-up that could
+ *      return rows — a caption, a message, a chunk — would be the leak the
+ *      genome predicate exists to prevent, wearing a different name.
+ *
+ * `assertScope` is deliberately *not* softened to make this possible: a function
+ * that took an optional genome would let every existing caller become an
+ * accidental org-wide read by dropping one field. This is a separate assertion
+ * with a separate name, so the two intents cannot be confused at a call site.
+ *
+ * Callers must also be org administrators. That is enforced where roles live —
+ * on the tool's `scopes` — not here, because this module knows about tenancy and
+ * not about people.
+ */
+export interface OrgScope {
+  orgId: string;
+}
+
+export const assertOrgScope = (scope: Partial<OrgScope>): OrgScope => {
+  if (!scope.orgId) {
+    throw new ToolError(
+      'ISOLATION_VIOLATION',
+      'An org-wide query was attempted without an organization.',
+      { scope },
+    );
+  }
+  return scope as OrgScope;
 };
 
 /** The mandatory predicate. Every scoped query is built on top of this. */
@@ -871,6 +915,83 @@ export async function getContentMetricsForItems(
  * is indistinguishable from a day nothing was published, which is the more
  * misleading of the two readings.
  */
+/**
+ * Per-genome publishing and engagement totals for one org — the agency roster's
+ * roll-up.
+ *
+ * ── Aggregates only, and that is the whole of its safety ──────────────────
+ *
+ * Returns counts and sums keyed by `genomeId`. No caption, no post id, no
+ * message text: a brand's *content* stays behind the genome predicate, and what
+ * crosses to the org level is how much of it there was and how it performed.
+ * That distinction is why this is a roll-up rather than a bypass.
+ *
+ * ── Why the counts come from one query ────────────────────────────────────
+ *
+ * The obvious implementation is `listForOrg` then one `publishedWithMetrics` per
+ * genome, which is what a screen would have done for itself. Forty clients is
+ * forty round trips on a page load, and worse, each one would carry its own
+ * window boundary — a page rendering over a minute would compare brands against
+ * slightly different windows. One `GROUP BY` gives every brand the same cutoff.
+ *
+ * `countDistinct` on the post id rather than `count(*)`: the join to
+ * `content_metrics` produces one row per platform snapshot, so a post published
+ * to three platforms would otherwise be counted three times.
+ */
+export async function orgPublishingRollup(
+  db: Database,
+  scope: Partial<OrgScope>,
+  windowDays: number,
+): Promise<
+  Array<{
+    genomeId: string;
+    publishedCount: number;
+    impressions: number;
+    engagements: number;
+  }>
+> {
+  const { orgId } = assertOrgScope(scope);
+  const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+
+  const rows = await db
+    .select({
+      genomeId: contentItems.genomeId,
+      publishedCount: countDistinct(contentItems.id),
+      impressions: sql<number>`coalesce(sum(${contentMetrics.impressions}), 0)::int`,
+      // Likes, comments, shares and saves together — the four a person reads as
+      // "did anybody react". Views are deliberately excluded: they are a
+      // reach measure, they already dominate `impressions`, and summing them in
+      // would make a video brand look ten times more engaging than a text one.
+      engagements: sql<number>`coalesce(sum(
+        coalesce(${contentMetrics.likes}, 0) + coalesce(${contentMetrics.comments}, 0)
+        + coalesce(${contentMetrics.shares}, 0) + coalesce(${contentMetrics.saves}, 0)
+      ), 0)::int`,
+    })
+    .from(contentItems)
+    .leftJoin(
+      contentMetrics,
+      and(eq(contentMetrics.contentItemId, contentItems.id), eq(contentMetrics.orgId, contentItems.orgId)),
+    )
+    .where(
+      and(
+        // One org, always. The genome predicate is what is absent here; the org
+        // predicate is not, and never can be.
+        eq(contentItems.orgId, orgId),
+        eq(contentItems.status, 'published'),
+        sql`${contentItems.publishedAt} is not null`,
+        gte(contentItems.publishedAt, cutoff),
+      ),
+    )
+    .groupBy(contentItems.genomeId);
+
+  return rows.map((r) => ({
+    genomeId: r.genomeId,
+    publishedCount: Number(r.publishedCount ?? 0),
+    impressions: Number(r.impressions ?? 0),
+    engagements: Number(r.engagements ?? 0),
+  }));
+}
+
 export async function publishedWithMetrics(
   db: Database,
   scope: Scope,

@@ -811,6 +811,29 @@ export function createDevStore(
        * produces: one entry per snapshot, plus one platform-less entry for a
        * published post nothing has measured yet.
        */
+      /**
+       * The dev counterpart of `orgPublishingRollup`. Same shape and the same
+       * exclusion: aggregates keyed by genome, and `views` left out of
+       * `engagements` so a video brand does not read ten times more engaging than
+       * a text one.
+       */
+      async orgRollup(org, windowDays) {
+        const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+        const totals = new Map<string, { publishedCount: number; impressions: number; engagements: number }>();
+        for (const row of drafts.values()) {
+          if (row.orgId !== org) continue;
+          if (row.status !== 'published' || !row.publishedAt || row.publishedAt < cutoff) continue;
+          const acc = totals.get(row.genomeId) ?? { publishedCount: 0, impressions: 0, engagements: 0 };
+          acc.publishedCount += 1;
+          for (const m of [...metrics.values()].filter((x) => x.contentItemId === row.id)) {
+            acc.impressions += m.impressions;
+            acc.engagements += m.likes + m.comments + m.shares + m.saves;
+          }
+          totals.set(row.genomeId, acc);
+        }
+        return [...totals.entries()].map(([genomeId, t]) => ({ genomeId, ...t }));
+      },
+
       async publishedInWindow(org, genomeId, windowDays) {
         const cutoff = new Date(Date.now() - windowDays * 86_400_000);
         const published = [...drafts.values()].filter(

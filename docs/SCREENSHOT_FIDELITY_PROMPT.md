@@ -15,8 +15,55 @@ changes.** Where a screenshot is silent — a state it does not show, such as ho
 focus, empty, error, or loading — keep the existing implementation and the existing
 token vocabulary. Do not invent a new visual language to fill the gap.
 
-Update the "design source of truth" line in `CLAUDE.md` to point at the screenshot
-folder as part of this work, so the next session does not rebuild against `ui build/`.
+**The source of truth is split per screen, not global.** Screenshot coverage is
+partial — see section 0.1. For a screen the screenshots cover, `ui_screenshot` wins.
+For a screen they do not cover, `ui build/*.dc.html` remains authoritative and the
+screen is out of scope for this pass.
+
+When you update the "design source of truth" line in `CLAUDE.md`, write it as that
+split — screenshots for the covered list, `.dc.html` for the rest — not as a wholesale
+replacement. A later pass will move screens across as screenshots arrive.
+
+## 0.1 Coverage — what is in scope for this pass
+
+**Covered (screenshots supplied; rebuild these):**
+
+| Screen | Where it lives |
+| --- | --- |
+| Auth — sign-in, sign-up, verify, forgot password, meet-spark, pricing, tasks | `src/app/(auth)/**`, `src/components/auth/*` |
+| Onboarding | `src/app/(onboarding)/onboarding/page.tsx` |
+| Dashboard | `src/app/(app)/home/page.tsx`, `src/components/dashboard/*` |
+| Create Campaign | `src/components/campaign/CampaignWizard.tsx` |
+| Workspace settings | `src/app/(app)/settings/**`, `src/components/settings/*` |
+| Account Settings — Profile Settings only | `src/app/(app)/account/page.tsx` |
+
+**Not covered (screenshots pending; DO NOT redesign):**
+
+Command Center (`src/components/command-center/*`, mounted at
+`src/app/(app)/agents/page.tsx`) · Calendar (`src/app/(app)/calendar`,
+`src/components/calendar/*`) · Assets (`src/app/(app)/assets`,
+`src/components/assets/*`) · Discovery (`src/app/(app)/discovery`) · Account Settings
+Organization / Agency / Personal tabs · Automation Recipes (`src/app/(app)/automation`,
+`src/components/automation/AutomationRecipes.tsx`) · Agency Portal (no dedicated route —
+`src/components/settings/AgencyPanel.tsx`, `AgencyRosterPanel.tsx`) · Draft Panel
+(`src/components/command-center/draft-panel/*`) · Notification Cards
+(`src/components/command-center/NotificationsPanel.tsx`)
+
+Rules for the uncovered set:
+
+1. **Do not redesign them, and do not "bring them in line" with the covered screens.**
+   No screenshot means no authority to change their appearance. Leaving them visually
+   inconsistent with the rebuilt screens is the correct outcome for this pass.
+2. They must **still render and still work** when you finish. Verify this — see
+   section 4.5.
+3. If an uncovered screen looks obviously broken *before* you touch anything, note it
+   and move on. It is not your task.
+
+**Before starting, verify the folder against this manifest.** `ui_screenshot/` was
+empty at the time this prompt was written. List its actual contents, map each file to
+the table above, and report any mismatch — a screenshot present that the manifest calls
+uncovered, or a covered row with no matching file — before writing code. Do not infer
+that a missing screenshot means "redesign from imagination."
 
 ## 1. The token rule — read before writing any CSS
 
@@ -126,6 +173,42 @@ If matching a screenshot appears to require violating one of these, stop and rep
 rather than working around it. That is a design/architecture conflict for a human to
 resolve.
 
+## 4.5 Covered and uncovered screens share code — this is the main risk
+
+Partial coverage is not a clean split down the file tree. Three ways a covered screen
+reaches into an uncovered one, verified in this codebase:
+
+**Create Campaign is mounted inside the Calendar.** `CampaignWizard` is rendered by
+`src/components/calendar/CalendarBoard.tsx`, and nothing else renders it. Calendar is
+uncovered; Create Campaign is covered. So edit `CampaignWizard.tsx` itself, and touch
+`CalendarBoard.tsx` only as far as mounting requires. Do not restyle the calendar board
+because you were in the file.
+
+**The Draft Panel is rendered from four places** — `CalendarBoard`,
+`CommandCenterOverview`, `PlanQueue`, and `engagement/ReplyAction`. It is uncovered.
+Do not restyle it, and if a covered screen's layout seems to demand a change to it,
+report that instead of making it.
+
+**Token and shell changes propagate everywhere.** `tokens.css`, the app shell, the nav,
+and shared primitives are consumed by covered and uncovered screens alike. You are
+allowed to change them — that is unavoidable and expected. But:
+
+- Prefer **adding** a token over **redefining** an existing one. Redefining
+  `--ss-surface-150` to match a new screenshot silently restyles every uncovered screen
+  that uses it. If a covered screenshot genuinely disagrees with an existing token's
+  value, do not just overwrite it: report the conflict with both values, and default to
+  adding a new token scoped to the covered screen unless told otherwise.
+- Never tune a shared primitive to fit one covered screen in a way that visibly breaks
+  an uncovered one. If that is the only way to match, stop and report.
+
+**Regression check before you call the pass done.** Load every uncovered route in the
+browser — `/agents`, `/calendar`, `/assets`, `/discovery`, `/automation`, `/account`,
+the settings tabs — and confirm each still renders without console errors and without
+obvious visual breakage (invisible text, collapsed layout, transparent fills). The
+transparent-fill case is the one to watch: it is the `alpha()` failure from rule 1.3,
+and it fails open, so it will not throw. Screenshot anything that looks wrong and report
+it rather than fixing it by redesigning the screen.
+
 ## 5. Definition of done, per screen
 
 1. The rendered screen matches the reference screenshot in layout, colour, type,
@@ -163,6 +246,16 @@ resolve.
   specific discrepancy that remains.
 - The remaining hardcoded-hex count in `apps/web/src`, down from 44.
 - Any screenshot that appeared internally inconsistent or that conflicted with another.
+- **Folder-versus-manifest mismatches** found in the section 0.1 check.
+- **Every token you redefined rather than added**, with the old value, the new value,
+  and which uncovered screens consume it. This is the highest-risk change in the pass
+  and must be reviewable at a glance.
+- **The uncovered-route regression result** from section 4.5: route by route, renders
+  clean or not, with screenshots of anything that looks wrong.
+- **A handoff note for the next pass**, listing which uncovered screens now look most
+  inconsistent with the rebuilt ones, so the screens still awaiting screenshots can be
+  prioritised sensibly.
 
 Ask before creating new routes, deleting existing screens, changing anything in section
-4, or resolving a conflict between two screenshots.
+4, redefining an existing token, restyling anything in the uncovered list, or resolving
+a conflict between two screenshots.
