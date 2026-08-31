@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { CampaignWizard } from '@/components/campaign/CampaignWizard';
+import { EmptyCalendarReason } from './EmptyCalendarReason';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
@@ -67,6 +68,14 @@ interface CalendarView {
   status: string;
   mixActual: MixSlice[];
   slots: Slot[];
+}
+
+/** One row of `campaign.list` — enough to switch between them without loading each. */
+interface CampaignRow {
+  campaignId: string;
+  name: string;
+  status: string;
+  startAt: string;
 }
 
 /** `calendar.impact_preview`'s output — what calendar.generate would change, without writing anything. */
@@ -159,6 +168,29 @@ export function CalendarBoard() {
    */
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(searchParams.get('new') === '1');
+  /**
+   * Every campaign for this brand, not just the one on screen.
+   *
+   * "Why can't I create multiple campaigns?" — you can, and nothing in
+   * `campaign.create`, `campaigns` or `campaign.list` has ever stopped you. This
+   * screen stopped you: it read `campaigns[0]` (most recent by `startAt`), drew
+   * that one, and offered the wizard only when there were *none*. So a second
+   * campaign silently replaced the first on screen and the first became
+   * unreachable — which reads exactly like a one-campaign limit.
+   */
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+
+  /**
+   * The campaign list, on its own so activation can refresh it.
+   *
+   * Without this the picker was populated once at mount, so a campaign created
+   * *after* mount was drawn but absent from the list that switches between them —
+   * which is the same "you can only have one" symptom, one step further along.
+   */
+  const listCampaigns = useCallback(async (genomeId: string): Promise<CampaignRow[]> => {
+    const list = await invoke<{ campaigns: CampaignRow[] }>('campaign.list', { genomeId });
+    return list.status === 'succeeded' ? list.output.campaigns : [];
+  }, []);
 
   const reload = useCallback(async (campaignId: string) => {
     const got = await invoke<CalendarView>('calendar.get', { campaignId });
@@ -181,12 +213,12 @@ export function CalendarBoard() {
     // until this effect happened to find nothing to replace it with.
     setView(null);
     void (async () => {
-      const list = await invoke<{ campaigns: Array<{ campaignId: string; status: string }> }>('campaign.list', {
-        genomeId: genome.genomeId,
-      });
+      const rows = await listCampaigns(genome.genomeId);
       if (cancelled) return;
-      // Most recently started first (the tool's own ordering) — the active one.
-      const active = list.status === 'succeeded' ? list.output.campaigns[0] : undefined;
+      setCampaigns(rows);
+      // Most recently started first (the tool's own ordering) — opened by
+      // default, but no longer the only one reachable.
+      const active = rows[0];
       if (active) await reload(active.campaignId);
       if (!cancelled) setHydrating(false);
     })();
@@ -388,6 +420,9 @@ export function CalendarBoard() {
         onActivated={(campaignId) => {
           setCreating(false);
           void reload(campaignId);
+          // So the new one appears in the picker beside the old ones, rather than
+          // being the only one reachable until the next full page load.
+          if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
         }}
         onCancel={() => {
           // Arrived deliberately: Cancel means "never mind", so it goes back to
@@ -412,11 +447,62 @@ export function CalendarBoard() {
               {view.slots.length} posts · for {view.objective}
             </p>
           </div>
-          <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            {/*
+              The picker appears only with something to pick, so a brand running
+              one campaign sees no control it does not need — and a brand running
+              three can reach all three, which it could not before.
+            */}
+            {campaigns.length > 1 ? (
+              <select
+                aria-label="Campaign"
+                value={view.campaignId}
+                disabled={busy}
+                onChange={(e) => void reload(e.target.value)}
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] text-ink"
+              >
+                {campaigns.map((c) => (
+                  <option key={c.campaignId} value={c.campaignId}>
+                    {c.name}
+                    {c.status === 'active' ? '' : ` · ${c.status}`}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
+            {/*
+              The second way in. `?new=1` from Home was the only route to the
+              wizard once a campaign existed, which is a strange place to keep the
+              control for a screen whose whole subject is campaigns.
+            */}
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => setCreating(true)}>
+              New campaign
+            </Button>
+          </div>
         </header>
 
         {/* The headline. Step 4 is judged here, not in the grid below. */}
         <MixBar mix={view.mixActual} onAdjust={adjust} busy={busy || previewing} />
+
+        {/*
+          A campaign with no posts in it, explained.
+
+          `calendar.generate` runs the moment a campaign is created and can
+          legitimately place zero slots — it only draws on playbooks whose assets
+          already exist. That is a success, so nothing reported it, and the mix bar
+          said "Nothing scheduled yet" as though a step had been skipped. See
+          `EmptyCalendarReason` for the full account.
+        */}
+        {view.slots.length === 0 && genome ? (
+          <div className="mt-4">
+            <EmptyCalendarReason
+              genomeId={genome.genomeId}
+              plannedCount={view.mixActual.reduce((sum, m) => sum + m.count, 0)}
+              busy={busy}
+              onRegenerate={() => void regenerate(view.campaignId, {})}
+            />
+          </div>
+        ) : null}
 
         {previewing ? <p className="mt-2 text-[13px] text-ink-muted">Working out what that would change…</p> : null}
 
