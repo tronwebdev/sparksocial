@@ -10,6 +10,7 @@ import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { CampaignWizard } from '@/components/campaign/CampaignWizard';
 import { EmptyCalendarReason } from './EmptyCalendarReason';
+import { CampaignList, type CampaignRow } from './CampaignList';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
@@ -68,14 +69,6 @@ interface CalendarView {
   status: string;
   mixActual: MixSlice[];
   slots: Slot[];
-}
-
-/** One row of `campaign.list` — enough to switch between them without loading each. */
-interface CampaignRow {
-  campaignId: string;
-  name: string;
-  status: string;
-  startAt: string;
 }
 
 /** `calendar.impact_preview`'s output — what calendar.generate would change, without writing anything. */
@@ -188,7 +181,15 @@ export function CalendarBoard() {
    * which is the same "you can only have one" symptom, one step further along.
    */
   const listCampaigns = useCallback(async (genomeId: string): Promise<CampaignRow[]> => {
-    const list = await invoke<{ campaigns: CampaignRow[] }>('campaign.list', { genomeId });
+    /**
+     * The tool's maximum, not its default of 10.
+     *
+     * This list is titled "Campaigns" and states a count, so a silent truncation
+     * at ten would make it say something false. Fifty is the schema's ceiling; a
+     * brand past it needs pagination, and `CampaignList` says so rather than
+     * quietly dropping the tail.
+     */
+    const list = await invoke<{ campaigns: CampaignRow[] }>('campaign.list', { genomeId, limit: 50 });
     return list.status === 'succeeded' ? list.output.campaigns : [];
   }, []);
 
@@ -439,6 +440,30 @@ export function CalendarBoard() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
+      {/*
+        Every campaign, above the one that is open.
+        
+        Ordered before the calendar because it answers a question the calendar
+        cannot: *which* campaign am I looking at, and what else is there. That was
+        unanswerable — this screen drew `campaigns[0]` and offered no way to the
+        rest, which reads exactly like a product that allows one.
+      */}
+      {campaigns.length > 0 ? (
+        <CampaignList
+          campaigns={campaigns}
+          selectedId={view.campaignId}
+          busy={busy}
+          onSelect={(id) => void reload(id)}
+          onChanged={() => {
+            // Both, because a rename changes the list and a status change changes
+            // the badge on the open campaign too.
+            if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
+            void reload(view.campaignId);
+          }}
+          onNew={() => setCreating(true)}
+        />
+      ) : null}
+
       <section className="rounded border border-border bg-surface p-5">
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -447,38 +472,10 @@ export function CalendarBoard() {
               {view.slots.length} posts · for {view.objective}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/*
-              The picker appears only with something to pick, so a brand running
-              one campaign sees no control it does not need — and a brand running
-              three can reach all three, which it could not before.
-            */}
-            {campaigns.length > 1 ? (
-              <select
-                aria-label="Campaign"
-                value={view.campaignId}
-                disabled={busy}
-                onChange={(e) => void reload(e.target.value)}
-                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] text-ink"
-              >
-                {campaigns.map((c) => (
-                  <option key={c.campaignId} value={c.campaignId}>
-                    {c.name}
-                    {c.status === 'active' ? '' : ` · ${c.status}`}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
-            {/*
-              The second way in. `?new=1` from Home was the only route to the
-              wizard once a campaign existed, which is a strange place to keep the
-              control for a screen whose whole subject is campaigns.
-            */}
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => setCreating(true)}>
-              New campaign
-            </Button>
-          </div>
+          {/* The status and its controls live in the list above, beside every
+              other campaign's — see `CampaignList`. Repeating them here would give
+              two places to activate one campaign. */}
+          <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
         </header>
 
         {/* The headline. Step 4 is judged here, not in the grid below. */}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { CampaignStore, ToolCtx } from '@sparksocial/tools';
-import { campaignDuplicate, campaignPause, campaignResume } from '../src/lifecycle.js';
+import { CampaignRenameInput, campaignDuplicate, campaignPause, campaignRename, campaignResume } from '../src/lifecycle.js';
 
 /**
  * `campaign.duplicate` / `.pause` / `.resume` — `CampaignStore.setStatus` has
@@ -43,6 +43,12 @@ function store(): CampaignStore & { statusWrites: Array<{ campaignId: string; st
       if (!r || r.orgId !== orgId) throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId });
       r.status = status;
       statusWrites.push({ campaignId, status });
+    },
+    async setName(campaignId, orgId, name) {
+      const r = rows.get(campaignId);
+      if (!r || r.orgId !== orgId) return undefined;
+      r.name = name;
+      return { name };
     },
   };
 }
@@ -154,5 +160,61 @@ describe('campaign.duplicate', () => {
     await expect(
       campaignDuplicate.handler({ genomeId: 'gen_1', campaignId: 'cmp_missing' }, ctx(s)),
     ).rejects.toThrow(ToolError);
+  });
+});
+
+/**
+ * `campaign.rename` — the only field of a live campaign that may be edited.
+ *
+ * It exists because campaigns were auto-named from the month at creation
+ * (`"August campaign"`), so two started in the same month were indistinguishable
+ * in a list. That is the point at which "I can't have multiple campaigns" stops
+ * being a question about storage and becomes one about names.
+ */
+describe('campaign.rename', () => {
+  it('writes the new name and reports it back', async () => {
+    const s = store();
+    const { id } = await s.create({ orgId: 'org_1', genomeId: 'gen_1', name: 'August campaign', objective: 'bookings', windowDays: 30, startAt: new Date(), plan: {} });
+
+    const out = await campaignRename.handler({ campaignId: id, name: 'Fish Friday push' }, ctx(s));
+
+    expect(out.name).toBe('Fish Friday push');
+    // Read back through the store, not from the return value: a tool that
+    // answers with its own input while writing nothing is the failure this is for.
+    const row = (await s.get(id, 'org_1')) as unknown as { name: string };
+    expect(row.name).toBe('Fish Friday push');
+  });
+
+  it('refuses a blank name', () => {
+    /**
+     * A campaign with an empty name is unreachable on every screen that lists
+     * campaigns by name, which is now every screen that lists them at all.
+     * Checked on the schema rather than in the handler, so the agent is refused
+     * identically.
+     */
+    expect(CampaignRenameInput.safeParse({ campaignId: 'cmp_1', name: '   ' }).success).toBe(false);
+    expect(CampaignRenameInput.safeParse({ campaignId: 'cmp_1', name: '' }).success).toBe(false);
+  });
+
+  it('trims, so a name with stray spaces is stored as typed-and-tidied', () => {
+    const parsed = CampaignRenameInput.parse({ campaignId: 'cmp_1', name: '  Fish Friday  ' });
+    expect(parsed.name).toBe('Fish Friday');
+  });
+
+  it('caps the length', () => {
+    expect(CampaignRenameInput.safeParse({ campaignId: 'cmp_1', name: 'x'.repeat(121) }).success).toBe(false);
+  });
+
+  it('reads a campaign in another org as absent rather than forbidden', async () => {
+    // Same rule as `get`: probing an id must not confirm that a campaign exists
+    // somewhere the caller cannot reach.
+    const s = store();
+    const { id } = await s.create({ orgId: 'org_other', genomeId: 'gen_1', name: 'Theirs', objective: 'bookings', windowDays: 30, startAt: new Date(), plan: {} });
+
+    await expect(campaignRename.handler({ campaignId: id, name: 'Mine now' }, ctx(s))).rejects.toThrow(ToolError);
+  });
+
+  it('is idempotent — renaming to the same name twice is one outcome', () => {
+    expect(campaignRename.idempotent).toBe(true);
   });
 });

@@ -20,7 +20,18 @@ function makeStatusTool(name: 'campaign.pause' | 'campaign.resume', status: 'pau
     summary:
       name === 'campaign.pause'
         ? "Pause a campaign — stops it being the genome's active outcome to plan against, without touching content already scheduled or published."
-        : 'Resume a paused campaign, marking it active again.',
+        : /**
+           * Both transitions into `active`, deliberately one tool.
+           *
+           * A campaign is created as `draft`, and draft → active is the same write
+           * as paused → active: it becomes the genome's active outcome. A separate
+           * `campaign.activate` would be a second name for one state change, and
+           * the two would drift the first time either grew a guard. What did need
+           * fixing is this sentence, which said "paused" and so read as forbidding
+           * the draft case it has always handled.
+           */
+          'Make a campaign active — activating one that has never run, or resuming one that was paused. ' +
+          'Both mean it becomes the outcome SPARK plans against.',
 
     input: z.object({ campaignId: z.string().min(1) }),
     output: z.object({ campaignId: z.string(), status: z.string() }),
@@ -41,6 +52,65 @@ function makeStatusTool(name: 'campaign.pause' | 'campaign.resume', status: 'pau
 
 export const campaignPause = makeStatusTool('campaign.pause', 'paused', 'paused');
 export const campaignResume = makeStatusTool('campaign.resume', 'active', 'resumed');
+
+/* ── campaign.rename ─────────────────────────────────────────────────── */
+
+export const CampaignRenameInput = z.object({
+  campaignId: z.string().min(1),
+  /**
+   * Trimmed and length-capped, and it may not be blank.
+   *
+   * A campaign with an empty name is unreachable on any screen that lists
+   * campaigns by name, which is now every screen that lists them at all.
+   */
+  name: z.string().trim().min(1).max(120),
+});
+
+export const CampaignRenameOutput = z.object({ campaignId: z.string(), name: z.string() });
+
+/**
+ * The only field of a live campaign that is safe to edit.
+ *
+ * Everything else is either a term the owner approved — objective, window,
+ * autonomy, accounts — or a snapshot taken under those terms (`plan`). Editing
+ * one of those in place would leave the calendar it already produced
+ * unexplained, which is why `campaign.duplicate` exists instead: running a
+ * changed plan means a new campaign, not a mutated one.
+ *
+ * The name is the exception, and it needed a tool because campaigns were being
+ * auto-named `"August campaign"` from the month at creation. Two campaigns
+ * started in the same month were then indistinguishable in a list, which is the
+ * point at which "I can't have multiple campaigns" stops being about storage.
+ */
+export const campaignRename = defineTool({
+  name: 'campaign.rename',
+  version: 1,
+
+  summary:
+    "Rename a campaign. Only the name changes — objective, window, autonomy and the approved plan are the " +
+    'terms it was created under and are not editable (duplicate it instead). Free.',
+
+  input: CampaignRenameInput,
+  output: CampaignRenameOutput,
+
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  // Renaming to the same name twice is one outcome, not two decisions.
+  idempotent: true,
+  surfaces: ['CAL-01'],
+
+  async handler(input, ctx) {
+    const renamed = await ctx.db.campaigns.setName(input.campaignId, ctx.orgId, input.name);
+    if (!renamed) {
+      // Absent rather than forbidden, so probing an id cannot confirm a campaign
+      // exists in another org.
+      throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId: input.campaignId });
+    }
+    ctx.logger.info('campaign renamed', { campaignId: input.campaignId, by: ctx.userId ?? 'unknown' });
+    return { campaignId: input.campaignId, name: renamed.name };
+  },
+});
 
 /* ── campaign.duplicate ──────────────────────────────────────────────── */
 
