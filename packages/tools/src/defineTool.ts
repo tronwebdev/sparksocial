@@ -1847,7 +1847,13 @@ export interface RecipeRecord {
   kind: string;
   name: string;
   config: unknown;
-  status: 'active' | 'paused';
+  /**
+   * `completed` is terminal and set by the engine, not by a person: a recipe whose
+   * `endAt` has passed. `paused` is a choice somebody made and can undo; this is
+   * the recipe's own window closing, and `findDue` selects on `active` so it stops
+   * being polled. See `RecipeStore.setStatus`.
+   */
+  status: 'active' | 'paused' | 'completed';
   intervalMinutes?: number;
   lastRunAt?: Date;
   createdAt: Date;
@@ -1870,7 +1876,43 @@ export interface RecipeStore {
   create(args: { genomeId: string; orgId: string; kind: string; name: string; config: unknown; intervalMinutes?: number }): Promise<RecipeRecord>;
   get(id: string, genomeId: string, orgId: string): Promise<RecipeRecord | undefined>;
   list(genomeId: string, orgId: string): Promise<RecipeRecord[]>;
-  setStatus(args: { id: string; genomeId: string; orgId: string; status: 'active' | 'paused' }): Promise<RecipeRecord | undefined>;
+  /**
+   * `completed` joins `active` and `paused`, and it is the one the scheduler cares
+   * about.
+   *
+   * `findDue` selects on `status = 'active'` alone, so a recipe past its `endAt`
+   * stayed active forever: `recipe.run` correctly refused to produce anything, and
+   * the scheduler correctly kept asking it to, every five minutes, indefinitely —
+   * an audit row and one of ten batch slots each time, taken from recipes that
+   * could still do work. `paused` would have been wrong here: paused is a state
+   * somebody chose and can undo, and this is the recipe's own window closing.
+   */
+  setStatus(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    status: 'active' | 'paused' | 'completed';
+  }): Promise<RecipeRecord | undefined>;
+  /**
+   * `recipe.update` — editing a saved recipe, which was impossible.
+   *
+   * A partial patch: an omitted field is left alone. `config` is replaced whole
+   * rather than merged, deliberately — a recipe config is validated as a unit
+   * against its kind's schema, and a deep merge would let a caller construct a
+   * half-valid config that passes because the missing half came from the old one.
+   *
+   * `kind` is deliberately absent. Changing it would invalidate the stored config
+   * and orphan every output already produced under the old one; that is a new
+   * recipe, not an edit.
+   */
+  update(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    name?: string;
+    config?: unknown;
+    intervalMinutes?: number | null;
+  }): Promise<RecipeRecord | undefined>;
   delete(id: string, genomeId: string, orgId: string): Promise<void>;
   markRan(id: string, genomeId: string, orgId: string, at: Date): Promise<void>;
   /** Every org's recipes due to run now — the scheduler's read, not genome-scoped by the caller. */

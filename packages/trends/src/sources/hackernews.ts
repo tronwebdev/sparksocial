@@ -1,4 +1,4 @@
-import type { Trend, TrendSource } from '../trend.js';
+import { applyKeywordFilters, type Trend, type TrendSource } from '../trend.js';
 import { timedFetch, clamp01 } from './http.js';
 
 /**
@@ -68,7 +68,20 @@ export function createHackerNewsTrendSource(config: HackerNewsTrendSourceConfig 
   return {
     name: 'hackernews',
 
-    async fetch({ limit }) {
+    /**
+     * Filters rather than searches, and says so.
+     *
+     * The Firebase API this uses exposes `topstories` and item lookups and has no
+     * search endpoint at all; HN's search lives on a separate Algolia host, which
+     * is a different integration rather than a parameter. A keyword therefore narrows what this
+     * source already returns instead of asking the vendor for matches — which for
+     * a niche keyword over one page of trending items returns nothing at all. The
+     * declaration is what lets the recipe wizard tell an owner that this source
+     * cannot search, rather than showing them an empty result that reads as "no
+     * trends about this exist".
+     */
+    keywordSupport: 'filter',
+    async fetch({ limit, keywords, excludeKeywords }) {
       const idsRes = await timedFetch('https://hacker-news.firebaseio.com/v0/topstories.json', {}, fetchImpl);
       if (!idsRes.ok) throw new Error(`Hacker News topstories fetch failed: ${idsRes.status} ${idsRes.statusText}`);
       const ids = ((await idsRes.json()) as number[]).slice(0, Math.max(sampleSize, limit));
@@ -81,7 +94,13 @@ export function createHackerNewsTrendSource(config: HackerNewsTrendSourceConfig 
           }),
         ),
       );
-      return items.filter((t): t is Trend => t !== null).slice(0, limit);
+      // Filtered *before* the slice, so `limit` counts matches rather than
+      // candidates — slicing first would make a keyword recipe's `maxOutputs`
+      // silently depend on where the matches happened to fall in the page.
+      return applyKeywordFilters(items.filter((t): t is Trend => t !== null), {
+        ...(keywords ? { keywords } : {}),
+        ...(excludeKeywords ? { excludeKeywords } : {}),
+      }).slice(0, limit);
     },
 
     async get(id) {

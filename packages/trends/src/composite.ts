@@ -87,6 +87,20 @@ export function createCompositeTrendSource(entries: TrendSourceEntry[], deps: Co
   return {
     name: `composite(${active().map((e) => e.source.name).join('+') || 'none'})`,
 
+    /**
+     * `'server'` only when *every* live source can search, `'filter'` otherwise.
+     *
+     * The pessimistic reading, because this single value is a promise about the
+     * whole merged result: if one of five sources is filtering its trending page,
+     * a keyword recipe's output is partly searched and partly narrowed, and
+     * claiming `'server'` would tell the caller the coverage is better than it is.
+     * A caller that needs the breakdown reads {@link describeKeywordSupport},
+     * which is what the recipe wizard shows.
+     */
+    keywordSupport: active().every((e) => e.source.keywordSupport === 'server') && active().length > 0
+      ? 'server'
+      : 'filter',
+
     async fetch(args) {
       const live = active();
       const results = await Promise.allSettled(
@@ -126,4 +140,29 @@ export function createCompositeTrendSource(entries: TrendSourceEntry[], deps: Co
       }
     },
   };
+}
+
+/**
+ * Per-source keyword capability, for a screen that has to be honest about it.
+ *
+ * The recipe wizard asks for keywords and the answer depends on which sources are
+ * configured: a brand with Reddit and YouTube gets real search, a brand with only
+ * Product Hunt gets its trending page narrowed — which for a niche keyword
+ * returns nothing, and nothing looks like "no trends about this exist" rather
+ * than "this source cannot search". Reported rather than left to be discovered.
+ *
+ * Takes the entries rather than the composite because the composite deliberately
+ * flattens this to one pessimistic value — see `keywordSupport` above.
+ */
+export function describeKeywordSupport(
+  entries: TrendSourceEntry[],
+): Array<{ name: string; keywordSupport: 'server' | 'filter' }> {
+  return entries
+    .filter((e) => e.enabled !== false)
+    .map((e) => ({
+      name: e.source.name,
+      // Absent reads as `filter`: a source that has not claimed it can search
+      // should never be assumed to.
+      keywordSupport: e.source.keywordSupport === 'server' ? ('server' as const) : ('filter' as const),
+    }));
 }

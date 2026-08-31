@@ -29,6 +29,20 @@ export function createRecipeRepository(db: Database): RecipeStore {
       return row ? toRecipe(row) : undefined;
     },
 
+    async update({ id, genomeId, orgId, name, config, intervalMinutes }) {
+      const row = await scoped.updateRecipe(
+        db,
+        { orgId, brandId: orgId, genomeId },
+        {
+          id,
+          ...(name !== undefined ? { name } : {}),
+          ...(config !== undefined ? { config } : {}),
+          ...(intervalMinutes !== undefined ? { intervalMinutes } : {}),
+        },
+      );
+      return row ? toRecipe(row) : undefined;
+    },
+
     async delete(id, genomeId, orgId) {
       await scoped.deleteRecipe(db, { orgId, brandId: orgId, genomeId }, id);
     },

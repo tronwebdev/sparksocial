@@ -11,3 +11,4 @@ export * from './sources/pinterest.js';
 export * from './influencer.js';
 export * from './tool.js';
 export * from './hooks.js';
+export * from './sourcesTool.js';

@@ -22,7 +22,16 @@ import { envSet, envStr, envBool, envList, envNum } from './env.js';
  * — only when nothing real is configured, the same "unset vendor key → stub,
  * not fabricated" rule every other seam in this app follows.
  */
-export function buildTrendSource(): TrendSource {
+/**
+ * The configured entries, before they are merged.
+ *
+ * Split out from `buildTrendSource` because two callers need different things
+ * from the same list: the composite wants them merged, and `trend.sources` wants
+ * to describe each one — specifically whether it can search its platform for a
+ * keyword or only narrow what it already fetches, which the merged composite
+ * deliberately flattens to one pessimistic value.
+ */
+export function buildTrendSourceEntries(): TrendSourceEntry[] {
   const entries: TrendSourceEntry[] = [];
 
   if (envSet('REDDIT_CLIENT_ID') && envSet('REDDIT_CLIENT_SECRET')) {
@@ -80,6 +89,12 @@ export function buildTrendSource(): TrendSource {
       enabled: envBool('TREND_SOURCE_PINTEREST_ENABLED', true),
     });
   }
+
+  return entries;
+}
+
+export function buildTrendSource(): TrendSource {
+  const entries = buildTrendSourceEntries();
 
   // No real source configured at all → the stub, alone. Mixing it in
   // alongside real sources would mean a "real" feed silently contains

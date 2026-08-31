@@ -1,4 +1,4 @@
-import type { Trend, TrendSource } from '../trend.js';
+import { applyKeywordFilters, type Trend, type TrendSource } from '../trend.js';
 import { timedFetch, clamp01 } from './http.js';
 
 /**
@@ -94,23 +94,69 @@ export function createRedditTrendSource(config: RedditTrendSourceConfig): TrendS
       .map((c) => toTrend(c.data, subreddit));
   }
 
+  /**
+   * `/r/{sub}/search` — Reddit's own search, scoped to the configured subreddits.
+   *
+   * `restrict_sr=1` is the load-bearing parameter: without it this searches all
+   * of Reddit, and the whole reason a brand configures subreddits is to say which
+   * corners of it are worth listening to. A keyword recipe should find posts
+   * about `sourdough` in the baking subreddits the brand chose, not in r/all.
+   *
+   * `sort=top&t=week` rather than relevance: this adapter's job is trends, and
+   * the most *relevant* post about a keyword is frequently three years old. A
+   * week bounds it to something still worth reacting to, and matches the 48-hour
+   * decay `toTrend` already assumes.
+   */
+  async function searchSubreddit(subreddit: string, keywords: readonly string[], limit: number): Promise<Trend[]> {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      // OR, matching `matchesKeywords`. Reddit's search understands `OR` as a
+      // boolean operator between terms.
+      q: keywords.map((k) => k.trim()).filter(Boolean).join(' OR '),
+      restrict_sr: '1',
+      sort: 'top',
+      t: 'week',
+      limit: String(limit),
+    });
+    const res = await timedFetch(
+      `https://oauth.reddit.com/r/${encodeURIComponent(subreddit)}/search?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}`, 'User-Agent': config.userAgent } },
+      fetchImpl,
+    );
+    if (!res.ok) throw new Error(`Reddit search failed for r/${subreddit}: ${res.status} ${res.statusText}`);
+    const body = (await res.json()) as RedditListing;
+    return body.data.children
+      .filter((c) => !c.data.stickied && !c.data.over_18)
+      .map((c) => toTrend(c.data, subreddit));
+  }
+
   return {
     name: 'reddit',
+    keywordSupport: 'server',
 
-    async fetch({ limit }) {
+    async fetch({ limit, keywords, excludeKeywords }) {
+      const searched = Boolean(keywords?.length);
       const perSubreddit = Math.max(3, Math.ceil(limit / Math.max(1, config.subreddits.length)));
       const results = await Promise.all(
         config.subreddits.map((sr) =>
-          fetchSubreddit(sr, perSubreddit).catch((error) => {
-            // One misspelled or private subreddit must not take down every
-            // other subreddit in the same config — the same fault-isolation
-            // property the composite source enforces one level up.
-            console.warn(`[warn] reddit trend source: r/${sr} failed`, { error: error instanceof Error ? error.message : String(error) });
-            return [] as Trend[];
-          }),
+          (searched ? searchSubreddit(sr, keywords!, perSubreddit) : fetchSubreddit(sr, perSubreddit)).catch(
+            (error) => {
+              // One misspelled or private subreddit must not take down every
+              // other subreddit in the same config — the same fault-isolation
+              // property the composite source enforces one level up.
+              console.warn(`[warn] reddit trend source: r/${sr} failed`, { error: error instanceof Error ? error.message : String(error) });
+              return [] as Trend[];
+            },
+          ),
         ),
       );
-      return results.flat().slice(0, limit);
+      // The exclude list runs over server results too: Reddit's search takes a
+      // query and takes no negation.
+      return applyKeywordFilters(results.flat(), {
+        ...(keywords ? { keywords } : {}),
+        ...(excludeKeywords ? { excludeKeywords } : {}),
+        alreadySearched: searched,
+      }).slice(0, limit);
     },
   };
 }

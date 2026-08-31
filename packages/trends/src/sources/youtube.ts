@@ -1,4 +1,4 @@
-import type { Trend, TrendSource } from '../trend.js';
+import { applyKeywordFilters, type Trend, type TrendSource } from '../trend.js';
 import { timedFetch, clamp01 } from './http.js';
 
 /**
@@ -61,13 +61,67 @@ export function createYouTubeTrendSource(config: YouTubeTrendSourceConfig): Tren
     return body.items.map(toTrend);
   }
 
+  /**
+   * `search.list` — YouTube's own keyword search, over its whole corpus rather
+   * than over the trending list.
+   *
+   * A second request, because `search.list` returns no statistics: it answers
+   * with ids and snippets only, and every metric this adapter derives
+   * (`velocity`, `saturation`, `volume`) comes from `viewCount`. So the ids come
+   * from search and the bodies come from `videos.list` — the same endpoint
+   * `fetchTrending` already uses, which is why the mapping is shared rather than
+   * duplicated with a `views: 0` variant that would rank every searched trend at
+   * the floor.
+   *
+   * Quota note: `search.list` costs 100 units against a default 10,000/day, so a
+   * keyword recipe running hourly is ~2,400/day. Worth knowing before a second
+   * keyword recipe is added, not worth a cache that would serve stale trends.
+   */
+  async function searchByKeyword(keywords: readonly string[], limit: number, region?: string): Promise<Trend[]> {
+    const params = new URLSearchParams({
+      part: 'id',
+      type: 'video',
+      order: 'viewCount',
+      // OR, matching `matchesKeywords`. YouTube reads a bare space as AND-ish
+      // relevance, and `|` as an explicit OR — a recipe watching three topics
+      // wants any of them, not all three in one video's title.
+      q: keywords.map((k) => k.trim()).filter(Boolean).join(' | '),
+      maxResults: String(Math.min(50, Math.max(1, limit))),
+      key: config.apiKey,
+      ...(region ? { regionCode: region } : {}),
+    });
+    const res = await timedFetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`, {}, fetchImpl);
+    if (!res.ok) throw new Error(`YouTube search failed: ${res.status} ${res.statusText}`);
+    const body = (await res.json()) as { items?: Array<{ id?: { videoId?: string } }> };
+    const ids = (body.items ?? []).map((i) => i.id?.videoId).filter((v): v is string => Boolean(v));
+    if (ids.length === 0) return [];
+
+    const detail = new URLSearchParams({ part: 'snippet,statistics', id: ids.join(','), key: config.apiKey });
+    const detailRes = await timedFetch(`https://www.googleapis.com/youtube/v3/videos?${detail.toString()}`, {}, fetchImpl);
+    if (!detailRes.ok) throw new Error(`YouTube video detail fetch failed: ${detailRes.status} ${detailRes.statusText}`);
+    const detailBody = (await detailRes.json()) as YouTubeVideosResponse;
+    return detailBody.items.map(toTrend);
+  }
+
   return {
     name: 'youtube',
-    async fetch({ limit, region }) {
-      return fetchTrending(limit, region);
+    keywordSupport: 'server',
+    async fetch({ limit, region, keywords, excludeKeywords }) {
+      const searched = Boolean(keywords?.length);
+      const trends = searched
+        ? await searchByKeyword(keywords!, limit, region)
+        : await fetchTrending(limit, region);
+      // The exclude list runs either way: `search.list` takes a query and takes
+      // no negation, so this is the half the vendor did not do.
+      return applyKeywordFilters(trends, {
+        ...(keywords ? { keywords } : {}),
+        ...(excludeKeywords ? { excludeKeywords } : {}),
+        alreadySearched: searched,
+      });
     },
   };
 }
+
 
 function toTrend(item: YouTubeVideoItem): Trend {
   const publishedAt = new Date(item.snippet.publishedAt).getTime();
