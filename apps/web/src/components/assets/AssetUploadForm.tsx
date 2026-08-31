@@ -71,6 +71,7 @@ export function AssetUploadForm({
   // clearance on.
   const [rightsCleared, setRightsCleared] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   async function upload(file: File) {
@@ -123,6 +124,14 @@ export function AssetUploadForm({
         mediaType,
         rightsStatus: rightsCleared ? 'cleared' : 'pending',
         source: 'assets_library_upload',
+        /**
+         * Carried through, finally. `asset.upload_url` above has always been
+         * given both and always discarded them, so every filename and size
+         * figure the Assets Library draws had no source. They persist as of
+         * migration `0044`.
+         */
+        filename: file.name,
+        sizeBytes: file.size,
       },
       // Not idempotent (a second call would duplicate the asset) — unique
       // per upload via the storage key, which is already unique per file.
@@ -139,8 +148,40 @@ export function AssetUploadForm({
     onIngested();
   }
 
+  /**
+   * Drag-and-drop over the same `upload()` path as the file input.
+   *
+   * Files are taken one at a time rather than in parallel: each upload is a
+   * presign, a PUT of the bytes, then a captioning call that hits a vision
+   * model, and firing ten of those at once would race the credit ceiling and
+   * make a partial failure unreadable. Sequential is slower and says what
+   * happened.
+   */
+  async function uploadMany(files: File[]) {
+    for (const f of files) {
+      // eslint-disable-next-line no-await-in-loop
+      await upload(f);
+    }
+  }
+
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        const files = [...e.dataTransfer.files];
+        if (files.length) void uploadMany(files);
+      }}
+      className={`rounded-xl border-2 border-dashed p-4 transition-colors ${
+        dragging ? 'border-primary bg-surface-muted' : 'border-transparent'
+      }`}
+    >
+      <div className="flex flex-wrap items-end gap-3">
       <div className="grid grid-cols-1 gap-1">
         <label className="text-[12px] font-medium text-ink-muted" htmlFor="upload-role">
           Role
@@ -167,10 +208,11 @@ export function AssetUploadForm({
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp4,audio/wav"
+          multiple
           disabled={busy || !genome}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void upload(file);
+            const files = [...(e.target.files ?? [])];
+            if (files.length) void uploadMany(files);
           }}
           className="text-[13px] text-ink-muted file:mr-3 file:h-10 file:rounded file:border-0 file:bg-primary file:px-3 file:text-[13px] file:font-medium file:text-primary-foreground"
         />
@@ -197,6 +239,20 @@ export function AssetUploadForm({
       {message ? (
         <span className={`text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</span>
       ) : null}
+      </div>
+
+      {/*
+        The cap, stated rather than discovered. `asset.upload_url` rejects above
+        512MB, and the prototype's "Max Size: 500MB" is the rounded version of a
+        real constant — so this says the constant. The format list is also the
+        real allowlist: the prototype offers PDF here, which this path does not
+        accept at all (documents go through the brand-knowledge flow), and
+        promising it would produce a rejection with no explanation.
+      */}
+      <p className="mt-2 text-[12px] text-ink-muted">
+        {dragging ? 'Drop to upload.' : 'Drag files here, or use Choose file.'} JPEG, PNG, WebP, HEIC,
+        MP4, MOV, WebM, MP3, M4A or WAV, up to 512MB each. Several at once upload one after another.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { modelClient } from './model-client.js';
-import { ToolError, callVendor } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, withShapeRetry } from '@sparksocial/shared';
 import {
   CaptureCapability,
   Objective,
@@ -154,7 +154,13 @@ export function anthropicInferenceClient(opts: AnthropicInferenceOptions = {}) {
   const model = opts.model ?? MODEL;
 
   return {
-    async infer({ prompt }: { prompt: string; sourceUrl: string }): Promise<unknown> {
+    async infer(args: { prompt: string; sourceUrl: string }): Promise<unknown> {
+      return withShapeRetry(() => attemptInfer(args));
+    },
+  };
+
+  /** One attempt. Throws `ShapeMismatch` when a retry could plausibly help. */
+  async function attemptInfer({ prompt }: { prompt: string; sourceUrl: string }): Promise<unknown> {
       const response = await callVendor(
         'inference',
         'SPARK could not read your site — the service that interprets pages is not responding.',
@@ -181,15 +187,22 @@ export function anthropicInferenceClient(opts: AnthropicInferenceOptions = {}) {
       );
 
       if (!block) {
-        // Reachable when the model stops on `max_tokens` mid-tool-call. Worth
-        // distinguishing in the message, because the fix is a bigger budget
-        // rather than a retry.
-        throw new ToolError('UPSTREAM_FAILED', 'The inference pass returned no genome.', {
+        /**
+         * Two causes here, and the original comment named one of them: the
+         * model stopping on `max_tokens` mid-tool-call, where a retry buys
+         * nothing and the fix is a bigger budget. The other is the model simply
+         * declining to call a tool it was told to call, which is the same
+         * coin-flip as a malformed answer and is worth one retry.
+         *
+         * `stop_reason` is what separates them, so only the second is marked
+         * retryable.
+         */
+        const detail = new ToolError('UPSTREAM_FAILED', 'The inference pass returned no genome.', {
           stopReason: response.stop_reason,
         });
+        throw response.stop_reason === 'max_tokens' ? detail : new ShapeMismatch(detail);
       }
 
       return block.input;
-    },
-  };
+  }
 }

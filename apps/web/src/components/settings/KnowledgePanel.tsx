@@ -67,6 +67,9 @@ const ACCEPT = READABLE_EXTENSIONS.join(',');
 /** `brand.knowledge.attach`'s own ceiling, enforced here so a paste fails before the round trip. */
 const MAX_DOC_CHARS = 20_000;
 
+/** Matches the onboarding step's own cap, and sits well inside `asset.upload_url`'s 512MB. */
+const PDF_MAX_MB = 20;
+
 export function KnowledgePanel() {
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
@@ -86,6 +89,8 @@ export function KnowledgePanel() {
   const [claimResult, setClaimResult] = useState<{ grounded: boolean; fixAction?: string } | null>(null);
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const pdfInput = useRef<HTMLInputElement>(null);
+  const [busyDoc, setBusyDoc] = useState(false);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
@@ -150,6 +155,77 @@ export function KnowledgePanel() {
     setNote({ kind: 'ok', text: `Attached “${res.output.docId}”.` });
     setDocId('');
     setDocText('');
+    await load();
+  }
+
+  /**
+   * The PDF path — `3.3`'s "brand-guideline upload", which onboarding has had
+   * since `2.5b` and settings did not.
+   *
+   * Different from `readFile` below in a way worth stating: a text file is read
+   * *in the browser* and shown to the person before anything is attached, so they
+   * review exactly what SPARK will see. A PDF cannot be read client-side without
+   * a parser, so it is uploaded and `brand.knowledge.attach_document` extracts
+   * the text server-side — which means the review happens *after* the upload
+   * rather than before it. That is a real asymmetry, not an oversight, and it is
+   * why this reports what the tool extracted rather than claiming success.
+   */
+  async function uploadDocument(file: File) {
+    if (!genome || busyDoc) return;
+    if (file.size > PDF_MAX_MB * 1024 * 1024) {
+      setNote({ kind: 'err', text: `That file is larger than ${PDF_MAX_MB}MB.` });
+      return;
+    }
+    setBusyDoc(true);
+    setNote(null);
+
+    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+      genomeId: genome.genomeId,
+      filename: file.name,
+      contentType: 'application/pdf',
+      sizeBytes: file.size,
+    });
+    if (presigned.status !== 'succeeded') {
+      setBusyDoc(false);
+      setNote({
+        kind: 'err',
+        text: presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.',
+      });
+      return;
+    }
+
+    try {
+      // `x-ms-blob-type` is Azure's own requirement for a SAS upload — the same
+      // header every other upload in this app sends, and omitting it 400s.
+      const put = await fetch(presigned.output.uploadUrl, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/pdf', 'x-ms-blob-type': 'BlockBlob' },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
+    } catch (e) {
+      setBusyDoc(false);
+      setNote({ kind: 'err', text: e instanceof Error ? e.message : 'The upload could not reach storage.' });
+      return;
+    }
+
+    const read = await invoke<{ docId: string; chunks?: number }>('brand.knowledge.attach_document', {
+      genomeId: genome.genomeId,
+      url: presigned.output.readUrl,
+      filename: file.name,
+    });
+    setBusyDoc(false);
+
+    if (read.status !== 'succeeded') {
+      // The tool's own wording is the useful one — "that PDF has no text in it,
+      // it is probably a scan" is an instruction, not a failure.
+      setNote({
+        kind: 'err',
+        text: read.status === 'failed' ? read.error.message : 'Reading that document was gated.',
+      });
+      return;
+    }
+    setNote({ kind: 'ok', text: `Read “${file.name}” and attached it as ${read.output.docId}.` });
     await load();
   }
 
@@ -353,6 +429,32 @@ export function KnowledgePanel() {
             />
             <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
               Load a file
+            </Button>
+            {/*
+              The PDF route, separate from "Load a file" on purpose. A text file
+              is read here and shown to you before anything is attached; a PDF has
+              to be uploaded first so the server can extract its text. Two
+              buttons, because they behave differently and one label would hide
+              that.
+            */}
+            <input
+              ref={pdfInput}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void uploadDocument(f);
+                e.target.value = '';
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busyDoc}
+              onClick={() => pdfInput.current?.click()}
+            >
+              {busyDoc ? 'Reading…' : 'Upload a PDF'}
             </Button>
             <Button
               size="sm"

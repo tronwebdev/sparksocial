@@ -1,7 +1,9 @@
-import { z, ZodTypeAny } from 'zod';
+﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
+import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
+import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
@@ -151,6 +153,8 @@ export interface ScopedDb {
       embedding: number[];
       requiredRoles?: AssetRole[];
       k: number;
+      /** Rows to skip — `LIB-02`'s pagination. */
+      offset?: number;
     }): Promise<
       Array<{
         assetId: string;
@@ -163,6 +167,10 @@ export interface ScopedDb {
         url: string;
         mediaType: string;
         folderId: string | null;
+        /** Null on any row uploaded before `assets.filename` existed. */
+        filename: string | null;
+        sizeBytes: number | null;
+        createdAt: Date;
       }>
     >;
     /** §4.1 ingest — the only way a new asset enters the graph. */
@@ -176,6 +184,9 @@ export interface ScopedDb {
       caption: string;
       embedding: number[];
       source: string;
+      /** The owner's own filename and size, when the upload path knew them. */
+      filename?: string;
+      sizeBytes?: number;
     }): Promise<{ id: string }>;
     /** Concatenatable grounding text for `guard.claim_grounding` (§10). */
     captionsByRole(genomeId: string, orgId: string, roles: AssetRole[]): Promise<string[]>;
@@ -219,6 +230,33 @@ export interface ScopedDb {
       orgId: string;
       folderId: string | null;
     }): Promise<{ id: string; folderId: string | null } | undefined>;
+  /**
+   * Archive or restore one asset — the Assets Library's remove action.
+   *
+   * Not a delete: a published post stores `assetId` in its beats, so removing the
+   * row would break the render of something already live. See `assets.archivedAt`
+   * in the schema.
+   */
+  setArchived(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    archived: boolean;
+  }): Promise<{ id: string; archivedAt: Date | null } | undefined>;
+  /**
+   * Edit an asset's caption, re-embedding it.
+   *
+   * The caption is what gets embedded, so it *is* the asset as far as retrieval
+   * is concerned — editing it without re-embedding would show new words while the
+   * graph kept matching on the old ones. The embedding is computed by the tool.
+   */
+  setCaption(args: {
+    id: string;
+    genomeId: string;
+    orgId: string;
+    caption: string;
+    embedding: number[];
+  }): Promise<{ id: string; caption: string | null } | undefined>;
   };
   /** Named groupings for assets — `asset.folder.create`/`.move` (the latter lives on `assets`, since it writes that table). See {@link AssetFolderStore}. */
   assetFolders: AssetFolderStore;
@@ -247,6 +285,8 @@ export interface ScopedDb {
    * row itself carries no confidential material — see {@link CampaignStore}.
    */
   campaigns: CampaignStore;
+  /** Named capability bundles — `team.group.*` (`SET-WS-TEAM-GROUPS`). See {@link TeamGroupStore}. */
+  teamGroups: TeamGroupStore;
   /** Org-level plan/governance/SSO config — `org.*` (plan §6.9, §12 P6). See {@link OrgSettingsStore}. */
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
@@ -364,8 +404,24 @@ export interface BrandGovernance {
   toneVector?: { formal: number; playful: number; technical: number; bold: number };
   /** Words never to use, checked verbatim by `guard.brand_voice`. */
   bannedPhrases?: string[];
+  /** `SET-WS-BRAND-KITS`' watermark. Absent means `DEFAULT_WATERMARK` — see `packages/shared/src/brandKit.ts`. */
+  watermark?: Watermark;
+  /**
+   * The Brand Kits screen's Templates presets: intro/outro/bumper/caption and
+   * lower-third lines.
+   *
+   * Imported from `shared` rather than restated structurally, unlike most of the
+   * fields around it. `category` is a five-value union, and a hand-written
+   * `category: string` here compiles while silently widening it — the resolver
+   * then rejects the store's own type, which is how the two copies drift.
+   */
+  kitTemplates?: KitTemplate[];
+  /** The brand's default stock voice — an ElevenLabs premade id from `STOCK_VOICES`. */
+  stockVoiceId?: string;
   logoUrl?: string;
   brandColors?: string[];
+  /** M4's font references — two ids from packages/compose/src/fonts.ts. */
+  brandFonts?: { display?: string; body?: string };
 
   /**
    * ── Scheduling (PRD §8.2 required, §8.7 a Calendar input) ─────────────────
@@ -386,6 +442,13 @@ export interface BrandGovernance {
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   /** Which surfaces SPARK may answer on. Empty means every enabled type. */
   engagementTypes?: string[];
+  /** What the owner calls their agent — see `agentIdentity.ts`. */
+  agentName?: string;
+  /** Sales Assist — see the `brands` table. */
+  salesQualification?: string[];
+  salesHandoff?: Record<string, string>;
+  salesDestination?: string;
+  salesEscalationKeywords?: string[];
 
   /** IANA zone name. Defaults to `UTC` so every brand has a defined one. */
   timezone: string;
@@ -478,12 +541,21 @@ export interface BrandGovernanceStore {
       strictMode?: boolean;
       toneVector?: { formal: number; playful: number; technical: number; bold: number } | null;
       bannedPhrases?: string[] | null;
+      watermark?: Watermark | null;
+      kitTemplates?: KitTemplate[] | null;
+      stockVoiceId?: string | null;
       logoUrl?: string | null;
       brandColors?: string[] | null;
+      brandFonts?: { display?: string; body?: string } | null;
       timezone?: string;
       postingWindows?: number[] | null;
       engagementAutonomy?: 'off' | 'suggest' | 'auto';
       engagementTypes?: string[] | null;
+      agentName?: string | null;
+      salesQualification?: string[] | null;
+      salesHandoff?: Record<string, string> | null;
+      salesDestination?: string | null;
+      salesEscalationKeywords?: string[] | null;
     };
   }): Promise<BrandGovernance>;
 }
@@ -537,6 +609,8 @@ export interface HumanMessage {
   answeredBy?: string;
   /** Where it was delivered, e.g. `whatsapp`. Absent until sent. */
   channel?: string;
+  /** When the owner saw it. Only ever set on a `notify`. */
+  readAt?: Date;
 }
 
 export interface HumanLoopStore {
@@ -552,6 +626,28 @@ export interface HumanLoopStore {
   get(id: string, orgId: string): Promise<HumanMessage | undefined>;
   /** Unanswered `ask` items, oldest first — the owner's inbox. */
   listPending(brandId: string, orgId: string, limit: number): Promise<HumanMessage[]>;
+  /**
+   * `notify` items, newest first — the inbox that had no reader.
+   *
+   * `human.notify` has written rows since P1 and `listPending` filters
+   * `kind = 'ask'`, so every notification the system ever produced was invisible:
+   * the scheduler's stall notice, the connection watcher's token-expiry warning,
+   * and engagement escalation all wrote into a table nothing selected from.
+   */
+  listNotifications(
+    brandId: string,
+    orgId: string,
+    args: { limit: number; unreadOnly?: boolean },
+  ): Promise<HumanMessage[]>;
+  /** How many are unread, for the badge — cheaper than fetching the list to count it. */
+  unreadNotificationCount(brandId: string, orgId: string): Promise<number>;
+  /**
+   * Mark notifications seen. Omit `ids` to mark every unread one for the brand.
+   *
+   * Returns how many rows changed, so "mark all read" can report what it did
+   * rather than optimistically clearing a badge that may already have been zero.
+   */
+  markNotificationsRead(args: { brandId: string; orgId: string; ids?: string[] }): Promise<number>;
   /**
    * Record the owner's reply. Returns undefined when the id is out of scope or
    * already answered, so a replayed webhook cannot overwrite a decision.
@@ -970,6 +1066,33 @@ export interface AnalyticsStore {
   }): Promise<ContentMetricsSnapshot>;
   /** Every synced platform snapshot across a set of posts — `campaign.report_vs_outcome`'s roll-up. */
   listForItems(contentItemIds: string[], orgId: string, genomeId: string): Promise<ContentMetricsSnapshot[]>;
+  /**
+   * Published posts in a trailing window with whatever snapshot each has —
+   * `analytics.brand_series`'s single read.
+   *
+   * One row per post *per platform snapshot*, and a post with no snapshot yet
+   * appears once with a null platform. Grouped by publication date rather than by
+   * measurement date, because `content_metrics` holds a current value and not a
+   * history; see `publishedWithMetrics` in `scoped.ts` for why that distinction
+   * decides what the cockpit is allowed to draw.
+   */
+  publishedInWindow(
+    orgId: string,
+    genomeId: string,
+    windowDays: number,
+  ): Promise<
+    Array<{
+      contentItemId: string;
+      publishedAt: Date;
+      platform?: string;
+      impressions: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      views: number;
+      saves: number;
+    }>
+  >;
 }
 
 /** One `link.shorten` call attributed to a content item — `analytics.cta_traffic`'s storage. */
@@ -1170,6 +1293,25 @@ export interface Opportunity {
   createdAt: Date;
 }
 
+/**
+ * An opportunity together with the message it was raised from — what a list of
+ * leads has to show to be readable.
+ *
+ * Every message field is optional because the join is a `leftJoin`. In practice
+ * the message always exists (`engage.opportunity.create` reads it before
+ * inserting), but a lead whose message was somehow unreadable should still be
+ * *countable* rather than silently dropped from a total the owner is reading.
+ */
+export interface OpportunityWithMessage extends Opportunity {
+  platform?: string;
+  authorHandle?: string;
+  authorName?: string;
+  messageText?: string;
+  /** The classifier's confidence that this was a buying signal, 0–1. */
+  intentScore?: number;
+  receivedAt?: Date;
+}
+
 /** `engage.opportunity.create`/`.route`'s storage. Genome-scoped like {@link EngagementStore}. */
 export interface OpportunityStore {
   create(args: {
@@ -1181,6 +1323,14 @@ export interface OpportunityStore {
   }): Promise<Opportunity>;
 
   get(id: string, genomeId: string, orgId: string): Promise<Opportunity | undefined>;
+
+  /**
+   * `engage.opportunity.list`'s read — leads for this genome, newest first, each
+   * with the message behind it. Added for the cockpit's Sales Opportunities
+   * panel, which had been listing *messages in the category* because this table
+   * had no reader at all.
+   */
+  listForGenome(genomeId: string, orgId: string, limit: number): Promise<OpportunityWithMessage[]>;
 
   /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */
   route(args: { id: string; genomeId: string; orgId: string; routedTo: string }): Promise<Opportunity | undefined>;
@@ -1316,6 +1466,18 @@ export interface CampaignRecord {
   windowDays: number;
   startAt: Date;
   status: string;
+  /**
+   * The wizard's own fields (`CMP-01`, F8). All optional: a campaign created
+   * before the wizard asked never answered, and reporting a default as though
+   * it had been chosen is how a screen ends up lying about somebody's settings.
+   */
+  campaignType?: CampaignType;
+  primaryCta?: string;
+  weight?: CampaignWeight;
+  /** Read by `engage.autohandle` via `rungAutonomy` — see `campaignAutonomy.ts`. */
+  engagementRung?: EngagementRung;
+  learnFromPerformance?: boolean;
+  adjustMixAutomatically?: boolean;
   /** The plan snapshot the owner approved. Deliberately opaque here. */
   plan: unknown;
   /**
@@ -1438,6 +1600,13 @@ export interface CampaignStore {
     targetLabel?: string;
     platforms?: string[];
     approvalMode?: ApprovalMode;
+    /** The wizard's own fields — see the `campaigns` table for each. */
+    campaignType?: CampaignType;
+    primaryCta?: string;
+    weight?: CampaignWeight;
+    engagementRung?: EngagementRung;
+    learnFromPerformance?: boolean;
+    adjustMixAutomatically?: boolean;
   }): Promise<{ id: string }>;
   /** Undefined rather than throwing when out of scope. */
   get(campaignId: string, orgId: string): Promise<CampaignRecord | undefined>;
@@ -1666,6 +1835,12 @@ export interface OAuthConnectionRecord {
   scopes?: string[];
   /** Human-readable "@handle" or page/channel name, when cheaply available right after token exchange. */
   accountLabel?: string;
+  /**
+   * The platform's own stable id for this account. Unlike `accountLabel` it does
+   * not change when the owner renames their page, which is what makes it usable
+   * as an inbound webhook's route back to a genome.
+   */
+  accountId?: string;
   /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
   expiryNotifiedAt?: Date;
 }
@@ -1682,6 +1857,11 @@ export interface OAuthConnectionStore {
     connectedBy: string;
     scopes?: string[];
     accountLabel?: string;
+    /**
+     * The platform's stable id for this account — the engagement webhook's only
+     * route from an inbound event back to a genome. See `oauth_connections`.
+     */
+    accountId?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
 
@@ -1764,6 +1944,47 @@ export interface BrandMember {
   brandId: string;
   role: Role;
   createdAt: Date;
+}
+
+/** One capability bundle — `SET-WS-TEAM-GROUPS`. */
+export interface TeamGroup {
+  id: string;
+  name: string;
+  capabilities: string[];
+  memberCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * TEAM GROUPS — named capability bundles, org-scoped rather than genome-scoped.
+ *
+ * `BrandMemberStore` answers "which brands may this person touch, and as what
+ * role". This answers the different question the design's Groups tab asks:
+ * "these people may publish and approve, whatever their role says". Roles are a
+ * fixed ladder compiled into every tool's `scopes`; a workspace wanting a video
+ * team that can publish but not spend had no way to express it.
+ *
+ * Groups only ever widen — see `policy.ts`. Nothing here can reach a tool whose
+ * own `scopes` refuse the caller, because rule 2 runs first.
+ */
+export interface TeamGroupStore {
+  list(orgId: string): Promise<TeamGroup[]>;
+  create(args: { orgId: string; name: string; capabilities: string[] }): Promise<TeamGroup>;
+  /** A partial patch. Returns undefined when no group in this org has that id. */
+  update(args: { orgId: string; id: string; name?: string; capabilities?: string[] }): Promise<TeamGroup | undefined>;
+  /** Also removes the group's memberships. False when there was nothing to delete. */
+  remove(args: { orgId: string; id: string }): Promise<boolean>;
+  members(orgId: string, groupId: string): Promise<string[]>;
+  /** Idempotent — adding somebody twice is not two memberships. */
+  addMember(args: { orgId: string; groupId: string; userId: string }): Promise<void>;
+  removeMember(args: { orgId: string; groupId: string; userId: string }): Promise<void>;
+  /**
+   * The union of every capability this user has from any group — read once per
+   * tool call by the policy layer. The union, not the intersection: adding
+   * somebody to a second group must not silently remove access.
+   */
+  capabilitiesForUser(orgId: string, userId: string): Promise<string[]>;
 }
 
 export interface BrandMemberStore {

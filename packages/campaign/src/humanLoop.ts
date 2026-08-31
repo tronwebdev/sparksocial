@@ -151,6 +151,150 @@ export const humanNotify = defineTool({
   },
 });
 
+/* ── human.notifications ─────────────────────────────────────────────── */
+
+/**
+ * THE READER `human.notify` NEVER HAD.
+ *
+ * `human.notify` has written rows since P1. `listPending` filters
+ * `kind = 'ask'`, and it was the only list method on the store — so every
+ * notification the system has ever produced went into a table nothing selected
+ * from. Not "shown in the wrong place": never read, by anything.
+ *
+ * Three production paths were writing into it:
+ *
+ *   - `apps/api/src/scheduler.ts` — a post that exhausted its five publish
+ *     attempts and stopped retrying
+ *   - `apps/api/src/connection-watcher.ts` — a platform token about to expire
+ *   - `packages/engage/src/escalate.ts` — a conversation handed to a human
+ *
+ * All three are exactly the "you need to know this" cases the table exists for,
+ * and all three were silent. That is worse than a missing feature: the code reads
+ * as though the owner was told.
+ *
+ * ── Why `readAt` and not `answeredAt` ─────────────────────────────────────
+ *
+ * A notification expects no reply, so it cannot be closed by being answered —
+ * without a separate column the list can only grow. Reusing `answeredAt` was the
+ * shortcut, and it would have broken the answer latch, which filters on
+ * `kind = 'ask'` specifically so a notification can never read back as a decision
+ * somebody made.
+ */
+export const humanNotifications = defineTool({
+  name: 'human.notifications',
+  version: 1,
+
+  summary:
+    'Things SPARK has told you — a post that stopped retrying, a platform token about to expire, a ' +
+    'conversation handed to a person. Newest first. Read-only, free.',
+
+  input: z.object({
+    limit: z.number().int().min(1).max(50).default(20),
+    /** Default false: the list is a log, and hiding what you already read makes it impossible to look back. */
+    unreadOnly: z.boolean().optional(),
+  }),
+  output: z.object({
+    brandId: z.string(),
+    /** Unread across the whole brand, not just this page — the badge counts everything. */
+    unreadCount: z.number(),
+    notifications: z.array(
+      z.object({
+        messageId: z.string(),
+        message: z.string(),
+        urgency: Urgency,
+        at: z.string(),
+        read: z.boolean(),
+        /** Which agent run produced it, when one did — the link back to the Agent Timeline. */
+        runId: z.string().optional(),
+        /** The transport that accepted it, if any. Absent means it was never delivered anywhere. */
+        channel: z.string().optional(),
+      }),
+    ),
+  }),
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor', 'approver', 'viewer'],
+  idempotent: true,
+  surfaces: ['CC-01'],
+
+  async handler(input, ctx) {
+    const brandId = requireBrand(ctx.brandId);
+    const [rows, unreadCount] = await Promise.all([
+      ctx.db.humanLoop.listNotifications(brandId, ctx.orgId, {
+        limit: input.limit,
+        ...(input.unreadOnly === undefined ? {} : { unreadOnly: input.unreadOnly }),
+      }),
+      ctx.db.humanLoop.unreadNotificationCount(brandId, ctx.orgId),
+    ]);
+
+    return {
+      brandId,
+      unreadCount,
+      notifications: rows.map((m) => ({
+        messageId: m.id,
+        message: m.body,
+        urgency: m.urgency,
+        at: m.createdAt.toISOString(),
+        read: m.readAt !== undefined,
+        ...(m.runId ? { runId: m.runId } : {}),
+        ...(m.channel ? { channel: m.channel } : {}),
+      })),
+    };
+  },
+});
+
+/* ── human.notifications.read ────────────────────────────────────────── */
+
+export const humanNotificationsRead = defineTool({
+  name: 'human.notifications.read',
+  version: 1,
+
+  summary:
+    'Mark notifications as seen. Pass ids for specific ones, or all:true to clear the whole unread list. Free.',
+
+  input: z
+    .object({
+      messageIds: z.array(z.string().min(1)).max(50).optional(),
+      /** Explicit rather than implied by an absent `messageIds` — clearing an inbox should not be the default. */
+      all: z.boolean().optional(),
+    })
+    .refine((v) => Boolean(v.all) !== Boolean(v.messageIds?.length), {
+      message: 'Pass either messageIds or all:true, not both and not neither.',
+    }),
+  output: z.object({
+    brandId: z.string(),
+    /** How many were *newly* read. Zero is a normal answer, not a failure. */
+    marked: z.number(),
+    unreadCount: z.number(),
+  }),
+
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor', 'approver'],
+  /**
+   * `true`. Marking read is a latch: a second identical call reports zero rows
+   * changed rather than re-stamping a later timestamp over the moment the owner
+   * actually saw it.
+   */
+  idempotent: true,
+  surfaces: ['CC-01'],
+
+  async handler(input, ctx) {
+    const brandId = requireBrand(ctx.brandId);
+
+    const marked = await ctx.db.humanLoop.markNotificationsRead({
+      brandId,
+      orgId: ctx.orgId,
+      ...(input.all ? {} : { ids: input.messageIds ?? [] }),
+    });
+    const unreadCount = await ctx.db.humanLoop.unreadNotificationCount(brandId, ctx.orgId);
+
+    ctx.logger.info('notifications read', { brandId, marked, by: ctx.userId ?? 'unknown' });
+    return { brandId, marked, unreadCount };
+  },
+});
+
 /* ── human.pending ───────────────────────────────────────────────────── */
 
 /**

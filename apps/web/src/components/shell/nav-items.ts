@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from 'react';
+﻿import type { ComponentType, SVGProps } from 'react';
 import {
   AccountIcon,
   AgentsIcon,
@@ -37,7 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: 'engagement',
     label: 'Engagement Intelligence',
-    href: '/command-center',
+    href: '/engagement',
     icon: EngagementIcon,
     labelPx: 17,
   },

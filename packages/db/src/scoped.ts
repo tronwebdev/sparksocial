@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { ToolError, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -59,6 +59,8 @@ export interface RetrieveArgs {
   k?: number;
   /** Days since last use below which an asset is penalised, not excluded. */
   cooldownDays?: number;
+  /** Rows to skip — `LIB-02`'s pagination. See the note on `.offset` in `retrieveAssets`. */
+  offset?: number;
 }
 
 /**
@@ -104,6 +106,16 @@ export function buildRetrieveQuery(scope: Scope, args: RetrieveArgs) {
     where: and(
       scopePredicate('assets', scope),          // ← non-negotiable
       eq(assets.rightsStatus, 'cleared'),
+      /**
+       * Archived assets are out of the graph as far as retrieval is concerned.
+       *
+       * Here rather than in the tool, for the same reason the rights filter is
+       * here: `assemble.plan` must never be handed an archived asset to put in a
+       * beat, and a filter a caller can forget is a filter that will be forgotten.
+       * The row and the blob survive, so a post that already references one still
+       * renders — see `assets.archivedAt`.
+       */
+      isNull(assets.archivedAt),
       // `inArray` binds each role as a parameter — no string-built SQL. An
       // earlier version spliced `requiredRoles` into an `ARRAY[...]` literal via
       // `sql.raw`; every current caller validates roles against the `AssetRole`
@@ -113,6 +125,7 @@ export function buildRetrieveQuery(scope: Scope, args: RetrieveArgs) {
     ),
     score: sql<number>`${similarity} - ${recencyPenalty} - ${diversityPenalty}`,
     limit: k,
+    offset: args.offset ?? 0,
   };
 }
 
@@ -165,6 +178,12 @@ export async function retrieveAssets(
     url: string;
     mediaType: string;
     folderId: string | null;
+    /** `LIB-02`'s `Assets` column and grid labels. Null on a row uploaded before the column existed. */
+    filename: string | null;
+    /** `LIB-02`'s size figures. Null for the same reason. */
+    sizeBytes: number | null;
+    /** `LIB-02`'s `Date Uploaded` column and its date sort. */
+    createdAt: Date;
   }>
 > {
   const q = buildRetrieveQuery(scope, args);
@@ -180,11 +199,23 @@ export async function retrieveAssets(
       url: assets.storagePath,
       mediaType: assets.mediaType,
       folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
     })
     .from(assets)
     .where(q.where)
     .orderBy(sql`${q.score} DESC`)
-    .limit(q.limit);
+    .limit(q.limit)
+    /**
+     * Offset paging, for `LIB-02`'s `Page 1 of 4`.
+     *
+     * Offset rather than a cursor because the ordering is a *computed score*, not
+     * a stable column — there is nothing to key a cursor on. That makes it
+     * unstable under concurrent writes, which is acceptable for a media library
+     * somebody is browsing and would not be for a feed.
+     */
+    .offset(q.offset);
 
   return rows.map((r) => ({ ...r, role: r.role as AssetRole }));
 }
@@ -197,6 +228,9 @@ export interface CreateAssetArgs {
   caption: string;
   embedding: number[];
   source: string;
+  /** The owner's own filename, when the upload path knew it. */
+  filename?: string;
+  sizeBytes?: number;
 }
 
 /** §4.1: the only way a new asset enters the graph. */
@@ -214,9 +248,61 @@ export async function createAsset(db: Database, scope: Scope, args: CreateAssetA
       embedding: args.embedding,
       rightsStatus: args.rightsStatus,
       source: args.source,
+      ...(args.filename ? { filename: args.filename } : {}),
+      ...(args.sizeBytes ? { sizeBytes: args.sizeBytes } : {}),
     })
     .returning({ id: assets.id });
   return row!;
+}
+
+/**
+ * Archive or restore one asset.
+ *
+ * Not a delete. A published post stores `assetId` in its beats and `zipTimeline`
+ * throws `NOT_FOUND` when the asset is missing, so removing the row would break
+ * the render of something already live. `archived_at` takes it out of retrieval
+ * (see `buildRetrieveQuery`) and out of the library while leaving both the row
+ * and the blob, so the decision is reversible and nothing already published
+ * changes.
+ *
+ * Returns undefined when the id is out of scope, so a caller cannot learn that an
+ * asset exists in another genome by archiving it.
+ */
+export async function setAssetArchived(
+  db: Database,
+  scope: Scope,
+  args: { id: string; archived: boolean },
+): Promise<{ id: string; archivedAt: Date | null } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(assets)
+    .set({ archivedAt: args.archived ? sql`now()` : null })
+    .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
+    .returning({ id: assets.id, archivedAt: assets.archivedAt });
+  return row;
+}
+
+/**
+ * Edit an asset's caption — PRD §8.11's "list view supports metadata editing".
+ *
+ * The caption is not decoration: it is the text that gets embedded, so it *is*
+ * the asset as far as retrieval is concerned. Editing it therefore has to
+ * re-embed, or the library would show new words while the graph kept matching on
+ * the old ones. The embedding is computed by the caller (the tool holds the
+ * `EmbedClient`) and passed in, so this module stays free of vendor clients.
+ */
+export async function setAssetCaption(
+  db: Database,
+  scope: Scope,
+  args: { id: string; caption: string; embedding: number[] },
+): Promise<{ id: string; caption: string | null } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(assets)
+    .set({ caption: args.caption, embedding: args.embedding })
+    .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
+    .returning({ id: assets.id, caption: assets.caption });
+  return row;
 }
 
 /** Concatenatable grounding text for `guard.claim_grounding` (§10). */
@@ -761,6 +847,99 @@ export async function getContentMetricsForItems(
     .where(and(scopePredicate('contentMetrics', scope), inArray(contentMetrics.contentItemId, contentItemIds)));
 }
 
+/**
+ * Published posts in a trailing window, each with whatever performance snapshot
+ * exists for it — the raw material for the cockpit's Performance Insights panel
+ * (`analytics.brand_series`).
+ *
+ * ── Why this is grouped by publication date rather than by measurement date ──
+ *
+ * `content_metrics` is explicitly *not* a time series: one row per
+ * `(content_item_id, platform)`, upserted on every sync, so the database holds
+ * "what the platform reports right now" and nothing about yesterday. A chart of
+ * impressions *over time* therefore cannot be drawn from it, and drawing one
+ * anyway would mean inventing the curve.
+ *
+ * What can be drawn honestly is the same question asked a different way: how did
+ * the posts published on each of the last N days do. That is a real comparison
+ * from real rows, and it is the one a brand owner is actually asking. Its caveat
+ * — a post published this morning has had hours to accumulate where Monday's has
+ * had days — is stated by the tool rather than hidden here.
+ *
+ * A `leftJoin`, so a published post with no snapshot yet counts as a post with
+ * zero measured impressions instead of vanishing. A post missing from the chart
+ * is indistinguishable from a day nothing was published, which is the more
+ * misleading of the two readings.
+ */
+export async function publishedWithMetrics(
+  db: Database,
+  scope: Scope,
+  windowDays: number,
+): Promise<
+  Array<{
+    contentItemId: string;
+    publishedAt: Date;
+    platform: string | null;
+    impressions: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    views: number;
+    saves: number;
+  }>
+> {
+  const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+  const rows = await db
+    .select({
+      contentItemId: contentItems.id,
+      publishedAt: contentItems.publishedAt,
+      platform: contentMetrics.platform,
+      impressions: contentMetrics.impressions,
+      likes: contentMetrics.likes,
+      comments: contentMetrics.comments,
+      shares: contentMetrics.shares,
+      views: contentMetrics.views,
+      saves: contentMetrics.saves,
+    })
+    .from(contentItems)
+    .leftJoin(
+      contentMetrics,
+      and(
+        eq(contentMetrics.contentItemId, contentItems.id),
+        eq(contentMetrics.orgId, contentItems.orgId),
+        eq(contentMetrics.genomeId, contentItems.genomeId),
+      ),
+    )
+    .where(
+      and(
+        scopePredicate('contentItems', scope),
+        eq(contentItems.status, 'published'),
+        gte(contentItems.publishedAt, cutoff),
+      ),
+    )
+    .orderBy(desc(contentItems.publishedAt));
+
+  // `publishedAt` is nullable on the column and never null for a published row;
+  // narrowing here keeps the callers from re-asserting it one at a time.
+  return rows.flatMap((r) =>
+    r.publishedAt
+      ? [
+          {
+            contentItemId: r.contentItemId,
+            publishedAt: r.publishedAt,
+            platform: r.platform,
+            impressions: r.impressions ?? 0,
+            likes: r.likes ?? 0,
+            comments: r.comments ?? 0,
+            shares: r.shares ?? 0,
+            views: r.views ?? 0,
+            saves: r.saves ?? 0,
+          },
+        ]
+      : [],
+  );
+}
+
 export interface EngagementMessageRow {
   /** When it stopped needing attention — PRD §5's "Reply SLA" endpoint. */
   resolvedAt: Date | null;
@@ -1094,6 +1273,62 @@ export async function getOpportunity(db: Database, scope: Scope, id: string): Pr
     .where(and(eq(opportunities.id, id), scopePredicate('opportunities', scope)))
     .limit(1);
   return row;
+}
+
+/**
+ * The read the `opportunities_inbox_item_idx` comment anticipated — every lead
+ * for this genome, newest first, with the message it came from.
+ *
+ * `opportunities` had a writer and no list reader until the cockpit needed one,
+ * which is why the Sales Opportunities tab was showing *messages the classifier
+ * put in the category* rather than leads anybody had actually raised. Those are
+ * different sets: a message can sit in the category forever without becoming an
+ * opportunity, and an opportunity carries the temperature and the recommended
+ * action that the message does not.
+ *
+ * The join carries `orgId` and `genomeId` as well as the id. The opportunity row
+ * is already inside `scopePredicate`, so the message cannot belong to another
+ * tenant by construction — but "by construction" is an argument, and an equality
+ * check is a guarantee. Same defence-in-depth `listFolderContents` applies.
+ */
+export async function listOpportunities(
+  db: Database,
+  scope: Scope,
+  args: { limit: number },
+): Promise<
+  Array<
+    OpportunityRow & {
+      platform: string | null;
+      authorHandle: string | null;
+      authorName: string | null;
+      messageText: string | null;
+      intentScore: number | null;
+      receivedAt: Date | null;
+    }
+  >
+> {
+  return db
+    .select({
+      ...opportunityColumns,
+      platform: engagementMessages.platform,
+      authorHandle: engagementMessages.authorHandle,
+      authorName: engagementMessages.authorName,
+      messageText: engagementMessages.text,
+      intentScore: engagementMessages.intentScore,
+      receivedAt: engagementMessages.receivedAt,
+    })
+    .from(opportunities)
+    .leftJoin(
+      engagementMessages,
+      and(
+        eq(engagementMessages.id, opportunities.inboxItemId),
+        eq(engagementMessages.orgId, opportunities.orgId),
+        eq(engagementMessages.genomeId, opportunities.genomeId),
+      ),
+    )
+    .where(scopePredicate('opportunities', scope))
+    .orderBy(desc(opportunities.createdAt))
+    .limit(args.limit);
 }
 
 /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */
@@ -1880,6 +2115,189 @@ export interface RecipeRow {
   updatedAt: Date;
 }
 
+/* ── the outcome loop's two clocks ──────────────────────────────────────── */
+
+/**
+ * One published post the outcome observer may act on, with the two timestamps
+ * that decide whether it should.
+ */
+export interface OutcomeCandidateRow {
+  id: string;
+  orgId: string;
+  genomeId: string;
+  platform: string;
+  pillar: string | null;
+  publishedAt: Date;
+  /** Newest snapshot across this post's platforms; null when never synced. */
+  lastSyncedAt: Date | null;
+}
+
+/**
+ * Published posts whose metrics are stale — the read behind
+ * `apps/api/src/outcome-observer.ts`'s first phase.
+ *
+ * **The third deliberate cross-tenant read in this file**, after
+ * {@link findDueContentItems} and {@link findExpiringOAuthConnections}, and it
+ * carries their justification unchanged: the caller is a clock, a clock has no
+ * session, and every row comes back carrying its own `orgId` and `genomeId` so
+ * the work it triggers runs through that tenant's own governance.
+ *
+ * ── Why the staleness test is not a fixed interval ───────────────────────
+ *
+ * Engagement is front-loaded and then almost flat. A post's numbers move by the
+ * hour on its first day and barely at all after its third week, so one interval
+ * is wrong in both directions at once: frequent enough for a fresh post wastes
+ * a paid vendor call every few hours on months-old posts forever, and slack
+ * enough for an old post misses the window where the numbers actually moved.
+ *
+ * So the cadence widens with the post's age, and the SQL does that arithmetic
+ * rather than the caller — filtering in the database keeps a tick to one query
+ * regardless of how many published posts an org has accumulated. The tiers are
+ * `age < 2 days → 3h`, `< 7 days → 1 day`, `< 30 days → 7 days`, and past
+ * `trackingDays` nothing at all: a post that old has a final number, and
+ * re-reading it forever is a standing cost with no new information in it.
+ *
+ * Never-synced posts are always due, whatever their age — a post that published
+ * while the observer was down would otherwise never be measured at all.
+ */
+export async function findMetricsSyncDue(
+  db: Database,
+  args: { now: Date; limit: number; trackingDays?: number },
+): Promise<OutcomeCandidateRow[]> {
+  const trackingDays = args.trackingDays ?? 30;
+
+  const lastSyncedAt = sql<Date | null>`max(${contentMetrics.syncedAt})`;
+
+  const rows = await db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      platform: contentItems.platform,
+      pillar: contentItems.pillar,
+      publishedAt: contentItems.publishedAt,
+      lastSyncedAt,
+    })
+    .from(contentItems)
+    .leftJoin(contentMetrics, eq(contentMetrics.contentItemId, contentItems.id))
+    .where(
+      and(
+        eq(contentItems.status, 'published'),
+        // A post with no receipt has no platform id to poll for; `analytics.sync`
+        // would reject it, so it is excluded here rather than failing per-tick.
+        isNotNull(contentItems.externalId),
+        isNotNull(contentItems.platform),
+        isNotNull(contentItems.publishedAt),
+        gte(contentItems.publishedAt, new Date(args.now.getTime() - trackingDays * 86_400_000)),
+      ),
+    )
+    .groupBy(
+      contentItems.id,
+      contentItems.orgId,
+      contentItems.genomeId,
+      contentItems.platform,
+      contentItems.pillar,
+      contentItems.publishedAt,
+    )
+    // The age-tiered cadence, as a HAVING over the aggregate: a never-synced
+    // post (max() is null) is always due.
+    .having(
+      sql`${lastSyncedAt} is null or ${lastSyncedAt} < ${args.now.toISOString()}::timestamptz - ${syncIntervalSql()}`,
+    )
+    .orderBy(asc(contentItems.publishedAt))
+    .limit(args.limit);
+
+  return rows as OutcomeCandidateRow[];
+}
+
+/**
+ * The resync interval as SQL, widening with the post's age. Written as a
+ * `case` rather than computed per row in JS because the filter has to run in
+ * the database — see {@link findMetricsSyncDue}.
+ */
+function syncIntervalSql(): SQL {
+  return sql`case
+    when ${contentItems.publishedAt} > now() - interval '2 days' then interval '3 hours'
+    when ${contentItems.publishedAt} > now() - interval '7 days' then interval '1 day'
+    else interval '7 days'
+  end`;
+}
+
+/**
+ * Published posts ready to be scored once, for the observer's second phase.
+ *
+ * Cross-tenant for the same reason as {@link findMetricsSyncDue}.
+ *
+ * ── Why a maturation window, and why it is not optional ──────────────────
+ *
+ * `learning.record_outcome` scores a post against this genome's own recent
+ * baseline and moves a Thompson-sampling arm. Scoring at publish time would
+ * read near-zero engagement on every post and record it as a *failure* — the
+ * mix engine would then learn to avoid whatever was posted most recently,
+ * which is the exact opposite of the intended signal, and it would learn it
+ * confidently because the arms would fill with real-looking observations.
+ *
+ * So a post is only scored once it has had `maturationHours` to accumulate,
+ * and only if at least one metrics snapshot exists for it. The second
+ * condition matters as much as the first: with no snapshot the reward
+ * computation divides by a baseline of 1 and produces a number that looks
+ * like data.
+ *
+ * The unique index on `learning_outcomes.content_item_id` makes a second call
+ * for the same post a safe replay, so this read only has to avoid *pointless*
+ * work rather than guarantee exactly-once.
+ *
+ * Items with no pillar are excluded: there is no arm for the mix engine to
+ * move, and `learning.record_outcome` rejects them.
+ */
+export async function findOutcomeRecordDue(
+  db: Database,
+  args: { now: Date; limit: number; maturationHours?: number },
+): Promise<OutcomeCandidateRow[]> {
+  const maturationHours = args.maturationHours ?? 72;
+  const matureBefore = new Date(args.now.getTime() - maturationHours * 3_600_000);
+
+  const rows = await db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      platform: contentItems.platform,
+      pillar: contentItems.pillar,
+      publishedAt: contentItems.publishedAt,
+      lastSyncedAt: sql<Date | null>`max(${contentMetrics.syncedAt})`,
+    })
+    .from(contentItems)
+    // An inner join, not a left one: no snapshot means nothing to score from.
+    .innerJoin(contentMetrics, eq(contentMetrics.contentItemId, contentItems.id))
+    .leftJoin(learningOutcomes, eq(learningOutcomes.contentItemId, contentItems.id))
+    .where(
+      and(
+        eq(contentItems.status, 'published'),
+        isNotNull(contentItems.pillar),
+        isNotNull(contentItems.platform),
+        isNotNull(contentItems.publishedAt),
+        lte(contentItems.publishedAt, matureBefore),
+        isNull(learningOutcomes.id),
+      ),
+    )
+    .groupBy(
+      contentItems.id,
+      contentItems.orgId,
+      contentItems.genomeId,
+      contentItems.platform,
+      contentItems.pillar,
+      contentItems.publishedAt,
+    )
+    // Oldest first: a backlog after downtime should be worked in the order the
+    // posts actually happened, so each score sees the baseline its predecessors
+    // built rather than a baseline assembled backwards.
+    .orderBy(asc(contentItems.publishedAt))
+    .limit(args.limit);
+
+  return rows as OutcomeCandidateRow[];
+}
+
 const recipeColumns = {
   id: recipes.id,
   genomeId: recipes.genomeId,
@@ -2078,6 +2496,8 @@ export interface OAuthConnectionRow {
   updatedAt: Date;
   scopes: string[] | null;
   accountLabel: string | null;
+  /** The platform's stable account id — the engagement webhook's join key. */
+  accountId: string | null;
   expiryNotifiedAt: Date | null;
 }
 
@@ -2097,6 +2517,7 @@ const oauthConnectionColumns = {
   updatedAt: oauthConnections.updatedAt,
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
+  accountId: oauthConnections.accountId,
   expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
@@ -2112,6 +2533,8 @@ export async function saveOAuthConnection(
     connectedBy: string;
     scopes?: string[];
     accountLabel?: string;
+    /** The platform's stable account id — the engagement webhook's route back to this genome. */
+    accountId?: string;
   },
 ): Promise<OAuthConnectionRow> {
   assertScope(scope);
@@ -2127,6 +2550,7 @@ export async function saveOAuthConnection(
       ...(args.expiresAt ? { expiresAt: args.expiresAt } : {}),
       ...(args.scopes ? { scopes: args.scopes } : {}),
       ...(args.accountLabel ? { accountLabel: args.accountLabel } : {}),
+      ...(args.accountId ? { accountId: args.accountId } : {}),
     })
     .onConflictDoUpdate({
       target: [oauthConnections.genomeId, oauthConnections.provider],
@@ -2137,6 +2561,7 @@ export async function saveOAuthConnection(
         expiresAt: args.expiresAt ?? null,
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
+        accountId: args.accountId ?? null,
         // Reconnecting re-arms the §10 expiry alert. The new token has a new
         // expiry, so the next warning is a new fact, not a repeat of the one
         // that prompted this reconnection.
@@ -2192,6 +2617,40 @@ export async function findExpiringOAuthConnections(
     )
     .orderBy(asc(oauthConnections.expiresAt))
     .limit(args.limit);
+}
+
+/**
+ * Which genome owns a platform account — the engagement webhook's one read.
+ *
+ * **The fourth deliberate cross-tenant read in this file**, and the one with the
+ * least choice about it. An inbound webhook arrives knowing which *account* an
+ * event happened on and nothing else: there is no session, no header, and no
+ * tenant to scope to until this query answers. Every other route in the system
+ * learns its genome before it touches data; this one learns it from here.
+ *
+ * That makes the return shape the security boundary. It hands back `orgId` and
+ * `genomeId` and the caller is required to build its `ToolCtx` from them, which
+ * is what puts the ingest back inside the scoped layer for every subsequent
+ * query — see `apps/api/src/engage-webhook.ts`.
+ *
+ * ── Why more than one row is a refusal, not a pick ────────────────────────
+ *
+ * The index is deliberately not unique: an agency workspace can connect the same
+ * client's Instagram twice under two genomes. When that happens there is no
+ * defensible way to choose, and choosing wrong files a customer's private DM
+ * into another customer's inbox — the precise failure CLAUDE.md invariant 2
+ * exists to prevent. So the ambiguity is returned as-is and the caller drops the
+ * event with a warning. Losing a comment is recoverable; leaking one is not.
+ */
+export async function findGenomesByAccount(
+  db: Database,
+  args: { provider: string; accountId: string },
+): Promise<Array<{ orgId: string; genomeId: string }>> {
+  return db
+    .select({ orgId: oauthConnections.orgId, genomeId: oauthConnections.genomeId })
+    .from(oauthConnections)
+    .where(and(eq(oauthConnections.provider, args.provider), eq(oauthConnections.accountId, args.accountId)))
+    .limit(5);
 }
 
 /** Latches the warning from {@link findExpiringOAuthConnections}. Org-scoped, unlike the read. */
@@ -2393,4 +2852,172 @@ export async function readSuccessMetrics(
     rolledBack: byStatus('rolled_back'),
     needsReview: byStatus('needs_review'),
   };
+}
+
+/* ── team groups (`SET-WS-TEAM-GROUPS`) ──────────────────────────────────── */
+
+export interface TeamGroupRow {
+  id: string;
+  name: string;
+  capabilities: string[];
+  memberCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Groups are **org-scoped, not genome-scoped**, and that is a deliberate
+ * exception worth stating rather than leaving to be noticed.
+ *
+ * `assertScope` exists because assets, chunks, memories and content belong to
+ * one client and must never cross. A group is a statement about the agency's own
+ * staff — "these four people may publish" — and the people it names work across
+ * several clients by design. Scoping it per genome would force the same team to
+ * be recreated once per client, and the copies would drift, which is a worse
+ * outcome than the one the predicate protects against here: there is no client
+ * material in these two tables at all.
+ *
+ * Everything still keys on `orgId`, so one workspace can never read another's
+ * groups.
+ */
+export async function listTeamGroups(db: Database, orgId: string): Promise<TeamGroupRow[]> {
+  const rows = await db
+    .select({
+      id: teamGroups.id,
+      name: teamGroups.name,
+      capabilities: teamGroups.capabilities,
+      createdAt: teamGroups.createdAt,
+      updatedAt: teamGroups.updatedAt,
+      memberCount: sql<string>`count(${teamGroupMembers.id})`,
+    })
+    .from(teamGroups)
+    .leftJoin(teamGroupMembers, eq(teamGroupMembers.groupId, teamGroups.id))
+    .where(eq(teamGroups.orgId, orgId))
+    .groupBy(teamGroups.id, teamGroups.name, teamGroups.capabilities, teamGroups.createdAt, teamGroups.updatedAt)
+    .orderBy(asc(teamGroups.name));
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    capabilities: r.capabilities ?? [],
+    memberCount: Number(r.memberCount ?? 0),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
+export async function listTeamGroupMembers(db: Database, orgId: string, groupId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: teamGroupMembers.userId })
+    .from(teamGroupMembers)
+    .where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.groupId, groupId)))
+    .orderBy(asc(teamGroupMembers.userId));
+  return rows.map((r) => r.userId);
+}
+
+export async function createTeamGroup(
+  db: Database,
+  orgId: string,
+  args: { name: string; capabilities: string[] },
+): Promise<TeamGroupRow> {
+  const [row] = await db
+    .insert(teamGroups)
+    .values({ orgId, name: args.name, capabilities: args.capabilities })
+    .returning();
+  if (!row) throw new ToolError('UPSTREAM_FAILED', 'Failed to create the group.', { name: args.name });
+  return { ...row, capabilities: row.capabilities ?? [], memberCount: 0 };
+}
+
+export async function updateTeamGroup(
+  db: Database,
+  orgId: string,
+  args: { id: string; name?: string; capabilities?: string[] },
+): Promise<TeamGroupRow | undefined> {
+  const [row] = await db
+    .update(teamGroups)
+    .set({
+      ...(args.name !== undefined ? { name: args.name } : {}),
+      ...(args.capabilities !== undefined ? { capabilities: args.capabilities } : {}),
+      updatedAt: sql`now()`,
+    })
+    .where(and(eq(teamGroups.id, args.id), eq(teamGroups.orgId, orgId)))
+    .returning();
+  if (!row) return undefined;
+
+  const members = await listTeamGroupMembers(db, orgId, args.id);
+  return { ...row, capabilities: row.capabilities ?? [], memberCount: members.length };
+}
+
+/**
+ * Deleting a group deletes its memberships.
+ *
+ * No foreign key does this, so it is done here in one transaction: an orphaned
+ * `team_group_members` row is worse than a missing one, because
+ * {@link capabilitiesForUser} joins through the group and a membership pointing
+ * at nothing would either grant nothing (confusing) or, after an id reuse, grant
+ * something nobody chose.
+ */
+export async function deleteTeamGroup(db: Database, orgId: string, id: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await tx.delete(teamGroupMembers).where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.groupId, id)));
+    const deleted = await tx
+      .delete(teamGroups)
+      .where(and(eq(teamGroups.id, id), eq(teamGroups.orgId, orgId)))
+      .returning({ id: teamGroups.id });
+    return deleted.length > 0;
+  });
+}
+
+/** Idempotent by the unique index — adding somebody twice is not two memberships. */
+export async function addTeamGroupMember(
+  db: Database,
+  orgId: string,
+  args: { groupId: string; userId: string },
+): Promise<void> {
+  await db
+    .insert(teamGroupMembers)
+    .values({ orgId, groupId: args.groupId, userId: args.userId })
+    .onConflictDoNothing({ target: [teamGroupMembers.groupId, teamGroupMembers.userId] });
+}
+
+export async function removeTeamGroupMember(
+  db: Database,
+  orgId: string,
+  args: { groupId: string; userId: string },
+): Promise<void> {
+  await db
+    .delete(teamGroupMembers)
+    .where(
+      and(
+        eq(teamGroupMembers.orgId, orgId),
+        eq(teamGroupMembers.groupId, args.groupId),
+        eq(teamGroupMembers.userId, args.userId),
+      ),
+    );
+}
+
+/**
+ * Every capability this user has from any group — the read the policy layer
+ * makes once per tool call.
+ *
+ * The union, not the intersection: groups are additive by construction, and
+ * somebody in both the Video team and the Design team has both teams'
+ * capabilities. Intersecting would mean adding a person to a second group
+ * silently *removed* access, which is the opposite of what adding somebody to a
+ * group looks like it should do.
+ *
+ * One query with a join rather than "list groups, then filter": this runs on
+ * every call through `invokeTool`, and a per-group round trip would put the
+ * group count into the latency of every tool in the registry.
+ */
+export async function capabilitiesForUser(db: Database, orgId: string, userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ capabilities: teamGroups.capabilities })
+    .from(teamGroupMembers)
+    .innerJoin(teamGroups, eq(teamGroups.id, teamGroupMembers.groupId))
+    .where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.userId, userId)));
+
+  const union = new Set<string>();
+  for (const row of rows) for (const capability of row.capabilities ?? []) union.add(capability);
+  return [...union].sort();
 }

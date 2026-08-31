@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { ContentPillar, Explanation, GenerationMode, Objective, ToolError } from '@sparksocial/shared';
+import {
+  ContentPillar,
+  Explanation,
+  GenerationMode,
+  Objective,
+  ToolError,
+  rungFromBrandAutonomy,
+  type EngagementRung,
+} from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -58,6 +66,36 @@ export const CampaignCreateInput = z.object({
    * downward direction this would be a second lock rather than a control.
    */
   approvalMode: z.enum(['autopublish', 'review_first_week', 'review_everything']).optional(),
+
+  /* ── The wizard's own fields (`CMP-01`, F8) ─────────────────────────────── */
+
+  /**
+   * The shape of content this campaign runs — distinct from `objective`, which
+   * is what success looks like. See the `campaigns` table.
+   */
+  campaignType: z.enum(['promotion', 'lead_magnet', 'authority', 'launch']).optional(),
+  /** Where this campaign points people, for its duration only. */
+  primaryCta: z.string().min(1).max(200).optional(),
+  /** The prototype's "how much attention should this get?". */
+  weight: z.enum(['dominant', 'balanced', 'light']).optional(),
+  /**
+   * This campaign's rung on the engagement ladder (decided 22 August: four
+   * rungs, with the Sales Assist configuration on top of the top one).
+   *
+   * Omitted inherits the brand's `engagementAutonomy` as a template — the same
+   * relationship `approvalMode` now has. See the handler.
+   */
+  engagementRung: z.enum(['observe', 'suggest', 'auto_reply', 'sales_assist']).optional(),
+  /**
+   * The prototype's "Optimization & Learning" step.
+   *
+   * Optional here and defaulted in the handler, matching `approvalMode` above.
+   * A `z.default()` would make both fields *required* on the parsed type, so
+   * every direct `handler(...)` caller — which is how this package is tested —
+   * would have to name them to say nothing.
+   */
+  learnFromPerformance: z.boolean().optional(),
+  adjustMixAutomatically: z.boolean().optional(),
 });
 
 export const CampaignCreateOutput = z.object({
@@ -121,6 +159,22 @@ export const campaignCreate = defineTool({
     const inventory = (await ctx.db.assets.inventory(input.genomeId, ctx.orgId)) as AssetInventory;
     const startAt = input.startAt ? new Date(input.startAt) : new Date();
 
+    /**
+     * The brand's approval mode, read once, as this campaign's starting posture.
+     * See the `approvalMode` field below for why it is copied rather than
+     * referenced.
+     */
+    const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+    const brandTemplate = brand?.approvalMode ?? 'review_everything';
+
+    /**
+     * The brand's engagement autonomy, as this campaign's starting rung.
+     *
+     * The widening lives in `shared` because the wizard needs the same answer to
+     * preselect the rung it is about to send — see `rungFromBrandAutonomy`.
+     */
+    const brandRung: EngagementRung = rungFromBrandAutonomy(brand?.engagementAutonomy);
+
     // The plan is snapshotted at creation, not recomputed on read: the resolver
     // and the Asset Graph both move underneath a live campaign, and reopening
     // it in week three must show the numbers the owner actually agreed to.
@@ -141,9 +195,34 @@ export const campaignCreate = defineTool({
       plan,
       ...(input.targetCount !== undefined ? { targetCount: input.targetCount } : {}),
       ...(input.targetLabel !== undefined ? { targetLabel: input.targetLabel } : {}),
-      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
       ...(input.platforms.length ? { platforms: input.platforms } : {}),
-      ...(input.approvalMode ? { approvalMode: input.approvalMode } : {}),
+      /**
+       * Autonomy is a property of a campaign (decided 22 August), so this
+       * column is the operative one and `policy.ts` no longer reads the brand's.
+       *
+       * The brand's mode is the **template**: a campaign that does not name a
+       * mode inherits it here, once, at creation. Not at read time — a campaign
+       * whose autonomy silently tracked a brand setting changed months later is
+       * not a per-campaign control, and the owner who set the campaign up would
+       * have no way to see it had moved.
+       *
+       * Falling back to nothing would be worse than either: `policy.ts` treats
+       * an absent campaign mode as "requires review", so every post of every
+       * campaign created without an explicit mode would queue for approval.
+       */
+      approvalMode: input.approvalMode ?? brandTemplate,
+      // The rung follows the same template rule, for the same reason: an absent
+      // rung means the reply path treats this campaign as `observe`, so a
+      // campaign created without one would silently stop answering an audience
+      // the brand had already agreed to answer.
+      engagementRung: input.engagementRung ?? brandRung,
+      // A campaign created here has answered, so the answer is recorded either
+      // way. The nullable columns exist for campaigns predating the question.
+      learnFromPerformance: input.learnFromPerformance ?? true,
+      adjustMixAutomatically: input.adjustMixAutomatically ?? true,
+      ...(input.campaignType ? { campaignType: input.campaignType } : {}),
+      ...(input.primaryCta ? { primaryCta: input.primaryCta } : {}),
+      ...(input.weight ? { weight: input.weight } : {}),
     });
 
     ctx.logger.info('campaign created', {

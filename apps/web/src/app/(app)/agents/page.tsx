@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { CommandCenterOverview } from '@/components/command-center/CommandCenterOverview';
 import { RunTimeline } from '@/components/agents/RunTimeline';
@@ -14,7 +14,7 @@ import { RunTimeline } from '@/components/agents/RunTimeline';
 export default function AgentsPage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="grid grid-cols-1 gap-10 p-8">
         <CommandCenterOverview />
 

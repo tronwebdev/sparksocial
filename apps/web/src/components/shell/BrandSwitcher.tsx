@@ -44,7 +44,7 @@ function readCookie(): string | undefined {
   return document.cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))?.[1];
 }
 
-export function WorkspaceSwitcher() {
+export function BrandSwitcher() {
   const router = useRouter();
   const [genomes, setGenomes] = useState<GenomeRow[] | null>(null);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
@@ -125,12 +125,16 @@ export function WorkspaceSwitcher() {
 
       <DropdownMenuContent align="start" className="w-[348px]">
         {/*
-          "Brands", not "Workspaces" — this switches between businesses inside
-          one org (an agency running several genomes side by side), which is a
-          different thing from the Clerk *organization* that auth calls a
-          "workspace" (`/sign-in/tasks`, `OrgGuard`'s naming prompt). Both used
-          the same word, which is exactly what made "why do all my workspaces
-          have the same name" an ambiguous bug report instead of an obvious one.
+          "Brands" — this switches between businesses inside one Clerk
+          organization (an agency running several genomes side by side), which is
+          a different thing from the organization itself.
+
+          Both used to be called a "workspace", which is exactly what made "why
+          do all my workspaces have the same name" an ambiguous bug report
+          instead of an obvious one. M3 settled it: the business is a **brand**
+          and the organization is an **account** (`/account`, `AccountHome`,
+          `DASH-A-01` — the word the build already used for that level). The
+          component was `WorkspaceSwitcher` until the same pass renamed it.
         */}
         <DropdownMenuLabel>Brands</DropdownMenuLabel>
         {genomes.map((g) => (
@@ -141,8 +145,8 @@ export function WorkspaceSwitcher() {
         ))}
         <DropdownMenuSeparator />
         {/*
-          The other half of "add a new workspace from the dashboard": a second
-          *brand* inside this org, not a second Clerk organization (full
+          The other half of "add a new brand from the dashboard": a second
+          *brand* inside this account, not a second Clerk organization (full
           multi-tenancy is explicitly out of scope for the alpha — CLAUDE.md).
           Onboarding already writes `spark_genome` to whatever it creates, so
           re-running it here needs no new tool — the gap was purely that

@@ -1,26 +1,30 @@
+import { assetRoleLabel, type AssetRole } from '@sparksocial/shared';
+
 /**
- * `AssetRole` (packages/shared/src/types.ts), labeled for display. Kept as data,
- * same reasoning as `nav-items.ts`.
+ * `AssetRole` in the order the pickers show it, labelled from the one shared
+ * record.
  *
- * Mirrored rather than imported from `@sparksocial/shared`, which is the same
- * choice `questions.ts` and `WhyPopover` make and for the same reason: that
- * package has no build output — `exports` points straight at `./src/*.ts`, whose
- * own imports carry `.js` specifiers — so a `next build` that reaches it fails
- * with "Can't resolve './types.js'". CLAUDE.md permits the import; the build
- * does not. Verified by trying it.
+ * The order is the only thing this file decides — a UI judgement about which
+ * roles a brand most likely has, which does not belong in `packages/shared`.
+ * The *words* come from `ASSET_ROLE_WORDS`, so a dropdown can no longer disagree
+ * with the sentences the server writes. They previously did: "Physical capture"
+ * in this list sat two lines below "physical_capture would unlock the most" in
+ * the panel above it.
  *
- * The labels here must therefore stay in step with `ASSET_ROLE_WORDS` in
- * `packages/shared`, which is what the server-side `why` sentences use. They are
- * the same words, capitalised — these head a dropdown, those sit mid-sentence.
+ * This import is the thing CLAUDE.md always permitted and the build always
+ * refused — see `next.config.ts`'s `extensionAlias` for what was actually in
+ * the way.
  */
-export const ASSET_ROLES = [
-  { value: 'talent_likeness', label: 'Talent likeness' },
-  { value: 'product_screen', label: 'Product screen' },
-  { value: 'work_artifact', label: 'Work artifact' },
-  { value: 'physical_capture', label: 'Physical capture' },
-  { value: 'product_shot', label: 'Product shot' },
-  { value: 'social_proof', label: 'Social proof' },
-  { value: 'knowledge', label: 'Knowledge' },
-  { value: 'past_post', label: 'Past post' },
-  { value: 'brand_kit', label: 'Brand kit' },
-] as const;
+const ORDER: readonly AssetRole[] = [
+  'talent_likeness',
+  'product_screen',
+  'work_artifact',
+  'physical_capture',
+  'product_shot',
+  'social_proof',
+  'knowledge',
+  'past_post',
+  'brand_kit',
+];
+
+export const ASSET_ROLES = ORDER.map((value) => ({ value, label: assetRoleLabel(value) }));

@@ -16,9 +16,18 @@ import { Wordmark } from '@/components/brand/Wordmark';
  */
 
 export interface StepShellProps {
-  /** Zero-based, matching the prototype's `STEP 0`…`STEP 5`. */
-  step: number;
-  total: number;
+  /**
+   * Which of the four groups this screen belongs to — `F6`.
+   *
+   * The prototype counts **four** steps and the build counted every screen, so a
+   * flow with three routing questions announced itself as "Step 7 of 9" where
+   * the design says "Step 2 of 4". That is the whole of F6's "the build feels
+   * twice as long as the design": the screens are the screens, and the number at
+   * the top was the thing making them feel endless.
+   */
+  group: 1 | 2 | 3 | 4;
+  /** Position within the group, so "how much longer" is still answerable. */
+  within?: { index: number; total: number };
   eyebrow?: string;
   title: string;
   subtitle?: string;
@@ -27,7 +36,15 @@ export interface StepShellProps {
   footer?: React.ReactNode;
 }
 
-export function StepShell({ step, total, eyebrow, title, subtitle, onBack, children, footer }: StepShellProps) {
+/** The four the prototype names, in its own words. */
+const GROUP_LABELS: Record<1 | 2 | 3 | 4, string> = {
+  1: 'Brand identity',
+  2: 'Brand knowledge',
+  3: 'Brand kit',
+  4: 'Your agent',
+};
+
+export function StepShell({ group, within, eyebrow, title, subtitle, onBack, children, footer }: StepShellProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background px-6 py-8 md:px-16">
       <header className="flex items-center justify-between">
@@ -49,7 +66,7 @@ export function StepShell({ step, total, eyebrow, title, subtitle, onBack, child
       </header>
 
       <main className="mx-auto flex w-full max-w-[720px] flex-1 flex-col justify-center py-10">
-        <Progress step={step} total={total} />
+        <Progress group={group} within={within} />
 
         {eyebrow ? <p className="mt-8 text-[16px] text-ink-muted">{eyebrow}</p> : null}
 
@@ -65,27 +82,44 @@ export function StepShell({ step, total, eyebrow, title, subtitle, onBack, child
 }
 
 /**
- * Segments rather than a single filled bar.
+ * Four segments, one per group, with the group's own progress inside its segment.
  *
- * Six discrete answers, so six discrete marks: a continuous bar at 50% invites
- * "how much longer?", which is the question a short form should never provoke.
- * Counting steps answers it exactly.
+ * This used to be one segment per screen. That is a defensible design for six
+ * screens and a bad one for eleven, and the count is not fixed: the flow's length
+ * depends on how much of the brand the crawl managed to infer, so the same
+ * product told one owner "Step 4 of 7" and another "Step 4 of 10". Four is the
+ * number the design commits to and the number that stays true.
+ *
+ * The part-filled current segment is what keeps the finer answer available. A bar
+ * that only moved once per group would sit still through four screens of brand
+ * knowledge, which reads as a form that is not registering answers.
  */
-function Progress({ step, total }: { step: number; total: number }) {
+function Progress({ group, within }: { group: 1 | 2 | 3 | 4; within?: { index: number; total: number } }) {
+  // Position inside the current group, 0–1. Without a `within` the segment is
+  // simply full, which is right for a group that is one screen.
+  const partial = within && within.total > 1 ? (within.index + 1) / within.total : 1;
+
   return (
     <div>
-      <div className="flex items-center gap-2" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={total}>
-        {Array.from({ length: total }, (_, i) => (
-          <span
-            key={i}
-            className={`h-[6px] flex-1 rounded-full transition-colors duration-300 ${
-              i <= step ? 'bg-[var(--ss-accent-purple)]' : 'bg-[var(--ss-border)]'
-            }`}
-          />
+      <div
+        className="flex items-center gap-2"
+        role="progressbar"
+        aria-valuenow={group}
+        aria-valuemin={1}
+        aria-valuemax={4}
+        aria-valuetext={`${GROUP_LABELS[group]}, step ${group} of 4`}
+      >
+        {([1, 2, 3, 4] as const).map((g) => (
+          <span key={g} className="h-[6px] flex-1 overflow-hidden rounded-full bg-[var(--ss-border)]">
+            <span
+              className="block h-full rounded-full bg-[var(--ss-accent-purple)] transition-[width] duration-300"
+              style={{ width: g < group ? '100%' : g === group ? `${Math.round(partial * 100)}%` : '0%' }}
+            />
+          </span>
         ))}
       </div>
       <p className="mt-3 text-[14px] text-ink-muted">
-        Step {step + 1} of {total}
+        Step {group} of 4 · {GROUP_LABELS[group]}
       </p>
     </div>
   );

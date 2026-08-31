@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
-import { PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { DraftChat } from './DraftChat';
+import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -28,6 +30,13 @@ import { PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, t
  * - **preview** — the assembled post, a platform picker, and `publish.now` —
  *   real, since P4's aggregator publishing already exists.
  */
+
+/**
+ * The busy/error key for a scene *insert*, which has no beat id of its own yet.
+ * A literal rather than an empty string so it can never collide with a real
+ * beat id, and so the Add form's own error renders in the Add form.
+ */
+const SCENE_ADD_KEY = '__add_scene__';
 
 export function DraftPanel({
   genomeId,
@@ -81,6 +90,49 @@ export function DraftPanel({
   const [intent, setIntent] = useState('');
   const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>('instagram');
   const [busyBeatId, setBusyBeatId] = useState<string | null>(null);
+  /**
+   * The Add-scene form, and the running total the storyboard header shows.
+   *
+   * `sceneTotal` is seeded from the draft's own beats and then replaced by
+   * whatever the last scene tool returned, so the header always shows a number
+   * the server computed rather than one this component derived - the two can
+   * disagree on a legacy draft, where some beats have no duration of their own
+   * and the server falls back to the playbook.
+   */
+  const [sceneDescription, setSceneDescription] = useState('');
+  const [sceneDuration, setSceneDuration] = useState('4');
+  const [sceneTotal, setSceneTotal] = useState<number | null>(null);
+
+  /**
+   * The brand kit's Templates presets (`SET-WS-BRAND-KITS`), fetched once so
+   * `Use This Brand Preset` has something to offer.
+   *
+   * Read through `brand.governance.get` rather than a dedicated tool: the
+   * templates live on the brand row alongside the logo and palette, and adding a
+   * second reader for one field of the same record would be two things to keep
+   * in step. Null while loading, `[]` for a brand with none — the strip renders
+   * without the control in both cases.
+   */
+  const [kitTemplates, setKitTemplates] = useState<KitTemplate[] | null>(null);
+  /**
+   * `M10` — the generation pipeline, made visible.
+   *
+   * ── Why this is a label and not a progress bar ────────────────────────
+   *
+   * Each `content.generate_*` call is one HTTP request that returns when the
+   * vendor is done. There is no streaming, no job id, and nothing to poll — so a
+   * percentage would be animation over an unknown, and a bar that fills at a
+   * guessed rate and then sits at 90% is worse than no bar. What *is* known is
+   * which beat is being worked on and which stage the request is at, and that
+   * turns out to be the useful half: "asking fal for a 1:1 image" is a sentence
+   * somebody can act on when it takes 40 seconds.
+   *
+   * One state per beat, not two. A "saving" stage was drafted and removed: the
+   * tool call has already written the draft by the time it returns, and
+   * `replaceBeat` only updates local state — so a save label would have been
+   * exactly the invented stage this comment argues against.
+   */
+  const [stage, setStage] = useState<{ beatId: string; label: string } | null>(null);
   const [beatErrors, setBeatErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -130,14 +182,35 @@ export function DraftPanel({
         return;
       }
 
-      // `calendar.generate` writes slots with a playbook assigned but no
-      // copy yet — content.get's own comment calls an empty beat list "the
-      // honest answer, not a parse error." Opening one is the natural place
-      // to actually fill it, rather than showing an editor with nothing in
-      // it and no way to fix that. direct_finish is the one exception:
-      // those are filmed via the capture loop, and content.draft refuses
-      // them outright ("use direct.brief.generate").
-      if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish') {
+      /**
+       * `calendar.generate` writes slots with a playbook assigned but no copy
+       * yet — `content.get`'s own comment calls an empty beat list "the honest
+       * answer, not a parse error." Opening one is the natural place to fill it
+       * rather than showing an empty editor with no way to fix that.
+       *
+       * ── Two exclusions, and the second one is the whole of 5.5 ────────────
+       *
+       * `direct_finish` is filmed through the capture loop and `content.draft`
+       * refuses it outright.
+       *
+       * A **stalled** item is excluded because auto-filling one destroys the
+       * answer the user opened it to get. Several of the scheduler's
+       * `markBlocked` reasons fire on rows that were never drafted — a missing
+       * genome, no playbook — which are exactly the rows with no beats, so this
+       * branch was the one that ran on them. Worse, `ContentDraftOutput` carries
+       * no `status`, `blockedReason` or `publishAttempts` at all, so
+       * `setDraft(filled.output)` replaced a blocked row with a view that had no
+       * status whatsoever: `StallNotice` could not render, and neither could the
+       * rolled-back banner. The panel silently redrafted the post and showed an
+       * ordinary editor.
+       *
+       * Redrafting a stalled post is a reasonable thing to want. It is just not
+       * something to do to somebody on open, without asking — the same call the
+       * storyboard's redraft guard makes.
+       */
+      const stalled = res.output.status === 'blocked' || res.output.status === 'needs_review';
+
+      if (res.output.beats.length === 0 && res.output.mode !== 'direct_finish' && !stalled) {
         const filled = await invoke<DraftView>(
           'content.draft',
           { genomeId, playbookId: res.output.playbookId, contentItemId, intent: '' },
@@ -147,7 +220,13 @@ export function DraftPanel({
           setError(filled.status === 'failed' ? filled.error.message : 'That draft was gated.');
           return;
         }
-        setDraft(filled.output);
+        /**
+         * Merged, not replaced. `content.draft` answers with beats and says
+         * nothing about status, so spreading the read first keeps whatever
+         * `content.get` knew — the publish receipt on a rolled-back post, the
+         * campaign, the attempt count. Replacing dropped all of it.
+         */
+        setDraft({ ...res.output, ...filled.output });
         setPhase('editor');
         return;
       }
@@ -157,6 +236,10 @@ export function DraftPanel({
     },
     [genomeId],
   );
+
+  useEffect(() => {
+    void loadKitTemplates();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -223,6 +306,33 @@ export function DraftPanel({
     })();
   }, [open, phase, genomeId, playbooks]);
 
+  /* ── Storyboard arithmetic ─────────────────────────────────────────────
+   *
+   * Beats with no duration of their own contribute 0 here, and that is a
+   * deliberate under-count rather than a bug: only the server knows what such a
+   * beat falls back to in the playbook, which is exactly why `sceneTotal` -
+   * whatever the last scene tool actually returned - wins over this whenever it
+   * is available. This is the seed for a draft nobody has edited yet.
+   */
+  const localTotal = (draft?.beats ?? []).reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
+  const shownTotal = sceneTotal ?? localTotal;
+  const band = draft?.durationBand;
+  const outsideBand = band ? shownTotal < band[0] || shownTotal > band[1] : false;
+  const headroom = band ? Math.round((band[1] - shownTotal) * 10) / 10 : 0;
+
+  /** Where scene `i` starts in the cut - the left edge of its `0:00-0:04` range. */
+  function startOf(i: number): number {
+    return (draft?.beats ?? []).slice(0, i).reduce((sum, b) => sum + (b.durationSec ?? 0), 0);
+  }
+
+  async function loadKitTemplates() {
+    const res = await invoke<{ kitTemplates: KitTemplate[] }>('brand.governance.get', {});
+    // A failure here is not worth surfacing: the presets are a convenience, and
+    // an error banner about the brand kit on top of a draft would be noise about
+    // something the user did not ask for.
+    setKitTemplates(res.status === 'succeeded' ? res.output.kitTemplates : []);
+  }
+
   async function createDraft() {
     if (!genomeId || !selectedPlaybookId || busy) return;
     setBusy(true);
@@ -247,12 +357,23 @@ export function DraftPanel({
   }
 
   const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
-    setDraft((d) => (d ? { ...d, beats: d.beats.map((b) => (b.beatId === beatId ? next : b)) } : d));
+    /**
+       * `keepStructure` first, so the replacement inherits the scene's duration,
+       * label and voice override. The generate/save tools do not echo those
+       * fields, so a bare swap would visibly reset the scene's timing until the
+       * next reload - the same defect `keepStructure` prevents server-side.
+       */
+    setDraft((d) =>
+      d
+        ? { ...d, beats: d.beats.map((b) => (b.beatId === beatId ? { ...keepStructure(b), ...next } : b)) }
+        : d,
+    );
   }, []);
 
   async function generateImage(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Asking for an image\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — regenerating a beat's image is the point of the
     // button, so each click needs its own key or every click after the first
@@ -268,7 +389,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -279,6 +402,7 @@ export function DraftPanel({
   async function generateAvatarVideo(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Rendering the avatar video\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -292,7 +416,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -303,6 +429,7 @@ export function DraftPanel({
   async function generateVoiceover(beatId: string, script: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Recording the voiceover\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -316,7 +443,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -331,6 +460,7 @@ export function DraftPanel({
   async function generateBroll(beatId: string, prompt: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
+    setStage({ beatId, label: 'Generating b-roll\u2026' });
     setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
@@ -344,7 +474,9 @@ export function DraftPanel({
       },
       crypto.randomUUID(),
     );
+    setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
+    setStage(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
       return;
@@ -393,6 +525,108 @@ export function DraftPanel({
       return;
     }
     replaceBeat(beatId, { kind: 'text', beatId, text });
+  }
+
+  /* ── The storyboard's write side (M5) ──────────────────────────────────
+   *
+   * All five scene tools answer with the whole new strip plus the totals, so
+   * each of these replaces `beats` wholesale rather than patching one entry.
+   * That is deliberate: an insert renumbers every later scene and a reorder
+   * moves two, so a per-beat optimistic update would have to reimplement the
+   * server's ordering logic and could disagree with it.
+   *
+   * The band refusal is a normal outcome here, not an exception. On a tight
+   * format there is genuinely no room for another scene, so the tool's own
+   * message - which names the resulting length and the band - is surfaced
+   * verbatim rather than replaced with something vaguer.
+   */
+  type SceneResult = { beats: ResolvedBeat[]; totalDurationSec: number; durationBand?: [number, number] };
+
+  async function runSceneTool(name: string, input: Record<string, unknown>, beatId?: string) {
+    if (!draft || !genomeId || busyBeatId) return;
+    const busyKey = beatId ?? SCENE_ADD_KEY;
+    setBusyBeatId(busyKey);
+    setBeatErrors((e) => ({ ...e, [busyKey]: '' }));
+    const res = await invoke<SceneResult>(name, { contentItemId: draft.contentItemId, genomeId, ...input });
+    setBusyBeatId(null);
+    if (res.status !== 'succeeded') {
+      setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      return;
+    }
+    setDraft((d) => (d ? { ...d, beats: res.output.beats } : d));
+    setSceneTotal(res.output.totalDurationSec);
+  }
+
+  /**
+   * `Use This Brand Preset` — the apply side of the Templates tabs.
+   *
+   * Each category routes to the tool that already does the job, which is why
+   * this is a switch and not a new capability:
+   *
+   *   intro / outro / bumper -> `content.scene.insert`, at the front, the end,
+   *                             or before the last scene respectively
+   *   caption                -> `content.beat.update`, replacing a scene's words
+   *   lower_third            -> `content.scene.lower_third`, superimposed
+   *
+   * `beatId` is required for the two that act on an existing scene and ignored
+   * by the three that create one.
+   */
+  async function applyTemplate(template: KitTemplate, beatId?: string) {
+    if (!draft || !genomeId || busyBeatId) return;
+
+    if (template.category === 'caption') {
+      if (!beatId) return;
+      await saveBeatText(beatId, template.text);
+      return;
+    }
+
+    if (template.category === 'lower_third') {
+      if (!beatId) return;
+      await runSceneTool('content.scene.lower_third', { beatId, text: template.text }, beatId);
+      return;
+    }
+
+    /**
+     * A default length for a line nobody has timed yet. Three seconds is the
+     * shortest beat any playbook in the library uses for a CTA, and a preset that
+     * arrives too long is easier to notice and fix than one that flashes past.
+     * The band check may still refuse it, and its message names the numbers.
+     */
+    const seconds = 3;
+    const last = draft.beats[draft.beats.length - 1];
+    const position =
+      template.category === 'intro'
+        ? {}
+        : template.category === 'outro'
+          ? { afterBeatId: last?.beatId }
+          : // A bumper goes before the final scene, so it does not become the
+            // sign-off. With one scene there is nowhere "before the end" to put
+            // it, so it opens instead of silently going last.
+            draft.beats.length > 1
+            ? { afterBeatId: draft.beats[draft.beats.length - 2]!.beatId }
+            : {};
+
+    await runSceneTool('content.scene.insert', {
+      description: template.text,
+      durationSec: seconds,
+      label: KIT_TEMPLATE_LABEL[template.category],
+      ...position,
+    });
+  }
+
+  async function addScene() {
+    if (!sceneDescription.trim()) return;
+    const seconds = Number(sceneDuration);
+    if (!Number.isFinite(seconds) || seconds < 0.5) return;
+    await runSceneTool('content.scene.insert', {
+      description: sceneDescription.trim(),
+      durationSec: seconds,
+      // Appends after the last scene. The tool also takes no anchor at all,
+      // which opens the post instead - but "add" reads as "add at the end",
+      // and the Move buttons are how a scene gets to the front.
+      ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
+    });
+    setSceneDescription('');
   }
 
   async function shortenLink() {
@@ -852,6 +1086,32 @@ export function DraftPanel({
               log. `blocked` and `needs_review` share one banner because they
               share one column and one question — "why is this not going out" —
               but not one remedy, so the actions differ. */}
+          {/* A one-off post cannot publish itself, and nothing used to say so.
+              Autonomy is a property of the campaign as of 22 August, so a post
+              belonging to none is held for review however the brand is
+              configured. That is a deliberate consequence of the model and a
+              surprising one to meet at the moment you press schedule, which is
+              why it is stated here instead — before the work, not after it.
+
+              Only while editing: once the post is published or already held,
+              its own banner is the more specific thing to read. */}
+          {phase === 'editor' && draft && !draft.campaignId && draft.status !== 'published' ? (
+            <div className="rounded-lg border border-warn/40 bg-warn/10 p-3.5">
+              <p className="text-[13px] font-medium text-ink">This post is not part of a campaign</p>
+              <p className="mt-1 text-[12.5px] text-ink-muted">
+                It will wait for your approval rather than going out on its own — autonomy is set per
+                campaign, and this post has none. Add it to a campaign from the{' '}
+                <Link
+                  href="/calendar"
+                  className="font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                >
+                  calendar
+                </Link>{' '}
+                if you want it published unattended.
+              </p>
+            </div>
+          ) : null}
+
           {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'needs_review') ? (
             <StallNotice
               draft={draft}
@@ -861,7 +1121,31 @@ export function DraftPanel({
             />
           ) : null}
 
-          {phase === 'editor' && draft && draft.status === 'published' ? (
+          {/* A stub publish must not wear a success banner.
+              `aggregator:stub` records the post and returns a well-formed
+              receipt without contacting any platform — deliberately, so the
+              whole path stays testable. The cost is that this panel used to say
+              "Live on Instagram" in green, with a view-post link, above a grey
+              "via aggregator:stub" nobody reads. A tester reports that as a
+              success, and the report is worse than no report.
+
+              Detected by name rather than by a flag: `aggregator:stub` is the
+              one adapter that does not deliver, and it is named at registration
+              in `tools.ts`. */}
+          {phase === 'editor' && draft && draft.status === 'published' && draft.via === 'aggregator:stub' ? (
+            <div className="mb-1 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
+              <p className="text-[13px] font-medium text-ink">Recorded, but not published anywhere</p>
+              <p className="mt-1 text-[12.5px] text-ink-muted">
+                No publishing account is configured, so this went to the built-in stub. Everything up to
+                the moment of sending ran for real — guardrails, approval, scheduling, the receipt — and
+                nothing reached{' '}
+                <span className="capitalize">{draft.platform?.replace('_', ' ') ?? 'the platform'}</span>.
+                Set an aggregator key to publish for real.
+              </p>
+            </div>
+          ) : null}
+
+          {phase === 'editor' && draft && draft.status === 'published' && draft.via !== 'aggregator:stub' ? (
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
               <p className="text-[13px] text-ink">
                 Live on <span className="font-medium capitalize">{draft.platform?.replace('_', ' ')}</span>
@@ -894,8 +1178,68 @@ export function DraftPanel({
 
           {phase === 'editor' && draft ? (
             <div className="grid grid-cols-1 gap-4">
+              {/*
+                The storyboard header - M5's "9:16 / 0:24 total / Add scene" strip.
+                The total prefers whatever the last scene tool returned, because
+                the server is the only party that knows what a beat with no
+                duration of its own falls back to.
+              */}
+              {draft.mediaType === 'video' ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <p className="text-[13px] font-medium text-ink">Storyboard</p>
+                    <span className="text-[12px] tabular-nums text-ink-muted">
+                      {clock(sceneTotal ?? localTotal)} total
+                    </span>
+                    {draft.durationBand ? (
+                      <span className="text-[12px] text-ink-muted">
+                        {outsideBand ? (
+                          <span className="text-destructive">
+                            outside this format&rsquo;s {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
+                          </span>
+                        ) : (
+                          <>
+                            {headroom}s of headroom in {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
+                          </>
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/*
+                    Intros, outros and bumpers — the three categories that add a
+                    scene rather than change one. They belong here rather than on
+                    a row because the tool decides where the new scene goes
+                    (front, end, or before the last), and a per-row control would
+                    imply it lands next to that row.
+                  */}
+                  {(kitTemplates ?? []).some((t) => t.category !== 'caption' && t.category !== 'lower_third') ? (
+                    <select
+                      value=""
+                      disabled={busyBeatId !== null}
+                      onChange={(e) => {
+                        const chosen = (kitTemplates ?? []).find((t) => t.id === e.target.value);
+                        if (chosen) void applyTemplate(chosen);
+                        e.target.value = '';
+                      }}
+                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+                      aria-label="Add a scene from a brand preset"
+                    >
+                      <option value="">Add from a brand preset…</option>
+                      {(kitTemplates ?? [])
+                        .filter((t) => t.category !== 'caption' && t.category !== 'lower_third')
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {KIT_TEMPLATE_LABEL[t.category]}: {t.name}
+                          </option>
+                        ))}
+                    </select>
+                  ) : null}
+                </div>
+              ) : null}
+
               <ul className="grid grid-cols-1 gap-3">
-                {draft.beats.map((beat) => (
+                {draft.beats.map((beat, i) => (
                   <BeatRow
                     // `BeatRow`'s own textarea state initializes once from
                     // `beat` on mount and never re-syncs on a prop change —
@@ -913,6 +1257,19 @@ export function DraftPanel({
                     mediaType={draft.mediaType}
                     busy={busyBeatId === beat.beatId}
                     error={beatErrors[beat.beatId] || undefined}
+                    index={i}
+                    startSec={startOf(i)}
+                    timed={draft.mediaType === 'video'}
+                    isFirst={i === 0}
+                    isLast={i === draft.beats.length - 1}
+                    onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
+                    onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
+                    onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
+                    onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
+                    templates={(kitTemplates ?? []).filter(
+                      (t) => t.category === 'caption' || t.category === 'lower_third',
+                    )}
+                    onApplyTemplate={(t, id) => void applyTemplate(t, id)}
                     onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
                     onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
                     onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
@@ -922,6 +1279,81 @@ export function DraftPanel({
                   />
                 ))}
               </ul>
+
+              {/*
+                Add scene. Deliberately does not generate anything: the new scene
+                holds the description as its text, and turning that into footage
+                is one of the generate buttons on the row it creates. Splitting
+                "make a slot" from "fill it" is what keeps the storyboard
+                editable without spending money per keystroke.
+              */}
+              {draft.mediaType === 'video' ? (
+                <div className="rounded-lg border border-dashed border-border p-4">
+                  <p className="text-[13px] font-medium text-ink">Add a scene</p>
+                  <p className="mt-1 text-[12px] text-ink-muted">
+                    Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a
+                    written slot you can film, generate, or leave as an overlay.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <textarea
+                      value={sceneDescription}
+                      onChange={(e) => setSceneDescription(e.target.value)}
+                      disabled={busyBeatId !== null}
+                      rows={2}
+                      placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
+                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="text-[11px] text-ink-muted" htmlFor="new-scene-seconds">
+                        Seconds
+                      </label>
+                      <input
+                        id="new-scene-seconds"
+                        value={sceneDuration}
+                        onChange={(e) => setSceneDuration(e.target.value)}
+                        disabled={busyBeatId !== null}
+                        inputMode="decimal"
+                        className="h-9 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={busyBeatId !== null || !sceneDescription.trim()}
+                        onClick={() => void addScene()}
+                      >
+                        {busyBeatId === SCENE_ADD_KEY ? 'Adding\u2026' : 'Add scene'}
+                      </Button>
+                    </div>
+                  </div>
+                  {beatErrors[SCENE_ADD_KEY] ? (
+                    <p className="mt-2 text-[12px] text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/*
+                `M10`. One line, naming the beat and what is being asked of which
+                vendor. No percentage: each generate call is a single request with
+                no job id to poll, so a bar would be animation over an unknown.
+              */}
+              {stage ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
+                  <p className="text-[13px] text-ink">
+                    {stage.label}{' '}
+                    <span className="text-ink-muted">
+                      &mdash; {draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+
+              {/* `M9` — conversational editing, over the agent runtime. */}
+              <DraftChat
+                contentItemId={draft.contentItemId}
+                genomeId={genomeId ?? ''}
+                disabled={busyBeatId !== null}
+                onChanged={() => void loadDraft(draft.contentItemId)}
+              />
 
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">

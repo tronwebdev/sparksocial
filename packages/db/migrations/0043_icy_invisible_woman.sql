@@ -1,0 +1,2 @@
+ALTER TABLE "human_messages" ADD COLUMN "read_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "human_messages_notify_idx" ON "human_messages" USING btree ("org_id","brand_id","kind","read_at");

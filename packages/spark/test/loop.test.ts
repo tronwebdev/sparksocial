@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { Role } from '@sparksocial/shared';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
@@ -39,7 +39,10 @@ const Publish = defineTool({
   idempotent: false,
   // Required of every publish tool by `defineTool` — see `PolicySubject`. These
   // tests are about containment flags, not platform restrictions.
-  policySubject: async () => ({}),
+  // In an autopublishing campaign: autonomy moved to the campaign on 22 August,
+  // so a publish fake with no campaign is held before the containment rules this
+  // file is about are ever reached.
+  policySubject: async () => ({ campaignApprovalMode: 'autopublish' as const }),
   async handler() {
     return { ok: true };
   },
@@ -74,6 +77,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setRights: async () => undefined,
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
+        setArchived: async () => undefined,
+        setCaption: async () => undefined,
       },
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
@@ -103,6 +108,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       analytics: {
         record: async () => { throw new Error('analytics.record not stubbed in this test'); },
         listForItems: async () => [],
+        publishedInWindow: async () => [],
       },
       ctaLinks: {
         create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
@@ -119,9 +125,22 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
       },
+      teamGroups: {
+        list: async () => [],
+        create: async () => { throw new Error('teamGroups.create not stubbed in this test'); },
+        update: async () => undefined,
+        remove: async () => false,
+        members: async () => [],
+        addMember: async () => {},
+        removeMember: async () => {},
+        // Empty is the honest default: a caller with no group memberships gets
+        // exactly its role's access, which is what every existing test asserts.
+        capabilitiesForUser: async () => [],
+      },
       opportunities: {
         create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
         get: async () => undefined,
+        listForGenome: async () => [],
         route: async () => undefined,
       },
       trends: {
@@ -243,6 +262,9 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         create: async () => { throw new Error('humanLoop not stubbed in this test'); },
         get: async () => undefined,
         listPending: async () => [],
+        listNotifications: async () => [],
+        unreadNotificationCount: async () => 0,
+        markNotificationsRead: async () => 0,
         answer: async () => undefined,
         markDelivered: async () => {},
       },
@@ -349,8 +371,15 @@ describe('the agent goes through the same door as the UI', () => {
 
   it('a gated call is reported to the model as needing approval, not as a failure', async () => {
     const h = harness();
-    // review_everything makes the publish gate.
-    const gated = { ...brand, approvalMode: 'review_everything' as const };
+    // The hold comes from the campaign now — `brand.approvalMode` stopped being
+    // read by rule 7 on 22 August, so this re-registers the publish fake in a
+    // reviewing campaign instead of setting it on the brand.
+    __resetRegistry();
+    register({
+      ...Publish,
+      policySubject: async () => ({ campaignApprovalMode: 'review_everything' as const }),
+    });
+    const gated = brand;
     const model = vi.fn<ModelClient['turn']>()
       .mockResolvedValueOnce({ toolCalls: [{ id: 'tc1', name: 'publish.now', input: { text: 'hi' } }] })
       .mockResolvedValueOnce({ toolCalls: [], text: 'Queued for review.' });

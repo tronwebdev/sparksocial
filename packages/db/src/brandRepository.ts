@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+﻿import { and, eq } from 'drizzle-orm';
 import type { ApprovalMode, BrandGovernance, BrandGovernanceStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { brands } from './schema.js';
@@ -166,11 +166,20 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (patch.strictMode !== undefined) set.strictMode = patch.strictMode;
       if (patch.toneVector !== undefined) set.toneVector = patch.toneVector ?? null;
       if (patch.bannedPhrases !== undefined) set.bannedPhrases = patch.bannedPhrases ?? null;
+      if (patch.watermark !== undefined) set.watermark = patch.watermark ?? null;
+      if (patch.kitTemplates !== undefined) set.kitTemplates = patch.kitTemplates ?? null;
+      if (patch.stockVoiceId !== undefined) set.stockVoiceId = patch.stockVoiceId ?? null;
       if (patch.logoUrl !== undefined) set.logoUrl = patch.logoUrl ?? null;
       if (patch.brandColors !== undefined) set.brandColors = patch.brandColors ?? null;
+      if (patch.brandFonts !== undefined) set.brandFonts = patch.brandFonts ?? null;
       if (patch.timezone !== undefined) set.timezone = patch.timezone;
       if (patch.postingWindows !== undefined) set.postingWindows = patch.postingWindows ?? null;
       if (patch.engagementAutonomy !== undefined) set.engagementAutonomy = patch.engagementAutonomy;
+      if (patch.agentName !== undefined) set.agentName = patch.agentName;
+      if (patch.salesQualification !== undefined) set.salesQualification = patch.salesQualification;
+      if (patch.salesHandoff !== undefined) set.salesHandoff = patch.salesHandoff;
+      if (patch.salesDestination !== undefined) set.salesDestination = patch.salesDestination;
+      if (patch.salesEscalationKeywords !== undefined) set.salesEscalationKeywords = patch.salesEscalationKeywords;
       if (patch.engagementTypes !== undefined) set.engagementTypes = patch.engagementTypes ?? null;
 
       await db
@@ -218,12 +227,21 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     strictMode: row.strictMode,
     timezone: row.timezone,
     engagementAutonomy: row.engagementAutonomy as BrandGovernance['engagementAutonomy'],
+    ...(row.agentName ? { agentName: row.agentName } : {}),
+    ...(row.salesQualification ? { salesQualification: row.salesQualification } : {}),
+    ...(row.salesHandoff ? { salesHandoff: row.salesHandoff } : {}),
+    ...(row.salesDestination ? { salesDestination: row.salesDestination } : {}),
+    ...(row.salesEscalationKeywords ? { salesEscalationKeywords: row.salesEscalationKeywords } : {}),
     ...(row.restrictedTopics ? { restrictedTopics: row.restrictedTopics } : {}),
     ...(row.claimsToAvoid ? { claimsToAvoid: row.claimsToAvoid } : {}),
     ...(row.toneVector ? { toneVector: row.toneVector } : {}),
     ...(row.bannedPhrases ? { bannedPhrases: row.bannedPhrases } : {}),
+    ...(row.watermark ? { watermark: row.watermark } : {}),
+    ...(row.kitTemplates ? { kitTemplates: row.kitTemplates } : {}),
+    ...(row.stockVoiceId ? { stockVoiceId: row.stockVoiceId } : {}),
     ...(row.logoUrl ? { logoUrl: row.logoUrl } : {}),
     ...(row.brandColors ? { brandColors: row.brandColors } : {}),
+    ...(row.brandFonts ? { brandFonts: row.brandFonts } : {}),
     ...(row.postingWindows ? { postingWindows: row.postingWindows } : {}),
     ...(row.engagementTypes ? { engagementTypes: row.engagementTypes } : {}),
   };

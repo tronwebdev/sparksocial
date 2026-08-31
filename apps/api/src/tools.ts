@@ -15,6 +15,8 @@ import { playbookResolve } from '@sparksocial/playbooks/tools';
 import { playbookList, playbookGet, playbookExplain } from '@sparksocial/playbooks/browse';
 import {
   makeAssetRetrieve,
+  assetArchive,
+  makeAssetCaptionSet,
   assetGaps,
   makeAssetIngestUrl,
   makeAssetUploadUrl,
@@ -59,6 +61,12 @@ import {
   contentList,
   contentSchedule,
   contentBeatUpdate,
+  sceneInsert,
+  sceneRemove,
+  sceneReorder,
+  sceneRetime,
+  sceneVoice,
+  sceneLowerThird,
 } from '@sparksocial/generate';
 import {
   campaignProposePlan,
@@ -71,6 +79,7 @@ import {
   calendarGenerate,
   calendarImpactPreview,
   calendarGet,
+  calendarRecommendSlot,
   approvalGet,
   approvalSet,
   approvalPolicyGet,
@@ -83,6 +92,8 @@ import {
   humanAsk,
   humanNotify,
   humanPending,
+  humanNotifications,
+  humanNotificationsRead,
   humanAnswer,
 } from '@sparksocial/campaign';
 import { agentRunGet, agentRunList } from '@sparksocial/spark';
@@ -101,16 +112,23 @@ import {
   brandGovernanceGet,
   brandGovernanceSet,
   makeBrandKnowledgeAttach,
+  makeBrandKnowledgeAttachDocument,
   brandExport,
   brandImport,
   makeTeamInvite,
   makeTeamRoleSet,
   makeTeamList,
   teamPermissionSet,
+  teamGroupList,
+  teamGroupCreate,
+  teamGroupUpdate,
+  teamGroupDelete,
+  teamGroupMemberSet,
   whitelabelLinkCreate,
   makeBrandOAuthConnect,
   brandOAuthStatus,
   brandOAuthDisconnect,
+  makeBrandLogoGenerate,
 } from '@sparksocial/agency';
 import {
   createStubAdapter,
@@ -157,6 +175,7 @@ import {
   analyticsPostMetrics,
   analyticsCampaignReport,
   analyticsSuccessMetrics,
+  analyticsBrandSeries,
   makeAnalyticsCtaTraffic,
 } from '@sparksocial/analytics';
 import {
@@ -171,6 +190,7 @@ import {
   engageTakeover,
   engageOpportunityCreate,
   engageOpportunityRoute,
+  engageOpportunityList,
   engageAuditQuery,
   engageThread,
   createStubReplySender,
@@ -180,6 +200,7 @@ import { anthropicInferenceClient } from './inference-client.js';
 import { languageModelAvailable } from './model-client.js';
 import { buildRateLimiter } from './rate-limiter.js';
 import { embedClient } from './embed-client.js';
+import { createDocumentReader } from './document-reader.js';
 import { captionClient } from './caption-client.js';
 import { briefWriter } from './brief-writer.js';
 import { textWriter } from './text-writer.js';
@@ -297,6 +318,9 @@ export function registerAlphaTools(): void {
   register(calendarGenerate);
   register(calendarImpactPreview);
   register(calendarGet);
+  // CAL-04 — what should go on one date, and which scheduled post would sit
+  // better here. The thing behind F9's "Ask Agent to plan" and "Move existing".
+  register(calendarRecommendSlot);
 
   // Approval ladder (§6.8 Step 5, PRD §7.1): the policy engine has always
   // implemented all three rungs; these are what let a brand be on one.
@@ -325,6 +349,10 @@ export function registerAlphaTools(): void {
     ),
   );
   register(makeAssetRetrieve(embed));
+  // LIB-02's two per-row actions: the trash icon (an archive, not a delete) and
+  // the editable meta description. See packages/assetgraph/src/manage.ts.
+  register(assetArchive);
+  register(makeAssetCaptionSet(embed));
   register(assetGaps);
   register(assetRightsSet);
   register(assetReuse);
@@ -362,10 +390,19 @@ export function registerAlphaTools(): void {
   register(makeDraftRepurpose({ text: textWriter(devTextWriter()), embed }));
   register(contentGet);
   register(contentBeatUpdate);
+  // M5's storyboard — the write side of the draft owning its own structure.
+  register(sceneInsert);
+  register(sceneRemove);
+  register(sceneReorder);
+  register(sceneRetime);
+  register(sceneVoice);
+  register(sceneLowerThird);
   register(contentList);
   register(contentSchedule);
   const images = imageClient();
   if (images) register(makeContentGenerateImage(images));
+  // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
+  if (images) register(makeBrandLogoGenerate(images));
   const videos = videoClient();
   if (videos) register(makeContentGenerateBroll(videos));
   // Same "unset → not registered" rule as the image tool, and for the same
@@ -497,6 +534,10 @@ export function registerAlphaTools(): void {
   // material for nearly all of them and nothing aggregated any of it — which is
   // the gap that made every other gap hard to prioritise.
   register(analyticsSuccessMetrics);
+  // The cockpit's KPI row and its Performance Insights panel (`DASH-B-01`, M1).
+  // Grouped by publication date, because `content_metrics` is a current value and
+  // not a history — the tool's own header argues that out.
+  register(analyticsBrandSeries);
 
   // Trend discovery (§8.9, DISC-01/DISC-02, §12 P5). Ranked on what is LEFT
   // of a trend, not its size. `buildTrendSource` merges every configured
@@ -598,6 +639,7 @@ export function registerAlphaTools(): void {
   register(engageTakeover);
   register(engageOpportunityCreate);
   register(engageOpportunityRoute);
+  register(engageOpportunityList);
   register(engageAuditQuery);
   register(engageThread);
 
@@ -620,6 +662,9 @@ export function registerAlphaTools(): void {
   register(humanAsk);
   register(humanNotify);
   register(humanPending);
+  // The reader `human.notify` never had — see the comment in humanLoop.ts.
+  register(humanNotifications);
+  register(humanNotificationsRead);
   register(humanAnswer);
 
   // The channel those messages travel on. `whatsapp.receive` is the alpha's
@@ -772,6 +817,9 @@ export function registerAgencyTools(deps: {
   register(brandGovernanceGet);
   register(brandGovernanceSet);
   register(makeBrandKnowledgeAttach(embedClient()));
+  // F6's document upload. The reader is injected so the package stays free of a
+  // PDF parser — see document-reader.ts.
+  register(makeBrandKnowledgeAttachDocument({ embed: embedClient(), reader: createDocumentReader() }));
   register(brandExport);
   register(brandImport);
 
@@ -784,6 +832,13 @@ export function registerAgencyTools(deps: {
     register(makeTeamList({ clerk: deps.clerk }));
   }
   register(teamPermissionSet);
+  // The Groups tab (`SET-WS-TEAM-GROUPS`). Capability bundles that widen what
+  // their members may do on top of their role — see `teamGroups.ts`.
+  register(teamGroupList);
+  register(teamGroupCreate);
+  register(teamGroupUpdate);
+  register(teamGroupDelete);
+  register(teamGroupMemberSet);
 
   register(whitelabelLinkCreate);
 

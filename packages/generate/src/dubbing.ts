@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
-import { ResolvedBeat } from './draft.js';
+import { ResolvedBeat, keepStructure } from './draft.js';
 import type { DubbingClient } from './types.js';
 
 /**
@@ -94,7 +94,7 @@ export function makeContentGenerateDub(dubbing: DubbingClient) {
       const { url } = await dubbing.dub({ sourceUrl: input.sourceUrl, targetLanguage: input.targetLanguage, mediaType: input.mediaType });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { kind: 'dubbed_media', beatId: input.beatId, url, targetLanguage: input.targetLanguage, mediaType: input.mediaType };
+      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'dubbed_media', beatId: input.beatId, url, targetLanguage: input.targetLanguage, mediaType: input.mediaType };
 
       const why: Explanation = {
         summary: `Dubbed "${input.beatId}" into ${input.targetLanguage}.`,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import type { ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError, type Role } from '@sparksocial/shared';
 import { lagosBarbershop, torontoSaas } from '@sparksocial/playbooks';
@@ -43,6 +43,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setRights: async () => undefined,
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
+        setArchived: async () => undefined,
+        setCaption: async () => undefined,
       },
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
@@ -72,6 +74,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       analytics: {
         record: async () => { throw new Error('analytics.record not stubbed in this test'); },
         listForItems: async () => [],
+        publishedInWindow: async () => [],
       },
       ctaLinks: {
         create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
@@ -88,9 +91,22 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markAutoHandled: async () => undefined,
         markEscalated: async () => undefined,
       },
+      teamGroups: {
+        list: async () => [],
+        create: async () => { throw new Error('teamGroups.create not stubbed in this test'); },
+        update: async () => undefined,
+        remove: async () => false,
+        members: async () => [],
+        addMember: async () => {},
+        removeMember: async () => {},
+        // Empty is the honest default: a caller with no group memberships gets
+        // exactly its role's access, which is what every existing test asserts.
+        capabilitiesForUser: async () => [],
+      },
       opportunities: {
         create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
         get: async () => undefined,
+        listForGenome: async () => [],
         route: async () => undefined,
       },
       trends: {
@@ -212,6 +228,9 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         create: async () => { throw new Error('humanLoop not stubbed in this test'); },
         get: async () => undefined,
         listPending: async () => [],
+        listNotifications: async () => [],
+        unreadNotificationCount: async () => 0,
+        markNotificationsRead: async () => 0,
         answer: async () => undefined,
         markDelivered: async () => {},
       },
@@ -281,6 +300,9 @@ describe('asset.retrieve', () => {
         url: 'https://example.com/a1.jpg',
         mediaType: 'image',
         folderId: null,
+        filename: 'kitchen-before.jpg',
+        sizeBytes: 482_311,
+        createdAt: new Date('2026-08-01T09:00:00Z'),
       },
     ]);
     const tool = makeAssetRetrieve({ embed });

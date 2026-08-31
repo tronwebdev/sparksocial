@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
-import { ResolvedBeat } from './draft.js';
+import { ResolvedBeat, keepStructure } from './draft.js';
 import type { ImageClient } from './types.js';
 
 /**
@@ -91,7 +91,7 @@ export function makeContentGenerateImage(image: ImageClient) {
       const { url } = await image.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { kind: 'generated_image', beatId: input.beatId, url, prompt: input.prompt };
+      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt: input.prompt };
 
       const why: Explanation = {
         summary: `Generated an image for "${input.beatId}".`,

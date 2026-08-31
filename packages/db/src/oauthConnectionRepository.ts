@@ -10,7 +10,7 @@ export function createOAuthConnectionRepository(db: Database): OAuthConnectionSt
       return row ? toConnection(row) : undefined;
     },
 
-    async save({ genomeId, orgId, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel }) {
+    async save({ genomeId, orgId, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel, accountId }) {
       const row = await scoped.saveOAuthConnection(
         db,
         { orgId, brandId: orgId, genomeId },
@@ -22,6 +22,7 @@ export function createOAuthConnectionRepository(db: Database): OAuthConnectionSt
           ...(expiresAt ? { expiresAt } : {}),
           ...(scopes ? { scopes } : {}),
           ...(accountLabel ? { accountLabel } : {}),
+          ...(accountId ? { accountId } : {}),
         },
       );
       return toConnection(row);
@@ -60,6 +61,7 @@ function toConnection(row: scoped.OAuthConnectionRow) {
     ...(row.expiresAt ? { expiresAt: row.expiresAt } : {}),
     ...(row.scopes ? { scopes: row.scopes } : {}),
     ...(row.accountLabel ? { accountLabel: row.accountLabel } : {}),
+    ...(row.accountId ? { accountId: row.accountId } : {}),
     ...(row.expiryNotifiedAt ? { expiryNotifiedAt: row.expiryNotifiedAt } : {}),
   };
 }

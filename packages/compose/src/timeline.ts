@@ -1,5 +1,27 @@
-import { ToolError } from '@sparksocial/shared';
+﻿/**
+ * Deep import, not the barrel, and this is load-bearing.
+ *
+ * `composition.ts` imports this file, and Remotion *bundles* that entry for a
+ * browser with webpack. `@sparksocial/shared`'s barrel re-exports
+ * `oauthState.ts`, which imports `node:crypto` — unbundlable for a browser — so
+ * pulling the barrel in here failed every video render with
+ *
+ *   Module build failed: UnhandledSchemeError: Reading from "node:crypto"
+ *   is not handled by plugins (Unhandled scheme).
+ *
+ * `compose.render` had therefore never produced a video; the unit tests inject a
+ * fake runner and never bundle, so nothing caught it. Found by running the
+ * Assemble pipeline end to end for the first time.
+ *
+ * Anything this file imports has to survive being bundled for a browser. Keep
+ * the imports narrow and never reach for the barrel.
+ */
+import { ToolError } from '@sparksocial/shared/types';
 import type { ResolvedBeat } from '@sparksocial/generate';
+// Pure data and pure functions, no Node imports — safe on the bundled path this
+// file's own header warns about.
+import { brandFont, fontStack, type BrandFontFace, type BrandFonts } from '@sparksocial/shared/brandFonts';
+import { DEFAULT_WATERMARK, type Watermark } from '@sparksocial/shared/brandKit';
 
 /**
  * `content.draft`'s `ResolvedBeat[]` (persisted on `content_items.copy`) knows
@@ -15,10 +37,24 @@ import type { ResolvedBeat } from '@sparksocial/generate';
  * pure and testable without a store.
  */
 
+/**
+ * The lower-third, carried on every visual variant.
+ *
+ * A superimposed line in the lower third of the frame - a name, a role, the
+ * point being made. Distinct from `caption`: a caption belongs to the *asset*
+ * (it is what retrieval matched on, and it describes what is shown), while a
+ * lower-third belongs to the *post* and is chosen from the brand kit. Rendering
+ * them in the same slot would make one silently replace the other, so they are
+ * stacked - see `lowerThirdOverlay`.
+ */
+export interface LowerThird {
+  lowerThird?: string;
+}
+
 export type TimedBeat =
-  | { kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string }
-  | { kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string }
-  | { kind: 'text'; beatId: string; durationSec: number; text: string }
+  | ({ kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
+  | ({ kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
+  | ({ kind: 'text'; beatId: string; durationSec: number; text: string } & LowerThird)
   /** A narration track meant to underlay the composition, not its own visual slot — see the module comment on `generated_audio`. */
   | { kind: 'audio'; beatId: string; durationSec: number; url: string };
 
@@ -35,26 +71,50 @@ export function zipTimeline(args: {
   const durationByBeatId = new Map(args.playbookBeats.map((b) => [b.id, b.duration_sec]));
 
   return args.resolvedBeats.map((beat): TimedBeat => {
-    const durationSec = durationByBeatId.get(beat.beatId);
+    /**
+     * The beat's own duration wins, and the playbook join is the fallback.
+     *
+     * This inverted on 24 August, when the draft took ownership of its structure
+     * (`ResolvedBeat` in packages/generate/src/draft.ts). Before it, duration
+     * came only from the playbook and any beat the playbook did not declare threw
+     * — which is what made adding a scene impossible, since a scene somebody adds
+     * has no playbook entry by construction.
+     *
+     * The guard that remains is narrower and still worth having: a beat with
+     * *neither* its own duration nor a playbook entry is a genuinely unresolvable
+     * row, and guessing a length for it would render a post at a duration nobody
+     * chose. The drift case the old message described — the playbook changing
+     * under a draft — is now handled rather than refused: a draft that knows its
+     * own timing renders as it was drafted, which is what an approved post should
+     * do. The cost is that the band check has to run against the draft's totals
+     * instead, which is `assertDraftDuration`'s job.
+     */
+    /**
+     * Spread into every visual arm below. A beat that carries no lower-third
+     * contributes nothing, so the field stays absent rather than becoming an
+     * empty string the renderers would then have to test for.
+     */
+    const lower = beat.lowerThird ? { lowerThird: beat.lowerThird } : {};
+
+    const durationSec = beat.durationSec ?? durationByBeatId.get(beat.beatId);
     if (durationSec === undefined) {
-      // The draft and the playbook have drifted — e.g. the playbook record
-      // changed after this draft was written. Not something to guess a
-      // duration for.
-      throw new ToolError('INVALID_INPUT', `Beat "${beat.beatId}" is not in this playbook's current beat list.`, {
-        beatId: beat.beatId,
-      });
+      throw new ToolError(
+        'INVALID_INPUT',
+        `Beat "${beat.beatId}" has no duration of its own and is not in this playbook's beat list.`,
+        { beatId: beat.beatId },
+      );
     }
 
     if (beat.kind === 'text') {
-      return { kind: 'text', beatId: beat.beatId, durationSec, text: beat.text };
+      return { kind: 'text', beatId: beat.beatId, durationSec, text: beat.text, ...lower };
     }
 
     if (beat.kind === 'generated_image') {
-      return { kind: 'image', beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: 'image', beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     if (beat.kind === 'generated_video' || beat.kind === 'generated_broll') {
-      return { kind: 'video', beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: 'video', beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     if (beat.kind === 'generated_audio') {
@@ -62,7 +122,7 @@ export function zipTimeline(args: {
     }
 
     if (beat.kind === 'dubbed_media') {
-      return { kind: beat.mediaType, beatId: beat.beatId, durationSec, url: beat.url };
+      return { kind: beat.mediaType, beatId: beat.beatId, durationSec, url: beat.url, ...lower };
     }
 
     // kind === 'asset'
@@ -85,6 +145,7 @@ export function zipTimeline(args: {
       durationSec,
       url: info.url,
       ...(beat.caption ? { caption: beat.caption } : {}),
+      ...lower,
     };
   });
 }
@@ -134,8 +195,22 @@ export function framesFor(beats: Array<{ durationSec: number }>, fps = FPS): num
 export interface BrandKit {
   /** Drawn as a corner mark on media beats and above the type on text beats. Absent means no mark. */
   logoUrl?: string;
+  /**
+   * How that mark is drawn - `SET-WS-BRAND-KITS`' "Activate Watermark".
+   *
+   * Absent means `DEFAULT_WATERMARK`, which reproduces what both renderers did
+   * unconditionally before this existed. `enabled: false` is the state the
+   * toggle now actually reaches: a brand with a logo and no watermark.
+   */
+  watermark?: Watermark;
   /** Ordered: ground, type, accent. Empty means "use the defaults". */
   colors: string[];
+  /**
+   * M4's fonts — a *reference* to a resolvable face, never an uploaded file. See
+   * `@sparksocial/shared/brandFonts` for which faces each renderer can actually
+   * get hold of, and why that question decides what the picker may offer.
+   */
+  fonts?: BrandFonts;
 }
 
 /** The renderers' fallbacks — the values both files used as literals before a brand kit could reach them. */
@@ -192,13 +267,46 @@ function readableTypeOn(ground: string): string {
  * Deriving it cannot do worse than the constant on any input: for a dark ground
  * the luminance test returns `#FFFFFF`, which is what the constant gave anyway.
  */
-export function resolveKit(kit: BrandKit | undefined): { ground: string; type: string; accent?: string; logoUrl?: string } {
+export function resolveKit(kit: BrandKit | undefined): {
+  ground: string;
+  type: string;
+  accent?: string;
+  logoUrl?: string;
+  /** CSS stack for headlines and text-only beats. Always a usable value. */
+  displayFont: string;
+  /** CSS stack for captions and running text. Always a usable value. */
+  bodyFont: string;
+  /** The faces the renderer has to fetch bytes for, deduped. Empty means "nothing to load". */
+  fontFaces: BrandFontFace[];
+  /**
+   * Resolved watermark settings. Always present, so a renderer never has to
+   * decide what a missing value means - that decision is made once, here.
+   */
+  watermark: Watermark;
+} {
   const colors = kit?.colors ?? [];
   const ground = colors[0] ?? DEFAULT_GROUND;
+
+  /**
+   * The body face falls back to the display face rather than to the system
+   * stack. A brand that named one font meant that font — rendering its headline
+   * in Playfair and its caption in whatever the container has is worse than
+   * rendering both in Playfair, and it is not what anyone picking one font
+   * expected to happen.
+   */
+  const display = kit?.fonts?.display;
+  const body = kit?.fonts?.body ?? display;
+
+  const faces = [brandFont(display), brandFont(body)].filter((f): f is BrandFontFace => Boolean(f));
+
   return {
     ground,
     type: colors[1] ?? readableTypeOn(ground),
     ...(colors[2] ? { accent: colors[2] } : {}),
     ...(kit?.logoUrl ? { logoUrl: kit.logoUrl } : {}),
+    displayFont: fontStack(display),
+    bodyFont: fontStack(body),
+    fontFaces: [...new Map(faces.map((f) => [f.id, f])).values()],
+    watermark: kit?.watermark ?? DEFAULT_WATERMARK,
   };
 }

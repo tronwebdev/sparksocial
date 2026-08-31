@@ -25,7 +25,26 @@ export const ContentGetOutput = z.object({
   mode: z.string(),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   status: z.string(),
+  /**
+   * The campaign this post belongs to, when it belongs to one.
+   *
+   * Exposed because autonomy is a property of the campaign (22 August): a post
+   * with no campaign is held for review rather than published, and a screen that
+   * offers to schedule one has to be able to say so. Absent is a real and common
+   * state — a one-off post created outside the campaign flow.
+   */
+  campaignId: z.string().optional(),
   beats: z.array(ResolvedBeat),
+  /**
+   * The format's declared duration band, when it has one.
+   *
+   * `M5`'s storyboard shows a running total ("0:24 total") and the scene tools
+   * refuse an edit that leaves the band, so the panel has to be able to show the
+   * headroom *before* somebody tries. Absent on images, carousels and text posts,
+   * which have no duration at all — the beats each carry their own length, and
+   * only the playbook knows what the format will accept.
+   */
+  durationBand: z.tuple([z.number(), z.number()]).optional(),
   why: Explanation.optional(),
   // The publish receipt — set once `status` is 'published' (or 'rolled_back',
   // where they're kept rather than cleared, so the row still shows what was
@@ -89,7 +108,9 @@ export const contentGet = defineTool({
     // read it back the same way here. A playbook the library no longer has
     // is the one case this can't answer; falls back to 'text' rather than
     // failing a read over a display hint.
-    const mediaType = byId(draft.playbookId)?.output.media_type ?? 'text';
+    const playbook = byId(draft.playbookId);
+    const mediaType = playbook?.output.media_type ?? 'text';
+    const band = playbook?.output.duration_sec;
 
     return {
       contentItemId: draft.id,
@@ -97,7 +118,9 @@ export const contentGet = defineTool({
       mode: draft.mode,
       mediaType,
       status: draft.status,
+      ...(draft.campaignId ? { campaignId: draft.campaignId } : {}),
       beats: parsed.success ? parsed.data : [],
+      ...(band ? { durationBand: [band[0], band[1]] as [number, number] } : {}),
       ...(draft.why ? { why: draft.why } : {}),
       ...(draft.platform ? { platform: draft.platform } : {}),
       ...(draft.externalId ? { externalId: draft.externalId } : {}),

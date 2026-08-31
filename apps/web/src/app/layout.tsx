@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { onest, mollwish } from './fonts';
 import { Toaster } from '@/components/ui/toaster';
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
        * layouts), which requires the Clerk Dashboard's "Force organization
        * selection" setting to be OFF. With it off, a fresh session carries no
        * pending Clerk task at all — `OrgGuard` sees `orgId` absent and shows
-       * its own "Name your workspace" form, the same one path regardless of
+       * its own "Name your account" form, the same one path regardless of
        * which route the session first lands on.
        *
        * `(auth)/sign-in/tasks` (Clerk's own `TaskChooseOrganization`) is kept

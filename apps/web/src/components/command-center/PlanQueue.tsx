@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { platformLabel } from '@/lib/platforms';
 import { cn } from '@/lib/utils';
 
 /**
@@ -46,26 +47,59 @@ interface PlanItem {
   playbookId: string;
   playbookName: string;
   mediaType?: 'video' | 'image' | 'carousel' | 'text';
+  /** Absent on a slot with no account chosen yet — a real state, not a gap. */
+  platform?: string;
   status: string;
   summary: string;
   scheduledAt?: string;
   createdAt: string;
+  /** Why it stopped — `content.list` carries this as of `5.5`. */
+  blockedReason?: string;
+  publishAttempts?: number;
 }
 
 /** `content.list`'s own placeholder for a slot with no written beats yet. */
 const NO_COPY = '(no copy yet)';
 
+/**
+ * The channel filter's "everything" value.
+ *
+ * A sentinel rather than `undefined` so the `<select>` has a real option to be
+ * on — a select whose cleared state is an empty string renders as blank, which
+ * reads as broken rather than as "no filter".
+ */
+const ALL = '__all__';
+
 /** How many upcoming posts is a queue, past which it is a calendar. */
 const SHOWN = 8;
 
-export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
+export function PlanQueue({
+  genomeId,
+  onOpen,
+}: {
+  genomeId: string | undefined;
+  /**
+   * Opens one post in the Draft Panel.
+   *
+   * Added for `5.5`. The held count used to be a `<Link href="#review">`,
+   * and that anchor goes to `ReviewQueueList`, which reads `queue.review.list`
+   * — the `approvals` table. That is a *different entity* from a content item
+   * with `status = 'needs_review'`: this panel counted one thing and linked to
+   * another, so a post held for review was counted here and appeared nowhere
+   * the link went. `StallNotice` has existed in `DraftPanel` since P2 and was
+   * unreachable for exactly this reason.
+   */
+  onOpen: (contentItemId: string) => void;
+}) {
   const [items, setItems] = useState<PlanItem[] | null>(null);
-  const [heldCount, setHeldCount] = useState(0);
+  const [held, setHeld] = useState<PlanItem[]>([]);
+  const [channel, setChannel] = useState<string>(ALL);
+  const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
-    const [scheduled, held] = await Promise.all([
+    const [scheduled, heldRes] = await Promise.all([
       invoke<{ items: PlanItem[] }>('content.list', { genomeId, status: 'scheduled', limit: 100 }),
       invoke<{ items: PlanItem[] }>('content.list', { genomeId, status: 'needs_review', limit: 100 }),
     ]);
@@ -83,9 +117,9 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
         .filter((i) => Boolean(i.scheduledAt))
         .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!)),
     );
-    // A failed second read leaves the held count at zero rather than failing the
-    // queue: the plan is the point of this panel, and the held count is context.
-    setHeldCount(held.status === 'succeeded' ? held.output.items.length : 0);
+    // A failed second read leaves the held list empty rather than failing the
+    // queue: the plan is the point of this panel, and held items are context.
+    setHeld(heldRes.status === 'succeeded' ? heldRes.output.items : []);
   }, [genomeId]);
 
   useEffect(() => {
@@ -94,8 +128,21 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
 
   if (!genomeId) return null;
 
-  const upcoming = (items ?? []).slice(0, SHOWN);
-  const undrafted = (items ?? []).filter((i) => i.summary === NO_COPY).length;
+  /**
+   * Filtering and paging are client-side, for the reason the header already
+   * gives about sorting: `content.list` returns the whole set in one read, so
+   * going back to the server to narrow it would add a round trip and a loading
+   * state to a list that is already in memory.
+   */
+  const all = items ?? [];
+  const channels = [...new Set(all.map((i) => i.platform).filter((p): p is string => Boolean(p)))].sort();
+  const filtered = channel === ALL ? all : all.filter((i) => i.platform === channel);
+  const pages = Math.max(1, Math.ceil(filtered.length / SHOWN));
+  // Clamped rather than reset: narrowing the filter while on page 3 should land
+  // you on the last page that exists, not silently back at the beginning.
+  const current = Math.min(page, pages - 1);
+  const upcoming = filtered.slice(current * SHOWN, current * SHOWN + SHOWN);
+  const undrafted = filtered.filter((i) => i.summary === NO_COPY).length;
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
@@ -107,18 +154,56 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
               ? 'The plan, in order.'
               : items.length === 0
                 ? 'Nothing is scheduled.'
-                : `${items.length} post${items.length === 1 ? '' : 's'} scheduled, soonest first.`}
+                : channel === ALL
+                  ? `${items.length} post${items.length === 1 ? '' : 's'} scheduled, soonest first.`
+                  : `${filtered.length} of ${items.length} scheduled to ${platformLabel(channel)}, soonest first.`}
           </p>
         </div>
-        {heldCount > 0 ? (
-          <Link
-            href="#review"
-            className="shrink-0 text-[13px] font-medium text-warn underline decoration-dotted underline-offset-2"
-          >
-            {heldCount} waiting on you
-          </Link>
+        {held.length > 0 ? (
+          <p className="shrink-0 text-[13px] font-medium text-warn">
+            {held.length} waiting on you
+          </p>
         ) : null}
       </div>
+
+      {/* Only offered when there is something to filter. A select with one
+          option is a control that cannot do anything, which is worse than no
+          control — it implies the list is narrower than it is. */}
+      {channels.length > 1 ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <label htmlFor="queue-channel" className="text-[12px] font-medium text-ink-muted">
+            Channel
+          </label>
+          <select
+            id="queue-channel"
+            value={channel}
+            onChange={(e) => {
+              setChannel(e.target.value);
+              setPage(0);
+            }}
+            className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-ink"
+          >
+            <option value={ALL}>All channels ({all.length})</option>
+            {channels.map((c) => (
+              <option key={c} value={c}>
+                {platformLabel(c)} ({all.filter((i) => i.platform === c).length})
+              </option>
+            ))}
+          </select>
+          {channel !== ALL ? (
+            <button
+              type="button"
+              onClick={() => {
+                setChannel(ALL);
+                setPage(0);
+              }}
+              className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
 
@@ -148,14 +233,19 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
               key={item.contentItemId}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-border p-3"
             >
-              {/* The next one out is the only row anybody is looking for. */}
+              {/* The next one out is the only row anybody is looking for — and
+                  it is the first of the whole queue, not the first of whichever
+                  page you are on. Paging made `i === 0` wrong: it labelled the
+                  ninth post "Next" on page 2. The absolute position also makes
+                  the numbers continue across pages instead of restarting at 1,
+                  which is what tells you where you are in the plan. */}
               <span
                 className={cn(
                   'w-8 shrink-0 text-[12px] font-medium tabular-nums',
-                  i === 0 ? 'text-primary' : 'text-ink-muted',
+                  current * SHOWN + i === 0 ? 'text-primary' : 'text-ink-muted',
                 )}
               >
-                {i === 0 ? 'Next' : `${i + 1}`}
+                {current * SHOWN + i === 0 ? 'Next' : `${current * SHOWN + i + 1}`}
               </span>
 
               <span className="w-32 shrink-0 text-[13px] tabular-nums text-ink">{when(item.scheduledAt!)}</span>
@@ -170,23 +260,78 @@ export function PlanQueue({ genomeId }: { genomeId: string | undefined }) {
 
               <span className="shrink-0 text-[12px] text-ink-muted">{item.playbookName}</span>
               {item.mediaType ? <Badge variant="neutral">{item.mediaType}</Badge> : null}
+              {/* Named, not the raw enum: `youtube_shorts` on a row is the kind
+                  of leak the platform label map exists to stop. */}
+              {item.platform ? <Badge variant="neutral">{platformLabel(item.platform)}</Badge> : null}
             </li>
           ))}
         </ol>
       ) : null}
 
-      {items !== null && items.length > SHOWN ? (
-        <p className="mt-3 text-[13px] text-ink-muted">
-          {items.length - SHOWN} more after that —{' '}
+      {items !== null && filtered.length > SHOWN ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={current === 0}
+            onClick={() => setPage(current - 1)}
+            className="text-[13px] font-medium text-primary disabled:text-ink-muted disabled:no-underline"
+          >
+            Earlier
+          </button>
+          {/* The position, not just the controls: "page 2 of 4" is the only
+              thing that tells you how much plan there is. */}
+          <span className="text-[13px] tabular-nums text-ink-muted">
+            Page {current + 1} of {pages}
+          </span>
+          <button
+            type="button"
+            disabled={current >= pages - 1}
+            onClick={() => setPage(current + 1)}
+            className="text-[13px] font-medium text-primary disabled:text-ink-muted disabled:no-underline"
+          >
+            Later
+          </button>
           <Link
             href="/calendar"
-            className="font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+            className="ml-auto text-[13px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
           >
-            see the month
+            View full queue
           </Link>
-          .
-        </p>
+        </div>
       ) : null}
+
+      {/*
+        The held posts, listed rather than counted.
+        `content.list` now returns `blockedReason`, so each row can say *why* it
+        stopped instead of making somebody open all of them to find the one that
+        matters. Clicking opens the Draft Panel, which is where `StallNotice`
+        lives — the whole of `5.5` is that this list exists and goes there.
+      */}
+      {held.length > 0 ? (
+        <div className="mt-6 border-t border-border pt-4">
+          <h3 className="text-[13px] font-medium text-ink">Stopped, and waiting on you</h3>
+          <ul className="mt-2 grid grid-cols-1 gap-1.5">
+            {held.map((h) => (
+              <li key={h.contentItemId}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(h.contentItemId)}
+                  className="w-full rounded-lg border border-border px-3 py-2 text-left hover:border-ink-muted"
+                >
+                  <span className="text-[13px] text-ink">{h.summary}</span>
+                  <span className="mt-0.5 block text-[12px] text-ink-muted">
+                    {h.blockedReason ??
+                      (h.publishAttempts
+                        ? `Tried ${h.publishAttempts} time${h.publishAttempts === 1 ? '' : 's'}.`
+                        : 'Waiting for approval.')}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
     </section>
   );
 }

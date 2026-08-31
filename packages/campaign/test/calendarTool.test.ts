@@ -53,7 +53,10 @@ function store(): CampaignStore & { slotWrites: number[] } {
   };
 }
 
-function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx {
+function ctx(
+  campaigns: CampaignStore,
+  over: { genome?: unknown; engagementAutonomy?: 'off' | 'suggest' | 'auto' } = {},
+): ToolCtx {
   return {
     orgId: 'org_1',
     brandId: 'ws_gen_barber',
@@ -99,7 +102,7 @@ function ctx(campaigns: CampaignStore, over: { genome?: unknown } = {}): ToolCtx
           postsPerWeek: 3,
           strictMode: false,
           timezone: 'UTC',
-      engagementAutonomy: 'off' as const,
+          engagementAutonomy: over.engagementAutonomy ?? ('off' as const),
         }),
       },
       runs: { list: async () => [], get: async () => undefined },
@@ -138,6 +141,110 @@ describe('campaign.create', () => {
 
   it('refuses an out-of-scope genome', async () => {
     await expect(create(ctx(store(), { genome: undefined }))).rejects.toThrow(ToolError);
+  });
+
+  /**
+   * The brand as a template, widened onto the four-rung ladder.
+   *
+   * `auto` must land on `auto_reply` and not `sales_assist`: a brand that only
+   * ever said "answer the safe ones" has not asked for lead qualification or
+   * handoff routing, and seeding it onto the top rung would grant a capability
+   * nobody chose. Asserted here as well as in `shared` because this is the seam
+   * where a lossy cast would be easiest to reintroduce.
+   */
+  it('seeds the engagement rung from the brand, widening three values onto four', async () => {
+    for (const [autonomy, rung] of [
+      ['off', 'observe'],
+      ['suggest', 'suggest'],
+      ['auto', 'auto_reply'],
+    ] as const) {
+      const s = store();
+      const spy = vi.spyOn(s, 'create');
+      await create(ctx(s, { engagementAutonomy: autonomy }));
+      expect(spy.mock.calls[0]![0].engagementRung).toBe(rung);
+    }
+  });
+
+  it('an explicit rung wins over the brand template, in both directions', async () => {
+    // Down as well as up, or it would be a second lock rather than a control —
+    // the same reasoning `approvalMode` gets.
+    for (const [autonomy, asked] of [
+      ['auto', 'observe'],
+      ['off', 'sales_assist'],
+    ] as const) {
+      const s = store();
+      const spy = vi.spyOn(s, 'create');
+      await campaignCreate.handler(
+        {
+          genomeId: 'gen_barber',
+          name: 'September',
+          objective: 'bookings',
+          windowDays: 30,
+          startAt: START.toISOString(),
+          platforms: [],
+          engagementRung: asked,
+        },
+        ctx(s, { engagementAutonomy: autonomy }),
+      );
+      expect(spy.mock.calls[0]![0].engagementRung).toBe(asked);
+    }
+  });
+
+  /**
+   * The wizard's other five fields, recorded rather than defaulted away.
+   *
+   * `learnFromPerformance` and `adjustMixAutomatically` are the two that would
+   * fail quietly: they are nullable on the row so campaigns predating the
+   * question are not reported as having opted in, and a handler that forgot to
+   * default them would leave every new campaign looking like one of those.
+   */
+  it('records the wizard\'s shape fields, defaulting the two optimisation answers to on', async () => {
+    const s = store();
+    const spy = vi.spyOn(s, 'create');
+    await campaignCreate.handler(
+      {
+        genomeId: 'gen_barber',
+        name: 'September',
+        objective: 'leads',
+        windowDays: 30,
+        startAt: START.toISOString(),
+        platforms: [],
+        campaignType: 'lead_magnet',
+        weight: 'dominant',
+        primaryCta: 'https://emekacuts.com/book',
+      },
+      ctx(s),
+    );
+
+    expect(spy.mock.calls[0]![0]).toMatchObject({
+      campaignType: 'lead_magnet',
+      weight: 'dominant',
+      primaryCta: 'https://emekacuts.com/book',
+      learnFromPerformance: true,
+      adjustMixAutomatically: true,
+    });
+  });
+
+  it('honours an optimisation answer of no', async () => {
+    const s = store();
+    const spy = vi.spyOn(s, 'create');
+    await campaignCreate.handler(
+      {
+        genomeId: 'gen_barber',
+        name: 'September',
+        objective: 'bookings',
+        windowDays: 30,
+        startAt: START.toISOString(),
+        platforms: [],
+        learnFromPerformance: false,
+        adjustMixAutomatically: false,
+      },
+      ctx(s),
+    );
+    expect(spy.mock.calls[0]![0]).toMatchObject({
+      learnFromPerformance: false,
+      adjustMixAutomatically: false,
+    });
   });
 });
 

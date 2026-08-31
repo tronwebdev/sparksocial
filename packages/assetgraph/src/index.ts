@@ -6,3 +6,4 @@ export * from './rights.js';
 export * from './reuse.js';
 export * from './cooldown.js';
 export * from './folders.js';
+export * from './manage.js';

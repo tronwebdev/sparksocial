@@ -1,24 +1,24 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { ToolError, Explanation } from '@sparksocial/shared';
+import { ToolError, Explanation, rungAutonomy } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
-import { resolveEngagementEligibility } from './eligibility.js';
+import { resolveEngagementEligibility, engagementTypeAllows } from './eligibility.js';
 
 /**
- * `engage.reply.send` — the second half of the "approve & send" loop
- * (PRD §8.8): deliver exactly the text the caller hands in, never a
+ * `engage.reply.send` â€” the second half of the "approve & send" loop
+ * (PRD Â§8.8): deliver exactly the text the caller hands in, never a
  * re-derived draft, so a hand-edited reply goes out edited.
  *
- * ── Governance, not built here ──────────────────────────────────────────────
+ * â”€â”€ Governance, not built here â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  * `effect: 'publish'` and `autonomy: 'confirm'` are what put this call under
  * `packages/tools/src/policy.ts` rule 6 ("Engagement replies: gated until
  * eligible AND configured", keyed on `toolFamily('engage.reply.send') ===
- * 'engage'`) — already written and tested to 100% branch coverage in
+ * 'engage'`) â€” already written and tested to 100% branch coverage in
  * `packages/tools/test/policy.test.ts` before this tool existed. Nothing
  * here re-implements or bypasses that gate; getting past it requires whoever
  * calls `invokeTool` to supply `PolicyInput.engagement` (eligibility +
- * autonomy configuration), which is out of this tool's hands by design —
+ * autonomy configuration), which is out of this tool's hands by design â€”
  * CLAUDE.md invariant 3, policy is a pure function fed by its caller, not
  * something a tool computes about itself.
  *
@@ -36,12 +36,12 @@ import { resolveEngagementEligibility } from './eligibility.js';
 /**
  * The policy context `policy.ts` rules 6 and 7 evaluate for an outbound reply.
  *
- * ── Why the engagement gate moved here ─────────────────────────────────────
+ * â”€â”€ Why the engagement gate moved here â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  *
  * `engagement` used to arrive on `InvokeRequest`, forwarded verbatim from the
  * HTTP request body (`app.ts`). So a client could post
  * `engagement: { eligible: true, autonomyConfigured: true }` and send unattended
- * replies for a campaign that had never published anything — PRD §8.8's entire
+ * replies for a campaign that had never published anything â€” PRD Â§8.8's entire
  * eligibility gate, bypassed by two booleans the caller chose.
  *
  * It failed *closed* when the field was absent (rule 6 denies without it), which
@@ -52,11 +52,12 @@ import { resolveEngagementEligibility } from './eligibility.js';
  *
  *   - `eligible` is recomputed here from the genome's most recent campaign,
  *     using the same rule and the same two constants `engage.eligibility.check`
- *     exposes as a tool. One rule, two readers — a second implementation is how
+ *     exposes as a tool. One rule, two readers â€” a second implementation is how
  *     the screen and the gate come to disagree.
- *   - `autonomyConfigured` is `brands.engagementAutonomy !== 'off'`. A brand that
- *     has never chosen leaves SPARK suggesting replies for a person to send,
- *     which is what rule 6's `approval` outcome does with it.
+ *   - `autonomyConfigured` is the *campaign's* engagement rung, mapped through
+ *     `rungAutonomy` — see `autohandle.ts` for the full reasoning. It read
+ *     `brands.engagementAutonomy` until 22 August, when autonomy became a
+ *     property of the campaign.
  *
  * Rule 6 runs before rule 7, so an ineligible brand is denied before the
  * platform and content-type restrictions are even consulted.
@@ -65,9 +66,12 @@ async function replyPolicySubject(
   input: { messageId: string; genomeId: string },
   ctx: ToolCtx,
 ): Promise<PolicySubject> {
+  // The brand is no longer read here — the rung rides along with the verdict,
+  // which already holds the campaign.
   const [message, eligibility, brand] = await Promise.all([
     ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
     resolveEngagementEligibility(ctx, input.genomeId),
+    // For `engagementTypes` — see `autohandle.ts` for why the brand is read again.
     ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
   ]);
 
@@ -79,7 +83,14 @@ async function replyPolicySubject(
     contentType: 'engagement_reply',
     engagement: {
       eligible: eligibility.eligible,
-      autonomyConfigured: (brand?.engagementAutonomy ?? 'off') !== 'off',
+      // The campaign's rung, not the brand's setting â€” see `autohandle.ts` for
+      // the full reasoning. The brand remains the template a campaign is seeded
+      // from; the campaign is what governs this reply.
+      // Same two conditions as `autohandle` — see there for why they share one
+      // field. A message kind the brand has switched off routes to approval.
+      autonomyConfigured:
+        rungAutonomy(eligibility.rung) !== 'off' &&
+        engagementTypeAllows(brand?.engagementTypes, message?.kind),
     },
   };
 }
@@ -87,7 +98,7 @@ async function replyPolicySubject(
 export const EngageReplySendInput = z.object({
   genomeId: z.string().min(1),
   messageId: z.string().min(1),
-  /** The reply to send, exactly as given — a hand-edited draft, never re-derived from `suggestedReply`. */
+  /** The reply to send, exactly as given â€” a hand-edited draft, never re-derived from `suggestedReply`. */
   text: z.string().min(1).max(2_000),
 });
 
@@ -103,7 +114,7 @@ export const EngageReplySendOutput = z.object({
 export interface EngageReplySendDeps {
   sender: ReplySender;
   /**
-   * Checks the reply before it goes out — see `replyGuard.ts`. A person has read
+   * Checks the reply before it goes out â€” see `replyGuard.ts`. A person has read
    * these words, so only a hard *block* stops them; a flag is noise they have
    * already judged.
    */
@@ -116,7 +127,7 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
     version: 1,
 
     summary:
-      'Send a reply to one inbox comment/DM/story reply, exactly as written. Irreversible once delivered — ' +
+      'Send a reply to one inbox comment/DM/story reply, exactly as written. Irreversible once delivered â€” ' +
       'gated by the engagement eligibility rule and workspace autonomy. Requires an idempotency key.',
 
     input: EngageReplySendInput,
@@ -141,7 +152,7 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
         throw new ToolError('NOT_FOUND', 'No inbox message with that id in this genome.');
       }
 
-      // A human is sending words they can see, so only a block stops this —
+      // A human is sending words they can see, so only a block stops this â€”
       // see `enforceReplyGuard` on why `unattended` is the whole difference
       // between this call site and `engage.autohandle`'s.
       await enforceReplyGuard(
@@ -164,15 +175,15 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
         orgId: ctx.orgId,
         // The outbound half of `ENG-02.4`'s transcript. Stored on the row rather
         // than left in `tool_calls.input`, which is a projection that never
-        // returns inputs — see `EngagementStore.markReplied`.
+        // returns inputs â€” see `EngagementStore.markReplied`.
         sentReply: input.text,
       });
-      // The reply is already delivered by this point — a store failure here
+      // The reply is already delivered by this point â€” a store failure here
       // must not be reported as a send failure (that would invite a retry
       // that sends a second reply). Same trade-off `publish.now` makes for
       // `content.markPublished`; logged loudly instead of thrown.
       if (!updated) {
-        ctx.logger.error('reply sent but engagement_messages was not updated — status may show stale', {
+        ctx.logger.error('reply sent but engagement_messages was not updated â€” status may show stale', {
           messageId: message.id,
         });
       }
@@ -193,3 +204,4 @@ export function makeEngageReplySend(deps: EngageReplySendDeps) {
     },
   });
 }
+

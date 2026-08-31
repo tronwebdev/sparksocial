@@ -29,7 +29,7 @@ const DropdownMenuContent = React.forwardRef<
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-/** 46px rows, 10px radius, cyan-tinted hover — matches the workspace switcher. */
+/** 46px rows, 10px radius, cyan-tinted hover — matches the brand switcher. */
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>

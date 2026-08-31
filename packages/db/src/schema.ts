@@ -11,6 +11,7 @@ import {
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
 import type { Autonomy } from '@sparksocial/shared/types';
 
@@ -40,6 +41,39 @@ export const assets = pgTable(
     /** AssetRole from @sparksocial/shared — typed at the repository boundary. */
     assetRole: text('asset_role').notNull(),
     storagePath: text('storage_path').notNull(), // Azure Blob Storage
+    /**
+     * The name the owner's file had when they uploaded it.
+     *
+     * `buildKey` writes `{orgId}/{genomeId}/{yyyy}/{mm}/{uuid}.{ext}`, so the
+     * original name was discarded at the door — and `asset.upload_url` has always
+     * *accepted* a `filename`, validated it, and thrown it away. Every filename
+     * the Assets Library prototype draws (the `Assets` column, the grid card
+     * labels, the upload queue, the preview title) had no source.
+     *
+     * Nullable because every row written before this column has no name to
+     * recover; the library falls back to the caption, then to the role.
+     */
+    filename: text('filename'),
+    /**
+     * Bytes, as reported at upload.
+     *
+     * Same story: `asset.upload_url` validated `sizeBytes` against its 512MB
+     * ceiling and did not persist it, so every size figure on that screen — per
+     * asset, per folder, and the upload progress denominator — had nothing behind
+     * it. Nullable for the same reason as `filename`.
+     */
+    sizeBytes: integer('size_bytes'),
+    /**
+     * When this asset was archived, if it was.
+     *
+     * `asset.archive` rather than a delete, decided 27 August. A published post
+     * stores `assetId` in its beats and `zipTimeline` throws `NOT_FOUND` when the
+     * asset is gone, so a hard delete would break the render of posts already
+     * live. Archiving takes the asset out of retrieval and out of the library and
+     * leaves both the row and the blob, so anything already referencing it still
+     * renders, and the decision is reversible.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     muxId: text('mux_id'),
     caption: text('caption'),
     embedding: vector('embedding', { dimensions: EMBEDDING_DIM }),
@@ -631,11 +665,73 @@ export const brands = pgTable(
      * genome's were inferred from a website.
      */
     toneVector: jsonb('tone_vector').$type<{ formal: number; playful: number; technical: number; bold: number }>(),
+    /**
+     * What the owner calls their agent (`F4`).
+     *
+     * The only *stored* part of the agent's identity. Its voice descriptor is
+     * derived from `toneVector` and its risk tolerance from `approvalMode` — see
+     * `packages/shared/src/agentIdentity.ts` for why storing either would create
+     * a second copy free to disagree with the setting that is actually enforced.
+     */
+    agentName: text('agent_name'),
     /** Words and phrases never to use. Checked verbatim by `guard.brand_voice`. */
     bannedPhrases: jsonb('banned_phrases').$type<string[]>(),
     /** ONB-01's logo, and the brand kit colours §8.6's "Apply Brand Kit" toggle applies. */
     logoUrl: text('logo_url'),
     brandColors: jsonb('brand_colors').$type<string[]>(),
+    /**
+     * The brand's type, as a *reference* to a resolvable face — M4, decided 22
+     * August alongside "the brand kit is a record".
+     *
+     * Two ids from `packages/compose/src/fonts.ts`: a display face for headlines
+     * and a body face for captions. Ids rather than family names, because the
+     * renderers need more than a name — Satori needs the bytes and Chromium needs
+     * a URL, and the registry is where one id resolves to both.
+     *
+     * **Not an upload.** A file would imply arbitrary font embedding, which
+     * `compose` has no path for and which carries a licensing question the
+     * product cannot answer on a customer's behalf. Absent means the renderers'
+     * own defaults, which is what every brand rendered on before this column.
+     */
+    brandFonts: jsonb('brand_fonts').$type<{ display?: string; body?: string }>(),
+    /**
+     * `Activate Watermark` - the toggle the Brand Kits screen has always drawn
+     * over a setting that did not exist.
+     *
+     * Both renderers stamped `logo_url` onto every frame whenever it was set, so
+     * a brand could not have a logo without watermarking every post. Absent means
+     * `DEFAULT_WATERMARK` (enabled, full opacity, 12% of frame width), which is
+     * byte-for-byte what those renderers did before this column - no backfill,
+     * and no brand's output changes on deploy.
+     */
+    watermark: jsonb('watermark').$type<Watermark>(),
+    /**
+     * The Templates tabs: intro, outro, bumper, caption and lower-third presets.
+     *
+     * A flat array rather than a table because these are a small bounded list
+     * read whole on every governance fetch, never queried across brands, and
+     * never joined - the same shape and the same reasoning as `banned_phrases`
+     * above. See `packages/shared/src/brandKit.ts` for why a "template" here is a
+     * line of text and not a media file.
+     */
+    kitTemplates: jsonb('kit_templates').$type<KitTemplate[]>(),
+    /**
+     * Which stock voice this brand narrates in by default — `M5`'s "Ai Voice"
+     * picker, and the named-voice half of `3.3`.
+     *
+     * An ElevenLabs premade voice id, validated against `STOCK_VOICES` in
+     * `packages/shared/src/voices.ts`. A *reference*, never an upload, for the
+     * same reason as `brand_fonts`: the vendor hosts the voice and we hold the id.
+     *
+     * Absent means `DEFAULT_STOCK_VOICE_ID`, which is the id
+     * `packages/generate/src/voice.ts` has hard-coded since it was written — so
+     * this column changes the sound of nothing until somebody picks something.
+     *
+     * Distinct from `genome.constraints.elevenlabs_voice_id`, which is the
+     * brand's *cloned* voice and is consent-gated. A clone is not one entry in a
+     * dropdown beside five stock voices.
+     */
+    stockVoiceId: text('stock_voice_id'),
 
     /**
      * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────
@@ -667,6 +763,43 @@ export const brands = pgTable(
     engagementAutonomy: text('engagement_autonomy').notNull().default('off'),
     /** comment | dm | story_reply. Empty means all of them. */
     engagementTypes: jsonb('engagement_types').$type<string[]>(),
+    /**
+     * ── Sales Assist (`SET-WS-EI-SALES`) ──────────────────────────────────
+     *
+     * How this brand wants a lead handled once the classifier has called a
+     * message `sales_opportunity`. Four columns rather than one blob because
+     * they are read by different code at different moments, and a single
+     * `sales_config` jsonb would make every one of them parse the whole thing.
+     *
+     * `salesQualification` — which of the four qualification moves the agent
+     * may make (ask questions, share a booking link, share pricing, collect
+     * contact details). Absent means none configured, which is not the same as
+     * all four: an agent that shares a pricing link nobody authorised is worse
+     * than one that asks a person.
+     */
+    salesQualification: jsonb('sales_qualification').$type<string[]>(),
+    /**
+     * Per-temperature handoff, `{hot,warm,cold}` → destination. The design's
+     * three destinations are `crm_notify`, `save_notify` and `nurture_only`,
+     * and the point of keying by temperature is that a hot lead and a cold one
+     * are the same *kind* of row with very different urgency.
+     */
+    salesHandoff: jsonb('sales_handoff').$type<Record<string, string>>(),
+    /**
+     * Where `crm_notify` sends. Free text, matching `opportunities.routed_to`
+     * — there is no CRM integration to structure this against yet, and
+     * inventing a shape now would be a seam pointing at nothing.
+     */
+    salesDestination: text('sales_destination'),
+    /**
+     * Words that force a human. "Messages containing these will always be
+     * escalated" is the design's own wording, and *always* is the whole value:
+     * this is a deterministic override of the classifier, not an instruction in
+     * a prompt the model may weigh against other things. A refund demand or a
+     * lawsuit threat auto-answered by an agent is the failure worth spending a
+     * column to prevent.
+     */
+    salesEscalationKeywords: jsonb('sales_escalation_keywords').$type<string[]>(),
 
     timezone: text('timezone').notNull().default('UTC'),
     /**
@@ -786,11 +919,30 @@ export const humanMessages = pgTable(
     answeredAt: timestamp('answered_at', { withTimezone: true }),
     answeredBy: text('answered_by'),
     channel: text('channel'),
+    /**
+     * When the owner saw this notification.
+     *
+     * Only meaningful for `kind: 'notify'`. An `ask` is closed by being
+     * *answered* — `answeredAt` is its latch — but a notification expects no
+     * reply, so without a separate column there is no way to distinguish "new"
+     * from "seen" and the list can only ever grow. Reusing `answeredAt` was the
+     * tempting shortcut and it would have broken the answer latch, which filters
+     * on `kind = 'ask'` precisely so a notification can never be mistaken for a
+     * decision somebody made.
+     */
+    readAt: timestamp('read_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // The owner's inbox: unanswered questions for one brand, oldest first.
     index('human_messages_brand_idx').on(t.orgId, t.brandId, t.answeredAt),
+    /**
+     * The notification inbox, which sorts the other way — newest first, because
+     * the most recent thing that happened is the one worth reading. A separate
+     * index because it filters on `readAt`, and the `answeredAt` index above
+     * cannot serve a query that never mentions it.
+     */
+    index('human_messages_notify_idx').on(t.orgId, t.brandId, t.kind, t.readAt),
   ],
 );
 
@@ -950,6 +1102,55 @@ export const campaigns = pgTable(
      * brand that reviews everything.
      */
     approvalMode: text('approval_mode'),
+    /**
+     * ── The wizard's own fields (`CMP-01`, F8) ──────────────────────────────
+     *
+     * `promotion` | `lead_magnet` | `authority` | `launch`. Distinct from
+     * `objective`: the objective is what success looks like, the type is the
+     * shape of the content chasing it. "More enquiries" can be pursued by a lead
+     * magnet or by an authority series, and those produce different mixes.
+     *
+     * Nullable — every campaign created before the wizard asked.
+     */
+    campaignType: text('campaign_type'),
+    /**
+     * Where this campaign points people, as words or a URL.
+     *
+     * Separate from the genome's own CTA, which is the brand's standing default.
+     * A campaign running a lead magnet points at its opt-in page for its
+     * duration and then stops; overwriting the brand's CTA to express that would
+     * outlive the campaign.
+     */
+    primaryCta: text('primary_cta'),
+    /**
+     * How much of the brand's posting this campaign should account for — the
+     * prototype's "how much attention should this get?".
+     *
+     * `dominant` | `balanced` | `light`. Three words rather than a percentage on
+     * purpose: posts-per-week already comes from the brand and the plan, and a
+     * second number here would let the two disagree about how many posts a month
+     * contains.
+     */
+    weight: text('weight'),
+    /**
+     * This campaign's rung on the engagement ladder — `observe` | `suggest` |
+     * `auto_reply` | `sales_assist` (decided 22 August: four rungs, with the
+     * Sales Assist configuration sitting on top of the top one).
+     *
+     * Answering the audience is autonomy, and autonomy is a property of the
+     * campaign. `brands.engagement_autonomy` stays as the template a new
+     * campaign is seeded from — the same relationship `approval_mode` now has.
+     */
+    engagementRung: text('engagement_rung'),
+    /**
+     * The prototype's "Optimization & Learning" step.
+     *
+     * Nullable rather than defaulted, because a campaign created before this
+     * existed never answered and should not be reported as having opted in.
+     * New campaigns are seeded to true by the wizard.
+     */
+    learnFromPerformance: boolean('learn_from_performance'),
+    adjustMixAutomatically: boolean('adjust_mix_automatically'),
     /** draft | active | done | cancelled */
     status: text('status').notNull().default('draft'),
     /** The approved plan: volume, mix, capture ask, reasoning. */
@@ -1320,6 +1521,68 @@ export const brandMembers = pgTable(
 );
 
 /**
+ * TEAM GROUPS (`SET-WS-TEAM-GROUPS`) — named capability bundles.
+ *
+ * `brand_members` already answers "which brands may this person touch, and as
+ * what role". It cannot answer the question the design's Groups tab asks:
+ * *"these four people may publish and approve, whatever their role says"*.
+ * Roles are a fixed ladder compiled into every tool's `scopes`; a workspace that
+ * wants a Video team who can publish but not spend, and a Design team who can
+ * approve but not publish, has no way to express it.
+ *
+ * A group is therefore a set of **capabilities** plus a set of members, and it
+ * only ever widens: see `policy.ts`, where each capability is checked at the one
+ * decision point it belongs to. Nothing here can grant access to a tool whose
+ * own `scopes` refuse the caller — rule 2 runs first and is not negotiable.
+ */
+export const teamGroups = pgTable(
+  'team_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    name: text('name').notNull(),
+    /**
+     * Any of `publish` | `spend_credits` | `manage_brand` | `approve` — the four
+     * the design names. Stored as a list rather than four booleans because the
+     * set is read whole on every policy evaluation and is expected to grow;
+     * four columns would make each addition a migration and a code change in
+     * every store.
+     */
+    capabilities: jsonb('capabilities').$type<string[]>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('team_groups_org_idx').on(t.orgId),
+    // Two groups called "Design Team" in one workspace is a mistake every time,
+    // and the person who made it cannot tell them apart on the screen.
+    uniqueIndex('team_groups_name_idx').on(t.orgId, t.name),
+  ],
+);
+
+export const teamGroupMembers = pgTable(
+  'team_group_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    userId: text('user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /**
+     * The hot path: "which capabilities does this user have", resolved once per
+     * tool call. Indexed on `(orgId, userId)` rather than on `groupId` because
+     * that is the direction the policy layer reads it — the group-detail screen
+     * reads the other way but does so once, on a click.
+     */
+    index('team_group_members_user_idx').on(t.orgId, t.userId),
+    index('team_group_members_group_idx').on(t.groupId),
+    uniqueIndex('team_group_members_unique_idx').on(t.groupId, t.userId),
+  ],
+);
+
+/**
  * `whitelabel.link.create` — a signed, expiring, unauthenticated review link
  * for a client with no SparkSocial account. The token is the credential; the
  * public route trusts it instead of a Clerk session, which is exactly why it
@@ -1416,6 +1679,21 @@ export const oauthConnections = pgTable(
     scopes: text('scopes').array(),
     accountLabel: text('account_label'),
     /**
+     * The platform's own identifier for the connected account — an Instagram
+     * Business account id, a TikTok `open_id`, an aggregator profile key.
+     *
+     * Distinct from `accountLabel`, which is a display name for a human and
+     * changes whenever the owner renames their page. This is the *stable* id,
+     * and it exists for one reason: inbound webhooks arrive knowing only which
+     * account an event happened on. Without it the engagement webhook has no
+     * route back to a genome, so a comment cannot be filed against the brand it
+     * was left on — which is why the inbox had a write tool and no writer.
+     *
+     * Nullable: connections predating this column have none, and some providers
+     * (Canva) have no account concept worth recording.
+     */
+    accountId: text('account_id'),
+    /**
      * ── PRD §10's connection alerts ────────────────────────────────────────
      *
      * §10 pairs "connection health indicators" with "alerts + retry flows"
@@ -1434,6 +1712,14 @@ export const oauthConnections = pgTable(
   (t) => [
     index('oauth_connections_scope_idx').on(t.orgId, t.genomeId),
     uniqueIndex('oauth_connections_unique_idx').on(t.genomeId, t.provider),
+    /**
+     * The engagement webhook's reverse lookup: account id → genome. Deliberately
+     * not unique — one Instagram account can legitimately be connected by two
+     * genomes in an agency workspace managing the same client twice, and a
+     * unique index would fail the second connection at save time rather than
+     * surfacing the ambiguity where it actually matters, at resolution.
+     */
+    index('oauth_connections_account_idx').on(t.provider, t.accountId),
     // The watcher's one cross-tenant read: "which connections are near expiry",
     // ordered by when. Without this it is a full scan on every tick.
     index('oauth_connections_expiry_idx').on(t.expiresAt),

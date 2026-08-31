@@ -183,8 +183,15 @@ async function brandKitFor(ctx: { brandId?: string; orgId: string; db: ScopedDb;
   try {
     const brand = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
     const colors = brand.brandColors ?? [];
-    if (!brand.logoUrl && colors.length === 0) return undefined;
-    return { ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}), colors };
+    const fonts = brand.brandFonts;
+    // See `tool.ts`'s twin: fonts alone are a kit, and this test used to say
+    // otherwise.
+    if (!brand.logoUrl && colors.length === 0 && !fonts?.display && !fonts?.body) return undefined;
+    return {
+      ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}),
+      colors,
+      ...(fonts ? { fonts } : {}),
+    };
   } catch (e) {
     // A render is worth more than its styling. Losing the kit produces a
     // correct post in default colours; failing the call produces nothing.

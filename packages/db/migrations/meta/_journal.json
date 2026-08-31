@@ -246,6 +246,83 @@
       "when": 1787280296526,
       "tag": "0034_quick_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1787367245199,
+      "tag": "0035_left_satana",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787369355011,
+      "tag": "0036_opposite_madame_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787371107481,
+      "tag": "0037_wakeful_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787404521625,
+      "tag": "0038_next_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1787410789841,
+      "tag": "0039_campaign_autonomy_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1787523319408,
+      "tag": "0040_brief_lockjaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787529394839,
+      "tag": "0041_gorgeous_mantis",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1787743707014,
+      "tag": "0042_abandoned_green_goblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1787747510464,
+      "tag": "0043_icy_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1787794088892,
+      "tag": "0044_lame_dark_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788171903870,
+      "tag": "0045_flashy_prima",
+      "breakpoints": true
     }
   ]
 }

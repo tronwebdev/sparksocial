@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError, Explanation } from '@sparksocial/shared';
 import { EngagementCategory, type EngagementClassifier } from './classifier.js';
+import { matchEscalationKeyword } from './escalation.js';
 
 /**
  * `engage.classify` — sorts one inbox message into the feed's tabs
@@ -73,20 +74,52 @@ export function makeEngageClassify(deps: EngageClassifyDeps) {
         text: message.text,
       });
 
+      /**
+       * `Settings WS EI Sales`'s escalation list overrides the classifier.
+       *
+       * Deterministic and after the fact, on purpose — see `escalation.ts`. The
+       * classifier still runs, so the intent score and its reasoning survive for
+       * whoever triages the message; only the routing changes. A brand with no
+       * list configured is unaffected, which is why the check is a no-op rather
+       * than a branch around the whole handler.
+       */
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      const escalated = matchEscalationKeyword(message.text, brand?.salesEscalationKeywords);
+      const category = escalated ? 'needs_review' : result.category;
+
       const why = {
-        summary: result.reason,
-        factors: [{ label: `Classified as ${result.category}`, weight: result.intentScore }],
+        summary: escalated
+          ? `Escalated to a person: this message contains "${escalated}", which this brand always escalates. ` +
+            `The classifier read it as ${result.category} — ${result.reason}`
+          : result.reason,
+        factors: [
+          ...(escalated ? [{ label: `Escalation keyword "${escalated}"`, weight: 1 }] : []),
+          { label: `Classified as ${result.category}`, weight: result.intentScore },
+        ],
         evidence: [{ kind: 'metric' as const, id: message.id, note: message.text.slice(0, 200) }],
-        alternatives: [],
+        alternatives: escalated
+          ? [
+              {
+                option: result.category,
+                rejectedBecause:
+                  'A sensitive keyword on this brand’s escalation list always sends the message to a person.',
+              },
+            ]
+          : [],
       };
 
       const updated = await ctx.db.engagement.classify({
         id: input.messageId,
         genomeId: input.genomeId,
         orgId: ctx.orgId,
-        category: result.category,
+        category,
         intentScore: result.intentScore,
-        ...(result.suggestedReply ? { suggestedReply: result.suggestedReply } : {}),
+        /**
+         * No suggested reply on an escalated message. Offering one next to "a
+         * person must handle this" invites exactly the one-click send the
+         * escalation exists to prevent.
+         */
+        ...(result.suggestedReply && !escalated ? { suggestedReply: result.suggestedReply } : {}),
         why,
       });
 
@@ -96,7 +129,7 @@ export function makeEngageClassify(deps: EngageClassifyDeps) {
 
       return {
         messageId: updated.id,
-        category: result.category,
+        category,
         intentScore: result.intentScore,
         ...(updated.suggestedReply ? { suggestedReply: updated.suggestedReply } : {}),
         why,

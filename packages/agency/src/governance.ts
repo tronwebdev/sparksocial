@@ -1,6 +1,22 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { DEFAULT_POSTING_WINDOWS, Explanation, ToolError } from '@sparksocial/shared';
+import {
+  DEFAULT_WATERMARK,
+  KitTemplate,
+  MAX_KIT_TEMPLATES,
+  Watermark,
+} from '@sparksocial/shared/brandKit';
+import { DEFAULT_STOCK_VOICE_ID, StockVoiceIdSchema } from '@sparksocial/shared/voices';
+import {
+  DEFAULT_POSTING_WINDOWS,
+  Explanation,
+  ToolError,
+  agentIdentity,
+  BrandFontIdSchema,
+  brandKitProgress,
+  isCompleteSalesHandoff,
+  resolveSalesHandoff,
+} from '@sparksocial/shared';
 
 /**
  * `brand.governance.get` / `.set` — PRD §8.2 (`ONB-03`), §8.12 (`SET-WS-01`), §9.
@@ -61,6 +77,31 @@ const ToneVector = z.object({
  * timezone, the settings screen sets the restricted topics, and neither may
  * silently wipe the other's work.
  */
+/**
+ * The four qualification moves `Settings WS EI Sales` offers.
+ *
+ * An enum rather than free text because each one authorises the agent to *do*
+ * something specific — sharing a pricing page is a different promise from asking
+ * a question — and a typo in a free-text list would silently authorise nothing
+ * while looking configured.
+ */
+export const SalesQualification = z.enum([
+  'ask_qualifying_questions',
+  'share_booking_link',
+  'share_pricing_link',
+  'collect_contact_details',
+]);
+
+/** The design's three handoff destinations, in descending urgency. */
+export const SalesHandoffDestination = z.enum(['crm_notify', 'save_notify', 'nurture_only']);
+
+/** One destination per lead temperature — the same row, very different urgency. */
+export const SalesHandoff = z.object({
+  hot: SalesHandoffDestination,
+  warm: SalesHandoffDestination,
+  cold: SalesHandoffDestination,
+});
+
 export const BrandGovernanceSetInput = z.object({
   /**
    * Optional, defaulting to the brand on the session — the same contract
@@ -74,8 +115,55 @@ export const BrandGovernanceSetInput = z.object({
   strictMode: z.boolean().optional(),
   toneVector: ToneVector.nullable().optional(),
   bannedPhrases: z.array(z.string().min(1).max(120)).max(200).nullable().optional(),
+
+  /* ── Brand kit render settings (`SET-WS-BRAND-KITS`) ─────────────────── */
+
+  /**
+   * `Activate Watermark`, plus how loud the mark is.
+   *
+   * Null clears back to `DEFAULT_WATERMARK`, which is what every brand rendered
+   * with before the column existed — so clearing is a real reset, not "off".
+   */
+  watermark: Watermark.nullable().optional(),
+  /**
+   * The Templates presets, replaced as a whole list.
+   *
+   * A whole-array patch rather than add/remove tools for the same reason as
+   * `bannedPhrases`: the list is small, bounded and always edited on a screen
+   * that already holds all of it, so per-item mutations would buy nothing and
+   * cost two more tools plus an ordering question.
+   *
+   * Ids are checked for uniqueness on the way in — a duplicate would make
+   * "apply preset X" ambiguous, and the panel keys its rows by id.
+   */
+  /**
+   * The brand's default narration voice — `M5`'s "Ai Voice" picker.
+   *
+   * Validated against `STOCK_VOICES` rather than accepted as free text: a voice
+   * id the vendor does not have produces a failure at generation time, hours
+   * after the settings screen said "Saved". Null clears back to the default.
+   */
+  stockVoiceId: StockVoiceIdSchema.nullable().optional(),
+  kitTemplates: z
+    .array(KitTemplate)
+    .max(MAX_KIT_TEMPLATES)
+    .refine((list) => new Set(list.map((t) => t.id)).size === list.length, {
+      message: 'Two templates share an id.',
+    })
+    .nullable()
+    .optional(),
   logoUrl: z.string().url().nullable().optional(),
   brandColors: z.array(z.string().min(3).max(32)).max(12).nullable().optional(),
+  /**
+   * M4's fonts. An enum rather than free text, and the enum is `BRAND_FONTS` —
+   * the faces the renderers can actually resolve. A family name the render path
+   * cannot fetch would be a setting that saved cleanly and changed no pixel,
+   * which is the failure mode this whole field exists to avoid.
+   */
+  brandFonts: z
+    .object({ display: BrandFontIdSchema.optional(), body: BrandFontIdSchema.optional() })
+    .nullable()
+    .optional(),
   /**
    * An IANA zone name, validated against the runtime's own zone database rather
    * than a hand-maintained list — a rejected zone here would silently push
@@ -97,6 +185,36 @@ export const BrandGovernanceSetInput = z.object({
   engagementAutonomy: z.enum(['off', 'suggest', 'auto']).optional(),
   /** comment | dm | story_reply. Null clears back to "all of them". */
   engagementTypes: z.array(z.enum(['comment', 'dm', 'story_reply'])).max(3).nullable().optional(),
+
+  /**
+   * What the owner calls their agent (`F4`). Null clears it back to unnamed.
+   *
+   * The only stored part of the agent's identity — its voice and risk tolerance
+   * are derived from `toneVector` and `approvalMode`. See `agentIdentity.ts`.
+   */
+  agentName: z.string().min(1).max(60).nullable().optional(),
+
+  /* ── Sales Assist (`SET-WS-EI-SALES`) ─────────────────────────────────── */
+
+  /**
+   * Which qualification moves the agent is allowed to make. Null clears to none,
+   * and none is the safe default: an agent quoting a pricing page nobody
+   * authorised is worse than one that hands the conversation to a person.
+   */
+  salesQualification: z.array(SalesQualification).max(4).nullable().optional(),
+  /** All three temperatures or none — a partial map would leave a lead with no rule. */
+  salesHandoff: SalesHandoff.nullable().optional(),
+  /** Where `crm_notify` sends. Free text, matching `opportunities.routed_to`. */
+  salesDestination: z.string().min(1).max(200).nullable().optional(),
+  /**
+   * Words that always force a human, whatever the classifier decided.
+   *
+   * Capped at 50 and lowercased on the way in. The cap is not arbitrary: this
+   * list is checked against every inbound message, and an unbounded list turns
+   * the hot path into a scan somebody can make arbitrarily slow from a settings
+   * screen.
+   */
+  salesEscalationKeywords: z.array(z.string().min(2).max(40)).max(50).nullable().optional(),
 });
 
 export const BrandGovernanceOutput = z.object({
@@ -106,8 +224,19 @@ export const BrandGovernanceOutput = z.object({
   strictMode: z.boolean(),
   toneVector: ToneVector.optional(),
   bannedPhrases: z.array(z.string()),
+  /** Always populated — the effective settings, including the default when the brand has never set them. */
+  watermark: Watermark,
+  /** True when `watermark` is the system default rather than this brand's own choice. */
+  usingDefaultWatermark: z.boolean(),
+  kitTemplates: z.array(KitTemplate),
+  /** Always populated — the effective voice, including the default when unset. */
+  stockVoiceId: z.string(),
+  /** True when `stockVoiceId` is the system default rather than this brand's own choice. */
+  usingDefaultVoice: z.boolean(),
   logoUrl: z.string().optional(),
   brandColors: z.array(z.string()),
+  /** M4's chosen faces, echoed back so the picker can show what is set. */
+  brandFonts: z.object({ display: z.string().optional(), body: z.string().optional() }).optional(),
   timezone: z.string(),
   /** Always populated — the effective windows, including the default when none are set. */
   postingWindows: z.array(z.number()),
@@ -115,8 +244,51 @@ export const BrandGovernanceOutput = z.object({
   usingDefaultWindows: z.boolean(),
   engagementAutonomy: z.enum(['off', 'suggest', 'auto']),
   engagementTypes: z.array(z.string()),
+  /**
+   * The agent as a person would describe it: its name, two or three voice
+   * adjectives, and a risk tolerance. Derived on read rather than stored, so it
+   * can never disagree with the settings it is describing.
+   */
+  agentIdentity: z.object({
+    name: z.string(),
+    named: z.boolean(),
+    voice: z.array(z.string()),
+    riskTolerance: z.enum(['Low', 'Moderate', 'High']),
+    riskBecause: z.string(),
+  }),
+  salesQualification: z.array(z.string()),
+  /** Always populated — the effective rules, including the defaults when none are set. */
+  salesHandoff: SalesHandoff,
+  /** True when `salesHandoff` is the system default rather than this brand's own choice. */
+  usingDefaultHandoff: z.boolean(),
+  salesDestination: z.string().optional(),
+  salesEscalationKeywords: z.array(z.string()),
+  /**
+   * How finished the brand kit is — derived on read like `agentIdentity`, and for
+   * the same reason: a stored percentage can disagree with the fields it claims
+   * to summarise. The cockpit's setup chip reads this; so does the Brand Kit
+   * settings panel, so the two cannot report different numbers.
+   */
+  brandKit: z.object({
+    steps: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        done: z.boolean(),
+        because: z.string(),
+      }),
+    ),
+    completed: z.number().int(),
+    total: z.number().int(),
+    pct: z.number().int(),
+    next: z
+      .object({ id: z.string(), label: z.string(), done: z.boolean(), because: z.string() })
+      .optional(),
+  }),
   why: Explanation,
 });
+
+
 
 export const brandGovernanceGet = defineTool({
   name: 'brand.governance.get',
@@ -170,7 +342,31 @@ export const brandGovernanceSet = defineTool({
   surfaces: ['ONB-03', 'SET-WS-01'],
 
   async handler(input, ctx) {
-    const { brandId: named, ...patch } = input;
+    const { brandId: named, ...rest } = input;
+    /**
+     * Escalation words are lowercased and trimmed here rather than by a Zod
+     * `.transform()` on the field.
+     *
+     * A transform wraps the field in a `ZodEffects`, and the registry's
+     * Zod-to-JSON-Schema walk decides "is this field optional" by looking for
+     * `ZodOptional`/`ZodDefault` at the top — so a transformed optional field is
+     * advertised to the model as **required**. Normalising in the handler keeps
+     * the declared shape honest, and puts it beside the other normalisation.
+     *
+     * The matcher is case-insensitive regardless (`escalation.ts`); this is so
+     * the list round-trips to the settings screen in one canonical form instead
+     * of showing the owner "Refund, refund, REFUND" as three separate words.
+     */
+    const patch = {
+      ...rest,
+      ...(rest.salesEscalationKeywords
+        ? {
+            salesEscalationKeywords: [
+              ...new Set(rest.salesEscalationKeywords.map((k) => k.trim().toLowerCase()).filter(Boolean)),
+            ],
+          }
+        : {}),
+    };
     const brandId = requireBrand(named ?? ctx.brandId);
     const before = await ctx.db.brands.get(brandId, ctx.orgId);
     const after = await ctx.db.brands.setGovernance({ brandId, orgId: ctx.orgId, patch });
@@ -194,6 +390,18 @@ export const brandGovernanceSet = defineTool({
               after.engagementAutonomy === 'off'
                 ? 'off — SPARK drafts, a person sends'
                 : `${after.engagementAutonomy} — replies are gated by eligibility as well`,
+          },
+          {
+            label: 'agent',
+            detail: after.agentName
+              ? `called ${after.agentName}`
+              : 'unnamed — the Command Center and campaign summaries will say "your agent"',
+          },
+          {
+            label: 'sales assist',
+            detail: after.salesEscalationKeywords?.length
+              ? `${after.salesQualification?.length ?? 0} qualification move(s), ${after.salesEscalationKeywords.length} escalation word(s)`
+              : `${after.salesQualification?.length ?? 0} qualification move(s), no escalation words`,
           },
           {
             label: 'restricted topics',
@@ -222,12 +430,22 @@ function toOutput(gov: {
   strictMode: boolean;
   toneVector?: { formal: number; playful: number; technical: number; bold: number };
   bannedPhrases?: string[];
+  watermark?: Watermark;
+  kitTemplates?: KitTemplate[];
+  stockVoiceId?: string;
   logoUrl?: string;
   brandColors?: string[];
+  brandFonts?: { display?: string; body?: string };
   timezone: string;
   postingWindows?: number[];
   engagementAutonomy: 'off' | 'suggest' | 'auto';
   engagementTypes?: string[];
+  agentName?: string;
+  approvalMode?: 'autopublish' | 'review_first_week' | 'review_everything';
+  salesQualification?: string[];
+  salesHandoff?: Record<string, string>;
+  salesDestination?: string;
+  salesEscalationKeywords?: string[];
 }) {
   const own = gov.postingWindows?.length ? gov.postingWindows : undefined;
   return {
@@ -237,8 +455,14 @@ function toOutput(gov: {
     strictMode: gov.strictMode,
     ...(gov.toneVector ? { toneVector: gov.toneVector } : {}),
     bannedPhrases: gov.bannedPhrases ?? [],
+    watermark: gov.watermark ?? DEFAULT_WATERMARK,
+    usingDefaultWatermark: gov.watermark === undefined,
+    kitTemplates: gov.kitTemplates ?? [],
+    stockVoiceId: gov.stockVoiceId ?? DEFAULT_STOCK_VOICE_ID,
+    usingDefaultVoice: gov.stockVoiceId === undefined,
     ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
     brandColors: gov.brandColors ?? [],
+    ...(gov.brandFonts ? { brandFonts: gov.brandFonts } : {}),
     timezone: gov.timezone,
     // Resolved, not raw: a caller rendering "posts go out at…" must show the
     // times that will actually be used, and a brand that has set nothing still
@@ -247,6 +471,26 @@ function toOutput(gov: {
     usingDefaultWindows: own === undefined,
     engagementAutonomy: gov.engagementAutonomy,
     engagementTypes: gov.engagementTypes ?? [],
+    agentIdentity: agentIdentity({
+      agentName: gov.agentName,
+      toneVector: gov.toneVector,
+      approvalMode: gov.approvalMode,
+    }),
+    salesQualification: gov.salesQualification ?? [],
+    // Resolved, not raw, for the same reason as `postingWindows`: a screen
+    // saying "hot leads go to…" has to show what will actually happen.
+    salesHandoff: resolveSalesHandoff(gov.salesHandoff),
+    usingDefaultHandoff: !isCompleteSalesHandoff(gov.salesHandoff),
+    ...(gov.salesDestination ? { salesDestination: gov.salesDestination } : {}),
+    salesEscalationKeywords: gov.salesEscalationKeywords ?? [],
+    // Derived here rather than by each caller, so the cockpit's chip and the
+    // Brand Kit panel cannot report different percentages for the same brand.
+    brandKit: brandKitProgress({
+      ...(gov.brandColors ? { brandColors: gov.brandColors } : {}),
+      ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
+      ...(gov.toneVector ? { toneVector: gov.toneVector } : {}),
+      timezone: gov.timezone,
+    }),
     why: {
       summary: 'The rules this brand publishes under.',
       factors: [],

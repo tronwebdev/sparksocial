@@ -31,6 +31,17 @@ export interface PolicyInput {
   caller: 'user' | 'agent';
   role: Role;
   now: Date;
+  /**
+   * Capabilities this caller holds through team-group membership
+   * (`SET-WS-TEAM-GROUPS`), resolved by `invokeTool` and passed in — never read
+   * here, because this function does no I/O (CLAUDE.md invariant 3).
+   *
+   * Absent and empty mean the same thing: exactly the caller's own role. Every
+   * capability widens and none narrows, so omitting the field can only ever be
+   * the more restrictive answer, which is the right default for a field somebody
+   * might forget to populate.
+   */
+  capabilities?: TeamCapability[];
 
   brand: {
     createdAt: Date;
@@ -160,17 +171,115 @@ export function evaluate(input: PolicyInput): Decision {
   return decision;
 }
 
+/**
+ * The four capabilities a team group can carry (`SET-WS-TEAM-GROUPS`).
+ *
+ * Every one of them **widens** and none narrows. That asymmetry is the whole
+ * safety argument for the feature: a group cannot be used to take access away
+ * from somebody, so a mistake in group configuration cannot lock a workspace
+ * out of its own account, and rule 2 still refuses any tool whose own `scopes`
+ * exclude the caller before a capability is ever consulted.
+ */
+export type TeamCapability = 'publish' | 'spend_credits' | 'manage_brand' | 'approve';
+
+/**
+ * Which role a capability lets its holder *act as*, for rule 2's scope check
+ * only.
+ *
+ * Only two of the four appear here, because only two are about reaching a tool
+ * at all — `publish` and `spend_credits` are about permission toggles further
+ * down and are checked there instead.
+ *
+ * `manage_brand` confers `admin`, and confers it **only inside the `brand` and
+ * `genome` families**. Granting `admin` outright would hand a group `team.invite`
+ * and `org.security.sso.configure`, which is not what "Manage brand" says on the
+ * screen and not what an owner ticking that box is agreeing to. Keying the grant
+ * to a tool family is not a special case bolted on here: CLAUDE.md invariant 1
+ * makes the dotted family grouping part of the architecture, which is exactly
+ * what makes it a sound thing to scope a grant by.
+ */
+/**
+ * A narrowing guard over the stored strings.
+ *
+ * `team_groups.capabilities` is jsonb, so a value written by an older build (or
+ * by hand) can be anything. Filtering rather than trusting means an unrecognised
+ * capability grants nothing, which is the safe direction — and is why the store
+ * type is `string[]` while the policy input is the union.
+ */
+export function isTeamCapability(value: string): value is TeamCapability {
+  return value === 'publish' || value === 'spend_credits' || value === 'manage_brand' || value === 'approve';
+}
+
+const CAPABILITY_ACTS_AS: Partial<Record<TeamCapability, { role: Role; families?: readonly string[] }>> = {
+  approve: { role: 'approver' },
+  manage_brand: { role: 'admin', families: ['brand', 'genome'] },
+};
+
+/**
+ * Whether a capability lets this caller through rule 2 for this tool.
+ *
+ * Pure, like everything else here — the capability list is resolved by
+ * `invokeTool` and handed in, never read from a database at this depth
+ * (CLAUDE.md invariant 3).
+ */
+function scopeGrantedByCapability(
+  tool: { name: string; scopes: readonly Role[] },
+  capabilities: readonly TeamCapability[],
+  family: string,
+): TeamCapability | undefined {
+  for (const capability of capabilities) {
+    const grant = CAPABILITY_ACTS_AS[capability];
+    if (!grant) continue;
+    if (grant.families && !grant.families.includes(family)) continue;
+    // Still only what the tool itself allows: acting as `approver` is worth
+    // nothing on a tool that does not list `approver`.
+    if (tool.scopes.includes(grant.role)) return capability;
+  }
+  return undefined;
+}
+
+/**
+ * What governs a publish with no campaign behind it.
+ *
+ * Autonomy is a property of a campaign (decided 22 August), so a post that
+ * belongs to no campaign has nobody's answer to apply. The choice is between
+ * inheriting the brand's old setting and requiring review, and it has to be
+ * review: inheriting would mean a brand set to `autopublish` silently
+ * autopublishes every one-off post forever, which is exactly the "publishes
+ * something nobody looked at" failure the whole governance model exists to
+ * prevent.
+ *
+ * The cost is real and worth naming: **a standalone post always waits for
+ * approval.** That is a behaviour change for anybody drafting one-offs outside a
+ * campaign, and it is the intended consequence of putting autonomy on campaigns
+ * rather than brands.
+ */
+const NO_CAMPAIGN_MODE = 'review_everything' as const;
+
 function evaluateRules(input: PolicyInput): Decision {
   const { tool, caller, role, now, brand, subject, budget, engagement } = input;
   const family = toolFamily(tool.name);
+  /**
+   * Group capabilities apply to a *person*, so an agent turn never carries
+   * them. SPARK acting "as" a member of the publishing group would let a
+   * workspace widen the agent's reach by editing a team screen, which is the
+   * opposite of what that screen is for.
+   */
+  const capabilities = caller === 'user' ? (input.capabilities ?? []) : [];
 
   /* 1 ── Kill switch. Beats everything except reads. */
   if (brand.agentPaused && caller === 'agent' && tool.effect !== 'read') {
     return { kind: 'deny', reason: 'The agent is paused for this brand.', ruleId: 'agent.paused' };
   }
 
-  /* 2 ── Role scope. */
-  if (!tool.scopes.includes(role)) {
+  /* 2 ── Role scope.
+   *
+   *      A team group can satisfy this where the caller's own role cannot —
+   *      that is the point of the Groups tab. It can never do more than the
+   *      tool already permits: `scopeGrantedByCapability` checks the granted
+   *      role against `tool.scopes` too, so a group cannot reach a tool no role
+   *      it names was allowed to call. */
+  if (!tool.scopes.includes(role) && !scopeGrantedByCapability(tool, capabilities, family)) {
     const needed = tool.scopes.reduce((a, r) => (ROLE_RANK[r] < ROLE_RANK[a] ? r : a), tool.scopes[0]);
     return {
       kind: 'deny',
@@ -185,7 +294,11 @@ function evaluateRules(input: PolicyInput): Decision {
    *      declared scopes and must not be able to widen them. A workspace that
    *      lists a role the tool never allowed still gets rule 2's refusal. */
   if (tool.effect === 'publish' && brand.publishRoles && brand.publishRoles.length > 0) {
-    if (!brand.publishRoles.includes(role)) {
+    // A group carrying `publish` is the workspace naming these people directly,
+    // which is a more specific statement than the by-role list and should win
+    // over it. It is still gated by rule 2 above, so this cannot reach a tool
+    // the caller was never allowed to call.
+    if (!brand.publishRoles.includes(role) && !capabilities.includes('publish')) {
       return {
         kind: 'deny',
         reason: `This workspace restricts publishing to ${brand.publishRoles.join(', ')}; caller is ${role}.`,
@@ -216,9 +329,15 @@ function evaluateRules(input: PolicyInput): Decision {
    * is kept so a tool declaring it is still permission-checked at a zero
    * estimate. */
   if (tool.effect === 'spend' || budget.estimatedCents > 0) {
-    if (brand.permissions?.spendCredits === false) {
+    if (brand.permissions?.spendCredits === false && !capabilities.includes('spend_credits')) {
       return { kind: 'deny', reason: 'Credit spending is disabled for this workspace.', ruleId: 'permission.spend' };
     }
+    /**
+     * The ceiling is not a permission and no capability lifts it. "Spending is
+     * switched off for this workspace" is a policy an owner can delegate; "there
+     * is no money left" is a fact, and a group that could spend past the cap
+     * would make the cap advisory.
+     */
     if (budget.estimatedCents > budget.remainingCents) {
       return {
         kind: 'deny',
@@ -238,7 +357,7 @@ function evaluateRules(input: PolicyInput): Decision {
    *
    *      Placed after the budget rule on purpose: "you cannot afford this" is a
    *      better answer than "ask someone" when both are true. */
-  if (tool.producesMedia && brand.permissions?.requireApprovalForMedia) {
+  if (tool.producesMedia && brand.permissions?.requireApprovalForMedia && !capabilities.includes('approve')) {
     return {
       kind: 'approval',
       reason: 'This workspace requires approval before generating media.',
@@ -313,30 +432,47 @@ function evaluateRules(input: PolicyInput): Decision {
       }
     }
 
-    /* PRD §7.2's per-campaign scope. The campaign's own mode wins in either
-     * direction — see `subject.campaignApprovalMode`. */
-    const effectiveMode = subject?.campaignApprovalMode ?? brand.approvalMode;
+    /**
+     * §7.2's per-campaign scope, and as of 22 August the *only* scope:
+     * autonomy is a property of a campaign, not of a brand.
+     *
+     * `brand.approvalMode` is no longer consulted here. It remains on the brand
+     * as the template a new campaign is seeded from, so an owner still answers
+     * the question once — but the answer that governs a given post is the one
+     * on the campaign that post belongs to. A post belonging to none falls to
+     * {@link NO_CAMPAIGN_MODE}, which requires review; see there for why
+     * inheriting the brand's setting instead would be unsafe.
+     */
+    const effectiveMode = subject?.campaignApprovalMode ?? NO_CAMPAIGN_MODE;
+    const fromCampaign = subject?.campaignApprovalMode !== undefined;
 
     switch (effectiveMode) {
       case 'review_everything':
         return {
           kind: 'approval',
-          reason: subject?.campaignApprovalMode
+          reason: fromCampaign
             ? 'This campaign reviews all content before publishing.'
-            : 'Workspace reviews all content before publishing.',
-          ruleId: subject?.campaignApprovalMode
-            ? 'campaign.review_everything'
-            : 'approval_mode.review_everything',
+            : // Not "the workspace reviews everything" — it may not. The reason
+              // has to name the actual cause, or somebody will go and change a
+              // brand setting that is no longer read.
+              'This post belongs to no campaign, and autonomy is set per campaign.',
+          ruleId: fromCampaign ? 'campaign.review_everything' : 'campaign.absent',
         };
       case 'review_first_week': {
+        /**
+         * Still measured from the *brand's* creation, not the campaign's.
+         *
+         * The rung means "until this account has a track record", and that is a
+         * property of the account. Measuring from each campaign's start would
+         * restart the probation every time somebody launched one, which turns a
+         * one-week safeguard into a permanent one.
+         */
         const age = daysBetween(now, brand.createdAt);
         if (age < REVIEW_FIRST_WEEK_DAYS) {
           return {
             kind: 'approval',
             reason: `Reviewing everything for the first week (day ${age + 1} of ${REVIEW_FIRST_WEEK_DAYS}).`,
-            ruleId: subject?.campaignApprovalMode
-              ? 'campaign.review_first_week'
-              : 'approval_mode.review_first_week',
+            ruleId: 'campaign.review_first_week',
           };
         }
         break; // graduated — fall through to autopublish
@@ -344,7 +480,8 @@ function evaluateRules(input: PolicyInput): Decision {
       case 'autopublish':
         break;
     }
-    // PRD §7.1 — autopublish is the default once nothing above intervened.
+    // §7.1 — autopublish once nothing above intervened, and only ever because a
+    // campaign said so.
   }
 
   /* 8 ── Workspace override for the family, then the tool's own default. */

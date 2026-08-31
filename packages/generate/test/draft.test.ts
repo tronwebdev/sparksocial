@@ -18,6 +18,7 @@ function ctx(over: {
   genomeGet?: ScopedDb['genomes']['get'];
   createDraft?: ScopedDb['content']['createDraft'];
   updateDraft?: ScopedDb['content']['updateDraft'];
+  contentGet?: ScopedDb['content']['get'];
 } = {}): ToolCtx {
   return {
     orgId: 'org_1',
@@ -51,7 +52,7 @@ function ctx(over: {
           id: 'ci_1', genomeId: args.genomeId, playbookId: args.playbookId, mode: args.mode,
           status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
         })),
-        get: async () => undefined,
+        get: over.contentGet ?? (async () => undefined),
         updateDraft: over.updateDraft ?? (async (args) => ({
           id: args.id, genomeId: args.genomeId, playbookId: 'pb_offer_announcement', mode: 'assemble',
           status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
@@ -100,7 +101,13 @@ describe('content.draft — synthesize mode', () => {
 
     expect(res.mode).toBe('synthesize');
     expect(res.mediaType).toBe('text');
-    expect(res.beats).toEqual([{ kind: 'text', beatId: 'copy', text: 'written: text.update' }]);
+    // `durationSec` and `label` are part of the beat as of the draft owning its
+    // own structure, and they are asserted here rather than loosened away with
+    // `toMatchObject`: the whole point of that change is that a beat records its
+    // own timing, so a draft that stopped stamping it would be the regression.
+    expect(res.beats).toEqual([
+      { kind: 'text', beatId: 'copy', text: 'written: text.update', durationSec: 0, label: 'Copy' },
+    ]);
     expect(createDraft).toHaveBeenCalledTimes(1);
   });
 });
@@ -170,5 +177,77 @@ describe('content.draft — guard rails', () => {
         ctx({ genomeGet: async () => undefined }),
       ),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
+/**
+ * THE REDRAFT GUARD.
+ *
+ * Regenerating an existing slot rebuilds the beat list from the playbook, which
+ * is the point — "another take" is the Draft Panel's most-used button. Since the
+ * draft owns its structure that rebuild also discards whatever `content.scene.*`
+ * did, and the response looks like an ordinary draft either way, so the loss is
+ * invisible without a gate.
+ */
+describe('content.draft — hand-edited storyboards', () => {
+  const tool = makeContentDraft({ text: echoWriter(), embed });
+
+  /** As `content.draft` itself writes it: `pb_offer_announcement`'s one beat, untouched. */
+  const asDrafted = (over: Record<string, unknown> = {}) => [
+    { kind: 'text', beatId: 'offer', text: 'Two weeks left.', durationSec: 0, label: 'Offer', ...over },
+  ];
+
+  const existing = (copy: unknown): ScopedDb['content']['get'] =>
+    async () => ({
+      id: 'ci_existing', genomeId: 'gen_saas', playbookId: 'pb_offer_announcement',
+      mode: 'assemble' as const, status: 'draft', copy, createdAt: new Date(),
+    });
+
+  const redraft = (contentGet: ScopedDb['content']['get'], discardSceneEdits?: boolean) =>
+    tool.handler(
+      {
+        genomeId: 'gen_saas', playbookId: 'pb_offer_announcement', contentItemId: 'ci_existing',
+        intent: '', ...(discardSceneEdits === undefined ? {} : { discardSceneEdits }),
+      },
+      ctx({ contentGet }),
+    );
+
+  it('regenerates freely over a draft nobody has touched', async () => {
+    // Nearly every call. The guard must not make the ordinary path ask permission.
+    await expect(redraft(existing(asDrafted()))).resolves.toMatchObject({ contentItemId: 'ci_existing' });
+  });
+
+  it('refuses when a scene has been inserted', async () => {
+    const withScene = [...asDrafted(), { kind: 'text', beatId: 'scene_1', text: 'Added.', durationSec: 4 }];
+    await expect(redraft(existing(withScene))).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('refuses when a scene has been retimed', async () => {
+    await expect(redraft(existing(asDrafted({ durationSec: 9 })))).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('refuses when a scene carries a voice override', async () => {
+    await expect(redraft(existing(asDrafted({ voice: 'brand' })))).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  });
+
+  it('proceeds when the caller says to discard the edits', async () => {
+    const withScene = [...asDrafted(), { kind: 'text', beatId: 'scene_1', text: 'Added.', durationSec: 4 }];
+    const res = await redraft(existing(withScene), true);
+    // Rebuilt from the playbook, so the added scene is gone — which is what was confirmed.
+    expect(res.beats.map((b) => b.beatId)).not.toContain('scene_1');
+  });
+
+  it('does not fire on a legacy draft with no durations of its own', async () => {
+    // Pre-24-August rows carry neither `durationSec` nor `label`. Absent is not
+    // an edit, and treating it as one would lock every old draft out of redrafting.
+    await expect(
+      redraft(existing([{ kind: 'text', beatId: 'offer', text: 'Two weeks left.' }])),
+    ).resolves.toMatchObject({ contentItemId: 'ci_existing' });
+  });
+
+  it('does not fire on an empty slot', async () => {
+    // A calendar slot from `calendar.generate` has no copy at all; filling it is
+    // the first draft, not a regeneration over somebody's work.
+    await expect(redraft(existing([]))).resolves.toMatchObject({ contentItemId: 'ci_existing' });
   });
 });

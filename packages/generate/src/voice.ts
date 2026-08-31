@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
-import { ResolvedBeat } from './draft.js';
+import { ResolvedBeat, keepStructure } from './draft.js';
+import { voiceLabel } from '@sparksocial/shared/voices';
 import type { VoiceClient } from './types.js';
 
 /**
@@ -26,8 +27,15 @@ export const ContentGenerateVoiceoverInput = z.object({
   genomeId: z.string().min(1),
   beatId: z.string().min(1),
   script: z.string().min(1).max(2_000),
-  /** True only when this beat should narrate in the owner's own cloned voice, not a stock one. */
-  useClonedVoice: z.boolean().default(false),
+  /**
+   * Narrate in the owner's own cloned voice rather than a stock one.
+   *
+   * Optional, with no default, because absent now means something: since
+   * `content.scene.voice` exists, the *scene* can hold that preference, and a
+   * `false` default here silently overruled it on every call. Pass it to decide
+   * per call; omit it to use whatever the scene was set to.
+   */
+  useClonedVoice: z.boolean().optional(),
 });
 
 export const ContentGenerateVoiceoverOutput = z.object({
@@ -47,7 +55,7 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
 
     summary:
       'Generate narration audio for a beat — a stock voice by default, or the genome\'s own cloned voice ' +
-      'when useClonedVoice is true and consent is on file. Spends real money.',
+      'when the scene (or useClonedVoice) asks for it and consent is on file. Spends real money.',
 
     input: ContentGenerateVoiceoverInput,
     output: ContentGenerateVoiceoverOutput,
@@ -81,8 +89,27 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
         });
       }
 
-      let voiceId = STOCK_VOICE_ID;
-      if (input.useClonedVoice) {
+      /**
+       * The per-call flag wins when it is given; otherwise the scene's own
+       * setting decides, and a scene with no setting gets the stock voice —
+       * the same default this tool always had.
+       */
+      const useCloned = input.useClonedVoice ?? beats[index]!.voice === 'brand';
+
+      /**
+       * The brand's chosen stock voice, when it has chosen one.
+       *
+       * Read here rather than defaulted in `STOCK_VOICE_ID` so the setting is
+       * consulted at the moment it matters. Absent falls back to the same id this
+       * tool has always used, so adding the picker changed the sound of nothing
+       * until somebody picked something.
+       *
+       * `content.scene.voice` still decides *which kind* of voice — the brand's
+       * own clone, or a stock one. This decides *which* stock one.
+       */
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      let voiceId = brand?.stockVoiceId ?? STOCK_VOICE_ID;
+      if (useCloned) {
         const consented = await ctx.db.consent.hasActive(input.genomeId, ctx.orgId, 'voice_clone');
         if (!consented) {
           throw new ToolError(
@@ -109,10 +136,12 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
       const { url } = await voice.generate({ voiceId, script: input.script });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { kind: 'generated_audio', beatId: input.beatId, url, script: input.script };
+      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_audio', beatId: input.beatId, url, script: input.script };
 
       const why: Explanation = {
-        summary: `Narrated "${input.beatId}" in ${input.useClonedVoice ? "the genome's own voice" : 'a stock voice'}.`,
+        summary: `Narrated "${input.beatId}" in ${
+          useCloned ? "the genome's own voice" : voiceLabel(voiceId).split(' — ')[0] ?? 'a stock voice'
+        }.`,
         factors: [{ label: 'script', detail: input.script }],
         evidence: [],
         alternatives: [],
@@ -131,7 +160,7 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
         });
       }
 
-      ctx.logger.info('voiceover generated', { contentItemId: draft.id, beatId: input.beatId, useClonedVoice: input.useClonedVoice });
+      ctx.logger.info('voiceover generated', { contentItemId: draft.id, beatId: input.beatId, useClonedVoice: useCloned });
 
       return { contentItemId: draft.id, beatId: input.beatId, url, why };
     },

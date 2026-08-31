@@ -10,7 +10,11 @@ import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
 import { QuestionStep } from '@/components/onboarding/QuestionStep';
 import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
 import { GroundingStep } from '@/components/onboarding/GroundingStep';
-import { PersonalizeStep } from '@/components/onboarding/PersonalizeStep';
+import { BrandDetailsStep } from '@/components/onboarding/BrandDetailsStep';
+import { BrandKitStep } from '@/components/onboarding/BrandKitStep';
+import { CompanyDocsStep } from '@/components/onboarding/CompanyDocsStep';
+import { AgentStep } from '@/components/onboarding/AgentStep';
+import { CompletionScreen } from '@/components/onboarding/CompletionScreen';
 import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
 import { humanError, invoke } from '@/lib/tools';
 
@@ -21,25 +25,48 @@ import { humanError, invoke } from '@/lib/tools';
  * account reached a shell with no genome, and the only way to make one was
  * curl. This is that path.
  *
+ * ── The four groups (`F6`) ─────────────────────────────────────────────────
+ *
+ * The prototype counts four steps; this counted every screen, so a brand whose
+ * crawl resolved nothing was told "Step 7 of 10" where the design says "Step 2 of
+ * 4". That number is most of what F6 measured as "the build feels twice as long
+ * as the design" — and it was not even a *stable* number, because the flow's
+ * length depends on how much the crawl managed to infer.
+ *
+ *   1 · Brand identity   name → the URL crawl → its playback → the details and
+ *                        logo the crawl did not fill
+ *   2 · Brand knowledge  the questions the crawl could not answer, then
+ *                        documents and what you already have
+ *   3 · Brand kit        colours, type, voice, timezone, guardrails
+ *   4 · Your agent       its name and face, and where it posts
+ *
+ * Two orderings in there are deliberate and were not the prototype's.
+ *
+ * The **details screen comes after the crawl**, where the prototype asks before
+ * it. The crawl writes `one_liner` and guesses `category`, so asking first means
+ * asking somebody to type a sentence SPARK was about to write for them — and then
+ * showing them the chip review that contradicts it.
+ *
+ * The **questions come before the optional steps**. They are what the whole
+ * engine routes on and the only part of setup that cannot be done later; putting
+ * documents or account-connecting in front of them would put skippable,
+ * externally-blocked work first and risk the essential work to a drop-off.
+ *
  * ── Two tool calls, and nothing invented around them ───────────────────────
  *
  * Invariant 1 says every capability is a tool, and the corollary for a UI is
- * that a screen may not collect something no tool accepts.
- *
- * That rule used to exclude the prototype's connect, brand-kit and
- * agent-avatar steps outright — *"no tool behind them yet"*, true when written.
- * The tools exist now, so `ONB-04` (connect accounts) and `ONB-05`
- * (personalisation) are drawn, and the rule bites in a narrower place instead:
- * `ONB-05` has no alias field, because nothing in the registry accepts one, and
- * a text box that quietly discards what you typed is worse than its absence.
- * Both steps are skippable, since neither is required to finish setup and one
- * of them depends on platform approvals nobody here controls.
+ * that a screen may not collect something no tool accepts. That rule used to
+ * exclude the prototype's brand-kit, document and agent-naming steps outright —
+ * *"no tool behind them yet"*, true when written. `brand.governance.set` covers
+ * the kit and the agent's name, and `brand.knowledge.attach_document` was built
+ * for the PDF step, so all three are drawn now. Where the rule still bites: the
+ * prototype's "Use This Brand Preset" toggle over a kit *generated from your URL*
+ * is absent, because nothing generates one — see `BrandKitStep`.
  *
  * The brand name is the exception worth naming: it is collected because it is
  * the one thing a person expects to be asked first, and it is used *locally* to
- * name the workspace on the completion screen. It is not persisted, because
- * `brands.name` is set by Clerk's organisation and there is no tool to change
- * it.
+ * name the brand on the completion screen. It is not persisted, because
+ * `brands.name` is set by Clerk's organisation and there is no tool to change it.
  *
  * ── Why the URL step is the slow one ───────────────────────────────────────
  *
@@ -49,26 +76,13 @@ import { humanError, invoke } from '@/lib/tools';
  * is worth the wait, and the wait is the only place in onboarding that has one.
  */
 
-/** Brand name · URL · chips · then one screen per unresolved dimension. */
-const FIXED_STEPS = 3;
-
-/**
- * `ONB-04` and `ONB-05`, after the questions rather than before them.
- *
- * The five questions are what the whole engine routes on, and they are the only
- * part of setup that cannot be done later. Putting optional, externally blocked
- * steps in front of them would be putting the skippable work first and risking
- * the essential work to a drop-off.
- *
- * Three now, not two: `GroundingStep` sits first of the three, because unlike
- * connecting an account or registering an avatar it is not blocked on anything
- * external, and it is the step that decides whether the brand can draft a post
- * at all. Onboarding previously established what a brand *could* do without ever
- * asking for anything it already had — no CTA (which fourteen playbooks need to
- * finish a post), no point of view (which is most of what makes copy sound like
- * the brand), and no assets (which every golden fixture assumed).
- */
-const TRAILING_STEPS = 3;
+/** Named rather than counted: the arithmetic version broke every time a screen moved. */
+const NAME = 0;
+const URL_STEP = 1;
+const CHIPS = 2;
+const DETAILS = 3;
+/** The questions occupy `QUESTIONS_AT … QUESTIONS_AT + questions.length - 1`. */
+const QUESTIONS_AT = 4;
 
 /** The `identity.*` fields `genome.identity.set` accepts flat, matching `GenomeIdentity`'s scalar keys. */
 const IDENTITY_SCALAR_FIELDS = new Set(['business_name', 'category', 'sub_category', 'one_liner', 'price_tier']);
@@ -78,19 +92,21 @@ interface Draft {
   chips: Chip[];
   unresolved: string[];
   businessName: string;
+  /** What the crawl guessed, so the details screen opens on the guess. */
+  category?: string;
 }
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { orgId } = useAuth();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(NAME);
   const [brandName, setBrandName] = useState('');
   const [url, setUrl] = useState('');
   const [draft, setDraft] = useState<Draft | undefined>();
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
-  // Separate from `busy`: that flag is the ~29s crawl, and step 1's render
+  // Separate from `busy`: that flag is the ~29s crawl, and the URL step's render
   // used to show *its* copy ("Opening your pages, reading them…") for this
   // path too, since both actions shared one boolean. `genome.create` has no
   // crawl to be reading — the fast, no-website path was rendering "reading
@@ -104,12 +120,31 @@ export default function OnboardingPage() {
   const [connectedCount, setConnectedCount] = useState(0);
 
   // Which dimensions still need asking depends on what the crawl resolved, so
-  // the flow's length is not known until step 1 has run.
+  // the flow's length is not known until the URL step has run.
   const questions = useMemo<Question[]>(
     () => (draft ? questionsFor(draft.unresolved) : QUESTIONS),
     [draft],
   );
-  const total = FIXED_STEPS + questions.length + TRAILING_STEPS;
+
+  /** Everything after the questions, whose position depends on how many there are. */
+  const DOCS = QUESTIONS_AT + questions.length;
+  const GROUNDING = DOCS + 1;
+  const KIT = GROUNDING + 1;
+  const AGENT = KIT + 1;
+  const ACCOUNTS = AGENT + 1;
+  const DONE = ACCOUNTS + 1;
+
+  /**
+   * The cookie the tool proxy forwards as `x-genome-id`.
+   *
+   * Set as soon as a draft exists rather than after the questions, because every
+   * screen from the chip review onward calls a genome-scoped tool — the logo
+   * upload, the document attach, `asset.gaps` — and without it those are scoped
+   * to nothing.
+   */
+  function selectGenome(genomeId: string) {
+    document.cookie = `spark_genome=${encodeURIComponent(genomeId)}; path=/; samesite=lax`;
+  }
 
   async function bootstrap() {
     /**
@@ -121,7 +156,7 @@ export default function OnboardingPage() {
      * unreachable; if it ever is not, refusing beats writing a wrong value.
      */
     if (!orgId) {
-      setError('Your workspace is still opening. Give it a moment and try again.');
+      setError('Your brand is still opening. Give it a moment and try again.');
       return;
     }
 
@@ -130,7 +165,7 @@ export default function OnboardingPage() {
 
     const result = await invoke<{
       draftGenomeId: string;
-      identity: { businessName: string };
+      identity: { businessName: string; category?: string };
       chips: Chip[];
       unresolved: string[];
     }>('genome.bootstrap_from_url', {
@@ -146,21 +181,21 @@ export default function OnboardingPage() {
     if (result.status !== 'succeeded') {
       // The API's message names the actual cause — blocked, not found,
       // unreachable — and each has a different next step, so it is shown rather
-      // than replaced with a generic failure. That holds only because the
-      // messages *are* sentences: a vendor payload used to reach this line, and
-      // was fixed at `inference-client.ts` rather than papered over here.
+      // than replaced with a generic failure.
       setError(humanError(result));
       setCrawlFailed(true);
       return;
     }
 
+    selectGenome(result.output.draftGenomeId);
     setDraft({
       genomeId: result.output.draftGenomeId,
       chips: result.output.chips ?? [],
       unresolved: result.output.unresolved ?? [],
       businessName: result.output.identity?.businessName ?? brandName,
+      ...(result.output.identity?.category ? { category: result.output.identity.category } : {}),
     });
-    setStep(2);
+    setStep(CHIPS);
   }
 
   /**
@@ -174,7 +209,7 @@ export default function OnboardingPage() {
    */
   async function createManually() {
     if (!orgId) {
-      setError('Your workspace is still opening. Give it a moment and try again.');
+      setError('Your brand is still opening. Give it a moment and try again.');
       return;
     }
 
@@ -188,8 +223,8 @@ export default function OnboardingPage() {
     }>('genome.create', {
       brandId: orgId,
       businessName: brandName.trim(),
-      // Asked properly on a later pass; the brand name is what the owner has
-      // already given us and the category is display-only either way.
+      // The details screen asks for the real one two screens later; the category
+      // is display-only either way and nothing in the engine branches on it.
       category: 'business',
       locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
     });
@@ -201,6 +236,7 @@ export default function OnboardingPage() {
       return;
     }
 
+    selectGenome(result.output.draftGenomeId);
     setDraft({
       genomeId: result.output.draftGenomeId,
       chips: [],
@@ -208,10 +244,10 @@ export default function OnboardingPage() {
       businessName: result.output.identity?.businessName ?? brandName,
     });
     // Straight past chip review: there are no inferences to correct.
-    setStep(FIXED_STEPS);
+    setStep(DETAILS);
   }
 
-  async function finish() {
+  async function saveAnswers() {
     if (!draft) return;
     setBusy(true);
     setError(undefined);
@@ -232,19 +268,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    /**
-     * The cookie the tool proxy forwards as `x-genome-id`. Set here rather than
-     * at the end of the flow because the two steps that follow *are* tool
-     * calls — `integration.health` and `genome.consent.grant` are both
-     * genome-scoped, and without this they would be scoped to nothing.
-     */
-    document.cookie = `spark_genome=${encodeURIComponent(draft.genomeId)}; path=/; samesite=lax`;
-    setStep(FIXED_STEPS + questions.length);
-  }
-
-  /** `ONB-06`'s completion, minus the prototype's hold-to-confirm gesture. */
-  function done() {
-    router.push('/');
+    setStep(DOCS);
   }
 
   /**
@@ -280,27 +304,33 @@ export default function OnboardingPage() {
       // The completion screen and every later step's eyebrow read this from
       // local state, not from a fresh fetch — keep it in sync with what was
       // just saved so a corrected name actually shows corrected.
-      if (patch['business_name']) setDraft({ ...draft, businessName: patch['business_name'] });
+      setDraft({
+        ...draft,
+        ...(patch['business_name'] ? { businessName: patch['business_name'] } : {}),
+        ...(patch['category'] ? { category: patch['category'] } : {}),
+      });
     }
 
-    setStep(3);
+    setStep(DETAILS);
   }
 
-  const back = step > 0 ? () => { setError(undefined); setStep(step - 1); } : undefined;
+  const back = step > NAME ? () => { setError(undefined); setStep(step - 1); } : undefined;
+  const eyebrow = draft?.businessName;
 
-  /* ── 0 · Brand name ─────────────────────────────────────────────── */
-  if (step === 0) {
+  /* ── 1 · Brand identity ─────────────────────────────────────────────── */
+
+  if (step === NAME) {
     return (
       <StepShell
-        step={0}
-        total={total}
+        group={1}
+        within={{ index: 0, total: 4 }}
         eyebrow="Let’s set up your brand identity"
         title="What is your brand called?"
         footer={
           <Button
             className="w-full md:w-auto"
             disabled={brandName.trim().length === 0}
-            onClick={() => setStep(1)}
+            onClick={() => setStep(URL_STEP)}
           >
             Continue
           </Button>
@@ -310,7 +340,7 @@ export default function OnboardingPage() {
           autoFocus
           value={brandName}
           onChange={(e) => setBrandName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && brandName.trim() && setStep(1)}
+          onKeyDown={(e) => e.key === 'Enter' && brandName.trim() && setStep(URL_STEP)}
           placeholder="Enter your brand name"
           aria-label="Brand name"
         />
@@ -318,14 +348,13 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── 1 · The URL. The expensive step. ───────────────────────────── */
-  if (step === 1) {
+  if (step === URL_STEP) {
     return (
       <StepShell
-        step={1}
-        total={total}
+        group={1}
+        within={{ index: 1, total: 4 }}
         onBack={back}
-        eyebrow="Now for your brand knowledge"
+        eyebrow={`Got your brand name, ${brandName.trim()}`}
         title="What’s your website?"
         subtitle="SPARK reads a few pages to work out what you do, so you answer fewer questions."
         footer={
@@ -363,7 +392,7 @@ export default function OnboardingPage() {
                 {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
               </button>
             ) : null}
-            {manualBusy ? <p className="text-[14px] text-ink-muted">Setting up your workspace…</p> : null}
+            {manualBusy ? <p className="text-[14px] text-ink-muted">Setting up your brand…</p> : null}
           </div>
         }
       >
@@ -381,12 +410,11 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── 2 · Chip playback (ONB-02) ─────────────────────────────────── */
-  if (step === 2 && draft) {
+  if (step === CHIPS && draft) {
     return (
       <StepShell
-        step={2}
-        total={total}
+        group={1}
+        within={{ index: 2, total: 4 }}
         onBack={back}
         eyebrow={`Read from ${hostOf(url)}`}
         title="Here’s what SPARK understood"
@@ -405,20 +433,45 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── 3+ · One question per unresolved dimension (ONB-03) ────────── */
-  const index = step - FIXED_STEPS;
-  const question = questions[index];
+  if (step === DETAILS && draft) {
+    return (
+      <StepShell
+        group={1}
+        within={{ index: 3, total: 4 }}
+        onBack={back}
+        eyebrow={eyebrow}
+        title="A bit more about the brand"
+        subtitle="All optional — but the sentence below is what every caption gets written from, so it is the one worth typing."
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(QUESTIONS_AT)}>
+            Continue
+          </Button>
+        }
+      >
+        <BrandDetailsStep
+          genomeId={draft.genomeId}
+          brandName={draft.businessName}
+          {...(draft.category ? { initialNiche: draft.category } : {})}
+        />
+      </StepShell>
+    );
+  }
 
-  if (question) {
+  /* ── 2 · Brand knowledge ────────────────────────────────────────────── */
+
+  const questionIndex = step - QUESTIONS_AT;
+  const question = questionIndex >= 0 ? questions[questionIndex] : undefined;
+
+  if (question && draft) {
     const selected = answers[question.id] ?? [];
-    const last = index === questions.length - 1;
+    const last = questionIndex === questions.length - 1;
 
     return (
       <StepShell
-        step={step}
-        total={total}
+        group={2}
+        within={{ index: questionIndex, total: questions.length + 2 }}
         onBack={back}
-        eyebrow={draft ? `${draft.businessName}` : undefined}
+        eyebrow={eyebrow}
         title={question.prompt}
         subtitle={question.help}
         footer={
@@ -427,7 +480,7 @@ export default function OnboardingPage() {
             <Button
               className="w-full md:w-auto"
               disabled={selected.length === 0 || busy}
-              onClick={() => (last ? void finish() : setStep(step + 1))}
+              onClick={() => (last ? void saveAnswers() : setStep(step + 1))}
             >
               {busy ? 'Saving…' : last ? 'Save answers' : 'Continue'}
             </Button>
@@ -443,18 +496,37 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── ONB-04 · Give SPARK something to write from (skippable) ─────── */
-  if (draft && step === FIXED_STEPS + questions.length) {
+  if (draft && step === DOCS) {
     return (
       <StepShell
-        step={step}
-        total={total}
+        group={2}
+        within={{ index: questions.length, total: questions.length + 2 }}
         onBack={back}
-        eyebrow={draft.businessName}
+        eyebrow={eyebrow}
+        title="Anything written down?"
+        subtitle="SPARK reads these to learn your voice, your offer and the facts it is allowed to state. Optional, and addable later."
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(GROUNDING)}>
+            Continue
+          </Button>
+        }
+      >
+        <CompanyDocsStep genomeId={draft.genomeId} />
+      </StepShell>
+    );
+  }
+
+  if (draft && step === GROUNDING) {
+    return (
+      <StepShell
+        group={2}
+        within={{ index: questions.length + 1, total: questions.length + 2 }}
+        onBack={back}
+        eyebrow={eyebrow}
         title="What has SPARK got to work with?"
         subtitle="All optional, all changeable later — but each one is the difference between a post that could be any business and a post that is yours."
         footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(step + 1)}>
+          <Button className="w-full md:w-auto" onClick={() => setStep(KIT)}>
             Continue
           </Button>
         }
@@ -464,20 +536,61 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── ONB-05 · Connect the accounts (skippable) ──────────────────── */
-  if (draft && step === FIXED_STEPS + questions.length + 1) {
+  /* ── 3 · Brand kit ──────────────────────────────────────────────────── */
+
+  if (draft && step === KIT) {
     return (
       <StepShell
-        step={step}
-        total={total}
+        group={3}
         onBack={back}
-        eyebrow={draft.businessName}
+        eyebrow={eyebrow}
+        title="How should it look and sound?"
+        subtitle="Your colours, type and voice, and the things SPARK must never say. Every field here reaches a real post."
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(AGENT)}>
+            Continue
+          </Button>
+        }
+      >
+        <BrandKitStep />
+      </StepShell>
+    );
+  }
+
+  /* ── 4 · Your agent ─────────────────────────────────────────────────── */
+
+  if (draft && step === AGENT) {
+    return (
+      <StepShell
+        group={4}
+        within={{ index: 0, total: 2 }}
+        onBack={back}
+        eyebrow={eyebrow}
+        title="Who is doing the work?"
+        footer={
+          <Button className="w-full md:w-auto" onClick={() => setStep(ACCOUNTS)}>
+            Continue
+          </Button>
+        }
+      >
+        <AgentStep genomeId={draft.genomeId} brandName={draft.businessName} />
+      </StepShell>
+    );
+  }
+
+  if (draft && step === ACCOUNTS) {
+    return (
+      <StepShell
+        group={4}
+        within={{ index: 1, total: 2 }}
+        onBack={back}
+        eyebrow={eyebrow}
         title="Where should SPARK post?"
         footer={
           <div className="flex flex-col gap-3">
             {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button className="w-full md:w-auto" onClick={() => setStep(step + 1)}>
-              {connectedCount > 0 ? 'Continue' : 'Skip for now'}
+            <Button className="w-full md:w-auto" onClick={() => setStep(DONE)}>
+              {connectedCount > 0 ? 'Finish setup' : 'Skip for now'}
             </Button>
           </div>
         }
@@ -487,34 +600,25 @@ export default function OnboardingPage() {
     );
   }
 
-  /* ── ONB-06 · Personalise (skippable) ──────────────────────────────── */
-  if (draft && step === FIXED_STEPS + questions.length + 2) {
+  /* ── Done (`L5`) ────────────────────────────────────────────────────── */
+
+  if (draft && step === DONE) {
     return (
-      <StepShell
-        step={step}
-        total={total}
-        onBack={back}
-        eyebrow={draft.businessName}
-        title="Does SPARK have a face to use?"
-        footer={
-          <Button className="w-full md:w-auto" onClick={done}>
-            Finish setup
-          </Button>
-        }
-      >
-        <PersonalizeStep genomeId={draft.genomeId} />
-      </StepShell>
+      <CompletionScreen
+        genomeId={draft.genomeId}
+        brandName={draft.businessName}
+        onDone={() => router.push('/')}
+      />
     );
   }
 
-  /* Reachable only if `draft` is missing at step 2 — a refresh mid-flow. */
+  /* Reachable only if `draft` is missing past the URL step — a refresh mid-flow. */
   return (
     <StepShell
-      step={step}
-      total={total}
+      group={1}
       title="Let’s start again"
       subtitle="That took longer than expected and the answers were lost. Nothing was saved."
-      footer={<Button onClick={() => setStep(0)}>Start over</Button>}
+      footer={<Button onClick={() => setStep(NAME)}>Start over</Button>}
     >
       <span />
     </StepShell>

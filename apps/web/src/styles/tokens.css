@@ -212,3 +212,80 @@
   from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
+
+/* ── The ten the fidelity pass found missing (F5) ──────────────────────────
+   The prototypes define seventeen keyframes; eight were implemented, and six of
+   those carried the prototype's own names — so the vocabulary was copied
+   deliberately and then left unfinished. These are the rest, lifted verbatim so
+   nothing here is a reinvention of a curve somebody already chose.
+
+   `ss-shimmer` is the consequential one. With no skeleton treatment, every load
+   in the product is a spinner, which is the complaint M10 files against the
+   draft panel — except it was never confined to the draft panel. */
+
+/* Skeleton pulse. Deliberately opacity-only: a shimmer that also moves a
+   gradient across the element costs a repaint on every frame for every skeleton
+   on screen, and there can be a dozen. */
+@keyframes ss-shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+@keyframes ss-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes ss-modal-in {
+  0% { opacity: 0; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ss-pop-in {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.75; }
+}
+
+/* The typing indicator's three dots, staggered by animation-delay at the call
+   site rather than by three separate keyframes. */
+@keyframes ss-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+@keyframes ss-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* An upload's indeterminate bar. Stops at 96% rather than 100% on purpose: a
+   bar that reaches the end and then waits reads as finished-but-stuck, which is
+   worse than one that is visibly still going. */
+@keyframes ss-upload {
+  0% { width: 6%; }
+  100% { width: 96%; }
+}
+
+@keyframes ss-card-out {
+  to { opacity: 0; transform: scale(0.92); }
+}
+
+/* ── Motion, honestly ─────────────────────────────────────────────────────
+   Every animation above is decoration over a state change that has already
+   happened, so switching them off costs nothing but the flourish. The
+   prototypes carry no such block; it belongs in a real product. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

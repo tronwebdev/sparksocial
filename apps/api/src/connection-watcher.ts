@@ -1,6 +1,6 @@
 import { invokeTool, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import { EXPIRY_WARNING_MS } from '@sparksocial/publish';
-import { makeDevResolveCtx } from './dev-auth.js';
+import { makeSystemCtx } from './system-ctx.js';
 
 /**
  * THE CONNECTION WATCHER — the "alerts" half of PRD §10.
@@ -95,17 +95,16 @@ async function notifyOne(
     return;
   }
 
-  const base = await makeDevResolveCtx(deps.db)(
-    new Request('http://localhost/', {
-      headers: {
-        'x-org-id': conn.orgId,
-        'x-brand-id': genome.workspace_id,
-        'x-genome-id': conn.genomeId,
-        'x-role': 'admin',
-      },
-    }),
-  );
-  const { userId: _drop, caller: _caller, ...ctx } = base;
+  // `admin`: this only ever calls `human.notify`, which any role above viewer
+  // can reach. Kept at admin to match the other watchers rather than widening
+  // the set of roles background work runs at for no reason.
+  const ctx = await makeSystemCtx({
+    db: deps.db,
+    orgId: conn.orgId,
+    brandId: genome.workspace_id,
+    genomeId: conn.genomeId,
+    role: 'admin',
+  });
   const brand = await deps.loadBrandGovernance(conn.orgId, genome.workspace_id);
 
   const result = await invokeTool(

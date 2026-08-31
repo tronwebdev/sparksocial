@@ -89,10 +89,23 @@ interface RepurposeSuggestion {
   intent: string;
 }
 
+/**
+ * `trend.reshare`'s actual output shape.
+ *
+ * This was typed as `{ contentItemId?, caption?, intent? }` and the panel below
+ * rendered `reshare.caption` — a field the tool has never returned. So the
+ * suggestion arrived, the state was set, and the result box rendered nothing:
+ * the button looked broken for a tool that was working. The optional fields hid
+ * it from the compiler.
+ *
+ * Now the shape the tool declares (`packages/trends/src/tool.ts`), non-optional,
+ * so the next divergence is a type error rather than an empty box.
+ */
 interface ReshareSuggestion {
-  contentItemId?: string;
-  caption?: string;
-  intent?: string;
+  playbookId: string;
+  /** Asset ids the original post used, which the reshare would reuse. */
+  referencedAssetIds: string[];
+  intent: string;
 }
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -488,9 +501,20 @@ export function TrendDetail({
                 {busy === 'reshare' ? 'Thinking…' : 'Suggest a reshare'}
               </Button>
 
-              {reshare?.caption ? (
+              {reshare ? (
                 <div className="mt-3 rounded border border-border bg-surface-muted p-3">
-                  <p className="text-[13px] text-ink">{reshare.caption}</p>
+                  {/* The intent is the whole suggestion — it is the brief the
+                      reshare would be drafted from. The asset count is the other
+                      half of the answer: a reshare that reuses nothing is a new
+                      post wearing an old post's name. */}
+                  <p className="text-[13px] text-ink">{reshare.intent}</p>
+                  <p className="mt-1 text-[12px] text-ink-muted">
+                    {reshare.referencedAssetIds.length > 0
+                      ? `Reuses ${reshare.referencedAssetIds.length} asset${
+                          reshare.referencedAssetIds.length === 1 ? '' : 's'
+                        } from the original post.`
+                      : 'The original post referenced no assets, so this would be written from scratch.'}
+                  </p>
                 </div>
               ) : null}
             </div>

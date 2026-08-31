@@ -146,6 +146,18 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
         if (patch.toneVector === null) delete row.toneVector;
         else row.toneVector = patch.toneVector;
       }
+      if (patch.watermark !== undefined) {
+        if (patch.watermark === null) delete row.watermark;
+        else row.watermark = patch.watermark;
+      }
+      if (patch.stockVoiceId !== undefined) {
+        if (patch.stockVoiceId === null) delete row.stockVoiceId;
+        else row.stockVoiceId = patch.stockVoiceId;
+      }
+      if (patch.kitTemplates !== undefined) {
+        if (patch.kitTemplates === null) delete row.kitTemplates;
+        else row.kitTemplates = patch.kitTemplates;
+      }
       if (patch.bannedPhrases !== undefined) {
         if (patch.bannedPhrases === null) delete row.bannedPhrases;
         else row.bannedPhrases = patch.bannedPhrases;
@@ -167,6 +179,29 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       if (patch.engagementTypes !== undefined) {
         if (patch.engagementTypes === null) delete row.engagementTypes;
         else row.engagementTypes = patch.engagementTypes;
+      }
+      // Sales Assist. Null clears rather than storing an empty value, matching
+      // every other nullable field here — "no rule" and "an empty rule" read
+      // the same on a screen and must not diverge between the two stores.
+      if (patch.agentName !== undefined) {
+        if (patch.agentName === null) delete row.agentName;
+        else row.agentName = patch.agentName;
+      }
+      if (patch.salesQualification !== undefined) {
+        if (patch.salesQualification === null) delete row.salesQualification;
+        else row.salesQualification = patch.salesQualification;
+      }
+      if (patch.salesHandoff !== undefined) {
+        if (patch.salesHandoff === null) delete row.salesHandoff;
+        else row.salesHandoff = patch.salesHandoff;
+      }
+      if (patch.salesDestination !== undefined) {
+        if (patch.salesDestination === null) delete row.salesDestination;
+        else row.salesDestination = patch.salesDestination;
+      }
+      if (patch.salesEscalationKeywords !== undefined) {
+        if (patch.salesEscalationKeywords === null) delete row.salesEscalationKeywords;
+        else row.salesEscalationKeywords = patch.salesEscalationKeywords;
       }
       return copy({ ...row });
     },

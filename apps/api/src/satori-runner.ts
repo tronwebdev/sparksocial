@@ -7,6 +7,7 @@ import { ToolError } from '@sparksocial/shared';
 import type { StaticRunner } from '@sparksocial/compose';
 import type { BrandKit, TimedBeat } from '@sparksocial/compose';
 import { resolveKit } from '@sparksocial/compose';
+import { loadBrandFonts } from './font-loader.js';
 
 /**
  * SATORI, ACTUALLY EXECUTED — `compose.static`'s render step.
@@ -77,8 +78,15 @@ const el = (type: string, props: Record<string, unknown>, ...children: SatoriChi
  * applied, not a filter.
  */
 function beatToNode(beat: TimedBeat | undefined, width: number, height: number, kit?: BrandKit): SatoriNode {
-  const { ground, type: typeColor, logoUrl } = resolveKit(kit);
+  const { ground, type: typeColor, logoUrl, displayFont, bodyFont } = resolveKit(kit);
   const base = { display: 'flex', width, height, backgroundColor: ground };
+  /**
+   * The vendored face is appended to each stack rather than replacing it, so a
+   * brand that chose nothing still renders in the face this runner has always
+   * used and a brand that chose something gets it with a working backstop.
+   */
+  const display = `${displayFont}, ${FONT_NAME}`;
+  const body = `${bodyFont}, ${FONT_NAME}`;
 
   if (!beat || beat.kind === 'audio') {
     return el('div', { style: base });
@@ -94,7 +102,7 @@ function beatToNode(beat: TimedBeat | undefined, width: number, height: number, 
       { style: { ...base, position: 'relative' } },
       el('img', { src: beat.url, width, height, style: { objectFit: 'cover' } }),
       beat.kind === 'image' && 'caption' in beat && beat.caption
-        ? captionNode(beat.caption, typeColor)
+        ? captionNode(beat.caption, typeColor, body)
         : el('div', {}),
       logoUrl ? logoNode(logoUrl, width) : el('div', {}),
     );
@@ -112,7 +120,7 @@ function beatToNode(beat: TimedBeat | undefined, width: number, height: number, 
         textAlign: 'center',
       },
     },
-    el('div', { style: { color: typeColor, fontSize: 64, fontFamily: FONT_NAME, lineHeight: 1.3 } }, beat.text),
+    el('div', { style: { color: typeColor, fontSize: 64, fontFamily: display, lineHeight: 1.3 } }, beat.text),
     logoUrl ? logoNode(logoUrl, width) : el('div', {}),
   );
 }
@@ -145,7 +153,7 @@ function logoNode(url: string, width: number): SatoriNode {
  * legibility over arbitrary photography, and a brand-coloured scrim on a photo
  * that happens to be the same hue makes the caption vanish.
  */
-function captionNode(caption: string, typeColor: string): SatoriNode {
+function captionNode(caption: string, typeColor: string, bodyFont: string): SatoriNode {
   return el(
     'div',
     {
@@ -166,7 +174,7 @@ function captionNode(caption: string, typeColor: string): SatoriNode {
           display: 'flex',
           color: typeColor,
           fontSize: 40,
-          fontFamily: FONT_NAME,
+          fontFamily: bodyFont,
           background: 'rgba(12,12,12,0.55)',
           padding: '16px 32px',
           borderRadius: 12,
@@ -188,12 +196,28 @@ export function createSatoriRunner(opts: SatoriRunnerOptions = {}): StaticRunner
       const font = await getFont();
       const node = beatToNode(beats[0], width, height, brandKit);
 
+      /**
+       * M4: the brand's own faces, fetched as bytes, with the vendored face
+       * always present behind them.
+       *
+       * Order matters to Satori — it draws a glyph with the first font in the
+       * list that has it — so the brand's faces come first and the vendored one
+       * is the backstop for anything they are missing. Keeping it in the list
+       * rather than swapping it out is what makes a font fetch that failed, or a
+       * glyph the chosen face does not carry, render *something* instead of a
+       * missing-glyph box.
+       */
+      const brandFonts = await loadBrandFonts(resolveKit(brandKit).fontFaces);
+
       let svg: string;
       try {
         svg = await satori(node as never, {
           width,
           height,
-          fonts: [{ name: FONT_NAME, data: font, weight: 400, style: 'normal' }],
+          fonts: [
+            ...brandFonts.map((f) => ({ name: f.name, data: f.data, weight: f.weight as 400, style: 'normal' as const })),
+            { name: FONT_NAME, data: font, weight: 400, style: 'normal' },
+          ],
         });
       } catch (e) {
         throw new ToolError('UPSTREAM_FAILED', `Satori render failed: ${e instanceof Error ? e.message : String(e)}`, {});

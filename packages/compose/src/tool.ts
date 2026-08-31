@@ -213,8 +213,16 @@ async function brandKitFor(ctx: { brandId?: string; orgId: string; db: ScopedDb;
   try {
     const brand = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
     const colors = brand.brandColors ?? [];
-    if (!brand.logoUrl && colors.length === 0) return undefined;
-    return { ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}), colors };
+    const fonts = brand.brandFonts;
+    // A brand that has only chosen its type still has a kit. This test was
+    // logo-or-colours, so `brand_fonts` on its own returned "no kit" and the
+    // chosen faces never reached a renderer.
+    if (!brand.logoUrl && colors.length === 0 && !fonts?.display && !fonts?.body) return undefined;
+    return {
+      ...(brand.logoUrl ? { logoUrl: brand.logoUrl } : {}),
+      colors,
+      ...(fonts ? { fonts } : {}),
+    };
   } catch (e) {
     // A render is worth more than its styling. Losing the kit produces a
     // correct post in default colours; failing the call produces nothing.

@@ -107,6 +107,16 @@ export const campaignDuplicate = defineTool({
       plan: source.plan,
       ...(source.targetCount !== undefined ? { targetCount: source.targetCount } : {}),
       ...(source.targetLabel !== undefined ? { targetLabel: source.targetLabel } : {}),
+      /**
+       * The copy keeps the original's autonomy.
+       *
+       * It was not copied before, which was survivable while the brand was the
+       * fallback and is not now: an absent campaign mode means "requires
+       * review", so duplicating an autopublishing campaign would have quietly
+       * produced one that queues everything. "Run this exact approved plan
+       * again" has to include the terms it was approved under.
+       */
+      ...(source.approvalMode ? { approvalMode: source.approvalMode } : {}),
     });
 
     ctx.logger.info('campaign duplicated', { sourceCampaignId: input.campaignId, campaignId: id, genomeId: input.genomeId });

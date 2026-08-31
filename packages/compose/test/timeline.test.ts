@@ -142,6 +142,49 @@ describe('resolveKit — §8.6\'s brand kit', () => {
     expect(resolveKit({ colors: ['not-a-colour'] }).type).toBe(DEFAULT_TYPE);
   });
 
+  /* ── M4's fonts ─────────────────────────────────────────────────────── */
+
+  it('always returns a usable font stack, kit or no kit', () => {
+    // Both renderers read these unconditionally, so "no answer" is not an option
+    // — a bare family name resolves to whatever the container's default is,
+    // which in a minimal image is often a serif nobody chose.
+    for (const kit of [undefined, { colors: [] }, { colors: ['#101820'] }]) {
+      expect(resolveKit(kit).displayFont).toMatch(/sans-serif$/);
+      expect(resolveKit(kit).bodyFont).toMatch(/sans-serif$/);
+      expect(resolveKit(kit).fontFaces).toEqual([]);
+    }
+  });
+
+  it('falls the body face back to the display face, not to the system stack', () => {
+    // A brand that named one font meant that font. Rendering its headline in
+    // Playfair and its caption in whatever the container has is worse than
+    // rendering both in Playfair, and it is not what picking one font implies.
+    const out = resolveKit({ colors: [], fonts: { display: 'playfair' } });
+    expect(out.displayFont).toContain('"Playfair Display"');
+    expect(out.bodyFont).toBe(out.displayFont);
+    expect(out.fontFaces.map((f) => f.id)).toEqual(['playfair']);
+  });
+
+  it('reports each face once, so two names for one face are one fetch', () => {
+    const out = resolveKit({ colors: [], fonts: { display: 'inter', body: 'inter' } });
+    expect(out.fontFaces).toHaveLength(1);
+  });
+
+  it('reports both faces when they differ', () => {
+    const out = resolveKit({ colors: [], fonts: { display: 'oswald', body: 'lora' } });
+    expect(out.displayFont).toContain('Oswald');
+    expect(out.bodyFont).toContain('Lora');
+    expect(out.fontFaces.map((f) => f.id)).toEqual(['oswald', 'lora']);
+  });
+
+  it('ignores a face id nothing resolves rather than asking for its bytes', () => {
+    // A face removed from `BRAND_FONTS` leaves this value on every brand that
+    // had chosen it. Asking Google for it would be one failed fetch per render.
+    const out = resolveKit({ colors: [], fonts: { display: 'a_face_that_was_removed' } });
+    expect(out.fontFaces).toEqual([]);
+    expect(out.displayFont).toMatch(/sans-serif$/);
+  });
+
   it('clears the WCAG AA threshold for body text on both defaults and a light ground', () => {
     // 4.5:1 is the bar the pairing has to clear to be worth deriving at all.
     const ratio = (a: string, b: string) => {
@@ -161,7 +204,7 @@ describe('resolveKit — §8.6\'s brand kit', () => {
   });
 
   it('falls back entirely with no kit at all', () => {
-    expect(resolveKit(undefined)).toEqual({ ground: DEFAULT_GROUND, type: DEFAULT_TYPE });
+    expect(resolveKit(undefined)).toMatchObject({ ground: DEFAULT_GROUND, type: DEFAULT_TYPE });
   });
 
   it('ignores colours past the third rather than blending them', () => {

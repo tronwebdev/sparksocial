@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { AccountHome } from '@/components/dashboard/AccountHome';
 import { TeamPanel } from '@/components/account/TeamPanel';
@@ -21,7 +21,7 @@ import { UsagePanel } from '@/components/settings/UsagePanel';
  * that survives contact with an agency:
  *
  *   - **Here (`/account`)**: things true of the organisation. Billing and plan,
- *     the brand roster, who is in the workspace and which brands they reach, the
+ *     the brand roster, who is in the account and which brands they reach, the
  *     audit trail, moving a brand in or out.
  *   - **`/settings`**: things true of *this brand*. Its voice and rules, its
  *     knowledge, its connections, its consent records, its avatar.
@@ -37,7 +37,7 @@ import { UsagePanel } from '@/components/settings/UsagePanel';
 export default function AccountHomePage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="grid grid-cols-1 gap-6 p-8">
         <header>
           <h1 className="text-[20px] font-medium text-ink">Account</h1>

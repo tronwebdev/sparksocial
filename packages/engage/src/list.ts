@@ -17,7 +17,7 @@ import { EngagementCategory } from './classifier.js';
  * `EngagementCategory` on purpose: a message SPARK hasn't classified yet has
  * `category: null` in the store, and there is no tab that legitimately means
  * "unclassified" in the PRD's four-tab list. The frontend's decision (see
- * `apps/web/src/app/(app)/command-center/page.tsx`) is to fold unclassified
+ * `apps/web/src/app/(app)/engagement/page.tsx`) is to fold unclassified
  * rows into the Needs Review tab by leaving `category` unset on that one
  * request rather than adding a fifth tab this tool would have to support.
  */

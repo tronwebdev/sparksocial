@@ -44,13 +44,63 @@ function schemaFor(kind: z.infer<typeof KIND>) {
 /* ── recipe.validate ─────────────────────────────────────────────────── */
 
 export const RecipeValidateInput = z.object({ kind: KIND, config: z.unknown() });
-export const RecipeValidateOutput = z.object({ valid: z.boolean(), error: z.string().optional() });
+export const RecipeValidateOutput = z.object({
+  valid: z.boolean(),
+  error: z.string().optional(),
+  /**
+   * Fields this config sets that the engine accepts and does not yet act on.
+   *
+   * A config field that stores and does nothing is indistinguishable, from the
+   * outside, from one that works — which is how `goal`, `ctaUrl` and
+   * `targetPlatforms` sat unread from the day they were added. Naming them here
+   * makes the gap visible to whoever is about to build the wizard on top, instead
+   * of leaving a control that silently has no effect.
+   *
+   * Empty when everything in the config is honoured.
+   */
+  notApplied: z.array(z.object({ field: z.string(), because: z.string() })),
+});
+
+/**
+ * Which of those fields this config actually sets.
+ *
+ * Reads the **raw** config rather than the parsed one: `targetPlatforms` carries a
+ * `.default([])`, so the parsed object always has the key and only the caller's
+ * own input says whether they chose anything. Scanning the parsed object would
+ * warn every RSS recipe about a field nobody touched.
+ */
+function scanNotApplied(config: unknown): Array<{ field: string; because: string }> {
+  const raw = (config ?? {}) as Record<string, unknown>;
+  return Object.entries(NOT_APPLIED)
+    .filter(([field]) => {
+      const v = raw[field];
+      return Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== '';
+    })
+    .map(([field, because]) => ({ field, because }));
+}
+
+/**
+ * The fields the engine stores but does not read, and why. Keyed by config field.
+ *
+ * `goal` was in this list until 25 August and is not any more — it now reaches
+ * the copy through the output's `intent` (`withGoal` in `runners.ts`).
+ */
+const NOT_APPLIED: Record<string, string> = {
+  ctaUrl:
+    'Stored but not used. A link cannot be folded into the output intent — intent is prose a writer reads, ' +
+    'so a URL there becomes spoken copy — and a recipe output has no link field of its own yet.',
+  targetPlatforms:
+    'Stored but not used. An output becomes a post via recipe.output.decide and then content.draft, and ' +
+    'neither step carries a platform, so the choice does not survive the handover yet.',
+};
 
 export const recipeValidate = defineTool({
   name: 'recipe.validate',
   version: 1,
 
-  summary: 'Check a recipe config before saving it — the AUTO-02 preview/validation step. Free, no writes.',
+  summary:
+    'Check a recipe config before saving it — the AUTO-02 preview/validation step. Also reports which fields ' +
+    'the engine accepts but does not yet act on. Free, no writes.',
 
   input: RecipeValidateInput,
   output: RecipeValidateOutput,
@@ -62,7 +112,10 @@ export const recipeValidate = defineTool({
 
   async handler(input) {
     const result = schemaFor(input.kind).safeParse(input.config);
-    return result.success ? { valid: true } : { valid: false, error: result.error.issues.map((i) => i.message).join('; ') };
+    if (!result.success) {
+      return { valid: false, error: result.error.issues.map((i) => i.message).join('; '), notApplied: [] };
+    }
+    return { valid: true, notApplied: scanNotApplied(input.config) };
   },
 });
 
@@ -87,6 +140,18 @@ export const RecipeOut = z.object({
   intervalMinutes: z.number().optional(),
   lastRunAt: z.string().optional(),
   createdAt: z.string(),
+  /**
+   * Fields this recipe set that the engine will not act on — same list
+   * `recipe.validate` returns, echoed on the write.
+   *
+   * On `create` rather than only on `validate` because nothing calls
+   * `recipe.validate`: the Automation panel goes straight to `recipe.create`. A
+   * warning on the tool nobody calls would be one more thing that exists and is
+   * never read, which is the exact defect this change is undoing. Empty on every
+   * recipe the panel can currently build, since its form offers none of these
+   * fields yet.
+   */
+  notApplied: z.array(z.object({ field: z.string(), because: z.string() })).optional(),
 });
 
 export const recipeCreate = defineTool({
@@ -123,8 +188,18 @@ export const recipeCreate = defineTool({
       config: parsed.data,
       ...(input.intervalMinutes ? { intervalMinutes: input.intervalMinutes } : {}),
     });
+    const notApplied = scanNotApplied(input.config);
+    if (notApplied.length) {
+      // Logged as well as returned: a recipe created through the API rather than
+      // the panel has no screen to show the warning on.
+      ctx.logger.warn('recipe created with fields the engine does not act on', {
+        recipeId: row.id,
+        fields: notApplied.map((n) => n.field),
+      });
+    }
+
     ctx.logger.info('recipe created', { genomeId: input.genomeId, kind: input.kind, recipeId: row.id });
-    return toOut(row);
+    return { ...toOut(row), ...(notApplied.length ? { notApplied } : {}) };
   },
 });
 

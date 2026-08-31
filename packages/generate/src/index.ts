@@ -12,3 +12,4 @@ export * from './voice.js';
 export * from './broll.js';
 export * from './dubbing.js';
 export * from './variantTest.js';
+export * from './scenes.js';

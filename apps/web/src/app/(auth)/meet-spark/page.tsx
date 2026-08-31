@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { SparkMark } from '@/components/brand/SparkMark';
-import { Button } from '@/components/ui/button';
+import { HoldButton } from '@/components/onboarding/HoldButton';
 
 /**
  * Meet Spark — `Auth.dc.html` state 3. Full-bleed dark splash after sign-up.
@@ -46,9 +46,22 @@ export default function MeetSparkPage() {
           SPARK learns what your business can actually show, then plans, makes and publishes the content that fits.
         </p>
 
-        <Button onClick={begin} size="cta" variant="secondary" className="mt-10 px-10" disabled={busy}>
-          {busy ? 'Setting up…' : 'Get started'}
-        </Button>
+        {/* `F6`'s press-and-hold. The prototype uses it at exactly two moments —
+            here and on the completion screen — and both are thresholds rather
+            than navigation. See `HoldButton` on why it is still a real button
+            that Enter and a plain click both satisfy. */}
+        <div className="mt-10 w-full max-w-[420px]">
+          {busy ? (
+            <p className="text-center text-[15px] text-white/70">Setting up…</p>
+          ) : (
+            <HoldButton
+              label="Let’s get you onboarding"
+              caption="Press and hold to begin"
+              tone="dark"
+              onComplete={begin}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

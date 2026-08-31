@@ -28,7 +28,10 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
   return {
     size: () => rows.size,
 
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode }) {
+    async create({
+      orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode,
+      campaignType, primaryCta, weight, engagementRung, learnFromPerformance, adjustMixAutomatically,
+    }) {
       const id = randomUUID();
       rows.set(id, {
         id,
@@ -44,6 +47,15 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
         ...(targetLabel !== undefined ? { targetLabel } : {}),
         ...(platforms?.length ? { platforms } : {}),
         ...(approvalMode ? { approvalMode } : {}),
+        // Omitted rather than defaulted, matching Postgres: "never asked" and
+        // "answered with the default" have to stay distinguishable, or a dev-mode
+        // screen reports settings the owner never chose.
+        ...(campaignType ? { campaignType } : {}),
+        ...(primaryCta ? { primaryCta } : {}),
+        ...(weight ? { weight } : {}),
+        ...(engagementRung ? { engagementRung } : {}),
+        ...(learnFromPerformance !== undefined ? { learnFromPerformance } : {}),
+        ...(adjustMixAutomatically !== undefined ? { adjustMixAutomatically } : {}),
       });
       slots.set(id, []);
       return { id };

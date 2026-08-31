@@ -40,5 +40,20 @@ export function createAnalyticsRepository(db: Database): AnalyticsStore {
         syncedAt: row.syncedAt,
       }));
     },
+
+    async publishedInWindow(orgId, genomeId, windowDays) {
+      const rows = await scoped.publishedWithMetrics(db, { orgId, brandId: orgId, genomeId }, windowDays);
+      return rows.map((row) => ({
+        contentItemId: row.contentItemId,
+        publishedAt: row.publishedAt,
+        ...(row.platform ? { platform: row.platform } : {}),
+        impressions: row.impressions,
+        likes: row.likes,
+        comments: row.comments,
+        shares: row.shares,
+        views: row.views,
+        saves: row.saves,
+      }));
+    },
   };
 }

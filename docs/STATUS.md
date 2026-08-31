@@ -1,4 +1,4 @@
-# Status against the specs — 17 Aug 2026
+# Status against the specs — 27 Aug 2026
 
 > **Build order is now strictly P0 → P1 → P2 → …**, each phase complete and
 > verified before the next. The build had run backend-first and got ahead of
@@ -165,6 +165,161 @@ metrics" expandable in `DraftList.tsx`, and a third Draft Panel render button fo
 `compose.fanout`. All of it live-verified against the real running app; full suite (1717
 tests) and full monorepo typecheck clean throughout.
 
+## Prototype-fidelity pass, phases 3.1–3.3 + 5.5 (24–27 Aug 2026)
+
+Driven by the change backlog and a screen-by-screen comparison against the
+`.dc.html` files in `ui build/`, which CLAUDE.md names as the design source of
+truth. Each phase was investigated before it was built — three read-only agents
+in parallel over 3.4/4.2/4.3/5.x — and two of those investigations changed the
+plan rather than confirming it.
+
+### Built
+
+| Phase | Capability | Notes |
+|---|---|---|
+| **3.1a** | `calendar.recommend_slot` | The tool behind "Ask Agent to plan" and "Move existing post". Returns a format that fits the campaign plus a post that would sit better on a given day. Deliberately invents no hook — there is a test asserting the field is absent |
+| **3.2** | **The draft owns its structure** | A beat now carries its own `durationSec` and `label`; the playbook became the seed rather than the authority. This is what made `Add scene` possible at all — `zipTimeline` threw for any beat id the playbook did not declare, and a hand-added scene has none by construction. No migration: `content_items.copy` is untyped jsonb |
+| **3.2** | Five scene tools | `content.scene.insert` / `.remove` / `.reorder` / `.retime` / `.voice`. All five run `assertDraftDuration` before saving — the band check moved to where the length is now decided |
+| **3.2** | Storyboard UI | Per-scene badge, `Scene N`, time range, retime/move/remove, per-scene voice, `Add scene`, running total with headroom against the format band |
+| **3.3a** | Watermark, made real | `Activate Watermark` had been drawn on the Brand Kits screen with nothing behind it: both renderers stamped `brands.logo_url` onto every frame whenever it was set, so a brand could not have a logo — which onboarding asks for — without watermarking every post. `brands.watermark` (migration `0042`) gates it, with opacity and scale |
+| **3.3a** | Lower-thirds | `beatShape.lowerThird` + `content.scene.lower_third`, drawn by both renderers stacked above the caption slot rather than sharing it |
+| **3.3a** | Brand-kit templates | `brands.kit_templates` — intro/outro/bumper/caption/lower-third presets. A "template" here is a line of text, not a media file: every preset the prototype draws contains a sentence |
+| **3.3b** | Brand Kits panel | Watermark toggle beside the logo, five Templates tabs, `Use This Brand Preset` in the storyboard routing to the tools that already existed |
+| **5.5** | `StallNotice` reachable | See below — it had existed since P2 and had never rendered |
+| — | `human.notifications` / `.read` | See below |
+
+### Four settings that did nothing
+
+Verified by grep, not inferred. Each was stored, validated, hydrated, rendered as
+a control, and read by nothing at runtime.
+
+| Field | Was | Now |
+|---|---|---|
+| `brands.engagement_types` | Three checkboxes under "Where it may answer". No reader in `packages/engage/`, `policy.ts`, or the webhook — unchecking "Direct messages" changed a row and SPARK carried on auto-replying to DMs | Gates the **reply**, not the ingest, in `replyPolicySubject` for both `autohandle` and `reply.send`. Everything is still recorded; SPARK still drafts; a person still sends |
+| `brands.sales_qualification` | Four "Lead Qualification Options", read by nothing — the model could offer any of them or none regardless of what was ticked | `ReplyWriter.write` gained the seam it lacked. Absent now means **none permitted**, stated as an explicit prohibition in the prompt |
+| `RecipeCommonConfig.goal` | Stored, zero readers | Folded into the output `intent`, the one string that reaches `content.draft` |
+| `RecipeCommonConfig.ctaUrl`, `.targetPlatforms` | Stored, zero readers | **Still not applied, now labelled.** `recipe.validate` and `recipe.create` both return `notApplied` naming the field and why |
+
+`ctaUrl` is deliberately *not* folded into `intent` the way `goal` is. Intent is
+prose a writer reads, so a URL there becomes *spoken* copy — the exact defect
+found on 22 Aug, when a campaign's CTA URL was written to
+`genome.offer.primary_cta` and sixteen playbooks read that field as the line to
+say out loud, so posts recited "https://…". The warning sits on `recipe.create`
+and not only on `recipe.validate` because nothing calls `validate` — a warning on
+the tool nobody calls would be one more thing that exists and is never read.
+
+### The notification inbox nothing read
+
+`human.notify` had written `human_messages` rows since P1. `listPending` filters
+`kind = 'ask'` and was the store's only list method, so **every notification the
+system ever produced was unreadable.** Three production paths were writing into
+that silence: `apps/api/src/scheduler.ts` ("failed 5 times and stopped
+retrying"), `apps/api/src/connection-watcher.ts` (a platform token about to
+expire), and `packages/engage/src/escalate.ts` (a conversation handed to a
+person).
+
+`human.notifications` + `human.notifications.read`, `human_messages.read_at`
+(migration `0043`), and a `NotificationsPanel` under the pending-questions panel.
+`read_at` rather than reusing `answeredAt`, which would have broken the answer
+latch — it filters `kind = 'ask'` precisely so a notification can never read back
+as a decision somebody made.
+
+Every row says "in the app only", because that is true: `whatsapp.send` accepts a
+`humanMessageId` and nothing calls it with one, so no notification has ever left
+the system.
+
+### `StallNotice`, and why it never rendered
+
+`docs/GAPS.md` had this as "needs a post to exhaust the scheduler's five-attempt
+ceiling, which no screen can force". That was half the story and the less
+important half. Two real causes:
+
+1. **The count linked to the wrong entity.** `PlanQueue` counted content items
+   with `status = 'needs_review'` and linked to `#review`, which renders
+   `ReviewQueueList` — a reader of `queue.review.list`, i.e. the `approvals`
+   table. A different entity. The panel counted one thing and linked to another,
+   so a held post was counted and appeared nowhere the link went. It is now a
+   list of the actual held items, each opening the Draft Panel.
+2. **Opening a stalled draft destroyed the state you opened it to read.**
+   `loadDraft` auto-filled any draft with no beats by calling `content.draft` —
+   and several of the scheduler's `markBlocked` reasons (missing genome, no
+   playbook) fire on rows that were *never drafted*, which are exactly the rows
+   with no beats. Worse, `ContentDraftOutput` carries no `status`,
+   `blockedReason` or `publishAttempts` at all, so `setDraft(filled.output)`
+   replaced a blocked row with a view that had no status whatsoever. `StallNotice`
+   could not render and neither could the rolled-back banner. A stalled post was
+   silently redrafted and shown as an ordinary editor.
+
+`loadDraft` now skips the auto-fill for a stalled item and merges rather than
+replaces when it does fill one. `content.list` carries `blockedReason` and
+`publishAttempts`, so a list can say *why* instead of making somebody open every
+stalled item to find the one that matters.
+
+### One background-context correction
+
+Five background paths (recipe scheduler, connection watcher, outcome observer,
+both webhooks) built their `ToolCtx` by synthesising a `Request` with
+`x-org-id`/`x-role` headers and handing it to `makeDevResolveCtx`. An earlier
+note in this session called that a self-authorisation risk. **It was not.** The
+`Request` is built in-process from values already read out of the database; no
+caller-supplied data reaches those headers, so there is nothing to forge.
+`dev-auth.ts` is dangerous as a *request* resolver and that danger does not
+transfer to a request the server writes to itself.
+
+Three things were wrong anyway, and `apps/api/src/system-ctx.ts` fixes them:
+
+- `dev-auth.ts` says "DEVELOPMENT AUTH ONLY" and "Delete it when the golden-set
+  dev store goes". Five production paths depended on it. It is now used in
+  exactly one place — the dev request resolver, its actual purpose.
+- `role` arrived by default. `evaluate()` reads `ctx.role`, so the scope every
+  scheduled run was judged at came from a fallback in a dev helper. It is a
+  required argument now, justified at each site.
+- **`genomeId` was invented.** The dev resolver defaults it to `'gen_dev'`, and
+  `whatsappWebhook.systemCtx` set no `x-genome-id` — so every inbound WhatsApp
+  message ran under a context claiming genome `gen_dev`. Nothing in that path
+  reads it, so no isolation was crossed, but a production context carrying
+  another tenant's id shape is one genome-scoped query from a leak.
+
+### What the investigations found, and did not build
+
+Three parallel read-only passes over 3.4, 4.2/4.3 and 5.x. The findings that
+change the plan:
+
+- **4.2's AutoTrend query step is largely unbuildable as drawn.** `TrendSource.fetch`
+  has no keyword parameter at all, so keyword and exclude-keyword search needs the
+  interface and all five adapters changed. Of the five sources the wizard offers,
+  **X/Twitter, TikTok and Google Trends have no adapter**, and source selection is
+  a process-wide env decision rather than per-recipe. The brand-safety toggle
+  cannot turn safety off — `rankTrends` removes unsafe trends unconditionally —
+  and the prototype defaults the toggle to *off*, the opposite of the truth.
+- **There are no triggers.** `packages/recipes` has `kind` + `config` +
+  `intervalMinutes` and one 5-minute poll loop, batch-capped at 10 (the 11th due
+  recipe is silently deferred). No webhook trigger, no event trigger. `endAt`
+  never pauses a recipe, so it keeps being invoked forever past its end date.
+- **4.3's per-platform matrix needs a migration.** The schema has no platform
+  dimension for engagement config, though `engage.ingest` already carries one.
+  And brand-level autonomy does not govern replies — `campaigns.engagement_rung`
+  does; the brand value only seeds *new* campaigns, which any settings screen
+  editing it has to say.
+- **3.4's Assets Library cannot be built as drawn.** No `sizeBytes` column, so
+  every file-size figure on the screen has no source; `buildKey` discards the
+  original filename into a uuid, so every filename does too; `asset_folders` has
+  no membership model for "Assign Team members". There is no `asset.delete` tool,
+  no repository delete, and no `BlobStore` delete primitive.
+- **`Versioning & approvals.`** is drawn as a peer tab on Brand Kits with nothing
+  behind it — no version number, no approval state, no control that would set
+  either. It ships as an explicit "not built" state rather than an empty grid that
+  would read as a brand with no versions yet.
+
+### Migrations added
+
+`0042` (two nullable `brands` columns: `watermark`, `kit_templates`) and `0043`
+(`human_messages.read_at` + an index). Both applied locally through
+`drizzle-kit migrate`; **both still owed on the deployed database.**
+
+Suite at the end of the pass: **174 test files, 2394 tests**, root and web
+typecheck clean, `next build` clean.
+
 ## Security & scalability pass (8 Aug)
 
 Bypasses were attempted against a running server, not just read for in code.
@@ -219,7 +374,7 @@ Ordered by what blocks what.
 | **WhatsApp client** — `whatsapp.send` / `whatsapp.receive` / `direct.session.send` and the `MessageTransport` seam all exist, and the loop runs end to end on a stub. What is missing is only the Cloud API implementation behind the seam, and the HTTP webhook route that calls `whatsapp.receive` with a verified Meta signature | §6.3, Plan §8 | real delivery; **blocked on Meta, not on code** |
 | Native platform adapters (Meta, TikTok, LinkedIn, X, YouTube) — `publish.now`/`publish.status` are real and route through a real Ayrshare aggregator adapter (`AYRSHARE_API_KEY`, stub otherwise); no native adapter exists because none of the five has cleared platform approval yet, and the per-brand OAuth-connection tooling they'd need (`integration.connect`/`.health`/`.scopes.verify`) isn't built either — Canva's own OAuth flow (a different, non-publishing use) is | §8, Plan §3.2 | native-adapter margin/data-depth; **blocked on platform approvals, not on code** |
 | Automated Assemble screen/site capture (`assemble.screen_capture`) — only site-*reading* for genome inference exists; Assemble playbooks needing screen-recording footage still require manual upload | §6.5 | Assemble-mode footage supply |
-| Human-in-the-loop Command Center inbox — `human.ask`/`.pending`/`.answer` are real and tested; no web UI surfaces a pending SPARK question anywhere (see `docs/GAPS.md`'s "UI wiring" section, found 17 Aug 2026) | Plan §3.2, "the other half of the Command Center" | an owner can't discover a parked question inside the product |
+| ~~Human-in-the-loop Command Center inbox~~ — **closed.** `PendingQuestionsPanel` surfaces `human.pending`/`human.answer`, and `NotificationsPanel` (27 Aug) surfaces the `human.notify` side, which had no reader at all until then | Plan §3.2, "the other half of the Command Center" | — |
 | `apps/web` deployment — needs a second Container App, Dockerfile and workflow job | Plan §2.2 | a live URL |
 
 ## Next
@@ -251,8 +406,9 @@ Two standing calls, unchanged:
 **Trim the tool count for the alpha.** Plan §3.2 targets ~135 tools at GA. The Aug 29
 scope needs roughly 30. Building the registry breadth-first would consume the month
 without producing a single finished post. **This call was never made** — the registry
-sits at 138 tools live as of 17 Aug 2026, past the GA target already, because gap-closure
-work kept building against the full plan rather than the alpha subset. Worth revisiting
+sits at **174 tools live as of 27 Aug 2026** (138 on 17 Aug), well past the GA target, because
+gap-closure and prototype-fidelity work have both kept building against the full plan rather
+than the alpha subset. Worth revisiting
 explicitly: either the Aug 29 surface really is closer to the full registry than "roughly
 30" suggested, or the alpha's actual *exposed* surface should be deliberately narrower
 than what's built — see `docs/GAPS.md`'s new "UI wiring" section, which shows the

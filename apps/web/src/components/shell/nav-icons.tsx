@@ -145,7 +145,7 @@ export function HomeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** `DASH-A-01`'s nav icon — the org level, drawn as a set of workspaces rather than a person. */
+/** `DASH-A-01`'s nav icon — the account level, drawn as a set of brands rather than a person. */
 export function AccountIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 26 26" {...base(props)}>

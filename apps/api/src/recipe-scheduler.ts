@@ -1,5 +1,5 @@
 import { invokeTool, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
-import { makeDevResolveCtx } from './dev-auth.js';
+import { makeSystemCtx } from './system-ctx.js';
 
 /**
  * THE RECIPE SCHEDULER — the "unattended" half of §12 P5's exit line: *"a
@@ -72,17 +72,19 @@ async function runOne(
     return;
   }
 
-  const base = await makeDevResolveCtx(deps.db)(
-    new Request('http://localhost/', {
-      headers: {
-        'x-org-id': recipe.orgId,
-        'x-brand-id': genome.workspace_id,
-        'x-genome-id': recipe.genomeId,
-        'x-role': 'admin',
-      },
-    }),
-  );
-  const { userId: _drop, caller: _caller, ...ctx } = base;
+  /**
+   * `admin` rather than `owner`: a recipe run publishes and spends, and `admin`
+   * is the narrowest role that covers both across the tools `recipe.run` reaches.
+   * It is stated here rather than defaulted so the scope a scheduled run acts at
+   * is a decision somebody made — see `system-ctx.ts`.
+   */
+  const ctx = await makeSystemCtx({
+    db: deps.db,
+    orgId: recipe.orgId,
+    brandId: genome.workspace_id,
+    genomeId: recipe.genomeId,
+    role: 'admin',
+  });
   const brand = await deps.loadBrandGovernance(recipe.orgId, genome.workspace_id);
 
   const result = await invokeTool(

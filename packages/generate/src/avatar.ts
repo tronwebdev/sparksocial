@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
-import { ResolvedBeat } from './draft.js';
+import { ResolvedBeat, keepStructure } from './draft.js';
 import type { AvatarClient } from './types.js';
 
 /**
@@ -119,7 +119,7 @@ export function makeContentGenerateAvatarVideo(avatar: AvatarClient) {
       const { url } = await avatar.generate({ avatarId, script: input.script, aspectRatio: input.aspectRatio });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { kind: 'generated_video', beatId: input.beatId, url, script: input.script };
+      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_video', beatId: input.beatId, url, script: input.script };
 
       const why: Explanation = {
         summary: `Rendered "${input.beatId}" from the genome's registered avatar.`,

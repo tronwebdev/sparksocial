@@ -1,11 +1,30 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { BrandFontPicker } from './BrandFontPicker';
+import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
+
+/**
+ * Palette presets.
+ *
+ * Positional, matching `resolveKit`'s documented convention: ground, type,
+ * accent. Each pair is checked for contrast by hand — the point of a preset is
+ * that it is known to be legible, which is the one thing a colour picker cannot
+ * promise. Five, for the same reason there are five voices and six fonts.
+ */
+const COLOUR_PRESETS: ReadonlyArray<{ name: string; colors: string[] }> = [
+  { name: 'Ink', colors: ['#0C0C0C', '#FFFFFF', '#4F8EF7'] },
+  { name: 'Paper', colors: ['#F7F5F0', '#1A1A1A', '#B4521F'] },
+  { name: 'Forest', colors: ['#12241B', '#EAF2EC', '#5FBF8A'] },
+  { name: 'Cobalt', colors: ['#0E1C33', '#EAF0FA', '#F2B14C'] },
+  { name: 'Clay', colors: ['#2B1D1A', '#F5EDE8', '#D98A5C'] },
+];
 
 /**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
@@ -71,6 +90,8 @@ const COMMON_ZONES = [
 
 interface Governance {
   brandId: string;
+  agentName?: string;
+  agentIdentity?: { name: string; named: boolean; voice: string[]; riskTolerance: string; riskBecause: string };
   restrictedTopics: string[];
   claimsToAvoid: string[];
   strictMode: boolean;
@@ -78,29 +99,20 @@ interface Governance {
   bannedPhrases: string[];
   logoUrl?: string;
   brandColors: string[];
+  brandFonts?: { display?: string; body?: string };
+  /** `SET-WS-BRAND-KITS`' `Activate Watermark`. Always present on read — the tool resolves the default. */
+  watermark: { enabled: boolean; opacity: number; scale: number };
+  usingDefaultWatermark: boolean;
+  /** `M5`'s "Ai Voice" — always populated on read, the tool resolves the default. */
+  stockVoiceId: string;
+  usingDefaultVoice: boolean;
   timezone: string;
   postingWindows: number[];
   usingDefaultWindows: boolean;
-  engagementAutonomy: 'off' | 'suggest' | 'auto';
-  engagementTypes: string[];
+  // Engagement and Sales Assist moved to `EngagementPanel`. The read returns
+  // them still; this panel simply has no use for them, and listing fields it
+  // never touches would suggest it owns them.
 }
-
-/**
- * PRD §8.8's autonomy level. `off` is not the same as unset — it is the
- * conservative rung, and it is what `policy.ts` rule 6 reads as
- * "autonomy has not been configured", which holds every reply for approval.
- */
-const ENGAGEMENT_LEVELS = [
-  { value: 'off', label: 'Draft only', hint: 'SPARK writes the reply. You send it.' },
-  { value: 'suggest', label: 'Suggest and hold', hint: 'Replies queue for your approval before sending.' },
-  { value: 'auto', label: 'Answer the safe ones', hint: 'SPARK sends replies it judged safe, on its own.' },
-] as const;
-
-const ENGAGEMENT_TYPES = [
-  { value: 'comment', label: 'Comments' },
-  { value: 'dm', label: 'DMs' },
-  { value: 'story_reply', label: 'Story replies' },
-] as const;
 
 const splitList = (text: string): string[] =>
   text
@@ -118,14 +130,24 @@ export function GovernancePanel() {
   const [timezone, setTimezone] = useState('UTC');
   const [windows, setWindows] = useState<number[]>([]);
   const [usingDefaultWindows, setUsingDefaultWindows] = useState(true);
+  const [agentName, setAgentName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [brandColors, setBrandColors] = useState<string[]>([]);
+  const [brandFonts, setBrandFonts] = useState<{ display?: string; body?: string }>({});
+  /**
+   * The watermark, held as a whole object because the three fields are one
+   * decision: a brand that turns the mark off has no opinion about its opacity,
+   * and one that dials it back to 30% has necessarily turned it on.
+   */
+  const [watermark, setWatermark] = useState({ enabled: true, opacity: 1, scale: 0.12 });
+  const [usingDefaultWatermark, setUsingDefaultWatermark] = useState(true);
+  const [stockVoiceId, setStockVoiceId] = useState(DEFAULT_STOCK_VOICE_ID);
+  const [usingDefaultVoice, setUsingDefaultVoice] = useState(true);
+  const [generatingLogo, setGeneratingLogo] = useState(false);
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const logoInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [engagementAutonomy, setEngagementAutonomy] = useState<'off' | 'suggest' | 'auto'>('off');
-  const [engagementTypes, setEngagementTypes] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -143,10 +165,14 @@ export function GovernancePanel() {
       setTimezone(g.timezone);
       setWindows(g.postingWindows);
       setUsingDefaultWindows(g.usingDefaultWindows);
+      setAgentName(g.agentName ?? '');
       setLogoUrl(g.logoUrl ?? '');
       setBrandColors(g.brandColors);
-      setEngagementAutonomy(g.engagementAutonomy);
-      setEngagementTypes(g.engagementTypes);
+      setBrandFonts(g.brandFonts ?? {});
+      setWatermark(g.watermark);
+      setUsingDefaultWatermark(g.usingDefaultWatermark);
+      setStockVoiceId(g.stockVoiceId);
+      setUsingDefaultVoice(g.usingDefaultVoice);
     })();
   }, []);
 
@@ -211,6 +237,28 @@ export function GovernancePanel() {
     setMessage({ kind: 'ok', text: 'Uploaded. Save brand rules to apply it.' });
   }
 
+  async function generateLogo() {
+    if (generatingLogo) return;
+    setGeneratingLogo(true);
+    setMessage(null);
+    const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
+    setGeneratingLogo(false);
+    if (res.status !== 'succeeded') {
+      setMessage({
+        kind: 'err',
+        text: res.status === 'failed' ? res.error.message : 'That needs approval before it can spend.',
+      });
+      return;
+    }
+    /**
+     * The tool has already written `logo_url`, so this only catches the local
+     * field up. Not a save: pressing Save afterwards would send the same value
+     * back, which is harmless, and *not* pressing it must not lose the logo.
+     */
+    setLogoUrl(res.output.logoUrl);
+    setMessage({ kind: 'ok', text: 'Placeholder logo set. Replace it with a real one when you have it.' });
+  }
+
   async function save() {
     setBusy(true);
     setMessage(null);
@@ -232,21 +280,36 @@ export function GovernancePanel() {
       // default back would silently convert "no preference" into a choice, and
       // the default could then never move.
       postingWindows: usingDefaultWindows ? null : windows,
+      agentName: agentName.trim() ? agentName.trim() : null,
       logoUrl: logoUrl.trim() ? logoUrl.trim() : null,
       // Same `null`-clears rule as the lists above: an empty palette and "no
       // palette" mean the same thing to a renderer, and only one of them lets
       // the default come back.
       brandColors: brandColors.length ? brandColors : null,
-      engagementAutonomy,
-      // Empty means every type, which is a different fact from "none" — so it
-      // clears rather than storing an empty list.
-      engagementTypes: engagementTypes.length ? engagementTypes : null,
+      // Same rule again. "System default" on both selects is the *absence* of a
+      // choice, so it clears the column rather than storing `{}` — which would
+      // read as configured to `brandKitProgress` and tick a box nobody ticked.
+      brandFonts: brandFonts.display ?? brandFonts.body ? brandFonts : null,
+      /**
+       * `null` while the brand has never touched it, for the same reason as the
+       * posting windows above: sending the resolved default back would convert
+       * "no preference" into a choice, and the default could then never move.
+       * Any edit flips `usingDefaultWatermark` false and the object goes.
+       */
+      watermark: usingDefaultWatermark ? null : watermark,
+      // Same rule as the watermark and the posting windows: `null` while the
+      // brand has expressed no preference, so the default stays movable.
+      stockVoiceId: usingDefaultVoice ? null : stockVoiceId,
     });
 
     setBusy(false);
     if (res.status === 'succeeded') {
       setUsingDefaultWindows(res.output.usingDefaultWindows);
       setWindows(res.output.postingWindows);
+      setUsingDefaultWatermark(res.output.usingDefaultWatermark);
+      setWatermark(res.output.watermark);
+      setUsingDefaultVoice(res.output.usingDefaultVoice);
+      setStockVoiceId(res.output.stockVoiceId);
       setMessage({ kind: 'ok', text: 'Saved.' });
       return;
     }
@@ -275,9 +338,33 @@ export function GovernancePanel() {
       </p>
 
       {loading ? (
-        <p className="mt-4 text-[14px] text-ink-muted">Loading…</p>
+        <PanelSkeleton rows={3} />
       ) : (
         <div className="mt-5 grid grid-cols-1 gap-6">
+          {/* ── Who it is (`F4`) ────────────────────────────────────────────
+              First, because everything below describes this thing and the
+              Command Center, onboarding and campaign summaries all address it by
+              name. Only the name is stored: the voice adjectives come from the
+              sliders below and the risk tolerance from the approval mode, so
+              neither can drift from the setting that is actually enforced. */}
+          <div className="max-w-md">
+            <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-agent-name">
+              What do you call your agent?
+            </label>
+            <p className="mt-1 text-[12px] text-ink-muted">
+              Used wherever SPARK refers to itself — the Command Center, and campaign summaries that say
+              what it will do. Optional; leave it blank and it says &ldquo;your agent&rdquo;.
+            </p>
+            <Input
+              id="gov-agent-name"
+              value={agentName}
+              onChange={(e) => setAgentName(e.target.value)}
+              placeholder="Ada, Studio Bot, The Intern…"
+              maxLength={60}
+              className="mt-1.5"
+            />
+          </div>
+
           {/* ── What SPARK may not say ─────────────────────────────────── */}
           <div className="grid grid-cols-1 gap-4">
             <div>
@@ -449,69 +536,6 @@ export function GovernancePanel() {
             </div>
           </div>
 
-          {/* ── Engagement (§8.8) ──────────────────────────────────────── */}
-          <div>
-            <h3 className="text-[14px] font-medium text-ink">Answering your audience</h3>
-            <p className="mt-0.5 text-[12px] text-ink-muted">
-              How much SPARK may say back on its own. It cannot reply at all until a campaign has been
-              running two weeks with five posts out — this decides what happens after that.
-            </p>
-
-            <ul className="mt-3 grid grid-cols-1 gap-2">
-              {ENGAGEMENT_LEVELS.map((l) => (
-                <li key={l.value}>
-                  <button
-                    type="button"
-                    aria-pressed={engagementAutonomy === l.value}
-                    onClick={() => setEngagementAutonomy(l.value)}
-                    className={cn(
-                      'w-full rounded-lg border p-3 text-left transition-colors',
-                      engagementAutonomy === l.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:bg-surface-muted',
-                    )}
-                  >
-                    <span className="block text-[14px] font-medium text-ink">{l.label}</span>
-                    <span className="mt-0.5 block text-[12px] text-ink-muted">{l.hint}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <p className="mt-3 text-[12px] font-medium text-ink-muted">Where it may answer</p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {ENGAGEMENT_TYPES.map((t) => {
-                // Empty means all three, so nothing selected reads as "everywhere".
-                const on = engagementTypes.length === 0 || engagementTypes.includes(t.value);
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      setEngagementTypes((prev) => {
-                        const current = prev.length ? prev : ENGAGEMENT_TYPES.map((x) => x.value);
-                        const next = current.includes(t.value)
-                          ? current.filter((x) => x !== t.value)
-                          : [...current, t.value];
-                        // Back to "all" rather than storing a list that happens
-                        // to contain everything.
-                        return next.length === ENGAGEMENT_TYPES.length ? [] : next;
-                      })
-                    }
-                    className={cn(
-                      'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
-                      on
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-ink-muted hover:bg-surface-muted',
-                    )}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
           {/* ── Brand kit ──────────────────────────────────────────────────
               §8.6's "Apply Brand Kit". Both fields have existed on the row and
@@ -551,6 +575,15 @@ export function GovernancePanel() {
               <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
                 {uploading ? 'Uploading…' : 'Upload'}
               </Button>
+              {/*
+                `SET-WS-BRAND-KITS`' "Generate logo". Labelled as a placeholder
+                rather than as identity work, because that is what it is — see
+                `brand.logo.generate`'s own comment on why the prompt forbids
+                lettering and keeps to a flat single-colour shape.
+              */}
+              <Button variant="outline" size="sm" disabled={uploading || generatingLogo} onClick={() => void generateLogo()}>
+                {generatingLogo ? 'Generating…' : 'Generate a placeholder'}
+              </Button>
             </div>
             {logoUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -560,6 +593,134 @@ export function GovernancePanel() {
                 className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
               />
             ) : null}
+
+            {/*
+              `Activate Watermark`, next to the logo because that is what it acts
+              on. Until 25 August this toggle existed only in the design: both
+              renderers stamped the logo onto every frame whenever one was set,
+              so there was no way to have a brand logo — which onboarding asks
+              for — without watermarking every post.
+
+              Only shown when there is a logo. A watermark control above an empty
+              logo field is a switch wired to nothing.
+            */}
+            {logoUrl ? (
+              <div className="mt-3 rounded-lg border border-border p-3">
+                <label className="flex items-center gap-2 text-[13px] text-ink">
+                  <input
+                    type="checkbox"
+                    checked={watermark.enabled}
+                    onChange={(e) => {
+                      setUsingDefaultWatermark(false);
+                      setWatermark({ ...watermark, enabled: e.target.checked });
+                    }}
+                    className="h-4 w-4"
+                  />
+                  Stamp the logo on rendered posts
+                </label>
+                <p className="mt-1 text-[12px] text-ink-muted">
+                  Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
+                  everything else &mdash; it only stops the mark appearing on images and video.
+                </p>
+
+                {watermark.enabled ? (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-opacity">
+                        Opacity &mdash; {Math.round(watermark.opacity * 100)}%
+                      </label>
+                      <input
+                        id="gov-wm-opacity"
+                        type="range"
+                        min={15}
+                        max={100}
+                        step={5}
+                        value={Math.round(watermark.opacity * 100)}
+                        onChange={(e) => {
+                          setUsingDefaultWatermark(false);
+                          setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
+                        }}
+                        className="mt-1.5 w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-scale">
+                        Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
+                      </label>
+                      <input
+                        id="gov-wm-scale"
+                        type="range"
+                        min={4}
+                        max={30}
+                        step={1}
+                        value={Math.round(watermark.scale * 100)}
+                        onChange={(e) => {
+                          setUsingDefaultWatermark(false);
+                          setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
+                        }}
+                        className="mt-1.5 w-full"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/*
+              Colour presets — `3.3`'s "colour and voice presets".
+              Applied rather than suggested: clicking one *sets* the palette,
+              because a colour you cannot see is not a suggestion. The ordering is
+              the renderers' own convention, documented in `resolveKit`: first is
+              the ground, second the type on it, third the accent.
+            */}
+            <label className="mt-4 block text-[12px] text-ink-muted">Palette presets</label>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {COLOUR_PRESETS.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => setBrandColors(preset.colors)}
+                  title={`${preset.name} — ${preset.colors.join(', ')}`}
+                  className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px] text-ink-muted hover:text-ink"
+                >
+                  <span className="flex overflow-hidden rounded">
+                    {preset.colors.map((c) => (
+                      <span key={c} className="h-4 w-4" style={{ background: c }} />
+                    ))}
+                  </span>
+                  {preset.name}
+                </button>
+              ))}
+            </div>
+
+            {/*
+              `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
+              `packages/shared/src/voices.ts` for why a curated list of real ids
+              beats a text field asking somebody to paste one, and why the brand's
+              own cloned voice is deliberately not an option here.
+            */}
+            <label className="mt-4 block text-[12px] text-ink-muted" htmlFor="gov-voice">
+              Narration voice
+            </label>
+            <select
+              id="gov-voice"
+              value={stockVoiceId}
+              onChange={(e) => {
+                setUsingDefaultVoice(false);
+                setStockVoiceId(e.target.value);
+              }}
+              className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-[14px] text-ink"
+            >
+              {STOCK_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} — {v.character}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[12px] text-ink-muted">
+              Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
+              separate setting that needs a consent record.
+            </p>
 
             <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -615,6 +776,20 @@ export function GovernancePanel() {
                 </span>
               </div>
             ) : null}
+
+            {/* M4 — the prototype's "Choose Fonts", with something behind it.
+                Placed under the colours because its sample is shown on them,
+                and because type and colour are the two halves of the same
+                decision. */}
+            <label className="mt-5 block text-[12px] text-ink-muted">Type</label>
+            <div className="mt-1.5">
+              <BrandFontPicker
+                value={brandFonts}
+                onChange={setBrandFonts}
+                {...(brandColors[0] ? { ground: brandColors[0] } : {})}
+                {...(brandColors[1] ? { type: brandColors[1] } : {})}
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

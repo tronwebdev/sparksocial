@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { DiscoveryFeed } from '@/components/discovery/DiscoveryFeed';
 
@@ -10,7 +10,7 @@ import { DiscoveryFeed } from '@/components/discovery/DiscoveryFeed';
 export default function DiscoveryPage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="p-8">
         <header className="mb-6">
           <h1 className="text-[20px] font-medium text-ink">Discovery</h1>

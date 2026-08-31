@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
-import { ResolvedBeat } from './draft.js';
+import { ResolvedBeat, keepStructure } from './draft.js';
 import type { VideoClient } from './types.js';
 
 /**
@@ -87,7 +87,7 @@ export function makeContentGenerateBroll(video: VideoClient) {
       const { url } = await video.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio, durationSec: input.durationSec });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { kind: 'generated_broll', beatId: input.beatId, url, prompt: input.prompt };
+      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_broll', beatId: input.beatId, url, prompt: input.prompt };
 
       const why: Explanation = {
         summary: `Generated a ${input.durationSec}s b-roll clip for "${input.beatId}".`,

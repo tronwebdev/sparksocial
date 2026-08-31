@@ -1,4 +1,6 @@
-'use client';
+﻿'use client';
+
+import { useSearchParams } from 'next/navigation';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +11,7 @@ import { AgentControlBar, type AgentStatusView } from './AgentControlBar';
 import { ApprovalModeControl } from './ApprovalModeControl';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
 import { PendingQuestionsPanel } from './PendingQuestionsPanel';
+import { NotificationsPanel } from './NotificationsPanel';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
 import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
 import { ChatDrawer } from './ChatDrawer';
@@ -16,6 +19,8 @@ import { DraftPanel } from './draft-panel/DraftPanel';
 import { DraftList } from './DraftList';
 import { PerformancePanel } from './PerformancePanel';
 import { PlanQueue } from './PlanQueue';
+import { AgentIdentityCard } from './AgentIdentityCard';
+import { QuickActions } from './QuickActions';
 
 /**
  * CC-01 — Command Center Overview (`ui build/SparkSocial Command Center.dc.html`,
@@ -31,7 +36,7 @@ import { PlanQueue } from './PlanQueue';
  * used to say it was *"left out rather than faked"* because nothing real backed
  * it until P4 — correct when written, and `analytics.success_metrics` is that
  * real backing. The engagement feed entry is still the one §CC-01 item absent
- * here, and deliberately: it has its own screen at `/command-center`, and a
+ * here, and deliberately: it has its own screen at `/engagement`, and a
  * second copy of a live feed is a second thing that can be wrong.
  *
  * "Upcoming actions" is two lists, not one, because they answer different
@@ -42,7 +47,7 @@ import { PlanQueue } from './PlanQueue';
  *
  * With `PlanQueue`, all four of §7.5's first-class queues are reachable: Plan
  * and Review here, Automation on `/automation`, Engagement on
- * `/command-center`. The plan used to count as covered because the *calendar*
+ * `/engagement`. The plan used to count as covered because the *calendar*
  * existed — but a calendar answers "what does the month look like" and a queue
  * answers "what happens next", and only the second one tells you that tomorrow
  * morning is about to go out unwritten.
@@ -57,7 +62,18 @@ export function CommandCenterOverview() {
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>({ open: false });
+  /**
+   * `?draft=<id>` opens the panel on load.
+   *
+   * Added for the shell's Ask Spark (`F2`), which can produce a draft from a
+   * screen that has no draft panel of its own and so navigates here. Useful
+   * beyond that button: a draft is now addressable, so a notification or a bug
+   * report can link to one.
+   */
+  const initialDraft = useSearchParams().get('draft') ?? undefined;
+  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>(
+    initialDraft ? { open: true, contentItemId: initialDraft } : { open: false },
+  );
   const [draftListRefresh, setDraftListRefresh] = useState(0);
 
   const loadStatus = useCallback(async () => {
@@ -147,6 +163,32 @@ export function CommandCenterOverview() {
         </div>
       </header>
 
+      {/* ── The shell band (`F1`) ───────────────────────────────────────
+          Who the agent is, what it is working toward, and what you came here to
+          do. The prototype keeps these three together and persistent, and it is
+          the arrangement eighteen draft-panel prototypes render behind their
+          drawer — which is why one missing band looked like eighteen gaps.
+
+          Two columns from `xl`: below that the identity and the campaign each
+          want the full width for their own wrapping, and stacking them is
+          better than two cramped columns. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <AgentIdentityCard
+          genomeId={genome?.genomeId}
+          campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
+          paused={Boolean(status?.paused)}
+        />
+        <CampaignFocusCard
+          campaign={campaign}
+          calendarView={calendarView}
+          genomeName={genome?.name}
+          genomeId={genome?.genomeId}
+          onRefresh={() => void loadCampaign()}
+        />
+      </div>
+
+      <QuickActions onOpenChat={() => setChatOpen(true)} />
+
       <AgentControlBar status={status} onChange={setStatus} />
       <ApprovalModeControl />
 
@@ -155,21 +197,22 @@ export function CommandCenterOverview() {
       ) : null}
 
       <PendingQuestionsPanel />
-
-      <CampaignFocusCard
-        campaign={campaign}
-        calendarView={calendarView}
-        genomeName={genome?.name}
-        genomeId={genome?.genomeId}
-        onRefresh={() => void loadCampaign()}
-      />
+      {/*
+        Directly below the questions, because the two are one thought: what SPARK
+        needs from you, then what it wants you to know. Until this landed the
+        second half was written to a table nothing read.
+      */}
+      <NotificationsPanel />
 
       {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
 
       {/* §7.5's four queues, in the order a person needs them: what happens
           next, then what is blocked on them. `PlanQueue` links to the second by
           anchor, which is why the wrapper carries an id. */}
-      <PlanQueue genomeId={genome?.genomeId} />
+      <PlanQueue
+        genomeId={genome?.genomeId}
+        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
+      />
 
       <div id="review">
         <ReviewQueueList items={review} onDecide={decide} />
@@ -177,13 +220,17 @@ export function CommandCenterOverview() {
 
       {/* Below the queue, above the drafts: what needs a person comes first,
           then how the brand is doing, then the material itself. */}
-      <PerformancePanel genomeId={genome?.genomeId} />
+      <div id="performance">
+        <PerformancePanel genomeId={genome?.genomeId} />
+      </div>
 
-      <DraftList
+      <div id="drafts">
+        <DraftList
         genomeId={genome?.genomeId}
         refreshKey={draftListRefresh}
         onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-      />
+        />
+      </div>
 
       <ChatDrawer
         genomeId={genome?.genomeId}

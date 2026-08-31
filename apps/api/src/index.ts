@@ -14,6 +14,7 @@ import { registerCanvaOAuthCallback } from './canva-oauth.js';
 import { registerSocialOAuthCallback } from './social-oauth.js';
 import { socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
+import { makeSystemCtx } from './system-ctx.js';
 import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
@@ -23,6 +24,7 @@ import { startScheduler } from './scheduler.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
 import { startConnectionWatcher } from './connection-watcher.js';
+import { startOutcomeObserver } from './outcome-observer.js';
 import { createTelemetry } from './telemetry.js';
 import { langfuseRecorder } from './langfuse-recorder.js';
 import { createDevCreditStore } from './dev-credits.js';
@@ -31,6 +33,7 @@ import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
 import { envList, envNum, envSet, envStr } from './env.js';
 import { describeModelVendors } from './model-client.js';
+import { describeEngageWebhook } from './engage-webhook.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -308,19 +311,60 @@ const whatsappWebhook = envSet('WHATSAPP_APP_SECRET')
         return orgId && brandId ? { orgId, brandId } : undefined;
       },
       async systemCtx({ orgId, brandId }: { orgId: string; brandId: string }) {
-        const base = await makeDevResolveCtx(scopedDb, credits)(
-          new Request('http://localhost/', {
-            headers: { 'x-org-id': orgId, 'x-brand-id': brandId, 'x-role': 'admin' },
-          }),
-        );
-        // No `userId`: nobody signed in. The tool attributes the answer to
-        // `whatsapp:<number>` instead, which is the truthful record — a person
-        // texted, they did not authenticate.
-        const { userId: _drop, caller: _caller, ...ctx } = base;
-        return ctx;
+        /**
+         * No `genomeId`, and that is the fix rather than an omission: the old
+         * path set no `x-genome-id`, so the dev resolver's `'gen_dev'` default
+         * became the genome every inbound WhatsApp message ran under. Nothing in
+         * this path reads it — `whatsapp.receive` works off brand-scoped tables —
+         * so no isolation was crossed, but a context carrying another tenant's
+         * id shape is one genome-scoped query away from being a leak.
+         *
+         * No `userId` either: nobody signed in. The tool attributes the answer to
+         * `whatsapp:<number>`, which is the truthful record — a person texted,
+         * they did not authenticate.
+         */
+        return makeSystemCtx({ db: scopedDb, credits, orgId, brandId, role: 'admin' });
       },
     }
   : undefined;
+
+/**
+ * Inbound engagement (§8.8) — the inbox's writer.
+ *
+ * Unlike WhatsApp, tenant resolution here is a real query rather than an env
+ * mapping: a platform event names the account it happened on, and
+ * `oauth_connections.account_id` maps that to a genome. That is what makes this
+ * webhook multi-tenant from the start — and why it refuses rather than guesses
+ * when one account resolves to two genomes.
+ */
+const engageWebhook =
+  envSet('META_APP_SECRET') || envSet('ENGAGE_WEBHOOK_SECRET')
+    ? {
+        invokeDeps,
+        loadBrandGovernance: makeBrandGovernance(scopedDb),
+        ...(envSet('META_APP_SECRET') ? { metaAppSecret: envStr('META_APP_SECRET', '') } : {}),
+        ...(envSet('META_VERIFY_TOKEN') ? { metaVerifyToken: envStr('META_VERIFY_TOKEN', '') } : {}),
+        ...(envSet('ENGAGE_WEBHOOK_SECRET') ? { aggregatorSecret: envStr('ENGAGE_WEBHOOK_SECRET', '') } : {}),
+        lookupAccount: pg ? pg.accounts.byAccount : devStore!.byAccount,
+        async brandForGenome(genomeId: string, orgId: string) {
+          const genome = await scopedDb.genomes.get(genomeId, orgId);
+          return genome?.workspace_id;
+        },
+        async systemCtx({ orgId, brandId, genomeId }: { orgId: string; brandId: string; genomeId: string }) {
+          // The engagement webhook does know its genome — inbound comments and
+          // DMs are ingested against one — so it passes it rather than omitting.
+          return makeSystemCtx({ db: scopedDb, credits, orgId, brandId, genomeId, role: 'admin' });
+        },
+      }
+    : undefined;
+
+if (!envSet('META_APP_SECRET') && !envSet('ENGAGE_WEBHOOK_SECRET')) {
+  console.warn(
+    '[warn] neither META_APP_SECRET nor ENGAGE_WEBHOOK_SECRET is set \u2014 the engagement inbox has no ' +
+      'writer. Comments and DMs will not arrive, so the feed, the classifier and auto-reply have ' +
+      'nothing to work on.',
+  );
+}
 
 if (!envSet('WHATSAPP_APP_SECRET')) {
   console.warn(
@@ -392,6 +436,30 @@ const connectionWatcher = startConnectionWatcher(
   envNum('CONNECTION_WATCHER_INTERVAL_MS', 21_600_000),
 );
 
+/**
+ * The outcome observer (§6.7) — the clock the learning loop never had.
+ *
+ * `analytics.sync` and `learning.record_outcome` were both built and registered
+ * and nothing called either, so every genome's Thompson-sampling arms sat at
+ * their cold-start priors indefinitely. Started unconditionally for the same
+ * reason as the schedulers above: one no-op query per tick costs nothing, and an
+ * env flag is one more way to forget to turn it on.
+ *
+ * Every fifteen minutes. The tightest resync cadence is three hours and the
+ * maturation window is measured in days, so a shorter interval finds nothing new
+ * — the frequency is here so a post published between ticks is picked up
+ * promptly on its first sync, not to re-read the same rows.
+ */
+const outcomeObserver = startOutcomeObserver(
+  {
+    source: pg ? pg.outcomes : devStore!,
+    db: scopedDb,
+    invoke: invokeDeps,
+    loadBrandGovernance: makeBrandGovernance(scopedDb),
+  },
+  envNum('OUTCOME_OBSERVER_INTERVAL_MS', 900_000),
+);
+
 const app = createApp({
   resolveCtx,
   loadBrandGovernance: makeBrandGovernance(scopedDb),
@@ -400,6 +468,7 @@ const app = createApp({
   invokeDeps,
   telemetry: telemetry.status(),
   ...(whatsappWebhook ? { whatsappWebhook } : {}),
+  ...(engageWebhook ? { engageWebhook } : {}),
   ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
   ...(agentConfigured
     ? {
@@ -454,6 +523,10 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
   // Which vendor is actually reachable, because a silent fallback means an
   // instance can write every post with the substitute model and read as healthy.
   console.log(`  language models: ${describeModelVendors()}`);
+  // Which inbound routes are live. An engagement inbox with no writer looks
+  // exactly like a quiet week, so it is worth saying at boot rather than
+  // leaving somebody to wonder why the feed never fills.
+  console.log(`  engagement inbound: ${describeEngageWebhook(engageWebhook ?? {})}`);
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
@@ -462,6 +535,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     recipeScheduler.stop();
     trendObserver.stop();
     connectionWatcher.stop();
+    outcomeObserver.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.

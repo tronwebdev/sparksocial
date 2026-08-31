@@ -1,0 +1,59 @@
+# Findings this repository has deliberately accepted, by fingerprint.
+#
+# Fingerprints, not paths or rules: allowlisting a whole file would suppress the
+# *next* secret committed to it too, which is the failure mode that makes a
+# secret scanner decorative. Each line pins one occurrence in one commit.
+#
+# Get a fingerprint from the scanner itself:
+#   gitleaks detect --source . --redact --verbose
+#
+# Format:  <commit-sha>:<path>:<rule-id>:<line>
+#
+# ── One secret, several fingerprints ─────────────────────────────────────
+#
+# gitleaks scans diffs, so the same value is reported once per commit that
+# introduces it — and a merge commit introduces it again into the branch it
+# merges into. The TikTok credentials below therefore appear twice: at
+# `ecf5cfe` where they were written, and at `8b4e81f`, the merge of PR #1.
+#
+# That is finite and now closed: the values are gone from `HEAD`, so no future
+# commit can add them again and no new fingerprint can appear. If a scan ever
+# reports a *third* SHA for these lines, something has re-introduced them and
+# that is a real finding, not noise to append here.
+
+# ── Accepted: public by design ───────────────────────────────────────────
+#
+# `NEXT_PUBLIC_POSTHOG_KEY` is a PostHog *project* key. The `NEXT_PUBLIC_`
+# prefix means it is inlined into the browser bundle at build time, so it is
+# published to every visitor by design and grants nothing. It identifies the
+# project; it does not authorise anything against it.
+ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/web/.env.example:generic-api-key:31
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/web/.env.example:generic-api-key:31
+
+# ── Accepted: a test fixture, and a pleasing one ─────────────────────────
+#
+# `'sk-live-abc123'` in a test asserting that the Langfuse masker redacts an
+# unknown field. A secret-detection test tripping a secret detector is the
+# scanner working correctly on a string that was never a secret.
+6ac2f7bf573d9ddbf1c9cf01ea1d0d1b4fd2397f:apps/api/test/langfuse-mask.test.ts:generic-api-key:54
+
+# ── Accepted after rotation, 2026-08-22 ──────────────────────────────────
+#
+# `TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET` were committed with real values
+# in `ecf5cfe` and carried into `main` by the PR #1 merge. They have since been
+# emptied from the working tree, which on its own does **not** undo an exposure —
+# the values stayed readable in those commits by anyone who could read the
+# repository.
+#
+# What closed it was rotation in the TikTok developer console. These lines are
+# accepted because the values in history are now dead credentials: historical
+# noise rather than a live secret. Deleting them from history was considered and
+# is mostly theatre — any clone or fork taken before a rewrite keeps the old
+# objects, so rotation is the fix either way.
+#
+# The replacement secret lives in Key Vault as `tiktok-client-secret`. It must
+# never appear here or in `.env.example`.
+ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:114
+ecf5cfe209782ec619052d1e36d9b398d16e428b:apps/api/.env.example:generic-api-key:115
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/api/.env.example:generic-api-key:114
+8b4e81fbf1b74fc2138f1bdf718cb7161eed8e46:apps/api/.env.example:generic-api-key:115

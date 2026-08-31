@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { generatePkce, signOAuthState, verifyOAuthState } from '@sparksocial/shared';
+import { generatePkce, signOAuthState, verifyOAuthState } from '@sparksocial/shared/oauthState';
 
 // Re-exported for existing callers (`apps/api/src/canva-oauth.ts` and this
 // package's own tests) that import these from `@sparksocial/agency` — the

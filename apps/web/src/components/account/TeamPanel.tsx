@@ -102,7 +102,7 @@ export function TeamPanel() {
       setError(
         team.status === 'failed'
           ? team.error.message
-          : 'Only an owner or admin can see who is in this workspace.',
+          : 'Only an owner or admin can see who is in this account.',
       );
     }
     // A failed roster read degrades the assignment control to nothing rather
@@ -170,7 +170,7 @@ export function TeamPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <h2 className="text-[18px] font-semibold text-ink">Team</h2>
       <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
-        Who is in this workspace, and which brands each of them can open. Being in the workspace is not the
+        Who is in this account, and which brands each of them can open. Being in the account is not the
         same as having access to a brand — everyone below an admin needs to be assigned explicitly.
       </p>
 
@@ -184,7 +184,7 @@ export function TeamPanel() {
       <div className="mt-5 rounded-lg border border-border p-4">
         <p className="text-[13px] font-medium text-ink">Invite someone</p>
         <p className="mt-1 text-[12px] text-ink-muted">
-          Clerk sends the email. They join the workspace with the role you pick here, and reach no brand until
+          Clerk sends the email. They join the account with the role you pick here, and reach no brand until
           you assign one below.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -203,7 +203,7 @@ export function TeamPanel() {
           </div>
           <div>
             <label className="block text-[12px] text-ink-muted" htmlFor="team-role">
-              Workspace role
+              Account role
             </label>
             <select
               id="team-role"
@@ -248,7 +248,7 @@ export function TeamPanel() {
 
                   <div className="flex shrink-0 items-center gap-2">
                     <label className="sr-only" htmlFor={`org-role-${m.userId}`}>
-                      Workspace role
+                      Account role
                     </label>
                     <select
                       id={`org-role-${m.userId}`}
@@ -258,7 +258,7 @@ export function TeamPanel() {
                       className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-ink disabled:opacity-50"
                     >
                       {/* The owner is listed so the select shows the truth, and
-                          disabled so this screen cannot orphan a workspace by
+                          disabled so this screen cannot orphan an account by
                           demoting the only person who can promote anybody. */}
                       <option value="org:owner">Owner</option>
                       {ORG_ROLES.map((r) => (
@@ -274,7 +274,7 @@ export function TeamPanel() {
                   {m.allBrands ? (
                     <p className="text-[12px] text-ink-muted">
                       <span className="font-medium text-ink">Reaches every brand.</span> Owners and admins
-                      administer the whole workspace, so there is nothing to assign.
+                      administer the whole account, so there is nothing to assign.
                     </p>
                   ) : brands.length === 0 ? (
                     <p className="text-[12px] text-ink-muted">No brands to assign yet.</p>

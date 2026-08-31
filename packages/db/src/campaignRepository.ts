@@ -1,6 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { ToolError } from '@sparksocial/shared';
-import type { ApprovalMode, CampaignStore } from '@sparksocial/tools/defineTool';
+import type { ApprovalMode, CampaignRecord, CampaignStore } from '@sparksocial/tools/defineTool';
+import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { Database } from './client.js';
 import { campaigns } from './schema.js';
 import { campaignSlots, replaceCampaignSlots, type Scope } from './scoped.js';
@@ -16,7 +17,10 @@ import { campaignSlots, replaceCampaignSlots, type Scope } from './scoped.js';
  */
 export function createCampaignRepository(db: Database): CampaignStore {
   return {
-    async create({ orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode }) {
+    async create({
+      orgId, genomeId, name, objective, windowDays, startAt, plan, targetCount, targetLabel, platforms, approvalMode,
+      campaignType, primaryCta, weight, engagementRung, learnFromPerformance, adjustMixAutomatically,
+    }) {
       const [row] = await db
         .insert(campaigns)
         .values({
@@ -32,6 +36,15 @@ export function createCampaignRepository(db: Database): CampaignStore {
           ...(targetLabel !== undefined ? { targetLabel } : {}),
           ...(platforms?.length ? { platforms } : {}),
           ...(approvalMode ? { approvalMode } : {}),
+          // The wizard's fields. Each is omitted rather than defaulted when the
+          // caller says nothing, so "never asked" stays distinguishable from
+          // "answered with the default" — `CampaignRecord` explains why.
+          ...(campaignType ? { campaignType } : {}),
+          ...(primaryCta ? { primaryCta } : {}),
+          ...(weight ? { weight } : {}),
+          ...(engagementRung ? { engagementRung } : {}),
+          ...(learnFromPerformance !== undefined ? { learnFromPerformance } : {}),
+          ...(adjustMixAutomatically !== undefined ? { adjustMixAutomatically } : {}),
         })
         .returning({ id: campaigns.id });
       return { id: row!.id };
@@ -44,20 +57,7 @@ export function createCampaignRepository(db: Database): CampaignStore {
         .where(and(eq(campaigns.id, campaignId), eq(campaigns.orgId, orgId)))
         .limit(1);
       if (!row) return undefined;
-      return {
-        id: row.id,
-        genomeId: row.genomeId,
-        name: row.name,
-        objective: row.objective,
-        windowDays: row.windowDays,
-        startAt: row.startAt,
-        status: row.status,
-        plan: row.plan,
-        ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
-        ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),
-        ...(row.platforms ? { platforms: row.platforms } : {}),
-        ...(row.approvalMode ? { approvalMode: row.approvalMode as ApprovalMode } : {}),
-      };
+      return toRecord(row);
     },
 
     async listForGenome(genomeId, orgId, limit) {
@@ -67,20 +67,7 @@ export function createCampaignRepository(db: Database): CampaignStore {
         .where(and(eq(campaigns.orgId, orgId), eq(campaigns.genomeId, genomeId)))
         .orderBy(desc(campaigns.startAt))
         .limit(Math.min(Math.max(limit, 1), 100));
-      return rows.map((r) => ({
-        id: r.id,
-        genomeId: r.genomeId,
-        name: r.name,
-        objective: r.objective,
-        windowDays: r.windowDays,
-        startAt: r.startAt,
-        status: r.status,
-        plan: r.plan,
-        ...(r.targetCount !== null ? { targetCount: r.targetCount } : {}),
-        ...(r.targetLabel !== null ? { targetLabel: r.targetLabel } : {}),
-        ...(r.platforms ? { platforms: r.platforms } : {}),
-        ...(r.approvalMode ? { approvalMode: r.approvalMode as ApprovalMode } : {}),
-      }));
+      return rows.map(toRecord);
     },
 
     async replaceSlots({ campaignId, orgId, genomeId, slots }) {
@@ -111,5 +98,37 @@ export function createCampaignRepository(db: Database): CampaignStore {
         throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId });
       }
     },
+  };
+}
+
+/**
+ * One row → one `CampaignRecord`.
+ *
+ * `get` and `listForGenome` had identical fifteen-line mappings, which is the
+ * shape that drifts: the wizard added six fields and there were two places to
+ * remember. Every nullable column is omitted rather than passed through as
+ * `null`, because `CampaignRecord` distinguishes "never answered" from
+ * "answered", and `null` would read as a third thing.
+ */
+function toRecord(row: typeof campaigns.$inferSelect): CampaignRecord {
+  return {
+    id: row.id,
+    genomeId: row.genomeId,
+    name: row.name,
+    objective: row.objective,
+    windowDays: row.windowDays,
+    startAt: row.startAt,
+    status: row.status,
+    plan: row.plan,
+    ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
+    ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),
+    ...(row.platforms ? { platforms: row.platforms } : {}),
+    ...(row.approvalMode ? { approvalMode: row.approvalMode as ApprovalMode } : {}),
+    ...(row.campaignType ? { campaignType: row.campaignType as CampaignType } : {}),
+    ...(row.primaryCta ? { primaryCta: row.primaryCta } : {}),
+    ...(row.weight ? { weight: row.weight as CampaignWeight } : {}),
+    ...(row.engagementRung ? { engagementRung: row.engagementRung as EngagementRung } : {}),
+    ...(row.learnFromPerformance !== null ? { learnFromPerformance: row.learnFromPerformance } : {}),
+    ...(row.adjustMixAutomatically !== null ? { adjustMixAutomatically: row.adjustMixAutomatically } : {}),
   };
 }

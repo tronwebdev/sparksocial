@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
-import { ToolError, callVendor, renderUntrusted } from '@sparksocial/shared';
+import { ShapeMismatch, ToolError, callVendor, renderUntrusted, withShapeRetry } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { ReplyWriter } from '@sparksocial/engage';
 
@@ -45,7 +45,13 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
   const model = opts.model ?? MODEL;
 
   return {
-    async write({ genome, kind, authorHandle, messageText }): Promise<string> {
+    async write(args): Promise<string> {
+      return withShapeRetry(() => attemptWrite(args));
+    },
+  };
+
+  /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
+  async function attemptWrite({ genome, kind, authorHandle, messageText, salesQualification }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'reply writer',
         'SPARK could not draft a reply — the service that writes replies is not responding. The message is still in your inbox, unanswered.',
@@ -54,7 +60,7 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
             model,
             max_tokens: 300,
             system: SYSTEM,
-            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, messageText) }],
+            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, messageText, salesQualification) }],
             tools: [
               {
                 name: TOOL_NAME,
@@ -70,19 +76,20 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
         (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === TOOL_NAME,
       );
       if (!block) {
-        throw new ToolError('UPSTREAM_FAILED', 'The reply writer returned no text.', {
-          stopReason: response.stop_reason,
-        });
+        /* A missing tool call is a coin-flip unless the budget ran out —
+           see `missingToolCall`. */
+        throw missingToolCall(response.stop_reason);
       }
 
       const text = (block.input as Record<string, unknown>).text;
       if (typeof text !== 'string' || !text.trim()) {
-        throw new ToolError('UPSTREAM_FAILED', 'The reply writer returned an unusable shape.', { kind });
+        throw new ShapeMismatch(
+          new ToolError('UPSTREAM_FAILED', 'The reply writer returned an unusable shape.', { kind }),
+        );
       }
 
       return text.trim();
-    },
-  };
+  }
 }
 
 /**
@@ -108,8 +115,52 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
  * the content cannot forge and states plainly that directives inside are data.
  * The brand's own genome stays interpolated directly — it is ours.
  */
-function prompt(genome: Genome, kind: string, authorHandle: string, messageText: string): string {
+/**
+ * What each qualification option authorises, phrased as an instruction.
+ *
+ * Spelled out rather than passed as raw enum values: `share_booking_link` tells
+ * a model almost nothing, and a reply that invents a booking URL because the
+ * prompt implied one exists is exactly the fabrication the system prompt above
+ * forbids. Each line says what the agent may *do*, not what the setting is
+ * called.
+ */
+const QUALIFICATION_INSTRUCTION: Record<string, string> = {
+  ask_qualifying_questions: 'You may ask one question to understand what they need.',
+  share_booking_link:
+    'You may invite them to book, and say a booking link will follow — do not invent a URL.',
+  share_pricing_link:
+    'You may point them at the pricing page, and say so in words — do not invent a price or a URL.',
+  collect_contact_details: 'You may ask for an email or phone number so somebody can follow up.',
+};
+
+function prompt(
+  genome: Genome,
+  kind: string,
+  authorHandle: string,
+  messageText: string,
+  salesQualification?: readonly string[],
+): string {
   const { identity, voice } = genome;
+
+  /**
+   * `brands.sales_qualification`, finally read.
+   *
+   * The four checkboxes were stored and rendered and consulted by nothing, so
+   * the model has been free to offer any of these moves — or none — regardless of
+   * what the brand authorised. Absent means none, and the prompt states the
+   * prohibition explicitly rather than staying silent: a model given no
+   * instruction about pricing will sometimes discuss pricing, and "we did not
+   * mention it" is not a constraint.
+   */
+  const authorised = (salesQualification ?? [])
+    .map((q) => QUALIFICATION_INSTRUCTION[q])
+    .filter((line): line is string => Boolean(line));
+
+  const salesLines = authorised.length
+    ? ['What you may offer:', ...authorised.map((l) => `- ${l}`)].join('\n')
+    : 'Do not offer a price, a pricing page, a booking link, or ask for their contact details. ' +
+      'If they ask for any of those, say somebody will follow up.';
+
   return [
     `Business: ${identity.business_name} — ${identity.category}`,
     `What they do: ${identity.one_liner}`,
@@ -120,6 +171,7 @@ function prompt(genome: Genome, kind: string, authorHandle: string, messageText:
     voice.banned_phrases?.length ? `Never use: ${voice.banned_phrases.join(', ')}` : '',
     '',
     `Message type: ${kind}`,
+    salesLines,
     // Fenced as data. `source` names where it came from so the model can weigh
     // provenance, and the handle is fenced too — it is attacker-chosen text.
     renderUntrusted([`From: ${authorHandle}`, `Message: ${messageText}`].join('\n'), {
@@ -142,4 +194,18 @@ export function replyWriter(fallback: ReplyWriter): ReplyWriter {
     return fallback;
   }
   return createReplyWriter();
+}
+
+/**
+ * A forced tool call that came back without one.
+ *
+ * Two causes, opposite fixes, told apart by `stop_reason`. `max_tokens` means
+ * the model was cut off mid-call — retrying spends another call to be truncated
+ * again, and the real fix is a bigger budget, so it surfaces immediately. Any
+ * other stop reason means the model declined to call a tool it was told to call,
+ * which is the same coin-flip as a malformed answer and worth one retry.
+ */
+function missingToolCall(stopReason: string | null): Error {
+  const detail = new ToolError('UPSTREAM_FAILED', 'The reply writer returned no text.', { stopReason });
+  return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
 }

@@ -20,6 +20,7 @@ import type {
   HumanLoopStore,
   LearningArm,
   OAuthConnectionRecord,
+  TeamGroup,
   OrgSettingsRecord,
   Opportunity,
   RecipeOutputRecord,
@@ -30,7 +31,7 @@ import type {
   TrendWatchlistEntry,
 } from '@sparksocial/tools/defineTool';
 import type { ToolCallRecord } from '@sparksocial/tools';
-import type { DueContentSource } from '@sparksocial/db';
+import type { AccountLookup, DueContentSource, OutcomeCandidateRow, OutcomeCandidateSource } from '@sparksocial/db';
 
 /**
  * DEVELOPMENT STORE — in-memory, empty until something real writes to it.
@@ -76,6 +77,11 @@ interface AssetRow {
   source: string;
   url: string;
   folderId: string | null;
+  /** Mirrors `assets.filename` / `size_bytes` / `archived_at` — see the schema for why each exists. */
+  filename?: string;
+  sizeBytes?: number;
+  archivedAt?: Date | null;
+  createdAt?: Date;
 }
 
 interface AssetFolderRow {
@@ -164,11 +170,29 @@ export interface DevStoreOptions {
    * version of what happened that can disagree with the first.
    */
   allCalls?: () => ToolCallRecord[];
+  /**
+   * The clock the store stamps rows with. Defaults to the real one.
+   *
+   * Injected so the outcome observer's cadence rules are testable: every one of
+   * them is arithmetic over `published_at` and `synced_at`, and a test that
+   * cannot place a snapshot in the past can only assert that nothing is ever
+   * due. Under Postgres these columns are `defaultNow()`, which is the same
+   * reason a real `syncedAt` is not a caller-supplied field on `record` — a
+   * snapshot is stamped when the sync happens, not when someone says it did.
+   */
+  now?: () => Date;
 }
 
 export function createDevStore(
   opts: DevStoreOptions = {},
-): ScopedDb & { seedCount: number; runs: ScopedDb['runs']; findDue: DueContentSource['findDue'] } {
+): ScopedDb & {
+  seedCount: number;
+  runs: ScopedDb['runs'];
+  findDue: DueContentSource['findDue'];
+  findMetricsDue: OutcomeCandidateSource['findMetricsDue'];
+  findOutcomesDue: OutcomeCandidateSource['findOutcomesDue'];
+  byAccount: AccountLookup['byAccount'];
+} {
   const {
     runStore = createDevRunStore(),
     campaignStore = createDevCampaignStore(),
@@ -178,6 +202,7 @@ export function createDevStore(
     consentStore = createDevConsentStore(),
     findCall = () => undefined,
     allCalls = () => [],
+    now = () => new Date(),
   } = opts;
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
@@ -211,6 +236,10 @@ export function createDevStore(
   const recipeOutputs: (RecipeOutputRecord & { orgId: string })[] = [];
   // Keyed on `${genomeId}:${provider}` — one connection per (genome, provider), same unique target as the real schema.
   const oauthConnectionsMap = new Map<string, OAuthConnectionRecord & { orgId: string }>();
+  const groups = new Map<string, TeamGroup & { orgId: string }>();
+  /** `${groupId}:${userId}` — the same uniqueness the real index enforces. */
+  const groupMembers = new Set<string>();
+  let nextGroup = 1;
   const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
   // Typed as the record itself rather than a hand-listed copy of its fields —
   // the inline literal is how this drifted when §8.12's 2FA/residency/retention
@@ -378,15 +407,20 @@ export function createDevStore(
         return counts;
       },
 
-      async retrieve({ genomeId, orgId: org, embedding, requiredRoles, k }) {
+      async retrieve({ genomeId, orgId: org, embedding, requiredRoles, k, offset }) {
         const now = new Date();
         const pool = [...assets.values()].filter(
           (a) =>
             a.genomeId === genomeId &&
             a.orgId === org &&
             a.rightsStatus === 'cleared' &&
+            // Archived assets leave retrieval, matching the scoped query's own
+            // filter — a dev store that returned them would let the Assemble
+            // planner behave differently here than in production.
+            !a.archivedAt &&
             (!requiredRoles?.length || requiredRoles.includes(a.role)),
         );
+        const from = offset ?? 0;
         return pool
           .map((a) => ({
             assetId: a.id,
@@ -399,12 +433,15 @@ export function createDevStore(
             url: a.url,
             mediaType: a.mediaType,
             folderId: a.folderId,
+            filename: a.filename ?? null,
+            sizeBytes: a.sizeBytes ?? null,
+            createdAt: a.createdAt ?? now,
           }))
           .sort((x, y) => y.score - x.score)
-          .slice(0, k);
+          .slice(from, from + k);
       },
 
-      async create({ genomeId, orgId: org, url, assetRole, mediaType, rightsStatus, caption, embedding, source }) {
+      async create({ genomeId, orgId: org, url, assetRole, mediaType, rightsStatus, caption, embedding, source, filename, sizeBytes }) {
         const id = randomUUID();
         assets.set(id, {
           id,
@@ -420,6 +457,10 @@ export function createDevStore(
           source,
           url,
           folderId: null,
+          ...(filename ? { filename } : {}),
+          ...(sizeBytes ? { sizeBytes } : {}),
+          archivedAt: null,
+          createdAt: new Date(),
         });
         return { id };
       },
@@ -459,6 +500,24 @@ export function createDevStore(
         a.usageCount += 1;
         a.lastUsedAt = new Date();
         return { id, usageCount: a.usageCount, lastUsedAt: a.lastUsedAt };
+      },
+
+      async setArchived({ id, genomeId, orgId: org, archived }) {
+        const row = assets.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        row.archivedAt = archived ? new Date() : null;
+        return { id, archivedAt: row.archivedAt };
+      },
+
+      async setCaption({ id, genomeId, orgId: org, caption, embedding }) {
+        const row = assets.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        // Both, together: the caption is what gets embedded, so a store that
+        // updated one without the other would let the library and the graph
+        // disagree about what an asset says.
+        row.caption = caption;
+        row.embedding = embedding;
+        return { id, caption: row.caption };
       },
 
       async moveToFolder({ id, genomeId, orgId: org, folderId }) {
@@ -584,7 +643,7 @@ export function createDevStore(
         return row;
       },
 
-      async markPublished({ id, orgId: org, platform, embedding, externalId, via, url }) {
+      async markPublished({ id, orgId: org, platform, embedding, externalId, via, url, publishedAt }) {
         // Same `drafts`-only reach as `list`/`get`/`schedule`. `content` (the
         // published-history array `recent()` reads) is seed-only in dev mode —
         // see the note on its declaration above — so a real publish through
@@ -599,7 +658,12 @@ export function createDevStore(
         // PRD §5's "time to first post" measures to here, so the dev store has
         // to stamp it too — a metric that is real under Postgres and null in
         // development is a metric nobody trusts.
-        row.publishedAt = new Date();
+        // Honours a caller-supplied stamp, as the Postgres store does
+        // (`args.publishedAt ?? new Date()`). It previously hardcoded
+        // `new Date()` and dropped the argument, which made every dev-mode post
+        // publish "now" no matter what the caller said — invisible until the
+        // outcome observer, whose whole cadence is arithmetic on this field.
+        row.publishedAt = publishedAt ?? new Date();
         row.platform = platform;
         row.externalId = externalId;
         row.via = via;
@@ -725,7 +789,7 @@ export function createDevStore(
           views,
           impressions,
           saves,
-          syncedAt: new Date(),
+          syncedAt: now(),
         };
         metrics.set(`${contentItemId}:${platform}`, { ...snapshot, orgId: org, genomeId });
         return snapshot;
@@ -736,6 +800,39 @@ export function createDevStore(
         return [...metrics.values()]
           .filter((m) => ids.has(m.contentItemId) && m.orgId === org && m.genomeId === genomeId)
           .map(({ orgId: _orgId, genomeId: _genomeId, ...snapshot }) => snapshot);
+      },
+
+      /**
+       * `analytics.brand_series`'s read, over the same left-join shape Postgres
+       * produces: one entry per snapshot, plus one platform-less entry for a
+       * published post nothing has measured yet.
+       */
+      async publishedInWindow(org, genomeId, windowDays) {
+        const cutoff = new Date(Date.now() - windowDays * 86_400_000);
+        const published = [...drafts.values()].filter(
+          (d) => d.orgId === org && d.genomeId === genomeId && d.status === 'published' && d.publishedAt && d.publishedAt >= cutoff,
+        );
+
+        return published.flatMap((d) => {
+          const publishedAt = d.publishedAt!;
+          const snapshots = [...metrics.values()].filter(
+            (m) => m.contentItemId === d.id && m.orgId === org && m.genomeId === genomeId,
+          );
+          if (snapshots.length === 0) {
+            return [{ contentItemId: d.id, publishedAt, impressions: 0, likes: 0, comments: 0, shares: 0, views: 0, saves: 0 }];
+          }
+          return snapshots.map((m) => ({
+            contentItemId: d.id,
+            publishedAt,
+            platform: m.platform,
+            impressions: m.impressions,
+            likes: m.likes,
+            comments: m.comments,
+            shares: m.shares,
+            views: m.views,
+            saves: m.saves,
+          }));
+        });
       },
     },
 
@@ -902,6 +999,31 @@ export function createDevStore(
 
       async get(id, genomeId, org) {
         return opportunities.find((o) => o.id === id && o.orgId === org && o.genomeId === genomeId);
+      },
+
+      /** Joined against the inbox the same way Postgres does — see `listOpportunities`. */
+      async listForGenome(genomeId, org, limit) {
+        return opportunities
+          .filter((o) => o.orgId === org && o.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit)
+          .map((o) => {
+            const message = engagementMessages.get(o.inboxItemId);
+            const sameTenant = message?.orgId === org && message?.genomeId === genomeId;
+            return {
+              ...o,
+              ...(sameTenant && message
+                ? {
+                    platform: message.platform,
+                    authorHandle: message.authorHandle,
+                    ...(message.authorName ? { authorName: message.authorName } : {}),
+                    messageText: message.text,
+                    ...(message.intentScore !== undefined ? { intentScore: message.intentScore } : {}),
+                    receivedAt: message.receivedAt,
+                  }
+                : {}),
+            };
+          });
       },
 
       async route({ id, genomeId, orgId: org, routedTo }) {
@@ -1114,12 +1236,73 @@ export function createDevStore(
       },
     },
 
+    teamGroups: {
+      async list(org) {
+        return [...groups.values()]
+          .filter((g) => g.orgId === org)
+          .map((g) => ({ ...g, memberCount: memberIdsFor(g.id).length }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      },
+      async create({ orgId: org, name, capabilities }) {
+        const id = `grp_${nextGroup++}`;
+        const now = new Date();
+        const row = { id, orgId: org, name, capabilities, memberCount: 0, createdAt: now, updatedAt: now };
+        groups.set(id, row);
+        return { ...row };
+      },
+      async update({ orgId: org, id, name, capabilities }) {
+        const row = groups.get(id);
+        if (!row || row.orgId !== org) return undefined;
+        if (name !== undefined) row.name = name;
+        if (capabilities !== undefined) row.capabilities = capabilities;
+        row.updatedAt = new Date();
+        return { ...row, memberCount: memberIdsFor(id).length };
+      },
+      async remove({ orgId: org, id }) {
+        const row = groups.get(id);
+        if (!row || row.orgId !== org) return false;
+        // Memberships go with the group, as the real delete's transaction does:
+        // an orphaned membership either grants nothing or, after an id reuse,
+        // grants something nobody chose.
+        for (const key of [...groupMembers]) if (key.startsWith(`${id}:`)) groupMembers.delete(key);
+        groups.delete(id);
+        return true;
+      },
+      async members(org, groupId) {
+        const row = groups.get(groupId);
+        return row && row.orgId === org ? memberIdsFor(groupId) : [];
+      },
+      async addMember({ orgId: org, groupId, userId }) {
+        const row = groups.get(groupId);
+        if (!row || row.orgId !== org) return;
+        groupMembers.add(`${groupId}:${userId}`);
+      },
+      async removeMember({ orgId: org, groupId, userId }) {
+        const row = groups.get(groupId);
+        if (!row || row.orgId !== org) return;
+        groupMembers.delete(`${groupId}:${userId}`);
+      },
+      async capabilitiesForUser(org, userId) {
+        // The union, not the intersection — see `TeamGroupStore`. Adding
+        // somebody to a second group must not silently remove access.
+        const union = new Set<string>();
+        for (const key of groupMembers) {
+          const [groupId, member] = key.split(':');
+          if (member !== userId) continue;
+          const row = groups.get(groupId!);
+          if (!row || row.orgId !== org) continue;
+          for (const capability of row.capabilities) union.add(capability);
+        }
+        return [...union].sort();
+      },
+    },
+
     oauthConnections: {
       async get(genomeId, org, provider) {
         const row = oauthConnectionsMap.get(`${genomeId}:${provider}`);
         return row && row.orgId === org ? row : undefined;
       },
-      async save({ genomeId, orgId: org, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel }) {
+      async save({ genomeId, orgId: org, provider, accessToken, refreshToken, expiresAt, connectedBy, scopes, accountLabel, accountId }) {
         const key = `${genomeId}:${provider}`;
         const existing = oauthConnectionsMap.get(key);
         const row: OAuthConnectionRecord & { orgId: string } = {
@@ -1135,6 +1318,7 @@ export function createDevStore(
           ...(expiresAt ? { expiresAt } : {}),
           ...(scopes ? { scopes } : {}),
           ...(accountLabel ? { accountLabel } : {}),
+          ...(accountId ? { accountId } : {}),
           // Not carried over from `existing`: reconnecting re-arms the §10
           // expiry alert, because the new token has a new expiry.
         };
@@ -1400,5 +1584,100 @@ export function createDevStore(
           scheduledAt: r.scheduledAt!,
         }));
     },
+
+    /**
+     * The outcome observer's two reads, in memory.
+     *
+     * These exist so the learning loop is testable without Postgres. It is
+     * worth being blunt about why that matters: the loop shipped as two tools
+     * nothing ever called, and a feature whose only exercise path requires a
+     * live database and a real vendor key is a feature that stays unexercised.
+     *
+     * The cadence and maturation rules are the same ones `scoped.ts` spells
+     * out — deliberately re-expressed rather than approximated, because a dev
+     * store that selects a *different* set of posts would make the observer's
+     * tests prove nothing about production.
+     */
+    async findMetricsDue({ now, limit, trackingDays = 30 }) {
+      const trackingFloor = now.getTime() - trackingDays * 86_400_000;
+
+      return [...drafts.values()]
+        .filter((r) => r.status === 'published' && r.publishedAt && r.platform && r.externalId)
+        .filter((r) => r.publishedAt!.getTime() >= trackingFloor)
+        .map((r) => ({ row: r, lastSyncedAt: lastSyncFor(r.id) }))
+        .filter(({ row, lastSyncedAt }) => {
+          // Never synced is always due, whatever the age: a post that
+          // published while the observer was down would otherwise never be
+          // measured at all.
+          if (!lastSyncedAt) return true;
+          const ageMs = now.getTime() - row.publishedAt!.getTime();
+          const interval =
+            ageMs < 2 * 86_400_000 ? 3 * 3_600_000 : ageMs < 7 * 86_400_000 ? 86_400_000 : 7 * 86_400_000;
+          return lastSyncedAt.getTime() <= now.getTime() - interval;
+        })
+        .sort((a, b) => a.row.publishedAt!.getTime() - b.row.publishedAt!.getTime())
+        .slice(0, limit)
+        .map(({ row, lastSyncedAt }) => candidate(row, lastSyncedAt));
+    },
+
+    /**
+     * The engagement webhook's reverse lookup, in memory. Returns every match
+     * rather than the first, because the route's correct answer to an ambiguous
+     * account is to refuse — see `engage-webhook.ts`.
+     */
+    async byAccount({ provider, accountId }) {
+      return [...oauthConnectionsMap.values()]
+        .filter((c) => c.provider === provider && c.accountId === accountId)
+        .map((c) => ({ orgId: c.orgId, genomeId: c.genomeId }));
+    },
+
+    async findOutcomesDue({ now, limit, maturationHours = 72 }) {
+      const matureBefore = now.getTime() - maturationHours * 3_600_000;
+
+      return [...drafts.values()]
+        .filter((r) => r.status === 'published' && r.publishedAt && r.platform && r.pillar)
+        .filter((r) => r.publishedAt!.getTime() <= matureBefore)
+        // No snapshot means nothing to score from — the reward computation
+        // would divide by a baseline of 1 and produce a number that looks
+        // like data.
+        .filter((r) => lastSyncFor(r.id) !== null)
+        .filter((r) => !scoredContentItems.has(r.id))
+        // Oldest first, so each score sees the baseline its predecessors built.
+        .sort((a, b) => a.publishedAt!.getTime() - b.publishedAt!.getTime())
+        .slice(0, limit)
+        .map((r) => candidate(r, lastSyncFor(r.id)));
+    },
   };
+
+  function memberIdsFor(groupId: string): string[] {
+    return [...groupMembers]
+      .filter((k) => k.startsWith(`${groupId}:`))
+      .map((k) => k.slice(groupId.length + 1))
+      .sort();
+  }
+
+  /** Newest snapshot across a post's platforms — `max(synced_at)` in memory. */
+  function lastSyncFor(contentItemId: string): Date | null {
+    let newest: Date | null = null;
+    for (const snapshot of metrics.values()) {
+      if (snapshot.contentItemId !== contentItemId) continue;
+      if (!newest || snapshot.syncedAt > newest) newest = snapshot.syncedAt;
+    }
+    return newest;
+  }
+
+  function candidate(
+    row: ContentDraft & { orgId: string },
+    lastSyncedAt: Date | null,
+  ): OutcomeCandidateRow {
+    return {
+      id: row.id,
+      orgId: row.orgId,
+      genomeId: row.genomeId,
+      platform: row.platform!,
+      pillar: row.pillar ?? null,
+      publishedAt: row.publishedAt!,
+      lastSyncedAt,
+    };
+  }
 }

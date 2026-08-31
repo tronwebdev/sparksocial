@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { HumanLoopStore, HumanMessage } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { humanMessages } from './schema.js';
@@ -61,6 +61,76 @@ export function createHumanLoopRepository(db: Database): HumanLoopStore {
       return rows.map(toMessage);
     },
 
+    async listNotifications(brandId, orgId, { limit, unreadOnly }) {
+      const rows = await db
+        .select()
+        .from(humanMessages)
+        .where(
+          and(
+            eq(humanMessages.orgId, orgId),
+            eq(humanMessages.brandId, brandId),
+            eq(humanMessages.kind, 'notify'),
+            ...(unreadOnly ? [isNull(humanMessages.readAt)] : []),
+          ),
+        )
+        /**
+         * Newest first, the opposite of `listPending`. A blocking question is
+         * ordered oldest-first because the one waiting longest costs most; a
+         * notification is ordered newest-first because the most recent thing
+         * that happened is the one worth reading. Same table, opposite sorts,
+         * for the same reason.
+         */
+        .orderBy(desc(humanMessages.createdAt))
+        .limit(limit);
+
+      return rows.map(toMessage);
+    },
+
+    async unreadNotificationCount(brandId, orgId) {
+      const [row] = await db
+        .select({ n: count() })
+        .from(humanMessages)
+        .where(
+          and(
+            eq(humanMessages.orgId, orgId),
+            eq(humanMessages.brandId, brandId),
+            eq(humanMessages.kind, 'notify'),
+            isNull(humanMessages.readAt),
+          ),
+        );
+      return Number(row?.n ?? 0);
+    },
+
+    async markNotificationsRead({ brandId, orgId, ids }) {
+      /**
+       * `isNull(readAt)` is in the WHERE clause, not just for correctness but so
+       * the returned count means "how many were newly read". Without it, marking
+       * an already-read list would report rows changed and a badge would flicker
+       * a number nobody caused.
+       *
+       * An empty `ids` array is not "all" — it is "none", and matching nothing is
+       * the honest reading. Marking everything read because a caller sent an
+       * empty selection would silently clear an inbox somebody was looking at.
+       */
+      if (ids && ids.length === 0) return 0;
+
+      const rows = await db
+        .update(humanMessages)
+        .set({ readAt: sql`now()` })
+        .where(
+          and(
+            eq(humanMessages.orgId, orgId),
+            eq(humanMessages.brandId, brandId),
+            eq(humanMessages.kind, 'notify'),
+            isNull(humanMessages.readAt),
+            ...(ids ? [inArray(humanMessages.id, ids)] : []),
+          ),
+        )
+        .returning({ id: humanMessages.id });
+
+      return rows.length;
+    },
+
     async answer({ id, orgId, answer, by }) {
       /**
        * The write-once latch, enforced in the WHERE clause rather than by a
@@ -113,5 +183,6 @@ function toMessage(row: typeof humanMessages.$inferSelect): HumanMessage {
     ...(row.answeredAt ? { answeredAt: row.answeredAt } : {}),
     ...(row.answeredBy ? { answeredBy: row.answeredBy } : {}),
     ...(row.channel ? { channel: row.channel } : {}),
+    ...(row.readAt ? { readAt: row.readAt } : {}),
   };
 }

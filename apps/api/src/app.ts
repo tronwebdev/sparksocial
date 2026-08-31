@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { registerWhatsappWebhook, type WhatsappWebhookDeps } from './whatsapp-webhook.js';
+import { registerEngageWebhook, type EngageWebhookDeps } from './engage-webhook.js';
 import { streamSSE } from 'hono/streaming';
 import { ToolError } from '@sparksocial/shared/types';
 import {
@@ -32,6 +33,12 @@ import type { RunEvent, RunEventBus, RunAgentArgs, RunResult } from '@sparksocia
 export interface AppDeps {
   /** Meta's inbound webhook. Absent → the route does not exist. */
   whatsappWebhook?: WhatsappWebhookDeps;
+  /**
+   * Inbound comments and DMs. Each of its two routes registers only when its
+   * own signing secret is present, so a deployment can run the aggregator
+   * relay without Meta credentials or the reverse.
+   */
+  engageWebhook?: EngageWebhookDeps;
   /** Resolve the caller's tenancy + role from the request. Replaced by Clerk. */
   resolveCtx: (req: Request) => Promise<ToolCtx & { caller: 'user' | 'agent' }>;
   /** Brand governance state for the policy engine. */
@@ -77,6 +84,12 @@ export function createApp(deps: AppDeps) {
    * one, because the missing one fails visibly during setup.
    */
   if (deps.whatsappWebhook) registerWhatsappWebhook(app, deps.whatsappWebhook);
+
+  /**
+   * Inbound engagement — the writer `engage.ingest` never had. Same
+   * register-only-when-signed rule, per route, for the same reason.
+   */
+  if (deps.engageWebhook) registerEngageWebhook(app, deps.engageWebhook);
 
   /* ── The tool manifest. SPARK's view and the UI's view are this one list. ── */
   app.get('/v1/tools', (c) => c.json({ tools: agentManifest() }));

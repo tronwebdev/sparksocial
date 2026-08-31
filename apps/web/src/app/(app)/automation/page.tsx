@@ -1,5 +1,5 @@
 import { TopBar } from '@/components/shell/TopBar';
-import { WorkspaceSwitcher } from '@/components/shell/WorkspaceSwitcher';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { UserMenu } from '@/components/shell/UserMenu';
 import { AutomationRecipes } from '@/components/automation/AutomationRecipes';
 
@@ -11,7 +11,7 @@ import { AutomationRecipes } from '@/components/automation/AutomationRecipes';
 export default function AutomationPage() {
   return (
     <>
-      <TopBar title={<WorkspaceSwitcher />} actions={<UserMenu />} />
+      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="p-8">
         <header className="mb-6">
           <h1 className="text-[20px] font-medium text-ink">Automation Recipes</h1>
