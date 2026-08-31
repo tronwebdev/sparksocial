@@ -136,7 +136,12 @@ export const RecipeOut = z.object({
   kind: KIND,
   name: z.string(),
   config: z.unknown(),
-  status: z.enum(['active', 'paused']),
+  /**
+   * `completed` is terminal and set by the engine, never by a caller — a recipe
+   * whose `endAt` has passed. `recipe.schedule` cannot set it (its input is the
+   * two a person may choose), which is why this enum is wider than that one's.
+   */
+  status: z.enum(['active', 'paused', 'completed']),
   intervalMinutes: z.number().optional(),
   lastRunAt: z.string().optional(),
   createdAt: z.string(),
@@ -203,6 +208,116 @@ export const recipeCreate = defineTool({
   },
 });
 
+/* ── recipe.update ───────────────────────────────────────────────────── */
+
+export const RecipeUpdateInput = z.object({
+  id: z.string().min(1),
+  genomeId: z.string().min(1),
+  name: z.string().min(1).max(120).optional(),
+  /**
+   * The whole config, not a patch of it.
+   *
+   * A recipe config is validated as a unit against its kind's schema, and a deep
+   * merge would let a caller send half a config and pass validation on the
+   * strength of the half it kept — a `feedUrl` from the old config silently
+   * keeping a new one valid, for instance. The caller reads with `recipe.get`,
+   * edits, and sends the result; `kind` comes from the stored row, so the schema
+   * it is checked against cannot be chosen by the caller either.
+   */
+  config: z.unknown().optional(),
+  /** Null clears the schedule, leaving a recipe that only runs when asked. */
+  intervalMinutes: z.number().int().min(15).max(60 * 24 * 7).nullable().optional(),
+});
+
+/**
+ * `recipe.update` — editing a saved recipe, which was impossible.
+ *
+ * Every field of a recipe was write-once: `recipe.create` set them, and the only
+ * other writes were `recipe.schedule` (status) and `recipe.delete`. So correcting
+ * a typo'd feed URL, adding a keyword, or moving an end date all meant deleting
+ * the recipe and rebuilding it — which also threw away its run history and every
+ * output still waiting in the queue.
+ *
+ * `kind` is deliberately not editable. Changing it would invalidate the stored
+ * config and orphan every output produced under the old one; that is a new
+ * recipe, and `recipe.create` is how you make one.
+ */
+export const recipeUpdate = defineTool({
+  name: 'recipe.update',
+  version: 1,
+
+  summary:
+    "Edit a saved recipe's name, config or schedule. The config is validated against the recipe's existing " +
+    'kind, which cannot be changed. Free, no run is triggered.',
+
+  input: RecipeUpdateInput,
+  output: RecipeOut,
+
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  // Sending the same edit twice lands the same row. Unlike `.create`, which makes
+  // a second recipe.
+  idempotent: true,
+  surfaces: ['AUTO-01', 'AUTO-02'],
+
+  async handler(input, ctx) {
+    const existing = await ctx.db.recipes.get(input.id, input.genomeId, ctx.orgId);
+    if (!existing) throw new ToolError('NOT_FOUND', 'No such recipe.', { id: input.id });
+
+    if (input.name === undefined && input.config === undefined && input.intervalMinutes === undefined) {
+      // Refused rather than answered "done": a call that names a recipe and
+      // changes nothing is a caller bug, and success would hide it behind a
+      // screen that appears to save.
+      throw new ToolError('INVALID_INPUT', 'Nothing to change — pass name, config, or intervalMinutes.', {
+        id: input.id,
+      });
+    }
+
+    /**
+     * Validated against the *stored* kind, not one the caller supplies. That is
+     * the difference between an edit and a way to smuggle an `rss` config into an
+     * `auto_trend` recipe.
+     */
+    let config: unknown;
+    if (input.config !== undefined) {
+      const parsed = schemaFor(existing.kind as z.infer<typeof KIND>).safeParse(input.config);
+      if (!parsed.success) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `Invalid ${existing.kind} config: ${parsed.error.issues.map((i) => i.message).join('; ')}`,
+          { kind: existing.kind },
+        );
+      }
+      config = parsed.data;
+    }
+
+    const row = await ctx.db.recipes.update({
+      id: input.id,
+      genomeId: input.genomeId,
+      orgId: ctx.orgId,
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(config !== undefined ? { config } : {}),
+      ...(input.intervalMinutes !== undefined ? { intervalMinutes: input.intervalMinutes } : {}),
+    });
+    if (!row) throw new ToolError('NOT_FOUND', 'No such recipe.', { id: input.id });
+
+    const notApplied = input.config !== undefined ? scanNotApplied(input.config) : [];
+    if (notApplied.length) {
+      ctx.logger.warn('recipe updated with fields the engine does not act on', {
+        recipeId: row.id,
+        fields: notApplied.map((n) => n.field),
+      });
+    }
+
+    ctx.logger.info('recipe updated', {
+      recipeId: row.id,
+      changed: Object.keys(input).filter((k) => k !== 'id' && k !== 'genomeId'),
+    });
+    return { ...toOut(row), ...(notApplied.length ? { notApplied } : {}) };
+  },
+});
+
 /* ── recipe.get / recipe.list ────────────────────────────────────────── */
 
 export const recipeGet = defineTool({
@@ -245,6 +360,12 @@ export const recipeSchedule = defineTool({
   name: 'recipe.schedule',
   version: 1,
   summary: 'Turn a recipe on or off. A paused recipe is not deleted — its config and history stay.',
+  /**
+   * Two values, not three. `completed` is what the engine sets when a recipe's own
+   * `endAt` passes, and it is not a thing to be *chosen* — offering it here would
+   * let a caller retire a recipe by claiming its window had closed, and would give
+   * two spellings for what "stop this" means.
+   */
   input: z.object({ id: z.string().min(1), genomeId: z.string().min(1), status: z.enum(['active', 'paused']) }),
   output: RecipeOut,
   effect: 'write',
@@ -345,13 +466,42 @@ export function makeRecipeRun(deps: RecipeDeps) {
        */
       const window = withinRunWindow(recipe.config, new Date());
       if (!window.ok) {
+        /**
+         * Past its end date, the recipe is retired rather than merely refused.
+         *
+         * This used to return and stop, which was correct about *this* run and
+         * wrong about every subsequent one: `findDue` selects on
+         * `status = 'active'` and knows nothing about `endAt`, so the scheduler
+         * kept invoking an expired recipe every five minutes forever — an audit
+         * row and one of ten batch slots each time, taken from recipes that could
+         * still do work. Nothing ever cleared it, because nothing was looking.
+         *
+         * Only for `finished`, not for `not started yet`: a recipe with a future
+         * `startAt` is waiting, and marking it completed would retire it before it
+         * ever ran. `withinRunWindow` distinguishes the two by which bound it
+         * failed, so that distinction is read here rather than re-derived.
+         */
+        if (window.expired) {
+          await ctx.db.recipes.setStatus({
+            id: input.id,
+            genomeId: input.genomeId,
+            orgId: ctx.orgId,
+            status: 'completed',
+          });
+          ctx.logger.info('recipe completed — past its end date', { id: input.id });
+        }
         return {
           runId: '',
           outputCount: 0,
           error: window.reason,
           why: {
             summary: window.reason,
-            factors: [{ label: 'kind', detail: recipe.kind }],
+            factors: [
+              { label: 'kind', detail: recipe.kind },
+              ...(window.expired
+                ? [{ label: 'status', detail: 'Marked completed — it will not be polled again.' }]
+                : []),
+            ],
             evidence: [],
             alternatives: [],
           },
@@ -527,7 +677,7 @@ export const recipeOutputDecide = defineTool({
   },
 });
 
-function toOut(row: { id: string; genomeId: string; kind: string; name: string; config: unknown; status: 'active' | 'paused'; intervalMinutes?: number; lastRunAt?: Date; createdAt: Date }) {
+function toOut(row: { id: string; genomeId: string; kind: string; name: string; config: unknown; status: 'active' | 'paused' | 'completed'; intervalMinutes?: number; lastRunAt?: Date; createdAt: Date }) {
   return {
     id: row.id,
     genomeId: row.genomeId,

@@ -187,6 +187,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async () => undefined,
         list: async () => [],
         setStatus: async () => undefined,
+        update: async () => undefined,
         delete: async () => {},
         markRan: async () => {},
         findDue: async () => [],

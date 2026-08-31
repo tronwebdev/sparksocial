@@ -1,4 +1,4 @@
-import type { Trend, TrendSource } from '../trend.js';
+import { applyKeywordFilters, type Trend, type TrendSource } from '../trend.js';
 import { timedFetch, clamp01 } from './http.js';
 
 /**
@@ -50,7 +50,20 @@ export function createPinterestTrendSource(config: PinterestTrendSourceConfig): 
   return {
     name: 'pinterest',
 
-    async fetch({ limit, region: requestedRegion }) {
+    /**
+     * Filters rather than searches, and says so.
+     *
+     * The endpoint this uses is `trends/keywords/{region}/top/growing`, which
+     * *returns* keywords rather than accepting one; Pinterest's related-keywords
+     * endpoint answers a different question and needs its own adapter. A keyword therefore narrows what this
+     * source already returns instead of asking the vendor for matches — which for
+     * a niche keyword over one page of trending items returns nothing at all. The
+     * declaration is what lets the recipe wizard tell an owner that this source
+     * cannot search, rather than showing them an empty result that reads as "no
+     * trends about this exist".
+     */
+    keywordSupport: 'filter',
+    async fetch({ limit, region: requestedRegion, keywords, excludeKeywords }) {
       const res = await timedFetch(
         `https://api.pinterest.com/v5/trends/keywords/${requestedRegion ?? region}/top/growing?limit=${Math.min(50, limit)}`,
         { headers: { Authorization: `Bearer ${config.accessToken}` } },
@@ -62,7 +75,10 @@ export function createPinterestTrendSource(config: PinterestTrendSourceConfig): 
         );
       }
       const body = (await res.json()) as PinterestTrendsResponse;
-      return (body.trends ?? []).map(toTrend);
+      return applyKeywordFilters((body.trends ?? []).map(toTrend), {
+        ...(keywords ? { keywords } : {}),
+        ...(excludeKeywords ? { excludeKeywords } : {}),
+      });
     },
   };
 }

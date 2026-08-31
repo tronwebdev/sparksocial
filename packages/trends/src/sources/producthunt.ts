@@ -1,4 +1,4 @@
-import type { Trend, TrendSource } from '../trend.js';
+import { applyKeywordFilters, type Trend, type TrendSource } from '../trend.js';
 import { timedFetch, clamp01 } from './http.js';
 
 /**
@@ -87,7 +87,19 @@ export function createProductHuntTrendSource(config: ProductHuntTrendSourceConfi
   return {
     name: 'producthunt',
 
-    async fetch({ limit }) {
+    /**
+     * Filters rather than searches, and says so.
+     *
+     * The GraphQL `posts` query this uses orders by votes and takes no free-text
+     * search argument. A keyword therefore narrows what this
+     * source already returns instead of asking the vendor for matches — which for
+     * a niche keyword over one page of trending items returns nothing at all. The
+     * declaration is what lets the recipe wizard tell an owner that this source
+     * cannot search, rather than showing them an empty result that reads as "no
+     * trends about this exist".
+     */
+    keywordSupport: 'filter',
+    async fetch({ limit, keywords, excludeKeywords }) {
       const token = await getAccessToken();
       const res = await timedFetch(
         'https://api.producthunt.com/v2/api/graphql',
@@ -104,7 +116,10 @@ export function createProductHuntTrendSource(config: ProductHuntTrendSourceConfi
       if (!res.ok) throw new Error(`Product Hunt GraphQL request failed: ${res.status} ${res.statusText}`);
       const body = (await res.json()) as ProductHuntGraphQLResponse;
       if (body.errors?.length) throw new Error(`Product Hunt GraphQL error: ${body.errors[0]!.message}`);
-      return (body.data?.posts.edges ?? []).map((e) => toTrend(e.node));
+      return applyKeywordFilters((body.data?.posts.edges ?? []).map((e) => toTrend(e.node)), {
+        ...(keywords ? { keywords } : {}),
+        ...(excludeKeywords ? { excludeKeywords } : {}),
+      });
     },
   };
 }

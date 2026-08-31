@@ -58,15 +58,92 @@ export type Trend = z.infer<typeof Trend>;
  * building now, and they are worth nothing if they cannot be tested without
  * four vendor contracts.
  */
+/**
+ * How well a source can honour a keyword.
+ *
+ * This is declared rather than inferred because the difference is not a detail
+ * the caller can shrug at. A source with `'server'` asks the vendor for the
+ * keyword and gets back matches from the vendor's whole corpus. A source with
+ * `'filter'` fetches its usual trending list and discards what does not match —
+ * which for a niche keyword over a fifty-item list returns *nothing*, and
+ * "nothing" is indistinguishable on screen from "there are no trends about
+ * this". One of those is a fact about the world and the other is a fact about
+ * our integration, and the recipe wizard has to be able to say which.
+ */
+export type KeywordSupport = 'server' | 'filter';
+
+export interface TrendFetchArgs {
+  region?: string;
+  language?: string;
+  limit: number;
+  /**
+   * Topics the caller is looking for — `AUTO-02`'s keyword step, which had
+   * nothing to reach until this parameter existed. Empty or absent means "give me
+   * what is trending", the behaviour every caller had before.
+   *
+   * Matched as OR: a recipe watching `marketing, sales, AI` wants anything about
+   * any of them, not the intersection, which would almost always be empty.
+   */
+  keywords?: readonly string[];
+  /**
+   * Topics to drop, applied after everything else — the wizard's "exclude
+   * keywords". AND-NOT: one match on this list removes the trend, whatever else
+   * it matched.
+   */
+  excludeKeywords?: readonly string[];
+}
+
 export interface TrendSource {
   readonly name: string;
-  fetch(args: { region?: string; language?: string; limit: number }): Promise<Trend[]>;
+  /**
+   * Whether this source searches the vendor for a keyword or filters what it
+   * already fetched. Absent reads as `'filter'` — the conservative claim, since a
+   * source that has not said it can search should not be assumed to.
+   */
+  readonly keywordSupport?: KeywordSupport;
+  fetch(args: TrendFetchArgs): Promise<Trend[]>;
   /**
    * One trend by id, for `trend.detail`/`trend.explain`/`trend.repurpose`.
    * Optional: a source with no cheap lookup-by-id falls back to scanning a
    * larger `fetch()` — real, just less efficient, never fabricated.
    */
   get?(id: string): Promise<Trend | undefined>;
+}
+
+/**
+ * Whether a trend matches a keyword list, over its topic and its tags.
+ *
+ * One definition, shared by every adapter that filters client-side and by the
+ * composite. Substring rather than token matching, and lowercased: a keyword of
+ * `market` should find "marketing", because the alternative is a control that
+ * silently requires the owner to guess the vendor's exact word. Over-matching is
+ * recoverable — the exclude list and the relevance floor both run afterwards —
+ * and under-matching looks like an empty world.
+ */
+export function matchesKeywords(trend: Trend, keywords: readonly string[] | undefined): boolean {
+  if (!keywords?.length) return true;
+  const haystack = `${trend.topic} ${trend.tags.join(' ')}`.toLowerCase();
+  return keywords.some((k) => {
+    const needle = k.trim().toLowerCase();
+    return needle.length > 0 && haystack.includes(needle);
+  });
+}
+
+/**
+ * Apply a caller's keyword and exclude lists to a fetched batch.
+ *
+ * Exported so an adapter that searched server-side can still apply the *exclude*
+ * list, which no vendor's search endpoint takes: Reddit and YouTube both accept a
+ * query and neither accepts a negation. Running it over server results is not
+ * redundant work, it is the half the vendor did not do.
+ */
+export function applyKeywordFilters(
+  trends: Trend[],
+  args: { keywords?: readonly string[]; excludeKeywords?: readonly string[]; alreadySearched?: boolean },
+): Trend[] {
+  const kept = args.alreadySearched ? trends : trends.filter((t) => matchesKeywords(t, args.keywords));
+  if (!args.excludeKeywords?.length) return kept;
+  return kept.filter((t) => !matchesKeywords(t, args.excludeKeywords));
 }
 
 /**
@@ -142,8 +219,12 @@ export function createStubTrendSource(): TrendSource {
 
   return {
     name: 'stub',
-    async fetch({ limit }) {
-      return trends.slice(0, limit);
+    // Filters rather than claiming to search, which is the truth for a fixed
+    // four-item array — and it means every test of the keyword path runs against
+    // the same semantics the three filtering adapters have.
+    keywordSupport: 'filter',
+    async fetch({ limit, keywords, excludeKeywords }) {
+      return applyKeywordFilters(trends, { ...(keywords ? { keywords } : {}), ...(excludeKeywords ? { excludeKeywords } : {}) }).slice(0, limit);
     },
     async get(id) {
       return trends.find((t) => t.id === id);

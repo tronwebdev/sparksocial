@@ -2352,12 +2352,36 @@ export async function listRecipes(db: Database, scope: Scope): Promise<RecipeRow
 export async function setRecipeStatus(
   db: Database,
   scope: Scope,
-  args: { id: string; status: 'active' | 'paused' },
+  args: { id: string; status: 'active' | 'paused' | 'completed' },
 ): Promise<RecipeRow | undefined> {
   assertScope(scope);
   const [row] = await db
     .update(recipes)
     .set({ status: args.status, updatedAt: sql`now()` })
+    .where(and(eq(recipes.id, args.id), scopePredicate('recipes', scope)))
+    .returning(recipeColumns);
+  return row;
+}
+
+/**
+ * A partial update of one recipe. `undefined` leaves a column alone; `null` on
+ * `intervalMinutes` clears the schedule, which is how a recipe becomes
+ * run-on-demand-only.
+ */
+export async function updateRecipe(
+  db: Database,
+  scope: Scope,
+  args: { id: string; name?: string; config?: unknown; intervalMinutes?: number | null },
+): Promise<RecipeRow | undefined> {
+  assertScope(scope);
+  const set: Record<string, unknown> = { updatedAt: sql`now()` };
+  if (args.name !== undefined) set.name = args.name;
+  if (args.config !== undefined) set.config = args.config;
+  if (args.intervalMinutes !== undefined) set.intervalMinutes = args.intervalMinutes;
+
+  const [row] = await db
+    .update(recipes)
+    .set(set)
     .where(and(eq(recipes.id, args.id), scopePredicate('recipes', scope)))
     .returning(recipeColumns);
   return row;

@@ -159,10 +159,13 @@ import {
   makeTrendObserve,
   trendInfluencerWatch,
   makeTrendInfluencerReview,
+  makeTrendSources,
+  describeKeywordSupport,
 } from '@sparksocial/trends';
 import {
   recipeValidate,
   recipeCreate,
+  recipeUpdate,
   recipeGet,
   recipeList,
   recipeSchedule,
@@ -172,7 +175,7 @@ import {
   recipeOutputDecide,
 } from '@sparksocial/recipes';
 import { fetchTextForRecipes, fetchWithAuthForRecipes } from './recipe-fetch.js';
-import { buildTrendSource } from './trend-sources.js';
+import { buildTrendSource, buildTrendSourceEntries } from './trend-sources.js';
 import { learningRecordOutcome, learningReweight, learningConfidence, learningExplain, learningFreeze, learningReset } from '@sparksocial/learning';
 import {
   makeAnalyticsSync,
@@ -565,6 +568,16 @@ export function registerAlphaTools(): void {
   register(makeTrendHooks(trendSource, hookWriter()));
   register(makeTrendReshare(trendSource));
   register(makeTrendWatchlist(trendSource));
+  /**
+   * Which sources are live, and which can search for a keyword.
+   *
+   * The recipe wizard asks for keywords; what they do depends on the workspace's
+   * configuration, and the difference between "searched the platform" and
+   * "narrowed the trending page" is the difference between an empty result the
+   * owner should act on and one they should ignore. Described from the same
+   * entries the composite was built from, so the two cannot disagree.
+   */
+  register(makeTrendSources(() => describeKeywordSupport(buildTrendSourceEntries())));
   register(makeTrendExplain(trendSource));
   register(makeTrendObserve(trendSource));
 
@@ -590,6 +603,9 @@ export function registerAlphaTools(): void {
   // says so.
   register(recipeValidate);
   register(recipeCreate);
+  // Editing a saved recipe, which was impossible: every field was write-once, so
+  // a typo'd feed URL meant deleting the recipe and losing its run history.
+  register(recipeUpdate);
   register(recipeGet);
   register(recipeList);
   register(recipeSchedule);

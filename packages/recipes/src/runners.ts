@@ -150,15 +150,25 @@ export type RecipeCommonConfig = z.infer<typeof RecipeCommonConfig>;
  * Exported because `recipe.run` has to answer this before doing any work, and
  * the scheduler has to answer it before deciding a recipe is even due.
  */
-export function withinRunWindow(config: unknown, now: Date): { ok: true } | { ok: false; reason: string } {
+export function withinRunWindow(
+  config: unknown,
+  now: Date,
+): { ok: true } | { ok: false; reason: string; expired: boolean } {
   const parsed = RecipeCommonConfig.partial().safeParse(config);
   if (!parsed.success) return { ok: true };
   const { startAt, endAt } = parsed.data;
   if (startAt && now < new Date(startAt)) {
-    return { ok: false, reason: `This recipe does not start until ${startAt}.` };
+    /**
+     * `expired: false` — and the distinction is load-bearing rather than
+     * cosmetic. Both bounds produce "no output from this run", but only one means
+     * the recipe is finished: a recipe with a future `startAt` is *waiting*, and
+     * retiring it would kill it before it ever ran. `recipe.run` reads this flag
+     * to decide whether to mark the recipe completed.
+     */
+    return { ok: false, reason: `This recipe does not start until ${startAt}.`, expired: false };
   }
   if (endAt && now > new Date(endAt)) {
-    return { ok: false, reason: `This recipe finished on ${endAt}.` };
+    return { ok: false, reason: `This recipe finished on ${endAt}.`, expired: true };
   }
   return { ok: true };
 }
@@ -189,6 +199,22 @@ export const AutoTrendConfig = RecipeCommonConfig.extend({
   language: z.string().optional(),
   minScore: z.number().min(0).max(1).default(0.4),
   maxOutputs: z.number().int().min(1).max(10).default(3),
+  /**
+   * `AUTO-02`'s keyword step. **Applied** — passed through to
+   * `TrendSource.fetch`, which took no keyword parameter until now, which is why
+   * the wizard's whole keyword step had nothing to reach.
+   *
+   * Ten is not a UI nicety: keywords are OR'd, and a recipe watching twenty
+   * topics is watching everything, which is what the source does anyway without
+   * any of them. Capped where the control stops being a filter.
+   */
+  keywords: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
+  /**
+   * The exclude list, applied after everything else and by us rather than by the
+   * vendor: neither Reddit's nor YouTube's search accepts a negation, so this is
+   * the half no source can do.
+   */
+  excludeKeywords: z.array(z.string().trim().min(1).max(60)).max(20).default([]),
 });
 
 async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<RecipeRunResult> {
@@ -200,9 +226,40 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
     limit: Math.max(config.maxOutputs * 3, 20),
     ...(config.region ? { region: config.region } : {}),
     ...(config.language ? { language: config.language } : {}),
+    // The two fields that make the keyword step real. Passed only when non-empty
+    // so a recipe that names none is byte-for-byte the call every recipe made
+    // before this parameter existed.
+    ...(config.keywords.length ? { keywords: config.keywords } : {}),
+    ...(config.excludeKeywords.length ? { excludeKeywords: config.excludeKeywords } : {}),
   });
+  /**
+   * A keyword recipe that finds nothing has two possible causes and they need
+   * different answers: the source returned nothing for those words, or it
+   * returned things the genome scores below `minScore`. Reported rather than
+   * collapsed into an empty run — "no trends matched" sends the owner to change
+   * their keywords, and "matched but scored low" sends them to widen the score,
+   * and guessing wrong wastes their next attempt.
+   */
+  if (fetched.length === 0 && config.keywords.length > 0) {
+    return {
+      outputs: [],
+      error:
+        `No trends came back for ${config.keywords.join(', ')}. Some sources search their platform for a ` +
+        `keyword and some can only narrow what they already fetched — try fewer or broader words.`,
+    };
+  }
+
   const { ranked } = rankTrends(ctx.genome, fetched);
   const eligible = ranked.filter((r) => r.score >= config.minScore).slice(0, config.maxOutputs);
+
+  if (eligible.length === 0 && fetched.length > 0 && config.keywords.length > 0) {
+    return {
+      outputs: [],
+      error:
+        `${fetched.length} trends matched those keywords, but none scored above ${config.minScore} for this ` +
+        `brand. Lower the score threshold, or use words closer to what the brand actually does.`,
+    };
+  }
 
   const outputs: RecipeOutputPreview[] = [];
   for (const r of eligible) {

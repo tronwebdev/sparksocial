@@ -1165,7 +1165,11 @@ export function createDevStore(
       async create({ genomeId, orgId: org, kind, name, config, intervalMinutes }) {
         const id = `recipe_${nextRecipe++}`;
         const row = {
-          id, genomeId, orgId: org, kind, name, config, status: 'active' as const,
+          id, genomeId, orgId: org, kind, name, config,
+          // Widened rather than `as const`: a recipe past its `endAt` is set to
+          // `completed`, and inferring the field from its initial value made that
+          // assignment a type error rather than a state.
+          status: 'active' as 'active' | 'paused' | 'completed',
           createdAt: new Date(), updatedAt: new Date(),
           ...(intervalMinutes ? { intervalMinutes } : {}),
         };
@@ -1186,6 +1190,19 @@ export function createDevStore(
         row.updatedAt = new Date();
         return row;
       },
+      async update({ id, genomeId, orgId: org, name, config, intervalMinutes }) {
+        const row = recipes.get(id);
+        if (!row || row.genomeId !== genomeId || row.orgId !== org) return undefined;
+        if (name !== undefined) row.name = name;
+        // Replaced whole, matching the repository: a config is validated as a unit
+        // against its kind's schema, so a merge could pass on the strength of the
+        // half it kept.
+        if (config !== undefined) row.config = config;
+        if (intervalMinutes !== undefined) row.intervalMinutes = intervalMinutes ?? undefined;
+        row.updatedAt = new Date();
+        return row;
+      },
+
       async delete(id, genomeId, org) {
         const row = recipes.get(id);
         if (row && row.genomeId === genomeId && row.orgId === org) recipes.delete(id);
