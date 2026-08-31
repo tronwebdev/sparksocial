@@ -149,6 +149,7 @@ import {
   makeTrendDetail,
   makeTrendSafetyFilter,
   makeTrendRepurpose,
+  makeTrendHooks,
   makeTrendReshare,
   makeTrendWatchlist,
   makeTrendExplain,
@@ -214,6 +215,7 @@ import { analyticsClient } from './analytics-client.js';
 import { ayrshareAdapterClient } from './ayrshare-adapter-client.js';
 import { engageClassifier } from './engage-classifier.js';
 import { replyWriter } from './reply-writer.js';
+import { hookWriter } from './hook-writer.js';
 import { whatsappTransportClient } from './whatsapp-transport-client.js';
 import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
@@ -553,6 +555,9 @@ export function registerAlphaTools(): void {
   register(makeTrendDetail(trendSource));
   register(makeTrendSafetyFilter(trendSource));
   register(makeTrendRepurpose(trendSource));
+  // DISC-02's "multiple hook ideas". Never auto-loaded — the screen shows a
+  // button, because three hooks is three model calls. See packages/trends/src/hooks.ts.
+  register(makeTrendHooks(trendSource, hookWriter()));
   register(makeTrendReshare(trendSource));
   register(makeTrendWatchlist(trendSource));
   register(makeTrendExplain(trendSource));
