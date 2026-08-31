@@ -5,11 +5,13 @@ import { EMBEDDING_DIM, deterministicEmbedding } from '@sparksocial/shared/embed
 import { createDevRunStore, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
 import { createDevBrandStore } from './dev-brands.js';
+import { createDevBrandEngagementStore } from './dev-brand-engagement.js';
 import { createDevApprovalStore } from './dev-approvals.js';
 import { createDevHumanLoopStore } from './dev-human-loop.js';
 import { createDevConsentStore } from './dev-consent.js';
 import type {
   ApprovalStore,
+  BrandEngagementStore,
   BrandGovernanceStore,
   CampaignStore,
   ConsentStore,
@@ -146,6 +148,7 @@ export interface DevStoreOptions {
   runStore?: DevRunStore;
   campaignStore?: CampaignStore;
   brandStore?: BrandGovernanceStore;
+  brandEngagementStore?: BrandEngagementStore;
   /**
    * The queue reads inputs back from the audit rows rather than copying them,
    * so it needs a way to reach them. `memoryInvokeDeps` owns that array, which
@@ -197,6 +200,7 @@ export function createDevStore(
     runStore = createDevRunStore(),
     campaignStore = createDevCampaignStore(),
     brandStore = createDevBrandStore(),
+    brandEngagementStore = createDevBrandEngagementStore(),
     approvalStore = createDevApprovalStore(() => undefined),
     humanLoopStore = createDevHumanLoopStore(),
     consentStore = createDevConsentStore(),
@@ -1453,6 +1457,7 @@ export function createDevStore(
 
     approvals: approvalStore,
     brands: brandStore,
+    brandEngagement: brandEngagementStore,
     humanLoop: humanLoopStore,
     consent: consentStore,
 

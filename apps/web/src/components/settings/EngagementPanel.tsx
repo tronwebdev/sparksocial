@@ -2,408 +2,418 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PanelSkeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
+import { AutonomyStep } from './engagement/AutonomyStep';
+import { BoundariesStep } from './engagement/BoundariesStep';
+import { PlatformsStep, type PlatformDraft } from './engagement/PlatformsStep';
+import { SalesStep } from './engagement/SalesStep';
+import { VoiceStep } from './engagement/VoiceStep';
+import {
+  ENGAGEMENT_LEVELS,
+  PLATFORMS,
+  STEPS,
+  STEP_TITLES,
+  splitList,
+  type EmojiLevel,
+  type EngagementAutonomy,
+  type EngagementTone,
+  type EscalationBehavior,
+  type Governance,
+  type PlatformsRead,
+  type Step,
+} from './engagement/types';
 
 /**
- * ENGAGEMENT INTELLIGENCE — `SET-WS-EI-AUTONOMY` through `SET-WS-EI-SALES`.
+ * ENGAGEMENT INTELLIGENCE — `Settings WS Engagement Start` through `… Done`.
  *
- * Five prototypes give this its own settings section. In the build it was two
- * blocks inside `GovernancePanel`, a 850-line component that also owned
- * guardrails, voice, posting windows and the brand kit — so the settings
- * navigation could not have named sections while one component spanned four of
- * them. This is the half that moved out.
+ * ── Five screens are five steps, not one long panel ───────────────────────
  *
- * ── Two panels, one tool, and why that is fine ────────────────────────────
+ * The design draws a Start screen, five steps with a Back/Continue rail, and a
+ * Done screen that says "Configured". The build had two of the five as blocks in
+ * a single scrolling panel with one Save at the bottom, so three of the design's
+ * screens had nowhere to be and the two that existed did not read as a decision
+ * with a beginning and an end.
  *
- * Both this and `GovernancePanel` write through `brand.governance.set`, which
- * is a partial patch by contract: omitted fields are left alone. So each panel
- * sends only its own fields and neither can clobber the other.
+ * ── Each step saves on Continue ───────────────────────────────────────────
  *
- * That is better than the single save it replaces, not merely equivalent.
- * Before, editing your voice sent the engagement and sales fields too — whatever
- * the form happened to be holding — so a stale value in a section you had not
- * looked at could be written back over a change made in another tab.
+ * Not one save at the end. `brand.governance.set` is a partial patch by
+ * contract, so a step can send its own fields and nothing else; somebody who
+ * abandons the flow at step 4 keeps steps 1 to 3. A single terminal save would
+ * throw that away, and would also mean the Done screen's claim depended on a
+ * request that had not happened yet at the moment the owner made each choice.
  *
- * ── What is enforced, and what is only recorded ───────────────────────────
+ * ── "Configured" is recorded, not inferred ────────────────────────────────
  *
- * The autonomy level and the escalation list are both genuinely enforced:
- * `policy.ts` rule 6 reads the level, and `engage.classify` overrides itself
- * deterministically on an escalation keyword. The handoff rule is applied by
- * `engage.opportunity.create`. The qualification moves are the one group here
- * that is currently recorded and not yet read by anything — they describe what
- * the agent may do in a conversation, and the reply path does not consult them.
+ * `brands.engagement_configured_at` is stamped by the final Continue. The
+ * alternative was to guess from whether any field looked non-default, which gets
+ * wrong the one case that matters most: an owner who walks the whole flow and
+ * agrees with every default would be told they had never configured it, on the
+ * screen whose entire job is to say whether they had.
+ *
+ * ── What is enforced ──────────────────────────────────────────────────────
+ *
+ * Autonomy: `policy.ts` rule 6. Message types: the same rule, per kind. Hard
+ * rules: four as prohibitions in the reply writer's prompt, and
+ * `never_auto_reply_to_complaints` as an escalation before any prompt runs.
+ * Keywords: `engage.classify` overrides itself deterministically on a match.
+ * Platforms: `applyPlatformOverride`, which can only narrow. Voice and emoji: the
+ * writer's prompt. Handoff: `engage.opportunity.create`. The qualification moves
+ * are read by the reply writer as what the agent may offer.
  */
-
-interface Governance {
-  engagementAutonomy: 'off' | 'suggest' | 'auto';
-  engagementTypes: string[];
-  salesQualification: string[];
-  salesHandoff: { hot: string; warm: string; cold: string };
-  usingDefaultHandoff: boolean;
-  salesDestination?: string;
-  salesEscalationKeywords: string[];
-}
-
-/**
- * PRD §8.8's autonomy level. `off` is not the same as unset — it is the
- * conservative rung, and it is what `policy.ts` rule 6 reads as
- * "autonomy has not been configured", which holds every reply for approval.
- */
-const ENGAGEMENT_LEVELS = [
-  { value: 'off', label: 'Draft only', hint: 'SPARK writes the reply. You send it.' },
-  { value: 'suggest', label: 'Suggest and hold', hint: 'Replies queue for your approval before sending.' },
-  { value: 'auto', label: 'Answer the safe ones', hint: 'SPARK sends replies it judged safe, on its own.' },
-] as const;
-
-const ENGAGEMENT_TYPES = [
-  { value: 'comment', label: 'Comments' },
-  { value: 'dm', label: 'DMs' },
-  { value: 'story_reply', label: 'Story replies' },
-] as const;
-
-
-/**
- * Sales Assist (`SET-WS-EI-SALES`).
- *
- * Each option authorises the agent to *do* something specific, so the labels
- * say what will happen rather than naming a capability — "Share your booking
- * link" is a promise the owner is making, and it should read like one.
- */
-const QUALIFICATION_OPTIONS = [
-  { value: 'ask_qualifying_questions', label: 'Ask qualifying questions', hint: 'What they want, when, budget.' },
-  { value: 'share_booking_link', label: 'Share your booking link', hint: 'Sends people straight to your calendar.' },
-  { value: 'share_pricing_link', label: 'Share your pricing page', hint: 'Only if your prices are public.' },
-  { value: 'collect_contact_details', label: 'Collect contact details', hint: 'Asks for a name and a way to reach them.' },
-] as const;
-
-/**
- * The prototype says "Send to CRM + notify me" for the first of these, and this
- * is the one F21 label that is deliberately *not* adopted.
- *
- * There is no CRM integration. `opportunities.routed_to` is free text and
- * `engage.opportunity.create`'s own comment says so outright — the destination is
- * an email address or a reference somebody reads. A label promising a CRM would
- * be the copy claiming an integration the product does not have, which is a
- * different kind of error from a plainer word.
- */
-const HANDOFF_DESTINATIONS = [
-  { value: 'crm_notify', label: 'Send on + notify me' },
-  { value: 'save_notify', label: 'Save + notify me' },
-  { value: 'nurture_only', label: 'Nurture only' },
-] as const;
-
-const TEMPERATURES = [
-  { value: 'hot', label: 'Hot', emoji: '\ud83d\udd25', hint: 'Ready to buy' },
-  { value: 'warm', label: 'Warm', emoji: '\ud83c\udf21\ufe0f', hint: 'Interested, not yet' },
-  { value: 'cold', label: 'Cold', emoji: '\u2744\ufe0f', hint: 'Just looking' },
-] as const;
-
-const splitList = (text: string): string[] =>
-  text
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 
 export function EngagementPanel() {
   const [loading, setLoading] = useState(true);
-  const [engagementAutonomy, setEngagementAutonomy] = useState<'off' | 'suggest' | 'auto'>('off');
-  const [engagementTypes, setEngagementTypes] = useState<string[]>([]);
-  const [salesQualification, setSalesQualification] = useState<string[]>([]);
-  const [salesHandoff, setSalesHandoff] = useState<{ hot: string; warm: string; cold: string }>({
-    hot: 'crm_notify',
-    warm: 'save_notify',
-    cold: 'nurture_only',
-  });
+  const [step, setStep] = useState<Step | null>(null);
+  const [configuredAt, setConfiguredAt] = useState<string | undefined>(undefined);
+
+  // Step 1
+  const [autonomy, setAutonomy] = useState<EngagementAutonomy>('off');
+  const [types, setTypes] = useState<string[]>([]);
+  // Step 2
+  const [hardRules, setHardRules] = useState<string[]>([]);
+  const [escalation, setEscalation] = useState<EscalationBehavior>('hold');
+  const [keywords, setKeywords] = useState('');
+  // Step 3
+  const [platformDrafts, setPlatformDrafts] = useState<PlatformDraft[]>([]);
+  const [brandTypesFromServer, setBrandTypesFromServer] = useState<string[]>([]);
+  // Step 4
+  const [tone, setTone] = useState<EngagementTone | undefined>(undefined);
+  const [emoji, setEmoji] = useState<EmojiLevel>('none');
+  // Step 5
+  const [qualification, setQualification] = useState<string[]>([]);
+  const [handoff, setHandoff] = useState({ hot: 'crm_notify', warm: 'save_notify', cold: 'nurture_only' });
   const [usingDefaultHandoff, setUsingDefaultHandoff] = useState(true);
-  const [salesDestination, setSalesDestination] = useState('');
-  const [escalationText, setEscalationText] = useState('');
+  const [destination, setDestination] = useState('');
+
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
-      const res = await invoke<Governance>('brand.governance.get', {});
+      /**
+       * Both reads in parallel, and the platform read is allowed to fail without
+       * taking the panel down: it is a matrix of overrides, and a brand with none
+       * is the common case. Blocking the whole flow on it would make step 3's
+       * absence break steps 1, 2, 4 and 5.
+       */
+      const [gov, plats] = await Promise.all([
+        invoke<Governance>('brand.governance.get', {}),
+        invoke<PlatformsRead>('brand.engagement.platforms.get', {}),
+      ]);
       setLoading(false);
-      if (res.status !== 'succeeded') return;
-      const g = res.output;
-      setEngagementAutonomy(g.engagementAutonomy);
-      setEngagementTypes(g.engagementTypes);
-      setSalesQualification(g.salesQualification);
-      setSalesHandoff(g.salesHandoff);
-      setUsingDefaultHandoff(g.usingDefaultHandoff);
-      setSalesDestination(g.salesDestination ?? '');
-      setEscalationText(g.salesEscalationKeywords.join(', '));
+
+      if (gov.status === 'succeeded') {
+        const g = gov.output;
+        setAutonomy(g.engagementAutonomy);
+        setTypes(g.engagementTypes);
+        setHardRules(g.hardRules ?? []);
+        setEscalation(g.escalationBehavior ?? 'hold');
+        setKeywords(g.salesEscalationKeywords.join(', '));
+        setTone(g.engagementTone);
+        setEmoji(g.emojiLevel ?? 'none');
+        setQualification(g.salesQualification);
+        setHandoff(g.salesHandoff);
+        setUsingDefaultHandoff(g.usingDefaultHandoff);
+        setDestination(g.salesDestination ?? '');
+        setConfiguredAt(g.engagementConfiguredAt);
+      }
+
+      if (plats.status === 'succeeded') {
+        setBrandTypesFromServer(plats.output.brandEngagementTypes);
+        setPlatformDrafts(
+          plats.output.platforms.map((p) => ({
+            platform: p.platform,
+            /**
+             * `autonomyInherited` rather than the row-level `inherited`, and
+             * `!enabled` first: a muted platform is a choice, and reading it as
+             * "following my default" would draw the row as inheriting while the
+             * reply path silently answered nothing there.
+             */
+            choice: !p.enabled ? 'off' : p.autonomyInherited ? 'inherit' : p.autonomy,
+            types: p.typesInherited ? null : p.engagementTypes,
+          })),
+        );
+      }
     })();
   }, []);
 
-  async function save() {
-    setBusy(true);
-    setMessage(null);
-
-    // Only this section's fields. `brand.governance.set` leaves the rest alone.
-    const res = await invoke<Governance>('brand.governance.set', {
-      engagementAutonomy,
-      // Empty means every type, which is a different fact from "none" — so it
-      // clears rather than storing an empty list.
-      engagementTypes: engagementTypes.length ? engagementTypes : null,
-      // Same `null`-clears rule: no qualification moves is the safe state, and
-      // an empty list has to be able to mean that rather than being unsendable.
-      salesQualification: salesQualification.length ? salesQualification : null,
-      // Only send a handoff map the brand has actually chosen. Sending the
-      // resolved default back would convert "no preference" into a choice, and
-      // the default could then never move.
-      salesHandoff: usingDefaultHandoff ? null : salesHandoff,
-      salesDestination: salesDestination.trim() ? salesDestination.trim() : null,
-      salesEscalationKeywords: splitList(escalationText).length ? splitList(escalationText) : null,
-    });
-
-    setBusy(false);
-    if (res.status === 'succeeded') {
-      // Resolved server-side, so an incomplete map the client sent comes back as
-      // the defaults rather than leaving the screen claiming a rule nothing obeys.
-      setUsingDefaultHandoff(res.output.usingDefaultHandoff);
-      setSalesHandoff(res.output.salesHandoff);
-      setMessage({ kind: 'ok', text: 'Saved.' });
-      return;
-    }
-    setMessage({
-      kind: 'err',
-      text: res.status === 'failed' ? res.error.message : 'That change needs approval.',
+  function patchPlatform(platform: string, patch: Partial<PlatformDraft>) {
+    setPlatformDrafts((prev) => {
+      const existing = prev.find((d) => d.platform === platform);
+      const base: PlatformDraft = existing ?? { platform, choice: 'inherit', types: null };
+      const next = { ...base, ...patch };
+      return existing ? prev.map((d) => (d.platform === platform ? next : d)) : [...prev, next];
     });
   }
 
+  /** Only this step's fields. `brand.governance.set` leaves the rest alone. */
+  function fieldsFor(s: Step): Record<string, unknown> {
+    switch (s) {
+      case 'autonomy':
+        return {
+          engagementAutonomy: autonomy,
+          // Empty means every type, which is a different fact from "none" — so
+          // it clears rather than storing an empty list.
+          engagementTypes: types.length ? types : null,
+        };
+      case 'boundaries':
+        return {
+          hardRules: hardRules.length ? hardRules : null,
+          escalationBehavior: escalation,
+          salesEscalationKeywords: splitList(keywords).length ? splitList(keywords) : null,
+        };
+      case 'platforms':
+        // Written through the platform tools instead — see `savePlatforms`.
+        return {};
+      case 'voice':
+        // `null` is the recommended state: it clears back to the brand voice.
+        return { engagementTone: tone ?? null, emojiLevel: emoji };
+      case 'sales':
+        return {
+          salesQualification: qualification.length ? qualification : null,
+          // Only send a handoff map the brand has actually chosen. Sending the
+          // resolved default back would convert "no preference" into a choice,
+          // and the default could then never move.
+          salesHandoff: usingDefaultHandoff ? null : handoff,
+          salesDestination: destination.trim() ? destination.trim() : null,
+        };
+    }
+  }
+
+  async function savePlatforms(): Promise<string | null> {
+    /**
+     * One call per row, sequentially. Five requests at once against a table with
+     * a unique index on `(brand, platform)` is fine, but the failure reporting is
+     * not: the owner needs to know *which* platform did not save, and a
+     * `Promise.all` that rejects tells them only that something did.
+     */
+    for (const p of PLATFORMS) {
+      const draft = platformDrafts.find((d) => d.platform === p.value);
+      if (!draft) continue;
+      const res =
+        draft.choice === 'inherit'
+          ? await invoke('brand.engagement.platforms.set', { platform: p.value, clear: true })
+          : await invoke('brand.engagement.platforms.set', {
+              platform: p.value,
+              // "Don't engage here" is stored as `enabled: false`; the other two
+              // set an autonomy and re-enable the row.
+              ...(draft.choice === 'off'
+                ? { enabled: false }
+                : { enabled: true, autonomy: draft.choice }),
+              engagementTypes: draft.types,
+            });
+      if (res.status !== 'succeeded') {
+        return res.status === 'failed' ? `${p.label}: ${res.error.message}` : `${p.label} needs approval.`;
+      }
+    }
+    return null;
+  }
+
+  async function advance(from: Step) {
+    setBusy(true);
+    setMessage(null);
+
+    const index = STEPS.indexOf(from);
+    const last = index === STEPS.length - 1;
+
+    if (from === 'platforms') {
+      const err = await savePlatforms();
+      setBusy(false);
+      if (err) {
+        setMessage({ kind: 'err', text: err });
+        return;
+      }
+      setStep(STEPS[index + 1] ?? null);
+      return;
+    }
+
+    const res = await invoke<Governance>('brand.governance.set', {
+      ...fieldsFor(from),
+      // Stamped only by the final step, and only after its own fields are in the
+      // same request — so "Configured" can never be true for a save that failed.
+      ...(last ? { engagementConfigured: true } : {}),
+    });
+
+    setBusy(false);
+    if (res.status !== 'succeeded') {
+      setMessage({
+        kind: 'err',
+        text: res.status === 'failed' ? res.error.message : 'That change needs approval.',
+      });
+      return;
+    }
+
+    if (from === 'sales') {
+      // Resolved server-side, so an incomplete map the client sent comes back as
+      // the defaults rather than leaving the screen claiming a rule nothing obeys.
+      setUsingDefaultHandoff(res.output.usingDefaultHandoff);
+      setHandoff(res.output.salesHandoff);
+    }
+    if (last) {
+      setConfiguredAt(res.output.engagementConfiguredAt);
+      setStep(null);
+      setMessage({ kind: 'ok', text: 'Engagement Intelligence is configured.' });
+      return;
+    }
+    setStep(STEPS[index + 1] ?? null);
+  }
+
+  if (loading) {
+    return (
+      <section aria-busy className="rounded-xl border border-border bg-surface p-6">
+        <h2 className="text-[18px] font-semibold text-ink">Engagement Intelligence</h2>
+        <PanelSkeleton rows={3} />
+      </section>
+    );
+  }
+
+  // ── Start / Done ──────────────────────────────────────────────────────────
+  if (step === null) {
+    return (
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[18px] font-semibold text-ink">Engagement Intelligence</h2>
+            <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+              Decide how your agent listens, responds, and escalates conversations.
+            </p>
+          </div>
+          {configuredAt ? (
+            <span className="rounded-full border border-ok/40 bg-ok/10 px-3 py-1 text-[12px] text-ink">
+              Configured
+            </span>
+          ) : null}
+        </div>
+
+        <p className="mt-4 max-w-2xl text-[13px] text-ink-muted">
+          Your agent can do more than post content. It can monitor comments and DMs, draft replies, or
+          respond automatically, all within the boundaries you set.
+        </p>
+
+        {configuredAt ? (
+          <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Summary label="Replies" value={ENGAGEMENT_LEVELS.find((l) => l.value === autonomy)?.label ?? autonomy} />
+            <Summary
+              label="Hard rules"
+              value={hardRules.length ? `${hardRules.length} of 5` : 'None set'}
+            />
+            <Summary
+              label="Platforms"
+              value={
+                platformDrafts.filter((d) => d.choice !== 'inherit').length
+                  ? `${platformDrafts.filter((d) => d.choice !== 'inherit').length} overridden`
+                  : 'All follow your default'
+              }
+            />
+          </dl>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
+          <Button size="sm" onClick={() => setStep(STEPS[0])}>
+            {configuredAt ? 'Edit configuration' : 'Configure Engagement Intelligence'}
+          </Button>
+          {message && (
+            <span className={cn('text-[13px]', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
+              {message.text}
+            </span>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  // ── The five steps ────────────────────────────────────────────────────────
+  const index = STEPS.indexOf(step);
+  const last = index === STEPS.length - 1;
+
   return (
-    <section aria-busy={loading} className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Engagement Intelligence</h2>
-      <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
-        What SPARK may say back to your audience on its own, and what it does when somebody sounds like a
-        customer rather than a commenter.
+    <section className="rounded-xl border border-border bg-surface p-6">
+      <div
+        className="flex items-center gap-2"
+        role="progressbar"
+        aria-valuenow={index + 1}
+        aria-valuemin={1}
+        aria-valuemax={STEPS.length}
+        aria-valuetext={`Step ${index + 1} of ${STEPS.length}`}
+      >
+        {STEPS.map((s, i) => (
+          <span key={s} className="h-[5px] flex-1 overflow-hidden rounded-full bg-border">
+            <span
+              className="block h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: i <= index ? '100%' : '0%' }}
+            />
+          </span>
+        ))}
+      </div>
+      <p className="mt-2.5 text-[12px] text-ink-muted">
+        Step {index + 1} of {STEPS.length}
       </p>
 
-      {loading ? (
-        <PanelSkeleton rows={2} />
-      ) : (
-        <div className="mt-5 grid grid-cols-1 gap-7">
-      {/* ── Engagement (§8.8) ──────────────────────────────────────── */}
-      <div>
-        <h3 className="text-[14px] font-medium text-ink">Answering your audience</h3>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
-          How much SPARK may say back on its own. It cannot reply at all until a campaign has been
-          running two weeks with five posts out — this decides what happens after that.
-        </p>
+      <h2 className="mt-3 text-[18px] font-semibold text-ink">{STEP_TITLES[step]}</h2>
 
-        <ul className="mt-3 grid grid-cols-1 gap-2">
-          {ENGAGEMENT_LEVELS.map((l) => (
-            <li key={l.value}>
-              <button
-                type="button"
-                aria-pressed={engagementAutonomy === l.value}
-                onClick={() => setEngagementAutonomy(l.value)}
-                className={cn(
-                  'w-full rounded-lg border p-3 text-left transition-colors',
-                  engagementAutonomy === l.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:bg-surface-muted',
-                )}
-              >
-                <span className="block text-[14px] font-medium text-ink">{l.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{l.hint}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <p className="mt-3 text-[12px] font-medium text-ink-muted">Where it may answer</p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {ENGAGEMENT_TYPES.map((t) => {
-            // Empty means all three, so nothing selected reads as "everywhere".
-            const on = engagementTypes.length === 0 || engagementTypes.includes(t.value);
-            return (
-              <button
-                key={t.value}
-                type="button"
-                aria-pressed={on}
-                onClick={() =>
-                  setEngagementTypes((prev) => {
-                    const current = prev.length ? prev : ENGAGEMENT_TYPES.map((x) => x.value);
-                    const next = current.includes(t.value)
-                      ? current.filter((x) => x !== t.value)
-                      : [...current, t.value];
-                    // Back to "all" rather than storing a list that happens
-                    // to contain everything.
-                    return next.length === ENGAGEMENT_TYPES.length ? [] : next;
-                  })
-                }
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
-                  on
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border text-ink-muted hover:bg-surface-muted',
-                )}
-              >
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Sales Assist (`SET-WS-EI-SALES`) ───────────────────────────
-          The screen the design specified and nothing could store. Four
-          qualification moves, a handoff rule per lead temperature, and the
-          escalation list \u2014 which is the one hard guarantee here:
-          `engage.classify` overrides itself deterministically on a match,
-          rather than asking the model to weigh it against everything else. */}
-      <div>
-        {/* F21's headings are the prototype's, verbatim, under the 22 August copy
-            decision: its *labels* are the spec, and the explanations under them
-            stay the build's plainer ones. This screen was the finding's own
-            example — every control matched and none of the words did. */}
-        <h3 className="text-[14px] font-medium text-ink">Sales Assist Configuration</h3>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
-          When someone sounds like a customer rather than a commenter, this decides what SPARK may do
-          about it and where the lead goes.
-        </p>
-
-        <p className="mt-3 text-[12px] font-medium text-ink-muted">Lead Qualification Options</p>
-        <ul className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {QUALIFICATION_OPTIONS.map((o) => {
-            const on = salesQualification.includes(o.value);
-            return (
-              <li key={o.value}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() =>
-                    setSalesQualification((prev) =>
-                      prev.includes(o.value) ? prev.filter((x) => x !== o.value) : [...prev, o.value],
-                    )
-                  }
-                  className={cn(
-                    'w-full rounded-lg border p-3 text-left transition-colors',
-                    on ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                  )}
-                >
-                  <span className="block text-[13px] font-medium text-ink">{o.label}</span>
-                  <span className="mt-0.5 block text-[12px] text-ink-muted">{o.hint}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {salesQualification.length === 0 && (
-          <p className="mt-2 text-[12px] text-ink-muted">
-            Nothing selected: SPARK will flag the lead and let you take it from there.
-          </p>
+      <div className="mt-5">
+        {step === 'autonomy' && (
+          <AutonomyStep autonomy={autonomy} onAutonomy={setAutonomy} types={types} onTypes={setTypes} />
         )}
-
-        <p className="mt-4 text-[12px] font-medium text-ink-muted">Handoff Rules</p>
-        <div className="mt-1.5 space-y-2">
-          {TEMPERATURES.map((t) => (
-            <div key={t.value} className="flex flex-wrap items-center gap-2">
-              <span className="flex w-[132px] shrink-0 items-baseline gap-1.5">
-                <span aria-hidden>{t.emoji}</span>
-                <span className="text-[13px] font-medium text-ink">{t.label}</span>
-                <span className="text-[11px] text-ink-muted">{t.hint}</span>
-              </span>
-              {/* The prototype's arrow, kept. It reads its rules as a sentence —
-                  "🔥 Hot → Send to CRM + notify me" — and the arrow is what makes
-                  the row scan as one rule rather than a label beside three
-                  unrelated chips. The chips themselves stay, because the
-                  prototype's line is a *display* of a chosen rule and this has to
-                  be the thing that chooses it. */}
-              <span aria-hidden className="shrink-0 text-[13px] text-ink-muted">
-                &rarr;
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {HANDOFF_DESTINATIONS.map((d) => {
-                  const on = salesHandoff[t.value] === d.value;
-                  return (
-                    <button
-                      key={d.value}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => {
-                        setSalesHandoff((prev) => ({ ...prev, [t.value]: d.value }));
-                        // Touching any row makes the whole map this brand's
-                        // own choice. A partly-chosen map is a lead with no
-                        // rule, so it is all three or the defaults.
-                        setUsingDefaultHandoff(false);
-                      }}
-                      className={cn(
-                        'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
-                        on
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border text-ink-muted hover:bg-surface-muted',
-                        usingDefaultHandoff && on && 'opacity-60',
-                      )}
-                    >
-                      {d.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-        {usingDefaultHandoff && (
-          <p className="mt-2 text-[12px] text-ink-muted">
-            These are the defaults. Change any row to make them yours.
-          </p>
+        {step === 'boundaries' && (
+          <BoundariesStep
+            hardRules={hardRules}
+            onHardRules={setHardRules}
+            escalation={escalation}
+            onEscalation={setEscalation}
+            keywords={keywords}
+            onKeywords={setKeywords}
+          />
         )}
-
-        <label className="mt-4 block text-[12px] font-medium text-ink-muted" htmlFor="gov-sales-destination">
-          Send leads on to
-        </label>
-        <p className="mt-1 text-[12px] text-ink-muted">
-          An email address or a CRM inbox. Only used for the rows set to &ldquo;send on&rdquo; \u2014 without
-          it, those leads wait in Sales Opportunities instead.
-        </p>
-        <Input
-          id="gov-sales-destination"
-          value={salesDestination}
-          onChange={(e) => setSalesDestination(e.target.value)}
-          placeholder="sales@yourcompany.com"
-          className="mt-1.5 max-w-md"
-        />
-
-        <label className="mt-4 block text-[12px] font-medium text-ink-muted" htmlFor="gov-escalation">
-          Sensitive keywords
-        </label>
-        <p className="mt-1 text-[12px] text-ink-muted">
-          A message containing any of these words goes to Needs Review and SPARK will not offer a reply for
-          it \u2014 no matter how routine it looked. Comma separated.
-        </p>
-        <Input
-          id="gov-escalation"
-          value={escalationText}
-          onChange={(e) => setEscalationText(e.target.value)}
-          placeholder="refund, chargeback, lawsuit, complaint, scam"
-          className="mt-1.5 max-w-xl"
-        />
-        {splitList(escalationText).length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {splitList(escalationText).map((word) => (
-              <span
-                key={word}
-                className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-[12px] text-ink"
-              >
-                {word}
-              </span>
-            ))}
-          </div>
+        {step === 'platforms' && (
+          <PlatformsStep
+            drafts={platformDrafts}
+            brandAutonomy={autonomy}
+            /**
+             * Step 1's live value, falling back to what the server reported. The
+             * two agree except in the one moment that matters: somebody who just
+             * changed their default on step 1 must see step 3 label the inherited
+             * rows with the new answer, not the saved one.
+             */
+            brandTypes={types.length ? types : brandTypesFromServer}
+            onChange={patchPlatform}
+          />
+        )}
+        {step === 'voice' && <VoiceStep tone={tone} onTone={setTone} emoji={emoji} onEmoji={setEmoji} />}
+        {step === 'sales' && (
+          <SalesStep
+            qualification={qualification}
+            onQualification={setQualification}
+            handoff={handoff}
+            onHandoff={setHandoff}
+            usingDefaultHandoff={usingDefaultHandoff}
+            onUsingDefaultHandoff={setUsingDefaultHandoff}
+            destination={destination}
+            onDestination={setDestination}
+          />
         )}
       </div>
-        </div>
-      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
-        <Button size="sm" disabled={busy || loading} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save'}
+        <Button size="sm" disabled={busy} onClick={() => void advance(step)}>
+          {busy ? 'Saving…' : last ? 'Finish' : 'Continue'}
         </Button>
+        {/*
+          Back revisits an answer; it does not undo the save the previous Continue
+          already made. That is the honest reading — each step is committed — and
+          it is why this is the flow's own control rather than browser history,
+          which would imply the other thing.
+        */}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setStep(index === 0 ? null : STEPS[index - 1]!)}
+          className="text-[13px] text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
+        >
+          Back
+        </button>
         {message && (
           <span className={cn('text-[13px]', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
             {message.text}
@@ -411,5 +421,14 @@ export function EngagementPanel() {
         )}
       </div>
     </section>
+  );
+}
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <dt className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="mt-1 text-[13px] text-ink">{value}</dd>
+    </div>
   );
 }

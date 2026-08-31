@@ -1,0 +1,1 @@
+ALTER TABLE "brands" ADD COLUMN "engagement_configured_at" timestamp with time zone;

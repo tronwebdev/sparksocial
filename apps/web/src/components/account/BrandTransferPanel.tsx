@@ -148,12 +148,27 @@ export function BrandTransferPanel() {
 
     setBusy('import');
     setNote(null);
-    // No idempotency key: the tool is `idempotent: false` and a replay would be
-    // a second brand, not a safe repeat.
-    const res = await invoke<{ brandId: string; genomeId: string; name: string }>('brand.import', {
-      ...(newName.trim() ? { name: newName.trim() } : {}),
-      data: parsed,
-    });
+    /**
+     * A fresh key per press, and the reasoning here was backwards before.
+     *
+     * `idempotent: false` does not mean "send no key" — it means the tool
+     * *requires* one, and `invoke.ts` refuses the call outright without it. So
+     * this button returned `INVALID_INPUT` and never reached the handler: the
+     * import was not risky, it was impossible.
+     *
+     * What the key actually protects is a duplicated *request* — a retry, a
+     * double-submit, a proxy replay — which returns the first result instead of
+     * creating a second brand. One press mints one key, so one press is one
+     * import.
+     */
+    const res = await invoke<{ brandId: string; genomeId: string; name: string }>(
+      'brand.import',
+      {
+        ...(newName.trim() ? { name: newName.trim() } : {}),
+        data: parsed,
+      },
+      crypto.randomUUID(),
+    );
     setBusy(null);
     if (res.status !== 'succeeded') {
       setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That import was held for review.' });

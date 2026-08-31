@@ -10,3 +10,4 @@ export * from './sources/producthunt.js';
 export * from './sources/pinterest.js';
 export * from './influencer.js';
 export * from './tool.js';
+export * from './hooks.js';

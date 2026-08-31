@@ -111,6 +111,8 @@ import {
   brandSettingsPatch,
   brandGovernanceGet,
   brandGovernanceSet,
+  brandEngagementPlatformsGet,
+  brandEngagementPlatformsSet,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -149,6 +151,7 @@ import {
   makeTrendDetail,
   makeTrendSafetyFilter,
   makeTrendRepurpose,
+  makeTrendHooks,
   makeTrendReshare,
   makeTrendWatchlist,
   makeTrendExplain,
@@ -214,6 +217,7 @@ import { analyticsClient } from './analytics-client.js';
 import { ayrshareAdapterClient } from './ayrshare-adapter-client.js';
 import { engageClassifier } from './engage-classifier.js';
 import { replyWriter } from './reply-writer.js';
+import { hookWriter } from './hook-writer.js';
 import { whatsappTransportClient } from './whatsapp-transport-client.js';
 import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
@@ -553,6 +557,9 @@ export function registerAlphaTools(): void {
   register(makeTrendDetail(trendSource));
   register(makeTrendSafetyFilter(trendSource));
   register(makeTrendRepurpose(trendSource));
+  // DISC-02's "multiple hook ideas". Never auto-loaded — the screen shows a
+  // button, because three hooks is three model calls. See packages/trends/src/hooks.ts.
+  register(makeTrendHooks(trendSource, hookWriter()));
   register(makeTrendReshare(trendSource));
   register(makeTrendWatchlist(trendSource));
   register(makeTrendExplain(trendSource));
@@ -715,7 +722,13 @@ function localUrlPrefix(): string {
   return `${localPublicBaseUrl()}${LOCAL_STORAGE_ROUTE_PREFIX}/`;
 }
 
-function blobStore(): BlobStore {
+/**
+ * Exported for `index.ts`'s boot probe, which signs one throwaway read URL to
+ * find out whether the storage identity works. `AZURE_STORAGE_ACCOUNT` being set
+ * is not the same fact as storage being usable, and the difference used to first
+ * surface as a wall of Azure credential text under an upload button.
+ */
+export function blobStore(): BlobStore {
   if (!envSet('AZURE_STORAGE_ACCOUNT')) return localBlobStore();
   const account = envStr('AZURE_STORAGE_ACCOUNT', '');
   return createAzureBlobStore({ account, container: envStr('AZURE_STORAGE_CONTAINER', 'assets') });
@@ -816,6 +829,11 @@ export function registerAgencyTools(deps: {
   // firing at the instant its campaign happened to be created.
   register(brandGovernanceGet);
   register(brandGovernanceSet);
+  // §8.8's per-platform engagement matrix. The brand-level autonomy is the
+  // fallback and stays where it is; these only ever record an *override*, so a
+  // brand that never opens the screen behaves exactly as it did before.
+  register(brandEngagementPlatformsGet);
+  register(brandEngagementPlatformsSet);
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.

@@ -16,7 +16,9 @@ import {
   DropdownMenuCheck,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
+import { readSelectedGenome, writeSelectedGenome } from '@/lib/selectedGenome';
 
 /**
  * Brand switcher. This is the seam where auth and the shell actually meet, and
@@ -37,15 +39,10 @@ interface GenomeRow {
   updatedAt: string;
 }
 
-const COOKIE = 'spark_genome';
-
-function readCookie(): string | undefined {
-  if (typeof document === 'undefined') return undefined;
-  return document.cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))?.[1];
-}
 
 export function BrandSwitcher() {
   const router = useRouter();
+  const { orgId } = useAuth();
   const [genomes, setGenomes] = useState<GenomeRow[] | null>(null);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
 
@@ -60,7 +57,9 @@ export function BrandSwitcher() {
       // Default to the stored genome if it is still in the list, else the most
       // recently updated one. A stale cookie pointing at a deleted or moved
       // genome would otherwise 403 every request with no way back.
-      const stored = readCookie();
+      // Read against this session's org: a cookie from another org is not a
+      // stale pointer to fix up, it is a claim from somebody else's account.
+      const stored = readSelectedGenome(orgId);
       const valid = stored && rows.some((g) => g.genomeId === stored) ? stored : rows[0]?.genomeId;
       if (valid) select(valid, false);
     })();
@@ -71,9 +70,9 @@ export function BrandSwitcher() {
   }, []);
 
   function select(genomeId: string, refresh = true) {
-    // `SameSite=Lax` so it rides same-site navigations but not cross-site
-    // requests; not `Secure` here because local dev is http.
-    document.cookie = `${COOKIE}=${encodeURIComponent(genomeId)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+    // Cookie shape and lifetime now live in one module, because four files used
+    // to parse this by hand and the rule they were all missing had nowhere to go.
+    if (orgId) writeSelectedGenome(orgId, genomeId);
     setActiveId(genomeId);
     if (refresh) router.refresh();
   }

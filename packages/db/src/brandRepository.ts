@@ -169,6 +169,16 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
       if (patch.watermark !== undefined) set.watermark = patch.watermark ?? null;
       if (patch.kitTemplates !== undefined) set.kitTemplates = patch.kitTemplates ?? null;
       if (patch.stockVoiceId !== undefined) set.stockVoiceId = patch.stockVoiceId ?? null;
+      if (patch.hardRules !== undefined) set.hardRules = patch.hardRules ?? null;
+      if (patch.escalationBehavior !== undefined) set.escalationBehavior = patch.escalationBehavior ?? null;
+      if (patch.engagementTone !== undefined) set.engagementTone = patch.engagementTone ?? null;
+      if (patch.emojiLevel !== undefined) set.emojiLevel = patch.emojiLevel ?? null;
+      // The tool sends a boolean intent; the column is a timestamp. Stamped here
+      // rather than accepting a caller-supplied date, for the same reason
+      // `syncedAt` is not caller-supplied: a completion is stamped when it
+      // happens, not when someone says it did.
+      if (patch.engagementConfigured !== undefined)
+        set.engagementConfiguredAt = patch.engagementConfigured ? new Date() : null;
       if (patch.logoUrl !== undefined) set.logoUrl = patch.logoUrl ?? null;
       if (patch.brandColors !== undefined) set.brandColors = patch.brandColors ?? null;
       if (patch.brandFonts !== undefined) set.brandFonts = patch.brandFonts ?? null;
@@ -239,6 +249,11 @@ function toGovernance(row: typeof brands.$inferSelect): BrandGovernance {
     ...(row.watermark ? { watermark: row.watermark } : {}),
     ...(row.kitTemplates ? { kitTemplates: row.kitTemplates } : {}),
     ...(row.stockVoiceId ? { stockVoiceId: row.stockVoiceId } : {}),
+    ...(row.hardRules ? { hardRules: row.hardRules } : {}),
+    ...(row.escalationBehavior ? { escalationBehavior: row.escalationBehavior } : {}),
+    ...(row.engagementTone ? { engagementTone: row.engagementTone } : {}),
+    ...(row.emojiLevel ? { emojiLevel: row.emojiLevel } : {}),
+    ...(row.engagementConfiguredAt ? { engagementConfiguredAt: row.engagementConfiguredAt } : {}),
     ...(row.logoUrl ? { logoUrl: row.logoUrl } : {}),
     ...(row.brandColors ? { brandColors: row.brandColors } : {}),
     ...(row.brandFonts ? { brandFonts: row.brandFonts } : {}),

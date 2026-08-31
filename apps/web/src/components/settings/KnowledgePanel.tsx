@@ -111,11 +111,15 @@ export function KnowledgePanel() {
     if (!genomeId || !siteUrl.trim()) return;
     setBusy('crawl');
     setNote(null);
-    const res = await invoke<{ attached: { docId: string }[]; failure?: string }>('knowledge.ingest_site', {
-      genomeId,
-      url: siteUrl.trim(),
-      maxPages,
-    });
+    /**
+      * Fresh rather than keyed on the URL: a site is re-crawled precisely because
+      * it changed, and a stable key would return the previous crawl forever.
+      */
+    const res = await invoke<{ attached: { docId: string }[]; failure?: string }>(
+      'knowledge.ingest_site',
+      { genomeId, url: siteUrl.trim(), maxPages },
+      crypto.randomUUID(),
+    );
     setBusy(null);
     if (res.status !== 'succeeded') {
       setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That crawl was held for review.' });
@@ -141,12 +145,14 @@ export function KnowledgePanel() {
     }
     setBusy('attach');
     setNote(null);
-    const res = await invoke<{ docId: string }>('brand.knowledge.attach', {
-      genomeId,
-      docId: docId.trim(),
-      text: docText,
-      citationLabel: docId.trim(),
-    });
+    // Fresh rather than keyed on `docId`, so editing a document's text and
+     // re-attaching it under the same id saves the edit instead of replaying the
+     // first version.
+    const res = await invoke<{ docId: string }>(
+      'brand.knowledge.attach',
+      { genomeId, docId: docId.trim(), text: docText, citationLabel: docId.trim() },
+      crypto.randomUUID(),
+    );
     setBusy(null);
     if (res.status !== 'succeeded') {
       setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was held for review.' });
@@ -209,11 +215,11 @@ export function KnowledgePanel() {
       return;
     }
 
-    const read = await invoke<{ docId: string; chunks?: number }>('brand.knowledge.attach_document', {
-      genomeId: genome.genomeId,
-      url: presigned.output.readUrl,
-      filename: file.name,
-    });
+    const read = await invoke<{ docId: string; chunks?: number }>(
+      'brand.knowledge.attach_document',
+      { genomeId: genome.genomeId, url: presigned.output.readUrl, filename: file.name },
+      crypto.randomUUID(),
+    );
     setBusyDoc(false);
 
     if (read.status !== 'succeeded') {

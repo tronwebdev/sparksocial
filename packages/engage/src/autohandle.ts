@@ -4,6 +4,8 @@ import { ToolError, Explanation, rungAutonomy } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
 import { resolveEngagementEligibility, engagementTypeAllows } from './eligibility.js';
+import { applyPlatformOverride, tripsComplaintRule } from '@sparksocial/shared/engagementConfig';
+import { listPlatformOverrides, pickPlatformOverride } from './platformOverride.js';
 
 /**
  * `engage.autohandle` â€” SPARK sending a reply with nobody in the loop.
@@ -77,11 +79,16 @@ async function replyPolicySubject(
    * decides whether SPARK may answer *this kind* of message at all. Parallel with
    * the other two, so it costs latency only on the slowest of the three.
    */
-  const [message, eligibility, brand] = await Promise.all([
+  const [message, eligibility, brand, platformRows] = await Promise.all([
     ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
     resolveEngagementEligibility(ctx, input.genomeId),
     ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
+    // Fourth in the same round trip. It needs only the brand, so making it wait
+    // for the message would cost every reply a hop for a usually-empty table.
+    listPlatformOverrides(ctx),
   ]);
+
+  const override = pickPlatformOverride(platformRows, message?.platform);
 
   return {
     ...(message?.platform ? { platform: message.platform } : {}),
@@ -115,9 +122,31 @@ async function replyPolicySubject(
        * still sends it. Unchecking "Direct messages" stops the automation, not the
        * conversation.
        */
+      /**
+       * Three conditions now, still one field, still because rule 6 asks one
+       * question: may SPARK answer unattended?
+       *
+       * The third is `never_auto_reply_to_complaints`. It cannot be a prompt
+       * instruction — by the time a prompt runs, the decision to reply unattended
+       * has been taken — so it is enforced here, where that decision is made. An
+       * unhappy customer is exactly the case where a false negative is expensive
+       * and a false positive costs one human glance, which is why the marker list
+       * is deliberately blunt rather than a model call.
+       */
+      /**
+       * Four conditions now. The fourth is the platform override.
+       *
+       * `applyPlatformOverride` can only *narrow* what the rung granted — see
+       * there for why it deliberately does not fall back to the brand's
+       * `engagementAutonomy` the way the settings screen does. An `engagementTypes`
+       * override replaces the brand's list for this platform only; absent, the
+       * brand's list still applies, so a brand with no rows is gated exactly as
+       * it was before this table existed.
+       */
       autonomyConfigured:
-        rungAutonomy(eligibility.rung) !== 'off' &&
-        engagementTypeAllows(brand?.engagementTypes, message?.kind),
+        applyPlatformOverride({ granted: rungAutonomy(eligibility.rung), row: override }) !== 'off' &&
+        engagementTypeAllows(override?.engagementTypes ?? brand?.engagementTypes, message?.kind) &&
+        !tripsComplaintRule(brand?.hardRules, message?.text ?? ''),
     },
   };
 }

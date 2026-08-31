@@ -265,7 +265,20 @@ export type ToolErrorCode =
    * request again. `invoke.ts` returns this instead of executing a second side
    * effect — see `InvokeDeps.reserveIdempotent`.
    */
-  | 'IN_FLIGHT';
+  | 'IN_FLIGHT'
+  /**
+   * Object storage could not be signed for or written to.
+   *
+   * Its own code rather than `UPSTREAM_FAILED` because the *operator* remedy is
+   * specific and the *user* message must not mention it. `DefaultAzureCredential`
+   * fails with a ~700-character aggregate naming every credential source it
+   * tried, complete with troubleshooting URLs and a correlation id, and that text
+   * was rendered in full under an "Upload a logo" button. The code carries the
+   * distinction; `meta.operator` carries the fix; `meta.cause` carries the
+   * aggregate for the log — and `app.ts` serialises only `code` and `message`, so
+   * neither reaches a browser. See `packages/storage/src/azure.ts`.
+   */
+  | 'STORAGE_UNAVAILABLE';
 
 export class ToolError extends Error {
   constructor(

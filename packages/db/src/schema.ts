@@ -12,6 +12,7 @@ import {
   vector,
 } from 'drizzle-orm/pg-core';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
+import type { EmojiLevel, EngagementTone, EscalationBehavior, HardRule } from '@sparksocial/shared/engagementConfig';
 import { EMBEDDING_DIM } from '@sparksocial/shared/embedding';
 import type { Autonomy } from '@sparksocial/shared/types';
 
@@ -732,6 +733,52 @@ export const brands = pgTable(
      * dropdown beside five stock voices.
      */
     stockVoiceId: text('stock_voice_id'),
+    /**
+     * `Settings WS EI Boundaries`' five hard rules — `4.3`.
+     *
+     * Four are enforced as prohibitions in the reply writer's prompt; the fifth,
+     * `never_auto_reply_to_complaints`, is enforced as an escalation trigger
+     * because by the time a prompt runs the decision to reply unattended has
+     * already been taken. See `packages/shared/src/engagementConfig.ts`.
+     */
+    hardRules: jsonb('hard_rules').$type<HardRule[]>(),
+    /**
+     * What happens once SPARK has decided a human is needed: hold, notify, or
+     * draft-but-don't-send. One column rather than three because they are
+     * mutually exclusive treatments of the same moment. Absent means `hold`, the
+     * only one that cannot interrupt anybody.
+     */
+    escalationBehavior: text('escalation_behavior').$type<EscalationBehavior>(),
+    /**
+     * `Settings WS EI Voice`'s three sliders, and deliberately **not**
+     * `tone_vector`.
+     *
+     * That column has four axes and governs the brand's whole written output;
+     * these are three different ones (formal↔casual, professional↔friendly,
+     * direct↔warm). They overlap without matching, so mapping one onto the other
+     * would mean dropping an axis or inventing a correspondence nobody chose.
+     *
+     * Absent is the screen's own "use my brand voice (recommended)" — every reply
+     * before this column used `tone_vector`, and an unset value keeps doing that.
+     */
+    engagementTone: jsonb('engagement_tone').$type<EngagementTone>(),
+    /** none | light | expressive. Absent means `none`, stated in the prompt rather than left unsaid. */
+    emojiLevel: text('emoji_level').$type<EmojiLevel>(),
+    /**
+     * When the owner finished the Engagement Intelligence flow —
+     * `Settings WS Engagement Start` vs `Settings WS Engagement Done`.
+     *
+     * A recorded fact rather than an inference. The alternative was to guess
+     * from whether any engagement field looked non-default, which gets the one
+     * case wrong that matters most: somebody who walks the whole flow and agrees
+     * with every default would be told they had never configured it, on a screen
+     * whose entire job is to say whether they had.
+     *
+     * A timestamp rather than a boolean because the settings screen wants to say
+     * *when*, and because a boolean would have to be un-set by hand if the flow
+     * is ever re-walked.
+     */
+    engagementConfiguredAt: timestamp('engagement_configured_at', { withTimezone: true }),
 
     /**
      * ── PRD §8.2 (required at onboarding) / §8.7 (a Calendar input) ──────────
@@ -943,6 +990,58 @@ export const humanMessages = pgTable(
      * cannot serve a query that never mentions it.
      */
     index('human_messages_notify_idx').on(t.orgId, t.brandId, t.kind, t.readAt),
+  ],
+);
+
+/**
+ * PER-PLATFORM ENGAGEMENT SETTINGS — `Settings WS EI Platforms`, `4.3`.
+ *
+ * Engagement config was one global value per brand, while `engage.ingest` has
+ * always carried both a platform and a kind — so the matrix the design draws
+ * (five platforms × three kinds) had the inbound dimension and nowhere to store
+ * the outbound decision.
+ *
+ * ── Why a table, and why an absent row matters ────────────────────────────
+ *
+ * Keyed `(brand_id, platform)`, and **an absent row means "use the brand's
+ * setting"**. That is the whole reason this shape was chosen over reshaping
+ * `engagement_types` into a per-platform map: no backfill is needed, every
+ * existing brand behaves exactly as it did, and a brand can override one platform
+ * without having to state the other four. The alternative would have made an
+ * existing `string[]` column polymorphic, leaving eight readers each handling two
+ * shapes forever.
+ *
+ * `resolvePlatformEngagement` in `@sparksocial/shared` is the single definition of
+ * that fallback, so the settings screen shows exactly what the reply path will do
+ * rather than its own approximation — which is how two readers of one setting come
+ * to disagree.
+ *
+ * Not routed through `scoped.ts`: this is addressed to a *brand* and carries no
+ * genome-confidential material, the same reason `brands` and `campaigns` sit
+ * outside `SCOPED_TABLES`. Every query still filters on `orgId`.
+ */
+export const brandEngagementSettings = pgTable(
+  'brand_engagement_settings',
+  {
+    id: text('id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    brandId: text('brand_id').notNull(),
+    /** One of the five `engage.ingest` platforms. */
+    platform: text('platform').notNull(),
+    /** off | suggest | auto. Null inherits the brand's own autonomy. */
+    autonomy: text('autonomy'),
+    /** comment | dm | story_reply. Null inherits the brand's; empty means all, matching the brand rule. */
+    engagementTypes: jsonb('engagement_types').$type<string[]>(),
+    /** False silences this platform entirely, whatever the rest says. */
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One row per platform per brand — the upsert key, and the thing that stops
+    // two rows disagreeing about the same platform.
+    uniqueIndex('brand_engagement_platform_idx').on(t.brandId, t.platform),
+    index('brand_engagement_scope_idx').on(t.orgId, t.brandId),
   ],
 );
 

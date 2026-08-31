@@ -58,6 +58,14 @@ interface TrendDetailView {
     tags: string[];
     metrics: TrendMetrics;
     samples: Array<{ url: string; caption?: string }>;
+    /**
+     * Both returned by `trend.detail` and both dropped by this local type until
+     * `4.1` — the same omission that had the Assets Library rendering captions
+     * and no media. `region` stays optional because no source populates it yet,
+     * which is a fact the screen states rather than hides.
+     */
+    region?: string;
+    language: string;
   };
   score: number;
   relevance: number;
@@ -233,8 +241,19 @@ export function TrendDetail({
 
   // §8.9's content-pack panel inputs. Held here rather than on the tool call
   // because they apply to whichever route the user takes out of this screen.
-  const [ctaUrl, setCtaUrl] = useState('');
   const [reshareItemId, setReshareItemId] = useState('');
+  /**
+   * `trend.hooks`' output, and which line you picked.
+   *
+   * Null until the button is pressed — this never loads on open, because each
+   * hook is a model call. `intent` overrides the repurpose suggestion's own
+   * intent line when set, so choosing an angle changes what gets drafted rather
+   * than being decoration next to it.
+   */
+  const [hooks, setHooks] = useState<string[] | null>(null);
+  const [hooksBusy, setHooksBusy] = useState(false);
+  const [hookError, setHookError] = useState<string | null>(null);
+  const [intent, setIntent] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -291,6 +310,25 @@ export function TrendDetail({
     if (!res.output.suggestion) setNote(res.output.why.summary);
   }, [genomeId, trendId, reshareItemId]);
 
+  const suggestHooks = useCallback(async () => {
+    setHooksBusy(true);
+    setHookError(null);
+    const res = await invoke<{ hooks: string[] }>(
+      'trend.hooks',
+      { genomeId, trendId, count: 3 },
+      // Non-idempotent: pressing it again is asking for different angles.
+      `trend-hooks:${trendId}:${Date.now()}`,
+    );
+    setHooksBusy(false);
+    if (res.status !== 'succeeded') {
+      setHookError(
+        res.status === 'failed' ? res.error.message : 'That needs approval before it can spend.',
+      );
+      return;
+    }
+    setHooks(res.output.hooks);
+  }, [genomeId, trendId]);
+
   /** The suggestion becomes a real draft — `content.draft` is the same tool the Draft Panel uses. */
   const draftIt = useCallback(async () => {
     if (!suggestion) return;
@@ -301,7 +339,25 @@ export function TrendDetail({
       {
         genomeId,
         playbookId: suggestion.playbookId,
-        intent: ctaUrl.trim() ? `${suggestion.intent} Point people at ${ctaUrl.trim()}.` : suggestion.intent,
+        /**
+         * A chosen hook replaces the suggestion's own intent line.
+         *
+         * ── And the URL is deliberately no longer appended here ────────────
+         *
+         * This used to send `… Point people at ${ctaUrl}` as the intent, and
+         * the intent goes straight into the copy writer's prompt. That is the
+         * defect found on 22 August in a different place: a campaign's CTA URL
+         * was written to `genome.offer.primary_cta`, sixteen playbooks read that
+         * field as the line to *say out loud*, and posts recited
+         * "https://…". Putting a link in a writer's prompt invites exactly
+         * the same outcome by a shorter route.
+         *
+         * A link belongs on the post, not in the prompt. The Draft Panel's
+         * "shorten a link" action is where it goes, and it produces a tracked
+         * link rather than a bare URL somebody typed — which is the thing
+         * that makes click-through attributable at all.
+         */
+        intent: intent ?? suggestion.intent,
         // Records which trend this post came out of — PRD §5's "Trend-to-post
         // conversion rate" counts these, and this is the only screen that knows.
         fromTrendId: trendId,
@@ -317,7 +373,7 @@ export function TrendDetail({
           ? res.error.message
           : 'That draft needs approval first.',
     );
-  }, [suggestion, genomeId, trendId, ctaUrl]);
+  }, [suggestion, genomeId, trendId, intent]);
 
   if (error) {
     return (
@@ -336,6 +392,20 @@ export function TrendDetail({
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
+      {/*
+        ── `DISC-02`'s eight panels, five of which are real ──────────────────
+        The design names: Trend Metrics, Geo & Audience, Top Geo, Top Segments,
+        Related Topics & Entities, Samples & Content Pack, Top Examples, Media
+        Preview.
+
+        Five are backed and built. Three are not, and they render as explicit
+        "no data source" panels rather than being quietly dropped — decided 26
+        August. The reasoning is the same in each case: nothing populates the
+        data, so the choice was between an empty panel that reads as "no
+        activity in your region", plausible invented numbers, or a panel that
+        says what is missing. The third is the only honest one, and it also
+        tells whoever picks this up next what to build.
+      */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-[20px] font-medium text-ink">{trend.topic}</h2>
@@ -397,6 +467,81 @@ export function TrendDetail({
         </div>
       ) : null}
 
+      {/* ── Related topics & entities ─────────────────────────────────── */}
+      {trend.tags.length ? (
+        <div className="mt-6">
+          <h3 className="text-[14px] font-medium text-ink">Related topics and entities</h3>
+          <p className="mt-1 text-[13px] text-ink-muted">
+            Descriptors the source attached to this trend. These are what relevance is scored against, so
+            a tag matching your brand is why it surfaced.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {trend.tags.map((t) => (
+              <span key={t} className="rounded-full bg-surface-muted px-3 py-1 text-[12px] text-ink-muted">
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Where it is trending ──────────────────────────────────────────
+          The honest version of "Top Geo". `Trend.region` exists on the shape and
+          no source currently populates it, so this states which of those two
+          situations you are looking at rather than showing an empty map. */}
+      <div className="mt-6">
+        <h3 className="text-[14px] font-medium text-ink">Where it is trending</h3>
+        {trend.region ? (
+          <p className="mt-1 text-[13px] text-ink">
+            {trend.region}
+            <span className="text-ink-muted"> · reported by {trend.source}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-[13px] text-ink-muted">
+            {trend.source} does not report a region for this trend. The field exists and no source
+            populates it yet, so this is missing data rather than a trend with no geography.
+          </p>
+        )}
+        <p className="mt-1 text-[13px] text-ink-muted">
+          Language: <span className="text-ink">{trend.language}</span>
+        </p>
+      </div>
+
+      {/* ── Hook ideas ───────────────────────────────────────────────────
+          A button, not an auto-load. Three hooks is three model calls, and
+          `calendar.recommend_slot` refuses to invent even one for exactly that
+          reason — the difference here is that a person has opened this trend and
+          the spend is theirs to choose. See `packages/trends/src/hooks.ts`. */}
+      <div className="mt-6 rounded-lg border border-border p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-[14px] font-medium text-ink">Angles you could take</h3>
+          <Button size="sm" variant="outline" disabled={hooksBusy} onClick={() => void suggestHooks()}>
+            {hooksBusy ? 'Thinking…' : hooks ? 'Try three more' : 'Suggest three hooks'}
+          </Button>
+        </div>
+        <p className="mt-1 text-[13px] text-ink-muted">
+          Opening lines in your brand&rsquo;s voice. Nothing is saved &mdash; pick one and it becomes the
+          intent when you draft. Costs a little, so it only runs when you ask.
+        </p>
+        {hookError ? <p className="mt-2 text-[13px] text-destructive">{hookError}</p> : null}
+        {hooks?.length ? (
+          <ul className="mt-3 grid grid-cols-1 gap-2">
+            {hooks.map((h, i) => (
+              <li key={`${i}-${h.slice(0, 24)}`} className="rounded-lg border border-border p-3">
+                <p className="text-[13px] text-ink">{h}</p>
+                <button
+                  type="button"
+                  onClick={() => setIntent(h)}
+                  className="mt-1.5 text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2"
+                >
+                  Use this as the intent
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ── Samples ─────────────────────────────────────────────────── */}
         <div>
@@ -438,18 +583,22 @@ export function TrendDetail({
         <div>
           <h3 className="text-[14px] font-medium text-ink">Make something from it</h3>
 
-          <div className="mt-2">
-            <label className="text-[12px] font-medium text-ink-muted" htmlFor="trend-cta">
-              CTA link (optional)
-            </label>
-            <Input
-              id="trend-cta"
-              value={ctaUrl}
-              onChange={(e) => setCtaUrl(e.target.value)}
-              placeholder="https://…"
-              className="mt-1.5"
-            />
-          </div>
+          {/*
+            The CTA field is gone, deliberately.
+
+            It used to append `Point people at <url>` to the intent, and the
+            intent goes straight into the copy writer's prompt — the same route
+            that had posts reciting "https://…" when a campaign's CTA URL was
+            written to a field sixteen playbooks read aloud. A link belongs on the
+            post rather than in the prompt, and the Draft Panel's shorten action
+            is where it goes: that produces a *tracked* link, which is what makes
+            click-through attributable at all.
+          */}
+          <p className="mt-2 text-[12px] text-ink-muted">
+            Drafting from a trend does not take a link. Add one in the draft
+            panel&rsquo;s &ldquo;shorten a link&rdquo; step, which makes it trackable &mdash; a URL typed
+            into a prompt tends to end up read out in the post.
+          </p>
 
           <div className="mt-3 grid grid-cols-1 gap-3">
             <div className="rounded-lg border border-border p-3">
@@ -523,7 +672,63 @@ export function TrendDetail({
           {note ? <p className="mt-3 text-[13px] text-ink-muted">{note}</p> : null}
         </div>
       </div>
+      {/*
+        ── The three panels with no data source ────────────────────────────
+        Decided 26 August: build five, stub three *visibly*. Each of these is in
+        the design and each would need something that does not exist. Rendering
+        them empty would read as "no activity in your region", which is a claim;
+        rendering plausible numbers would be worse; dropping them silently loses
+        the record of what is missing. So each says what it needs.
+      */}
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <NoSource
+          title="Geo & Audience"
+          needs="Per-region and per-demographic breakdowns. No trend source returns either — the shape has a single optional region field and nothing populates it."
+        />
+        <NoSource
+          title="Top Segments"
+          needs="Audience segments for a trend. Nothing in the product models an audience segment at all, so there is no vocabulary to group by yet."
+        />
+        <NoSource
+          title="Top Examples"
+          needs="The best-performing posts on this trend. The samples above are what the source returned, in its order — ranking them needs per-post engagement figures no source provides."
+        />
+      </div>
+
+      {/*
+        And the fourth thing the design asks for and this screen will not show:
+        an expected engagement lift. There is no per-trend performance history to
+        derive one from — `content_metrics` holds a current value per post, not a
+        series, and nothing links a post's performance back to the trend it came
+        from beyond `fromTrendId`, which is a count rather than a rate. A number
+        here would be invented, and an invented lift is the one figure on this
+        screen somebody would act on.
+      */}
+      <p className="mt-3 text-[12px] text-ink-muted">
+        No expected-engagement figure is shown. It would need per-trend performance history, and the first
+        posts drafted from trends are what will create it &mdash; the link is recorded, the rate is not
+        computable yet.
+      </p>
     </section>
+  );
+}
+
+/**
+ * A panel that exists to say what it cannot show.
+ *
+ * The alternative designs were all worse: an empty state reads as a fact about
+ * the trend, invented figures are a lie somebody would act on, and omitting the
+ * panel loses the only written record of what the screen is still missing. This
+ * also tells whoever picks up `4.1`'s remainder exactly which data to go and
+ * find.
+ */
+function NoSource({ title, needs }: { title: string; needs: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border p-4">
+      <p className="text-[13px] font-medium text-ink">{title}</p>
+      <p className="mt-1 text-[12px] text-ink-muted">Not shown &mdash; no data source.</p>
+      <p className="mt-1.5 text-[12px] text-ink-muted">{needs}</p>
+    </div>
   );
 }
 

@@ -150,6 +150,31 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
         if (patch.watermark === null) delete row.watermark;
         else row.watermark = patch.watermark;
       }
+      // All four follow the same null-clears rule. Written out rather than
+      // looped, because the loop needed an index-signature cast that defeats the
+      // type checking these assignments exist to get.
+      if (patch.hardRules !== undefined) {
+        if (patch.hardRules === null) delete row.hardRules;
+        else row.hardRules = patch.hardRules;
+      }
+      if (patch.escalationBehavior !== undefined) {
+        if (patch.escalationBehavior === null) delete row.escalationBehavior;
+        else row.escalationBehavior = patch.escalationBehavior;
+      }
+      if (patch.engagementTone !== undefined) {
+        if (patch.engagementTone === null) delete row.engagementTone;
+        else row.engagementTone = patch.engagementTone;
+      }
+      if (patch.emojiLevel !== undefined) {
+        if (patch.emojiLevel === null) delete row.emojiLevel;
+        else row.emojiLevel = patch.emojiLevel;
+      }
+      // Same "the store stamps it" rule as the repository: the tool sends an
+      // intent, not a date.
+      if (patch.engagementConfigured !== undefined) {
+        if (patch.engagementConfigured) row.engagementConfiguredAt = new Date();
+        else delete row.engagementConfiguredAt;
+      }
       if (patch.stockVoiceId !== undefined) {
         if (patch.stockVoiceId === null) delete row.stockVoiceId;
         else row.stockVoiceId = patch.stockVoiceId;

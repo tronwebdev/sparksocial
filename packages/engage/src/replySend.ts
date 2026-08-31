@@ -4,6 +4,8 @@ import { ToolError, Explanation, rungAutonomy } from '@sparksocial/shared';
 import type { ReplySender } from './replySender.js';
 import { enforceReplyGuard, type ReplyGuard } from './replyGuard.js';
 import { resolveEngagementEligibility, engagementTypeAllows } from './eligibility.js';
+import { applyPlatformOverride, tripsComplaintRule } from '@sparksocial/shared/engagementConfig';
+import { listPlatformOverrides, pickPlatformOverride } from './platformOverride.js';
 
 /**
  * `engage.reply.send` â€” the second half of the "approve & send" loop
@@ -68,12 +70,15 @@ async function replyPolicySubject(
 ): Promise<PolicySubject> {
   // The brand is no longer read here — the rung rides along with the verdict,
   // which already holds the campaign.
-  const [message, eligibility, brand] = await Promise.all([
+  const [message, eligibility, brand, platformRows] = await Promise.all([
     ctx.db.engagement.get(input.messageId, input.genomeId, ctx.orgId),
     resolveEngagementEligibility(ctx, input.genomeId),
     // For `engagementTypes` — see `autohandle.ts` for why the brand is read again.
     ctx.brandId ? ctx.db.brands.get(ctx.brandId, ctx.orgId) : Promise.resolve(undefined),
+    listPlatformOverrides(ctx),
   ]);
+
+  const override = pickPlatformOverride(platformRows, message?.platform);
 
   return {
     ...(message?.platform ? { platform: message.platform } : {}),
@@ -88,9 +93,16 @@ async function replyPolicySubject(
       // from; the campaign is what governs this reply.
       // Same two conditions as `autohandle` — see there for why they share one
       // field. A message kind the brand has switched off routes to approval.
+      // Same three conditions as `autohandle` — see there. A complaint routes to
+      // a person even on a send, because the rule is about who answers rather
+      // than about which tool was called.
+      // Same four conditions as `autohandle` — see there. A platform someone has
+      // muted routes to approval on a send too, because the rule is about who
+      // answers rather than about which tool was called.
       autonomyConfigured:
-        rungAutonomy(eligibility.rung) !== 'off' &&
-        engagementTypeAllows(brand?.engagementTypes, message?.kind),
+        applyPlatformOverride({ granted: rungAutonomy(eligibility.rung), row: override }) !== 'off' &&
+        engagementTypeAllows(override?.engagementTypes ?? brand?.engagementTypes, message?.kind) &&
+        !tripsComplaintRule(brand?.hardRules, message?.text ?? ''),
     },
   };
 }

@@ -8,6 +8,14 @@ import {
 } from '@sparksocial/shared/brandKit';
 import { DEFAULT_STOCK_VOICE_ID, StockVoiceIdSchema } from '@sparksocial/shared/voices';
 import {
+  DEFAULT_EMOJI_LEVEL,
+  DEFAULT_ESCALATION_BEHAVIOR,
+  EmojiLevel,
+  EngagementTone,
+  EscalationBehavior,
+  HardRule,
+} from '@sparksocial/shared/engagementConfig';
+import {
   DEFAULT_POSTING_WINDOWS,
   Explanation,
   ToolError,
@@ -144,6 +152,30 @@ export const BrandGovernanceSetInput = z.object({
    * after the settings screen said "Saved". Null clears back to the default.
    */
   stockVoiceId: StockVoiceIdSchema.nullable().optional(),
+
+  /* ── Engagement Intelligence: boundaries and voice (`4.3`) ─────────────── */
+
+  /**
+   * The five hard rules. Null clears to none, and none is the right default: a
+   * brand that has not opened that screen has not forbidden anything, and
+   * inventing prohibitions on their behalf would narrow every reply silently.
+   */
+  hardRules: z.array(HardRule).max(5).nullable().optional(),
+  /** hold | notify | draft_no_send. Null clears back to `hold`, the only one that cannot interrupt anybody. */
+  escalationBehavior: EscalationBehavior.nullable().optional(),
+  /**
+   * The engagement voice sliders. Null is the screen's own "use my brand voice
+   * (recommended)" — it clears back to `toneVector`, which is what every reply
+   * used before this field existed.
+   */
+  engagementTone: EngagementTone.nullable().optional(),
+  emojiLevel: EmojiLevel.nullable().optional(),
+  /**
+   * True marks the Engagement Intelligence flow as finished; false un-marks it.
+   * The store stamps the time — a caller-supplied date would let a client
+   * claim a completion that never happened.
+   */
+  engagementConfigured: z.boolean().optional(),
   kitTemplates: z
     .array(KitTemplate)
     .max(MAX_KIT_TEMPLATES)
@@ -233,6 +265,14 @@ export const BrandGovernanceOutput = z.object({
   stockVoiceId: z.string(),
   /** True when `stockVoiceId` is the system default rather than this brand's own choice. */
   usingDefaultVoice: z.boolean(),
+  hardRules: z.array(HardRule),
+  /** Always populated — the effective behaviour, including the default when unset. */
+  escalationBehavior: EscalationBehavior,
+  /** Absent means the brand voice is in use; present means this screen overrode it. */
+  engagementTone: EngagementTone.optional(),
+  emojiLevel: EmojiLevel,
+  /** ISO-8601, or absent. Drives `Settings WS Engagement Start` vs `… Done`. */
+  engagementConfiguredAt: z.string().optional(),
   logoUrl: z.string().optional(),
   brandColors: z.array(z.string()),
   /** M4's chosen faces, echoed back so the picker can show what is set. */
@@ -433,6 +473,11 @@ function toOutput(gov: {
   watermark?: Watermark;
   kitTemplates?: KitTemplate[];
   stockVoiceId?: string;
+  hardRules?: HardRule[];
+  escalationBehavior?: EscalationBehavior;
+  engagementTone?: EngagementTone;
+  emojiLevel?: EmojiLevel;
+  engagementConfiguredAt?: Date;
   logoUrl?: string;
   brandColors?: string[];
   brandFonts?: { display?: string; body?: string };
@@ -460,6 +505,13 @@ function toOutput(gov: {
     kitTemplates: gov.kitTemplates ?? [],
     stockVoiceId: gov.stockVoiceId ?? DEFAULT_STOCK_VOICE_ID,
     usingDefaultVoice: gov.stockVoiceId === undefined,
+    hardRules: gov.hardRules ?? [],
+    escalationBehavior: gov.escalationBehavior ?? DEFAULT_ESCALATION_BEHAVIOR,
+    ...(gov.engagementTone ? { engagementTone: gov.engagementTone } : {}),
+    emojiLevel: gov.emojiLevel ?? DEFAULT_EMOJI_LEVEL,
+    ...(gov.engagementConfiguredAt
+      ? { engagementConfiguredAt: gov.engagementConfiguredAt.toISOString() }
+      : {}),
     ...(gov.logoUrl ? { logoUrl: gov.logoUrl } : {}),
     brandColors: gov.brandColors ?? [],
     ...(gov.brandFonts ? { brandFonts: gov.brandFonts } : {}),

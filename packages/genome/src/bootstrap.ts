@@ -48,6 +48,16 @@ export function explainCrawlFailure(url: string, failure: CrawlFailure | undefin
       return `${host} returned an error. It may be down — try again shortly, or set your brand up by answering a few questions instead.`;
     case 'unreachable':
       return `We could not reach ${host}. Check the address is right, or set your brand up by answering a few questions instead.`;
+    case 'unavailable':
+      /**
+       * Ours, not theirs, and the wording says so without naming a binary.
+       *
+       * "We could not reach you" would be a lie that sends the owner to check
+       * their own DNS. The honest version is that our reader is down, and the
+       * actionable half is the same as every other case: the questions path
+       * produces a working brand without it.
+       */
+      return `Our website reader is temporarily unavailable — nothing to do with ${host}. Set your brand up by answering a few questions instead, or try again later.`;
     default:
       return `We reached ${host} but found no readable text — sites built entirely in images or video often read this way. You can set your brand up by answering a few questions instead.`;
   }
@@ -118,8 +128,16 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
 
     async handler(input, ctx) {
       return ctx.trace.span('genome.bootstrap_from_url', async () => {
-        const { pages, failure } = await crawl(input.url, { maxPages: input.maxPages });
+        const { pages, failure, reason } = await crawl(input.url, { maxPages: input.maxPages });
         if (pages.length === 0) {
+          /**
+           * `unavailable` is an operator's incident, so it is logged at `error`
+           * with the real cause. Every other failure is a fact about the target
+           * site and belongs only in the message.
+           */
+          if (failure === 'unavailable') {
+            ctx.logger.error('crawl browser unavailable', { url: input.url, reason });
+          }
           /**
            * Say which of the four things went wrong.
            *

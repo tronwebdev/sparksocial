@@ -2,6 +2,7 @@ export * from './classifier.js';
 export * from './ingest.js';
 export * from './classify.js';
 export * from './eligibility.js';
+export * from './platformOverride.js';
 export * from './list.js';
 export * from './replyWriter.js';
 export * from './replySender.js';

@@ -323,6 +323,20 @@
       "when": 1788171903870,
       "tag": "0045_flashy_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788176600200,
+      "tag": "0046_sturdy_zarda",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788178195509,
+      "tag": "0047_tan_blink",
+      "breakpoints": true
     }
   ]
 }

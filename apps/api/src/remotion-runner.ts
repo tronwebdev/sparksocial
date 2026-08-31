@@ -41,6 +41,17 @@ import type { RenderRunner } from '@sparksocial/compose';
  * independently published), so the two packages' relative position is a
  * structural invariant, not a guess.
  */
+/**
+ * The container's own Chromium, shared with the site crawler.
+ *
+ * Unset locally, where Remotion resolves (and on first use downloads) its own
+ * Chrome Headless Shell — the behaviour every note above was measured against.
+ * Set in the image, where one distro Chromium at a fixed path serves both this
+ * and Playwright: two library-managed downloads would add ~400MB and two
+ * revision-numbered paths that move whenever either dependency is bumped.
+ */
+const BROWSER = process.env.CHROMIUM_PATH ? { browserExecutable: process.env.CHROMIUM_PATH } : {};
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const COMPOSITION_ENTRY = join(__dirname, '../../../packages/compose/src/composition.ts');
 
@@ -81,16 +92,18 @@ export function createRemotionRunner(opts: RemotionRunnerOptions = {}): RenderRu
     mode: 'video' | 'image',
   ): Promise<string> {
     const serveUrl = await getBundle();
-    const composition = await selectComposition({ serveUrl, id: 'beats', inputProps });
+    // `selectComposition` opens a browser too — it evaluates the bundle to read
+    // the composition's declared dimensions and duration.
+    const composition = await selectComposition({ serveUrl, id: 'beats', inputProps, ...BROWSER });
 
     const workDir = await mkdtemp(join(tmpdir(), 'spark-compose-'));
     try {
       const outputLocation = join(workDir, mode === 'video' ? 'out.mp4' : 'out.png');
 
       if (mode === 'video') {
-        await renderMedia({ composition, serveUrl, codec: 'h264', outputLocation, inputProps });
+        await renderMedia({ composition, serveUrl, codec: 'h264', outputLocation, inputProps, ...BROWSER });
       } else {
-        await renderStill({ composition, serveUrl, output: outputLocation, inputProps, frame: 0 });
+        await renderStill({ composition, serveUrl, output: outputLocation, inputProps, frame: 0, ...BROWSER });
       }
 
       return opts.publish ? await opts.publish(outputLocation, mode) : `file://${outputLocation}`;
