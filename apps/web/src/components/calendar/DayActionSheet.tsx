@@ -44,6 +44,8 @@ interface Recommendation {
     playbookName: string;
     description: string;
     mediaType: string;
+    /** `direct_finish` is filmed through the capture loop rather than written. */
+    mode: string;
     platforms: string[];
     pillar: string;
     goal: string;
@@ -75,7 +77,7 @@ export interface DayActionSheetProps {
   /** "Create something specific" — hands off to the Draft Panel's trigger phase. */
   onCreateSpecific: (day: string) => void;
   /** Accepting a recommendation: draft the named playbook onto this day. */
-  onAcceptCreate: (day: string, playbookId: string) => void;
+  onAcceptCreate: (day: string, playbookId: string, mode: string) => void;
   /** Accepting a move: reschedule an existing post onto this day. */
   onAcceptMove: (day: string, contentItemId: string) => void;
 }
@@ -260,7 +262,7 @@ export function DayActionSheet({
                     size="sm"
                     onClick={() => {
                       onClose();
-                      onAcceptCreate(day, rec.create!.playbookId);
+                      onAcceptCreate(day, rec.create!.playbookId, rec.create!.mode);
                     }}
                   >
                     Use this

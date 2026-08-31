@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 
@@ -287,7 +288,14 @@ export function AuditPanel() {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="py-2 pr-3 font-mono text-[12px] text-ink">{c.tool}</td>
+                      {/* Description first, identifier under it. The log is read
+                          by a person auditing what happened, and `org.usage.get`
+                          does not tell them a screen loaded. Both are kept: the
+                          identifier is what a support conversation needs. */}
+                      <td className="py-2 pr-3">
+                        <span className="block text-ink">{toolLabel(c.tool)}</span>
+                        <span className="block font-mono text-[11px] text-ink-muted">{c.tool}</span>
+                      </td>
                       <td className="py-2 pr-3 text-ink-muted">{c.caller === 'agent' ? 'SPARK' : 'a person'}</td>
                       <td className="py-2 pr-3">
                         <Badge variant={decisionTone(c.decision)}>{DECISION_LABEL[c.decision] ?? c.decision}</Badge>

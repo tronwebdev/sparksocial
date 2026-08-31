@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { cn } from '@/lib/utils';
 
 /**
@@ -137,7 +138,12 @@ export function UsagePanel() {
           <ul className="mt-2 grid grid-cols-1 gap-2">
             {usage.byTool.map((t) => (
               <li key={t.tool} className="flex items-center gap-3">
-                <span className="w-52 shrink-0 truncate font-mono text-[12px] text-ink">{t.tool}</span>
+                {/* What the credits went on, in words. `content.generate_avatar_video`
+                    is the most expensive tool in the product and the least legible
+                    line on a bill. */}
+                <span className="w-52 shrink-0 truncate text-[12px] text-ink" title={t.tool}>
+                  {toolLabel(t.tool)}
+                </span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
                   <span
                     className="block h-full rounded-full bg-primary"

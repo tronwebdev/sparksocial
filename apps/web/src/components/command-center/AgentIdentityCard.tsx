@@ -106,6 +106,28 @@ export function AgentIdentityCard({
             )}
           </h2>
 
+          {/*
+            What the name is, and what SPARK is.
+
+            "Your agent: Halo" and "SPARK is planning and drafting" both appear in
+            this product, and nothing said how they relate — so a reasonable reader
+            concludes they are two different things, or that naming the agent did
+            not take. They are one thing under two names: SPARK is the engine, and
+            the name is what this brand's instance of it answers to. Said once,
+            here, on the screen where the name is set.
+          */}
+          {id?.named ? (
+            <p className="mt-1 text-[13px] text-ink-muted">
+              {id.name} is this brand&rsquo;s agent. SPARK is the engine behind it &mdash; where you see
+              &ldquo;SPARK&rdquo; elsewhere in the product, this is what is doing the work.
+            </p>
+          ) : (
+            <p className="mt-1 text-[13px] text-ink-muted">
+              Give it a name and the product will use it. Until then it is referred to as SPARK, which is the
+              engine&rsquo;s own name.
+            </p>
+          )}
+
           {/* Stacked, not inline. In the two-column band the parenthetical is
               long enough that a flex row broke "Risk tolerance —" across three
               lines with the value stranded below it. */}

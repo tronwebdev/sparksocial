@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
  * The prototype's "What is your Agent doing next?" queue card (`SparkSocial
@@ -56,9 +57,15 @@ export function ReviewQueueList({
               className="flex flex-wrap items-center justify-between gap-3 rounded border border-border p-4"
             >
               <div className="min-w-0">
-                <p className="truncate text-[14px] font-medium text-ink">
-                  <code className="rounded bg-surface-muted px-1.5 py-0.5 text-[12px]">{item.tool}</code>
-                </p>
+                {/*
+                  The description, not the identifier. This row asked a brand owner
+                  to approve `recipe.delete` — a request for consent to something it
+                  had not described. The tool name stays reachable underneath,
+                  because a person reporting a defect needs it; it is just no longer
+                  the primary text.
+                */}
+                <p className="truncate text-[14px] font-medium text-ink">{toolLabel(item.tool)}</p>
+                <p className="mt-0.5 truncate font-mono text-[11px] text-ink-muted">{item.tool}</p>
                 <p className="mt-1 text-[13px] text-ink-muted">
                   {item.reason ?? `Held by ${item.ruleId ?? 'the approval ladder'}`}
                   {' · '}

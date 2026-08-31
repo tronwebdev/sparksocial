@@ -101,3 +101,55 @@ describe('content.get', () => {
     expect(out.url).toBe('https://example.invalid/instagram/ext_1');
   });
 });
+
+/**
+ * `playbookMissing` — the flag that turns a 404 into a sentence.
+ *
+ * This read has always tolerated a playbook id the library no longer has: it uses
+ * the playbook only for a media-type hint and falls back to `'text'` rather than
+ * failing a read over a display detail. That is right. What was missing is that
+ * the caller could not *tell* — and `DraftPanel` went on to hand the same id to
+ * `content.draft`, which is strict by design and answers
+ * `NOT_FOUND: No playbook "…"`. Staging showed four of those on
+ * `POST /api/tools/content.draft`, and an empty grey modal.
+ *
+ * Tolerant reads and strict writes are both correct. The read just has to say
+ * which case it is in.
+ */
+describe('content.get — a playbook the library no longer has', () => {
+  const gone = async () => ({
+    id: 'ci_gone',
+    genomeId: 'gen_1',
+    playbookId: 'pb_does_not_exist',
+    mode: 'synthesize',
+    status: 'draft',
+    copy: [],
+    why: { summary: 'x', factors: [], evidence: [], alternatives: [] },
+    createdAt: new Date(),
+  });
+
+  it('still returns the post rather than failing', async () => {
+    const out = await contentGet.handler({ contentItemId: 'ci_gone', genomeId: 'gen_1' }, ctx({ get: gone as never }));
+    expect(out.contentItemId).toBe('ci_gone');
+    expect(out.playbookId).toBe('pb_does_not_exist');
+  });
+
+  it('says the playbook is missing', async () => {
+    const out = await contentGet.handler({ contentItemId: 'ci_gone', genomeId: 'gen_1' }, ctx({ get: gone as never }));
+    expect(out.playbookMissing).toBe(true);
+  });
+
+  it('falls back to a text media type rather than guessing', async () => {
+    // The reason this read tolerates it at all: the playbook is consulted for a
+    // display hint, and losing the hint is not worth losing the post.
+    const out = await contentGet.handler({ contentItemId: 'ci_gone', genomeId: 'gen_1' }, ctx({ get: gone as never }));
+    expect(out.mediaType).toBe('text');
+  });
+
+  it('reports false for a playbook that does resolve', async () => {
+    // Otherwise the flag would be true for everything and the panel would refuse
+    // to redraft any post at all.
+    const out = await contentGet.handler({ contentItemId: 'ci_1', genomeId: 'gen_1' }, ctx());
+    expect(out.playbookMissing).toBe(false);
+  });
+});

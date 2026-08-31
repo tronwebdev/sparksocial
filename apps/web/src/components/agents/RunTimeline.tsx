@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
  * THE AGENT TIMELINE (plan §4.5).
@@ -298,7 +299,11 @@ function StepPayload({ payload }: { payload: unknown }) {
   if (typeof p.tool === 'string') {
     return (
       <p className="mt-0.5 truncate text-[13px] text-ink-muted">
-        <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">{p.tool}</code>
+        {/* The timeline is the one place the identifier is arguably the point —
+            it is a trace of what the agent called. So both, with the readable half
+            leading, matching the audit log rather than diverging from it. */}
+        <span className="text-ink">{toolLabel(p.tool)}</span>{' '}
+        <code className="rounded bg-surface-muted px-1 py-0.5 text-[11px] text-ink-muted">{p.tool}</code>
         {typeof p.refused === 'string' ? (
           <span className="ml-2 text-destructive">refused — {p.refused}</span>
         ) : typeof p.status === 'string' ? (

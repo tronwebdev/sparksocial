@@ -340,10 +340,25 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         throw new ToolError('NOT_FOUND', `No playbook "${input.playbookId}".`, { playbookId: input.playbookId });
       }
       if (playbook.mode === 'direct_finish') {
+        /**
+         * Named in the words of the thing, not of the tool.
+         *
+         * This message reached a calendar screen verbatim:
+         * *"pb_craft_capture is filmed, not drafted — use direct.brief.generate."*
+         * Every noun in it is ours — a playbook id and a tool name — and the one
+         * actionable fact (somebody has to film something) is the part it does not
+         * say. `playbook.name` is what the calendar already shows for this format,
+         * so quoting that is what makes the two agree.
+         *
+         * The tool name moves into `meta`, which `app.ts` never serialises to a
+         * client but the audit row keeps.
+         */
         throw new ToolError(
           'INVALID_INPUT',
-          `${playbook.playbook_id} is filmed, not drafted — use direct.brief.generate.`,
-          { playbookId: playbook.playbook_id },
+          `"${playbook.name}" is filmed rather than written — SPARK sends a short shot list and builds the ` +
+            'post from what you send back, so there is nothing to draft here. Start it from the capture loop ' +
+            'instead.',
+          { playbookId: playbook.playbook_id, use: 'direct.brief.generate' },
         );
       }
 

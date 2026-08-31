@@ -117,10 +117,20 @@ export function CampaignList({
      * summary, which used to say "paused" and so read as forbidding the draft
      * case it had always handled.
      */
+    /**
+      * A fresh key, and the stable one it replaces was a real bug.
+      *
+      * `invoke.ts` replays a *succeeded* call for a repeated idempotency key
+      * without re-running it. With `campaign.active:<id>` as the key, the sequence
+      * Activate → Pause → Activate returned the first activation's cached result
+      * and never wrote: the badge stayed on `paused` and the button appeared to do
+      * nothing. A status toggle is the one shape where a stable key is wrong —
+      * each press is a new decision about a state that has since changed.
+      */
     const res = await invoke(
       to === 'active' ? 'campaign.resume' : 'campaign.pause',
       { campaignId },
-      `campaign.${to}:${campaignId}`,
+      crypto.randomUUID(),
     );
     setWorking(null);
     if (res.status !== 'succeeded') {

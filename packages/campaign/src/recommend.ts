@@ -68,6 +68,17 @@ export const CalendarRecommendSlotOutput = z.object({
       playbookName: z.string(),
       description: z.string(),
       mediaType: z.string(),
+      /**
+       * `direct_finish` | `generate` | `hybrid` — how this format gets made.
+       *
+       * Added because the calendar's Accept action called `content.draft` on
+       * whatever came back, and `content.draft` refuses a `direct_finish`
+       * playbook: it is filmed through the capture loop, not written. So a
+       * perfectly good recommendation produced an error message naming a tool.
+       * The recommendation is still right; the caller needed to know which of two
+       * paths it opens.
+       */
+      mode: z.string(),
       platforms: z.array(z.string()),
       pillar: z.string(),
       /** The campaign's objective, in its own words — what this post is chasing. */
@@ -250,6 +261,7 @@ function recommendFormat(args: {
     playbookName: p.name,
     description: p.description,
     mediaType: p.output.media_type,
+    mode: p.mode,
     platforms: p.output.platforms,
     pillar: p.content_pillar,
     goal: objectiveWords(args.objective),

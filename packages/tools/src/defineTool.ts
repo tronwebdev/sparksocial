@@ -1152,6 +1152,22 @@ export interface AnalyticsStore {
    * history; see `publishedWithMetrics` in `scoped.ts` for why that distinction
    * decides what the cockpit is allowed to draw.
    */
+  /**
+   * Per-genome totals for one org — the agency roster's roll-up.
+   *
+   * The only read in this interface that is not genome-scoped, and the shape is
+   * what makes that safe: aggregates keyed by genome, never rows. A brand's
+   * content stays behind the genome predicate; what crosses to the org level is
+   * how much of it there was and how it performed. See `orgPublishingRollup` in
+   * `scoped.ts` for the two assertions that hold that line.
+   *
+   * Restricted to org administrators on the tool, not here — this layer knows
+   * about tenancy, not about people.
+   */
+  orgRollup(
+    orgId: string,
+    windowDays: number,
+  ): Promise<Array<{ genomeId: string; publishedCount: number; impressions: number; engagements: number }>>;
   publishedInWindow(
     orgId: string,
     genomeId: string,

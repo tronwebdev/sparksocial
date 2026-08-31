@@ -22,6 +22,8 @@ export const ContentGetInput = z.object({
 export const ContentGetOutput = z.object({
   contentItemId: z.string(),
   playbookId: z.string(),
+  /** False when the library no longer has that playbook — see the handler. */
+  playbookMissing: z.boolean(),
   mode: z.string(),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   status: z.string(),
@@ -115,6 +117,20 @@ export const contentGet = defineTool({
     return {
       contentItemId: draft.id,
       playbookId: draft.playbookId,
+      /**
+       * Whether that playbook id still resolves in the library.
+       *
+       * This read is deliberately tolerant of one that does not — it falls back to
+       * `'text'` above rather than failing a read over a display hint. But the
+       * caller could not *tell*, and one caller went on to hand the same id to
+       * `content.draft`, which is deliberately strict and answers
+       * `NOT_FOUND: No playbook "…"`. The panel then showed a grey box.
+       *
+       * Tolerant reads and strict writes are both right. What was missing is the
+       * read saying which case it is in, so the caller does not have to find out
+       * by making a call that fails.
+       */
+      playbookMissing: playbook === undefined,
       mode: draft.mode,
       mediaType,
       status: draft.status,

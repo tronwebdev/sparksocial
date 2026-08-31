@@ -75,6 +75,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         record: async () => { throw new Error('analytics.record not stubbed in this test'); },
         listForItems: async () => [],
         publishedInWindow: async () => [],
+        orgRollup: async () => [],
       },
       ctaLinks: {
         create: async () => { throw new Error('ctaLinks.create not stubbed in this test'); },
