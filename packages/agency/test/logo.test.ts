@@ -34,8 +34,19 @@ function ctx(over: { setGovernance?: unknown } = {}): ToolCtx {
   } as unknown as ToolCtx;
 }
 
+interface GenArgs {
+  prompt: string;
+  aspectRatio: string;
+}
+
+/**
+ * Typed explicitly. `vi.fn(async () => …)` infers a zero-argument mock, so
+ * `mock.calls[0]` is the empty tuple and every `calls[0]![0].prompt` below is a
+ * type error — which is exactly what slipped through when this file was written,
+ * because the tests pass at runtime either way.
+ */
 function images() {
-  return { generate: vi.fn(async () => ({ url: 'https://fal.example/logo.png' })) };
+  return { generate: vi.fn<(args: GenArgs) => Promise<{ url: string }>>(async () => ({ url: 'https://fal.example/logo.png' })) };
 }
 
 describe('brand.logo.generate — the prompt', () => {
