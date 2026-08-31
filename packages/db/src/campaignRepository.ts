@@ -98,6 +98,17 @@ export function createCampaignRepository(db: Database): CampaignStore {
         throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId });
       }
     },
+
+    async setName(campaignId, orgId, name) {
+      const result = await db
+        .update(campaigns)
+        .set({ name, updatedAt: new Date() })
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.orgId, orgId)))
+        .returning({ name: campaigns.name });
+      // Undefined rather than throwing, so the tool decides how a missing
+      // campaign reads — the same split `get` already makes.
+      return result[0];
+    },
   };
 }
 

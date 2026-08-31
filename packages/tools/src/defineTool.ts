@@ -1711,6 +1711,19 @@ export interface CampaignStore {
     }>
   >;
   setStatus(campaignId: string, orgId: string, status: string): Promise<void>;
+  /**
+   * `campaign.rename` — the only field of a live campaign that is safe to edit.
+   *
+   * Everything else on a campaign is either a term the owner approved (objective,
+   * window, autonomy) or a snapshot taken under those terms (`plan`), and editing
+   * one in place would leave the calendar it produced unexplained. The name is
+   * the exception: it is how a person tells three campaigns apart and it governs
+   * nothing.
+   *
+   * Returns undefined when the campaign is out of scope, the same "absent rather
+   * than forbidden" rule as `get`.
+   */
+  setName(campaignId: string, orgId: string, name: string): Promise<{ name: string } | undefined>;
 }
 
 /** One genome tracking one trend over time — `trend.watchlist`'s storage. */

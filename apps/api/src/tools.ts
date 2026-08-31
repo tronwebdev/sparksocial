@@ -75,6 +75,7 @@ import {
   campaignReportVsOutcome,
   campaignDuplicate,
   campaignPause,
+  campaignRename,
   campaignResume,
   calendarGenerate,
   calendarImpactPreview,
@@ -316,6 +317,8 @@ export function registerAlphaTools(): void {
   register(campaignReportVsOutcome);
   register(campaignDuplicate);
   register(campaignPause);
+  // The one field of a live campaign that is safe to edit — see the tool.
+  register(campaignRename);
   register(campaignResume);
 
   // Calendar (§6.8 Step 4, CAL-01→CAL-06): reviewed at mix level, not post by post.

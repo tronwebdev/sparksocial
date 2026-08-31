@@ -66,6 +66,9 @@ function campaignStore(over: {
       return over.slots ?? [];
     },
     async setStatus() {},
+    async setName() {
+      return undefined;
+    },
   };
 }
 

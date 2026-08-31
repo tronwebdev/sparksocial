@@ -173,6 +173,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         replaceSlots: async () => 0,
         slots: async () => [],
         setStatus: async () => {},
+        setName: async () => undefined,
       },
       brandEngagement: {
         // No overrides: every platform inherits, which is the state every brand

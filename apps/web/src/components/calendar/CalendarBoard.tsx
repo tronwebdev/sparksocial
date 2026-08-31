@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { CampaignWizard } from '@/components/campaign/CampaignWizard';
+import { EmptyCalendarReason } from './EmptyCalendarReason';
+import { CampaignList, type CampaignRow } from './CampaignList';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
@@ -159,6 +161,37 @@ export function CalendarBoard() {
    */
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(searchParams.get('new') === '1');
+  /**
+   * Every campaign for this brand, not just the one on screen.
+   *
+   * "Why can't I create multiple campaigns?" — you can, and nothing in
+   * `campaign.create`, `campaigns` or `campaign.list` has ever stopped you. This
+   * screen stopped you: it read `campaigns[0]` (most recent by `startAt`), drew
+   * that one, and offered the wizard only when there were *none*. So a second
+   * campaign silently replaced the first on screen and the first became
+   * unreachable — which reads exactly like a one-campaign limit.
+   */
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+
+  /**
+   * The campaign list, on its own so activation can refresh it.
+   *
+   * Without this the picker was populated once at mount, so a campaign created
+   * *after* mount was drawn but absent from the list that switches between them —
+   * which is the same "you can only have one" symptom, one step further along.
+   */
+  const listCampaigns = useCallback(async (genomeId: string): Promise<CampaignRow[]> => {
+    /**
+     * The tool's maximum, not its default of 10.
+     *
+     * This list is titled "Campaigns" and states a count, so a silent truncation
+     * at ten would make it say something false. Fifty is the schema's ceiling; a
+     * brand past it needs pagination, and `CampaignList` says so rather than
+     * quietly dropping the tail.
+     */
+    const list = await invoke<{ campaigns: CampaignRow[] }>('campaign.list', { genomeId, limit: 50 });
+    return list.status === 'succeeded' ? list.output.campaigns : [];
+  }, []);
 
   const reload = useCallback(async (campaignId: string) => {
     const got = await invoke<CalendarView>('calendar.get', { campaignId });
@@ -181,12 +214,12 @@ export function CalendarBoard() {
     // until this effect happened to find nothing to replace it with.
     setView(null);
     void (async () => {
-      const list = await invoke<{ campaigns: Array<{ campaignId: string; status: string }> }>('campaign.list', {
-        genomeId: genome.genomeId,
-      });
+      const rows = await listCampaigns(genome.genomeId);
       if (cancelled) return;
-      // Most recently started first (the tool's own ordering) — the active one.
-      const active = list.status === 'succeeded' ? list.output.campaigns[0] : undefined;
+      setCampaigns(rows);
+      // Most recently started first (the tool's own ordering) — opened by
+      // default, but no longer the only one reachable.
+      const active = rows[0];
       if (active) await reload(active.campaignId);
       if (!cancelled) setHydrating(false);
     })();
@@ -388,6 +421,9 @@ export function CalendarBoard() {
         onActivated={(campaignId) => {
           setCreating(false);
           void reload(campaignId);
+          // So the new one appears in the picker beside the old ones, rather than
+          // being the only one reachable until the next full page load.
+          if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
         }}
         onCancel={() => {
           // Arrived deliberately: Cancel means "never mind", so it goes back to
@@ -404,6 +440,30 @@ export function CalendarBoard() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
+      {/*
+        Every campaign, above the one that is open.
+        
+        Ordered before the calendar because it answers a question the calendar
+        cannot: *which* campaign am I looking at, and what else is there. That was
+        unanswerable — this screen drew `campaigns[0]` and offered no way to the
+        rest, which reads exactly like a product that allows one.
+      */}
+      {campaigns.length > 0 ? (
+        <CampaignList
+          campaigns={campaigns}
+          selectedId={view.campaignId}
+          busy={busy}
+          onSelect={(id) => void reload(id)}
+          onChanged={() => {
+            // Both, because a rename changes the list and a status change changes
+            // the badge on the open campaign too.
+            if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
+            void reload(view.campaignId);
+          }}
+          onNew={() => setCreating(true)}
+        />
+      ) : null}
+
       <section className="rounded border border-border bg-surface p-5">
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -412,11 +472,34 @@ export function CalendarBoard() {
               {view.slots.length} posts · for {view.objective}
             </p>
           </div>
+          {/* The status and its controls live in the list above, beside every
+              other campaign's — see `CampaignList`. Repeating them here would give
+              two places to activate one campaign. */}
           <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
         </header>
 
         {/* The headline. Step 4 is judged here, not in the grid below. */}
         <MixBar mix={view.mixActual} onAdjust={adjust} busy={busy || previewing} />
+
+        {/*
+          A campaign with no posts in it, explained.
+
+          `calendar.generate` runs the moment a campaign is created and can
+          legitimately place zero slots — it only draws on playbooks whose assets
+          already exist. That is a success, so nothing reported it, and the mix bar
+          said "Nothing scheduled yet" as though a step had been skipped. See
+          `EmptyCalendarReason` for the full account.
+        */}
+        {view.slots.length === 0 && genome ? (
+          <div className="mt-4">
+            <EmptyCalendarReason
+              genomeId={genome.genomeId}
+              plannedCount={view.mixActual.reduce((sum, m) => sum + m.count, 0)}
+              busy={busy}
+              onRegenerate={() => void regenerate(view.campaignId, {})}
+            />
+          </div>
+        ) : null}
 
         {previewing ? <p className="mt-2 text-[13px] text-ink-muted">Working out what that would change…</p> : null}
 

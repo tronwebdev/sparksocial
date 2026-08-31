@@ -112,5 +112,12 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
       if (!row || row.orgId !== orgId) throw new ToolError('NOT_FOUND', 'No such campaign.', { campaignId });
       row.status = status;
     },
+
+    async setName(campaignId, orgId, name) {
+      const row = rows.get(campaignId);
+      if (!row || row.orgId !== orgId) return undefined;
+      row.name = name;
+      return { name };
+    },
   };
 }

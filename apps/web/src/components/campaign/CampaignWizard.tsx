@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
+import { EmptyCalendarReason } from '@/components/calendar/EmptyCalendarReason';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 
@@ -225,6 +226,29 @@ export function CampaignWizard({
 }) {
   const [step, setStep] = useState<Step>(1);
 
+  /**
+   * The campaign's name, asked rather than derived.
+   *
+   * It was `` `${month} campaign` `` — so two campaigns started in August were
+   * both "August campaign" and indistinguishable in any list. Defaulted to that
+   * same string, because a default is what stops this becoming another required
+   * field on a six-step form, and pre-filled rather than placeholdered so the
+   * owner can see what they are accepting.
+   */
+  const [name, setName] = useState(() => `${new Date().toLocaleString('en', { month: 'long' })} campaign`);
+
+  /**
+   * Set when the campaign was created but its calendar came back empty.
+   *
+   * `calendar.generate` can legitimately place zero slots — it draws only on
+   * playbooks whose assets already exist — and that is a *success*, so the wizard
+   * used to close on it and hand back to a calendar reading "Nothing scheduled
+   * yet". The owner had just walked six steps and been shown "Posts planned: 0 of
+   * 13"; closing silently made that number look like a mistake rather than a
+   * statement.
+   */
+  const [emptyResult, setEmptyResult] = useState<{ campaignId: string; planned: number } | null>(null);
+
   // CMP-01.1
   const [objective, setObjective] = useState<string>('bookings');
   const [windowDays, setWindowDays] = useState(30);
@@ -411,7 +435,10 @@ export function CampaignWizard({
       'campaign.create',
       {
         genomeId,
-        name: `${new Date().toLocaleString('en', { month: 'long' })} campaign`,
+        // Trimmed, with the derived default as the floor: `campaign.create`
+        // requires a non-empty name and an owner who clears the field should get
+        // a working campaign, not a validation error on the last step.
+        name: name.trim() || `${new Date().toLocaleString('en', { month: 'long' })} campaign`,
         objective,
         windowDays,
         platforms: selected,
@@ -443,7 +470,9 @@ export function CampaignWizard({
 
     // §8.4: "Campaign activation triggers: initial posting plan and schedule;
     // creation of content items with statuses." That is this call.
-    const generated = await invoke('calendar.generate', { campaignId: created.output.campaignId });
+    const generated = await invoke<{ slotCount: number }>('calendar.generate', {
+      campaignId: created.output.campaignId,
+    });
     setBusy(false);
     if (generated.status !== 'succeeded') {
       setError(
@@ -454,10 +483,63 @@ export function CampaignWizard({
       return;
     }
 
+    /**
+     * Zero slots is a success with nothing in it, and it is reported rather than
+     * handed off silently.
+     *
+     * The calendar explains it too, immediately, on the screen this hands back to
+     * — but the moment that needs the explanation is *this* one: the owner just
+     * pressed "Activate campaign" and the honest answer is "done, and nothing can
+     * be built yet, here is what closes that". Handing back to a screen that says
+     * "Nothing scheduled yet" makes them go looking for the step they missed.
+     */
+    if (generated.output.slotCount === 0) {
+      setEmptyResult({
+        campaignId: created.output.campaignId,
+        planned: plan ? mixTotal(plan.mix) : 0,
+      });
+      return;
+    }
+
     onActivated(created.output.campaignId);
   }
 
   const connectedCount = platforms?.filter((p) => p.connected).length ?? 0;
+
+  /**
+   * The campaign exists and its calendar is empty — said here rather than left to
+   * the screen behind this one.
+   *
+   * Not an error state: nothing failed, and the wording has to make that clear
+   * while still being the reason. The gaps and the fix come from
+   * `EmptyCalendarReason`, the same component the calendar uses, so the two
+   * screens cannot come to say different things about the same brand.
+   */
+  if (emptyResult) {
+    return (
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">Created</p>
+        <h2 className="mt-1 text-[20px] font-medium text-ink">
+          {name.trim() || 'Your campaign'} is set up
+        </h2>
+        <p className="mt-1.5 max-w-prose text-[13px] text-ink-muted">
+          The campaign, its window and its oversight are all saved. It has no posts in it yet though, and
+          that is worth reading before you go looking for a step you missed.
+        </p>
+
+        <div className="mt-5">
+          <EmptyCalendarReason genomeId={genomeId} plannedCount={emptyResult.planned} />
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
+          <Button onClick={() => onActivated(emptyResult.campaignId)}>Go to the calendar</Button>
+          <span className="text-[13px] text-ink-muted">
+            You can regenerate the calendar there once you have added something.
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
@@ -487,6 +569,25 @@ export function CampaignWizard({
         {/* ── CMP-01.1 ────────────────────────────────────────────────── */}
         {step === 1 ? (
           <div className="grid grid-cols-1 gap-5">
+            {/* Asked, not derived. Two campaigns started in the same month were
+                both "August campaign" and told apart by nothing. */}
+            <div>
+              <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-name">
+                Call it
+              </label>
+              <Input
+                id="cmp-name"
+                value={name}
+                maxLength={120}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="August campaign"
+                className="mt-1.5 max-w-md"
+              />
+              <p className="mt-1 text-[12px] text-ink-muted">
+                Just for you &mdash; it is how you will tell this campaign from the next one.
+              </p>
+            </div>
+
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {OBJECTIVES.map((o) => (
                 <li key={o.value}>
@@ -930,6 +1031,7 @@ export function CampaignWizard({
         {step === 6 ? (
           <div className="grid grid-cols-1 gap-5">
             <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+              <Row label="Name" value={name.trim() || 'August campaign'} />
               <Row label="Goal" value={OBJECTIVES.find((o) => o.value === objective)?.label ?? objective} />
               <Row
                 label="Type"

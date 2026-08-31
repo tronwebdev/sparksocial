@@ -50,6 +50,9 @@ function store(): CampaignStore & { slotWrites: number[] } {
       return (slots.get(campaignId) ?? []) as never;
     },
     async setStatus() {},
+    async setName() {
+      return undefined;
+    },
   };
 }
 
