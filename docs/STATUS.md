@@ -333,6 +333,43 @@ change the plan:
 Suite at the end of the pass: **174 test files, 2394 tests**, root and web
 typecheck clean, `next build` clean.
 
+## First staging defects (31 Aug 2026)
+
+The first four defects reported from the deployed environment rather than from a
+local run. Worth recording together, because what they have in common is more
+useful than any one of them: **none could have been caught by the suite as it
+stood**, and three of them were not edge cases but controls that had never once
+worked.
+
+| Reported as | Actual cause | Now |
+|---|---|---|
+| A Playwright stack trace under "What's your website?" | `node:22-alpine` cannot execute Playwright's or Remotion's browsers (glibc), and `npm ci --ignore-scripts` never downloaded one anyway | Both Dockerfile stages on `node:22-bookworm-slim` with one distro Chromium at `/usr/bin/chromium`, shared via `CHROMIUM_PATH`. Launch failure is a `CrawlFailure` of `'unavailable'` with a message that names neither a binary nor a path |
+| "That genome is not in your organization." on a fresh account | `spark_genome` held a bare genome id for a year and nothing cleared it on sign-out, so a second account asserted the first's genome on every call | The cookie records the org it was chosen in; the proxies forward the claim only when it matches the verified org. `clerk-auth.ts` is still the only gate |
+| "content.draft is not idempotent and requires an idempotency key" | Seven `apps/web` call sites omitted the key — and two carried a comment explaining that omission as deliberate | All seven fixed; `packages/tools/test/idempotency-callsites.test.ts` fails the build on the eighth |
+| 700 characters of `ChainedTokenCredential` under "Upload a logo" | `AZURE_STORAGE_ACCOUNT` set with no managed identity behind it, and the credential aggregate used as the user-facing message | `STORAGE_UNAVAILABLE` + one sentence; the aggregate and the operator's fix in `meta`, which `app.ts` never serialises. Plus a boot probe that signs one throwaway URL |
+
+**The pattern worth keeping.** Two of these were *inverted contracts written down
+as comments* — `idempotent: false` read as "send no key", and a cookie treated as
+a preference when it is a tenancy claim. A comment cannot guard against a rule
+somebody has already misunderstood, which is why both fixes ship with a check
+rather than a clearer comment.
+
+**The other pattern.** Three of the four are invisible to `npm test` and
+`next build` by construction: they are properties of the *image*, of *cookie
+lifetime across sessions*, and of *deployed credentials*. The local suite was
+never going to find them. Task 0.4's deployed walk is not a formality.
+
+**Still owed on Azure** (from a machine that can reach it — CLAUDE.md
+§ Infrastructure): the API's managed identity needs **both** `Storage Blob Data
+Contributor` and `Storage Blob Delegator` on the storage account. Delegator is
+the one usually missed: user-delegation SAS is signed with a key that role mints,
+and Contributor alone gets a 403 naming `AuthorizationPermissionMismatch`.
+
+Suite after the pass: **184 test files, 2498 tests**, root and web typecheck
+clean, `next build` clean. The image was **not** built locally — no Docker daemon
+in this environment — so `az acr build` in `deploy-azure.yml` is the first thing
+that exercises the base-image swap.
+
 ## Security & scalability pass (8 Aug)
 
 Bypasses were attempted against a running server, not just read for in code.
