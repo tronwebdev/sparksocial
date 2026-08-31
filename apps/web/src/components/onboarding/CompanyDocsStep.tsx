@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
  * `F6` — "Upload company Docs (PDF)", with the sample guideline beside it.
@@ -76,18 +77,10 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       return;
     }
 
-    try {
-      // `x-ms-blob-type` is Azure's requirement for a SAS upload — the same
-      // header the logo and asset uploads send, and omitting it 400s.
-      const put = await fetch(presigned.output.uploadUrl, {
-        method: 'PUT',
-        headers: { 'content-type': ACCEPT, 'x-ms-blob-type': 'BlockBlob' },
-        body: file,
-      });
-      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
-    } catch (e) {
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, ACCEPT);
+    if (!put.ok) {
       setBusy(false);
-      setError(e instanceof Error ? e.message : 'The upload could not reach storage.');
+      setError(put.message);
       return;
     }
 

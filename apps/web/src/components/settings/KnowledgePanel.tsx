@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 
@@ -200,18 +201,10 @@ export function KnowledgePanel() {
       return;
     }
 
-    try {
-      // `x-ms-blob-type` is Azure's own requirement for a SAS upload — the same
-      // header every other upload in this app sends, and omitting it 400s.
-      const put = await fetch(presigned.output.uploadUrl, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/pdf', 'x-ms-blob-type': 'BlockBlob' },
-        body: file,
-      });
-      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
-    } catch (e) {
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, 'application/pdf');
+    if (!put.ok) {
       setBusyDoc(false);
-      setNote({ kind: 'err', text: e instanceof Error ? e.message : 'The upload could not reach storage.' });
+      setNote({ kind: 'err', text: put.message });
       return;
     }
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { BrandFontPicker } from './BrandFontPicker';
@@ -214,18 +215,10 @@ export function GovernancePanel() {
       return;
     }
 
-    try {
-      // `x-ms-blob-type` is Azure's requirement for a SAS upload, not ours —
-      // same header `AssetUploadForm` sends, and omitting it 400s.
-      const put = await fetch(presigned.output.uploadUrl, {
-        method: 'PUT',
-        headers: { 'content-type': contentType, 'x-ms-blob-type': 'BlockBlob' },
-        body: file,
-      });
-      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
-    } catch (e) {
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType);
+    if (!put.ok) {
       setUploading(false);
-      setMessage({ kind: 'err', text: e instanceof Error ? e.message : 'The upload could not reach storage.' });
+      setMessage({ kind: 'err', text: put.message });
       return;
     }
 

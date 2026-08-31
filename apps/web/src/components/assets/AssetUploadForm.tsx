@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
+import { uploadToStorage } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
 
@@ -98,19 +99,14 @@ export function AssetUploadForm({
       return;
     }
 
-    try {
-      const put = await fetch(presigned.output.uploadUrl, {
-        method: 'PUT',
-        headers: { 'content-type': contentType, 'x-ms-blob-type': 'BlockBlob' },
-        body: file,
-      });
-      if (!put.ok) throw new Error(`Storage rejected the upload (${put.status}).`);
-    } catch (e) {
+    // Direct browser → Blob PUT. `uploadToStorage` owns the failure wording,
+    // because `fetch`'s own is the literal string "Failed to fetch" — which is
+    // what a missing CORS rule on the storage account showed a user beside
+    // "Choose Files".
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType);
+    if (!put.ok) {
       setBusy(false);
-      setMessage({
-        kind: 'err',
-        text: e instanceof Error ? e.message : 'The upload could not reach storage.',
-      });
+      setMessage({ kind: 'err', text: put.message });
       return;
     }
 
