@@ -141,11 +141,22 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
             <section>
               <h4 className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">What it looked at</h4>
               <ul className="mt-1.5 grid grid-cols-1 gap-1">
+                {/*
+                  The note leads and the identifier follows, for the same reason the
+                  audit log stopped leading with a tool name.
+
+                  An evidence id is an internal reference — `engine_spec.§4.4`,
+                  `engage.eligibility.v1` — and the Engagement screen was showing
+                  one as the most prominent thing under "What it looked at",
+                  followed by a note nobody read because the line already looked
+                  like debug output. The reader wants the reason; the id is what a
+                  support conversation needs, so it stays, small and second.
+                */}
                 {why.evidence.map((e, i) => (
                   <li key={`${e.id}-${i}`} className="text-[13px] text-ink-muted">
-                    <span className="font-medium text-ink">{EVIDENCE_LABEL[e.kind] ?? e.kind}</span>{' '}
-                    <span className="font-mono text-[12px]">{e.id}</span>
-                    {e.note ? <span> — {e.note}</span> : null}
+                    <span className="font-medium text-ink">{EVIDENCE_LABEL[e.kind] ?? e.kind}</span>
+                    {e.note ? <span className="text-ink"> — {e.note}</span> : null}
+                    <span className="ml-1.5 font-mono text-[11px] text-ink-soft">{e.id}</span>
                   </li>
                 ))}
               </ul>

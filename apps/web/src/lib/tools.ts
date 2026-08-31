@@ -89,6 +89,30 @@ export async function invoke<T>(name: string, input: unknown, idempotencyKey?: s
     if (!window.location.pathname.startsWith(SIGN_IN_URL)) window.location.assign(SIGN_IN_URL);
   }
 
+  /**
+   * A tool the server does not have.
+   *
+   * Some tools are registered only when their vendor is configured —
+   * `analytics.sync` needs an analytics key, `makeTrendInfluencerReview` needs
+   * listening access. The API answers `404 NOT_FOUND: "No such tool."`, which is
+   * correct and completely unactionable on a screen: it appeared under a Sync
+   * button as those four words, which reads as a broken button rather than an
+   * unconfigured integration.
+   *
+   * Rewritten centrally, because the alternative is every caller of a
+   * conditionally-registered tool remembering to special-case it — and the ones
+   * that forget are exactly the buttons nobody has clicked yet.
+   */
+  if (code === 'NOT_FOUND' && body && 'error' in body && /no such tool/i.test(body.error?.message ?? '')) {
+    return {
+      status: 'failed',
+      error: {
+        code: 'NOT_CONFIGURED',
+        message: 'That is not switched on for this workspace yet — it needs an account or a key connected first.',
+      },
+    };
+  }
+
   if (body && 'status' in body) return body;
   return {
     status: 'failed',

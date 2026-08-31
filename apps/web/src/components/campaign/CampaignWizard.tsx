@@ -78,7 +78,10 @@ const APPROVAL_MODES = [
   {
     value: 'autopublish',
     label: 'Publish on its own',
-    hint: 'The PRD default. Guardrails still hold anything risky back.',
+    // Was "The PRD default." — a document the owner has never seen, offered as
+    // the reason to pick an oversight level. What they need to know is what it
+    // does and what still stops it.
+    hint: 'The usual choice. Guardrails still hold anything risky back for you to look at.',
   },
   {
     value: 'review_first_week',
@@ -493,6 +496,38 @@ export function CampaignWizard({
      * be built yet, here is what closes that". Handing back to a screen that says
      * "Nothing scheduled yet" makes them go looking for the step they missed.
      */
+    /**
+      * The button says "Activate campaign", so the campaign is activated.
+      *
+      * It was not. `campaign.create` writes `status: 'draft'` and nothing here
+      * moved it, so every campaign built through this wizard claimed to be
+      * activated and sat in draft — with the Command Center saying, correctly and
+      * contradictorily, *"is planned but not activated, so nothing is going out
+      * yet"* on the screen the wizard hands off to.
+      *
+      * After `calendar.generate`, not before: activating a campaign with no
+      * calendar would make it the outcome SPARK plans against while having nothing
+      * planned. §8.4's order — plan, schedule, then run — is the order here.
+      *
+      * A failure is reported without unwinding. The campaign and its calendar both
+      * exist and are correct; what failed is one status write, and the calendar's
+      * own Activate button is right there. Deleting a good campaign to make the
+      * error tidy would be worse than saying which step did not finish.
+      */
+    const activated = await invoke(
+      'campaign.resume',
+      { campaignId: created.output.campaignId },
+      `campaign.activate:${created.output.campaignId}`,
+    );
+    if (activated.status !== 'succeeded') {
+      setError(
+        activated.status === 'failed'
+          ? `The campaign and its calendar were created, but activating it did not finish: ${activated.error.message}. You can activate it from the calendar.`
+          : 'The campaign and its calendar were created. Activating it needs approval — do it from the calendar.',
+      );
+      return;
+    }
+
     if (generated.output.slotCount === 0) {
       setEmptyResult({
         campaignId: created.output.campaignId,

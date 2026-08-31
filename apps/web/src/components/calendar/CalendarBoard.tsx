@@ -314,8 +314,46 @@ export function CalendarBoard() {
    * fails after the first has already spent a model call.
    */
   const acceptRecommendation = useCallback(
-    async (day: string, playbookId: string) => {
+    async (day: string, playbookId: string, mode?: string) => {
       if (!genome || !view) return;
+
+      /**
+       * A filmed format does not go through `content.draft` at all.
+       *
+       * `content.draft` refuses a `direct_finish` playbook — correctly, since that
+       * pipeline builds the post from footage the owner sends rather than from
+       * copy — and the refusal was reaching this screen verbatim:
+       * *"pb_craft_capture is filmed, not drafted — use direct.brief.generate."*
+       * A recommendation the engine was right to make produced an error naming a
+       * tool.
+       *
+       * So the branch happens here, before the call. Not by filtering filmed
+       * formats out of the recommendations: for a brand whose whole strength is
+       * physical craft, those are frequently the *best* suggestions, and hiding
+       * them would trade a bad message for worse advice.
+       */
+      if (mode === 'direct_finish') {
+        const brief = await invoke<{ briefId?: string }>(
+          'direct.brief.generate',
+          { genomeId: genome.genomeId, playbookId },
+          crypto.randomUUID(),
+        );
+        if (brief.status !== 'succeeded') {
+          setError(
+            brief.status === 'failed'
+              ? brief.error.message
+              : 'That needs approval before SPARK can send you a shot list.',
+          );
+          return;
+        }
+        // No calendar slot yet, and said so: the post exists once the footage
+        // does, so claiming a date now would put a promise on the calendar that
+        // depends on somebody filming.
+        setError('That one is filmed — SPARK has written you a shot list. It lands on the calendar once you send the clips back.');
+        await reload(view.campaignId);
+        return;
+      }
+
       const drafted = await invoke<{ contentItemId: string }>(
         'content.draft',
         { genomeId: genome.genomeId, playbookId, intent: '' },
@@ -626,7 +664,7 @@ export function CalendarBoard() {
           open
           onClose={() => setDaySheet(null)}
           onCreateSpecific={openTriggerFor}
-          onAcceptCreate={(day, playbookId) => void acceptRecommendation(day, playbookId)}
+          onAcceptCreate={(day, playbookId, mode) => void acceptRecommendation(day, playbookId, mode)}
           onAcceptMove={(day, contentItemId) => void acceptMove(day, contentItemId)}
         />
       ) : null}
