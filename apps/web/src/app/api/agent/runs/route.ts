@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import { forwardableGenomeId } from '@/lib/selectedGenome';
 
 /**
  * THE SECOND, DELIBERATE EXCEPTION TO "ONE ROUTE HANDLER".
@@ -27,21 +28,25 @@ import { auth } from '@clerk/nextjs/server';
 const API_URL = process.env.SPARK_API_URL ?? 'http://localhost:8080';
 
 export async function POST(req: Request) {
-  const { getToken } = await auth();
+  const { getToken, orgId } = await auth();
 
   const token = await getToken();
   if (!token) {
     return Response.json({ error: { code: 'FORBIDDEN', message: 'Not signed in.' } }, { status: 401 });
   }
 
-  const genomeId = req.headers.get('cookie')?.match(/(?:^|;\s*)spark_genome=([^;]+)/)?.[1];
+  // Same org comparison as the tool proxy, for the same reason — see
+  // `lib/selectedGenome.ts`. An agent run is the one surface that reads
+  // `ctx.genomeId` off the request rather than taking it in a tool input, so a
+  // stale claim here fails the whole run rather than one call.
+  const genomeId = forwardableGenomeId(req.headers.get('cookie'), orgId);
 
   const upstream = await fetch(`${API_URL}/v1/agent/runs`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       authorization: `Bearer ${token}`,
-      ...(genomeId ? { 'x-genome-id': decodeURIComponent(genomeId) } : {}),
+      ...(genomeId ? { 'x-genome-id': genomeId } : {}),
     },
     body: await req.text(),
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useClerk, useUser } from '@clerk/nextjs';
+import { clearSelectedGenome } from '@/lib/selectedGenome';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
@@ -43,6 +44,14 @@ export function UserMenu() {
     // custom sign-in screen lives at `/sign-in`, and Clerk's own default
     // post-signout destination is its hosted account portal, which this app
     // does not use anywhere else.
+    /**
+     * Ours to clear — Clerk clears its own cookies, not `spark_genome`. Left
+     * behind, it kept asserting the previous account's genome for a year, and the
+     * next person to sign in on this browser was refused on every call. The
+     * proxy's org comparison is what makes that safe either way; this is what
+     * keeps the stale value from existing at all.
+     */
+    clearSelectedGenome();
     await signOut();
     router.push('/sign-in');
   }

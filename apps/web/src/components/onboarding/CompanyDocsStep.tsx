@@ -91,11 +91,17 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       return;
     }
 
-    const read = await invoke<Attached & { docId: string }>('brand.knowledge.attach_document', {
-      genomeId,
-      url: presigned.output.readUrl,
-      filename: file.name,
-    });
+    /**
+     * Fresh rather than keyed on the filename: re-uploading a corrected version of
+     * `handbook.pdf` must read the new file, and a stable key would replay the
+     * first read's result instead. The key exists to make a *retry* safe, not to
+     * deduplicate filenames.
+     */
+    const read = await invoke<Attached & { docId: string }>(
+      'brand.knowledge.attach_document',
+      { genomeId, url: presigned.output.readUrl, filename: file.name },
+      crypto.randomUUID(),
+    );
     setBusy(false);
 
     if (read.status !== 'succeeded') {

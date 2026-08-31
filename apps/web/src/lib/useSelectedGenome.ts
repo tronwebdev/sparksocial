@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { invoke } from './tools';
+import { readSelectedGenome } from './selectedGenome';
 
 /**
  * Which genome the brand switcher has selected — the `spark_genome` cookie's
@@ -24,6 +26,7 @@ export interface UseSelectedGenome {
 }
 
 export function useSelectedGenome(): UseSelectedGenome {
+  const { orgId } = useAuth();
   const [genome, setGenome] = useState<SelectedGenome | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +41,11 @@ export function useSelectedGenome(): UseSelectedGenome {
         setLoading(false);
         return;
       }
-      const cookie = document.cookie.match(/(?:^|;\s*)spark_genome=([^;]+)/)?.[1];
-      const selected =
-        res.output.genomes.find((g) => g.genomeId === (cookie ? decodeURIComponent(cookie) : '')) ??
-        res.output.genomes[0]!;
+      // Org-aware: a cookie recorded against another org is not a selection, it
+      // is a leftover from a different account on this browser. Falling back to
+      // the first genome is what it always did for a cookie it could not match.
+      const cookie = readSelectedGenome(orgId);
+      const selected = res.output.genomes.find((g) => g.genomeId === cookie) ?? res.output.genomes[0]!;
       setGenome(selected);
       setLoading(false);
     })();

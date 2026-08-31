@@ -259,4 +259,38 @@ describe('failureFor — why a crawl found nothing', () => {
   it('falls back to the empty message for an unknown cause', () => {
     expect(explainCrawlFailure('https://x.example', undefined)).toMatch(/no readable text/i);
   });
+
+  /**
+   * `unavailable` — the only cause in this union that is about us.
+   *
+   * The container shipped without a Chromium, so `chromium.launch` threw and the
+   * onboarding URL step rendered `browserType.launch: Executable doesn't exist at
+   * /home/spark/.cache/ms-playwright/…` in full, in red, to a business owner. The
+   * message must therefore do two things the other five need not: not blame the
+   * site, and not describe our deployment.
+   */
+  describe('unavailable', () => {
+    it('says the failure is ours, not the site’s', () => {
+      const message = explainCrawlFailure('https://tronweb.co', 'unavailable');
+      expect(message).toMatch(/our website reader/i);
+      expect(message).toMatch(/nothing to do with tronweb\.co/i);
+    });
+
+    it('offers the same way forward as every other cause', () => {
+      expect(explainCrawlFailure('https://x.example', 'unavailable')).toMatch(/answering a few questions/i);
+    });
+
+    it('leaks nothing about the deployment', () => {
+      // The specific strings that were on screen. A message naming a cache path,
+      // a binary, or a library is one an owner can neither act on nor report.
+      const message = explainCrawlFailure('https://x.example', 'unavailable');
+      expect(message).not.toMatch(/playwright|chromium|executable|browserType|\.cache|npx/i);
+    });
+
+    it('does not claim the site was unreachable', () => {
+      // The nearest wrong answer, and an expensive one: it sends the owner to
+      // check their own DNS for a fault in our image.
+      expect(explainCrawlFailure('https://x.example', 'unavailable')).not.toMatch(/could not reach/i);
+    });
+  });
 });

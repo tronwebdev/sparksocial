@@ -8,7 +8,7 @@ import {
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
 import { createClerkClient } from '@clerk/backend';
-import { registerAlphaTools, registerAgencyTools, localBlobStoreForRoutes } from './tools.js';
+import { registerAlphaTools, registerAgencyTools, blobStore, localBlobStoreForRoutes } from './tools.js';
 import { registerLocalStorageRoutes } from './local-storage-routes.js';
 import { registerCanvaOAuthCallback } from './canva-oauth.js';
 import { registerSocialOAuthCallback } from './social-oauth.js';
@@ -509,6 +509,29 @@ if (socialOAuthConfigured) {
 // Mounts the PUT/GET routes local-disk storage's presigned URLs point at.
 // `undefined` once AZURE_STORAGE_ACCOUNT is set — those URLs are real Blob
 // Storage SAS links and need no local route.
+/**
+ * One signing round trip against real Blob Storage, to find out at boot rather
+ * than at first upload. No-ops when storage is local — there is no identity to
+ * check and the warning above already covers it.
+ */
+async function probeBlobStore(): Promise<void> {
+  if (!envSet('AZURE_STORAGE_ACCOUNT')) return;
+  try {
+    // A read URL for a key that need not exist: signing is what exercises the
+    // identity, and `getUserDelegationKey` is the call that fails without one.
+    await blobStore().readUrl('healthcheck/.probe', 60);
+    console.log('  blob storage: signing works');
+  } catch (e) {
+    const detail =
+      e && typeof e === 'object' && 'meta' in e
+        ? ((e as { meta?: { operator?: string } }).meta?.operator ?? '')
+        : '';
+    console.error(
+      `[error] blob storage is configured but not usable — every upload will fail. ${detail}`.trim(),
+    );
+  }
+}
+
 const localStorage = localBlobStoreForRoutes();
 if (localStorage) {
   registerLocalStorageRoutes(app, localStorage);
@@ -527,6 +550,22 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
   // exactly like a quiet week, so it is worth saying at boot rather than
   // leaving somebody to wonder why the feed never fills.
   console.log(`  engagement inbound: ${describeEngageWebhook(engageWebhook ?? {})}`);
+  /**
+   * Whether the storage identity actually works, asked once at boot.
+   *
+   * `AZURE_STORAGE_ACCOUNT` being *set* was treated as storage being configured,
+   * and it is not the same thing: a Container App with no managed identity
+   * assigned, or one without `Storage Blob Delegator`, boots clean and fails at
+   * the first upload — with a ~700-character `ChainedTokenCredential` aggregate
+   * that used to be rendered to the customer. The first person to find out was a
+   * user pressing "Upload a logo".
+   *
+   * Deliberately not a health-check failure. The API serves everything except
+   * media ingest without storage, and reporting unhealthy would have Container
+   * Apps cycle a revision that is mostly working. It is a loud line in the log at
+   * the only moment somebody is watching a deploy.
+   */
+  void probeBlobStore();
 });
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {

@@ -19,6 +19,28 @@ const TASKS_URL = '/sign-in/tasks';
 /** Where an unauthenticated (or no-longer-valid) session gets sent. */
 const SIGN_IN_URL = '/sign-in';
 
+/**
+ * `idempotencyKey` is optional in this signature and **mandatory for any tool
+ * declared `idempotent: false`** — `packages/tools/src/invoke.ts` refuses such a
+ * call before the handler runs, with `INVALID_INPUT`.
+ *
+ * It reads backwards and has been misread twice: `idempotent: false` does not
+ * mean "do not send a key". It means the tool cannot be safely repeated, so the
+ * key is what makes a duplicated *request* — a retry, a double-submit, a proxy
+ * replay — return the first result instead of doing the thing twice. Seven
+ * buttons across this app sent no key and were rejected 100% of the time.
+ *
+ * Choosing one:
+ *   - **Fresh `crypto.randomUUID()`** when each press is a genuinely new action
+ *     (draft this playbook, invite this person, ingest this file). One press mints
+ *     one key, so one press is one action.
+ *   - **A stable string** when a repeat press must collapse into the first —
+ *     `publish:${contentItemId}:${platform}` is the example: publishing the same
+ *     post to the same platform twice is never what was meant.
+ *
+ * `packages/db/test/isolation.test.ts` fails the build if a call site here omits
+ * the key for a non-idempotent tool, because the compiler cannot see it.
+ */
 export async function invoke<T>(name: string, input: unknown, idempotencyKey?: string): Promise<ToolResult<T>> {
   const res = await fetch(`/api/tools/${encodeURIComponent(name)}`, {
     method: 'POST',

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StepShell } from '@/components/onboarding/StepShell';
@@ -143,7 +144,10 @@ export default function OnboardingPage() {
    * to nothing.
    */
   function selectGenome(genomeId: string) {
-    document.cookie = `spark_genome=${encodeURIComponent(genomeId)}; path=/; samesite=lax`;
+    // The org goes in with it. A cookie with no org is dropped by the proxy, and
+    // one written under the wrong org is what stopped a second account from
+    // onboarding in a browser the first had used — see `lib/selectedGenome.ts`.
+    if (orgId) writeSelectedGenome(orgId, genomeId);
   }
 
   async function bootstrap() {

@@ -722,7 +722,13 @@ function localUrlPrefix(): string {
   return `${localPublicBaseUrl()}${LOCAL_STORAGE_ROUTE_PREFIX}/`;
 }
 
-function blobStore(): BlobStore {
+/**
+ * Exported for `index.ts`'s boot probe, which signs one throwaway read URL to
+ * find out whether the storage identity works. `AZURE_STORAGE_ACCOUNT` being set
+ * is not the same fact as storage being usable, and the difference used to first
+ * surface as a wall of Azure credential text under an upload button.
+ */
+export function blobStore(): BlobStore {
   if (!envSet('AZURE_STORAGE_ACCOUNT')) return localBlobStore();
   const account = envStr('AZURE_STORAGE_ACCOUNT', '');
   return createAzureBlobStore({ account, container: envStr('AZURE_STORAGE_CONTAINER', 'assets') });

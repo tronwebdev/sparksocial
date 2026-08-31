@@ -118,13 +118,21 @@ export function TeamPanel() {
     if (!inviteEmail.trim()) return;
     setBusy('invite');
     setNote(null);
-    // `idempotent: false` on the tool — a replayed key would still be a second
-    // email, so no key is sent and a double click is the user's own risk, made
-    // smaller by disabling the button while it runs.
-    const res = await invoke<{ invitationId: string; status: string }>('team.invite', {
-      email: inviteEmail.trim(),
-      role: inviteRole,
-    });
+    /**
+     * The key is required, not optional — see `BrandTransferPanel` for the same
+     * misreading. Without it `invoke.ts` refused the call before the handler ran,
+     * so no invitation was ever sent by this button.
+     *
+     * A replayed request now returns the first invitation rather than sending a
+     * second email, which is the opposite of what the old comment claimed. A
+     * genuine double *click* still mints two keys; the disabled button is what
+     * covers that, as before.
+     */
+    const res = await invoke<{ invitationId: string; status: string }>(
+      'team.invite',
+      { email: inviteEmail.trim(), role: inviteRole },
+      crypto.randomUUID(),
+    );
     setBusy(null);
     if (res.status !== 'succeeded') {
       setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That invitation was held for review.' });

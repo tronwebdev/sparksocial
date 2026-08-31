@@ -27,13 +27,31 @@ export interface CrawledPage {
   text: string;
 }
 
-/** Why an entry URL produced no usable pages. */
-export type CrawlFailure = 'blocked' | 'not_found' | 'server_error' | 'unreachable' | 'empty';
+/**
+ * Why an entry URL produced no usable pages.
+ *
+ * Five of these are facts about the *site*. `unavailable` is a fact about *us* —
+ * the browser this crawler needs could not start — and it is the one the owner
+ * must never be shown in raw form. Before it existed, a container without
+ * Chromium installed answered the onboarding URL step with
+ * `browserType.launch: Executable doesn't exist at /home/spark/.cache/ms-playwright/…`,
+ * rendered in full, in red, under "What's your website?". That text tells a
+ * business owner nothing they can act on and everything about our deployment.
+ */
+export type CrawlFailure = 'blocked' | 'not_found' | 'server_error' | 'unreachable' | 'empty' | 'unavailable';
 
 export interface CrawlResult {
   pages: CrawledPage[];
   /** Set only when `pages` is empty. */
   failure?: CrawlFailure;
+  /**
+   * The underlying error text, for the log — never for the owner.
+   *
+   * Only set for `unavailable`, where the cause is a deployment detail (a missing
+   * Chromium, a missing shared library) that an operator needs verbatim and a
+   * customer must not see. `explainCrawlFailure` does not read it.
+   */
+  reason?: string;
 }
 
 export interface CrawlOptions {
@@ -106,7 +124,30 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
 
   let browser: Browser | undefined;
   try {
-    browser = await chromium.launch({ headless: true });
+    /**
+     * The launch is inside its own try because it fails for a reason unlike every
+     * other failure in this function: no browser binary, wrong platform, missing
+     * shared library. That is an operator problem, and letting it propagate turned
+     * it into a stack trace on a customer's screen.
+     *
+     * Returned as a result rather than rethrown so `bootstrap.ts` treats it the
+     * same way it treats a blocked site — one `ToolError` with a sentence, and the
+     * onboarding flow's own "answer questions instead" path already offered. The
+     * real cause is logged by the caller, not shown.
+     */
+    try {
+      /**
+       * `CHROMIUM_PATH` is the container's own Chromium, shared with Remotion.
+       * Unset locally, where Playwright resolves the browser it downloaded
+       * itself — so a normal checkout behaves exactly as before.
+       */
+      browser = await chromium.launch({
+        headless: true,
+        ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+      });
+    } catch (e) {
+      return { pages: [], failure: 'unavailable', reason: e instanceof Error ? e.message : String(e) };
+    }
     /**
      * One context for the whole crawl, identifying itself honestly.
      *

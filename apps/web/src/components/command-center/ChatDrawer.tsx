@@ -100,10 +100,21 @@ export function ChatDrawer({
     if (!genomeId || busy) return;
     setBusy(true);
     append('system', `Drafting "${pb.name}"…`);
-    const res = await invoke<{ contentItemId: string }>('content.draft', {
-      genomeId,
-      playbookId: pb.playbook_id,
-    });
+    /**
+     * A fresh key per press, matching the three other `content.draft` call sites.
+     * Without one the tool is refused before the handler runs, which is what made
+     * every button in this drawer answer "content.draft is not idempotent and
+     * requires an idempotency key".
+     *
+     * Fresh rather than derived from the playbook: drafting the same playbook
+     * twice is a legitimate request, so a stable key would silently hand back the
+     * first draft the second time.
+     */
+    const res = await invoke<{ contentItemId: string }>(
+      'content.draft',
+      { genomeId, playbookId: pb.playbook_id },
+      crypto.randomUUID(),
+    );
     setBusy(false);
     if (res.status !== 'succeeded') {
       append('system', res.status === 'failed' ? `Couldn't draft that: ${res.error.message}` : 'That draft was gated.');
