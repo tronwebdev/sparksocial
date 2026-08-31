@@ -2,6 +2,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { languageModelAvailable, modelClient } from './model-client.js';
 import { ShapeMismatch, ToolError, callVendor, renderUntrusted, withShapeRetry } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
+import {
+  EMOJI_INSTRUCTION,
+  HARD_RULE_INSTRUCTION,
+  toneInstructions,
+} from '@sparksocial/shared/engagementConfig';
 import type { ReplyWriter } from '@sparksocial/engage';
 
 /**
@@ -51,7 +56,16 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
   };
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
-  async function attemptWrite({ genome, kind, authorHandle, messageText, salesQualification }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
+  async function attemptWrite({
+    genome,
+    kind,
+    authorHandle,
+    messageText,
+    salesQualification,
+    hardRules,
+    engagementTone,
+    emojiLevel,
+  }: Parameters<ReplyWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'reply writer',
         'SPARK could not draft a reply — the service that writes replies is not responding. The message is still in your inbox, unanswered.',
@@ -60,7 +74,17 @@ export function createReplyWriter(opts: ReplyWriterOptions = {}): ReplyWriter {
             model,
             max_tokens: 300,
             system: SYSTEM,
-            messages: [{ role: 'user', content: prompt(genome, kind, authorHandle, messageText, salesQualification) }],
+            messages: [
+              {
+                role: 'user',
+                content: prompt(genome, kind, authorHandle, messageText, {
+                  ...(salesQualification ? { salesQualification } : {}),
+                  ...(hardRules ? { hardRules } : {}),
+                  ...(engagementTone ? { engagementTone } : {}),
+                  ...(emojiLevel ? { emojiLevel } : {}),
+                }),
+              },
+            ],
             tools: [
               {
                 name: TOOL_NAME,
@@ -133,14 +157,54 @@ const QUALIFICATION_INSTRUCTION: Record<string, string> = {
   collect_contact_details: 'You may ask for an email or phone number so somebody can follow up.',
 };
 
+interface ReplyConfig {
+  salesQualification?: readonly string[];
+  hardRules?: readonly string[];
+  engagementTone?: { casual: number; friendly: number; warm: number };
+  emojiLevel?: string;
+}
+
 function prompt(
   genome: Genome,
   kind: string,
   authorHandle: string,
   messageText: string,
-  salesQualification?: readonly string[],
+  config: ReplyConfig = {},
 ): string {
   const { identity, voice } = genome;
+  const { salesQualification, hardRules, engagementTone, emojiLevel } = config;
+
+  /**
+   * `Settings WS EI Boundaries`' hard rules, as prohibitions.
+   *
+   * Four of the five map to an instruction. `never_auto_reply_to_complaints` is
+   * deliberately absent from that map and therefore from here: it is enforced
+   * where the decision to reply unattended is taken, and listing it as a prompt
+   * line would make it look enforced twice while actually being enforced once, in
+   * the weaker of the two places.
+   */
+  const ruleLines = (hardRules ?? [])
+    .map((r) => HARD_RULE_INSTRUCTION[r as keyof typeof HARD_RULE_INSTRUCTION])
+    .filter((l): l is string => Boolean(l));
+
+  /**
+   * The engagement voice, when the brand opted into one.
+   *
+   * Absent means the brand's `tone_vector`, which is already in the prompt below
+   * — the screen's own "use my brand voice (recommended)". When both are
+   * present these lines come *after* the tone vector, so the more specific
+   * instruction is the last thing read.
+   */
+  const toneLines = toneInstructions(engagementTone);
+
+  /**
+   * Emoji is stated even when the answer is none.
+   *
+   * A model given no instruction about emoji will use them some of the time, so
+   * silence and `none` are different — the same reason the sales prohibition
+   * is spelled out rather than left implied.
+   */
+  const emoji = EMOJI_INSTRUCTION[(emojiLevel ?? 'none') as keyof typeof EMOJI_INSTRUCTION] ?? EMOJI_INSTRUCTION.none;
 
   /**
    * `brands.sales_qualification`, finally read.
@@ -169,6 +233,10 @@ function prompt(
         `technical ${voice.tone_vector.technical}, bold ${voice.tone_vector.bold}`
       : '',
     voice.banned_phrases?.length ? `Never use: ${voice.banned_phrases.join(', ')}` : '',
+    '',
+    ruleLines.length ? ['Rules you must not break:', ...ruleLines.map((l) => `- ${l}`)].join('\n') : '',
+    toneLines.length ? ['How to sound:', ...toneLines.map((l) => `- ${l}`)].join('\n') : '',
+    emoji,
     '',
     `Message type: ${kind}`,
     salesLines,

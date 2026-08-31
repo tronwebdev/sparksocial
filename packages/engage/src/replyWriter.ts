@@ -45,5 +45,21 @@ export interface ReplyWriter {
      * screen gets the careful behaviour.
      */
     salesQualification?: readonly string[];
+    /**
+     * `Settings WS EI Boundaries`' hard rules, as prohibitions.
+     *
+     * Four of the five arrive here; the fifth is an escalation trigger and never
+     * reaches a prompt, because by the time this runs the decision to reply
+     * unattended has already been taken. See `engagementConfig.ts`.
+     */
+    hardRules?: readonly string[];
+    /**
+     * `Settings WS EI Voice`. Absent means the brand's own `tone_vector`, which
+     * is what every reply used before this existed — the screen's own "use my
+     * brand voice (recommended)".
+     */
+    engagementTone?: { casual: number; friendly: number; warm: number };
+    /** none | light | expressive. Absent means none, and the prompt says so rather than staying silent. */
+    emojiLevel?: string;
   }): Promise<string>;
 }

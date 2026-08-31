@@ -4,6 +4,12 @@ import type {
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
+import type {
+  EmojiLevel,
+  EngagementTone,
+  EscalationBehavior,
+  HardRule,
+} from '@sparksocial/shared/engagementConfig';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
 
 /* ── Context handed to every handler ───────────────────────────────── */
@@ -311,6 +317,8 @@ export interface ScopedDb {
   approvals: ApprovalStore;
   /** The approval ladder's storage (PRD §7.1). */
   brands: BrandGovernanceStore;
+  /** Per-platform engagement overrides — `Settings WS EI Platforms`. See {@link BrandEngagementStore}. */
+  brandEngagement: BrandEngagementStore;
   /** SPARK's questions to the owner and their answers. See {@link HumanLoopStore}. */
   humanLoop: HumanLoopStore;
   /** Likeness consent for avatar/voice cloning (§10). See {@link ConsentStore}. */
@@ -418,6 +426,15 @@ export interface BrandGovernance {
   kitTemplates?: KitTemplate[];
   /** The brand's default stock voice — an ElevenLabs premade id from `STOCK_VOICES`. */
   stockVoiceId?: string;
+  /** `Settings WS EI Boundaries`' five hard rules — see `engagementConfig.ts` for how each is enforced. */
+  hardRules?: HardRule[];
+  /** What happens once a human is needed: hold | notify | draft_no_send. Absent means hold. */
+  escalationBehavior?: EscalationBehavior;
+  /** `Settings WS EI Voice`'s three sliders. Absent means the brand's own `toneVector`. */
+  engagementTone?: EngagementTone;
+  emojiLevel?: EmojiLevel;
+  /** When the owner finished the Engagement Intelligence flow. Absent means they have not. */
+  engagementConfiguredAt?: Date;
   logoUrl?: string;
   brandColors?: string[];
   /** M4's font references — two ids from packages/compose/src/fonts.ts. */
@@ -544,6 +561,16 @@ export interface BrandGovernanceStore {
       watermark?: Watermark | null;
       kitTemplates?: KitTemplate[] | null;
       stockVoiceId?: string | null;
+      hardRules?: HardRule[] | null;
+      escalationBehavior?: EscalationBehavior | null;
+      engagementTone?: EngagementTone | null;
+      emojiLevel?: EmojiLevel | null;
+      /**
+       * A boolean intent, stamped by the store. `false` un-marks it, which is
+       * what re-opening the flow does — the screen must not claim a completion
+       * that is mid-edit.
+       */
+      engagementConfigured?: boolean;
       logoUrl?: string | null;
       brandColors?: string[] | null;
       brandFonts?: { display?: string; body?: string } | null;
@@ -558,6 +585,55 @@ export interface BrandGovernanceStore {
       salesEscalationKeywords?: string[] | null;
     };
   }): Promise<BrandGovernance>;
+}
+
+/**
+ * Per-platform engagement overrides — `Settings WS EI Platforms` (§8.8).
+ *
+ * Engagement config was one value per brand while `engage.ingest` has always
+ * carried a platform, so the inbound dimension existed and the outbound decision
+ * had nowhere to live: a brand could not answer comments on Instagram while
+ * staying silent on X.
+ *
+ * ── The table holds overrides only ────────────────────────────────────────
+ *
+ * There is no row per platform per brand and no backfill. A brand with no rows
+ * behaves exactly as it did before this store existed, because
+ * `resolvePlatformEngagement` in `@sparksocial/shared/engagementConfig` reads a
+ * missing row as "use the brand's own setting". That is why every consumer can
+ * treat this store as optional, and why {@link BrandEngagementStore.clear} — not
+ * a write of the brand's current values — is how a platform goes back to
+ * following the brand.
+ */
+export interface PlatformEngagementRow {
+  platform: string;
+  /** Null means no override: this platform follows `BrandGovernance.engagementAutonomy`. */
+  autonomy: string | null;
+  /** Null means no override; an empty array is a real value and means every type. */
+  engagementTypes: string[] | null;
+  enabled: boolean;
+}
+
+export interface BrandEngagementStore {
+  /** Only the platforms with an override. Callers fill the rest from the brand. */
+  list(brandId: string, orgId: string): Promise<PlatformEngagementRow[]>;
+  /**
+   * Upsert one platform's override.
+   *
+   * `undefined` leaves a field alone; `null` clears that one field back to
+   * inheriting the brand. Conflating them would make "stop overriding autonomy
+   * on Instagram, keep overriding the types" impossible to express.
+   */
+  set(args: {
+    brandId: string;
+    orgId: string;
+    platform: string;
+    autonomy?: string | null;
+    engagementTypes?: string[] | null;
+    enabled?: boolean;
+  }): Promise<PlatformEngagementRow>;
+  /** Remove the override entirely, so the platform inherits again. */
+  clear(brandId: string, orgId: string, platform: string): Promise<void>;
 }
 
 /**

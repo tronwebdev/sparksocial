@@ -13,6 +13,7 @@ import { createRunReadRepository } from './runRecorderRepository.js';
 import { createCampaignRepository } from './campaignRepository.js';
 import { createApprovalRepository } from './approvalRepository.js';
 import { createBrandRepository } from './brandRepository.js';
+import { createBrandEngagementRepository } from './brandEngagementRepository.js';
 import { createHumanLoopRepository } from './humanLoopRepository.js';
 import { createConsentRepository } from './consentRepository.js';
 import { createToolCallReadRepository } from './toolCallReadRepository.js';
@@ -52,6 +53,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     reviewLinks: createReviewLinkRepository(db),
     approvals: createApprovalRepository(db),
     brands: createBrandRepository(db),
+    brandEngagement: createBrandEngagementRepository(db),
     humanLoop: createHumanLoopRepository(db),
     consent: createConsentRepository(db),
     toolCalls: createToolCallReadRepository(db),

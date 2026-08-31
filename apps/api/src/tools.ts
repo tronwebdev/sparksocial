@@ -111,6 +111,8 @@ import {
   brandSettingsPatch,
   brandGovernanceGet,
   brandGovernanceSet,
+  brandEngagementPlatformsGet,
+  brandEngagementPlatformsSet,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -821,6 +823,11 @@ export function registerAgencyTools(deps: {
   // firing at the instant its campaign happened to be created.
   register(brandGovernanceGet);
   register(brandGovernanceSet);
+  // §8.8's per-platform engagement matrix. The brand-level autonomy is the
+  // fallback and stays where it is; these only ever record an *override*, so a
+  // brand that never opens the screen behaves exactly as it did before.
+  register(brandEngagementPlatformsGet);
+  register(brandEngagementPlatformsSet);
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.

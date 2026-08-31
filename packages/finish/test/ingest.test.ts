@@ -165,6 +165,13 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         slots: async () => [],
         setStatus: async () => {},
       },
+      brandEngagement: {
+        // No overrides: every platform inherits, which is the state every brand
+        // starts in and the one the reply gate must behave identically under.
+        list: async () => [],
+        set: async () => ({ platform: 'instagram', autonomy: null, engagementTypes: null, enabled: true }),
+        clear: async () => {},
+      },
       brands: {
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,

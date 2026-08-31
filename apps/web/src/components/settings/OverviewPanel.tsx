@@ -48,6 +48,8 @@ interface Governance {
   postingWindows?: number[];
   usingDefaultWindows?: boolean;
   engagementAutonomy?: 'off' | 'suggest' | 'auto';
+  /** Set once the Engagement Intelligence flow has been walked to the end. */
+  engagementConfiguredAt?: string;
   salesEscalationKeywords?: string[];
   /** Derived on read — see `packages/shared/src/agentIdentity.ts`. */
   agentIdentity?: { name: string; named: boolean; voice: string[]; riskTolerance: string; riskBecause: string };
@@ -195,7 +197,17 @@ export function OverviewPanel() {
           <Row
             label="Answering your audience"
             href="/settings/engagement"
-            badge={{ text: gov.engagementAutonomy ?? 'off', tone: gov.engagementAutonomy === 'off' ? 'neutral' : 'ok' }}
+            /**
+             * Two different facts, and the badge shows the one the owner is
+             * asking about on an overview: have I set this up. The sentence below
+             * still says what SPARK will actually do, because an unconfigured
+             * brand is not an inert one — it drafts replies for a person to send.
+             */
+            badge={
+              gov.engagementConfiguredAt
+                ? { text: gov.engagementAutonomy ?? 'off', tone: gov.engagementAutonomy === 'off' ? 'neutral' : 'ok' }
+                : { text: 'not set up', tone: 'neutral' }
+            }
           >
             SPARK {AUTONOMY_WORDS[gov.engagementAutonomy ?? 'off'] ?? gov.engagementAutonomy ?? 'off'}
             {(gov.salesEscalationKeywords?.length ?? 0)

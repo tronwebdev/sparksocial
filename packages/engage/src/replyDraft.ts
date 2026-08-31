@@ -107,6 +107,11 @@ export function makeEngageReplyDraft(deps: EngageReplyDraftDeps) {
         authorHandle: message.authorHandle,
         messageText: message.text,
         ...(brand?.salesQualification?.length ? { salesQualification: brand.salesQualification } : {}),
+        // The boundaries and voice screens, finally read. Each is absent-means-default,
+        // so a brand that has not opened those screens writes exactly as before.
+        ...(brand?.hardRules?.length ? { hardRules: brand.hardRules } : {}),
+        ...(brand?.engagementTone ? { engagementTone: brand.engagementTone } : {}),
+        ...(brand?.emojiLevel ? { emojiLevel: brand.emojiLevel } : {}),
       });
 
       return {
