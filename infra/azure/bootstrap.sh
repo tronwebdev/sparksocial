@@ -104,11 +104,23 @@ az storage account create \
   --sku Standard_LRS --kind StorageV2 --min-tls-version TLS1_2 \
   --allow-blob-public-access false --output none 2>/dev/null || echo "  (exists)"
 
-az role assignment create \
-  --assignee-object-id "$IDENTITY_PRINCIPAL" --assignee-principal-type ServicePrincipal \
-  --role "Storage Blob Data Contributor" \
-  --scope "$(az storage account show -g "$RG" -n "$STORAGE" --query id -o tsv)" \
-  --output none 2>/dev/null || echo "  (blob role already assigned)"
+STORAGE_ID="$(az storage account show -g "$RG" -n "$STORAGE" --query id -o tsv)"
+
+# Two roles, and the second is the one that gets forgotten.
+#
+# Contributor covers reading and writing blobs. It does *not* cover minting a
+# user-delegation key, which is a separate data-plane right — and every upload URL
+# this app issues is a user-delegation SAS, signed with exactly that key. With
+# Contributor alone, `getUserDelegationKey` returns 403
+# `AuthorizationPermissionMismatch` and the first person to find out is a user
+# pressing "Upload a logo". This script had only Contributor, which is where that
+# staging failure came from.
+for ROLE in "Storage Blob Data Contributor" "Storage Blob Delegator"; do
+  az role assignment create \
+    --assignee-object-id "$IDENTITY_PRINCIPAL" --assignee-principal-type ServicePrincipal \
+    --role "$ROLE" --scope "$STORAGE_ID" \
+    --output none 2>/dev/null || echo "  ($ROLE already assigned)"
+done
 
 # The container `asset.upload_url` writes into. Private: every read goes through a
 # short-lived user-delegation SAS, so there is no anonymous URL to leak. Created
@@ -169,6 +181,55 @@ az containerapp create \
   --registry-server "${ACR}.azurecr.io" --registry-identity "$IDENTITY_ID" \
   --min-replicas 1 --max-replicas 3 \
   --output none 2>/dev/null || echo "  (web app exists — the deploy workflow will update it)"
+
+# ── 7b. Blob CORS — without this no browser can upload anything ──────
+#
+# Every upload in this product is a *direct* browser PUT to Blob Storage against
+# a short-lived SAS. The file never passes through the API, which is the whole
+# point (a 512MB video should not be proxied through a Node process) — and it
+# means the browser is making a cross-origin request to
+# `*.blob.core.windows.net`, so the storage account has to allow that origin
+# itself. No API-side change can substitute.
+#
+# Without the rule the preflight fails and the browser reports a bare
+# `TypeError: Failed to fetch`, which says nothing about CORS. That is what
+# staging showed: the SAS was minted correctly, storage was reachable, and the
+# upload was refused before the PUT was even sent.
+#
+# This lives here rather than in a runbook step because it is not optional and it
+# is invisible until someone tries to upload: an environment provisioned without
+# it looks entirely healthy.
+step "Blob CORS"
+
+WEB_FQDN="$(az containerapp show -g "$RG" -n "$WEB_APP" --query properties.configuration.ingress.fqdn -o tsv)"
+
+# Allowed origins, and deliberately not `*`.
+#
+# A SAS in a URL is a bearer credential. `*` would let any page a user visits
+# read the response of a request made with one — so the list is the deployed web
+# app plus localhost for development, and nothing else. Add a Front Door or a
+# custom domain here when one exists, or uploads break from it.
+CORS_ORIGINS="https://${WEB_FQDN},http://localhost:3000,http://localhost:3001"
+
+# Idempotent by replacement: `az storage cors add` appends, so re-running this
+# script would stack duplicate rules. Clearing first makes the script's end state
+# a function of the script rather than of how many times it has run.
+az storage cors clear --services b --account-name "$STORAGE" --auth-mode login --output none 2>/dev/null || true
+
+# `PUT` for the upload itself, `GET`/`HEAD` for reading media back, `OPTIONS` for
+# the preflight. `x-ms-blob-type` is in the allowed headers because Azure
+# *requires* that header on a SAS PUT — omitting it 400s — and a header the
+# browser must send is a header CORS must permit.
+az storage cors add \
+  --services b --methods GET HEAD PUT OPTIONS \
+  --origins "$CORS_ORIGINS" \
+  --allowed-headers "x-ms-blob-type" "x-ms-blob-content-type" "content-type" \
+  --exposed-headers "etag" "x-ms-request-id" \
+  --max-age 3600 \
+  --account-name "$STORAGE" --auth-mode login --output none \
+  || echo "  (could not set CORS — uploads from the browser will fail until this is set)"
+
+echo "  Allowed origins: $CORS_ORIGINS"
 
 # ── 8. GitHub OIDC federation — no secrets, ever ─────────────────────
 step "GitHub OIDC federation"
@@ -243,5 +304,8 @@ Still to do before the app is useful:
     Optional: NEXT_PUBLIC_SENTRY_DSN, NEXT_PUBLIC_POSTHOG_KEY, NEXT_PUBLIC_POSTHOG_HOST.
   • Put Front Door in front of both Container Apps before serving media —
     Blob egress is billed, unlike the R2 the plan originally assumed.
+    **When you do, add its hostname to the storage account's CORS origins** —
+    browser uploads go straight to Blob and will fail from any origin not on
+    that list. This script set: https://${WEB_FQDN} plus localhost.
 ════════════════════════════════════════════════════════════════════
 EOF
