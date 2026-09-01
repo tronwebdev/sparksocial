@@ -28,7 +28,7 @@ describe('the ledger', () => {
     await c.record(spend(300));
     await c.record(spend(250));
 
-    expect(await c.budget('org_1', new Date('2026-08-11T12:00:00Z'))).toEqual({
+    expect(await c.budget('org_1', new Date('2026-08-11T12:00:00Z'))).toMatchObject({
       monthlyCapCents: 1_000,
       spentCents: 550,
     });

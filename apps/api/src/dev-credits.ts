@@ -26,6 +26,8 @@ export function createDevCreditStore(
   // ledger's column. Without it the dev store could answer "how much" and not
   // "on what", which is the whole of what `org.usage.get` adds.
   const charged = new Map<string, { orgId: string; tool: string; costCents: number; at: Date }>();
+  const caps = new Map<string, number>();
+  const allocations = new Map<string, Record<string, number>>();
 
   return {
     entries: () => [...charged.entries()].map(([callId, e]) => ({ callId, costCents: e.costCents })),
@@ -33,10 +35,28 @@ export function createDevCreditStore(
     async budget(orgId, now) {
       const from = periodStart(now).getTime();
       let spentCents = 0;
+      const byToolCents = new Map<string, number>();
       for (const e of charged.values()) {
-        if (e.orgId === orgId && e.at.getTime() >= from) spentCents += e.costCents;
+        if (e.orgId !== orgId || e.at.getTime() < from) continue;
+        spentCents += e.costCents;
+        byToolCents.set(e.tool, (byToolCents.get(e.tool) ?? 0) + e.costCents);
       }
-      return { monthlyCapCents, spentCents };
+      return {
+        monthlyCapCents: caps.get(orgId) ?? monthlyCapCents,
+        spentCents,
+        byTool: [...byToolCents].map(([tool, costCents]) => ({ tool, costCents })),
+        allocationsCents: { ...(allocations.get(orgId) ?? {}) },
+      };
+    },
+
+    /**
+     * The dev store honours allocations for the same reason it honours the cap:
+     * a limit that only bites in production is a limit nobody exercises until a
+     * customer does.
+     */
+    async setBudget({ orgId, monthlyCapCents: cap, allocationsCents }) {
+      if (cap !== undefined) caps.set(orgId, cap);
+      if (allocationsCents !== undefined) allocations.set(orgId, { ...allocationsCents });
     },
 
     /**

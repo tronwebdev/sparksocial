@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   uniqueIndex,
   text,
@@ -887,6 +888,33 @@ export const orgBudgets = pgTable('org_budgets', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Per-category sub-caps inside the monthly cap — the "Render 21.2K / 30K" rows
+ * on `Settings WS Credit Usage.dc.html`.
+ *
+ * A row per category the workspace has chosen to bound, and **no row means no
+ * sub-cap**: absent is unlimited-within-the-monthly-cap rather than zero, so a
+ * workspace that has never opened the screen is not silently forbidden from
+ * rendering. Zero is a real, separate instruction — "spend nothing on this" —
+ * and it has to stay distinguishable from "never said".
+ *
+ * The category is stored as text rather than a Postgres enum: the vocabulary
+ * lives in `packages/shared/src/credits.ts`, and an enum would put half of it in
+ * a migration, so adding a category would need a schema change to express a
+ * product decision.
+ */
+export const orgCreditAllocations = pgTable(
+  'org_credit_allocations',
+  {
+    orgId: text('org_id').notNull(),
+    category: text('category').notNull(),
+    /** Cents per calendar month, UTC — the same period as the monthly cap. */
+    capCents: integer('cap_cents').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.orgId, t.category] })],
+);
 
 /**
  * CREDIT LEDGER — plan §9, and what finally makes `policy.ts` rule 4 mean

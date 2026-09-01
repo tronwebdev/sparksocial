@@ -1,5 +1,6 @@
 import { ZodError } from 'zod';
 import { ToolError, type Explanation, type Role } from '@sparksocial/shared/types';
+import { CREDIT_CATEGORY_LABEL, creditCategoryFor } from '@sparksocial/shared/credits';
 import { getTool, type RegisteredTool } from './registry.js';
 import { evaluate, isTeamCapability, type Decision, type TeamCapability } from './policy.js';
 import type { GuardrailId, PolicySubject, ToolCtx } from './defineTool.js';
@@ -323,6 +324,21 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     budget: {
       remainingCents: req.ctx.budget.remainingCents,
       estimatedCents,
+      /**
+       * The sub-cap for this tool's category, resolved here rather than in
+       * `policy.ts` — the map from a tool to what its money bought is a product
+       * decision, and `evaluate()` stays a pure function of what it is handed.
+       *
+       * Omitted when the tool has no category (it charges nothing) or the
+       * workspace has set no allocation for it.
+       */
+      ...(() => {
+        const category = creditCategoryFor(tool.name);
+        const remaining = category ? req.ctx.budget.remainingByCategory?.[category] : undefined;
+        return category !== undefined && remaining !== undefined
+          ? { category: { name: CREDIT_CATEGORY_LABEL[category], remainingCents: remaining } }
+          : {};
+      })(),
     },
     ...(req.approval ? { approval: req.approval } : {}),
   });

@@ -58,6 +58,11 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
     budget: {
       remainingCents: over.budget?.remainingCents ?? 10_000,
       estimatedCents: over.budget?.estimatedCents ?? 0,
+      // Absent unless a test sets one — a missing sub-cap means "not bounded",
+      // and defaulting it here would make every case a category test.
+      ...(over.budget?.category
+        ? { category: over.budget.category as { name: string; remainingCents: number } }
+        : {}),
     },
     ...(over.engagement ? { engagement: over.engagement } : {}),
     ...(over.capabilities ? { capabilities: over.capabilities } : {}),
@@ -172,6 +177,55 @@ describe('4 — budget and spend permission', () => {
     }));
     expect(d.kind).toBe('deny');
     expect(d.kind === 'deny' && d.ruleId).toBe('budget.exceeded');
+  });
+
+  it('denies when the category allocation is spent, even with monthly headroom left', () => {
+    // The whole point of a sub-cap. With $90 left overall and $1 left of the
+    // render allocation, a $5 render is refused — otherwise the allocation is a
+    // number on a bar that nothing consults.
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: {
+        estimatedCents: 500,
+        remainingCents: 9_000,
+        category: { name: 'Render', remainingCents: 100 },
+      },
+    }));
+    expect(d.kind).toBe('deny');
+    expect(d.kind === 'deny' && d.ruleId).toBe('budget.category_exceeded');
+    expect(d.kind === 'deny' && d.reason).toContain('Render');
+  });
+
+  it('answers with the monthly cap first when both are exhausted', () => {
+    // "There is no money left at all" is the more useful answer. Told only that
+    // the render allocation is gone, a workspace raises it and is refused again.
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: { estimatedCents: 500, remainingCents: 0, category: { name: 'Render', remainingCents: 0 } },
+    }));
+    expect(d.kind === 'deny' && d.ruleId).toBe('budget.exceeded');
+  });
+
+  it('allows a category with no allocation, rather than reading absent as zero', () => {
+    // The common case: a workspace that has never opened the allocation screen
+    // must not be refused every paid call.
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: { estimatedCents: 500, remainingCents: 9_000 },
+    }));
+    expect(d.kind).toBe('allow');
+  });
+
+  it('allows a spend that fits inside its allocation', () => {
+    const d = evaluate(input({
+      tool: { effect: 'external' },
+      budget: {
+        estimatedCents: 100,
+        remainingCents: 9_000,
+        category: { name: 'Render', remainingCents: 100 },
+      },
+    }));
+    expect(d.kind).toBe('allow');
   });
 
   it('honours the spend permission for a costed external tool too', () => {

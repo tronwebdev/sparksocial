@@ -106,6 +106,7 @@ import {
   orgBillingPlanSet,
   orgSecuritySsoConfigure,
   orgAuditQuery,
+  makeOrgBudgetSet,
   makeOrgCreditsGrant,
   makeOrgUsageGet,
   brandCreate,
@@ -839,6 +840,10 @@ export function registerAgencyTools(deps: {
   // balance only ever came back from `org.credits.grant`, so rendering a usage
   // panel meant granting credits to display a number.
   register(makeOrgUsageGet({ credits: deps.credits }));
+  // The write side of the same screen. Without it the allocation bars would be a
+  // control that stores nothing and changes no behaviour — and the sub-caps are
+  // enforced in `policy.ts`, so they change behaviour the moment they are set.
+  register(makeOrgBudgetSet({ credits: deps.credits }));
 
   register(brandCreate);
   register(brandSettingsPatch);

@@ -622,7 +622,7 @@ describe('scheduler', () => {
     const credits = {
       budget: async (orgId: string) => {
         budgetCalls.push(orgId);
-        return { monthlyCapCents: 10_000, spentCents: 0 };
+        return { monthlyCapCents: 10_000, spentCents: 0, byTool: [], allocationsCents: {} };
       },
       record: async () => {},
     };

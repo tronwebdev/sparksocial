@@ -337,6 +337,13 @@
       "when": 1788178195509,
       "tag": "0047_tan_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788220348043,
+      "tag": "0048_petite_steve_rogers",
+      "breakpoints": true
     }
   ]
 }

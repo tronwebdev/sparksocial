@@ -122,7 +122,20 @@ export interface PolicyInput {
     pendingReviewCount?: number;
   };
 
-  budget: { remainingCents: number; estimatedCents: number };
+  budget: {
+    remainingCents: number;
+    estimatedCents: number;
+    /**
+     * The workspace's remaining sub-cap for the category this call charges to,
+     * and the category's own name for the message.
+     *
+     * Both absent when the category has no sub-cap — which is the common case,
+     * and the reason this is optional rather than defaulted: a missing entry
+     * means "not bounded", and reading it as zero would refuse every paid call
+     * in a workspace that never set an allocation.
+     */
+    category?: { name: string; remainingCents: number };
+  };
 
   /** Engagement replies are gated until the campaign clears the eligibility rule. */
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
@@ -343,6 +356,26 @@ function evaluateRules(input: PolicyInput): Decision {
         kind: 'deny',
         reason: `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.remainingCents}¢ remaining this month.`,
         ruleId: 'budget.exceeded',
+      };
+    }
+    /**
+     * The per-category sub-cap, checked after the monthly cap.
+     *
+     * After, because "there is no money left at all" is the more useful answer
+     * when both are true — a workspace told only that its render allocation is
+     * gone would go and raise it, and still be refused.
+     *
+     * This is what stops the allocation screen from being a control that stores
+     * a value and changes no behaviour. A sub-cap that did not refuse anything
+     * would be a number on a bar, and the bar would be a lie.
+     */
+    if (budget.category && budget.estimatedCents > budget.category.remainingCents) {
+      return {
+        kind: 'deny',
+        reason:
+          `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.category.remainingCents}¢ left in ` +
+          `this month's ${budget.category.name} allocation.`,
+        ruleId: 'budget.category_exceeded',
       };
     }
   }
