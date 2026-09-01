@@ -48,12 +48,16 @@ export default function MeetSparkPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[--ss-ink-900] px-6">
-      {/* Scattered particles across the upper field. */}
+      {/*
+        One export, not a stack: `meet spark background.svg` is #0C0C0C with the
+        particle field and its gradients already composited in, so the separate
+        particle layer this used to draw is gone.
+      */}
       <img
-        src="/auth/splash-particles.svg"
+        src="/auth/bg-splash.svg"
         alt=""
         aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 w-[1149px] max-w-none -translate-x-1/2 opacity-90"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 
       <div className="relative flex flex-col items-center">
@@ -78,7 +82,7 @@ export default function MeetSparkPage() {
             {/* "Spark" carries the brand gradient; `bg-clip-text` needs a
                 transparent fill or the gradient never shows through. */}
             <span
-              className="bg-clip-text text-transparent"
+              className="bg-clip-text text-transparent text-[104.77px]"
               style={{ backgroundImage: 'var(--ss-grad-brand)' }}
             >
               Spark

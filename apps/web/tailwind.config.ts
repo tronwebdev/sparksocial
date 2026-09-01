@@ -130,6 +130,7 @@ const config: Config = {
         'canvas-wash': 'var(--ss-grad-canvas)',
         'cta-wash': 'var(--ss-grad-cta)',
         'brand-wash': 'var(--ss-grad-brand)',
+        'progress-wash': 'var(--ss-grad-progress)',
       },
 
       boxShadow: {

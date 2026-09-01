@@ -25,6 +25,10 @@ import { Wordmark } from '@/components/brand/Wordmark';
  * tone uses the token rather than shipping an image to paint a solid colour.
  * The dark tone does use its export — that one carries two mirrored blurred
  * cyan→purple shapes that no token expresses.
+ *
+ * That dark export was originally one file claiming both the confirm-account and
+ * splash screens; it has since been split, and this uses the confirm-account
+ * half. Meet Spark has its own, which carries the particle field baked in.
  */
 
 export type AuthTone = 'light' | 'dark';
@@ -47,7 +51,7 @@ export function AuthBackdrop({
     >
       {tone === 'dark' ? (
         <img
-          src="/auth/bg-dark.svg"
+          src="/auth/bg-confirm.svg"
           alt=""
           aria-hidden
           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -113,10 +117,13 @@ export function AuthHeader({
   title,
   subtitle,
   tone = 'light',
+  mark,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   tone?: AuthTone;
+  /** Overrides the 48px card mark — the success screens use a larger, lit one. */
+  mark?: React.ReactNode;
 }) {
   return (
     <div className="relative">
@@ -137,7 +144,7 @@ export function AuthHeader({
       </div>
 
       <div className="relative flex flex-col items-center">
-        <SparkMark variant="card" size={48} animated />
+        {mark ?? <SparkMark variant="card" size={48} animated />}
         <h1
           className={cn(
             'mt-[23px] text-center text-22 font-semibold',
@@ -153,29 +160,41 @@ export function AuthHeader({
 }
 
 /**
- * The confirmation tick.
+ * The confirmation tick — `success screen check.svg`.
  *
- * Hand-built: there is no export for it. The lime is sampled from the capture
- * (`#BBF52E`) and lives in `tokens.css` as `--ss-lime`, so it is a token like
- * every other colour rather than a literal parked in a component.
+ * This was hand-built while no export existed, at 42px with a flat `--ss-lime`.
+ * The real asset is **70×70** with a `#61FA54 → #DBF320` gradient on the
+ * diagonal and a white 20% hairline — so the guess was wrong on size, and wrong
+ * to be a flat colour at all. `--ss-lime` stays in `tokens.css` only if
+ * something else still uses it.
  */
 export function SuccessBadge({ className }: { className?: string }) {
   return (
-    <span
-      className={cn('inline-flex h-[42px] w-[42px] items-center justify-center rounded-[12px]', className)}
-      style={{ background: 'var(--ss-lime)' }}
-      role="img"
-      aria-label="Success"
-    >
-      <svg width="22" height="18" viewBox="0 0 22 18" fill="none" aria-hidden>
-        <path
-          d="M2 9.4 8.2 15.6 20 3.8"
-          stroke="var(--ss-ink-900)"
-          strokeWidth="3.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+    <img
+      src="/auth/success-check.svg"
+      alt="Success"
+      width={70}
+      height={70}
+      className={cn('h-[70px] w-[70px]', className)}
+    />
+  );
+}
+
+/**
+ * The success screens' mark: the 124px `success logo` export sitting on its own
+ * blurred backdrop (`success logo logo backdrop`, a 187px gradient circle behind
+ * it). Two files because the glow is larger than the mark and must not clip.
+ */
+export function SuccessMark() {
+  return (
+    <span className="relative flex h-[124px] w-[124px] items-center justify-center">
+      <img
+        src="/auth/success-glow.svg"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[187px] w-[187px] max-w-none -translate-x-1/2 -translate-y-1/2"
+      />
+      <img src="/auth/success-logo.svg" alt="" aria-hidden className="relative h-[124px] w-[124px]" />
     </span>
   );
 }

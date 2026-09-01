@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useSignIn } from '@clerk/nextjs';
-import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge } from '@/components/auth/AuthShell';
+import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, SuccessMark } from '@/components/auth/AuthShell';
 import { AuthField, MailIcon, LockIcon } from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/button';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
     return (
       <AuthBackdrop tone="light">
         <AuthPanel tone="light" glow className="text-center">
-          <AuthHeader title={<>Confirmation<br />Successful</>} />
+          <AuthHeader mark={<SuccessMark />} title={<>Confirmation<br />Successful</>} />
           <div className="mt-6 flex justify-center">
             <SuccessBadge />
           </div>

@@ -267,6 +267,19 @@ name claims both screens. Using both would stack two glows on the same surface,
 so this one is left out rather than guessed at. Say where it belongs and it goes
 in.
 
+## 6.2c Late exports that replaced guesses
+
+These arrived after the screens were built and each one corrected something:
+
+| Export | Replaced |
+| --- | --- |
+| `success screen check.svg` | A hand-built 42px flat `--ss-lime` square. Real asset is **70×70** with a `#61FA54 → #DBF320` diagonal gradient and a white 20% hairline — wrong size *and* wrong to be flat. |
+| `success logo.svg` + `… backdrop.svg` | The 48px card mark on the confirmation screens. Real treatment is a 124px mark on a separate 187px blurred gradient circle. |
+| `meet spark background.svg` | A hand-layered particle field. One export, with particles and gradients already composited. |
+| `BG For confirm account.svg` | The combined confirm+splash background, now split; the splash has its own. |
+
+`--ss-lime` stays: the confirmation card's halo still uses it.
+
 ## 6.3 Verification status of the auth screens
 
 Measured against the captures by computed style, at the 1440-wide frame:

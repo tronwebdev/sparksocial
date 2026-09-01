@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useSignUp } from '@clerk/nextjs';
-import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, OtpInput } from '@/components/auth/AuthShell';
+import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, SuccessMark, OtpInput } from '@/components/auth/AuthShell';
 import { Button } from '@/components/ui/button';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 
@@ -125,7 +125,7 @@ export default function VerifyPage() {
     return (
       <AuthBackdrop tone="dark">
         <AuthPanel tone="dark" glow className="text-center">
-          <AuthHeader tone="dark" title={<>Confirmation<br />Successful</>} />
+          <AuthHeader tone="dark" mark={<SuccessMark />} title={<>Confirmation<br />Successful</>} />
           <div className="mt-6 flex justify-center">
             <SuccessBadge />
           </div>

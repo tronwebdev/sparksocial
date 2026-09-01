@@ -109,6 +109,20 @@
     linear-gradient(-18.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
     linear-gradient(var(--ss-canvas), var(--ss-canvas));
 
+  /**
+   * Onboarding's step bar. Sampled across the full-width bar on `…193231`
+   * (step 4 of 4) at 13 points: cyan → pink by 25% → light purple by 65% → a
+   * warm peach at the end. The ramp spans the FILL, not the track, so it
+   * compresses as the bar fills rather than revealing more of a fixed gradient.
+   */
+  --ss-grad-progress: linear-gradient(
+    90deg,
+    #6ce8ff 0%,
+    #eb91f9 25%,
+    #b36cfa 65%,
+    #f7d9be 100%
+  );
+
   --ss-grad-cta: linear-gradient(90deg, #8b3dff 0%, #37c7f4 100%);
   --ss-grad-brand: linear-gradient(90deg, #6ce8ff, #a341ff);
 
