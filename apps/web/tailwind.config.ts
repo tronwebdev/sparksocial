@@ -86,6 +86,32 @@ const config: Config = {
         display: ['var(--ss-font-display)', 'Comfortaa', 'sans-serif'],
       },
 
+      /**
+       * The project type scale. Onest at these seven sizes is the whole
+       * vocabulary — headings, sub-headings, primary and secondary text, labels,
+       * field text. Only size, weight and colour change between them; family,
+       * line-height and letter-spacing never do.
+       *
+       * `line-height: 100%` and `letter-spacing: 0` are baked into every step so
+       * a caller cannot get them wrong by omission. That is the point of naming
+       * them at all: `text-18` is a contract, `text-[18px]` is a guess that
+       * silently inherits whatever line-height is in scope.
+       *
+       * Named by px because the design specifies px — a `sm`/`base`/`lg` scale
+       * would need a translation table nobody maintains. Tailwind's own
+       * `text-sm`/`text-base` still exist; prefer these for anything the design
+       * governs.
+       */
+      fontSize: {
+        13: ['13px', { lineHeight: '100%', letterSpacing: '0' }],
+        14: ['14px', { lineHeight: '100%', letterSpacing: '0' }],
+        16: ['16px', { lineHeight: '100%', letterSpacing: '0' }],
+        18: ['18px', { lineHeight: '100%', letterSpacing: '0' }],
+        20: ['20px', { lineHeight: '100%', letterSpacing: '0' }],
+        22: ['22px', { lineHeight: '100%', letterSpacing: '0' }],
+        26: ['26px', { lineHeight: '100%', letterSpacing: '0' }],
+      },
+
       // Measured across the prototype: 10px is the default by a wide margin
       // (413 uses), 15 is inputs, 20 is the primary CTA, 30 is the canvas card.
       borderRadius: {

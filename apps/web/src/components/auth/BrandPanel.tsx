@@ -56,7 +56,7 @@ export function BrandPanel() {
           <p className="font-display text-[39.2px] leading-[1.269] text-white">Operating System</p>
         </div>
         <div className="mt-[22px] flex items-center gap-[10px]">
-          <span className="text-[15.4px] font-medium text-white/60">Get Started</span>
+          <span className="text-16 font-medium text-white/60">Get Started</span>
           <svg width="28" height="10" viewBox="0 0 28 10" fill="none" aria-hidden>
             <path
               d="M1 5h25m0 0-4-4m4 4-4 4"

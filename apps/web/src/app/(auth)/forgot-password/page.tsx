@@ -85,10 +85,10 @@ export default function ForgotPasswordPage() {
       </div>
 
       <GlassCard>
-        <h1 className="text-center text-[26px] font-semibold leading-[1.4] text-ink-heading">
+        <h1 className="text-center text-26 font-semibold leading-[1.4] text-ink-heading">
           {step === 'request' ? 'Reset your password' : 'Choose a new password'}
         </h1>
-        <p className="mt-2 text-center text-[16px] text-ink-muted">
+        <p className="mt-2 text-center text-16 text-ink-muted">
           {step === 'request'
             ? "Enter your email and we'll send you a reset code."
             : 'Enter the code we emailed you, then pick a new password.'}
@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
               error={errors.fields.identifier ?? errors.fields.email_address}
             />
             {errors.form ? (
-              <p role="alert" className="text-[14px] text-destructive">
+              <p role="alert" className="text-14 text-destructive">
                 {errors.form}
               </p>
             ) : null}
@@ -159,7 +159,7 @@ export default function ForgotPasswordPage() {
               error={confirm && confirm !== password ? 'These do not match.' : undefined}
             />
             {errors.form ? (
-              <p role="alert" className="text-[14px] text-destructive">
+              <p role="alert" className="text-14 text-destructive">
                 {errors.form}
               </p>
             ) : null}
@@ -174,7 +174,7 @@ export default function ForgotPasswordPage() {
           </form>
         )}
 
-        <p className="mt-6 text-center text-[16px] text-ink-muted">
+        <p className="mt-6 text-center text-16 text-ink-muted">
           <Link href="/sign-in" className="text-brand-purple underline">
             Back to sign in
           </Link>

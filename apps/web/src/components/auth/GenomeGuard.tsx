@@ -60,8 +60,8 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <div className="max-w-md text-center">
-          <p className="text-[16px] font-medium text-ink">Could not open your account</p>
-          <p className="mt-1 text-[14px] text-ink-muted">{failed}</p>
+          <p className="text-16 font-medium text-ink">Could not open your account</p>
+          <p className="mt-1 text-14 text-ink-muted">{failed}</p>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
-        <p className="text-[14px] text-ink-muted">Opening your account…</p>
+        <p className="text-14 text-ink-muted">Opening your account…</p>
       </div>
     );
   }

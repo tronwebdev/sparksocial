@@ -134,7 +134,7 @@ export default function SignUpPage() {
             />
 
             {errors.form ? (
-              <p role="alert" className="text-[14px] text-destructive">
+              <p role="alert" className="text-14 text-destructive">
                 {errors.form}
               </p>
             ) : null}
@@ -155,7 +155,7 @@ export default function SignUpPage() {
               requirement is consent — and a consent control that lets you
               proceed and then complains has already failed at being consent.
             */}
-            <label className="flex items-start gap-2 text-[14px] text-ink-muted" htmlFor="signup-terms">
+            <label className="flex items-start gap-2 text-14 text-ink-muted" htmlFor="signup-terms">
               <input
                 id="signup-terms"
                 type="checkbox"
@@ -191,7 +191,7 @@ export default function SignUpPage() {
 
           <SocialRow className="mt-6" onSelect={social} disabled={!isLoaded || busy} />
 
-          <p className="mt-6 text-center text-[16px] text-ink-muted">
+          <p className="mt-6 text-center text-16 text-ink-muted">
             Already have an account?{' '}
             <Link href="/sign-in" className="text-brand-purple underline">
               Sign in

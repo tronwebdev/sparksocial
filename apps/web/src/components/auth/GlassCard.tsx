@@ -105,7 +105,7 @@ function AuthFloaters() {
             </linearGradient>
           </defs>
         </svg>
-        <span className="-mt-4 block text-[15px] font-semibold text-ink">565</span>
+        <span className="-mt-4 block text-16 font-semibold text-ink">565</span>
       </figure>
 
       {/* Avatar stack — upper right. Needs no `panel`: this export keeps its
@@ -205,8 +205,8 @@ export function AuthHeader({ title, subtitle }: { title: string; subtitle?: Reac
 
       <div className="relative flex flex-col items-center">
         <SparkMark variant="card" size={48} animated />
-        <h1 className="mt-3 text-center text-[22px] font-semibold leading-[1.3] text-ink-heading">{title}</h1>
-        {subtitle ? <p className="mt-1 text-center text-[13px] text-ink-muted">{subtitle}</p> : null}
+        <h1 className="mt-[23px] text-center text-22 font-semibold text-ink-heading">{title}</h1>
+        {subtitle ? <p className="mt-[7px] text-center text-14 text-ink-muted">{subtitle}</p> : null}
       </div>
     </div>
   );
@@ -239,7 +239,7 @@ export function GlassCard({
       {/* `overflow-hidden` is what lets AuthHeader's halftone bleed to the card
           edge from inside the 36px gutter, instead of needing its own wrapper. */}
       <div className="relative overflow-hidden rounded-2xl bg-white px-auth-gutter pb-[38px] pt-10">{children}</div>
-      {footer ? <div className="px-auth-gutter pb-2 pt-5">{footer}</div> : null}
+      {footer ? <div className="px-auth-gutter pb-2 pt-[25px]">{footer}</div> : null}
     </div>
   );
 }

@@ -18,17 +18,15 @@ export function AuthField({ label, hint, error, id, ...inputProps }: AuthFieldPr
   const fieldId = id ?? `f_${label.toLowerCase().replace(/\s+/g, '_')}`;
   return (
     <div className="flex flex-col gap-1.5">
-      {/* The captures set field labels at 13px in full-strength ink, not the
-          18px muted default the prototype used. */}
+      {/* Labels take the project default and override nothing: Onest 400, 18px,
+          line-height 100%, `--ss-fg-muted` (#838383). See `Label`. */}
       <div className="flex items-baseline justify-between">
-        <Label htmlFor={fieldId} className="text-[13px] text-ink">
-          {label}
-        </Label>
-        {hint ? <span className="text-[13px] text-ink-muted">{hint}</span> : null}
+        <Label htmlFor={fieldId}>{label}</Label>
+        {hint ? <span className="text-14 text-ink-muted">{hint}</span> : null}
       </div>
       <Input id={fieldId} invalid={Boolean(error)} {...inputProps} />
       {error ? (
-        <p role="alert" className="text-[14px] text-destructive">
+        <p role="alert" className="text-14 text-destructive">
           {error}
         </p>
       ) : null}

@@ -194,13 +194,10 @@ export default function SignInPage() {
         footer={
           !codeStep ? (
             <>
-              <div className="flex items-center gap-3">
-                <span className="h-px flex-1 bg-white/70" />
-                <span className="text-[13px] text-ink-subtle">Or continue with</span>
-                <span className="h-px flex-1 bg-white/70" />
-              </div>
-              <SocialRow className="mt-3.5" onSelect={social} disabled={!isLoaded || busy} />
-              <p className="mt-5 text-center text-[13px] text-ink-subtle">
+              {/* `SocialRow` owns the "Or continue with" divider — adding one
+                  here too rendered it twice. */}
+              <SocialRow onSelect={social} disabled={!isLoaded || busy} />
+              <p className="mt-5 text-center text-14 text-ink-muted">
                 Don&apos;t have an account yet?{' '}
                 <Link href="/sign-up" className="text-brand-purple underline">
                   Sign up
@@ -246,8 +243,8 @@ export default function SignInPage() {
                 returning user is blocked by it, and inventing that rule would
                 lock people out of their own accounts.
               */}
-              <div className="-mt-2 flex items-center justify-between">
-                <label className="flex cursor-pointer select-none items-center gap-2 text-[13px] text-ink-subtle">
+              <div className="-mt-1 flex items-center justify-between">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-13 text-ink-subtle">
                   <input
                     type="checkbox"
                     checked={agreed}
@@ -259,13 +256,13 @@ export default function SignInPage() {
                     <span className="font-medium text-ink">privacy</span>.
                   </span>
                 </label>
-                <Link href="/forgot-password" className="text-[13px] font-medium text-ink underline">
+                <Link href="/forgot-password" className="text-13 font-medium text-ink underline">
                   Forgot password?
                 </Link>
               </div>
 
               {errors.form ? (
-                <p role="alert" className="text-[13px] text-destructive">
+                <p role="alert" className="text-13 text-destructive">
                   {errors.form}
                 </p>
               ) : null}
@@ -277,10 +274,10 @@ export default function SignInPage() {
           </>
         ) : (
           <>
-            <h1 className="text-center text-[26px] font-semibold leading-[1.4] text-ink-heading">
+            <h1 className="text-center text-26 font-semibold leading-[1.4] text-ink-heading">
               {step.kind === 'second_factor_totp' ? 'Enter your authenticator code' : 'Enter the code we sent'}
             </h1>
-            <p className="mt-2 text-center text-[16px] text-ink-muted">
+            <p className="mt-2 text-center text-16 text-ink-muted">
               {step.kind === 'second_factor_totp'
                 ? 'Open your authenticator app for the current 6-digit code.'
                 : `Sent to ${step.kind === 'first_factor_code' || step.kind === 'second_factor_code' ? step.safeIdentifier : ''}.`}
@@ -300,7 +297,7 @@ export default function SignInPage() {
                 autoFocus
               />
               {errors.form ? (
-                <p role="alert" className="text-center text-[14px] text-destructive">
+                <p role="alert" className="text-center text-14 text-destructive">
                   {errors.form}
                 </p>
               ) : null}
@@ -310,7 +307,7 @@ export default function SignInPage() {
               </Button>
             </form>
 
-            <div className="mt-6 flex items-center justify-center gap-6 text-[15px]">
+            <div className="mt-6 flex items-center justify-center gap-6 text-16">
               {step.kind !== 'second_factor_totp' ? (
                 <button type="button" onClick={resend} className="text-brand-purple underline" disabled={!isLoaded}>
                   {resent ? 'Code resent' : 'Resend'}

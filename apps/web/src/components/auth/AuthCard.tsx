@@ -37,8 +37,8 @@ export function AuthCard({
         <SparkMark variant="card" />
       </div>
 
-      <h1 className="mt-[14px] text-center text-[26px] font-semibold leading-[1.4] text-ink-heading">{title}</h1>
-      {subtitle ? <p className="mt-2 text-center text-[16px] text-ink-muted">{subtitle}</p> : null}
+      <h1 className="mt-[14px] text-center text-26 font-semibold leading-[1.4] text-ink-heading">{title}</h1>
+      {subtitle ? <p className="mt-2 text-center text-16 text-ink-muted">{subtitle}</p> : null}
 
       <div className="px-[45px] pb-[31px] pt-6">{children}</div>
     </div>

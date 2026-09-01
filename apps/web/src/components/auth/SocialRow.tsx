@@ -85,14 +85,21 @@ export function SocialRow({
   // with" divider above no buttons.
   if (providers.length === 0) return null;
 
+  /*
+      Rule, then label, then buttons — NOT a label centred inside the rule.
+      The capture's ink profile settles this: at y=685 the row is inked across
+      368 of 435px, i.e. an unbroken full-width line, and the glyphs of "Or
+      continue with" appear separately at y≈721–739, with the buttons' top edge
+      at 751. A centred-text divider would show a gap in that line.
+
+      Offsets are from the card's bottom edge (660 in the capture): rule 25,
+      label 52, buttons 90.
+    */
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-[14px] text-ink-muted">Or continue with</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-      <div className="flex gap-3">
+    <div className={cn('flex flex-col', className)}>
+      <span className="h-px w-full bg-border" />
+      <span className="mt-[26px] text-center text-14 text-ink-muted">Or continue with</span>
+      <div className="mt-[24px] flex gap-3">
         {providers.map((p) => (
           <button
             key={p.strategy}
@@ -107,7 +114,7 @@ export function SocialRow({
               // is the difference between "on the glass" and "a grey chip".
               'flex h-[56px] flex-1 items-center justify-center gap-2 rounded-lg',
               'border border-border bg-transparent',
-              'text-[15px] font-medium text-ink transition-colors hover:bg-white/40',
+              'text-16 font-medium text-ink transition-colors hover:bg-white/40',
               'focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring',
               'disabled:pointer-events-none disabled:opacity-50',
             )}

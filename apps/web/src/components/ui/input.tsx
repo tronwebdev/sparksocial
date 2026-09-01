@@ -42,8 +42,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         ref={ref}
         aria-invalid={invalid || undefined}
         className={cn(
-          'h-full w-full min-w-0 border-0 bg-transparent p-0 text-ink',
-          fieldSize === 'auth' ? 'text-[16px]' : 'text-[18px]',
+          // 18px / #838383 for field text at every size — the project spec puts
+          // labels and input text on the same step, so `fieldSize` governs the
+          // box (height, padding, icon gap) and never the type.
+          'h-full w-full min-w-0 border-0 bg-transparent p-0 text-18 text-ink-muted',
           'placeholder:text-ink-placeholder focus:outline-none',
           'disabled:cursor-not-allowed disabled:opacity-50',
         )}

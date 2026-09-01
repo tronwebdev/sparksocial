@@ -113,8 +113,8 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
       <div className="dark flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-6">
         <div className="flex flex-col items-center">
           <SparkMark variant="card" />
-          <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">Name your account</h1>
-          <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
+          <h1 className="mt-8 text-center text-26 font-semibold text-foreground">Name your account</h1>
+          <p className="mt-2 max-w-[420px] text-center text-16 text-ink-muted">
             Everything SPARK makes lives inside your account. You can add brands to it, or a second
             account, later.
           </p>
@@ -130,7 +130,7 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
             disabled={creating}
           />
           {failed ? (
-            <p role="alert" className="text-center text-[14px] text-destructive">
+            <p role="alert" className="text-center text-14 text-destructive">
               {failed}
             </p>
           ) : null}
@@ -146,8 +146,8 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
         <div className="max-w-md text-center">
-          <p className="text-[16px] font-medium text-ink">Could not open your account</p>
-          <p className="mt-1 text-[14px] text-ink-muted">{failed}</p>
+          <p className="text-16 font-medium text-ink">Could not open your account</p>
+          <p className="mt-1 text-14 text-ink-muted">{failed}</p>
         </div>
       </div>
     );
@@ -160,7 +160,7 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
   if (!ready || !orgId) {
     return (
       <div className="flex min-h-screen items-center justify-center p-8">
-        <p className="text-[14px] text-ink-muted">Opening your account…</p>
+        <p className="text-14 text-ink-muted">Opening your account…</p>
       </div>
     );
   }

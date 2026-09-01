@@ -122,8 +122,8 @@ export default function VerifyPage() {
   return (
     <div className="dark flex min-h-screen flex-col items-center justify-center bg-background px-6">
       <SparkMark variant="card" />
-      <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">Check your email</h1>
-      <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
+      <h1 className="mt-8 text-center text-26 font-semibold text-foreground">Check your email</h1>
+      <p className="mt-2 max-w-[420px] text-center text-16 text-ink-muted">
         {/*
           The address, when Clerk knows it. `signUp.emailAddress` has been
           available from `useSignUp()` the whole time and was never read, so this
@@ -148,7 +148,7 @@ export default function VerifyPage() {
           className="text-center"
         />
         {errors.form || errors.fields.code ? (
-          <p role="alert" className="text-center text-[14px] text-destructive">
+          <p role="alert" className="text-center text-14 text-destructive">
             {errors.form ?? errors.fields.code}
           </p>
         ) : null}
@@ -158,7 +158,7 @@ export default function VerifyPage() {
         </Button>
       </form>
 
-      <div className="mt-6 flex items-center gap-6 text-[15px]">
+      <div className="mt-6 flex items-center gap-6 text-16">
         <button
           type="button"
           onClick={resend}

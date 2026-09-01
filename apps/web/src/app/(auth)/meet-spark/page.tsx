@@ -42,7 +42,7 @@ export default function MeetSparkPage() {
       <div className="relative flex flex-col items-center">
         <SparkMark variant="hero" animated />
         <h1 className="mt-12 text-center font-display text-[48.5px] leading-[1.269] text-white">Meet SPARK</h1>
-        <p className="mt-4 max-w-[520px] text-center text-[18px] text-white/70">
+        <p className="mt-4 max-w-[520px] text-center text-18 text-white/70">
           SPARK learns what your business can actually show, then plans, makes and publishes the content that fits.
         </p>
 
@@ -52,7 +52,7 @@ export default function MeetSparkPage() {
             that Enter and a plain click both satisfy. */}
         <div className="mt-10 w-full max-w-[420px]">
           {busy ? (
-            <p className="text-center text-[15px] text-white/70">Setting up…</p>
+            <p className="text-center text-16 text-white/70">Setting up…</p>
           ) : (
             <HoldButton
               label="Let’s get you onboarding"
