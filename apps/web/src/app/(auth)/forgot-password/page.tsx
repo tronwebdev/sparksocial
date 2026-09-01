@@ -97,6 +97,7 @@ export default function ForgotPasswordPage() {
         {step === 'request' ? (
           <form onSubmit={request} className="mt-8 flex flex-col gap-[14px]">
             <AuthField
+              fieldSize="auth"
               label="Email"
               type="email"
               placeholder="youremail@website.com"
@@ -118,6 +119,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={reset} className="mt-8 flex flex-col gap-[14px]">
             <AuthField
+              fieldSize="auth"
               label="Reset code"
               placeholder="Enter code"
               inputMode="numeric"
@@ -127,6 +129,7 @@ export default function ForgotPasswordPage() {
               error={errors.fields.code}
             />
             <AuthField
+              fieldSize="auth"
               label="New password"
               type="password"
               placeholder="••••••••"
@@ -145,6 +148,7 @@ export default function ForgotPasswordPage() {
               mode a password field has.
             */}
             <AuthField
+              fieldSize="auth"
               label="Confirm password"
               type="password"
               placeholder="••••••••"

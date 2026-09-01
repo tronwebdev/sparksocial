@@ -100,6 +100,7 @@ export default function SignUpPage() {
         <AuthCard title="Register to continue" subtitle="Join us today and unlock exclusive features!">
           <form onSubmit={submit} className="flex flex-col gap-[14px]">
             <AuthField
+              fieldSize="auth"
               label="Full name"
               placeholder="Enter name"
               autoComplete="name"
@@ -109,6 +110,7 @@ export default function SignUpPage() {
               error={errors.fields.first_name}
             />
             <AuthField
+              fieldSize="auth"
               label="Email"
               type="email"
               placeholder="youremail@website.com"
@@ -119,6 +121,7 @@ export default function SignUpPage() {
               error={errors.fields.email_address}
             />
             <AuthField
+              fieldSize="auth"
               label="Create password"
               type="password"
               placeholder="••••••••"

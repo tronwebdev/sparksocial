@@ -170,7 +170,27 @@ Nothing changed yet. Every entry must record old value, new value, and which
 
 | Date | Token | Old | New | Affects | Why |
 | --- | --- | --- | --- | --- | --- |
-| — | — | — | — | — | — |
+| 2026-09-01 | `--ss-auth-card` | *(new)* | `448px` | auth only | Card measures 447.9 in `login.png`; was a 540px literal in `AuthCard.tsx`. |
+| 2026-09-01 | `--ss-auth-glass` | *(new)* | `472px` | auth only | Frosted panel; was a 568px literal in `GlassCard.tsx`. |
+| 2026-09-01 | `--ss-auth-glass-pad` | *(new)* | `12px` | auth only | (472 − 448) / 2, measured 11.5 / 13.5 either side. |
+| 2026-09-01 | `--ss-auth-gutter` | *(new)* | `36px` | auth only | Card padding-x; identical on both sides of the field stack. |
+| 2026-09-01 | `--ss-auth-control` | *(new)* | `56px` | auth only | Field and button height; both measure 56 at centre. |
+
+**Redefined (not added) — the reviewable set:**
+
+| Date | What | Old | New | Blast radius | Verified |
+| --- | --- | --- | --- | --- | --- |
+| 2026-09-01 | `button` `size="cta"` | `h-[69px] rounded-xl text-[22px]` | `h-56px rounded-lg text-[17px]` | 5 files, **all auth** (`sign-in`, `sign-up`, `sign-up/verify`, `forgot-password`, `OrgGuard`) | `grep` — no non-auth caller exists |
+| 2026-09-01 | `AuthField` label | `18px` `ink-muted` | `13px` `ink` | auth only | component is auth-scoped |
+
+`Input` was **not** redefined. It is imported by 29 files, most of them
+`awaiting-capture`, so the 56px auth field is an additive `fieldSize="auth"`
+prop with the 69px prototype height still the default.
+
+**No colour token was added or changed.** The sky samples `#6CE8FF` (`--ss-cyan`),
+the field fill `#F3F4F8` (`--ss-field-bg`) and the button `#0C0C0C`
+(`--ss-ink-900`) — all three already in the ramp, all three exact. The prototype
+and the Figma file disagree on *geometry*, not palette.
 
 **Pending, not yet applied:** `--ss-rail` 322px → ~250px. High impact: consumed by every
 brand-shell screen including all `awaiting-capture` ones. Do not apply until the final

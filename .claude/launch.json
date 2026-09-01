@@ -14,9 +14,9 @@
       "port": 3000
     },
     {
-      "name": "web-turbo",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "--turbopack", "-p", "3001"],
+      "name": "web-3001",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:3001", "-w", "@sparksocial/web"],
       "port": 3001
     }
   ]

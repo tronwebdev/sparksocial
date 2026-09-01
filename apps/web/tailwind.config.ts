@@ -115,6 +115,12 @@ const config: Config = {
 
       spacing: {
         rail: 'var(--ss-rail)',
+        // Auth geometry, measured from the Figma captures — see tokens.css.
+        'auth-card': 'var(--ss-auth-card)',
+        'auth-gutter': 'var(--ss-auth-gutter)',
+        'auth-control': 'var(--ss-auth-control)',
+        'auth-glass-pad': 'var(--ss-auth-glass-pad)',
+        'auth-glass': 'var(--ss-auth-glass)',
       },
 
       animation: {

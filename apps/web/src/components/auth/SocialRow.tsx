@@ -101,8 +101,13 @@ export function SocialRow({
             onClick={() => onSelect(p.strategy)}
             aria-label={`Continue with ${p.label}`}
             className={cn(
-              'flex h-[56px] flex-1 items-center justify-center gap-2 rounded-lg bg-input',
-              'text-[16px] font-medium text-ink transition-colors hover:bg-surface-muted',
+              // Not `bg-input`. Sampled inside a provider button in login.png the
+              // fill reads #CFE8F6 against #CDE9F8 for the glass immediately
+              // above it — i.e. no fill at all, just a border. A grey fill here
+              // is the difference between "on the glass" and "a grey chip".
+              'flex h-[56px] flex-1 items-center justify-center gap-2 rounded-lg',
+              'border border-border bg-transparent',
+              'text-[15px] font-medium text-ink transition-colors hover:bg-white/40',
               'focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring',
               'disabled:pointer-events-none disabled:opacity-50',
             )}

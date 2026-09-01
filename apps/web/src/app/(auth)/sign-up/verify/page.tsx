@@ -137,6 +137,7 @@ export default function VerifyPage() {
 
       <form onSubmit={submit} className="mt-8 flex w-[380px] max-w-full flex-col gap-4">
         <Input
+                fieldSize="auth"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Enter code"

@@ -117,6 +117,29 @@
   /* ── Shell geometry. Read off Dashboard.dc.html. ──────────────────── */
   --ss-rail: 322px;
   --ss-nav-pitch: 65px; /* 27px row + 38px gap — exact, do not round */
+
+  /**
+   * ── Auth geometry — measured from the Figma captures, not the prototype ──
+   *
+   * `ui build/SparkSocial Auth.dc.html` gave 568px of glass around a 540px card.
+   * The Figma capture measures 448px of card inside 472px of glass, centred in a
+   * 1440 frame — about 20% narrower. Both prototype numbers were literals in
+   * component files with nothing to compare them against, which is why the drift
+   * survived.
+   *
+   * Method: detect the design frame inside the capture's window chrome, keyed on
+   * the chrome's sampled colour; `scale = frame width / 1440`. On `login.png`
+   * that is 1077/1440 = 0.7479, and the card reads 447.9 CSS px — 0.3% off 448.
+   * The 36px gutter is the same measurement on both sides of the field stack.
+   *
+   * Radii are not new values: the corner profile solves to r=30 on the card and
+   * r=15/16 on the button, which are `rounded-2xl` and `rounded-lg` already.
+   */
+  --ss-auth-card: 448px;
+  --ss-auth-glass: 472px; /* measured 473; 448 + 2×12 */
+  --ss-auth-glass-pad: 12px; /* (472 − 448) / 2 */
+  --ss-auth-gutter: 36px; /* card padding-x; field width = 448 − 72 = 376 */
+  --ss-auth-control: 56px; /* field and button height, both */
 }
 
 /**
