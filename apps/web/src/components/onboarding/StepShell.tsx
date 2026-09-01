@@ -56,7 +56,21 @@ export interface StepShellProps {
   /** `Finish` on the last step, per `…193231`. */
   continueLabel?: string;
   continueDisabled?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /**
+   * Renders `children` INSIDE the assistant's white container rather than below
+   * it. Four of the six step screens do this — the bubble simply widens into a
+   * card holding the form. Every card in the captures starts at the same x as
+   * the bubble (491-497 against the bubble's 492), which is what gives it away:
+   * it is not a card under a bubble, it is the bubble.
+   */
+  inBubble?: boolean;
+  /**
+   * The container's width. The captures vary it per step — 467 for a plain
+   * prompt, 493 brand details, 469 docs, 596 brand kit, 436 agent — so it is a
+   * per-screen number rather than a constant.
+   */
+  bubbleWidth?: number;
   /**
    * Bottom-anchored content — the chat-style composer on the two prompt screens,
    * which sits low in the frame rather than directly under the bubble.
@@ -75,6 +89,8 @@ export function StepShell({
   continueLabel = 'Continue',
   continueDisabled,
   children,
+  inBubble = false,
+  bubbleWidth = 467,
   composer,
   footer,
 }: StepShellProps) {
@@ -148,8 +164,10 @@ export function StepShell({
       </header>
 
       <main className="relative mx-auto flex w-[750px] max-w-full flex-1 flex-col pt-[81px]">
-        <Assistant eyebrow={eyebrow} title={title} subtitle={subtitle} />
-        <div className="mt-8">{children}</div>
+        <Assistant eyebrow={eyebrow} title={title} subtitle={subtitle} width={bubbleWidth}>
+          {inBubble ? children : null}
+        </Assistant>
+        {!inBubble && children ? <div className="mt-8">{children}</div> : null}
         {composer ? <div className="mt-auto pb-[calc(930px-592px-40px)] max-md:pb-10">{composer}</div> : null}
       </main>
 
@@ -171,16 +189,23 @@ function Assistant({
   eyebrow,
   title,
   subtitle,
+  width,
+  children,
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
+  width: number;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start gap-[43px]">
       <SparkMark variant="card" size={96} animated className="shrink-0" />
 
-      <div className={cn('relative mt-[9px] w-[467px] max-w-full rounded-2xl bg-white px-6 py-[26px] shadow-card')}>
+      <div
+        className={cn('relative mt-[9px] max-w-full rounded-2xl bg-white px-6 py-[26px] shadow-card')}
+        style={{ width }}
+      >
         <span
           aria-hidden
           className="absolute -left-[7px] top-8 h-[14px] w-[14px] rotate-45 bg-white"
@@ -188,6 +213,7 @@ function Assistant({
         {eyebrow ? <p className="relative text-18 leading-[1.45] text-ink-muted">{eyebrow}</p> : null}
         <p className={cn('relative text-18 font-medium text-brand-purple', eyebrow && 'mt-2')}>{title}</p>
         {subtitle ? <p className="relative mt-2 text-14 leading-[1.5] text-ink-muted">{subtitle}</p> : null}
+        {children ? <div className="relative mt-5">{children}</div> : null}
       </div>
     </div>
   );

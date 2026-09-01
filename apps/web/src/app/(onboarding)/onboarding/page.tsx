@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { StepShell } from '@/components/onboarding/StepShell';
+import { PromptComposer } from '@/components/onboarding/PromptComposer';
 import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
 import { QuestionStep } from '@/components/onboarding/QuestionStep';
 import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
@@ -327,54 +327,70 @@ export default function OnboardingPage() {
     return (
       <StepShell
         group={1}
-        within={{ index: 0, total: 4 }}
-        eyebrow="Let’s set up your brand identity"
-        title="What is your brand called?"
-        footer={
-          <Button
-            className="w-full md:w-auto"
-            disabled={brandName.trim().length === 0}
-            onClick={() => setStep(URL_STEP)}
-          >
-            Continue
-          </Button>
+        eyebrow={
+          <>
+            Lets set up your <strong className="font-semibold text-ink">Brand Identity</strong>
+          </>
         }
-      >
-        <Input
-          autoFocus
-          value={brandName}
-          onChange={(e) => setBrandName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && brandName.trim() && setStep(URL_STEP)}
-          placeholder="Enter your brand name"
-          aria-label="Brand name"
-        />
-      </StepShell>
+        title="What is your Brand Name?"
+        onContinue={brandName.trim() ? () => setStep(URL_STEP) : undefined}
+        continueDisabled={brandName.trim().length === 0}
+        composer={
+          <PromptComposer
+            autoFocus
+            value={brandName}
+            onChange={setBrandName}
+            onSubmit={() => setStep(URL_STEP)}
+            placeholder="Enter your brand name"
+          />
+        }
+      />
     );
   }
 
   if (step === URL_STEP) {
     return (
       <StepShell
-        group={1}
-        within={{ index: 1, total: 4 }}
+        group={2}
         onBack={back}
-        eyebrow={`Got your brand name, ${brandName.trim()}`}
-        title="What’s your website?"
-        subtitle="SPARK reads a few pages to work out what you do, so you answer fewer questions."
-        footer={
+        eyebrow={
+          <>
+            <strong className="font-semibold text-ink">Great news!</strong> Your Brand Identity is ready.
+            <br />
+            Now, let&apos;s dive into your <strong className="font-semibold text-ink">Brand Knowledge!</strong>
+          </>
+        }
+        title="What's your company URL?"
+        onContinue={() => void bootstrap()}
+        continueDisabled={!looksLikeUrl(url) || busy || manualBusy}
+        composer={
           <div className="flex flex-col gap-3">
-            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button
-              className="w-full md:w-auto"
-              disabled={!looksLikeUrl(url) || busy || manualBusy}
-              onClick={bootstrap}
-            >
-              {busy ? 'Reading your site…' : 'Continue'}
-            </Button>
+            <PromptComposer
+              autoFocus
+              type="url"
+              value={url}
+              onChange={setUrl}
+              onSubmit={() => void bootstrap()}
+              placeholder="Enter your website URL"
+              disabled={busy || manualBusy}
+              icon={
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path
+                    d="M8.3 11.7a3.5 3.5 0 0 0 5 0l2.6-2.6a3.54 3.54 0 0 0-5-5l-1 1M11.7 8.3a3.5 3.5 0 0 0-5 0L4.1 10.9a3.54 3.54 0 0 0 5 5l1-1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              }
+            />
+
+            {error ? <p className="text-14 text-destructive">{error}</p> : null}
             {busy ? (
               // Named, because thirty seconds of silence reads as a hang. The
               // steps are the real ones the tool performs.
-              <p className="text-[14px] text-ink-muted">
+              <p className="text-14 text-ink-muted">
                 Opening your pages, reading them, and drafting your profile. This takes about half a
                 minute and only happens once.
               </p>
@@ -391,26 +407,15 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => void createManually()}
                 disabled={brandName.trim().length === 0}
-                className="self-start text-[14px] text-ink-muted underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
+                className="self-start text-14 text-ink-muted underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
               >
                 {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
               </button>
             ) : null}
-            {manualBusy ? <p className="text-[14px] text-ink-muted">Setting up your brand…</p> : null}
+            {manualBusy ? <p className="text-14 text-ink-muted">Setting up your brand…</p> : null}
           </div>
         }
-      >
-        <Input
-          autoFocus
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && looksLikeUrl(url) && !busy && void bootstrap()}
-          placeholder="Enter your website URL"
-          aria-label="Website URL"
-          inputMode="url"
-          disabled={busy || manualBusy}
-        />
-      </StepShell>
+      />
     );
   }
 
