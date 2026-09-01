@@ -26,22 +26,25 @@ import { SparkMark } from '@/components/brand/SparkMark';
 export function SkyBackdrop({ children, floaters = true }: { children: React.ReactNode; floaters?: boolean }) {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-cyan px-6 py-12">
-      {/* The horizon wash. The capture fades to a pale cloud band across the
-          bottom third rather than holding flat cyan to the edge. */}
-      <div
-        className="pointer-events-none absolute inset-0"
+      {/*
+        The sky is a PHOTOGRAPH (`login assets/image 30.svg`), not a gradient.
+        It composites over flat `--ss-cyan` with a vertical fade rather than
+        replacing it — derived, not guessed: solving
+        `capture = cyan·(1−a) + photo·a` against the capture gives a ≈ 0.00 at
+        y=20, ≈0.3 at y=300, ≈0.7 at y=500 and ≈0.95 at y=900. So the cyan owns
+        the top of the frame and the clouds only emerge toward the base, which is
+        why sampling the capture's top corners returns `#6CE8FF` exactly.
+      */}
+      <img
+        src="/auth/login-sky.svg"
+        alt=""
         aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         style={{
-          background:
-            'radial-gradient(120% 60% at 50% 118%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.45) 38%, rgba(255,255,255,0) 68%),' +
-            'radial-gradient(circle at 18% 12%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 45%)',
+          maskImage: 'linear-gradient(180deg, transparent 8%, rgba(0,0,0,0.55) 45%, #000 92%)',
+          WebkitMaskImage: 'linear-gradient(180deg, transparent 8%, rgba(0,0,0,0.55) 45%, #000 92%)',
         }}
       />
-      {/* Two faint arcs sweeping behind the card, as in the capture. */}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
-        <path d="M-140 690 C 190 560, 300 250, 520 -60" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" fill="none" />
-        <path d="M1580 700 C 1270 560, 1160 250, 950 -60" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" fill="none" />
-      </svg>
 
       {floaters ? <AuthFloaters /> : null}
       <div className="relative w-full">{children}</div>
@@ -50,32 +53,46 @@ export function SkyBackdrop({ children, floaters = true }: { children: React.Rea
 }
 
 /**
- * The four decorative cards around the login form.
+ * The decorative cards around the login form — the Figma exports themselves,
+ * from `ui build/assets/login assets/`, not reconstructions.
  *
- * Positions are the capture's, converted to CSS px against the 1440 frame and
- * expressed from the centre so they track the card rather than the viewport.
- * Hidden below `xl` — at narrower widths the capture has nothing to say and
- * overlapping the form would be worse than omitting them.
+ * Each card ships as one SVG with its caption, chrome and imagery already inside
+ * it, so there is nothing here to re-typeset: only where it sits and how wide it
+ * is. Positions are the capture's, measured by deviation from the sky at the same
+ * row, then expressed as offsets from the frame centre (1440×931 → centre
+ * 720/465.5) so they track the form rather than the viewport edge:
  *
- * NOTE: the photography is the closest match from `ui build/assets/`, not the
- * Figma originals, which were never exported. Logged in `ui build/MANIFEST.md`.
+ *   campaign  x 131 → −589   y 267 → −198
+ *   avatars   x 1074 → +354  y 245 → −220
+ *   ideation  x 1107 → +387  y 571 → +106
+ *
+ * Widths come from the capture too, and height is left to each asset's own
+ * aspect so nothing is stretched.
+ *
+ * One caveat: these SVGs put their frosted blur in a `foreignObject` carrying a
+ * `backdrop-filter`. Chrome renders SVG-in-`<img>` in a restricted static mode
+ * that skips `foreignObject` entirely, so that layer is inert here — the card's
+ * own translucent fill still renders, and the wrapper adds the blur back with
+ * `backdrop-blur` so it frosts the sky behind it as intended.
+ *
+ * Hidden below `xl`: the capture says nothing about narrow widths, and letting
+ * these overlap the form would be worse than omitting them.
+ *
+ * NOT from the export folder: the "Overall Performance 565" gauge (lower left)
+ * has no asset in it, so it stays hand-built. Flagged in `ui build/MANIFEST.md`.
  */
 function AuthFloaters() {
   return (
     <div className="pointer-events-none absolute inset-0 hidden xl:block" aria-hidden>
       {/* Active Agent Campaign — left of the card */}
-      <figure className="absolute left-[calc(50%-590px)] top-[calc(50%-190px)] w-[148px] animate-float-a rounded-[18px] bg-white/55 p-1.5 shadow-card backdrop-blur-md">
-        <div className="relative overflow-hidden rounded-[13px]">
-          <img src="/auth/clientfinder-woman.png" alt="" className="h-[120px] w-full object-cover" />
-          <span className="absolute right-2 top-2 flex h-3.5 w-6 items-center rounded-full bg-success px-0.5">
-            <span className="ml-auto h-2.5 w-2.5 rounded-full bg-white" />
-          </span>
-        </div>
-        <figcaption className="px-1 py-1.5 text-[9px] font-medium text-ink">Active Agent Campaign</figcaption>
-      </figure>
+      <Floater
+        src="/auth/login-float-campaign.svg"
+        className="left-[calc(50%-589px)] top-[calc(50%-198px)] w-[176px] animate-float-a"
+        panel={{ inset: '0.19% 0.53% 0.35% 11.63%', radius: 19, blur: 8.25 }}
+      />
 
-      {/* Overall Performance gauge — lower left */}
-      <figure className="absolute left-[calc(50%-495px)] top-[calc(50%+90px)] w-[104px] animate-float-b rounded-[16px] bg-white/60 p-2.5 text-center shadow-card backdrop-blur-md">
+      {/* Overall Performance gauge — lower left. Hand-built: no export exists. */}
+      <figure className="absolute left-[calc(50%-495px)] top-[calc(50%+208px)] w-[104px] animate-float-b rounded-[16px] bg-white/60 p-2.5 text-center shadow-card backdrop-blur-md">
         <span className="mx-auto block h-6 w-6 rounded-full bg-brand-wash" />
         <figcaption className="mt-1.5 text-[8px] font-medium text-ink">Overall Performance</figcaption>
         <svg viewBox="0 0 100 62" className="mx-auto mt-1 w-[70px]">
@@ -91,25 +108,63 @@ function AuthFloaters() {
         <span className="-mt-4 block text-[15px] font-semibold text-ink">565</span>
       </figure>
 
-      {/* Avatar stack — upper right */}
-      <div className="absolute left-[calc(50%+345px)] top-[calc(50%-235px)] flex animate-float-b items-center gap-1.5 rounded-full bg-white/55 p-1.5 pr-2.5 shadow-card backdrop-blur-md">
-        <img src="/auth/agent-memoji.png" alt="" className="h-7 w-7 rounded-full bg-ink object-cover" />
-        <img src="/auth/ws-avatar-1.jpg" alt="" className="-ml-3 h-7 w-7 rounded-full object-cover ring-2 ring-white" />
-        <img src="/auth/ws-avatar-2.jpg" alt="" className="-ml-3 h-7 w-7 rounded-full object-cover ring-2 ring-white" />
-        <span className="ml-0.5 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-ink">+5</span>
-      </div>
+      {/* Avatar stack — upper right. Needs no `panel`: this export keeps its
+          frosted fill as a plain `fill-opacity="0.25"` rect, so it renders. */}
+      <Floater
+        src="/auth/login-float-avatars.svg"
+        className="left-[calc(50%+354px)] top-[calc(50%-220px)] w-[172px] animate-float-b"
+      />
 
       {/* Autonomous content ideation — lower right */}
-      <figure className="absolute left-[calc(50%+360px)] top-[calc(50%+40px)] w-[152px] animate-float-a rounded-[18px] bg-white/55 p-1.5 shadow-card backdrop-blur-md">
-        <div className="overflow-hidden rounded-[13px]">
-          <img src="/auth/post-genstars.png" alt="" className="h-[128px] w-full object-cover" />
-        </div>
-        <figcaption className="px-1 py-1.5 text-center text-[9px] font-medium leading-tight text-ink">
-          Autonomous
-          <br />
-          Content ideation
-        </figcaption>
-      </figure>
+      <Floater
+        src="/auth/login-float-ideation.svg"
+        className="left-[calc(50%+387px)] top-[calc(50%+106px)] w-[166px] animate-float-a"
+        panel={{ inset: '8.22% 0.42% 0.28% 0.23%', radius: 20, blur: 8.25 }}
+      />
+    </div>
+  );
+}
+
+/**
+ * One floating card: the export, plus its frosted panel where the export cannot
+ * carry it.
+ *
+ * `Group 96.svg` states its panel as `<rect fill="white" fill-opacity="0.25">`,
+ * which renders fine inside an `<img>`. The two `Login Form` exports instead put
+ * theirs in the `foreignObject` blur layer that SVG-in-`<img>` drops — so those
+ * cards would float as bare photo + caption with no card behind them.
+ *
+ * `panel.inset` is not a guess at where the card is: it is the export's own
+ * `bgblur_0_*_clip_path` converted to percentages of the SVG canvas. For the
+ * campaign card that path runs x 23.85→203.92 of 205 and y 0.41→215.24 of 216 —
+ * i.e. the card is inset ~11.6% from the left, because the canvas also has to
+ * hold the blur bleed. Filling the whole `<img>` box instead would draw the
+ * frosted panel wider than the card it belongs to.
+ */
+function Floater({
+  src,
+  className,
+  panel,
+}: {
+  src: string;
+  className: string;
+  panel?: { inset: string; radius: number; blur: number };
+}) {
+  return (
+    <div className={cn('absolute', className)}>
+      {panel ? (
+        <div
+          className="absolute"
+          style={{
+            inset: panel.inset,
+            borderRadius: `${panel.radius}px`,
+            background: 'rgba(255,255,255,0.25)',
+            backdropFilter: `blur(${panel.blur}px)`,
+            WebkitBackdropFilter: `blur(${panel.blur}px)`,
+          }}
+        />
+      ) : null}
+      <img src={src} alt="" className="relative block w-full" />
     </div>
   );
 }
@@ -125,18 +180,25 @@ function AuthFloaters() {
 export function AuthHeader({ title, subtitle }: { title: string; subtitle?: React.ReactNode }) {
   return (
     <div className="relative">
-      <div className="pointer-events-none absolute -left-auth-gutter -right-auth-gutter -top-7 h-[128px]" aria-hidden>
-        <div
-          className="absolute inset-0 opacity-[0.35]"
+      {/*
+        The halftone is the Figma export (`login assets/Frame (1).svg`), not a
+        `radial-gradient` standing in for it: the real dots are outlined diamonds
+        stroked in `#A341FF`, which a dot pattern cannot produce. Exported at
+        540 wide, scaled to the 448 card, and masked so it fades out downward as
+        the capture does.
+      */}
+      <div className="pointer-events-none absolute -left-auth-gutter -right-auth-gutter -top-10 h-[130px] overflow-hidden" aria-hidden>
+        <img
+          src="/auth/login-card-halftone.svg"
+          alt=""
+          className="absolute inset-x-0 top-0 w-full opacity-40"
           style={{
-            backgroundImage: 'radial-gradient(rgba(163,65,255,0.85) 1.2px, rgba(163,65,255,0) 1.3px)',
-            backgroundSize: '26px 20px',
-            WebkitMaskImage: 'linear-gradient(180deg,#000 45%,transparent 100%)',
-            maskImage: 'linear-gradient(180deg,#000 45%,transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(180deg,#000 40%,transparent 100%)',
+            maskImage: 'linear-gradient(180deg,#000 40%,transparent 100%)',
           }}
         />
         <div
-          className="absolute left-1/2 top-1 h-[96px] w-[96px] -translate-x-1/2 rounded-full opacity-70"
+          className="absolute left-1/2 top-2 h-[96px] w-[96px] -translate-x-1/2 rounded-full opacity-70"
           style={{ background: 'var(--ss-info)', filter: 'blur(34px)' }}
         />
       </div>

@@ -198,6 +198,46 @@ measurement is confirmed and the affected artboards are ready to move together.
 
 ---
 
+## 6.1 Asset provenance
+
+Login now uses the **Figma exports** from `ui build/assets/login assets/`, copied
+into `apps/web/public/auth/`. The earlier approximations from `ui build/assets/`
+(`clientfinder-woman.png`, `post-genstars.png`, `ws-avatar-*.jpg`,
+`agent-memoji.png`) are deleted — they were placeholders, not the design.
+
+| Export | In repo | Role |
+| --- | --- | --- |
+| `image 30.svg` | `login-sky.svg` | Sky **photograph**, 1727×1117 |
+| `Login Form.svg` | `login-float-campaign.svg` | "Active Agent Campaign", 205×216 |
+| `Login Form (1).svg` | `login-float-ideation.svg` | "Autonomous Content ideation", 182×249 |
+| `Group 96.svg` | `login-float-avatars.svg` | Avatar stack "+5", 198×67 |
+| `Frame (1).svg` | `login-card-halftone.svg` | Card halftone dots, 540×123 |
+
+**The sky is a photograph, not a gradient.** It composites over flat `--ss-cyan`
+with a vertical fade. Solving `capture = cyan·(1−a) + photo·a` against the capture
+gives a ≈ 0.00 at y=20, ≈0.3 at y=300, ≈0.7 at y=500, ≈0.95 at y=900 — so cyan
+owns the top of the frame and the clouds only emerge near the base. That is why
+sampling the capture's top corners returns `#6CE8FF` exactly.
+
+**Two exports need their frosted panel restored in CSS.** Chrome renders
+SVG-in-`<img>` in a restricted static mode that skips `foreignObject`, and both
+`Login Form` exports keep their frosted fill in a `foreignObject` carrying
+`backdrop-filter`. Without compensation those cards render as bare photo +
+caption. The panel insets are taken from each export's own
+`bgblur_0_*_clip_path`, not estimated. `Group 96.svg` needs nothing — it states
+its panel as a plain `fill-opacity="0.25"` rect.
+
+**Still not from an export:** the "Overall Performance 565" gauge (lower-left
+floater) has no asset in the folder and remains hand-built. Export it if exact
+fidelity there matters.
+
+**Not swapped, deliberately:** the Spark mark. `Group 1000016141.svg` (91×91)
+uses `#F56BFF` / `#A341FF` / `#6CE8FF` — exactly `SparkMark`'s own constants — so
+the existing CSS component is a faithful reimplementation, and the capture's mark
+measures a ~40×42px core with glow to ~63px, which agrees with `size={48}`.
+Swapping one screen to a static SVG would fork the brand mark into two
+implementations free to drift.
+
 ## 7. Handoff log
 
 Handoff is **per flow**, not per screen. A flow goes when every screen in it is
