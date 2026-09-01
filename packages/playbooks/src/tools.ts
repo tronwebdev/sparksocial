@@ -33,7 +33,20 @@ const RankedPlaybook = z.object({
    * this direct_finish?", which is why an upload-unlockable format had no way to
    * appear at all.
    */
-  unlocked_by: z.enum(['upload', 'capture']).optional(),
+  /**
+   * `answer` joined `upload` and `capture` when the resolver learned to check the
+   * genome facts a beat reads. It is a different kind of gap and needs different
+   * words: not a file and not a shoot, one question the brand can answer in
+   * seconds. The Draft Panel must not offer an `answer`-blocked format as
+   * pickable, because `planBeat` would throw on it.
+   */
+  unlocked_by: z.enum(['upload', 'capture', 'answer']).optional(),
+  /**
+   * Which genome facts are missing — dotted paths. Turned into words by
+   * `genomeRequirement` at the display edge; a path is a schema location and is
+   * not something to show a business owner.
+   */
+  missing_genome_paths: z.array(z.string()),
 });
 
 export const playbookResolve = defineTool({
@@ -97,6 +110,7 @@ export const playbookResolve = defineTool({
       score: Number(r.score.toFixed(4)),
       unlockable: r.unlockable,
       missing_roles: r.missingRoles,
+      missing_genome_paths: r.missingGenomePaths,
       ...(r.unlockedBy ? { unlocked_by: r.unlockedBy } : {}),
     });
 

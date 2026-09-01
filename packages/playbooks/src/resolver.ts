@@ -1,6 +1,15 @@
-import { LEARNED_CONFIDENCE_THRESHOLD, assetRoleWordList, unlockRouteFor, type AssetRole, type Genome } from '@sparksocial/shared';
+import {
+  LEARNED_CONFIDENCE_THRESHOLD,
+  assetRoleWordList,
+  genomeRequirementWordList,
+  readGenomePath,
+  unlockRouteFor,
+  type AssetRole,
+  type Genome,
+} from '@sparksocial/shared';
 import type { AssetInventory } from './golden.js';
 import { PLAYBOOKS } from './records.js';
+import { requiredGenomePaths } from './schema.js';
 import type { Playbook } from './schema.js';
 
 /**
@@ -39,7 +48,17 @@ export interface ResolvedPlaybook {
    * conflating them is what made the product ask a barber to give up a Saturday
    * when a logo upload would have unlocked more.
    */
-  unlockedBy?: 'upload' | 'capture';
+  unlockedBy?: 'upload' | 'capture' | 'answer';
+  /**
+   * Genome paths this playbook's beats read and the brand has not filled in.
+   *
+   * Its own field rather than folded into `missingRoles`, because the two want
+   * completely different words and completely different screens. A missing asset
+   * is something to upload or film; a missing genome value is a question to
+   * answer, and it takes seconds. Conflating them is how "add your call to
+   * action" would come out as "book a filming session".
+   */
+  missingGenomePaths: string[];
   /** Human-readable scoring breakdown for the `why` payload. */
   factors: Array<{ label: string; detail: string; weight?: number }>;
 }
@@ -123,7 +142,36 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
      * push a local brand's month toward library filler — the §6 invariant the
      * golden set exists to protect.
      */
-    const unlockedBy = hasAssets ? undefined : unlockRouteFor(missingRoles);
+    /* 4b ─ Genome availability — the facts the brand has to have *said*.
+     *
+     *      This is the check that was missing entirely. Fourteen playbooks read
+     *      `genome:offer.primary_cta` for their closing beat and none of them
+     *      could declare it, because `preconditions` only described what a brand
+     *      had to *own*. So all fourteen resolved as ready against a genome with
+     *      no CTA, `planCampaign` counted them, the calendar placed them, and
+     *      `planBeat` threw when somebody finally clicked one — a week and three
+     *      screens from the decision that caused it.
+     *
+     *      `readGenomePath` is the same function `planBeat` uses, imported from
+     *      `shared` rather than reimplemented, because a guard that merely
+     *      resembles the thing it guards agrees with it until the day it does
+     *      not.
+     *
+     *      Not a rejection. A missing answer is the cheapest gap in the product
+     *      to close — it is one field, and the brand already knows what goes in
+     *      it — so it comes back as a route, exactly as a missing asset does. */
+    const missingGenomePaths = requiredGenomePaths(p).filter((path) => !readGenomePath(genome, path));
+    const hasGenome = missingGenomePaths.length === 0;
+
+    /**
+     * `answer` outranks the asset route when both are missing.
+     *
+     * Because it is the one to do first: filling in a CTA takes seconds and
+     * unlocks fourteen formats, and telling somebody to film a Saturday while a
+     * one-line answer is still blocking the same post is advice that wastes their
+     * day. The asset gap is still reported in `missingRoles` either way.
+     */
+    const unlockedBy = !hasGenome ? ('answer' as const) : hasAssets ? undefined : unlockRouteFor(missingRoles);
 
     /* 5 ── Score. §5.2's four multiplicands. */
     const objectiveFit = p.objective_fit[d.objective] ?? 0;
@@ -132,7 +180,7 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
       continue;
     }
 
-    const availability = assetAvailabilityFactor(hasAssets, unlockedBy);
+    const availability = assetAvailabilityFactor(hasAssets, unlockRouteFor(missingRoles), hasGenome);
     const saturation = 1 - saturationPenalty(p);
     const learned = learnedMultiplier(genome, p);
 
@@ -146,14 +194,17 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
     ranked.push({
       playbook: p,
       score,
-      unlockable: !hasAssets,
+      unlockable: !hasAssets || !hasGenome,
       missingRoles,
+      missingGenomePaths,
       ...(unlockedBy ? { unlockedBy } : {}),
       factors: [
         { label: 'objective fit', detail: `${p.name} scores ${objectiveFit.toFixed(2)} for ${d.objective}`, weight: objectiveFit },
         {
           label: 'assets',
-          detail: hasAssets
+          detail: !hasGenome
+            ? `needs ${genomeRequirementWordList(missingGenomePaths)} from you — one answer, no filming`
+            : hasAssets
             ? 'everything this needs already exists'
             : unlockedBy === 'capture'
               ? `needs ${assetRoleWordList(missingRoles)} — reachable with a capture brief`
@@ -174,8 +225,21 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
  * never surfaces. A local business has nothing digital on day one; if this
  * discount were harsh, its whole month would rank below a generic quote card.
  */
-function assetAvailabilityFactor(hasAssets: boolean, unlockedBy: 'upload' | 'capture' | undefined): number {
-  if (hasAssets) return 1;
+function assetAvailabilityFactor(
+  hasAssets: boolean,
+  assetRoute: 'upload' | 'capture' | undefined,
+  hasGenome: boolean,
+): number {
+  /**
+   * The two gaps multiply rather than one overriding the other.
+   *
+   * A playbook blocked by *both* a missing answer and missing footage is further
+   * away than one blocked by either, and taking the better of the two factors
+   * would rank it as though the closer gap were the only one. Multiplying keeps
+   * the ordering honest without needing a second concept.
+   */
+  const genomeFactor = hasGenome ? 1 : GENOME_ANSWER_FACTOR;
+  if (hasAssets) return genomeFactor;
   /**
    * `0.85` for filming, `0.35` for uploading — a wide gap on purpose.
    *
@@ -191,8 +255,19 @@ function assetAvailabilityFactor(hasAssets: boolean, unlockedBy: 'upload' | 'cap
    * playbook fits on dimensions at all — would get its entire library tied at
    * zero and ordered arbitrarily.
    */
-  return unlockedBy === 'capture' ? 0.85 : 0.35;
+  return genomeFactor * (assetRoute === 'capture' ? 0.85 : 0.35);
 }
+
+/**
+ * `0.95` — handicapped least of the three routes, because it is the cheapest.
+ *
+ * Filling in a call to action is one field and the brand already knows what goes
+ * in it. That deliberately puts an answer-blocked format *above* a filmable one
+ * (`0.85`): telling somebody to give up a Saturday while a one-line answer is
+ * still blocking the same post is advice that wastes their day. Not `1`, because
+ * a format that cannot be built this second must not tie with one that can.
+ */
+const GENOME_ANSWER_FACTOR = 0.95;
 
 /**
  * Engine spec §10: cap formats that make every SparkSocial account look alike.

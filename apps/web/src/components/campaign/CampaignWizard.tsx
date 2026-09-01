@@ -14,6 +14,7 @@ import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { EmptyCalendarReason } from '@/components/calendar/EmptyCalendarReason';
 import { cn } from '@/lib/utils';
+import { MissingFactsRequest } from '@/components/campaign/MissingFactsRequest';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 
 /**
@@ -197,6 +198,18 @@ interface ProposedPlan {
   windowDays: number;
   buildableNow: number;
   mix: Array<{ pillar: string; count: number }>;
+  /**
+   * Facts the brand has not supplied that its formats read directly.
+   *
+   * Null when there are none. This is the fix for a campaign that looked complete
+   * and was not: fourteen playbooks read `genome:offer.primary_cta`, nothing
+   * checked it, and the refusal landed a week later when somebody opened a post.
+   */
+  answers: {
+    missing: Array<{ path: string; label: string; hint: string; fixWith: string }>;
+    unlocksPosts: number;
+    blockedPlaybooks: number;
+  } | null;
   why: Explanation;
 }
 
@@ -298,6 +311,14 @@ export function CampaignWizard({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Set when somebody chooses "Continue without it".
+   *
+   * Per-session and not persisted: the request is worth making once per attempt
+   * at this campaign, and a stored dismissal would mean the one screen that could
+   * have caught the empty CTA never asked again.
+   */
+  const [answersDismissed, setAnswersDismissed] = useState(false);
 
   /* CMP-01.2 — SPARK's proposal, fetched when the goal is settled. */
   const propose = useCallback(async () => {
@@ -780,11 +801,38 @@ export function CampaignWizard({
               </p>
             </div>
 
+            {/* Placed above the mix, not below it. The mix describes what would be
+                made; this says part of it cannot be made yet, and reading those
+                in the other order means agreeing to a plan before learning it is
+                short. */}
+            {plan.answers && !answersDismissed ? (
+              <MissingFactsRequest
+                genomeId={genomeId}
+                facts={plan.answers.missing}
+                unlocksPosts={plan.answers.unlocksPosts}
+                blockedPlaybooks={plan.answers.blockedPlaybooks}
+                onFilled={async () => {
+                  // Re-propose rather than patch the local plan: the counts,
+                  // the mix and the `why` all move when a format becomes
+                  // buildable, and recomputing them here would be a second
+                  // implementation of `planCampaign` in a component.
+                  await propose();
+                }}
+                onSkip={() => setAnswersDismissed(true)}
+              />
+            ) : null}
+
             <div className="flex justify-between">
               <Button variant="ghost" onClick={() => setStep(1)}>
                 Back
               </Button>
-              <Button onClick={() => setStep(3)}>Looks right</Button>
+              {/* Gated while the request is still standing. Not a hard refusal —
+                  "Continue without it" is right there, and a couple of formats
+                  have no CTA beat and would build fine — but sailing past it
+                  silently is what produced the 404-on-open in the first place. */}
+              <Button onClick={() => setStep(3)} disabled={Boolean(plan.answers) && !answersDismissed}>
+                Looks right
+              </Button>
             </div>
           </div>
         ) : null}
@@ -1100,9 +1148,15 @@ export function CampaignWizard({
                     : '—'
                 }
                 note={
-                  plan && plan.buildableNow < mixTotal(plan.mix)
-                    ? 'Filming unlocks the rest — SPARK will ask, and the calendar fills in as you send clips.'
-                    : undefined
+                  plan && plan.answers
+                    ? // Named ahead of filming because it is the cheaper fix and it
+                      // blocks more formats. Telling somebody to film while a
+                      // one-line answer holds the same posts wastes their day.
+                      `${plan.answers.missing.map((m) => m.label).join(', ')} is still missing — ` +
+                      `${plan.answers.blockedPlaybooks} formats are waiting on it.`
+                    : plan && plan.buildableNow < mixTotal(plan.mix)
+                      ? 'Filming unlocks the rest — SPARK will ask, and the calendar fills in as you send clips.'
+                      : undefined
                 }
               />
               <Row
