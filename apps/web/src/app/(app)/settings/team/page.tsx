@@ -1,4 +1,5 @@
 import { TeamGroupsPanel } from '@/components/settings/TeamGroupsPanel';
+import { ApprovalFlowsPanel } from '@/components/settings/ApprovalFlowsPanel';
 import { PolicyPanel } from '@/components/settings/PolicyPanel';
 
 /**
@@ -10,6 +11,10 @@ export default function TeamSettings() {
   return (
     <>
       <TeamGroupsPanel />
+      {/* Directly under the groups it inverts. Groups add; these hold back — and a
+          reader who conflates the two misconfigures both, so they are adjacent and
+          the framing is said out loud in each. */}
+      <ApprovalFlowsPanel />
       <PolicyPanel />
     </>
   );

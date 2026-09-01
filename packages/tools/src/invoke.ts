@@ -2,7 +2,7 @@ import { ZodError } from 'zod';
 import { ToolError, type Explanation, type Role } from '@sparksocial/shared/types';
 import { CREDIT_CATEGORY_LABEL, creditCategoryFor } from '@sparksocial/shared/credits';
 import { getTool, type RegisteredTool } from './registry.js';
-import { evaluate, isTeamCapability, type Decision, type TeamCapability } from './policy.js';
+import { evaluate, isTeamCapability, type ApprovalRule, type Decision, type TeamCapability } from './policy.js';
 import type { GuardrailId, PolicySubject, ToolCtx } from './defineTool.js';
 
 /**
@@ -135,7 +135,12 @@ export interface InvokeRequest {
    * attach this to an arbitrary request would have found a way to approve its
    * own actions.
    */
-  approval?: { grantedBy: string; grantedAt: Date };
+  approval?: {
+    grantedBy: string;
+    grantedAt: Date;
+    /** The approver's own role, for a rule that names one. See `policy.ts`. */
+    grantedByRole?: Role;
+  };
   /**
    * Invocation-context risk flags — and **only** flags.
    *
@@ -292,15 +297,71 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
    *      failing the call would take the whole registry down with one bad query
    *      on a feature most workspaces will not use. */
   let capabilities: TeamCapability[] = [];
+  let memberGroupIds: string[] = [];
   if (req.caller === 'user' && req.ctx.userId) {
     try {
-      const resolved = await req.ctx.db.teamGroups.capabilitiesForUser(req.ctx.orgId, req.ctx.userId);
+      const [resolved, groupIds] = await Promise.all([
+        req.ctx.db.teamGroups.capabilitiesForUser(req.ctx.orgId, req.ctx.userId),
+        req.ctx.db.teamGroups.groupIdsForUser(req.ctx.orgId, req.ctx.userId),
+      ]);
       capabilities = resolved.filter(isTeamCapability);
+      memberGroupIds = groupIds;
     } catch (e) {
       req.ctx.logger.warn('could not resolve team-group capabilities; proceeding on role alone', {
         userId: req.ctx.userId,
         error: e instanceof Error ? e.message : String(e),
       });
+    }
+  }
+
+  /* 4e ─ Workspace approval rules (`SET-WS-TEAM-GROUPS`'s "Approval flows").
+   *
+   *      Resolved here for the same reason as the capabilities above: `evaluate`
+   *      does no I/O.
+   *
+   *      A failure here is **not** swallowed, and that asymmetry is deliberate.
+   *      Capabilities widen, so losing them refuses something that would have
+   *      been allowed — the safe direction. These narrow, so losing them
+   *      *allows* something a workspace said needed sign-off, unattended. A
+   *      spend rule that silently stops applying because a query timed out is
+   *      the failure mode this layer exists to prevent, so the call fails
+   *      instead. */
+  let approvalRules: ApprovalRule[] = [];
+  /**
+   * An *absent* store and a *failing* one are different facts and get different
+   * answers.
+   *
+   * Absent means nothing wired it — a misconfiguration, the same shape as a
+   * missing credit ledger, which `apps/api/src/budget.ts` also treats
+   * permissively and complains about at boot. Failing every call over it would
+   * take the product down rather than protect anybody.
+   *
+   * Present but throwing means this workspace has rules and we could not read
+   * them. That fails the call. Swallowing it would let a spend rule silently stop
+   * applying because a query timed out, unattended — the exact failure this layer
+   * exists to prevent.
+   */
+  const ruleStore = req.ctx.db.approvalRules as typeof req.ctx.db.approvalRules | undefined;
+  if (ruleStore) {
+    try {
+      const rows = await ruleStore.active(req.ctx.orgId);
+      approvalRules = rows.map((r) => ({
+        id: r.id,
+        trigger: r.trigger === 'spend_over' ? ('spend_over' as const) : ('publish' as const),
+        ...(r.thresholdCents === undefined ? {} : { thresholdCents: r.thresholdCents }),
+        requiresRole: r.requiresRole,
+        groupIds: r.groupIds,
+      }));
+    } catch (e) {
+      req.ctx.logger.error('could not resolve approval rules', {
+        orgId: req.ctx.orgId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw new ToolError(
+        'UPSTREAM_FAILED',
+        'This workspace’s approval rules could not be read, so the action was not attempted.',
+        { orgId: req.ctx.orgId },
+      );
     }
   }
 
@@ -318,6 +379,8 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     role: req.ctx.role,
     now: at,
     ...(capabilities.length ? { capabilities } : {}),
+    ...(approvalRules.length ? { approvalRules } : {}),
+    ...(memberGroupIds.length ? { memberGroupIds } : {}),
     brand: req.brand,
     subject: { ...derived, guardrailFlags },
     ...(derived.engagement ? { engagement: derived.engagement } : {}),

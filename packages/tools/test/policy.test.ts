@@ -55,6 +55,9 @@ function input(over: DeepPartial<PolicyInput> = {}): PolicyInput {
      * campaign pass `subject: {}`.
      */
     subject: { campaignApprovalMode: 'autopublish', ...over.subject } as PolicyInput['subject'],
+    ...(over.approvalRules ? { approvalRules: over.approvalRules as PolicyInput['approvalRules'] } : {}),
+    ...(over.memberGroupIds ? { memberGroupIds: over.memberGroupIds as string[] } : {}),
+    ...(over.approval ? { approval: over.approval as PolicyInput['approval'] } : {}),
     budget: {
       remainingCents: over.budget?.remainingCents ?? 10_000,
       estimatedCents: over.budget?.estimatedCents ?? 0,
@@ -1156,5 +1159,213 @@ describe('team-group capabilities', () => {
       );
       expect(ruleOf(d)).toBe('role.scope');
     }
+  });
+});
+
+describe('7b — workspace approval flows', () => {
+  const publishRule = {
+    id: 'rule_1',
+    trigger: 'publish' as const,
+    requiresRole: 'approver' as const,
+    groupIds: [] as string[],
+  };
+
+  it('holds a publish when a rule applies to everyone', () => {
+    const d = evaluate(
+      input({
+        tool: { name: 'publish.now', effect: 'publish' },
+        approvalRules: [publishRule],
+      }),
+    );
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+    expect(d.kind === 'approval' && d.requiresRole).toBe('approver');
+  });
+
+  it('holds nothing when the rule names a group the caller is not in', () => {
+    const d = evaluate(
+      input({
+        caller: 'user',
+        tool: { name: 'publish.now', effect: 'publish' },
+        approvalRules: [{ ...publishRule, groupIds: ['grp_design'] }],
+        memberGroupIds: ['grp_video'],
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('holds when the caller is in one of the named groups', () => {
+    const d = evaluate(
+      input({
+        caller: 'user',
+        tool: { name: 'publish.now', effect: 'publish' },
+        approvalRules: [{ ...publishRule, groupIds: ['grp_design', 'grp_social'] }],
+        memberGroupIds: ['grp_social'],
+      }),
+    );
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+  });
+
+  it('never matches an agent turn against a rule that names groups', () => {
+    // An agent is not a person and belongs to no group. "Applies to: Design Team"
+    // silently also meaning "and the agent" would be a surprise nobody asked for.
+    const d = evaluate(
+      input({
+        caller: 'agent',
+        tool: { name: 'publish.now', effect: 'publish' },
+        approvalRules: [{ ...publishRule, groupIds: ['grp_design'] }],
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('does match an agent turn against a rule that names no groups', () => {
+    // "Applies to: All Teams" on a spend rule is exactly the unattended spend a
+    // workspace wants held.
+    const rule = {
+      id: 'r',
+      trigger: 'spend_over' as const,
+      thresholdCents: 10_000,
+      requiresRole: 'admin' as const,
+      groupIds: [] as string[],
+    };
+    const under = evaluate(
+      input({
+        caller: 'agent',
+        tool: { effect: 'external' },
+        budget: { estimatedCents: 5_000, remainingCents: 100_000 },
+        approvalRules: [rule],
+      }),
+    );
+    expect(under.kind).toBe('allow');
+
+    const over = evaluate(
+      input({
+        caller: 'agent',
+        tool: { effect: 'external' },
+        budget: { estimatedCents: 10_001, remainingCents: 100_000 },
+        approvalRules: [rule],
+      }),
+    );
+    expect(ruleOf(over)).toBe('approval_rule.spend_over');
+  });
+
+  it('triggers strictly above the threshold, not at it', () => {
+    // A rule written at $100 that also held $100 calls would refuse the threshold
+    // it names, and somebody would find out by hitting it.
+    const rule = {
+      id: 'r',
+      trigger: 'spend_over' as const,
+      thresholdCents: 10_000,
+      requiresRole: 'admin' as const,
+      groupIds: [] as string[],
+    };
+    const d = evaluate(
+      input({
+        tool: { effect: 'external' },
+        budget: { estimatedCents: 10_000, remainingCents: 100_000 },
+        approvalRules: [rule],
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('is not reached by a rule when the call is already denied', () => {
+    // A flow can only ask a human. It must never be able to permit something a
+    // role or a spend limit already refused.
+    const d = evaluate(
+      input({
+        role: 'viewer',
+        tool: { name: 'publish.now', effect: 'publish', scopes: ['owner'] },
+        approvalRules: [publishRule],
+      }),
+    );
+    expect(d.kind).toBe('deny');
+  });
+
+  it('still applies inside an autopublishing campaign', () => {
+    // The placement that matters. A rule a campaign could switch off by declaring
+    // itself autopublish would stop applying exactly when somebody wanted it not
+    // to.
+    const d = evaluate(
+      input({
+        tool: { name: 'publish.now', effect: 'publish' },
+        subject: { campaignApprovalMode: 'autopublish' },
+        approvalRules: [publishRule],
+      }),
+    );
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+  });
+
+  it('ignores a spend rule with no threshold rather than holding everything', () => {
+    // The tool refuses to save one, but a hand-written row must not turn into
+    // "hold every paid call".
+    const d = evaluate(
+      input({
+        tool: { effect: 'external' },
+        budget: { estimatedCents: 5_000, remainingCents: 100_000 },
+        approvalRules: [{ id: 'r', trigger: 'spend_over', requiresRole: 'admin', groupIds: [] }],
+      }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+});
+
+describe('approval grants against a rule that names a role', () => {
+  const held = {
+    tool: { name: 'publish.now', effect: 'publish' as const },
+    approvalRules: [
+      { id: 'r', trigger: 'publish' as const, requiresRole: 'approver' as const, groupIds: [] as string[] },
+    ],
+  };
+
+  it('releases the hold for the named role', () => {
+    const d = evaluate(
+      input({ ...held, approval: { grantedBy: 'user_9', grantedAt: NOW, grantedByRole: 'approver' } }),
+    );
+    expect(d.kind).toBe('allow');
+  });
+
+  it('releases it for an owner or admin, who can change the rule anyway', () => {
+    for (const role of ['owner', 'admin'] as const) {
+      const d = evaluate(
+        input({ ...held, approval: { grantedBy: 'user_1', grantedAt: NOW, grantedByRole: role } }),
+      );
+      expect(d.kind).toBe('allow');
+    }
+  });
+
+  it('refuses to release it for an editor, however senior the ladder says they are', () => {
+    /**
+     * The reason this is not a `ROLE_RANK` comparison. That ladder orders roles by
+     * privilege, where `editor` (3) outranks `approver` (2) — so a rank check
+     * would let the editor who wrote the post sign off their own work, silently,
+     * on the one rule whose whole purpose is separation of duties.
+     */
+    const d = evaluate(
+      input({ ...held, approval: { grantedBy: 'user_3', grantedAt: NOW, grantedByRole: 'editor' } }),
+    );
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+  });
+
+  it('refuses to release it on a grant with no recorded role', () => {
+    // The field is filled in by the approval executor from the approver's own
+    // context, so an absent role means something upstream did not populate it.
+    // Reading that as "senior enough" would make the requirement optional in
+    // exactly the case where it is unverified.
+    const d = evaluate(input({ ...held, approval: { grantedBy: 'user_3', grantedAt: NOW } }));
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+  });
+
+  it('still releases a rule that named no role, as every older rule does', () => {
+    // `review_everything` and friends mean "a human must look at this", not "a
+    // particular seniority must". Those keep working for any approver.
+    const d = evaluate(
+      input({
+        tool: { name: 'publish.now', effect: 'publish' },
+        subject: { campaignApprovalMode: 'review_everything' },
+        approval: { grantedBy: 'user_3', grantedAt: NOW },
+      }),
+    );
+    expect(d.kind).toBe('allow');
   });
 });

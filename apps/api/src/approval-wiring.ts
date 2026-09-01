@@ -109,7 +109,14 @@ export function makeApprovalExecutor(args: {
           ...(original.userId ? { userId: original.userId } : {}),
         },
         brand,
-        approval: { grantedBy, grantedAt: new Date() },
+        /**
+         * `grantedByRole` comes from the *approver's* context, not the held
+         * call's — the held row carries the role of whoever originally asked,
+         * which is exactly the role a rule requiring sign-off is trying to look
+         * past. Without it, `policy.ts` refuses to release a rule that names a
+         * role, which is the correct conservative default and also useless.
+         */
+        approval: { grantedBy, grantedAt: new Date(), grantedByRole: approverCtx.role },
         // Non-idempotent tools require a key. Deriving it from the call id
         // makes double-clicking Approve replay the first result rather than
         // publishing twice.

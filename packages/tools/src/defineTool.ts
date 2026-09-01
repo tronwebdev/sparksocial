@@ -302,6 +302,8 @@ export interface ScopedDb {
   campaigns: CampaignStore;
   /** Named capability bundles — `team.group.*` (`SET-WS-TEAM-GROUPS`). See {@link TeamGroupStore}. */
   teamGroups: TeamGroupStore;
+  /** Approval flows — `approval.rule.*` (`SET-WS-TEAM-GROUPS`). See {@link ApprovalRuleStore}. */
+  approvalRules: ApprovalRuleStore;
   /** Org-level plan/governance/SSO config — `org.*` (plan §6.9, §12 P6). See {@link OrgSettingsStore}. */
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
@@ -2185,6 +2187,60 @@ export interface TeamGroupStore {
    * somebody to a second group must not silently remove access.
    */
   capabilitiesForUser(orgId: string, userId: string): Promise<string[]>;
+  /**
+   * Which groups this user is in — read on the same hot path as
+   * {@link capabilitiesForUser}, for matching an approval rule's `groupIds`.
+   *
+   * Separate from the capability read rather than folded into it, because the two
+   * answer different questions and one of them is about a *narrowing* rule. A
+   * single call returning both would invite a caller to treat group membership as
+   * a capability, which is the confusion `ApprovalRule` exists to avoid.
+   */
+  groupIdsForUser(orgId: string, userId: string): Promise<string[]>;
+}
+
+/**
+ * APPROVAL RULES — the workspace's "Approval flows".
+ *
+ * Org-scoped, like team groups, and deliberately a separate store from them: a
+ * rule narrows what may happen unattended, a group widens it, and the safety
+ * argument for groups depends on nothing in that list ever narrowing.
+ */
+export interface ApprovalRuleStore {
+  /** Every rule, enabled or not — the settings screen shows both. */
+  list(orgId: string): Promise<ApprovalRuleRecord[]>;
+  /**
+   * Only the enabled ones, for the policy layer.
+   *
+   * Its own method rather than a filter at the call site: this runs on every
+   * tool call, and a caller that forgot the filter would enforce rules somebody
+   * had switched off — a bug that looks exactly like the feature working.
+   */
+  active(orgId: string): Promise<ApprovalRuleRecord[]>;
+  upsert(args: {
+    orgId: string;
+    id?: string;
+    trigger: string;
+    thresholdCents?: number;
+    requiresRole: Role;
+    groupIds: string[];
+    enabled: boolean;
+    createdBy?: string;
+  }): Promise<ApprovalRuleRecord>;
+  /** False when no rule in this org has that id. */
+  remove(args: { orgId: string; id: string }): Promise<boolean>;
+}
+
+export interface ApprovalRuleRecord {
+  id: string;
+  orgId: string;
+  trigger: string;
+  thresholdCents?: number;
+  requiresRole: Role;
+  groupIds: string[];
+  enabled: boolean;
+  createdBy?: string;
+  updatedAt: Date;
 }
 
 export interface BrandMemberStore {

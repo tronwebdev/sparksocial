@@ -137,7 +137,16 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         // Empty is the honest default: a caller with no group memberships gets
         // exactly its role's access, which is what every existing test asserts.
         capabilitiesForUser: async () => [],
+        groupIdsForUser: async () => [],
       },
+        approvalRules: {
+          list: async () => [],
+          active: async () => [],
+          upsert: async () => {
+            throw new Error("not used in this test");
+          },
+          remove: async () => false,
+        },
       opportunities: {
         create: async () => { throw new Error('opportunities.create not stubbed in this test'); },
         get: async () => undefined,

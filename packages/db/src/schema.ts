@@ -1687,6 +1687,48 @@ export const teamGroups = pgTable(
   ],
 );
 
+/**
+ * The workspace's "Approval flows" — `Settings WS Team Groups Flows.dc.html`.
+ *
+ * Kept apart from `team_groups` because these **narrow** and capabilities widen.
+ * A group grants; a rule holds. Storing a narrowing rule alongside the four
+ * widening capabilities would destroy the property that makes groups safe — that
+ * a misconfigured group cannot lock a workspace out — and the first symptom
+ * would be an owner unable to publish.
+ */
+export const approvalRules = pgTable(
+  'approval_rules',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    /**
+     * `publish` or `spend_over`. Text rather than an enum: the vocabulary belongs
+     * to `policy.ts`, which is where a third trigger would have to be understood,
+     * and an enum would put half the decision in a migration.
+     */
+    trigger: text('trigger').notNull(),
+    /** Cents. Required by `spend_over`, null for `publish`. */
+    thresholdCents: integer('threshold_cents'),
+    /** The role that may release the hold. */
+    requiresRole: text('requires_role').notNull(),
+    /**
+     * Team groups the rule applies to. **Empty applies to everyone**, including
+     * the agent — the design's "Applies to: All Teams".
+     */
+    groupIds: jsonb('group_ids').$type<string[]>().notNull().default([]),
+    /**
+     * A disabled rule is kept rather than deleted. "We switched this off in
+     * March" is a fact an audit asks about, and a delete cannot answer it.
+     */
+    enabled: boolean('enabled').notNull().default(true),
+    createdBy: text('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // The hot path: every tool call reads this workspace's enabled rules.
+  (t) => [index('approval_rules_org_idx').on(t.orgId)],
+);
+
 export const teamGroupMembers = pgTable(
   'team_group_members',
   {

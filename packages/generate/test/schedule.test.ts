@@ -30,14 +30,25 @@ function ctx(over: { schedule?: ScopedDb['content']['schedule'] } = {}): ToolCtx
   } as unknown as ToolCtx;
 }
 
+/**
+ * A date that is always in the future.
+ *
+ * It was a literal — `2026-09-01T09:00:00Z` — and the suite started failing on 1
+ * September when that moment arrived, because `content.schedule` refuses a past
+ * date unless the caller opts into publishing immediately. A fixed future date in
+ * a test is a scheduled failure with the date written on it, so this one is
+ * computed instead.
+ */
+const FUTURE = new Date(Date.now() + 30 * 86_400_000).toISOString();
+
 describe('content.schedule', () => {
   it('places a draft on the date, marking it scheduled', async () => {
     const out = await contentSchedule.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
+      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: FUTURE, publishImmediatelyIfPast: false },
       ctx(),
     );
     expect(out.status).toBe('scheduled');
-    expect(out.scheduledAt).toBe('2026-09-01T09:00:00.000Z');
+    expect(out.scheduledAt).toBe(FUTURE);
   });
 
   it('passes the parsed date and org through to the store, never trusting a client-supplied org', async () => {
@@ -46,18 +57,18 @@ describe('content.schedule', () => {
       status: 'scheduled', scheduledAt: args.scheduledAt, createdAt: new Date(),
     }));
     await contentSchedule.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
+      { contentItemId: 'ci_1', genomeId: 'gen_1', scheduledAt: FUTURE, publishImmediatelyIfPast: false },
       ctx({ schedule }),
     );
     expect(schedule).toHaveBeenCalledWith({
-      id: 'ci_1', genomeId: 'gen_1', orgId: 'org_1', scheduledAt: new Date('2026-09-01T09:00:00.000Z'),
+      id: 'ci_1', genomeId: 'gen_1', orgId: 'org_1', scheduledAt: new Date(FUTURE),
     });
   });
 
   it('404s when the item is not open — gone, out of scope, or already published', async () => {
     await expect(
       contentSchedule.handler(
-        { contentItemId: 'ci_x', genomeId: 'gen_1', scheduledAt: '2026-09-01T09:00:00.000Z', publishImmediatelyIfPast: false },
+        { contentItemId: 'ci_x', genomeId: 'gen_1', scheduledAt: FUTURE, publishImmediatelyIfPast: false },
         ctx({ schedule: async () => undefined }),
       ),
     ).rejects.toThrow(ToolError);
