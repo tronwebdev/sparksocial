@@ -198,7 +198,7 @@ export function GlassCard({
       {/* `overflow-hidden` is what lets AuthHeader's halftone bleed to the card
           edge from inside the 36px gutter, instead of needing its own wrapper. */}
       <div className="relative overflow-hidden rounded-2xl bg-white px-auth-gutter pb-[38px] pt-10">{children}</div>
-      {footer ? <div className="px-auth-gutter pb-2 pt-[25px]">{footer}</div> : null}
+      {footer ? <div className="px-auth-gutter pb-2 pt-5">{footer}</div> : null}
     </div>
   );
 }

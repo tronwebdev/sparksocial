@@ -2,15 +2,33 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { SparkMark } from '@/components/brand/SparkMark';
-import { HoldButton } from '@/components/onboarding/HoldButton';
+import { Button } from '@/components/ui/button';
 
 /**
- * Meet Spark — `Auth.dc.html` state 3. Full-bleed dark splash after sign-up.
+ * Meet Spark — built to `ui_screenshot/…192715.png` (frame 1440×931).
  *
  * Hands off to onboarding (ONB-01→ONB-06), as the prototype does. It used to
  * drop straight into the shell because onboarding did not exist, which left a
  * new account looking at a dashboard with no genome behind it.
+ *
+ * ── Measured ─────────────────────────────────────────────────────────────
+ *
+ *   orb core     212px across, 156→367 vertically, centred on the frame
+ *   dome         behind the title, y 426-583
+ *   sub-line     y 600-619
+ *   CTA          376 wide (532→908) — the same content width as every card
+ *
+ * ── What changed, and one thing that is no longer a hold ─────────────────
+ *
+ * The three artwork layers are exports now (`spalsh screen … scatter particle`,
+ * `Splash screen … arh dome`, `sign up logo`), replacing a single hand-rolled
+ * radial gradient that stood in for all of them.
+ *
+ * The CTA was a `HoldButton` — press-and-hold. The capture shows a plain pill
+ * with a chevron and no "press and hold" caption, so it is a plain button here.
+ * `HoldButton` is still right on the onboarding completion screen, which *does*
+ * caption itself "Press & Hold button to continue" (`…193247`); the two screens
+ * were treated as one gesture and are not.
  */
 export default function MeetSparkPage() {
   const router = useRouter();
@@ -29,38 +47,65 @@ export default function MeetSparkPage() {
   }
 
   return (
-    <div className="dark flex min-h-screen flex-col items-center justify-center bg-background px-6">
-      <div
-        className="pointer-events-none absolute h-[900px] w-[900px] rounded-full"
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[--ss-ink-900] px-6">
+      {/* Scattered particles across the upper field. */}
+      <img
+        src="/auth/splash-particles.svg"
+        alt=""
         aria-hidden
-        style={{
-          background:
-            'radial-gradient(circle at 50% 46%, rgba(11,170,199,0.34) 0%, rgba(11,170,199,0.10) 34%, rgba(12,12,12,0) 66%)',
-        }}
+        className="pointer-events-none absolute left-1/2 top-0 w-[1149px] max-w-none -translate-x-1/2 opacity-90"
       />
 
       <div className="relative flex flex-col items-center">
-        <SparkMark variant="hero" animated />
-        <h1 className="mt-12 text-center font-display text-[48.5px] leading-[1.269] text-white">Meet SPARK</h1>
-        <p className="mt-4 max-w-[520px] text-center text-18 text-white/70">
-          SPARK learns what your business can actually show, then plans, makes and publishes the content that fits.
-        </p>
+        <img
+          src="/auth/signup-logo.svg"
+          alt=""
+          aria-hidden
+          className="h-[212px] w-[212px] animate-breathe motion-reduce:animate-none"
+        />
 
-        {/* `F6`'s press-and-hold. The prototype uses it at exactly two moments —
-            here and on the completion screen — and both are thresholds rather
-            than navigation. See `HoldButton` on why it is still a real button
-            that Enter and a plain click both satisfy. */}
-        <div className="mt-10 w-full max-w-[420px]">
-          {busy ? (
-            <p className="text-center text-16 text-white/70">Setting up…</p>
-          ) : (
-            <HoldButton
-              label="Let’s get you onboarding"
-              caption="Press and hold to begin"
-              tone="dark"
-              onComplete={begin}
-            />
-          )}
+        {/* The dome sits behind the title, overlapping the orb's lower edge. */}
+        <div className="relative mt-[59px] flex flex-col items-center">
+          <img
+            src="/auth/splash-dome.svg"
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-[-46px] w-[784px] max-w-none -translate-x-1/2"
+          />
+
+          <h1 className="relative font-display text-[48.5px] leading-[1.15] text-white/70">
+            Meet{' '}
+            {/* "Spark" carries the brand gradient; `bg-clip-text` needs a
+                transparent fill or the gradient never shows through. */}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: 'var(--ss-grad-brand)' }}
+            >
+              Spark
+            </span>
+          </h1>
+          <p className="relative mt-[18px] text-18 text-white/70">your Ai Social Agent</p>
+        </div>
+
+        <div className="relative mt-[121px] w-[376px] max-w-full">
+          <Button
+            size="cta"
+            onClick={begin}
+            disabled={busy}
+            className="w-full justify-center gap-3 border border-transparent bg-transparent text-16 font-normal text-white/85 hover:bg-white/[0.06]"
+            style={{
+              backgroundImage: 'linear-gradient(var(--ss-ink-900), var(--ss-ink-900)), var(--ss-grad-brand)',
+              backgroundOrigin: 'padding-box, border-box',
+              backgroundClip: 'padding-box, border-box',
+            }}
+          >
+            {busy ? 'Setting up…' : "let's get you onboarding"}
+            {!busy ? (
+              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden>
+                <path d="m1 1 6 6-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : null}
+          </Button>
         </div>
       </div>
     </div>

@@ -1,0 +1,31 @@
+<svg width="784" height="364" viewBox="0 0 784 364" fill="none" xmlns="http://www.w3.org/2000/svg">
+<foreignObject x="-26.1851" y="-26.1851" width="836.37" height="416.37"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(13.09px);clip-path:url(#bgblur_0_325_3143_clip_path);height:100%;width:100%"></div></foreignObject><g filter="url(#filter0_n_325_3143)" data-figma-bg-blur-radius="26.1851">
+<path d="M312.025 0C139.65 0 0 139.65 0 312.025C0 340.725 23.2749 364 51.9749 364H732.025C760.725 364 784 340.725 784 312.025C784 139.65 644.35 0 471.975 0H312.025Z" fill="url(#paint0_linear_325_3143)" fill-opacity="0.1"/>
+</g>
+<defs>
+<filter id="filter0_n_325_3143" x="-26.1851" y="-26.1851" width="836.37" height="416.37" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.57284510135650635 0.57284510135650635" stitchTiles="stitch" numOctaves="3" result="noise" seed="2769" />
+<feComponentTransfer in="noise" result="coloredNoise1">
+<feFuncR type="linear" slope="2" intercept="-0.5" />
+<feFuncG type="linear" slope="2" intercept="-0.5" />
+<feFuncB type="linear" slope="2" intercept="-0.5" />
+<feFuncA type="discrete" tableValues="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "/>
+</feComponentTransfer>
+<feComposite operator="in" in2="shape" in="coloredNoise1" result="noise1Clipped" />
+<feComponentTransfer in="noise1Clipped" result="color1">
+<feFuncA type="table" tableValues="0 0.03" />
+</feComponentTransfer>
+<feMerge result="effect1_noise_325_3143">
+<feMergeNode in="shape" />
+<feMergeNode in="color1" />
+</feMerge>
+</filter>
+<clipPath id="bgblur_0_325_3143_clip_path" transform="translate(26.1851 26.1851)"><path d="M312.025 0C139.65 0 0 139.65 0 312.025C0 340.725 23.2749 364 51.9749 364H732.025C760.725 364 784 340.725 784 312.025C784 139.65 644.35 0 471.975 0H312.025Z"/>
+</clipPath><linearGradient id="paint0_linear_325_3143" x1="392" y1="-337.351" x2="392" y2="268.834" gradientUnits="userSpaceOnUse">
+<stop stop-color="white"/>
+<stop offset="1" stop-color="white" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>

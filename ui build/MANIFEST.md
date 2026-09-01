@@ -257,6 +257,16 @@ and enforcing it would lock people out of their own accounts.
 provider the Clerk instance has not enabled is a dead control. The captures show
 three; set the env var and enable them in Clerk to match.
 
+## 6.2b Unused export
+
+`confirm account vector.svg` is copied into `ui build/assets/` but **not used**.
+It is a single blurred cyan blob (1042×717, cyan → cyan-30%), which is a variant
+of the mirrored pair already inside
+`BG For confirm account and splash screen (meet spark).svg` — the file whose own
+name claims both screens. Using both would stack two glows on the same surface,
+so this one is left out rather than guessed at. Say where it belongs and it goes
+in.
+
 ## 6.3 Verification status of the auth screens
 
 Measured against the captures by computed style, at the 1440-wide frame:
@@ -269,12 +279,20 @@ Measured against the captures by computed style, at the 1440-wide frame:
 | Verify code (dark) | partly verified | card 448 ✓, OTP row 374/376 ✓, controls 56 ✓ |
 | Confirmation Successful (light) | *not visually verified* | — |
 | Confirmation Successful (dark) | *not visually verified* | — |
+| Sign Up | verified | **5px** (card 449×595 and top exact) |
+| Meet Spark | *not visually verified* | route is not public — see below |
 
 The three unverified states sit behind Clerk flow states that cannot be reached
 without completing a real sign-up or reset, so they were built from the same
 primitives the verified screens confirm (`AuthPanel`, `AuthHeader`, `AuthField`,
 `Button size="cta"`, `OtpInput`, `SuccessBadge`) rather than measured directly.
 Click through them with a real account before treating the flow as done.
+
+`/meet-spark` additionally cannot be loaded at all while signed out: it is absent
+from `middleware.ts`'s public matcher, so it redirects to `/sign-in`. That is
+pre-existing behaviour, not a change from this pass, but it does mean the screen
+has never been rendered — only typechecked, with its three exports confirmed to
+serve 200.
 
 Card heights for the dark and confirmation screens could not be measured cleanly
 — the dark backdrop's blurred blobs and the confirmation glow both defeat edge

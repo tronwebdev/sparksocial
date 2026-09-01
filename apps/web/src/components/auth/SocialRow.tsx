@@ -86,20 +86,27 @@ export function SocialRow({
   if (providers.length === 0) return null;
 
   /*
-      Rule, then label, then buttons — NOT a label centred inside the rule.
-      The capture's ink profile settles this: at y=685 the row is inked across
-      368 of 435px, i.e. an unbroken full-width line, and the glyphs of "Or
-      continue with" appear separately at y≈721–739, with the buttons' top edge
-      at 751. A centred-text divider would show a gap in that line.
+    A centred label inside the rule — rule, gap, "Or continue with", gap, rule.
 
-      Offsets are from the card's bottom edge (660 in the capture): rule 25,
-      label 52, buttons 90.
-    */
+    I previously built this as rule-then-label-below, on a measurement that was
+    wrong: counting "ink" per row against a fixed reference x cannot tell a full
+    rule from a rule-plus-glyphs, because the sky gradient alone clears the
+    threshold. Re-measured against the SAME x on an empty row (which cancels the
+    gradient), y=685 of `login.png` resolves into two segments, 508-667 and
+    771-929, with glyphs between them. `signup.png` shows the same shape at
+    y=655: 884-1051, glyphs, 1163-1330.
+
+    Offsets from the card's bottom edge: divider row 20, buttons 46 (Login);
+    22 and 53 on Sign Up. Same component, same treatment.
+  */
   return (
-    <div className={cn('flex flex-col', className)}>
-      <span className="h-px w-full bg-border" />
-      <span className="mt-[26px] text-center text-14 text-ink-muted">Or continue with</span>
-      <div className="mt-[24px] flex gap-3">
+    <div className={cn('flex flex-col gap-3', className)}>
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-14 text-ink-muted">Or continue with</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <div className="flex gap-3">
         {providers.map((p) => (
           <button
             key={p.strategy}
