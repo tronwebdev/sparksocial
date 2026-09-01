@@ -41,6 +41,10 @@
   --ss-teal-900: #043133; /* auth-card headings */
   --ss-teal-500: #0baac7; /* info chips */
 
+  /* Confirmation tick. Sampled from `Screenshot …192600` — a lime, distinct
+     from the ramp's signal greens, and used only for that badge. */
+  --ss-lime: #bbf52e;
+
   --ss-green-500: #13d711;
   --ss-green-600: #3ec332;
   --ss-green-700: #0e9e0c;

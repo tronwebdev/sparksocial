@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils';
-import { SparkMark } from '@/components/brand/SparkMark';
+// The masthead is shared with the plain-backdrop screens; re-exported here so
+// Login's existing import keeps working and there is only one implementation.
+export { AuthHeader } from './AuthShell';
 
 /**
  * The Login sky and its frosted card, measured from `ui_screenshot/login.png`.
@@ -165,49 +167,6 @@ function Floater({
         />
       ) : null}
       <img src={src} alt="" className="relative block w-full" />
-    </div>
-  );
-}
-
-/**
- * Card masthead: the dotted halftone and cyan bloom bleeding from the top edge,
- * the mark, then the heading pair.
- *
- * The halftone escapes the card's 36px gutter with negative insets rather than
- * living outside the padded box, which keeps the whole masthead one component
- * instead of splitting it across GlassCard's children.
- */
-export function AuthHeader({ title, subtitle }: { title: string; subtitle?: React.ReactNode }) {
-  return (
-    <div className="relative">
-      {/*
-        The halftone is the Figma export (`login assets/Frame (1).svg`), not a
-        `radial-gradient` standing in for it: the real dots are outlined diamonds
-        stroked in `#A341FF`, which a dot pattern cannot produce. Exported at
-        540 wide, scaled to the 448 card, and masked so it fades out downward as
-        the capture does.
-      */}
-      <div className="pointer-events-none absolute -left-auth-gutter -right-auth-gutter -top-10 h-[130px] overflow-hidden" aria-hidden>
-        <img
-          src="/auth/login-card-halftone.svg"
-          alt=""
-          className="absolute inset-x-0 top-0 w-full opacity-40"
-          style={{
-            WebkitMaskImage: 'linear-gradient(180deg,#000 40%,transparent 100%)',
-            maskImage: 'linear-gradient(180deg,#000 40%,transparent 100%)',
-          }}
-        />
-        <div
-          className="absolute left-1/2 top-2 h-[96px] w-[96px] -translate-x-1/2 rounded-full opacity-70"
-          style={{ background: 'var(--ss-info)', filter: 'blur(34px)' }}
-        />
-      </div>
-
-      <div className="relative flex flex-col items-center">
-        <SparkMark variant="card" size={48} animated />
-        <h1 className="mt-[23px] text-center text-22 font-semibold text-ink-heading">{title}</h1>
-        {subtitle ? <p className="mt-[7px] text-center text-14 text-ink-muted">{subtitle}</p> : null}
-      </div>
     </div>
   );
 }

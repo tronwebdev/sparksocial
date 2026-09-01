@@ -4,10 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useSignIn } from '@clerk/nextjs';
-import { SkyBackdrop, GlassCard } from '@/components/auth/GlassCard';
+import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge } from '@/components/auth/AuthShell';
 import { AuthField, MailIcon, LockIcon } from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/button';
-import { Wordmark } from '@/components/brand/Wordmark';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 
 /**
@@ -31,7 +30,7 @@ export default function ForgotPasswordPage() {
     if (authLoaded && isSignedIn) router.replace('/');
   }, [authLoaded, isSignedIn, router]);
 
-  const [step, setStep] = useState<'request' | 'reset'>('request');
+  const [step, setStep] = useState<'request' | 'reset' | 'done'>('request');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -67,7 +66,9 @@ export default function ForgotPasswordPage() {
       });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.push('/');
+        // The design ends this flow on a confirmation screen rather than
+        // dropping the user straight into the app.
+        setStep('done');
       } else {
         setErrors({ fields: {}, form: 'Password reset needs an additional step that is not available yet.' });
       }
@@ -78,24 +79,32 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  return (
-    <SkyBackdrop>
-      <div className="mb-8 flex justify-center">
-        <Wordmark markSize={45} fontSize={37.5} />
-      </div>
+  if (step === 'done') {
+    return (
+      <AuthBackdrop tone="light">
+        <AuthPanel tone="light" glow className="text-center">
+          <AuthHeader title={<>Confirmation<br />Successful</>} />
+          <div className="mt-6 flex justify-center">
+            <SuccessBadge />
+          </div>
+          <Button size="cta" className="mt-6 w-full" onClick={() => router.push('/')}>
+            Continue
+          </Button>
+        </AuthPanel>
+      </AuthBackdrop>
+    );
+  }
 
-      <GlassCard>
-        <h1 className="text-center text-26 font-semibold leading-[1.4] text-ink-heading">
-          {step === 'request' ? 'Reset your password' : 'Choose a new password'}
-        </h1>
-        <p className="mt-2 text-center text-16 text-ink-muted">
-          {step === 'request'
-            ? "Enter your email and we'll send you a reset code."
-            : 'Enter the code we emailed you, then pick a new password.'}
-        </p>
+  return (
+    <AuthBackdrop tone="light">
+      <AuthPanel tone="light">
+        <AuthHeader
+          title="Reset password"
+          subtitle={step === 'request' ? 'Enter your email to reset your password' : 'Enter your new password'}
+        />
 
         {step === 'request' ? (
-          <form onSubmit={request} className="mt-8 flex flex-col gap-[14px]">
+          <form onSubmit={request} className="mt-[45px] flex flex-col gap-[28px]">
             <AuthField
               fieldSize="auth"
               label="Email"
@@ -112,16 +121,28 @@ export default function ForgotPasswordPage() {
                 {errors.form}
               </p>
             ) : null}
-            <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy}>
-              {busy ? 'Sending…' : 'Send reset code'}
+            <Button type="submit" size="cta" className="w-full" disabled={!isLoaded || busy}>
+              {busy ? 'Sending…' : 'Reset password'}
             </Button>
           </form>
         ) : (
-          <form onSubmit={reset} className="mt-8 flex flex-col gap-[14px]">
+          <form onSubmit={reset} className="mt-[45px] flex flex-col gap-[28px]">
+            {/*
+              NOT in the design, and kept anyway.
+
+              `Screenshot …192539` shows only New password and Confirm password.
+              But Clerk completes a reset with `attemptFirstFactor({ code, password })`
+              — there is no variant that omits the emailed code, and the light reset
+              flow has no other screen to collect it on. Dropping the field to match
+              the capture would render this screen unable to reset a password.
+
+              Flagged in `ui build/MANIFEST.md`; remove it the moment the design says
+              where the code goes.
+            */}
             <AuthField
               fieldSize="auth"
               label="Reset code"
-              placeholder="Enter code"
+              placeholder="Enter the code we emailed you"
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
@@ -132,26 +153,19 @@ export default function ForgotPasswordPage() {
               fieldSize="auth"
               label="New password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter password"
               autoComplete="new-password"
-              hint="Must be 8 characters"
+              hint={<span className="text-brand-pink">Must be 8 characters</span>}
               leadingIcon={<LockIcon />}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               error={errors.fields.password}
             />
-            {/*
-              The confirm field the prototype draws and this form did not have.
-              Checked here rather than server-side because there is nothing to
-              check server-side — Clerk receives one password. It exists to catch
-              a typo in a value the person cannot see, which is the only failure
-              mode a password field has.
-            */}
             <AuthField
               fieldSize="auth"
               label="Confirm password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter password"
               autoComplete="new-password"
               leadingIcon={<LockIcon />}
               value={confirm}
@@ -166,20 +180,30 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               size="cta"
-              className="mt-2 w-full"
+              className="w-full"
               disabled={!isLoaded || busy || !password || confirm !== password}
             >
-              {busy ? 'Updating…' : 'Set new password'}
+              {busy ? 'Updating…' : 'Reset password'}
             </Button>
           </form>
         )}
 
-        <p className="mt-6 text-center text-16 text-ink-muted">
-          <Link href="/sign-in" className="text-brand-purple underline">
-            Back to sign in
-          </Link>
-        </p>
-      </GlassCard>
-    </SkyBackdrop>
+        <Link
+          href="/sign-in"
+          className="mt-[22px] block text-center text-16 text-ink-muted transition-colors hover:text-ink"
+        >
+          Cancel
+        </Link>
+
+        {step === 'request' ? (
+          <div className="mt-[38px] flex items-center justify-between text-14">
+            <span className="text-ink-muted">Don&apos;t have access anymore?</span>
+            <a href="mailto:support@sparksocial.ai" className="text-ink underline">
+              Contact support
+            </a>
+          </div>
+        ) : null}
+      </AuthPanel>
+    </AuthBackdrop>
   );
 }

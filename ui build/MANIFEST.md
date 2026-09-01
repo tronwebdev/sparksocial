@@ -238,6 +238,49 @@ measures a ~40×42px core with glow to ~63px, which agrees with `size={48}`.
 Swapping one screen to a static SVG would fork the brand mark into two
 implementations free to drift.
 
+## 6.2 Open design conflicts
+
+**The light reset flow has nowhere to enter the emailed code.**
+`Screenshot …192539` shows only *New password* and *Confirm password*. Clerk
+completes a reset with `attemptFirstFactor({ code, password })` — there is no
+variant that omits the code, and no other screen in the light flow collects it.
+Removing the field to match the capture would leave the screen unable to reset a
+password, so a "Reset code" field is kept above the two password fields. Remove
+it as soon as the design says where the code belongs.
+
+**The consent checkbox on Login** (`login.png`) is presentational — it does not
+gate submission. Nothing in the design says a returning user is blocked by it,
+and enforcing it would lock people out of their own accounts.
+
+**Only one social provider renders.** `SocialRow` draws providers enabled via
+`NEXT_PUBLIC_SOCIAL_PROVIDERS` (default `google`), because a button for a
+provider the Clerk instance has not enabled is a dead control. The captures show
+three; set the env var and enable them in Clerk to match.
+
+## 6.3 Verification status of the auth screens
+
+Measured against the captures by computed style, at the 1440-wide frame:
+
+| Screen | State | Worst deviation |
+| --- | --- | --- |
+| Login | verified | **1.0px** |
+| Reset password — email | verified | **1.0px** (card height exact) |
+| Reset password — new password | *not visually verified* | — |
+| Verify code (dark) | partly verified | card 448 ✓, OTP row 374/376 ✓, controls 56 ✓ |
+| Confirmation Successful (light) | *not visually verified* | — |
+| Confirmation Successful (dark) | *not visually verified* | — |
+
+The three unverified states sit behind Clerk flow states that cannot be reached
+without completing a real sign-up or reset, so they were built from the same
+primitives the verified screens confirm (`AuthPanel`, `AuthHeader`, `AuthField`,
+`Button size="cta"`, `OtpInput`, `SuccessBadge`) rather than measured directly.
+Click through them with a real account before treating the flow as done.
+
+Card heights for the dark and confirmation screens could not be measured cleanly
+— the dark backdrop's blurred blobs and the confirmation glow both defeat edge
+detection against the page ground. Those cards use the shared 448/36/56 geometry
+and are not claimed to match a measured height.
+
 ## 7. Handoff log
 
 Handoff is **per flow**, not per screen. A flow goes when every screen in it is
