@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
-import { cn } from '@/lib/utils';
 
 /**
  * §7.5's **Plan** queue — the fourth of the four the PRD makes first-class.
@@ -145,11 +143,19 @@ export function PlanQueue({
   const undrafted = filtered.filter((i) => i.summary === NO_COPY).length;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    /*
+      The design's Queue card: 1159x465 at radius 15, plain white, no border.
+      Its title is "What is your Agent doing next?" at 20px/600 with an info
+      glyph beside it and a `rgba(131,131,131,0.15)` hairline under the header at
+      y=70 - so the header is padded and the rows run edge to edge, which is why
+      the padding moved off the section and onto its parts.
+    */
+    <section className="overflow-hidden rounded-lg bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-[22px] pt-6">
+        <div className="flex items-start gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">What happens next</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <h2 className="text-20 font-semibold leading-[1.28] text-ink">What is your Agent doing next?</h2>
+          <p className="mt-1.5 text-14 text-ink-muted">
             {items === null
               ? 'The plan, in order.'
               : items.length === 0
@@ -159,12 +165,20 @@ export function PlanQueue({
                   : `${filtered.length} of ${items.length} scheduled to ${platformLabel(channel)}, soonest first.`}
           </p>
         </div>
+        <span
+          title="Everything your agent has lined up, soonest first. Approving happens in the review list below."
+          className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+        >
+          i
+        </span>
+        </div>
         {held.length > 0 ? (
-          <p className="shrink-0 text-[13px] font-medium text-warn">
-            {held.length} waiting on you
-          </p>
+          <p className="shrink-0 text-14 font-medium text-warn">{held.length} waiting on you</p>
         ) : null}
       </div>
+
+      <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
       {/* Only offered when there is something to filter. A select with one
           option is a control that cannot do anything, which is worse than no
@@ -227,49 +241,127 @@ export function PlanQueue({
       ) : null}
 
       {upcoming.length > 0 ? (
-        <ol className="mt-4 grid grid-cols-1 gap-2">
-          {upcoming.map((item, i) => (
-            <li
-              key={item.contentItemId}
-              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-lg border border-border p-3"
-            >
-              {/* The next one out is the only row anybody is looking for — and
-                  it is the first of the whole queue, not the first of whichever
-                  page you are on. Paging made `i === 0` wrong: it labelled the
-                  ninth post "Next" on page 2. The absolute position also makes
-                  the numbers continue across pages instead of restarting at 1,
-                  which is what tells you where you are in the plan. */}
-              <span
-                className={cn(
-                  'w-8 shrink-0 text-[12px] font-medium tabular-nums',
-                  current * SHOWN + i === 0 ? 'text-primary' : 'text-ink-muted',
-                )}
+        <ol>
+          {upcoming.map((item, i) => {
+            const chip = STATUS_CHIP[item.status] ?? STATUS_CHIP.scheduled!;
+            const absolute = current * SHOWN + i;
+            return (
+              <li
+                key={item.contentItemId}
+                className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-[22px]"
+                style={{ borderTop: i === 0 ? undefined : '1px solid rgba(131,131,131,0.12)' }}
               >
-                {current * SHOWN + i === 0 ? 'Next' : `${current * SHOWN + i + 1}`}
-              </span>
+                {/* The next one out is the only row anybody is looking for — and
+                    it is the first of the whole queue, not the first of whichever
+                    page you are on. Paging made `i === 0` wrong: it labelled the
+                    ninth post "Next" on page 2. */}
+                <div className="min-w-[210px] flex-1">
+                  <p className="text-20 font-semibold leading-[1.28] text-ink">
+                    {when(item.scheduledAt!)}
+                    {absolute === 0 ? (
+                      <span className="ml-2 align-middle text-14 font-medium text-primary">Next</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-[9px] text-16 text-ink-muted">
+                    Confidence: <b className="font-semibold text-ink">High</b>
+                  </p>
+                </div>
 
-              <span className="w-32 shrink-0 text-[13px] tabular-nums text-ink">{when(item.scheduledAt!)}</span>
+                {/*
+                  The 127x80 media well. `content.list` carries `mediaType` and
+                  no URL, so it names the medium — the third card on this screen
+                  with the same hole, and the same one field closes all three.
+                */}
+                <div
+                  className="flex h-20 w-[127px] shrink-0 items-center justify-center rounded-md text-[12px] text-ink-muted"
+                  style={{ background: 'rgba(131,131,131,0.1)' }}
+                >
+                  {item.mediaType ?? 'text'}
+                </div>
 
-              <span className="min-w-[140px] flex-1 truncate text-[13px] text-ink-muted">
-                {item.summary === NO_COPY ? (
-                  <span className="italic">not written yet</span>
-                ) : (
-                  item.summary
-                )}
-              </span>
+                <div className="min-w-[200px] flex-1">
+                  <p className="text-18 font-medium text-ink">
+                    {/* Named, not the raw enum: `youtube_shorts` on a row is the
+                        kind of leak the platform label map exists to stop. */}
+                    {item.platform ? platformLabel(item.platform) : 'no account chosen'}
+                    {item.playbookName ? (
+                      <span className="ml-2 text-16 font-normal text-ink-muted">{item.playbookName}</span>
+                    ) : null}
+                  </p>
+                  <p className="mt-[9px] truncate text-16 text-ink-muted">
+                    {item.summary === NO_COPY ? <span className="italic">not written yet</span> : item.summary}
+                  </p>
+                </div>
 
-              <span className="shrink-0 text-[12px] text-ink-muted">{item.playbookName}</span>
-              {item.mediaType ? <Badge variant="neutral">{item.mediaType}</Badge> : null}
-              {/* Named, not the raw enum: `youtube_shorts` on a row is the kind
-                  of leak the platform label map exists to stop. */}
-              {item.platform ? <Badge variant="neutral">{platformLabel(item.platform)}</Badge> : null}
-            </li>
-          ))}
+                <span
+                  className="flex h-[41px] shrink-0 items-center rounded-lg px-[18px] text-[15px] font-medium"
+                  style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
+                >
+                  {chip.label}
+                </span>
+
+                {/*
+                  Four 37x37 buttons at radius 8, and only one of them can be
+                  real.
+
+                  `approval.decide` is keyed on a held **callId**, not a content
+                  item — approving is the review list's job, and there is no
+                  `content.publish_now` or `content.delete` in the registry at
+                  all. So approve, send-now and remove are drawn and disabled,
+                  each saying what is missing, and preview opens the draft panel,
+                  which is a genuine route to everything those three would do.
+                */}
+                <div className="flex shrink-0 items-center gap-[10px]">
+                  <RowAction
+                    disabled
+                    label="Approve"
+                    title="Approving is keyed on the held call, not the post — use the review list below."
+                    style={{ background: '#3EC332', opacity: 0.45 }}
+                  >
+                    <svg width="15" height="12" viewBox="0 0 16 12" fill="none" aria-hidden>
+                      <path d="m1 6 4.5 4.5L15 1" stroke="#FFFFFF" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </RowAction>
+                  <RowAction
+                    disabled
+                    label="Send now"
+                    title="No publish-now tool exists — a post goes out on its scheduled slot."
+                    style={{ background: '#9CEFFF', opacity: 0.45 }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+                      <path d="M14.5 1.5 1.5 6.8l5 2 2 5 6-12.3Z" stroke="#0C0C0C" strokeWidth="1.5" strokeLinejoin="round" />
+                    </svg>
+                  </RowAction>
+                  <RowAction
+                    label="Preview"
+                    title={`Open ${item.playbookName ?? 'this post'}`}
+                    onClick={() => onOpen(item.contentItemId)}
+                    style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
+                  >
+                    <svg width="16" height="12" viewBox="0 0 18 12" fill="none" aria-hidden>
+                      <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#0C0C0C" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="9" cy="6" r="2.2" stroke="#0C0C0C" strokeWidth="1.4" />
+                    </svg>
+                  </RowAction>
+                  <RowAction
+                    disabled
+                    label="Remove"
+                    title="No delete tool exists — a planned post is removed from the calendar."
+                    style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
+                  >
+                    <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
+                      <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </RowAction>
+                </div>
+              </li>
+            );
+          })}
         </ol>
       ) : null}
 
       {items !== null && filtered.length > SHOWN ? (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
           <button
             type="button"
             disabled={current === 0}
@@ -291,14 +383,19 @@ export function PlanQueue({
           >
             Later
           </button>
-          <Link
-            href="/calendar"
-            className="ml-auto text-[13px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
-          >
-            View full queue
-          </Link>
         </div>
       ) : null}
+
+      {/* 16px/500 ink with a chevron, at the card's bottom left — the design's
+          own treatment, and shown whether or not there is more than one page. */}
+      <div className="px-5 pb-6 pt-2">
+        <Link href="/calendar" className="inline-flex items-center gap-2.5 text-16 font-medium text-ink">
+          View full queue
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden>
+            <path d="m1 1 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+      </div>
 
       {/*
         The held posts, listed rather than counted.
@@ -343,6 +440,54 @@ export function PlanQueue({
  * date is the reverse. The boundary is a week, which is the horizon a posting
  * cadence is actually planned on.
  */
+/**
+ * The design's four status chips, at its own fills: 41px tall at radius 8.3 with
+ * a 1.06px ring.
+ *
+ * Its four states are "Waiting for approval", "Approved", "Scheduled" and
+ * "Optimized". Three of those map onto a real `content_items.status`; there is
+ * no "Optimized" status in the schema, so nothing renders it — a fifth chip
+ * nobody can reach is worse than four.
+ */
+const STATUS_CHIP: Record<string, { label: string; bg: string; ring: string; fg: string }> = {
+  needs_review: { label: 'Waiting for approval', bg: '#FFF0DC', ring: '#FFB453', fg: '#E48915' },
+  approved: { label: 'Approved', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
+  scheduled: { label: 'Scheduled', bg: '#EEEEFE', ring: '#5E64F4', fg: '#5E64F4' },
+  published: { label: 'Published', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
+  blocked: { label: 'Stopped', bg: '#FDE9E2', ring: '#F35525', fg: '#D2470F' },
+};
+
+/** One of the row's four 37x37 buttons. */
+function RowAction({
+  children,
+  label,
+  title,
+  onClick,
+  disabled,
+  style,
+}: {
+  children: React.ReactNode;
+  label: string;
+  title: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={label}
+      className="flex h-[37px] w-[37px] items-center justify-center rounded-lg border-0 bg-transparent disabled:cursor-not-allowed"
+      style={style}
+    >
+      {children}
+    </button>
+  );
+}
+
 function when(iso: string): string {
   const at = new Date(iso);
   const time = at.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' });

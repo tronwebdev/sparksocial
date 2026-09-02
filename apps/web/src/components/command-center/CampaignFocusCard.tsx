@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { pillarStyle } from '@/components/calendar/pillars';
 import { invoke } from '@/lib/tools';
@@ -136,91 +134,194 @@ export function CampaignFocusCard({
     campaign.windowDays - Math.floor((Date.now() - new Date(campaign.startAt).getTime()) / 86_400_000),
   );
 
+  /*
+    Where the design has three member photographs.
+
+    I first wrote this as the campaign's platforms and `tsc` caught it: a slot
+    has no `platform` field. It has `pillar`, which is the dimension the mix
+    engine actually works in - so the stack is the content pillars this campaign
+    spans, in `pillarStyle`'s own colours. Real data, same shape, and no
+    invented faces.
+  */
+  const pillars = Array.from(
+    new Set((calendarView?.slots ?? []).map((slot) => slot.pillar).filter((x): x is string => Boolean(x))),
+  ).slice(0, 3);
+
   const upcoming = (calendarView?.slots ?? [])
     .filter((s) => s.status !== 'published' && s.scheduledAt && new Date(s.scheduledAt).getTime() >= Date.now())
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
     .slice(0, 4);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Badge className="bg-brand-cyan/20 text-ink">Current Focus</Badge>
-          <h2 className="mt-3 text-[24px] font-semibold text-ink">{campaign.name}</h2>
-          <p className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[14px] text-ink-muted">
-            <span>
-              Objective — <b className="font-medium text-ink">{campaign.objective}</b>
-            </span>
-            <span>
-              Window — <b className="font-medium text-ink">{campaign.windowDays} days</b>
-            </span>
-            <span>
-              Remaining — <b className="font-medium text-ink">{remainingDays} days</b>
-            </span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/calendar" className="text-[14px] font-medium text-brand-purple underline underline-offset-2">
-            View calendar
-          </Link>
-          {campaign.status === 'paused' ? (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void resume()}>
-              Resume
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => void pause()}>
-              Pause
-            </Button>
-          )}
-          <Button size="sm" variant="outline" disabled={busy || !genomeId} onClick={() => void duplicate()}>
-            Duplicate
-          </Button>
-        </div>
+    /*
+      The design's hero: 1159x297 at radius 20, a warm `#FEDEB5` sweep over a
+      white-to-`#C2F4FD` base, inside a 2px white ring. It was a bordered
+      `surface` card - the same treatment as every other panel, which is exactly
+      what a hero should not be.
+
+        Current Focus chip   26,18   124x37 r8.79 on `#6CE8FF`, 14.01px/500
+        Edit Campaign        161,18  150x36.6 r7.43, white 40% inside a 0.57px ink ring
+        Adjust Frequency     322,18  the same box
+        title                26,75   34px/600
+        Goal / Type / Remaining  26,134  16px grey labels, 600 ink values, 26px apart
+        avatar stack         26,170  three 52px circles on a 40px pitch, platform badged
+        Primary CTA          181,186 grey label, 14px/600 `#2474ED` value
+        media carousel       658/810/962 at top 31, 131.5x233.8 r12, arrows at 611 and 1109
+    */
+    <section
+      className="relative overflow-hidden rounded-xl px-[26px] py-[18px]"
+      style={{
+        minHeight: 297,
+        background:
+          'linear-gradient(34.352deg, #FEDEB5 -13.04%, rgba(255,255,255,0.53) 16.32%), linear-gradient(90deg, #FFFFFF 0%, #C2F4FD 100%)',
+        boxShadow: 'inset 0 0 0 2px #FFFFFF',
+      }}
+    >
+      <div className="flex flex-wrap items-start gap-x-[11px] gap-y-3">
+        <span
+          className="flex h-[37px] w-[124px] items-center justify-center rounded-lg text-[14.01px] font-medium text-ink"
+          style={{ background: '#6CE8FF' }}
+        >
+          Current Focus
+        </span>
+
+        {/*
+          "Edit Campaign" is the calendar, which is where a campaign is actually
+          edited. "Adjust Frequency" scrolls to `AgentControlBar` rather than
+          opening its own dial - `agent.frequency.set` has one control on this
+          page and two would be two ways to disagree about the same number.
+        */}
+        <Link
+          href="/calendar"
+          className="flex h-[36.6px] w-[150px] items-center justify-center gap-2 rounded-[7.43px] text-14 font-medium text-ink"
+          style={{ background: 'rgba(255,255,255,0.4)', boxShadow: 'inset 0 0 0 0.57px #0C0C0C' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Edit Campaign
+        </Link>
+
+        <a
+          href="#agent-frequency"
+          className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-ink"
+          style={{ background: 'rgba(255,255,255,0.4)', boxShadow: 'inset 0 0 0 0.57px #0C0C0C' }}
+        >
+          Adjust Frequency
+        </a>
       </div>
 
-      {message ? (
-        <p className={`mt-3 text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
-      ) : null}
+      <h2 className="mt-[20px] text-[34px] font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
 
-      {calendarView?.mixActual.length ? (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {calendarView.mixActual.map((m) => {
-            const style = pillarStyle(m.pillar);
-            return (
-              <span
-                key={m.pillar}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium ${style.chip}`}
-              >
-                {style.label} · {m.count}
-              </span>
-            );
-          })}
-        </div>
-      ) : null}
+      <div className="mt-[24px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16">
+        <span className="text-ink-muted">
+          Goal - <b className="font-semibold text-ink">{campaign.objective}</b>
+        </span>
+        <span className="text-ink-muted">
+          Type - <b className="font-semibold text-ink">{campaign.windowDays} days</b>
+        </span>
+        <span className="text-ink-muted">
+          Remaining - <b className="font-semibold text-ink">{remainingDays} Days</b>
+        </span>
+      </div>
 
-      {upcoming.length > 0 ? (
-        <div className="mt-5 border-t border-border pt-4">
-          <p className="mb-3 text-[13px] font-medium text-ink-muted">What the agent is doing next</p>
-          <ul className="grid grid-cols-1 gap-2">
-            {upcoming.map((slot) => {
-              const style = pillarStyle(slot.pillar);
+      {/*
+        The design stacks three member photographs with a platform badge on
+        each. There is no per-campaign member list on `campaign.list`, and the
+        platforms come from the calendar's own slots - so the stack is the
+        platforms this campaign actually posts to, badged the same way, and
+        nothing pretends to be a face.
+      */}
+      <div className="mt-[26px] flex flex-wrap items-center gap-x-6 gap-y-3">
+        {pillars.length > 0 ? (
+          <div className="flex items-center">
+            {pillars.map((pillar, i) => {
+              const style = pillarStyle(pillar);
               return (
-                <li key={slot.id} className="flex items-center gap-3 text-[14px]">
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-                  <span className="text-ink-muted">
-                    {new Date(slot.scheduledAt!).toLocaleDateString('en', {
+                <span
+                  key={pillar}
+                  title={style.label}
+                  className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-[13px] font-semibold ${style.chip}`}
+                  style={{ boxShadow: '0 0 0 2px #FFFFFF', marginLeft: i === 0 ? 0 : -12 }}
+                >
+                  {style.label.slice(0, 2)}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/*
+          The design's "Primary CTA - Visit Opt-in page". There is no CTA field
+          on a campaign - not unset, absent - so this says that rather than
+          rendering "not set", which would imply a control somewhere that sets
+          it. `campaign.create` would need the field first.
+        */}
+        <span
+          className="text-16 text-ink-muted"
+          title="A campaign has no primary-CTA field yet, so there is nothing to show here."
+        >
+          Primary CTA - <b className="text-14 font-semibold text-ink-muted">&mdash;</b>
+        </span>
+      </div>
+
+      {/*
+        The carousel. Three 131.5x233.8 stills at radius 12 in the design; ours
+        are the campaign's own next slots, and `calendar.get` gives a slot no
+        media URL - so each tile names its playbook and its day rather than
+        showing a photograph that is not the post's. Hidden under `xl`, where
+        the left column already fills the card.
+      */}
+      {upcoming.length > 0 ? (
+        <div className="absolute right-[29px] top-[31px] hidden items-start gap-[20.5px] xl:flex">
+          {upcoming.slice(0, 3).map((slot) => (
+            <div
+              key={slot.id}
+              className="flex h-[233.8px] w-[131.5px] flex-col justify-end rounded-xl p-3"
+              style={{ background: 'rgba(255,255,255,0.55)', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.06)' }}
+            >
+              <span className="text-[12px] font-semibold text-ink">
+                {slot.playbookName ?? slot.playbookId}
+              </span>
+              <span className="mt-1 text-[11.5px] text-ink-muted">
+                {slot.scheduledAt
+                  ? new Date(slot.scheduledAt).toLocaleDateString('en', {
                       weekday: 'short',
                       day: 'numeric',
                       month: 'short',
-                    })}
-                  </span>
-                  <span className="truncate font-medium text-ink">{slot.playbookName ?? slot.playbookId}</span>
-                  {slot.mode === 'direct_finish' ? <span className="text-[12px] text-warn">needs filming</span> : null}
-                </li>
-              );
-            })}
-          </ul>
+                    })
+                  : 'unscheduled'}
+              </span>
+              {slot.mode === 'direct_finish' ? (
+                <span className="mt-1 text-[11px] text-warn">needs filming</span>
+              ) : null}
+            </div>
+          ))}
         </div>
+      ) : null}
+
+      {/* Pause, resume and duplicate have no place in the design's hero, and
+          all three are real. They sit under the meta row as text actions rather
+          than competing with the two framed buttons above. */}
+      <div className="mt-[18px] flex flex-wrap items-center gap-4 text-14">
+        {campaign.status === 'paused' ? (
+          <button type="button" disabled={busy} onClick={() => void resume()} className="font-medium text-ink underline underline-offset-2 disabled:opacity-50">
+            Resume campaign
+          </button>
+        ) : (
+          <button type="button" disabled={busy} onClick={() => void pause()} className="font-medium text-ink underline underline-offset-2 disabled:opacity-50">
+            Pause campaign
+          </button>
+        )}
+        <button type="button" disabled={busy || !genomeId} onClick={() => void duplicate()} className="font-medium text-ink-muted underline underline-offset-2 disabled:opacity-50">
+          Duplicate
+        </button>
+      </div>
+
+      {message ? (
+        <p className={`mt-3 text-14 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+          {message.text}
+        </p>
       ) : null}
     </section>
   );
