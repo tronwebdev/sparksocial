@@ -69,28 +69,60 @@ export function CompletionScreen({ genomeId, brandName, onDone }: { genomeId: st
   const agent = state?.agentName;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background px-6 py-8 md:px-16">
-      <header>
-        <Wordmark />
-      </header>
+    <div className="relative flex min-h-screen flex-col items-center overflow-hidden bg-[--ss-surface-200] px-6 py-10">
+      <img
+        src="/auth/bg-onboarding.svg"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+      />
 
-      <main className="mx-auto flex w-full max-w-[620px] flex-1 flex-col justify-center py-10 text-center">
-        <p className="text-[15px] text-ink-muted">{brandName || 'Your brand'} is set up</p>
-        <h1 className="mt-3 text-balance text-[34px] font-semibold leading-tight text-ink">
-          {agent ? (
-            <>
-              Congratulations on creating <span className="text-brand-purple">{agent}</span>, your first
-              agent
-            </>
-          ) : (
-            'Congratulations on creating your first agent'
-          )}
+      <div className="relative">
+        <Wordmark showMark={false} fontSize={28} />
+      </div>
+
+      <main className="relative flex w-full flex-1 flex-col items-center pt-[140px] text-center">
+        <img
+          src="/auth/signup-logo.svg"
+          alt=""
+          aria-hidden
+          className="h-[148px] w-[148px] animate-breathe motion-reduce:animate-none"
+        />
+
+        {/* Two lines, and only the first carries the gradient — the capture sets
+            "Congratulations" in the brand ramp and the rest in plain ink. */}
+        <h1 className="mt-[228px] font-display text-[40px] leading-[1.2] text-ink-muted">
+          <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'var(--ss-grad-brand)' }}>
+            Congratulations
+          </span>{' '}
+          On
+          <br />
+          Creating Your First Agent
         </h1>
 
-        {/* What is true, in the order it matters. Each line is a fact read from a
-            tool, and the ones that are already done say so rather than being
-            hidden — a checklist of only failures reads as a telling-off. */}
-        <ul className="mx-auto mt-8 flex w-full max-w-[460px] flex-col gap-2 text-left">
+        <div className="mt-[60px] flex flex-col items-center">
+          <HoldButton
+            label="Continue to Dashboard"
+            caption="Press &amp; Hold button to continue"
+            onComplete={onDone}
+          />
+        </div>
+
+        {/*
+          NOT in `…193247`, and kept deliberately.
+
+          The capture ends on the congratulation alone. Everything after the
+          routing questions is skippable and skipping is the common path, so a
+          bare tick sends a brand with no connected account and no assets to an
+          empty calendar concluding the product is broken — which is the L5
+          complaint this screen was built to answer. The lines are facts read
+          from `brand.governance.get`, `integration.health` and `asset.gaps`.
+
+          Demoted to a quiet summary under the button rather than the headline
+          list it was, so the screen matches the design's hierarchy. Flagged in
+          `ui build/MANIFEST.md`; say the word and it goes.
+        */}
+        <ul className="mx-auto mt-[52px] flex w-full max-w-[460px] flex-col gap-2 text-left">
           <Line
             done
             text={
@@ -128,15 +160,6 @@ export function CompletionScreen({ genomeId, brandName, onDone }: { genomeId: st
             }
           />
         </ul>
-
-        <p className="mt-8 text-[14px] text-ink-muted">
-          Next: a campaign. It is one screen, and it is where {agent ?? 'SPARK'} works out what it can make
-          from what you have.
-        </p>
-
-        <div className="mt-6 flex justify-center">
-          <HoldButton label="Continue to your dashboard" caption="Press and hold" onComplete={onDone} />
-        </div>
       </main>
     </div>
   );

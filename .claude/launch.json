@@ -4,20 +4,35 @@
     {
       "name": "api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start", "-w", "@sparksocial/api"],
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "@sparksocial/api"
+      ],
       "port": 8080
     },
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "@sparksocial/web"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "@sparksocial/web"
+      ],
       "port": 3000
     },
     {
-      "name": "web-3001",
+      "name": "web-verify",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:3001", "-w", "@sparksocial/web"],
-      "port": 3001
+      "runtimeArgs": [
+        "run",
+        "dev:verify",
+        "-w",
+        "@sparksocial/web"
+      ],
+      "port": 3000
     }
   ]
 }

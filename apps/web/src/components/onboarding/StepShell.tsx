@@ -103,6 +103,9 @@ export function StepShell({
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 
+      {/* `relative` + an absolutely-centred middle column: the capture centres the
+          bar on the frame (722 of 1440), not between the two pills, which would put
+          it at 710 and drift further as either pill changes width. */}
       <header className="relative flex items-start justify-between gap-6">
         {/* Reserve the pill's width even when there is nothing to go back to,
             so the centre column does not shift between steps. */}
@@ -121,7 +124,7 @@ export function StepShell({
           <span aria-hidden className="h-[42px] w-24 shrink-0" />
         )}
 
-        <div className="flex w-[738px] max-w-full shrink flex-col items-center">
+        <div className="absolute left-1/2 flex w-[738px] max-w-full -translate-x-1/2 flex-col items-center">
           <p className="text-16 text-ink-muted">
             <span className="font-semibold text-ink">Step {group}</span> of 4
           </p>

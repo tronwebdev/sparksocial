@@ -333,7 +333,7 @@ export default function OnboardingPage() {
           </>
         }
         title="What is your Brand Name?"
-        onContinue={brandName.trim() ? () => setStep(URL_STEP) : undefined}
+        onContinue={() => setStep(URL_STEP)}
         continueDisabled={brandName.trim().length === 0}
         composer={
           <PromptComposer
@@ -364,7 +364,10 @@ export default function OnboardingPage() {
         onContinue={() => void bootstrap()}
         continueDisabled={!looksLikeUrl(url) || busy || manualBusy}
         composer={
-          <div className="flex flex-col gap-3">
+          /* The composer's own box is what the capture anchors at y 526.5, so the
+             hint, error and opt-out hang BELOW it absolutely rather than sharing
+             the anchored block — inside it they pushed the field 25px up. */
+          <div className="relative">
             <PromptComposer
               autoFocus
               type="url"
@@ -386,6 +389,7 @@ export default function OnboardingPage() {
               }
             />
 
+            <div className="absolute inset-x-0 top-full mt-4 flex flex-col gap-3">
             {error ? <p className="text-14 text-destructive">{error}</p> : null}
             {busy ? (
               // Named, because thirty seconds of silence reads as a hang. The
@@ -413,6 +417,7 @@ export default function OnboardingPage() {
               </button>
             ) : null}
             {manualBusy ? <p className="text-14 text-ink-muted">Setting up your brand…</p> : null}
+            </div>
           </div>
         }
       />
@@ -448,14 +453,11 @@ export default function OnboardingPage() {
         group={1}
         within={{ index: 3, total: 4 }}
         onBack={back}
-        eyebrow={eyebrow}
-        title="A bit more about the brand"
-        subtitle="All optional — but the sentence below is what every caption gets written from, so it is the one worth typing."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(QUESTIONS_AT)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<>Great Got your brand name, <strong className="font-semibold text-brand-purple">{draft.businessName}</strong></>}
+        title="Tell us a bit more about your brand?"
+        onContinue={() => setStep(QUESTIONS_AT)}
+        inBubble
+        bubbleWidth={493}
       >
         <BrandDetailsStep
           genomeId={draft.genomeId}
@@ -511,14 +513,10 @@ export default function OnboardingPage() {
         group={2}
         within={{ index: questions.length, total: questions.length + 2 }}
         onBack={back}
-        eyebrow={eyebrow}
-        title="Anything written down?"
-        subtitle="SPARK reads these to learn your voice, your offer and the facts it is allowed to state. Optional, and addable later."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(GROUNDING)}>
-            Continue
-          </Button>
-        }
+        title="Upload company Docs (PDF)"
+        onContinue={() => setStep(GROUNDING)}
+        inBubble
+        bubbleWidth={469}
       >
         <CompanyDocsStep genomeId={draft.genomeId} />
       </StepShell>
@@ -552,14 +550,11 @@ export default function OnboardingPage() {
       <StepShell
         group={3}
         onBack={back}
-        eyebrow={eyebrow}
-        title="How should it look and sound?"
-        subtitle="Your colours, type and voice, and the things SPARK must never say. Every field here reaches a real post."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(AGENT)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<><strong className="font-semibold text-ink">Exciting update!</strong> Your Brand Knowledge is complete. Next up, we'll focus on your <strong className="font-semibold text-ink">Brand's Voice, Guardrails, and Time Zone.</strong></>}
+        title="This is your brand kit generated from your URL"
+        onContinue={() => setStep(AGENT)}
+        inBubble
+        bubbleWidth={596}
       >
         <BrandKitStep />
       </StepShell>
@@ -574,13 +569,11 @@ export default function OnboardingPage() {
         group={4}
         within={{ index: 0, total: 2 }}
         onBack={back}
-        eyebrow={eyebrow}
-        title="Who is doing the work?"
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(ACCOUNTS)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<><strong className="font-semibold text-ink">Great news!</strong> Your Brand Guardrails are set. Ready to <strong className="font-semibold text-ink">customize your media and agent?</strong></>}
+        title="Name your agent"
+        onContinue={() => setStep(ACCOUNTS)}
+        inBubble
+        bubbleWidth={436}
       >
         <AgentStep genomeId={draft.genomeId} brandName={draft.businessName} />
       </StepShell>
