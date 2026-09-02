@@ -30,13 +30,13 @@ export function KpiRow({ series }: { series: BrandSeries }) {
     {
       label: 'Impressions',
       value: compactNumber(series.totals.impressions),
-      changePct: series.impressionsChangePct,
+      changePct: series.changePct.impressions,
       before: series.previous.impressions,
     },
     {
       label: 'Engagements',
       value: compactNumber(series.totals.engagements),
-      changePct: series.engagementsChangePct,
+      changePct: series.changePct.engagements,
       before: series.previous.engagements,
       hint: 'likes, comments, shares and saves',
     },

@@ -251,7 +251,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
           <p className="text-[32px] font-semibold tabular-nums leading-none text-ink">
             {compactNumber(series.totals.impressions)}
           </p>
-          <DeltaChip changePct={series.impressionsChangePct} />
+          <DeltaChip changePct={series.changePct.impressions} />
         </div>
 
         {/* A column per day, including empty ones. Bars rather than a line,

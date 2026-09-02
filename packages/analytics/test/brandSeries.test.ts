@@ -33,6 +33,60 @@ function row(over: Partial<Parameters<typeof aggregateSeries>[0][number]> = {}) 
 }
 
 describe('aggregateSeries', () => {
+  it('breaks the interactions out beside the total, and plots each per day', () => {
+    /*
+      `CC-04`'s six tiles need the parts, not just `engagements`. These columns
+      were always read by `publishedWithMetrics` and folded into the sum here, so
+      this is the test that the fold no longer loses them.
+    */
+    const out = aggregateSeries(
+      [
+        row({ contentItemId: 'a', platform: 'instagram', publishedAt: ago(1), impressions: 400, views: 900, likes: 30, comments: 7, shares: 4, saves: 11 }),
+        row({ contentItemId: 'b', platform: 'facebook', publishedAt: ago(2), impressions: 100, views: 120, likes: 6, comments: 2, shares: 1, saves: 3 }),
+      ],
+      7,
+      NOW,
+    );
+
+    expect(out.totals.likes).toBe(36);
+    expect(out.totals.comments).toBe(9);
+    expect(out.totals.shares).toBe(5);
+    expect(out.totals.saves).toBe(14);
+    expect(out.totals.views).toBe(1020);
+    // Still the sum of the four, so the KPI row and the tiles cannot disagree.
+    expect(out.totals.engagements).toBe(36 + 9 + 5 + 14);
+
+    // Each metric lands in its own day's bucket, which is what a sparkline needs.
+    const dayOne = out.days.find((d) => d.likes === 30);
+    const dayTwo = out.days.find((d) => d.likes === 6);
+    expect(dayOne?.saves).toBe(11);
+    expect(dayOne?.views).toBe(900);
+    expect(dayTwo?.comments).toBe(2);
+    // A day with nothing published carries zeroes rather than being absent.
+    expect(out.days).toHaveLength(7);
+    expect(out.days.every((d) => typeof d.saves === 'number')).toBe(true);
+  });
+
+  it('reports a null change per metric when the previous period had none of it', () => {
+    /*
+      The rule that used to live on two scalar fields now lives on one object,
+      and it has to hold for every metric: "up from nothing" is not a percentage.
+      Likes moved and saves did not, so one is a number and the other is null in
+      the same response.
+    */
+    const out = aggregateSeries(
+      [
+        row({ contentItemId: 'now', publishedAt: ago(1), likes: 10, saves: 5 }),
+        row({ contentItemId: 'before', publishedAt: ago(9), likes: 5, saves: 0 }),
+      ],
+      7,
+      NOW,
+    );
+
+    expect(out.changePct.likes).toBe(100);
+    expect(out.changePct.saves).toBeNull();
+  });
+
   it('counts posts by distinct id and metrics by row', () => {
     // One post, two platform snapshots. Summing rows would report two posts.
     const out = aggregateSeries(
@@ -82,7 +136,7 @@ describe('aggregateSeries', () => {
 
     expect(out.totals.impressions).toBe(150);
     expect(out.previous.impressions).toBe(100);
-    expect(out.impressionsChangePct).toBe(50);
+    expect(out.changePct.impressions).toBe(50);
   });
 
   it('refuses to express growth from nothing as a percentage', () => {
@@ -90,8 +144,8 @@ describe('aggregateSeries', () => {
     // screenshot. Null says the comparison does not exist.
     const out = aggregateSeries([row({ platform: 'instagram', impressions: 500 })], 7, NOW);
     expect(out.previous.impressions).toBe(0);
-    expect(out.impressionsChangePct).toBeNull();
-    expect(out.engagementsChangePct).toBeNull();
+    expect(out.changePct.impressions).toBeNull();
+    expect(out.changePct.engagements).toBeNull();
   });
 
   it('reports a fall as a negative, not an absolute', () => {
@@ -103,7 +157,7 @@ describe('aggregateSeries', () => {
       7,
       NOW,
     );
-    expect(out.impressionsChangePct).toBe(-50);
+    expect(out.changePct.impressions).toBe(-50);
   });
 
   it('splits by platform with shares that sum to one', () => {
@@ -163,7 +217,18 @@ describe('aggregateSeries', () => {
 
   it('survives an empty brand', () => {
     const out = aggregateSeries([], 7, NOW);
-    expect(out.totals).toEqual({ posts: 0, impressions: 0, views: 0, engagements: 0 });
+    // Every metric zero, not absent — a tile reading `undefined` would render
+    // blank where the honest answer is 0.
+    expect(out.totals).toEqual({
+      posts: 0,
+      impressions: 0,
+      views: 0,
+      engagements: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+    });
     expect(out.days).toHaveLength(7);
     expect(out.byPlatform).toEqual([]);
     expect(out.maturing).toBe(0);
