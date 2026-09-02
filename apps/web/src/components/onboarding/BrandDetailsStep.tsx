@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { DropZone, PreviewPanel, SectionLabel, Select } from './kit';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -72,7 +72,7 @@ export function BrandDetailsStep({
   const [savingText, setSavingText] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [generating, setGenerating] = useState(false);
 
   async function saveText() {
     const line = oneLiner.trim();
@@ -95,6 +95,40 @@ export function BrandDetailsStep({
         ? { kind: 'ok', text: 'Saved.' }
         : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval first.' },
     );
+  }
+
+  /**
+   * `…192946` draws a "Generate logo" action beside Upload Logo, and
+   * `brand.logo.generate` has been in the registry the whole time with nothing
+   * calling it. The generated URL goes through the same
+   * `brand.governance.set({ logoUrl })` as an upload, so both paths leave the
+   * brand row in one shape.
+   */
+  async function generateLogo() {
+    setMessage(null);
+    setGenerating(true);
+    /*
+      No brandId and no hint: the schema is `{ brandId?, hint? }` and both are
+      optional, defaulting to the session's brand and to the genome as its own
+      prompt. Passing `genomeId`/`brandName` — which is what this first said —
+      would have been silently stripped by Zod and read as deliberate.
+    */
+    const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
+    setGenerating(false);
+
+    if (res.status !== 'succeeded') {
+      setMessage({
+        kind: 'err',
+        text: res.status === 'failed' ? res.error.message : 'Generating a logo needs approval first.',
+      });
+      return;
+    }
+
+    setLogoUrl(res.output.logoUrl);
+    const saved = await invoke('brand.governance.set', { logoUrl: res.output.logoUrl });
+    if (saved.status !== 'succeeded') {
+      setMessage({ kind: 'err', text: 'Generated, but saving it to the brand failed.' });
+    }
   }
 
   async function uploadLogo(file: File) {
@@ -141,87 +175,88 @@ export function BrandDetailsStep({
     setMessage({ kind: 'ok', text: 'Logo saved.' });
   }
 
-  return (
-    <div className="grid grid-cols-1 gap-6">
-      <div>
-        <label className="text-[13px] font-medium text-ink-muted" htmlFor="onb-oneliner">
-          Tell SPARK a bit more about {brandName || 'your brand'}
-        </label>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          One or two sentences, the way you would say it to somebody in the street. This is what every
-          caption is written from.
-        </p>
-        <textarea
-          id="onb-oneliner"
-          value={oneLiner}
-          onChange={(e) => setOneLiner(e.target.value)}
-          onBlur={() => void saveText()}
-          rows={3}
-          maxLength={400}
-          placeholder="We cut hair for men who want to look sharp without booking a whole afternoon."
-          className="mt-2 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
-        />
-      </div>
+  /*
+    `…192946`: a textarea, a "Choose Business Niche" select, then an "Upload Logo"
+    section carrying a "Generate logo" action, a drop zone and a Logo Preview
+    panel beside it.
 
-      <div>
-        <label className="text-[13px] font-medium text-ink-muted" htmlFor="onb-niche">
-          What kind of business is it?
-        </label>
-        <select
-          id="onb-niche"
-          value={niche}
-          onChange={(e) => setNiche(e.target.value)}
-          onBlur={() => void saveText()}
-          className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
-        >
+    All three tool calls above are untouched — `genome.identity.set` on blur,
+    `asset.upload_url` + `brand.governance.set` for the logo. `brand.logo.generate`
+    is new here and already existed in the registry; the capture draws the button
+    and the tool was never wired to anything.
+  */
+  return (
+    <div className="flex flex-col gap-4">
+      <textarea
+        value={oneLiner}
+        onChange={(e) => setOneLiner(e.target.value)}
+        onBlur={() => void saveText()}
+        rows={3}
+        aria-label={`What ${brandName || 'your brand'} does`}
+        placeholder="We create intelligent AI agents that simplify tasks and enhance productivity for businesses."
+        className="ss-field w-full resize-none rounded-[12px] border border-border bg-input px-3 py-2.5 text-14 leading-[1.5] text-ink outline-none placeholder:text-ink-placeholder"
+      />
+
+      <div className="flex flex-col gap-1.5">
+        <SectionLabel>Choose Business Niche</SectionLabel>
+        <Select value={niche} onChange={(v) => { setNiche(v); void saveText(); }} ariaLabel="Business niche">
           <option value="">Choose one</option>
           {NICHES.map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <p className="text-[13px] font-medium text-ink-muted">Logo</p>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          Used as a corner mark on posts. Six formats need one before they can be made at all.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileInput.current?.click()}>
-            {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload a logo'}
-          </Button>
-          {logoUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={logoUrl}
-              alt="Brand logo"
-              className="h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
-            />
-          ) : (
-            <span className="text-[13px] text-ink-muted">Nothing yet</span>
-          )}
+      <div className="flex flex-col gap-2.5 rounded-[14px] border border-border p-3">
+        <SectionLabel
+          trailing={
+            <button
+              type="button"
+              onClick={() => void generateLogo()}
+              disabled={generating || !brandName.trim()}
+              className="flex items-center gap-1.5 rounded-[8px] border border-border bg-white px-2.5 py-1.5 text-13 text-ink transition-colors hover:bg-surface-muted disabled:opacity-40"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+                <path d="M6 1l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" fill="url(#sparkle)" />
+                <defs>
+                  <linearGradient id="sparkle" x1="0" y1="0" x2="1" y2="1">
+                    <stop stopColor="#6CE8FF" />
+                    <stop offset="1" stopColor="#A341FF" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              {generating ? 'Generating…' : 'Generate logo'}
+            </button>
+          }
+        >
+          Upload Logo
+        </SectionLabel>
+
+        <div className="flex items-start gap-3">
+          <DropZone
+            className="flex-1"
+            accept={IMAGE_TYPES.join(',')}
+            formats="Png, Jpeg up to 500MB"
+            busy={uploading}
+            onFile={(f) => void uploadLogo(f)}
+          />
+          <PreviewPanel label="Logo Preview" onClear={logoUrl ? () => setLogoUrl('') : undefined}>
+            {logoUrl ? <img src={logoUrl} alt="" className="max-h-[84px] max-w-[96px] object-contain" /> : null}
+          </PreviewPanel>
         </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept={IMAGE_TYPES.join(',')}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) void uploadLogo(file);
-          }}
-        />
       </div>
 
-      {savingText ? <p className="text-[13px] text-ink-muted">Saving…</p> : null}
       {message ? (
-        <p className={message.kind === 'ok' ? 'text-[13px] text-ink-muted' : 'text-[13px] text-warn'}>
+        <p
+          role={message.kind === 'err' ? 'alert' : undefined}
+          className={message.kind === 'err' ? 'text-13 text-destructive' : 'text-13 text-ink-muted'}
+        >
           {message.text}
         </p>
       ) : null}
+      {savingText ? <p className="text-13 text-ink-muted">Saving…</p> : null}
     </div>
   );
 }

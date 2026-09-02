@@ -54,7 +54,7 @@ export default function MeetSparkPage() {
         particle layer this used to draw is gone.
       */}
       <img
-        src="/auth/bg-splash.svg"
+        src="/auth/bg-splash.png"
         alt=""
         aria-hidden
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"

@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { DropZone, PreviewPanel } from './kit';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -46,7 +46,6 @@ interface Attached {
 }
 
 export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
-  const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [attached, setAttached] = useState<Attached[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,65 +114,67 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
     ]);
   }
 
+  const latest = attached[attached.length - 1];
+
+  /*
+    `…193059`: the drop zone and a File Preview panel side by side, then
+    "Download sample pdf guideline" underneath. The upload logic above is
+    untouched — this is the same three tool calls in the capture's layout.
+  */
   return (
-    <div className="grid grid-cols-1 gap-5">
-      <div className="rounded-xl border border-dashed border-border p-6 text-center">
-        <p className="text-[15px] font-medium text-ink">Drop a PDF here, or browse</p>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          A brand guideline, a price list, an FAQ. Up to {MAX_MB}MB, text PDFs — a scan has no words in it
-          to read.
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-        >
-          {busy ? 'Reading it…' : 'Browse files'}
-        </Button>
-        <input
-          ref={input}
-          type="file"
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-4">
+        <DropZone
+          className="flex-1"
           accept={ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            // Cleared so the same file can be re-picked after a failure —
-            // otherwise `change` never fires again and the control looks dead.
-            e.target.value = '';
-            if (file) void upload(file);
-          }}
+          formats={`PDF, Docs up to ${MAX_MB}MB`}
+          busy={busy}
+          onFile={(f) => void upload(f)}
         />
+
+        <PreviewPanel
+          label="File Preview"
+          onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+        >
+          {latest ? (
+            <span className="flex flex-col items-center gap-1 px-1">
+              <span className="flex h-9 w-7 items-center justify-center rounded-[4px] bg-destructive/10 text-[9px] font-semibold text-destructive">
+                PDF
+              </span>
+              <span className="max-w-[92px] truncate text-[10px] text-ink-muted">{latest.filename}</span>
+            </span>
+          ) : null}
+        </PreviewPanel>
       </div>
 
-      {attached.length > 0 ? (
-        <ul className="flex flex-col gap-2">
-          {attached.map((doc) => (
-            <li
-              key={doc.filename}
-              className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border p-3"
-            >
-              <span className="text-[14px] font-medium text-ink">{doc.filename}</span>
-              {/* What was actually read, not "uploaded". The number of chunks is
-                  the number of things retrieval can now find. */}
-              <span className="text-[12.5px] text-ink-muted">
-                {doc.pages} page{doc.pages === 1 ? '' : 's'} · {doc.characters.toLocaleString('en-US')}{' '}
-                characters read · {doc.chunks} passage{doc.chunks === 1 ? '' : 's'} SPARK can quote
-              </span>
-            </li>
-          ))}
-        </ul>
+      {error ? (
+        <p role="alert" className="text-13 text-destructive">
+          {error}
+        </p>
       ) : null}
 
-      {error ? <p className="text-[13px] text-warn">{error}</p> : null}
+      {/*
+        What the read actually produced. Not in the capture, and kept because a
+        PDF that attached with zero pages is the one outcome the user must not
+        discover a week later — a scan with no text layer reads as success
+        otherwise.
+      */}
+      {latest ? (
+        <p className="text-13 text-ink-muted">
+          Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
+          {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
+        </p>
+      ) : null}
 
       <a
         href="/brand-guideline-sample.pdf"
         download
-        className="self-start text-[14px] font-medium text-brand-purple underline underline-offset-2"
+        className="flex items-center gap-1.5 self-start text-13 text-ink underline"
       >
-        Download a sample guideline
+        <svg width="12" height="13" viewBox="0 0 12 13" fill="none" aria-hidden>
+          <path d="M6 1v8m0 0L3 6m3 3 3-3M1 11.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Download sample pdf guideline
       </a>
     </div>
   );
