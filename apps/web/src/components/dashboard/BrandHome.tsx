@@ -13,7 +13,7 @@ import { TopBar } from '@/components/shell/TopBar';
 import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { CockpitTabs } from './CockpitTabs';
 import { KpiRow } from './KpiRow';
-import { TrendingRail } from './TrendingRail';
+import { RightRail } from './RightRail';
 import type { AgentRun, BrandKit, BrandSeries, Lead, RankedTrend, UpcomingPost } from './types';
 
 /**
@@ -72,6 +72,8 @@ interface Snapshot {
   leads: Lead[];
   leadCounts: { hot: number; warm: number; cold: number };
   upcoming: UpcomingPost[];
+  /** The rail's other half. Null while loading, as `trends` is. */
+  published: UpcomingPost[] | null;
   trends: RankedTrend[] | null;
 }
 
@@ -98,7 +100,7 @@ export function BrandHome() {
     void (async () => {
       setSnap(null);
 
-      const [campaigns, agent, gov, runs, series, leads, upcoming, review] = await Promise.all([
+      const [campaigns, agent, gov, runs, series, leads, upcoming, review, published] = await Promise.all([
         invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 5 }),
         invoke<{ paused: boolean }>('agent.status', {}),
         invoke<{ brandKit?: BrandKit }>('brand.governance.get', {}),
@@ -110,6 +112,9 @@ export function BrandHome() {
         ),
         invoke<{ items: UpcomingPost[] }>('content.list', { genomeId, status: 'scheduled', limit: FEED_LIMIT }),
         invoke<{ items: unknown[] }>('content.list', { genomeId, status: 'needs_review', limit: 100 }),
+        // The rail's "Post published" half. Cheap, local, and unlike
+        // `trend.rank` it does not reach off the machine.
+        invoke<{ items: UpcomingPost[] }>('content.list', { genomeId, status: 'published', limit: 10 }),
       ]);
       if (cancelled) return;
 
@@ -129,6 +134,7 @@ export function BrandHome() {
         leadCounts:
           leads.status === 'succeeded' ? leads.output.counts : { hot: 0, warm: 0, cold: 0 },
         upcoming: upcoming.status === 'succeeded' ? upcoming.output.items : [],
+        published: published.status === 'succeeded' ? published.output.items : [],
         // Null rather than [] on failure, so the rail can show a skeleton for
         // "not loaded" and prose for "nothing worth joining" — two different
         // facts that an empty array would collapse into one. It starts null and
@@ -308,7 +314,7 @@ export function BrandHome() {
           />
         </div>
         <div className="min-w-0">
-          <TrendingRail trends={snap.trends} />
+          <RightRail trends={snap.trends} published={snap.published} />
         </div>
       </div>
       </div>
