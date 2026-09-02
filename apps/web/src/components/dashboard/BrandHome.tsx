@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AgentIdentityCard } from '@/components/command-center/AgentIdentityCard';
 import { invoke } from '@/lib/tools';
-import { openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AgentActivityFeed } from './AgentActivityFeed';
 import { BrandKitChip } from './BrandKitChip';
+import { TopBar } from '@/components/shell/TopBar';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { CockpitTabs } from './CockpitTabs';
 import { KpiRow } from './KpiRow';
 import { TrendingRail } from './TrendingRail';
@@ -147,36 +148,60 @@ export function BrandHome() {
   const hasCampaign = Boolean(snap.campaign);
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      {/* ── The header row: what this brand is, and the two primary actions ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[22px] font-semibold text-ink">{genome?.name ?? 'This brand'}</h1>
-          <p className="mt-0.5 text-[13.5px] text-ink-muted">
-            {/* The prototype's line is "Your Ai Agents are running campaigns",
-                which is false for most of the states this page has to render.
-                This says which one it is in. */}
-            {snap.paused
-              ? 'Your agent is paused.'
-              : !hasCampaign
-                ? 'No campaign yet, so nothing is going out.'
-                : snap.campaign!.status === 'draft'
-                  ? 'A campaign is planned and waiting to be activated.'
-                  : 'Your agent is running a campaign.'}
-          </p>
-        </div>
+    <>
+      {/*
+        One header, and it is the shell's.
 
-        <div className="flex flex-wrap items-center gap-3">
-          {snap.brandKit ? <BrandKitChip kit={snap.brandKit} /> : null}
-          <Button asChild variant="outline">
-            {/* `?new=1` — the calendar owns the wizard, and before this the wizard
-                was reachable only as that screen's empty state, so a brand with
-                one campaign could not start a second one from anywhere. */}
-            <Link href="/calendar?new=1">Create campaign</Link>
-          </Button>
-          <Button onClick={openAskSpark}>Ask Spark</Button>
-        </div>
-      </div>
+        `home/page.tsx` used to render a `TopBar` with the brand switcher while
+        this component rendered a second heading with the brand's *name* — the
+        same brand, twice, in two type sizes. The prototype has one header row:
+        the workspace switcher at 26px/600, the status line at 18px/400 `#838383`
+        beneath it, then the brand-kit chip, Create Campaign and Ask Spark on the
+        right, over a hairline at y=119.5.
+
+        It lives here rather than on the page because every part of it except the
+        switcher is page data — the chip needs the brand kit, the status line
+        needs to know whether the agent is paused — and the page is a server
+        component that cannot see either.
+      */}
+      <TopBar
+        title={<BrandSwitcher />}
+        subtitle={
+          /*
+            The prototype says "Your Ai Agents are running campaigns", which is
+            false in most of the states this screen has to render — no campaign,
+            a draft, a paused agent. Same slot, same type, true sentence.
+          */
+          snap.paused
+            ? 'Your agent is paused.'
+            : !hasCampaign
+              ? 'No campaign yet, so nothing is going out.'
+              : snap.campaign!.status === 'draft'
+                ? 'A campaign is planned and waiting to be activated.'
+                : 'Your Ai Agents are running campaigns'
+        }
+        actions={
+          <>
+            {snap.brandKit ? <BrandKitChip kit={snap.brandKit} /> : null}
+            {/*
+              192x48, radius 12, white with a 1px `rgba(12,12,12,0.35)` ring and
+              a 9px gap to its glyph — an outline button, not a filled one.
+
+              `?new=1` — the calendar owns the wizard, and before this the wizard
+              was reachable only as that screen's empty state, so a brand with
+              one campaign could not start a second one from anywhere.
+            */}
+            <Button asChild variant="outline" className="h-12 gap-[9px] rounded-md px-4 text-16 font-medium">
+              <Link href="/calendar?new=1">
+                <PlusGlyph />
+                Create Campaign
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-6 p-8">
 
       {/* ── The agent, by name. Shared with the Command Center. ───────────── */}
       <AgentIdentityCard
@@ -222,7 +247,13 @@ export function BrandHome() {
 
       {/* ── The two columns. Activity and the tabbed card carry the page; the
              rail is the one panel about the world outside this brand. ────── */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      {/*
+        846 and 446 with a 31px gutter, straight off the prototype — the left
+        column runs 356→1202 and the rail 1233→1679. `2fr / 1fr` at a 24px gap
+        was close enough to look deliberate and wrong enough that the rail's
+        cards were a different width from the ones they mirror.
+      */}
+      <div className="grid grid-cols-1 gap-[31px] xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
         <div className="flex min-w-0 flex-col gap-6">
           <AgentActivityFeed runs={snap.runs} />
           <CockpitTabs
@@ -236,6 +267,16 @@ export function BrandHome() {
           <TrendingRail trends={snap.trends} />
         </div>
       </div>
-    </div>
+      </div>
+    </>
+  );
+}
+
+/** The 14px cross on Create Campaign. */
+function PlusGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
   );
 }

@@ -5,15 +5,27 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ChatDrawer } from '@/components/command-center/ChatDrawer';
 import { onAskSparkOpen } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { SparkMark } from '@/components/brand/SparkMark';
 import { cn } from '@/lib/utils';
 
 /**
  * ASK SPARK, from anywhere — `F2`.
  *
- * The fidelity pass measured this one: a persistent assistant affordance sits in
- * the sidebar of **48 of the 61 prototypes**, and the build mentioned it in three
- * components. The capability was never missing — `ChatDrawer` runs the agent
- * perfectly well — it was reachable from exactly one screen out of nineteen.
+ * The fidelity pass got the count right and the place wrong. A persistent
+ * assistant affordance appears in **48 of the 61 prototypes** — that part holds
+ * — but not one of them puts it in the sidebar. Measured across every file, the
+ * block is 196×70 at left 1484–1503, top 30–34: the header's top-right corner,
+ * on Dashboard, Command Center, Assets, Discovery and every Settings screen. The
+ * `left:102px` I read as a sidebar coordinate is the label's offset *inside* that
+ * block.
+ *
+ * So it renders as the header control it is: the Spark orb at 70.2px with a
+ * white speech bubble beside it reading "Ask Spark?" in 14px/600, the bubble
+ * tail pointing back at the orb — the same notch shape the onboarding assistant
+ * uses. The orb is `SparkMark`, i.e. the project logo, unchanged.
+ *
+ * The capability was never missing — `ChatDrawer` runs the agent perfectly well
+ * — it was reachable from exactly one screen out of nineteen.
  *
  * The backlog filed it once, inside M1, as a detail of `/home`. That is the
  * mis-shaped version of the finding: closing M1 as written would have put a
@@ -70,27 +82,45 @@ export function AskSpark() {
 
   return (
     <>
+      {/*
+        196x70.2: the orb at 0,0 and a 126x47 bubble at 70,12, whose tail
+        overlaps the orb by 0.2px — which is why the two are positioned rather
+        than laid out with a gap. The label sits at 102,26 within the block, so
+        32px into the bubble.
+      */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-label={genome ? `Ask Spark about ${genome.name}` : 'Ask Spark'}
+        title={genome ? `Ask Spark about ${genome.name}` : 'Ask Spark'}
         className={cn(
-          'group flex w-full items-center gap-2.5 rounded-xl border border-border bg-surface px-3.5 py-2.5',
-          'text-left transition-colors hover:bg-surface-muted',
+          'relative h-[70.2px] w-[196px] shrink-0 border-0 bg-transparent p-0 text-left',
+          'transition-transform hover:scale-[1.02] active:scale-[0.99]',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+          'max-md:h-[52px] max-md:w-[52px]',
         )}
       >
-        {/* The prototype's four-point sparkle, breathing. `ss-breathe` was
-            already implemented; this is the affordance it was waiting for. */}
-        <span aria-hidden className="animate-breathe text-[15px] leading-none">
-          ✦
+        <span className="absolute left-0 top-0 block h-[70.2px] w-[70.2px] max-md:h-[52px] max-md:w-[52px]">
+          <SparkMark variant="shell" size={70.2} animated />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13.5px] font-medium text-ink">Ask Spark</span>
-          <span className="block truncate text-[11.5px] text-ink-muted">
-            {genome ? `About ${genome.name}` : 'Pick a brand first'}
-          </span>
+
+        {/* Bubble and label drop below `md`, where the orb alone is the control. */}
+        <svg
+          width="126"
+          height="47"
+          viewBox="0 0 126 47"
+          aria-hidden
+          className="absolute left-[70px] top-[12px] block max-md:hidden"
+        >
+          <path
+            d="M 9.159 7.596 C 9.159 3.401 12.56 0 16.755 0 L 113.493 0 C 120.4 0 126 5.6 126 12.507 L 126 34.493 C 126 41.4 120.4 47 113.493 47 L 20.305 47 C 14.181 47 9.246 41.979 9.353 35.856 L 9.361 35.382 C 9.408 32.652 8.322 30.025 6.36 28.126 C 2.742 24.623 2.345 18.956 5.439 14.982 L 7.557 12.262 C 8.596 10.929 9.159 9.286 9.159 7.596 Z"
+            fill="#FFFFFF"
+          />
+        </svg>
+        <span className="absolute left-[102px] top-[26px] text-14 font-semibold leading-[1.28] text-ink max-md:hidden">
+          Ask Spark?
         </span>
       </button>
 

@@ -1,28 +1,22 @@
-import { TopBar } from '@/components/shell/TopBar';
-import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
-import { UserMenu } from '@/components/shell/UserMenu';
 import { BrandHome } from '@/components/dashboard/BrandHome';
 
 /**
- * `DASH-B-01` — Brand Home (PRD §8.3), which had no route.
+ * `DASH-B-01` — Brand Home (PRD §8.3), the screen `SparkSocial Dashboard.dc.html`
+ * describes.
  *
  * `/` redirected to `/agents`, the Command Center, so a brand with no campaign
  * landed on a supervision screen for an agent that was not doing anything. §8.3
- * asks the opposite of that: lead with the one action that unblocks everything
- * else, and preview the rest.
+ * asks the opposite: lead with the one action that unblocks everything else, and
+ * preview the rest.
  *
- * The page-level header is gone as of the cockpit rework: "Home / Where this
- * brand stands" sat directly above the brand's own name and the two primary
- * actions, so the screen opened with two headings and one of them was the word
- * for the route. `BrandHome` owns its heading now.
+ * The header used to be assembled here — a `TopBar` with the brand switcher and
+ * a user menu — while `BrandHome` rendered a second heading with the same
+ * brand's name below it. `BrandHome` owns the whole header now, because every
+ * part of it but the switcher is data this server component cannot see. The user
+ * menu is gone from the header entirely: the prototypes reach account and
+ * organization through the workspace switcher's "Account Home" row, not a second
+ * avatar beside it.
  */
 export default function BrandHomePage() {
-  return (
-    <>
-      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
-      <div className="p-8">
-        <BrandHome />
-      </div>
-    </>
-  );
+  return <BrandHome />;
 }
