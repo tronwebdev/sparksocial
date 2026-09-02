@@ -32,6 +32,49 @@ const TOP_N = 8;
  */
 const SPEC_PROMOTIONAL_CEILING = 0.35;
 
+describe('a draft genome, whose dimensions are legitimately incomplete', () => {
+  /*
+    `genomeRepository.createDraft` writes dimensions through
+    `GenomeDimensions.partial()` — a draft is allowed to be missing answers
+    nobody has given yet — and `get` reads them back the same way. The resolver
+    runs against that shape during onboarding and campaign planning.
+
+    This is the regression test for a real failure: `campaign.propose_plan`
+    returned `UPSTREAM_FAILED: Cannot read properties of undefined (reading
+    'reduce')` for a brand whose `secondary_objectives` had never been written.
+    The read boundary casts the partial parse to the full type, so the resolver
+    trusted the type and reduced over `undefined`.
+  */
+  it('resolves without secondary_objectives rather than throwing', () => {
+    const draft = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions },
+    };
+    // The exact shape the DB hands back for a genome that never answered it.
+    delete (draft.dimensions as { secondary_objectives?: unknown }).secondary_objectives;
+
+    expect(() => resolve(draft, lagosBarbershop.assets)).not.toThrow();
+    const { ranked } = resolve(draft, lagosBarbershop.assets);
+    expect(ranked.length).toBeGreaterThan(0);
+  });
+
+  it('scores the same as an empty secondary list, since that is what absent means', () => {
+    const withEmpty = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions, secondary_objectives: [] },
+    };
+    const withAbsent = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions },
+    };
+    delete (withAbsent.dimensions as { secondary_objectives?: unknown }).secondary_objectives;
+
+    const a = resolve(withEmpty, lagosBarbershop.assets).ranked.map((r) => r.score);
+    const b = resolve(withAbsent, lagosBarbershop.assets).ranked.map((r) => r.score);
+    expect(b).toEqual(a);
+  });
+});
+
 describe('§13 — zero anti-pattern selections', () => {
   it.each(GOLDEN_SET.map((c) => [c.label, c] as const))(
     '%s never selects a format that would get it cancelled',

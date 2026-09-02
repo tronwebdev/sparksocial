@@ -262,7 +262,27 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
         workspace_id: row.brandId,
         version: row.version,
         identity: GenomeIdentity.parse(row.identity),
-        dimensions: GenomeDimensions.partial().parse(row.dimensions) as GenomeT['dimensions'],
+        /*
+          `.partial()` tolerates a draft's incomplete dimensions, which is the
+          point — but it also turns `secondary_objectives`, the one field with a
+          `.default([])`, from "always an array" into "possibly undefined", and
+          then the `as` cast tells every caller it is an array anyway.
+
+          That cast is what crashed campaign creation: `resolver.ts` trusted the
+          type and called `.reduce` on it, so a brand whose onboarding never
+          wrote the field got `Cannot read properties of undefined (reading
+          'reduce')` out of `campaign.propose_plan`.
+
+          So the default is re-applied here. The remaining fields have no default
+          and a draft may genuinely lack them; consumers already guard those
+          (`p.objective_fit[d.objective] ?? 0`), and inventing a `proof_asset`
+          would be worse than absent.
+        */
+        dimensions: {
+          ...GenomeDimensions.partial().parse(row.dimensions),
+          secondary_objectives:
+            GenomeDimensions.partial().parse(row.dimensions).secondary_objectives ?? [],
+        } as GenomeT['dimensions'],
         voice: GenomeVoice.parse(row.voice),
         audience: GenomeAudience.parse(row.audience),
         offer: GenomeOffer.parse(row.offer),

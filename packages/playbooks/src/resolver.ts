@@ -186,8 +186,21 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
 
     // A secondary objective contributes at a discount — it is a tiebreaker, not a
     // second primary, or the mix drifts toward whatever serves two goals weakly.
+    /*
+      `?? []` because a *draft* genome legitimately has incomplete dimensions —
+      `genomeRepository.createDraft` writes them through
+      `GenomeDimensions.partial()` and says so — and this resolver runs against
+      exactly that shape during onboarding and campaign planning.
+
+      The read boundary now re-applies this field's `.default([])`, so the value
+      should always arrive as an array. This stays because a crash here takes the
+      whole of campaign creation with it, and the resolver is reached from four
+      tools: being wrong about one optional field should cost a tiebreaker, not
+      the plan.
+    */
     const secondary =
-      d.secondary_objectives.reduce((best, o) => Math.max(best, p.objective_fit[o] ?? 0), 0) * 0.25;
+      (d.secondary_objectives ?? []).reduce((best, o) => Math.max(best, p.objective_fit[o] ?? 0), 0) *
+      0.25;
 
     const score = (objectiveFit + secondary) * availability * saturation * learned;
 
