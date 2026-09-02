@@ -7,10 +7,11 @@ import { CommandCenterOverview } from '@/components/command-center/CommandCenter
 import { SparkRailContainer } from '@/components/command-center/SparkRailContainer';
 import { PerformancePanel } from '@/components/command-center/PerformancePanel';
 import { RunTimeline } from '@/components/agents/RunTimeline';
-import { CalendarBoard } from '@/components/calendar/CalendarBoard';
+import { AgentCalendarTab } from '@/components/command-center/AgentCalendarTab';
 import { EngagementFeed } from '@/components/engagement/EngagementFeed';
 import { EngagementGate } from '@/components/engagement/EngagementGate';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { useCcAgent } from '@/components/command-center/useCcAgent';
 
 /**
  * The Agent Command Center — `SparkSocial Command Center.dc.html`.
@@ -48,6 +49,12 @@ export default function CommandCenterPage() {
   const router = useRouter();
   const params = useSearchParams();
   const { genome } = useSelectedGenome();
+  /*
+    The Agent Calendar tab inlines the identity the Spark rail carries
+    everywhere else — it is the one tab with no rail. Same hook, so the two
+    cannot disagree about the agent's name or whether it is paused.
+  */
+  const agent = useCcAgent(genome?.genomeId);
 
   const fromUrl = params.get('tab');
   const hasDraft = params.get('draft') !== null;
@@ -93,7 +100,21 @@ export default function CommandCenterPage() {
         </div>
       ) : null}
 
-      {tab === 'calendar' ? <CalendarBoard /> : null}
+      {tab === 'calendar' ? (
+        <AgentCalendarTab
+          genomeId={genome?.genomeId}
+          paused={agent.paused}
+          agentName={agent.name}
+          voice={agent.voice}
+          riskTolerance={agent.riskTolerance}
+          reviewCount={agent.reviewCount}
+          onTogglePause={() => void agent.togglePause()}
+          onOpenDraft={(contentItemId) =>
+            router.replace(`/agents?tab=overview&draft=${encodeURIComponent(contentItemId)}`)
+          }
+          busy={agent.busy}
+        />
+      ) : null}
 
       {tab === 'performance' ? <PerformancePanel genomeId={genome?.genomeId} /> : null}
 

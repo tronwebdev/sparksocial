@@ -33,6 +33,18 @@
         "@sparksocial/web"
       ],
       "port": 3000
+    },
+    {
+      "name": "proto",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4173",
+        "--directory",
+        "ui build"
+      ],
+      "port": 4173
     }
   ]
 }

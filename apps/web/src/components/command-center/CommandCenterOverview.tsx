@@ -181,48 +181,6 @@ export function CommandCenterOverview() {
       />
 
       {/*
-        The three campaign-type chips under the hero — 150x38.5 at radius 11.42,
-        the active one white with a `#838383` ring and a black tick, the rest on
-        `rgba(131,131,131,0.05)`.
-
-        The design's are a filter with three fixtures behind them. Ours are the
-        playbook families the mix engine actually resolves to, read from the
-        campaign, and they are `disabled` because nothing on the backend filters
-        a queue by family yet — `content.list` takes a status, not a playbook
-        group. Drawn because the design draws them; inert and saying so, rather
-        than a control that looks live and changes nothing.
-      */}
-      <div className="flex flex-wrap gap-[8.5px]">
-        {['Lead magnets', 'Authority Builder', 'Social Campaign'].map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            disabled
-            title="Filtering the queue by campaign type needs a playbook-family filter on content.list."
-            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-[13.13px] font-semibold"
-            style={
-              i === 0
-                ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }
-                : {
-                    background: 'rgba(131,131,131,0.05)',
-                    boxShadow: 'inset 0 0 0 0.73px rgba(12,12,12,0.1)',
-                    color: '#838383',
-                  }
-            }
-          >
-            {label}
-            {i === 0 ? (
-              <span className="inline-flex h-[13px] w-[13px] items-center justify-center rounded-full bg-ink">
-                <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
-                  <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {/*
         These two stay, and I nearly cut them.
 
         The design's hero carries "Edit Campaign" and "Adjust Frequency", and

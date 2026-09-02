@@ -300,6 +300,50 @@ export function CampaignFocusCard({
         </div>
       ) : null}
 
+      {/*
+        The three campaign-type chips, 150x38.5 at radius 11.42.
+
+        These were under the hero, as a sibling. Rendering the prototype showed
+        them inside it: the chips sit at y=478.3 and the card runs 241..538, so
+        they are the hero's own bottom row, starting at the same x=26 as the
+        title on a 158.5px pitch. Reading the coordinates should have told me
+        that and did not — 478 is only obviously "inside 241..538" once you have
+        seen the picture.
+
+        The design's are a filter over three fixtures. Ours are inert: `content
+        .list` takes a status, not a playbook family, so there is nothing to
+        filter by. Drawn because the design draws them, disabled and saying why.
+      */}
+      <div className="mt-[22px] flex flex-wrap gap-[8.5px]">
+        {['Lead magnets', 'Authority Builder', 'Social Campaign'].map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            title="Filtering by campaign type needs a playbook-family filter on content.list."
+            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-[13.13px] font-semibold"
+            style={
+              i === 0
+                ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }
+                : {
+                    background: 'rgba(131,131,131,0.05)',
+                    boxShadow: 'inset 0 0 0 0.73px rgba(12,12,12,0.1)',
+                    color: '#838383',
+                  }
+            }
+          >
+            {label}
+            {i === 0 ? (
+              <span className="inline-flex h-[13px] w-[13px] items-center justify-center rounded-full bg-ink">
+                <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
+                  <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
       {/* Pause, resume and duplicate have no place in the design's hero, and
           all three are real. They sit under the meta row as text actions rather
           than competing with the two framed buttons above. */}
