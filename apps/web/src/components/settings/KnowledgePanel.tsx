@@ -382,9 +382,16 @@ export function KnowledgePanel() {
 
         <div className="rounded-lg border border-border p-4">
           <p className="text-[13px] font-medium text-ink">Add a document</p>
+          {/*
+            This said "PDFs and Word documents need a parser SPARK does not
+            have — open them and paste instead", directly above an "Upload a
+            PDF" button. Both halves were stale in opposite directions:
+            `brand.knowledge.attach_document` has parsed PDFs since it landed,
+            and the button beside this text calls it. Word is still true.
+          */}
           <p className="mt-1 text-[12px] text-ink-muted">
-            Paste the text, or load a plain-text, Markdown, CSV or JSON file. PDFs and Word documents need a
-            parser SPARK does not have — open them and paste instead.
+            Paste the text, or load a plain-text, Markdown, CSV or JSON file. PDFs upload and are read for
+            you. Word documents need a parser SPARK does not have — export to PDF, or paste the text.
           </p>
 
           <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="kn-docid">
