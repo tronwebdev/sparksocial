@@ -21,9 +21,13 @@ import { cn } from '@/lib/utils';
  * hero — 1159×297 at radius 20 on a warm `#FEDEB5` gradient, headed "Current
  * Focus". Two different cards, and one component cannot be both.
  *
- * So this is the dashboard's, built to its own measurements, and
- * `AgentIdentityCard` stays where the Command Center still uses it until that
- * screen gets the same treatment.
+ * So this is the dashboard's, built to its own measurements.
+ *
+ * `AgentIdentityCard` is no longer rendered anywhere: the Command Center's
+ * Overview dropped it when that screen took the design's tab structure, because
+ * the design's identity band is *this* banner and its Overview opens on the
+ * campaign. The file is still in the tree, unimported - see the note in
+ * `CommandCenterOverview`.
  *
  * ── The three activity lines ──────────────────────────────────────────────
  *

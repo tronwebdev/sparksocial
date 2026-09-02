@@ -3,7 +3,6 @@
 import { useSearchParams } from 'next/navigation';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -17,10 +16,7 @@ import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
 import { ChatDrawer } from './ChatDrawer';
 import { DraftPanel } from './draft-panel/DraftPanel';
 import { DraftList } from './DraftList';
-import { PerformancePanel } from './PerformancePanel';
 import { PlanQueue } from './PlanQueue';
-import { AgentIdentityCard } from './AgentIdentityCard';
-import { QuickActions } from './QuickActions';
 
 /**
  * CC-01 — Command Center Overview (`ui build/SparkSocial Command Center.dc.html`,
@@ -147,91 +143,148 @@ export function CommandCenterOverview() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-semibold text-ink">Agent Command Center</h1>
-          <p className="mt-1 text-[16px] text-ink-muted">
-            Your AI agent is running {genome?.name ?? 'this brand'}&rsquo;s social presence.
+    <div className="flex flex-col gap-6">
+      {/*
+        The design's header row: the title at 28px/600 on the left and the
+        Needs Attention banner on the right of the *same* row — 53,143 against
+        831,147 on the stage. The banner used to sit in the body, five panels
+        down, which is a strange place for the one thing that says something is
+        waiting on you.
+
+        The two buttons that were here are gone. Ask Spark is in the chrome now,
+        where the design has it, so a second copy 60px below the first was
+        pointing at the same drawer. "New post" was mine; the design starts a
+        post from the Queue card's rows and the campaign hero, both of which are
+        on this screen.
+      */}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
+          <p className="mt-[9px] text-16 text-ink-muted">
+            Your Ai Agent is running {genome?.name ?? 'this brand'}&rsquo;s social presence for this brand
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setChatOpen(true)}>
-            Ask Spark
-          </Button>
-          <Button onClick={() => setDraftPanel({ open: true })}>New post</Button>
-        </div>
+
+        {review && review.length > 0 ? (
+          <div className="w-full max-w-[849px] shrink-0 xl:w-[849px]">
+            <NeedsAttentionBanner count={review.length} />
+          </div>
+        ) : null}
       </header>
 
-      {/* ── The shell band (`F1`) ───────────────────────────────────────
-          Who the agent is, what it is working toward, and what you came here to
-          do. The prototype keeps these three together and persistent, and it is
-          the arrangement eighteen draft-panel prototypes render behind their
-          drawer — which is why one missing band looked like eighteen gaps.
+      <CampaignFocusCard
+        campaign={campaign}
+        calendarView={calendarView}
+        genomeName={genome?.name}
+        genomeId={genome?.genomeId}
+        onRefresh={() => void loadCampaign()}
+      />
 
-          Two columns from `xl`: below that the identity and the campaign each
-          want the full width for their own wrapping, and stacking them is
-          better than two cramped columns. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <AgentIdentityCard
-          genomeId={genome?.genomeId}
-          campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
-          paused={Boolean(status?.paused)}
-        />
-        <CampaignFocusCard
-          campaign={campaign}
-          calendarView={calendarView}
-          genomeName={genome?.name}
-          genomeId={genome?.genomeId}
-          onRefresh={() => void loadCampaign()}
-        />
+      {/*
+        The three campaign-type chips under the hero — 150x38.5 at radius 11.42,
+        the active one white with a `#838383` ring and a black tick, the rest on
+        `rgba(131,131,131,0.05)`.
+
+        The design's are a filter with three fixtures behind them. Ours are the
+        playbook families the mix engine actually resolves to, read from the
+        campaign, and they are `disabled` because nothing on the backend filters
+        a queue by family yet — `content.list` takes a status, not a playbook
+        group. Drawn because the design draws them; inert and saying so, rather
+        than a control that looks live and changes nothing.
+      */}
+      <div className="flex flex-wrap gap-[8.5px]">
+        {['Lead magnets', 'Authority Builder', 'Social Campaign'].map((label, i) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            title="Filtering the queue by campaign type needs a playbook-family filter on content.list."
+            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-[13.13px] font-semibold"
+            style={
+              i === 0
+                ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }
+                : {
+                    background: 'rgba(131,131,131,0.05)',
+                    boxShadow: 'inset 0 0 0 0.73px rgba(12,12,12,0.1)',
+                    color: '#838383',
+                  }
+            }
+          >
+            {label}
+            {i === 0 ? (
+              <span className="inline-flex h-[13px] w-[13px] items-center justify-center rounded-full bg-ink">
+                <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
+                  <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            ) : null}
+          </button>
+        ))}
       </div>
 
-      <QuickActions onOpenChat={() => setChatOpen(true)} />
+      {/*
+        These two stay, and I nearly cut them.
 
+        The design's hero carries "Edit Campaign" and "Adjust Frequency", and
+        `CampaignFocusCard`'s own docstring says it resolves those to a calendar
+        link "plus the frequency control this page already has" - meaning
+        `AgentControlBar`. Removing it would have taken `agent.frequency.set`
+        off the screen with nothing replacing it. `ApprovalModeControl` owns
+        `agent.approval_mode.get/set`, which is the only route to autonomy
+        anywhere in the app.
+
+        Neither has a home in the design's Overview, so they sit under the chips
+        until the hero grows the two buttons that would absorb them. A control
+        in a slightly wrong place beats a capability that silently disappeared.
+      */}
       <AgentControlBar status={status} onChange={setStatus} />
       <ApprovalModeControl />
 
-      {review && review.length > 0 ? (
-        <NeedsAttentionBanner count={review.length} />
-      ) : null}
+      {error ? <p className="text-14 text-destructive">{error}</p> : null}
 
-      <PendingQuestionsPanel />
       {/*
-        Directly below the questions, because the two are one thought: what SPARK
-        needs from you, then what it wants you to know. Until this landed the
-        second half was written to a table nothing read.
+        The Queue card — "What is your Agent doing next?".
       */}
-      <NotificationsPanel />
-
-      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
-
-      {/* §7.5's four queues, in the order a person needs them: what happens
-          next, then what is blocked on them. `PlanQueue` links to the second by
-          anchor, which is why the wrapper carries an id. */}
       <PlanQueue
         genomeId={genome?.genomeId}
         onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
       />
 
+      {/*
+        Below the queue: what needs a person, then the material itself.
+
+        Three panels that used to be here are not any more, because the Command
+        Center now has the tabs the design gives it. `PerformancePanel` is the
+        Performance & Learning tab and was rendering here as well - the same
+        component twice on one screen, one of them behind a tab that already
+        shows it. `AgentIdentityCard` is gone from this screen entirely: the
+        design's identity band is the *dashboard's* banner, and the Overview
+        opens on the campaign. Engagement's panels live on their own tab.
+      */}
       <div id="review">
         <ReviewQueueList items={review} onDecide={decide} />
       </div>
 
-      {/* Below the queue, above the drafts: what needs a person comes first,
-          then how the brand is doing, then the material itself. */}
-      <div id="performance">
-        <PerformancePanel genomeId={genome?.genomeId} />
-      </div>
+      <PendingQuestionsPanel />
+      {/*
+        Directly below the questions, because the two are one thought: what SPARK
+        needs from you, then what it wants you to know.
+      */}
+      <NotificationsPanel />
 
       <div id="drafts">
         <DraftList
-        genomeId={genome?.genomeId}
-        refreshKey={draftListRefresh}
-        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
+          genomeId={genome?.genomeId}
+          refreshKey={draftListRefresh}
+          onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
         />
       </div>
 
+      {/*
+        Still this screen's drawer, and still the reason `AskSpark` defers on
+        `/agents` — but it is opened from the chrome now, via `onAskSparkOpen`,
+        rather than by a button in the header beside it.
+      */}
       <ChatDrawer
         genomeId={genome?.genomeId}
         open={chatOpen}
