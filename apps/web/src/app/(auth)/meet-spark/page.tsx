@@ -1,117 +1,132 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useMemo } from 'react';
+import { Stage, SplashMark, ArchDome, OrbitRings, StageHoldButton } from '@/components/onboarding/Stage';
 
 /**
- * Meet Spark — built to `ui_screenshot/…192715.png` (frame 1440×931).
+ * Meet Spark — rebuilt from `ui build/SparkSocial Onboarding.dc.html`
+ * (`data-screen-label="Meet Spark Splash"`, Figma 1728×1117 dark).
  *
- * Hands off to onboarding (ONB-01→ONB-06), as the prototype does. It used to
- * drop straight into the shell because onboarding did not exist, which left a
- * new account looking at a dashboard with no genome behind it.
+ * ── Why this is a rewrite and not a nudge ────────────────────────────────
  *
- * ── Measured ─────────────────────────────────────────────────────────────
+ * The previous version was measured off `…192715.png` and centred its column
+ * responsively. Two things were wrong beyond spacing:
  *
- *   orb core     212px across, 156→367 vertically, centred on the frame
- *   dome         behind the title, y 426-583
- *   sub-line     y 600-619
- *   CTA          376 wide (532→908) — the same content width as every card
+ * 1. **It was not a hold button.** The screenshot shows no caption, so I made it
+ *    a plain button. The prototype binds `introHoldStart` / `introHoldEnd` — the
+ *    press-and-hold was always the intended gesture, and Meet Spark shares it
+ *    with the completion splash.
+ * 2. **"Spark" is flat `#6CE8FF`,** not the brand gradient I gave it.
  *
- * ── What changed, and one thing that is no longer a hold ─────────────────
+ * And the canvas is 1728×1117, not the 1440 frame the screenshot was cropped to,
+ * which is why every size read small: the mark is **373.69px**, not 212.
  *
- * The three artwork layers are exports now (`spalsh screen … scatter particle`,
- * `Splash screen … arh dome`, `sign up logo`), replacing a single hand-rolled
- * radial gradient that stood in for all of them.
- *
- * The CTA was a `HoldButton` — press-and-hold. The capture shows a plain pill
- * with a chevron and no "press and hold" caption, so it is a plain button here.
- * `HoldButton` is still right on the onboarding completion screen, which *does*
- * caption itself "Press & Hold button to continue" (`…193247`); the two screens
- * were treated as one gesture and are not.
+ * Everything below is the prototype's own absolute geometry inside `Stage`.
  */
 export default function MeetSparkPage() {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
 
   /**
-   * Just navigates. Selecting the organisation is `OrgGuard`'s job in the
-   * `(app)` layout — it has to be, because every other way into the shell (a
-   * deep link, a bookmark, a refresh) bypasses this screen. Doing it here too
-   * would be a second implementation of the same rule, free to drift from the
-   * one that actually covers all the entry points.
+   * The prototype iterates `starDots` — a binding whose data is not in the file,
+   * so these twelve positions are ours. Fixed rather than random so the field
+   * does not reshuffle on every render and is the same for everyone.
    */
-  function begin() {
-    setBusy(true);
-    router.push('/onboarding');
-  }
+  const stars = useMemo(
+    () =>
+      [
+        [214, 176, 4, '#6CE8FF'],
+        [389, 92, 3, '#F56BFF'],
+        [520, 300, 2, '#FFFFFF'],
+        [1290, 150, 4, '#A341FF'],
+        [1455, 260, 3, '#6CE8FF'],
+        [1180, 60, 2, '#FFFFFF'],
+        [300, 470, 3, '#A341FF'],
+        [1520, 470, 4, '#F56BFF'],
+        [640, 120, 2, '#6CE8FF'],
+        [1060, 210, 3, '#FFFFFF'],
+        [160, 620, 3, '#6CE8FF'],
+        [1600, 640, 2, '#A341FF'],
+      ] as ReadonlyArray<readonly [number, number, number, string]>,
+    [],
+  );
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden bg-[--ss-ink-900] px-6 pt-[156px]">
-      {/*
-        One export, not a stack: `meet spark background.svg` is #0C0C0C with the
-        particle field and its gradients already composited in, so the separate
-        particle layer this used to draw is gone.
-      */}
-      <img
-        src="/auth/bg-splash.png"
-        alt=""
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-      />
-
-      <div className="relative flex flex-col items-center pb-20">
-        <img
-          src="/auth/signup-logo.svg"
-          alt=""
+    <Stage background="#0C0C0C">
+      {stars.map(([l, t, w, c], i) => (
+        <div
+          key={i}
           aria-hidden
-          className="h-[212px] w-[212px] animate-breathe motion-reduce:animate-none"
+          className="animate-twinkle motion-reduce:animate-none"
+          style={{
+            position: 'absolute',
+            left: l,
+            top: t,
+            width: w,
+            height: w,
+            borderRadius: '50%',
+            background: c,
+            boxShadow: `0 0 6px 1px ${c}`,
+            animationDuration: `${2.4 + (i % 4) * 0.6}s`,
+            animationDelay: `${(i % 6) * 0.35}s`,
+          }}
         />
+      ))}
 
-        {/* The dome sits behind the title, overlapping the orb's lower edge. */}
-        <div className="relative mt-[94px] flex flex-col items-center">
-          <img
-            src="/auth/splash-dome.svg"
-            alt=""
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[-46px] w-[784px] max-w-none -translate-x-1/2"
-          />
+      <OrbitRings />
+      <ArchDome tone="dark" />
+      <SplashMark tone="dark" />
 
-          <h1 className="relative font-display text-[48.5px] leading-[1.15] text-white/70">
-            Meet{' '}
-            {/* "Spark" carries the brand gradient; `bg-clip-text` needs a
-                transparent fill or the gradient never shows through. */}
-            <span
-              className="bg-clip-text text-transparent text-[104.77px]"
-              style={{ backgroundImage: 'var(--ss-grad-brand)' }}
-            >
-              Spark
-            </span>
-          </h1>
-          <p className="relative mt-[18px] text-18 text-white/70">your Ai Social Agent</p>
-        </div>
-
-        <div className="relative mt-[138px] w-[376px] max-w-full">
-          <Button
-            size="cta"
-            onClick={begin}
-            disabled={busy}
-            className="w-full justify-center gap-3 border border-transparent bg-transparent text-16 font-normal text-white/85 hover:bg-white/[0.06]"
-            style={{
-              backgroundImage: 'linear-gradient(var(--ss-ink-900), var(--ss-ink-900)), var(--ss-grad-brand)',
-              backgroundOrigin: 'padding-box, border-box',
-              backgroundClip: 'padding-box, border-box',
-            }}
-          >
-            {busy ? 'Setting up…' : "let's get you onboarding"}
-            {!busy ? (
-              <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden>
-                <path d="m1 1 6 6-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : null}
-          </Button>
-        </div>
+      {/* Title block 396.13×133 at 664.53,574. "Meet" sits 39.6 lower than
+          "Spark" because the two are baseline-aligned at very different sizes. */}
+      <div style={{ position: 'absolute', left: 664.53, top: 574, width: 396.13, height: 133 }}>
+        <span
+          className="font-display"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 39.6,
+            fontSize: 46.78,
+            lineHeight: 1.269,
+            color: 'rgba(255,255,255,0.6)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Meet
+        </span>
+        <span
+          className="font-display"
+          style={{
+            position: 'absolute',
+            left: 127.13,
+            top: 0,
+            fontSize: 104.77,
+            lineHeight: 1.269,
+            color: '#6CE8FF',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Spark
+        </span>
       </div>
-    </div>
+
+      <div
+        style={{
+          position: 'absolute',
+          left: 719,
+          top: 713,
+          width: 290,
+          textAlign: 'center',
+          fontSize: 30.65,
+          lineHeight: 1.269,
+          color: 'rgba(255,255,255,0.6)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        your Ai Social Agent
+      </div>
+
+      <StageHoldButton tone="dark" label="let’s get you onboarding" onComplete={() => router.push('/onboarding')} />
+    </Stage>
   );
 }

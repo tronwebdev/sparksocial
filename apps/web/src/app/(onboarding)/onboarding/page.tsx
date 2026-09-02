@@ -423,14 +423,10 @@ export default function OnboardingPage() {
 
   /* ── Done (`L5`) ────────────────────────────────────────────────────── */
 
+  // No genome or brand name needed any more: the readiness list that read them
+  // is gone, so this screen makes no tool calls at all.
   if (draft && step === DONE) {
-    return (
-      <CompletionScreen
-        genomeId={draft.genomeId}
-        brandName={draft.businessName}
-        onDone={() => router.push('/')}
-      />
-    );
+    return <CompletionScreen onDone={() => router.push('/')} />;
   }
 
   /* Reachable only if `draft` is missing past the URL step — a refresh mid-flow. */
