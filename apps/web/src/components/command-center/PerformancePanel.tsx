@@ -124,35 +124,85 @@ export function PerformancePanel({ genomeId }: { genomeId: string | undefined })
   if (!genomeId) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[18px] font-semibold text-ink">Performance</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">
+    /*
+      The tab's own header, off the design: the title at 24px/600, the subtitle
+      at 16px, and five 190x54 filter chips at radius 12 on white with a
+      `0 10px 26px -18px` shadow, on a 206px pitch.
+
+      This was an 18px heading with three little `7d / 30d / 90d` pills. The
+      chips are the design's, and only the first of them can work: Date is this
+      panel's reporting window, and there is no channel, content-type, status or
+      account filter on `metrics.snapshot` at all. The other four are drawn and
+      disabled, each saying so — the design toasts all five as mocks, so nothing
+      is lost that was ever real.
+    */
+    <section className="rounded-xl bg-white/60 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[24px] font-semibold leading-[1.27] text-ink">
+            Agent Command Center &mdash; Performance &amp; Learning
+          </h2>
+          <p className="mt-[9px] text-16 text-ink-muted">
+            {/* The design's line, and this panel is the reason it is true — see
+                the note at the top of the file on why these are agent-feedback
+                measures rather than platform analytics. */}
+            This is agent feedback, not raw analytics
             {metrics
-              ? `Since ${new Date(metrics.since).toLocaleDateString('en', { day: 'numeric', month: 'long' })}.`
-              : 'How this brand is actually doing.'}
+              ? ` · since ${new Date(metrics.since).toLocaleDateString('en', { day: 'numeric', month: 'long' })}`
+              : ''}
           </p>
         </div>
+      </div>
 
-        <div className="flex shrink-0 gap-1" role="group" aria-label="Reporting window">
-          {WINDOWS.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setWindowDays(d)}
-              aria-pressed={windowDays === d}
-              className={cn(
-                'rounded-full border px-3 py-1 text-[12px]',
-                windowDays === d
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border text-ink hover:bg-surface-muted',
-              )}
-            >
-              {d}d
-            </button>
-          ))}
+      <div className="mt-5 flex flex-wrap gap-[16px]">
+        {/* Date — the live one. */}
+        <div
+          className="flex h-[54px] w-[190px] items-center gap-[11px] rounded-xl bg-white px-4"
+          style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.3)' }}
+        >
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <rect x="2.4" y="3.6" width="15.2" height="14" rx="2.4" stroke="#0C0C0C" strokeWidth="1.5" />
+            <path d="M2.4 7.8h15.2M6.6 2v3M13.4 2v3" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <label htmlFor="perf-window" className="sr-only">
+            Reporting window
+          </label>
+          <select
+            id="perf-window"
+            value={windowDays}
+            onChange={(e) => setWindowDays(Number(e.target.value))}
+            className="flex-1 border-0 bg-transparent text-16 font-medium text-ink outline-none"
+          >
+            {WINDOWS.map((d) => (
+              <option key={d} value={d}>
+                Last {d} days
+              </option>
+            ))}
+          </select>
         </div>
+
+        {(
+          [
+            ['Channels', 'There is no per-channel breakdown on the metrics snapshot.'],
+            ['Content type', 'There is no per-content-type breakdown on the metrics snapshot.'],
+            ['By Status', 'There is no status filter on the metrics snapshot.'],
+            ['By Account', 'There is no per-account breakdown on the metrics snapshot.'],
+          ] as const
+        ).map(([label, why]) => (
+          <button
+            key={label}
+            type="button"
+            disabled
+            title={why}
+            className="flex h-[54px] w-[190px] cursor-not-allowed items-center gap-[11px] rounded-xl bg-white px-4 opacity-55"
+            style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.3)' }}
+          >
+            <span className="flex-1 text-left text-16 font-medium text-ink">{label}</span>
+            <svg width="11" height="7" viewBox="0 0 12 8" fill="none" aria-hidden>
+              <path d="m1 1 5 5 5-5" stroke="#0C0C0C" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ))}
       </div>
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
