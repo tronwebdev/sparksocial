@@ -48,8 +48,13 @@ export interface StepShellProps {
   within?: { index: number; total: number };
   /** The grey lead-in sentence in the assistant bubble. */
   eyebrow?: React.ReactNode;
-  /** The purple question. */
-  title: React.ReactNode;
+  /**
+   * The purple question. Optional: some screens speak only the grey lead-in.
+   * The brand-kit capture's bubble is one paragraph with bold spans and no
+   * question at all, because its prompt row lives below the bubble alongside the
+   * preset toggle.
+   */
+  title?: React.ReactNode;
   subtitle?: React.ReactNode;
   onBack?: () => void;
   onContinue?: () => void;
@@ -196,7 +201,7 @@ function Assistant({
   children,
 }: {
   eyebrow?: React.ReactNode;
-  title: React.ReactNode;
+  title?: React.ReactNode;
   subtitle?: React.ReactNode;
   width: number;
   children?: React.ReactNode;
@@ -214,7 +219,9 @@ function Assistant({
           className="absolute -left-[7px] top-8 h-[14px] w-[14px] rotate-45 bg-white"
         />
         {eyebrow ? <p className="relative text-18 leading-[1.45] text-ink-muted">{eyebrow}</p> : null}
-        <p className={cn('relative text-18 font-medium text-brand-purple', eyebrow && 'mt-2')}>{title}</p>
+        {title ? (
+          <p className={cn('relative text-18 font-medium text-brand-purple', eyebrow && 'mt-2')}>{title}</p>
+        ) : null}
         {subtitle ? <p className="relative mt-2 text-14 leading-[1.5] text-ink-muted">{subtitle}</p> : null}
         {children ? <div className="relative mt-5">{children}</div> : null}
       </div>

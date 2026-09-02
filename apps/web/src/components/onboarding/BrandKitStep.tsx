@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { BrandFontPicker } from '@/components/settings/BrandFontPicker';
+import { SectionLabel, Select, Switch, Chip, Suggestions, TextField, GUARDRAIL_SUGGESTIONS } from './kit';
 import { invoke } from '@/lib/tools';
-import { cn } from '@/lib/utils';
 
 /**
  * `F6`'s third group and `M8` — the brand kit, asked during onboarding.
@@ -94,8 +92,8 @@ const ZONES = [
   'UTC',
 ];
 
-const COLOR_ROLE = ['Background', 'Text', 'Accent'];
-const NEW_COLOR = '#0C0C0C';
+/** The seven swatches in `...193155`, sampled from the capture. The fourth is `--ss-cyan`. */
+const PALETTE = ['#0097FD', '#1AFB06', '#6C71FF', '#6CE8FF', '#DAFF6C', '#FF6CBA', '#41FFDC'] as const;
 
 interface Governance {
   brandColors: string[];
@@ -116,6 +114,8 @@ export function BrandKitStep() {
   const [strictMode, setStrictMode] = useState(false);
   const [topics, setTopics] = useState('');
   const [claims, setClaims] = useState('');
+  const [topicDraft, setTopicDraft] = useState('');
+  const [claimDraft, setClaimDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -151,7 +151,13 @@ export function BrandKitStep() {
     setBusy(true);
     setMessage(null);
 
-    const preset = VOICE_PRESETS.find((p) => p.id === voice);
+    /*
+      `voice` is a comma list now, because the capture's control is
+      multi-select. `toneVector` is a single vector, so the first pick wins
+      rather than averaging: averaging "formal" with "casual" returns
+      neutral, which is not what selecting both means.
+    */
+    const preset = VOICE_PRESETS.find((p) => p.id === voice.split(',')[0]);
     const res = await invoke('brand.governance.set', {
       brandColors: colors.length ? colors : null,
       brandFonts: fonts.display ?? fonts.body ? fonts : null,
@@ -171,170 +177,253 @@ export function BrandKitStep() {
     return res.status === 'succeeded';
   }
 
-  if (!loaded) return <p className="text-[14px] text-ink-muted">Reading what SPARK already has…</p>;
+  if (!loaded) return <p className="text-14 text-ink-muted">Reading what SPARK already has…</p>;
 
+  const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
+  const toggleVoice = (id: string) =>
+    setVoice(
+      selectedVoices.includes(id)
+        ? selectedVoices.filter((v) => v !== id).join(',')
+        : [...selectedVoices, id].join(','),
+    );
+
+  const topicList = splitList(topics);
+  const claimList = splitList(claims);
+  const addTo = (current: string, value: string) =>
+    splitList(current).includes(value) ? current : [...splitList(current), value].join(', ');
+  const removeFrom = (current: string, value: string) =>
+    splitList(current).filter((v) => v !== value).join(', ');
+
+  const countries = [...new Set(ZONES.map((z) => z.split('/')[0]))];
+  const region = timezone.includes('/') ? timezone.split('/')[0] : countries[0];
+
+  /*
+    `…193155`. The brand kit is NOT inside the assistant card: the bubble sits
+    above it and the fields lay out in two columns on the background, each group a
+    labelled box. Reading the widest white run in that capture as one 596px card
+    was wrong - it was the bubble merged with a field box.
+
+    Saving is on blur of the whole block, which is what the step did before.
+  */
   return (
-    <div className="grid grid-cols-1 gap-7">
-      {/* ── Colour ─────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Colours</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          In order: the background, the text on it, then an accent. Posts use the defaults until you set
-          them.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {colors.map((c, i) => (
-            <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
-              <input
-                type="color"
-                value={normaliseHex(c)}
-                onChange={(e) => setColors(colors.map((x, j) => (j === i ? e.target.value : x)))}
-                className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
-                aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
-              />
-              <span className="text-[11.5px] text-ink-muted">{COLOR_ROLE[i] ?? 'extra'}</span>
-              <button
-                type="button"
-                onClick={() => setColors(colors.filter((_, j) => j !== i))}
-                className="text-[13px] text-ink-muted hover:text-ink"
-                aria-label={`Remove ${c}`}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {colors.length < 3 ? (
-            <Button variant="outline" size="sm" onClick={() => setColors([...colors, NEW_COLOR])}>
-              Add {COLOR_ROLE[colors.length]?.toLowerCase() ?? 'colour'}
-            </Button>
-          ) : null}
-        </div>
-      </section>
-
-      {/* ── Type ───────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Type</h2>
-        <div className="mt-2">
-          <BrandFontPicker
-            value={fonts}
-            onChange={setFonts}
-            {...(colors[0] ? { ground: colors[0] } : {})}
-            {...(colors[1] ? { type: colors[1] } : {})}
+    <div className="flex flex-col gap-5" onBlur={() => void save()}>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-14 text-ink">This is your brand kit generated from your URL</span>
+        {/*
+          Drawn in the capture, inert here, deliberately. Nothing generates a
+          palette: the crawl fills identity, voice and offer and proposes no
+          colours, so a toggle over "this preset" has no preset to switch to.
+          Kept visible because the capture shows it and dropping it would hide a
+          real gap; disabled because a switch that flips and changes nothing is
+          worse than one that admits it.
+        */}
+        <span className="flex items-center gap-2.5 rounded-[10px] border border-border bg-white px-3 py-2">
+          <span className="text-14 text-ink">Use This Brand Preset</span>
+          <Switch
+            checked={false}
+            disabled
+            onChange={() => {}}
+            label="Use this brand preset"
+            title="No generated preset exists yet - nothing proposes a palette from a crawl."
           />
-        </div>
-      </section>
-
-      {/* ── Voice ──────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Voice</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          How captions read. Adjustable axis by axis later, in Settings.
-        </p>
-        <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {VOICE_PRESETS.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                aria-pressed={voice === p.id}
-                onClick={() => setVoice(p.id)}
-                className={cn(
-                  'h-full w-full rounded-lg border p-3 text-left transition-colors',
-                  voice === p.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                )}
-              >
-                <span className="block text-[14px] font-medium text-ink">{p.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{p.note}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── When it posts ──────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Timezone</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          Every posting time is worked out in this zone. Required, because the alternative is posting on
-          UTC hours.
-        </p>
-        <select
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink sm:max-w-[320px]"
-          aria-label="Timezone"
-        >
-          {/* The detected or stored zone first, in case it is outside the list. */}
-          {timezone && !ZONES.includes(timezone) ? <option value={timezone}>{timezone}</option> : null}
-          {ZONES.map((z) => (
-            <option key={z} value={z}>
-              {z}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {/* ── Guardrails ─────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Guardrails</h2>
-        <label className="mt-2 flex items-start gap-3 rounded-lg border border-border p-3">
-          <input
-            type="checkbox"
-            checked={strictMode}
-            onChange={(e) => setStrictMode(e.target.checked)}
-            className="mt-1 size-4 accent-[--ss-primary]"
-          />
-          <span>
-            <span className="text-[14px] font-medium text-ink">Strict compliance</span>
-            <span className="mt-0.5 block text-[13px] text-ink-muted">
-              A restricted topic <b>blocks</b> a post rather than flagging it for you. On for anything
-              regulated.
-            </span>
-          </span>
-        </label>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-[13px] text-ink-muted" htmlFor="onb-topics">
-              Topics to stay off
-            </label>
-            <Input
-              id="onb-topics"
-              value={topics}
-              onChange={(e) => setTopics(e.target.value)}
-              placeholder="politics, competitors"
-              className="mt-1.5"
-            />
-            <p className="mt-1 text-[12px] text-ink-muted">Comma separated.</p>
-          </div>
-          <div>
-            <label className="text-[13px] text-ink-muted" htmlFor="onb-claims">
-              Claims to avoid
-            </label>
-            <Input
-              id="onb-claims"
-              value={claims}
-              onChange={(e) => setClaims(e.target.value)}
-              placeholder="guaranteed results, cheapest in town"
-              className="mt-1.5"
-            />
-            <p className="mt-1 text-[12px] text-ink-muted">Things you cannot stand behind.</p>
-          </div>
-        </div>
-      </section>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save the kit'}
-        </Button>
-        {message ? (
-          <span className={message.kind === 'ok' ? 'text-[13px] text-ink-muted' : 'text-[13px] text-warn'}>
-            {message.text}
-          </span>
-        ) : null}
+        </span>
       </div>
+
+      <div className="grid grid-cols-2 gap-x-[18px] gap-y-5">
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel>Color Theme</SectionLabel>
+          <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-white p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-14 text-ink">Selected Colors</span>
+              <span className="flex flex-wrap items-center gap-1.5">
+                {colors.map((c, i) => (
+                  <span key={c + i} className="relative">
+                    <span className="block h-6 w-6 rounded-[7px] border border-black/5" style={{ background: c }} />
+                    <button
+                      type="button"
+                      aria-label={'Remove ' + c}
+                      onClick={() => setColors(colors.filter((_, j) => j !== i))}
+                      className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[8px] text-ink shadow-hairline"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {PALETTE.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={'Add ' + c}
+                  onClick={() => setColors(colors.includes(c) ? colors : [...colors, c])}
+                  className="h-7 w-7 rounded-[8px] border border-black/5 transition-transform hover:scale-105"
+                  style={{ background: c }}
+                />
+              ))}
+              {/* The capture's eyedropper. `EyeDropper` is Chromium-only, so this
+                  is a colour input everywhere rather than a button that throws. */}
+              <label className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[8px] border border-border text-ink-muted">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
+                  <path d="M9.5 1.5l3 3-1.5 1.5-3-3 1.5-1.5ZM8 4L3 9v2h2l5-5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <input
+                  type="color"
+                  className="sr-only"
+                  aria-label="Pick a custom colour"
+                  onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel>Typography Style</SectionLabel>
+          <div className="flex flex-col gap-2.5 rounded-[12px] border border-border bg-white p-3">
+            <span className="text-14 text-ink">
+              Font Styles:{' '}
+              <strong className="font-semibold">
+                {[fonts.display, fonts.body].filter(Boolean).join(' , ') || 'System default'}
+              </strong>
+            </span>
+            <BrandFontPicker value={fonts} onChange={setFonts} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel>Select Brand Voice:</SectionLabel>
+          {/*
+            The capture shows a select AND three chips at once, so the control is
+            multi-select. `brand.governance.set` takes a single `toneVector`, so
+            `save()` sends the first pick's vector - see the note there.
+          */}
+          <Select ariaLabel="Brand voice" value="" onChange={(v) => v && toggleVoice(v)}>
+            <option value="">{selectedVoices.length ? selectedVoices.length + ' selected' : 'Choose a voice'}</option>
+            {VOICE_PRESETS.map((pr) => (
+              <option key={pr.id} value={pr.id}>
+                {pr.label}
+              </option>
+            ))}
+          </Select>
+          <div className="flex flex-wrap gap-2">
+            {selectedVoices.map((id) => (
+              <Chip key={id} onRemove={() => toggleVoice(id)}>
+                {VOICE_PRESETS.find((pr) => pr.id === id)?.label ?? id}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel>Pick a timezone</SectionLabel>
+          <div className="grid grid-cols-2 gap-2.5 rounded-[12px] border border-border bg-white p-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-13 text-ink-muted">Country</span>
+              <Select
+                ariaLabel="Country"
+                value={region ?? ''}
+                onChange={(r) => setTimezone(ZONES.find((z) => z.startsWith(r + '/')) ?? timezone)}
+              >
+                {countries.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-13 text-ink-muted">Timezone</span>
+              {/* Only `timezone` reaches the tool. Country filters this list and is
+                  not stored: there is no field for it, and an IANA zone already
+                  implies its region. */}
+              <Select ariaLabel="Timezone" value={timezone} onChange={setTimezone}>
+                <option value="">Select</option>
+                {ZONES.filter((z) => z.startsWith(region + '/')).map((z) => (
+                  <option key={z} value={z}>
+                    {z.split('/').slice(1).join('/')}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-16 font-semibold text-ink">Enable Strict Compliance</span>
+        <Switch checked={strictMode} onChange={setStrictMode} label="Enable strict compliance" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-[18px] gap-y-3">
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel info="Topics and phrases SPARK must never write about.">
+            Restricted Topics and phrases
+          </SectionLabel>
+          <TextField
+            value={topicDraft}
+            onChange={setTopicDraft}
+            onEnter={() => {
+              if (topicDraft.trim()) {
+                setTopics(addTo(topics, topicDraft.trim()));
+                setTopicDraft('');
+              }
+            }}
+            placeholder="Input your topics/phrases"
+            ariaLabel="Restricted topics"
+          />
+          <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setTopics(addTo(topics, v))} />
+          <div className="flex flex-wrap gap-2">
+            {topicList.map((t) => (
+              <Chip key={t} onRemove={() => setTopics(removeFrom(topics, t))}>
+                {t}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <SectionLabel info="Claims SPARK must never make, even where they are true.">
+            Claims to Avoid?
+          </SectionLabel>
+          <TextField
+            value={claimDraft}
+            onChange={setClaimDraft}
+            onEnter={() => {
+              if (claimDraft.trim()) {
+                setClaims(addTo(claims, claimDraft.trim()));
+                setClaimDraft('');
+              }
+            }}
+            placeholder="Input your claims to be avoided"
+            ariaLabel="Claims to avoid"
+          />
+          <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setClaims(addTo(claims, v))} />
+          <div className="flex flex-wrap gap-2">
+            {claimList.map((c) => (
+              <Chip key={c} onRemove={() => setClaims(removeFrom(claims, c))}>
+                {c}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {busy ? <p className="text-13 text-ink-muted">Saving…</p> : null}
+      {message ? (
+        <p
+          role={message.kind === 'err' ? 'alert' : undefined}
+          className={message.kind === 'err' ? 'text-13 text-destructive' : 'text-13 text-ink-muted'}
+        >
+          {message.text}
+        </p>
+      ) : null}
     </div>
   );
 }
+
 
 const splitList = (text: string): string[] =>
   text
@@ -343,10 +432,6 @@ const splitList = (text: string): string[] =>
     .filter(Boolean);
 
 /** Falls back to the swatch a colour input can show, rather than claiming the brand's colour is grey. */
-function normaliseHex(value: string): string {
-  const v = value.trim().toLowerCase();
-  return /^#[0-9a-f]{6}$/.test(v) ? v : '#000000';
-}
 
 /**
  * Which preset a stored tone vector is nearest, by squared distance.

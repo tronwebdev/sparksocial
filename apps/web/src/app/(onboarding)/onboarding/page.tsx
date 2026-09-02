@@ -396,10 +396,7 @@ export default function OnboardingPage() {
         group={3}
         onBack={back}
         eyebrow={<><strong className="font-semibold text-ink">Exciting update!</strong> Your Brand Knowledge is complete. Next up, we'll focus on your <strong className="font-semibold text-ink">Brand's Voice, Guardrails, and Time Zone.</strong></>}
-        title="This is your brand kit generated from your URL"
         onContinue={() => setStep(AGENT)}
-        inBubble
-        bubbleWidth={596}
       >
         <BrandKitStep />
       </StepShell>
@@ -415,12 +412,9 @@ export default function OnboardingPage() {
         within={{ index: 0, total: 2 }}
         onBack={back}
         eyebrow={<><strong className="font-semibold text-ink">Great news!</strong> Your Brand Guardrails are set. Ready to <strong className="font-semibold text-ink">customize your media and agent?</strong></>}
-        title="Name your agent"
         onContinue={() => setStep(DONE)}
         // `…193231` labels the last step's action Finish, not Continue.
         continueLabel="Finish"
-        inBubble
-        bubbleWidth={436}
       >
         <AgentStep genomeId={draft.genomeId} brandName={draft.businessName} />
       </StepShell>
