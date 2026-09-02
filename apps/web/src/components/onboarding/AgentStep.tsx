@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { DropZone, PreviewPanel, SectionLabel, TextField, Hint } from './kit';
+import { DropZone, SectionLabel, TextInput } from './kit';
+import { ProtoScale } from './Stage';
 
 /**
  * `F6`'s fourth group — "Name your agent", and the face it uses.
@@ -84,168 +85,194 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   }
 
   /*
-    `…193231`, with one honest departure that runs through the whole screen.
+    `…193231` and the prototype's Agent Setup screen, at its own numbers: a
+    432x65 name field, a 444x198 avatar section at radius 19.14, a 431x71 Cameo
+    card, and an 896x308 voice section holding a 397x151 drop zone, a 397x101
+    record panel, a 391x134 test box and a 391x46 player pill.
 
-    The capture asks for an uploaded avatar image, an uploaded or recorded voice
-    sample, and a "Test Agent Voice" box that speaks typed text. None of the
-    three exists:
+    ── One honest departure, running through the whole screen ─────────────
 
-      · nothing accepts an avatar image — `genome.avatar_config.set` stores a
-        HeyGen *id*, and `content.generate_avatar_video` renders from an avatar
-        that already exists
-      · nothing accepts a voice sample — `genome.voice.set` stores the brand's
-        tone of voice, not audio, and the ElevenLabs voice is likewise an *id*
-      · `content.generate_voiceover` needs `{ contentItemId, beatId, script }`;
-        it voices a beat of real content and cannot speak a loose sentence
+    The prototype asks for an uploaded avatar image, an uploaded or recorded
+    voice sample, and a test box that speaks typed text. Checked against the
+    schemas, none of the three exists:
 
-    So the capture's drop zones, Tap to Record, Generate Avatar and Cameo connect
-    are drawn and disabled, each saying why, and the two fields that DO reach the
-    backend sit beneath them. The alternative was inventing upload endpoints, or
-    quietly dropping half the screen — both worse than a visible gap.
+      genome.avatar_config.set   { genomeId, heygenAvatarId?, elevenlabsVoiceId? }
+                                 - ids, NOT an uploaded image
+      genome.voice.set           { genomeId, voice } - the brand's tone of voice,
+                                 NOT audio
+      content.generate_voiceover { contentItemId, genomeId, beatId, script, … }
+                                 - voices a beat of real content, so it cannot
+                                 speak a loose sentence
+
+    So those controls are drawn at full fidelity and disabled, each saying why,
+    and the two fields that DO reach the backend sit beneath them. Inventing
+    upload endpoints would have been worse than a visible gap.
   */
   return (
-    <div className="flex flex-col gap-5" onBlur={() => void save()}>
-      <div className="grid grid-cols-2 gap-x-[18px] gap-y-4">
-        <div className="flex flex-col gap-1.5">
+    <ProtoScale native={896}>
+      <div style={{ position: 'relative', width: 896, height: 640 }} onBlur={() => void save()}>
+        {/* Name your agent */}
+        <div style={{ position: 'absolute', left: 4, top: 0 }}>
           <SectionLabel>Name your agent</SectionLabel>
-          <TextField
-            value={name}
-            onChange={setName}
-            onEnter={() => void save()}
-            placeholder="Enter text"
-            ariaLabel="Agent name"
-          />
+        </div>
+        <input
+          type="text"
+          value={name}
+          placeholder="Enter text"
+          aria-label="Agent name"
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && void save()}
+          style={{
+            position: 'absolute', left: 4, top: 41, width: 432, height: 65, borderRadius: 10,
+            background: '#FFFFFF', border: 'none', outline: 'none', padding: '0 24px',
+            fontSize: 18, fontWeight: 500, color: '#0C0C0C',
+          }}
+        />
 
-          <SectionLabel
-            className="mt-2"
-            info="Import an existing Sora avatar cameo instead of uploading one."
-            trailing={<span className="text-13 text-ink-muted">Optional</span>}
-          >
-            Connect Cameo Account
-          </SectionLabel>
-          <div className="flex items-center gap-2">
-            <TextField
-              value=""
-              onChange={() => {}}
-              placeholder="Sora Avatar Cameo Import"
-              ariaLabel="Sora avatar cameo import (unavailable)"
-              className="flex-1 opacity-50"
-            />
-            <button
-              type="button"
-              disabled
-              title="No Cameo integration exists in the tool registry yet."
-              className="flex h-[42px] shrink-0 items-center rounded-[10px] bg-primary px-3 text-13 text-primary-foreground opacity-40"
-            >
-              + Connect
-            </button>
+        {/* Content Avatar */}
+        <div style={{ position: 'absolute', left: 452, top: 0 }}>
+          <SectionLabel>Content Avatar</SectionLabel>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Nothing generates an avatar image — the backend stores a HeyGen avatar id."
+          style={{
+            position: 'absolute', left: 719, top: -11, width: 177, height: 44, borderRadius: 10.38,
+            background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.69px rgba(12,12,12,0.1)', border: 'none',
+            opacity: 0.45, cursor: 'not-allowed',
+          }}
+        >
+          <svg width="20" height="19" viewBox="0 0 20 19" style={{ position: 'absolute', left: 12, top: 12, display: 'block' }} aria-hidden>
+            <defs>
+              <linearGradient id="agent-sparkle" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="#6CE8FF" />
+                <stop offset="0.27" stopColor="#F56BFF" />
+                <stop offset="0.67" stopColor="#A341FF" />
+                <stop offset="1" stopColor="#FEDEB5" />
+              </linearGradient>
+            </defs>
+            <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#agent-sparkle)" />
+          </svg>
+          <span style={{ position: 'absolute', left: 40, top: 12, fontSize: 16, fontWeight: 500, color: '#0C0C0C' }}>Generate Avatar</span>
+        </button>
+
+        <div
+          title="No tool accepts an avatar image upload."
+          style={{
+            position: 'absolute', left: 452, top: 41, width: 444, height: 198, borderRadius: 19.14,
+            background: '#F3F4F8', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)', opacity: 0.55,
+            pointerEvents: 'none',
+          }}
+        >
+          <DropZone left={20} top={17} width={255} accept="image/*" formats="Png, Jpeg up to 500MB" onFile={() => {}} disabled />
+          <span style={{ position: 'absolute', left: 307, top: 16, fontSize: 14, color: '#838383' }}>Avatar Preview</span>
+          <div
+            style={{
+              position: 'absolute', left: 294, top: 45.2, width: 129.7, height: 129.7, borderRadius: 15,
+              background: 'linear-gradient(180deg,#D1FFF4 0%,#DFF3FF 100%)', boxShadow: '0 0 0 5px #FFFFFF',
+            }}
+          />
+        </div>
+
+        {/* Cameo */}
+        <div style={{ position: 'absolute', left: 4, top: 135, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SectionLabel info="Import your Sora cameo likeness for AI video posts.">Connect Cameo Account</SectionLabel>
+          <span style={{ fontSize: 16, color: '#838383', opacity: 0.6 }}>Optional</span>
+        </div>
+        <div
+          title="No Cameo integration exists in the tool registry."
+          style={{
+            position: 'absolute', left: 3, top: 169, width: 431, height: 71, borderRadius: 19.14,
+            background: '#F3F4F8', boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)', opacity: 0.55,
+          }}
+        >
+          <span style={{ position: 'absolute', left: 24, top: 25, fontSize: 18, fontWeight: 500, color: '#838383' }}>Sora Avatar Cameo Import</span>
+          <div style={{ position: 'absolute', left: 303, top: 13, width: 113, height: 44, borderRadius: 10.38, background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.69px rgba(12,12,12,0.1)' }}>
+            <span style={{ position: 'absolute', left: 35, top: 13, fontSize: 16, fontWeight: 500, color: '#838383' }}>+ Connect</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel
-            trailing={
-              <button
-                type="button"
-                disabled
-                title="Nothing generates an avatar image — the backend stores a HeyGen avatar id."
-                className="flex items-center gap-1.5 rounded-[8px] border border-border bg-white px-2.5 py-1.5 text-13 text-ink opacity-40"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                  <path d="M6 1l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" fill="currentColor" />
-                </svg>
-                Generate Avatar
-              </button>
-            }
-          >
-            Content Avatar
+        {/* Agent Voice */}
+        <div style={{ position: 'absolute', left: 4, top: 271 }}>
+          <SectionLabel info="Upload or record a voice sample — Spark clones it for video voiceovers.">
+            Agent Voice (for media)
           </SectionLabel>
-
-          <div className="flex items-start gap-3 opacity-50" title="No tool accepts an avatar image upload.">
-            <div className="pointer-events-none flex-1">
-              <DropZone accept="image/*" formats="Png, Jpeg up to 500MB" onFile={() => {}} />
-            </div>
-            <div className="pointer-events-none">
-              <PreviewPanel label="Avatar Preview" />
+        </div>
+        <div
+          style={{
+            position: 'absolute', left: 0, top: 318, width: 896, height: 308, borderRadius: 19.14,
+            background: '#F3F4F8', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)',
+          }}
+        >
+          <div title="No tool accepts a voice sample upload." style={{ opacity: 0.55, pointerEvents: 'none' }}>
+            <DropZone
+              left={22}
+              top={20}
+              width={397}
+              height={151}
+              accept="audio/*"
+              prompt="Drop audio files here or browse"
+              formats="Mp3, Wav up to 500MB"
+              onFile={() => {}}
+              disabled
+            />
+          </div>
+          <div
+            title="In-browser recording is not wired, and nothing would accept the audio."
+            style={{ position: 'absolute', left: 22, top: 187, width: 397, height: 101, borderRadius: 12.76, boxShadow: 'inset 0 0 0 1.26px rgba(12,12,12,0.1)', opacity: 0.55 }}
+          >
+            <div style={{ position: 'absolute', left: 125, top: 31, width: 144, height: 38.65, borderRadius: 12, background: '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <span style={{ position: 'absolute', left: 39, top: 11, fontSize: 13.6, color: '#838383' }}>Tap to Record</span>
             </div>
           </div>
 
-          {/* What the backend does take. */}
-          <label className="mt-1 flex flex-col gap-1.5">
-            <span className="text-13 text-ink-muted">HeyGen avatar id</span>
-            <TextField
-              value={heygenId}
-              onChange={setHeygenId}
-              onEnter={() => void saveIds({})}
-              placeholder="Leave blank if you have none"
-              ariaLabel="HeyGen avatar id"
-            />
+          <div style={{ position: 'absolute', left: 458, top: 20, width: 288, fontSize: 18, lineHeight: 1.28, color: '#838383' }}>
+            Test Agent Voice, type a message to test voice output
+          </div>
+          <textarea
+            value={testLine}
+            onChange={(e) => setTestLine(e.target.value)}
+            placeholder="Enter text"
+            disabled
+            aria-label="Test the agent voice (unavailable)"
+            title="content.generate_voiceover voices a beat of real content — it needs a contentItemId, so it cannot speak a loose sentence."
+            style={{
+              position: 'absolute', left: 457, top: 76, width: 391, height: 134, borderRadius: 10,
+              background: '#FFFFFF', border: 'none', resize: 'none', padding: '15px 19px',
+              fontSize: 18, fontWeight: 500, color: '#0C0C0C', opacity: 0.55,
+            }}
+          />
+          <div style={{ position: 'absolute', left: 457, top: 236, width: 391, height: 46, borderRadius: 100, background: '#F3F4F8', boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)', opacity: 0.55 }}>
+            <div style={{ position: 'absolute', left: 10, top: 7, width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="11" height="12" viewBox="0 0 11 12" fill="none" aria-hidden>
+                <path d="M1 1.5v9l9-4.5-9-4.5Z" fill="#838383" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* The two fields the backend actually stores. */}
+        <div style={{ position: 'absolute', left: 4, top: 660, display: 'grid', gridTemplateColumns: '432px 432px', columnGap: 27 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <span style={{ fontSize: 16, color: '#838383' }}>HeyGen avatar id</span>
+            <TextInput value={heygenId} onChange={setHeygenId} onEnter={() => void saveIds({})} placeholder="Leave blank if you have none" ariaLabel="HeyGen avatar id" width={432} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <span style={{ fontSize: 16, color: '#838383' }}>ElevenLabs voice id</span>
+            <TextInput value={elevenId} onChange={setElevenId} onEnter={() => void saveIds({})} placeholder="Leave blank if you have none" ariaLabel="ElevenLabs voice id" width={432} />
           </label>
         </div>
+
+        {error ? (
+          <p role="alert" style={{ position: 'absolute', left: 4, top: 770, fontSize: 16, color: '#F01C1C' }}>
+            {error}
+          </p>
+        ) : null}
+        {saved ? (
+          <p style={{ position: 'absolute', left: 4, top: 770, fontSize: 16, color: '#838383' }}>Saved as {saved}.</p>
+        ) : null}
       </div>
-
-      <div className="flex flex-col gap-2.5 rounded-[14px] border border-border p-3">
-        <SectionLabel info="A short sample of the voice SPARK should speak in.">
-          Agent Voice (for media)
-        </SectionLabel>
-
-        <div className="grid grid-cols-2 gap-x-[18px]">
-          <div className="flex flex-col gap-2 opacity-50" title="No tool accepts a voice sample upload.">
-            <div className="pointer-events-none">
-              <DropZone
-                accept="audio/*"
-                formats="Mp3, Wav up to 500MB"
-                prompt="Drop audio files here or browse"
-                onFile={() => {}}
-              />
-            </div>
-            <button
-              type="button"
-              disabled
-              title="In-browser recording is not wired, and nothing would accept the audio."
-              className="flex items-center justify-center gap-1.5 self-center rounded-[10px] border border-border bg-white px-3 py-2 text-13 text-ink"
-            >
-              <svg width="12" height="16" viewBox="0 0 12 16" fill="none" aria-hidden>
-                <rect x="4" y="1" width="4" height="8" rx="2" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M1.5 7a4.5 4.5 0 0 0 9 0M6 11.5V15" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
-              Tap to Record
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Hint>Test Agent Voice, type a message to text voice output</Hint>
-            <textarea
-              value={testLine}
-              onChange={(e) => setTestLine(e.target.value)}
-              rows={3}
-              disabled
-              aria-label="Test the agent voice (unavailable)"
-              placeholder="Enter text"
-              title="content.generate_voiceover voices a beat of real content — it needs a contentItemId, so it cannot speak a loose sentence."
-              className="ss-field w-full resize-none rounded-[10px] border border-border bg-white px-3 py-2 text-14 text-ink opacity-50 outline-none placeholder:text-ink-placeholder"
-            />
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">ElevenLabs voice id</span>
-              <TextField
-                value={elevenId}
-                onChange={setElevenId}
-                onEnter={() => void saveIds({})}
-                placeholder="Leave blank if you have none"
-                ariaLabel="ElevenLabs voice id"
-              />
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {error ? (
-        <p role="alert" className="text-13 text-destructive">
-          {error}
-        </p>
-      ) : null}
-      {saved ? <p className="text-13 text-ink-muted">Saved as {saved}.</p> : null}
-    </div>
+    </ProtoScale>
   );
 }

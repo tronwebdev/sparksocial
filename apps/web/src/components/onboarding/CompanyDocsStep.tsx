@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { DropZone, PreviewPanel } from './kit';
+import { DropZone, PreviewTile, UploadSection } from './kit';
+import { ProtoScale } from './Stage';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -117,65 +118,75 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
   const latest = attached[attached.length - 1];
 
   /*
-    `…193059`: the drop zone and a File Preview panel side by side, then
-    "Download sample pdf guideline" underneath. The upload logic above is
-    untouched — this is the same three tool calls in the capture's layout.
+    `…193059` at the prototype's own numbers: a 547-wide `#F3F4F8` section
+    holding a 340x160 white drop zone and a 129.7 File Preview tile, with the
+    sample-guideline link beneath. Rendered inside `ProtoScale`, so every value
+    here is native 1728-canvas px.
   */
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-4">
-        <DropZone
-          className="flex-1"
-          accept={ACCEPT}
-          formats={`PDF, Docs up to ${MAX_MB}MB`}
-          busy={busy}
-          onFile={(f) => void upload(f)}
-        />
+    <ProtoScale native={547}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22, width: 547 }}>
+        <UploadSection width={547} height={263}>
+          <div style={{ position: 'relative', height: 263 }}>
+            <DropZone
+              left={20}
+              top={86}
+              accept={ACCEPT}
+              formats={`PDF, Docs up to ${MAX_MB}MB`}
+              busy={busy}
+              onFile={(f) => void upload(f)}
+            />
+            <div>
+              <PreviewTile
+                left={385}
+                top={114.2}
+                label="File Preview"
+                onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+              >
+                {latest ? (
+                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 8 }}>
+                    <span style={{ display: 'flex', width: 46, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: 6, background: 'rgba(240,28,28,0.08)', fontSize: 13, fontWeight: 600, color: '#F01C1C' }}>
+                      PDF
+                    </span>
+                    <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#838383' }}>
+                      {latest.filename}
+                    </span>
+                  </span>
+                ) : null}
+              </PreviewTile>
+            </div>
+          </div>
+        </UploadSection>
 
-        <PreviewPanel
-          label="File Preview"
-          onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+        {error ? (
+          <p role="alert" style={{ fontSize: 16, color: '#F01C1C' }}>
+            {error}
+          </p>
+        ) : null}
+
+        {/*
+          What the read produced. Not in the prototype, and kept: a scanned PDF
+          with no text layer attaches successfully and yields nothing, which is
+          the one outcome the owner must not find out about a week later.
+        */}
+        {latest ? (
+          <p style={{ fontSize: 16, color: '#838383' }}>
+            Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
+            {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
+          </p>
+        ) : null}
+
+        <a
+          href="/brand-guideline-sample.pdf"
+          download
+          style={{ display: 'flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', fontSize: 16, fontWeight: 500, color: '#0C0C0C', textDecoration: 'underline' }}
         >
-          {latest ? (
-            <span className="flex flex-col items-center gap-1 px-1">
-              <span className="flex h-9 w-7 items-center justify-center rounded-[4px] bg-destructive/10 text-[9px] font-semibold text-destructive">
-                PDF
-              </span>
-              <span className="max-w-[92px] truncate text-[10px] text-ink-muted">{latest.filename}</span>
-            </span>
-          ) : null}
-        </PreviewPanel>
+          <svg width="15" height="16" viewBox="0 0 15 16" fill="none" aria-hidden>
+            <path d="M7.5 1v9m0 0L4 6.5m3.5 3.5L11 6.5M1 14h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Download sample pdf guideline
+        </a>
       </div>
-
-      {error ? (
-        <p role="alert" className="text-13 text-destructive">
-          {error}
-        </p>
-      ) : null}
-
-      {/*
-        What the read actually produced. Not in the capture, and kept because a
-        PDF that attached with zero pages is the one outcome the user must not
-        discover a week later — a scan with no text layer reads as success
-        otherwise.
-      */}
-      {latest ? (
-        <p className="text-13 text-ink-muted">
-          Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
-          {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
-        </p>
-      ) : null}
-
-      <a
-        href="/brand-guideline-sample.pdf"
-        download
-        className="flex items-center gap-1.5 self-start text-13 text-ink underline"
-      >
-        <svg width="12" height="13" viewBox="0 0 12 13" fill="none" aria-hidden>
-          <path d="M6 1v8m0 0L3 6m3 3 3-3M1 11.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Download sample pdf guideline
-      </a>
-    </div>
+    </ProtoScale>
   );
 }

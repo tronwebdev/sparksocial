@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { DropZone, PreviewPanel, SectionLabel, Select } from './kit';
+import { DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
+import { ProtoScale } from './Stage';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -176,87 +177,80 @@ export function BrandDetailsStep({
   }
 
   /*
-    `…192946`: a textarea, a "Choose Business Niche" select, then an "Upload Logo"
-    section carrying a "Generate logo" action, a drop zone and a Logo Preview
-    panel beside it.
+    `…192946` at the prototype's own numbers: a 547-wide column with the
+    one-liner, the niche select, and a `#F3F4F8` Upload Logo section 547×263
+    holding a Generate button at 385,16.9, a rule at y=71, a 340×160 drop zone at
+    20,86 and a 129.7 preview tile at 385,114.2.
 
-    All three tool calls above are untouched — `genome.identity.set` on blur,
-    `asset.upload_url` + `brand.governance.set` for the logo. `brand.logo.generate`
-    is new here and already existed in the registry; the capture draws the button
-    and the tool was never wired to anything.
+    Rendered inside `ProtoScale`, so every value is native 1728-canvas px. The
+    three tool calls above are untouched.
   */
   return (
-    <div className="flex flex-col gap-4">
-      <textarea
-        value={oneLiner}
-        onChange={(e) => setOneLiner(e.target.value)}
-        onBlur={() => void saveText()}
-        rows={3}
-        aria-label={`What ${brandName || 'your brand'} does`}
-        placeholder="We create intelligent AI agents that simplify tasks and enhance productivity for businesses."
-        className="ss-field w-full resize-none rounded-[12px] border border-border bg-input px-3 py-2.5 text-14 leading-[1.5] text-ink outline-none placeholder:text-ink-placeholder"
-      />
+    <ProtoScale native={547}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22, width: 547 }}>
+        <textarea
+          value={oneLiner}
+          onChange={(e) => setOneLiner(e.target.value)}
+          onBlur={() => void saveText()}
+          rows={3}
+          aria-label={`What ${brandName || 'your brand'} does`}
+          placeholder="We create intelligent AI agents that simplify tasks and enhance productivity for businesses."
+          style={{
+            width: 547, borderRadius: 10, background: '#FFFFFF', border: 'none', outline: 'none',
+            padding: '18px 19px', fontSize: 18, lineHeight: 1.5, color: '#0C0C0C', resize: 'none',
+          }}
+        />
 
-      <div className="flex flex-col gap-1.5">
-        <SectionLabel>Choose Business Niche</SectionLabel>
-        <Select value={niche} onChange={(v) => { setNiche(v); void saveText(); }} ariaLabel="Business niche">
-          <option value="">Choose one</option>
-          {NICHES.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </Select>
-      </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <SectionLabel>Choose Business Niche</SectionLabel>
+          <SelectField
+            width={547}
+            ariaLabel="Business niche"
+            placeholder="Choose one"
+            value={niche}
+            onChange={(v: string) => {
+              setNiche(v);
+              void saveText();
+            }}
+            options={NICHES.map((n) => ({ value: n, label: n }))}
+          />
+        </div>
 
-      <div className="flex flex-col gap-2.5 rounded-[14px] border border-border p-3">
-        <SectionLabel
-          trailing={
-            <button
-              type="button"
-              onClick={() => void generateLogo()}
-              disabled={generating || !brandName.trim()}
-              className="flex items-center gap-1.5 rounded-[8px] border border-border bg-white px-2.5 py-1.5 text-13 text-ink transition-colors hover:bg-surface-muted disabled:opacity-40"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
-                <path d="M6 1l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z" fill="url(#sparkle)" />
-                <defs>
-                  <linearGradient id="sparkle" x1="0" y1="0" x2="1" y2="1">
-                    <stop stopColor="#6CE8FF" />
-                    <stop offset="1" stopColor="#A341FF" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              {generating ? 'Generating…' : 'Generate logo'}
-            </button>
-          }
-        >
-          Upload Logo
-        </SectionLabel>
-
-        <div className="flex items-start gap-3">
+        <UploadSection width={547} height={263}>
+          <span style={{ position: 'absolute', left: 20, top: 24, fontSize: 18, fontWeight: 500, color: '#0C0C0C' }}>
+            Upload Logo
+          </span>
+          <GenerateButton
+            left={385}
+            top={16.9}
+            label={generating ? 'Generating…' : 'Generate logo'}
+            onClick={() => void generateLogo()}
+            disabled={generating}
+          />
+          <SectionRule top={71} />
           <DropZone
-            className="flex-1"
+            left={20}
+            top={86}
             accept={IMAGE_TYPES.join(',')}
             formats="Png, Jpeg up to 500MB"
             busy={uploading}
             onFile={(f) => void uploadLogo(f)}
           />
-          <PreviewPanel label="Logo Preview" onClear={logoUrl ? () => setLogoUrl('') : undefined}>
-            {logoUrl ? <img src={logoUrl} alt="" className="max-h-[84px] max-w-[96px] object-contain" /> : null}
-          </PreviewPanel>
-        </div>
-      </div>
+          <PreviewTile left={385} top={114.2} label="Logo Preview" onClear={logoUrl ? () => setLogoUrl('') : undefined}>
+            {logoUrl ? <img src={logoUrl} alt="" style={{ maxWidth: 118, maxHeight: 118, objectFit: 'contain' }} /> : null}
+          </PreviewTile>
+        </UploadSection>
 
-      {message ? (
-        <p
-          role={message.kind === 'err' ? 'alert' : undefined}
-          className={message.kind === 'err' ? 'text-13 text-destructive' : 'text-13 text-ink-muted'}
-        >
-          {message.text}
-        </p>
-      ) : null}
-      {savingText ? <p className="text-13 text-ink-muted">Saving…</p> : null}
-    </div>
+        {message ? (
+          <p
+            role={message.kind === 'err' ? 'alert' : undefined}
+            style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}
+          >
+            {message.text}
+          </p>
+        ) : null}
+        {savingText ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
+      </div>
+    </ProtoScale>
   );
 }

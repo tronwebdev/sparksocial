@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * The prototype's own layout device, adopted rather than approximated.
@@ -66,6 +66,61 @@ export function Stage({
       {/* Reserves the scaled height so the page scrolls rather than clipping when
           the window is shorter than the canvas. */}
       <div aria-hidden style={{ height: contentHeight * scale }} />
+    </div>
+  );
+}
+
+/**
+ * The stepped screens' form content, at the prototype's own numbers.
+ *
+ * Those screens keep the responsive chrome — the brief said to leave the logo,
+ * background, Back, Continue and Finish alone — so they cannot live on a full
+ * `Stage`. But their fields are specified just as absolutely: two **432**-wide
+ * columns at x=420 and x=879, a 57px select, a 55px input, a 44px chip, a
+ * 45×24.3 toggle, radii of 10 / 10.38 / 12.6 / 12.76 / 13.94 / 15.
+ *
+ * Scaling those by hand into the shell's 750px column means rounding thirty
+ * numbers and losing the relationships between them — a 10px radius and a 10.38
+ * chip radius both become 8. So the block is authored at the prototype's own
+ * 891px span (420→1311) and scaled once, which keeps every value literal and
+ * every proportion intact.
+ *
+ * Height is measured rather than assumed: a `transform` does not affect layout,
+ * so without reserving the scaled height the block would overlap whatever
+ * follows it.
+ */
+export function ProtoScale({ native = 891, children }: { native?: number; children: React.ReactNode }) {
+  /**
+   * The canvas ratio, not a per-screen fudge: the prototype is 1728 wide and the
+   * app's design frame is 1440, so everything from it scales by the same
+   * 0.8333. That is why the two-column span (891) lands at 742.5 — within 8px of
+   * the shell's measured 750 column — while a single-column screen (547) lands
+   * at 456 rather than being stretched to fill.
+   *
+   * Deriving the scale from the target width instead would make each screen its
+   * own scale and quietly resize the type between steps.
+   */
+  const scale = 1440 / 1728;
+  const inner = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const el = inner.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeight(el.offsetHeight));
+    ro.observe(el);
+    setHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div style={{ width: native * scale, maxWidth: '100%', height: height * scale, position: 'relative' }}>
+      <div
+        ref={inner}
+        style={{ position: 'absolute', top: 0, left: 0, width: native, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

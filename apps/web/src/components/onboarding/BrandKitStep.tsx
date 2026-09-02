@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BrandFontPicker } from '@/components/settings/BrandFontPicker';
-import { SectionLabel, Select, Switch, Chip, Suggestions, TextField, GUARDRAIL_SUGGESTIONS } from './kit';
+import { BRAND_FONTS } from '@sparksocial/shared';
+import {
+  SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
+  Swatch, PaletteSwatch, GUARDRAIL_SUGGESTIONS, PALETTE,
+} from './kit';
+import { ProtoScale } from './Stage';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -92,8 +96,6 @@ const ZONES = [
   'UTC',
 ];
 
-/** The seven swatches in `...193155`, sampled from the capture. The fourth is `--ss-cyan`. */
-const PALETTE = ['#0097FD', '#1AFB06', '#6C71FF', '#6CE8FF', '#DAFF6C', '#FF6CBA', '#41FFDC'] as const;
 
 interface Governance {
   brandColors: string[];
@@ -198,232 +200,225 @@ export function BrandKitStep() {
   const region = timezone.includes('/') ? timezone.split('/')[0] : countries[0];
 
   /*
-    `…193155`. The brand kit is NOT inside the assistant card: the bubble sits
-    above it and the fields lay out in two columns on the background, each group a
-    labelled box. Reading the widest white run in that capture as one 596px card
-    was wrong - it was the bubble merged with a field box.
+    `…193155` at the prototype's own numbers: two 432-wide columns 27px apart,
+    a 57px select, a 123px timezone card holding two 190×49 selects at radius 15,
+    a 45×24.3 toggle, 55px guardrail inputs and 44px chips.
 
-    Saving is on blur of the whole block, which is what the step did before.
+    The brand kit is NOT inside the assistant card — the bubble sits above it and
+    these lay out on the background. Saving is on blur of the whole block.
   */
   return (
-    <div className="flex flex-col gap-5" onBlur={() => void save()}>
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-14 text-ink">This is your brand kit generated from your URL</span>
-        {/*
-          Drawn in the capture, inert here, deliberately. Nothing generates a
-          palette: the crawl fills identity, voice and offer and proposes no
-          colours, so a toggle over "this preset" has no preset to switch to.
-          Kept visible because the capture shows it and dropping it would hide a
-          real gap; disabled because a switch that flips and changes nothing is
-          worse than one that admits it.
-        */}
-        <span className="flex items-center gap-2.5 rounded-[10px] border border-border bg-white px-3 py-2">
-          <span className="text-14 text-ink">Use This Brand Preset</span>
-          <Switch
-            checked={false}
-            disabled
-            onChange={() => {}}
-            label="Use this brand preset"
-            title="No generated preset exists yet - nothing proposes a palette from a crawl."
-          />
-        </span>
-      </div>
+    <ProtoScale native={891}>
+      <div style={{ width: 891, display: 'flex', flexDirection: 'column', gap: 38 }} onBlur={() => void save()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+          <span style={{ fontSize: 18, color: '#0C0C0C' }}>This is your brand kit generated from your URL</span>
+          {/*
+            Drawn in both sources, inert in both senses: nothing generates a
+            palette from a crawl, so there is no preset to switch to. Kept
+            visible because hiding it would hide a real gap.
+          */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 14, height: 57, padding: '0 20px', borderRadius: 10, background: '#FFFFFF' }}>
+            <span style={{ fontSize: 18, fontWeight: 500, color: '#0C0C0C' }}>Use This Brand Preset</span>
+            <Toggle
+              checked={false}
+              disabled
+              onChange={() => {}}
+              label="Use this brand preset"
+              title="No generated preset exists — nothing proposes a palette from a crawl."
+            />
+          </span>
+        </div>
 
-      <div className="grid grid-cols-2 gap-x-[18px] gap-y-5">
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel>Color Theme</SectionLabel>
-          <div className="flex flex-col gap-3 rounded-[12px] border border-border bg-white p-3">
-            <div className="flex items-center gap-2">
-              <span className="text-14 text-ink">Selected Colors</span>
-              <span className="flex flex-wrap items-center gap-1.5">
-                {colors.map((c, i) => (
-                  <span key={c + i} className="relative">
-                    <span className="block h-6 w-6 rounded-[7px] border border-black/5" style={{ background: c }} />
-                    <button
-                      type="button"
-                      aria-label={'Remove ' + c}
-                      onClick={() => setColors(colors.filter((_, j) => j !== i))}
-                      className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[8px] text-ink shadow-hairline"
-                    >
-                      &times;
-                    </button>
-                  </span>
+        <div style={{ display: 'grid', gridTemplateColumns: '432px 432px', columnGap: 27, rowGap: 38 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Color Theme</SectionLabel>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: 432, height: 57, borderRadius: 10, background: '#FFFFFF', padding: '0 18px' }}>
+              <span style={{ fontSize: 18.3, color: '#0C0C0C', whiteSpace: 'nowrap' }}>Selected Colors</span>
+              <span style={{ display: 'flex', gap: 10 }}>
+                {colors.map((c, idx) => (
+                  <Swatch key={c + idx} hex={c} onRemove={() => setColors(colors.filter((_, j) => j !== idx))} />
                 ))}
               </span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 432 }}>
               {PALETTE.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  aria-label={'Add ' + c}
-                  onClick={() => setColors(colors.includes(c) ? colors : [...colors, c])}
-                  className="h-7 w-7 rounded-[8px] border border-black/5 transition-transform hover:scale-105"
-                  style={{ background: c }}
-                />
+                <PaletteSwatch key={c} hex={c} onPick={() => setColors(colors.includes(c) ? colors : [...colors, c])} />
               ))}
-              {/* The capture's eyedropper. `EyeDropper` is Chromium-only, so this
-                  is a colour input everywhere rather than a button that throws. */}
-              <label className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[8px] border border-border text-ink-muted">
-                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
-                  <path d="M9.5 1.5l3 3-1.5 1.5-3-3 1.5-1.5ZM8 4L3 9v2h2l5-5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+              {/* The prototype's eyedropper tile. A colour input, because the
+                  `EyeDropper` API is Chromium-only and a throwing button is worse. */}
+              <label
+                style={{
+                  width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
+                  boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
+                  <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <input
-                  type="color"
-                  className="sr-only"
-                  aria-label="Pick a custom colour"
-                  onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])}
-                />
+                <input type="color" aria-label="Pick a custom colour" style={{ display: 'none' }} onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])} />
               </label>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel>Typography Style</SectionLabel>
-          <div className="flex flex-col gap-2.5 rounded-[12px] border border-border bg-white p-3">
-            <span className="text-14 text-ink">
-              Font Styles:{' '}
-              <strong className="font-semibold">
-                {[fonts.display, fonts.body].filter(Boolean).join(' , ') || 'System default'}
-              </strong>
-            </span>
-            <BrandFontPicker value={fonts} onChange={setFonts} />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel>Select Brand Voice:</SectionLabel>
-          {/*
-            The capture shows a select AND three chips at once, so the control is
-            multi-select. `brand.governance.set` takes a single `toneVector`, so
-            `save()` sends the first pick's vector - see the note there.
-          */}
-          <Select ariaLabel="Brand voice" value="" onChange={(v) => v && toggleVoice(v)}>
-            <option value="">{selectedVoices.length ? selectedVoices.length + ' selected' : 'Choose a voice'}</option>
-            {VOICE_PRESETS.map((pr) => (
-              <option key={pr.id} value={pr.id}>
-                {pr.label}
-              </option>
-            ))}
-          </Select>
-          <div className="flex flex-wrap gap-2">
-            {selectedVoices.map((id) => (
-              <Chip key={id} onRemove={() => toggleVoice(id)}>
-                {VOICE_PRESETS.find((pr) => pr.id === id)?.label ?? id}
-              </Chip>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel>Pick a timezone</SectionLabel>
-          <div className="grid grid-cols-2 gap-2.5 rounded-[12px] border border-border bg-white p-3">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Country</span>
-              <Select
-                ariaLabel="Country"
-                value={region ?? ''}
-                onChange={(r) => setTimezone(ZONES.find((z) => z.startsWith(r + '/')) ?? timezone)}
-              >
-                {countries.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-13 text-ink-muted">Timezone</span>
-              {/* Only `timezone` reaches the tool. Country filters this list and is
-                  not stored: there is no field for it, and an IANA zone already
-                  implies its region. */}
-              <Select ariaLabel="Timezone" value={timezone} onChange={setTimezone}>
-                <option value="">Select</option>
-                {ZONES.filter((z) => z.startsWith(region + '/')).map((z) => (
-                  <option key={z} value={z}>
-                    {z.split('/').slice(1).join('/')}
-                  </option>
-                ))}
-              </Select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Typography Style</SectionLabel>
+            <div style={{ width: 432, height: 132, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)', padding: '12.5px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, height: 35, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 20, color: '#0C0C0C' }}>Font Styles:</span>
+                <span style={{ fontSize: 27, fontWeight: 700, color: '#0C0C0C' }}>{fonts.display || 'System'}</span>
+                <span style={{ fontSize: 24, fontWeight: 700, color: '#0C0C0C' }}>, {fonts.body || 'default'}</span>
+              </div>
+              {/*
+                The prototype has a single 393x49 "Choose Fonts" select on
+                `#F3F4F8`, not the settings picker. `BrandFontPicker` renders its
+                own live preview card, which overflowed this 132px card and
+                bled a dark bar across the column — visible in the browser, not
+                in any diff. The font list is still `BRAND_FONTS`, so the same
+                values reach `brandFonts`.
+              */}
+              <div style={{ marginTop: 19, position: 'relative', width: 393, height: 49 }}>
+                <select
+                  aria-label="Choose fonts"
+                  value={fonts.display ?? ''}
+                  onChange={(e) => setFonts({ display: e.target.value, body: e.target.value })}
+                  style={{
+                    width: 393, height: 49, borderRadius: 10, background: '#F3F4F8', border: 'none',
+                    outline: 'none', appearance: 'none', padding: '0 42px 0 18px', fontSize: 18,
+                    color: fonts.display ? '#0C0C0C' : '#838383', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Choose Fonts</option>
+                  {BRAND_FONTS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label ?? f.id}
+                    </option>
+                  ))}
+                </select>
+                <svg width="11" height="5" viewBox="0 0 11 5" fill="none" aria-hidden style={{ position: 'absolute', right: 21, top: 22, display: 'block', pointerEvents: 'none' }}>
+                  <path d="m1 1 4.5 3L10 1" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-16 font-semibold text-ink">Enable Strict Compliance</span>
-        <Switch checked={strictMode} onChange={setStrictMode} label="Enable strict compliance" />
-      </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Select Brand Voice:</SectionLabel>
+            {/* Multi-select, as both sources draw it. `toneVector` takes one
+                vector, so `save()` sends the first pick's — see the note there. */}
+            <SelectField
+              ariaLabel="Brand voice"
+              placeholder={selectedVoices.length ? `${selectedVoices.length} selected` : 'Choose a voice'}
+              value=""
+              onChange={(v: string) => v && toggleVoice(v)}
+              options={VOICE_PRESETS.map((pr) => ({ value: pr.id, label: pr.label }))}
+            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, width: 432 }}>
+              {selectedVoices.map((id) => (
+                <TagChip key={id} onRemove={() => toggleVoice(id)}>
+                  {VOICE_PRESETS.find((pr) => pr.id === id)?.label ?? id}
+                </TagChip>
+              ))}
+            </div>
+          </div>
 
-      <div className="grid grid-cols-2 gap-x-[18px] gap-y-3">
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel info="Topics and phrases SPARK must never write about.">
-            Restricted Topics and phrases
-          </SectionLabel>
-          <TextField
-            value={topicDraft}
-            onChange={setTopicDraft}
-            onEnter={() => {
-              if (topicDraft.trim()) {
-                setTopics(addTo(topics, topicDraft.trim()));
-                setTopicDraft('');
-              }
-            }}
-            placeholder="Input your topics/phrases"
-            ariaLabel="Restricted topics"
-          />
-          <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setTopics(addTo(topics, v))} />
-          <div className="flex flex-wrap gap-2">
-            {topicList.map((t) => (
-              <Chip key={t} onRemove={() => setTopics(removeFrom(topics, t))}>
-                {t}
-              </Chip>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel weight={700}>Pick a timezone</SectionLabel>
+            <div style={{ position: 'relative', width: 432, height: 123, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
+              <span style={{ position: 'absolute', left: 23, top: 17, fontSize: 18, color: '#838383' }}>Country</span>
+              <div style={{ position: 'absolute', left: 20, top: 55 }}>
+                <SmallSelect
+                  ariaLabel="Country"
+                  value={region ?? ''}
+                  onChange={(r: string) => setTimezone(ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone)}
+                  options={countries.map((c) => ({ value: c as string, label: c as string }))}
+                />
+              </div>
+              <span style={{ position: 'absolute', left: 226, top: 17, fontSize: 18, color: '#838383' }}>Timezone</span>
+              <div style={{ position: 'absolute', left: 223, top: 55 }}>
+                {/* Only `timezone` reaches the tool: Country filters this list and
+                    is not stored, since an IANA zone already implies its region. */}
+                <SmallSelect
+                  ariaLabel="Timezone"
+                  value={timezone}
+                  placeholder="Select"
+                  onChange={setTimezone}
+                  options={ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <SectionLabel info="Claims SPARK must never make, even where they are true.">
-            Claims to Avoid?
-          </SectionLabel>
-          <TextField
-            value={claimDraft}
-            onChange={setClaimDraft}
-            onEnter={() => {
-              if (claimDraft.trim()) {
-                setClaims(addTo(claims, claimDraft.trim()));
-                setClaimDraft('');
-              }
-            }}
-            placeholder="Input your claims to be avoided"
-            ariaLabel="Claims to avoid"
-          />
-          <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setClaims(addTo(claims, v))} />
-          <div className="flex flex-wrap gap-2">
-            {claimList.map((c) => (
-              <Chip key={c} onRemove={() => setClaims(removeFrom(claims, c))}>
-                {c}
-              </Chip>
-            ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#0C0C0C' }}>Enable Strict Compliance</span>
+          <Toggle checked={strictMode} onChange={setStrictMode} label="Enable strict compliance" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '433px 433px', columnGap: 27 }}>
+          <div>
+            <SectionLabel info="Spark will never post or reply about these topics.">Restricted Topics and phrases</SectionLabel>
+            <div style={{ marginTop: 11 }}>
+              <TextInput
+                value={topicDraft}
+                onChange={setTopicDraft}
+                onEnter={() => {
+                  if (topicDraft.trim()) {
+                    setTopics(addTo(topics, topicDraft.trim()));
+                    setTopicDraft('');
+                  }
+                }}
+                placeholder="Input your topics/phrases"
+                ariaLabel="Restricted topics"
+              />
+            </div>
+            <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setTopics(addTo(topics, v))} />
+            <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {topicList.map((t) => (
+                <TagChip key={t} onRemove={() => setTopics(removeFrom(topics, t))}>
+                  {t}
+                </TagChip>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel info="Claims Spark must never make, even where they are true.">Claims to Avoid?</SectionLabel>
+            <div style={{ marginTop: 11 }}>
+              <TextInput
+                value={claimDraft}
+                onChange={setClaimDraft}
+                onEnter={() => {
+                  if (claimDraft.trim()) {
+                    setClaims(addTo(claims, claimDraft.trim()));
+                    setClaimDraft('');
+                  }
+                }}
+                placeholder="Input your claims to be avoided"
+                ariaLabel="Claims to avoid"
+              />
+            </div>
+            <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setClaims(addTo(claims, v))} />
+            <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {claimList.map((c) => (
+                <TagChip key={c} onRemove={() => setClaims(removeFrom(claims, c))}>
+                  {c}
+                </TagChip>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {busy ? <p className="text-13 text-ink-muted">Saving…</p> : null}
-      {message ? (
-        <p
-          role={message.kind === 'err' ? 'alert' : undefined}
-          className={message.kind === 'err' ? 'text-13 text-destructive' : 'text-13 text-ink-muted'}
-        >
-          {message.text}
-        </p>
-      ) : null}
-    </div>
+        {busy ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
+        {message ? (
+          <p role={message.kind === 'err' ? 'alert' : undefined} style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}>
+            {message.text}
+          </p>
+        ) : null}
+      </div>
+    </ProtoScale>
   );
 }
-
 
 const splitList = (text: string): string[] =>
   text

@@ -1,176 +1,264 @@
 'use client';
 
-import { cn } from '@/lib/utils';
-
 /**
- * The parts the four onboarding card screens share, taken from the captures
- * rather than invented: `…192946` (brand details), `…193059` (docs),
- * `…193155` (brand kit), `…193231` (agent).
+ * The onboarding form parts, at `ui build/SparkSocial Onboarding.dc.html`'s own
+ * numbers.
  *
- * All four use the same vocabulary — a labelled section, a dashed drop zone, a
- * bordered preview panel beside it, a green switch, removable chips, and a
- * refreshable suggestion list. Building them once is the difference between four
- * screens that agree and four that merely resemble each other.
+ * These were previously built from the Figma screenshots and Tailwind's scale,
+ * which is why they read as approximate: a 10px radius, a 10.38px chip radius
+ * and a 12.76px dropzone radius all collapsed to `rounded-xl`, and a 57px select
+ * became `h-[42px]`. The prototype specifies each of them, so each of them is
+ * here literally.
  *
- * The two-column split is `…193155`'s and `…193231`'s: a 596px and a 436px card
- * respectively, each holding two columns of fields. `…192946` and `…193059` put
- * the drop zone and its preview side by side inside one section.
+ * Every value below is native 1728-canvas px. These render inside `ProtoScale`,
+ * which authors at the prototype's 891px column span and scales once — so
+ * nothing here is pre-divided, and the relationships between values survive.
+ *
+ * Colours are the prototype's own: `#F3F4F8` section grounds, `#FFFFFF` fields,
+ * `#0C0C0C` primary text, `#838383` secondary, `#F01C1C` destructive,
+ * `#F35525` for the swatch remove cross, `#B0B0B0` for the info badge.
  */
 
-/** Section heading, with the captures' info affordance where they draw one. */
+/** Section heading — 18px/500, with the 21.6px info badge where the design has one. */
 export function SectionLabel({
   children,
   info,
-  trailing,
-  className,
+  weight = 500,
+  size = 18,
 }: {
   children: React.ReactNode;
-  /** Renders the ⓘ the captures put beside several of these labels. */
   info?: string;
-  /** Right-aligned control on the same row — "Generate logo", "Optional". */
-  trailing?: React.ReactNode;
-  className?: string;
+  /** "Pick a timezone" and "Enable Strict Compliance" are 700 in the prototype. */
+  weight?: 500 | 700;
+  size?: number;
 }) {
   return (
-    <div className={cn('flex items-center justify-between gap-3', className)}>
-      <span className="flex items-center gap-1.5 text-14 font-medium text-ink">
-        {children}
-        {info ? (
-          <span
-            role="img"
-            aria-label={info}
-            title={info}
-            className="flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full border border-border text-[9px] text-ink-muted"
-          >
-            i
-          </span>
-        ) : null}
-      </span>
-      {trailing}
+    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <span style={{ fontSize: size, fontWeight: weight, color: '#0C0C0C' }}>{children}</span>
+      {info ? (
+        <div
+          title={info}
+          role="img"
+          aria-label={info}
+          style={{
+            width: 21.6,
+            height: 21.6,
+            borderRadius: '50%',
+            boxShadow: 'inset 0 0 0 1.3px #B0B0B0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            color: '#B0B0B0',
+            cursor: 'help',
+            flexShrink: 0,
+          }}
+        >
+          i
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** Helper copy under a label. */
-export function Hint({ children }: { children: React.ReactNode }) {
-  return <p className="text-13 leading-[1.5] text-ink-muted">{children}</p>;
+/** The full-width select: 432×57, radius 10, white, 18px/500, 15×8 chevron. */
+export function SelectField({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  placeholder,
+  width = 432,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  ariaLabel: string;
+  placeholder?: string;
+  width?: number;
+}) {
+  return (
+    <div style={{ position: 'relative', width, height: 57 }}>
+      <select
+        value={value}
+        aria-label={ariaLabel}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          height: 57,
+          borderRadius: 10,
+          background: '#FFFFFF',
+          border: 'none',
+          outline: 'none',
+          appearance: 'none',
+          padding: '0 46px 0 21px',
+          fontSize: 18,
+          fontWeight: 500,
+          lineHeight: 1.269,
+          color: value ? '#0C0C0C' : '#838383',
+          cursor: 'pointer',
+        }}
+      >
+        {placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        width="15"
+        height="8"
+        viewBox="0 0 15 8"
+        fill="none"
+        aria-hidden
+        style={{ position: 'absolute', left: width - 42, top: 25, display: 'block', pointerEvents: 'none' }}
+      >
+        <path d="m1 1 6.5 6L14 1" stroke="#0C0C0C" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
 }
 
-/**
- * The dashed upload target. Four screens draw it with the same three lines:
- * a cloud glyph, "Drop files here or browse", the accepted formats, and a
- * Browse files button.
- *
- * It is a `<button>` wrapping a hidden `<input type=file>` rather than a styled
- * label, so keyboard users get it for free and drag-and-drop still works.
- */
-export function DropZone({
-  onFile,
-  accept,
-  formats,
-  prompt = 'Drop files here or browse',
-  busy,
-  className,
+/** The paired timezone selects: 190×49, radius **15**, on `#F3F4F8`. */
+export function SmallSelect({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  placeholder,
 }: {
-  onFile: (file: File) => void;
-  accept: string;
-  /** The captures state the limit explicitly — "Png, Jpeg up to 500MB". */
-  formats: string;
-  prompt?: string;
-  busy?: boolean;
-  className?: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  ariaLabel: string;
+  placeholder?: string;
 }) {
-  const id = `dz-${prompt.replace(/\W+/g, '-').toLowerCase()}`;
+  return (
+    <div style={{ position: 'relative', width: 190, height: 49 }}>
+      <select
+        value={value}
+        aria-label={ariaLabel}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          height: 49,
+          borderRadius: 15,
+          background: '#F3F4F8',
+          border: 'none',
+          outline: 'none',
+          appearance: 'none',
+          padding: '0 34px 0 18px',
+          fontSize: 18,
+          fontWeight: 400,
+          color: value ? '#0C0C0C' : '#838383',
+          cursor: 'pointer',
+        }}
+      >
+        {placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        width="11"
+        height="5"
+        viewBox="0 0 11 5"
+        fill="none"
+        aria-hidden
+        style={{ position: 'absolute', left: 168, top: 23, display: 'block', pointerEvents: 'none' }}
+      >
+        <path d="m1 1 4.5 3L10 1" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
+/** 55px tall, radius 10, white, 19px horizontal padding, 18px text. */
+export function TextInput({
+  value,
+  onChange,
+  placeholder,
+  ariaLabel,
+  onEnter,
+  width = 433,
+  disabled,
+  title,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  ariaLabel: string;
+  onEnter?: () => void;
+  width?: number | string;
+  disabled?: boolean;
+  title?: string;
+}) {
+  return (
+    <input
+      type="text"
+      value={value}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      title={title}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && onEnter) {
+          e.preventDefault();
+          onEnter();
+        }
+      }}
+      style={{
+        width,
+        height: 55,
+        borderRadius: 10,
+        background: '#FFFFFF',
+        border: 'none',
+        outline: 'none',
+        padding: '0 19px',
+        fontSize: 18,
+        fontWeight: 400,
+        color: '#0C0C0C',
+        display: 'block',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    />
+  );
+}
+
+/** 44px tall pill, radius 10.38, hairline ring, 16px/500 label in `#838383`. */
+export function TagChip({ children, onRemove }: { children: React.ReactNode; onRemove?: () => void }) {
   return (
     <div
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        const f = e.dataTransfer.files?.[0];
-        if (f) onFile(f);
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        height: 44,
+        padding: '0 15px',
+        borderRadius: 10.38,
+        background: '#FFFFFF',
+        boxShadow: 'inset 0 0 0 0.69px rgba(12,12,12,0.1)',
       }}
-      className={cn(
-        'flex flex-col items-center justify-center gap-1.5 rounded-[12px] border border-dashed border-border bg-white px-4 py-5 text-center',
-        className,
-      )}
     >
-      <svg width="24" height="18" viewBox="0 0 24 18" fill="none" aria-hidden className="text-ink-muted">
-        <path
-          d="M6.5 16.5A5.5 5.5 0 0 1 6 5.6a6.5 6.5 0 0 1 12.4 1.6A4.5 4.5 0 0 1 17.5 16.5M12 15V7m0 0-3 3m3-3 3 3"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <span className="text-13 font-medium text-ink">{prompt}</span>
-      <span className="text-13 text-ink-muted">{formats}</span>
-      <label
-        htmlFor={id}
-        className="mt-1.5 cursor-pointer rounded-[8px] border border-border bg-white px-3 py-1.5 text-13 text-ink transition-colors hover:bg-surface-muted"
-      >
-        {busy ? 'Uploading…' : 'Browse files'}
-        <input
-          id={id}
-          type="file"
-          accept={accept}
-          className="sr-only"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = '';
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
-/**
- * The bordered panel beside a drop zone — "Logo Preview", "File Preview",
- * "Avatar Preview". Empty it shows a placeholder glyph; filled it shows the
- * thing plus the captures' red delete button.
- */
-export function PreviewPanel({
-  label,
-  onClear,
-  children,
-  className,
-}: {
-  label: string;
-  onClear?: () => void;
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn('flex w-[104px] shrink-0 flex-col gap-1.5', className)}>
-      <span className="text-center text-13 text-ink-muted">{label}</span>
-      <div className="relative flex h-[92px] items-center justify-center overflow-hidden rounded-[12px] border border-border bg-white">
-        {children ?? (
-          <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden className="text-ink-placeholder">
-            <circle cx="17" cy="7" r="3" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M2 21l6.5-8 5 6 3-3.5L24 21H2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <span style={{ fontSize: 16, fontWeight: 500, color: '#838383' }}>{children}</span>
+      {onRemove ? (
+        <button type="button" onClick={onRemove} aria-label="Remove" style={{ display: 'block', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+          <svg width="12.8" height="12.8" viewBox="0 0 13 13" fill="none" style={{ display: 'block' }} aria-hidden>
+            <path d="M1.5 1.5l10 10M11.5 1.5l-10 10" stroke="#838383" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-        )}
-        {onClear && children ? (
-          <button
-            type="button"
-            onClick={onClear}
-            aria-label={`Remove ${label.toLowerCase()}`}
-            className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-[6px] bg-destructive text-white"
-          >
-            <svg width="10" height="11" viewBox="0 0 10 11" fill="none" aria-hidden>
-              <path d="M1 3h8M3.5 3V1.8h3V3M2.2 3l.5 6.5h4.6L7.8 3" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-            </svg>
-          </button>
-        ) : null}
-      </div>
+        </button>
+      ) : null}
     </div>
   );
 }
 
-/** The green switch. On in the captures is `--ss-success`. */
-export function Switch({
+/** 45×24.3, radius 154, 19px knob. `#3EC332` on, `#E4E4E4` off. */
+export function Toggle({
   checked,
   onChange,
   label,
@@ -192,144 +280,360 @@ export function Switch({
       title={title}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn(
-        'relative h-[22px] w-[40px] shrink-0 rounded-full transition-colors disabled:opacity-40',
-        checked ? 'bg-success' : 'bg-border',
-      )}
+      style={{
+        position: 'relative',
+        width: 45,
+        height: 24.3,
+        borderRadius: 154,
+        background: checked ? '#3EC332' : '#E4E4E4',
+        border: 'none',
+        padding: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'background 0.2s ease',
+        opacity: disabled ? 0.5 : 1,
+        flexShrink: 0,
+      }}
     >
       <span
-        className={cn(
-          'absolute top-[3px] h-4 w-4 rounded-full bg-white transition-[left]',
-          checked ? 'left-[21px]' : 'left-[3px]',
-        )}
+        style={{
+          position: 'absolute',
+          top: 2.6,
+          left: checked ? 23.4 : 2.6,
+          width: 19,
+          height: 19,
+          borderRadius: '50%',
+          background: '#FFFFFF',
+          transition: 'left 0.2s ease',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        }}
       />
     </button>
   );
 }
 
-/** A removable chip, as the captures draw under Brand Voice and the guardrails. */
-export function Chip({ children, onRemove }: { children: React.ReactNode; onRemove?: () => void }) {
+/** The `#F3F4F8` section that wraps an upload pair. Radius 10. */
+export function UploadSection({ children, width = 547, height }: { children: React.ReactNode; width?: number; height?: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-[8px] border border-border bg-white px-2 py-1 text-13 text-ink">
-      {children}
-      {onRemove ? (
-        <button type="button" onClick={onRemove} aria-label="Remove" className="text-ink-muted hover:text-ink">
-          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden>
-            <path d="M1 1l7 7M8 1l-7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-        </button>
-      ) : null}
-    </span>
+    <div style={{ position: 'relative', width, height, borderRadius: 10, background: '#F3F4F8' }}>{children}</div>
   );
 }
 
-/**
- * The captures' "⟳ Suggestions" block: a refresh affordance over a list of
- * click-to-add values, fading out down the list.
- *
- * The refresh icon is drawn but inert — the suggestions in the capture are a
- * fixed list, and nothing in the backend generates alternatives. A control that
- * spins and changes nothing is worse than one that does not offer to.
- */
-export function Suggestions({
-  items,
-  onPick,
+/** 141×38.1, radius 9.89, white with a hairline ring and the four-stop sparkle. */
+export function GenerateButton({
+  label,
+  onClick,
+  disabled,
+  title,
+  left,
+  top,
 }: {
-  items: readonly string[];
-  onPick: (value: string) => void;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+  left?: number;
+  top?: number;
 }) {
+  const positioned = left !== undefined && top !== undefined;
   return (
-    <div className="flex flex-col gap-1">
-      <span className="flex items-center gap-1.5 text-13 text-ink-muted">
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden>
-          <path d="M10.5 6a4.5 4.5 0 1 1-1.3-3.2M10.5 1v2.5H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-        Suggestions
-      </span>
-      <ul className="flex flex-col">
-        {items.map((s, i) => (
-          <li key={s}>
-            <button
-              type="button"
-              onClick={() => onPick(s)}
-              // The capture fades successive suggestions out; the list is a
-              // ranking, not four equal options.
-              style={{ opacity: 1 - i * 0.22 }}
-              className="text-left text-13 text-ink-muted transition-colors hover:text-ink"
-            >
-              {s}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        ...(positioned ? { position: 'absolute', left, top } : {}),
+        width: 141,
+        height: 38.1,
+        borderRadius: 9.89,
+        background: '#FFFFFF',
+        boxShadow: 'inset 0 0 0 0.66px rgba(12,12,12,0.1)',
+        border: 'none',
+        padding: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <svg width="20" height="19" viewBox="0 0 20 19" style={{ position: 'absolute', left: 10, top: 10, display: 'block' }} aria-hidden>
+        <defs>
+          <linearGradient id="kit-sparkle" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="#6CE8FF" />
+            <stop offset="0.27" stopColor="#F56BFF" />
+            <stop offset="0.67" stopColor="#A341FF" />
+            <stop offset="1" stopColor="#FEDEB5" />
+          </linearGradient>
+        </defs>
+        <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#kit-sparkle)" />
+        <path d="m16.6 12.2.9 2.6 2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9Z" fill="url(#kit-sparkle)" />
+      </svg>
+      <span style={{ position: 'absolute', left: 37, top: 10.3, fontSize: 14, fontWeight: 500, color: '#0C0C0C' }}>{label}</span>
+    </button>
+  );
+}
+
+/** The 545×1 rule the prototype puts under an upload section's header. */
+export function SectionRule({ top, width = 545 }: { top: number; width?: number }) {
+  return <div aria-hidden style={{ position: 'absolute', left: 0, top, width, height: 1, background: 'rgba(12,12,12,0.1)' }} />;
+}
+
+/**
+ * 340×160, radius 12.76, **white** — not the dashed border the earlier version
+ * drew. The prototype has no dash anywhere; the affordance is the white panel
+ * against the `#F3F4F8` section and a purple ring on hover.
+ */
+export function DropZone({
+  onFile,
+  accept,
+  formats,
+  prompt = 'Drop files here or browse',
+  busy,
+  disabled,
+  title,
+  width = 340,
+  height = 160,
+  left,
+  top,
+}: {
+  onFile: (file: File) => void;
+  accept: string;
+  formats: string;
+  prompt?: string;
+  busy?: boolean;
+  disabled?: boolean;
+  title?: string;
+  width?: number;
+  height?: number;
+  left?: number;
+  top?: number;
+}) {
+  const id = `dz-${prompt.replace(/\W+/g, '-').toLowerCase()}`;
+  const positioned = left !== undefined && top !== undefined;
+  return (
+    <div
+      title={title}
+      onDragOver={(e) => !disabled && e.preventDefault()}
+      onDrop={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        const f = e.dataTransfer.files?.[0];
+        if (f) onFile(f);
+      }}
+      style={{
+        ...(positioned ? { position: 'absolute', left, top } : { position: 'relative' }),
+        width,
+        height,
+        borderRadius: 12.76,
+        background: '#FFFFFF',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <svg width="32" height="31" viewBox="0 0 32 31" fill="none" style={{ position: 'absolute', left: width / 2 - 16, top: 22, display: 'block' }} aria-hidden>
+        <path d="M4 21.5V8.2A4.2 4.2 0 0 1 8.2 4h15.6A4.2 4.2 0 0 1 28 8.2v9.6" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="m4 19.5 5.4-5.4a2.6 2.6 0 0 1 3.7 0l6.4 6.4" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
+        <circle cx="20.4" cy="10.6" r="2.1" stroke="#0C0C0C" strokeWidth="1.6" />
+        <path d="M16 25.5v-6m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ position: 'absolute', left: 0, right: 0, top: 63, textAlign: 'center', fontSize: 14, color: '#0C0C0C' }}>{prompt}</span>
+      <span style={{ position: 'absolute', left: 0, right: 0, top: 83.7, textAlign: 'center', fontSize: 14, color: '#838383' }}>{formats}</span>
+      <label
+        htmlFor={id}
+        style={{
+          position: 'absolute',
+          left: width / 2 - 50,
+          top: 113,
+          width: 100,
+          height: 31,
+          borderRadius: 7.35,
+          background: '#FFFFFF',
+          boxShadow: 'inset 0 0 0 0.49px rgba(12,12,12,0.4)',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 13.8,
+          fontWeight: 500,
+          color: '#838383',
+        }}
+      >
+        {busy ? 'Uploading…' : 'Browse files'}
+        <input
+          id={id}
+          type="file"
+          accept={accept}
+          disabled={disabled}
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = '';
+          }}
+        />
+      </label>
     </div>
   );
 }
 
-/** A `<select>` matching the captures' field chrome. */
-export function Select({
-  value,
-  onChange,
+/**
+ * 129.7×129.7, radius 13.94, on `#F3F4F8` with a 1.38px ring, its label 14px
+ * above it and the prototype's `#F01C1C` delete tile inside.
+ */
+export function PreviewTile({
+  label,
+  onClear,
   children,
-  ariaLabel,
+  left,
+  top,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-  ariaLabel: string;
+  label: string;
+  onClear?: () => void;
+  children?: React.ReactNode;
+  left?: number;
+  top?: number;
 }) {
+  const positioned = left !== undefined && top !== undefined;
   return (
-    <select
-      value={value}
-      aria-label={ariaLabel}
-      onChange={(e) => onChange(e.target.value)}
-      className="ss-field h-[42px] w-full rounded-[10px] border border-border bg-white px-3 text-14 text-ink outline-none"
-    >
-      {children}
-    </select>
+    <div style={positioned ? { position: 'absolute', left, top } : { position: 'relative' }}>
+      <span style={{ position: 'absolute', left: 20, top: -24, fontSize: 14, color: '#838383', whiteSpace: 'nowrap' }}>{label}</span>
+      <div
+        style={{
+          position: 'relative',
+          width: 129.7,
+          height: 129.7,
+          borderRadius: 13.94,
+          background: '#F3F4F8',
+          boxShadow: 'inset 0 0 0 1.38px rgba(12,12,12,0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        {children ?? (
+          <svg width="42" height="42" viewBox="0 0 42 42" fill="none" aria-hidden style={{ display: 'block' }}>
+            <circle cx="34" cy="8" r="7.8" fill="#838383" />
+            <path
+              d="M0 40.4c0 .7.5 1.2 1.2 1.2h39.2c.7 0 1.2-.5 1.2-1.2V29.1c0-.3-.1-.6-.4-.9l-6.5-6.6a1.2 1.2 0 0 0-1.8 0l-6 6.1c-.5.5-1.3.5-1.8 0L13.9 16.4a1.2 1.2 0 0 0-1.8 0L.4 28.2c-.3.3-.4.6-.4.9v11.3Z"
+              fill="#838383"
+            />
+          </svg>
+        )}
+        {onClear && children ? (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Remove ${label.toLowerCase()}`}
+            style={{
+              position: 'absolute',
+              left: 91,
+              top: 7.8,
+              width: 31,
+              height: 31,
+              borderRadius: 7.16,
+              background: '#F01C1C',
+              boxShadow: 'inset 0 0 0 0.48px rgba(12,12,12,0.4)',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <svg width="16" height="18" viewBox="0 0 16 18" fill="none" style={{ display: 'block' }} aria-hidden>
+              <path
+                d="M1 4.5h14M5.5 4.5V3a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 10.5 3v1.5m2.5 0V15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4.5M6.2 8v6M9.8 8v6"
+                stroke="#FFFFFF"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
-/** A text input matching the captures' field chrome. */
-export function TextField({
-  value,
-  onChange,
-  placeholder,
-  ariaLabel,
-  onEnter,
-  className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  ariaLabel: string;
-  onEnter?: () => void;
-  className?: string;
-}) {
+/** A chosen colour: 38.5px, radius 12.6, with the `#F35525` remove cross. */
+export function Swatch({ hex, onRemove }: { hex: string; onRemove?: () => void }) {
   return (
-    <input
-      value={value}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && onEnter) {
-          e.preventDefault();
-          onEnter();
-        }
-      }}
-      className={cn(
-        'ss-field h-[42px] w-full rounded-[10px] border border-border bg-white px-3 text-14 text-ink outline-none placeholder:text-ink-placeholder',
-        className,
-      )}
+    <div style={{ position: 'relative', width: 38.5, height: 38.5, borderRadius: 12.6, background: hex, boxShadow: 'inset 0 0 0 1.26px rgba(12,12,12,0.1)' }}>
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${hex}`}
+          style={{
+            position: 'absolute',
+            right: -6,
+            top: -6,
+            width: 17.2,
+            height: 17.2,
+            borderRadius: 4.78,
+            background: '#FFFFFF',
+            boxShadow: 'inset 0 0 0 0.6px rgba(12,12,12,0.1)',
+            border: 'none',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <svg width="7" height="7" viewBox="0 0 7 7" fill="none" style={{ display: 'block' }} aria-hidden>
+            <path d="M1 1l5 5M6 1 1 6" stroke="#F35525" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** A palette option: 42.7px, radius 11.85. */
+export function PaletteSwatch({ hex, onPick }: { hex: string; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-label={`Add ${hex}`}
+      style={{ width: 42.7, height: 42.7, borderRadius: 11.85, background: hex, border: 'none', padding: 0, cursor: 'pointer' }}
     />
   );
 }
 
-/** The captures' guardrail lists offer these four, in this order. */
+/** The 15px refresh glyph, its 14px/500 label, and the 16px/500 pickable list. */
+export function Suggestions({ items, onPick }: { items: readonly string[]; onPick: (value: string) => void }) {
+  return (
+    <>
+      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 19 }}>
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ display: 'block' }} aria-hidden>
+          <path d="M13 7.5a5.5 5.5 0 1 1-1.6-3.9M13 1v3.2h-3.2" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span style={{ fontSize: 14, fontWeight: 500, color: '#838383' }}>Suggestions</span>
+      </div>
+      <div style={{ marginTop: 9, paddingLeft: 19, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        {items.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onPick(s)}
+            style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.66, color: '#0C0C0C', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** The captures' and prototype's four, in order. */
 export const GUARDRAIL_SUGGESTIONS = [
   'Confidential Information',
   'Sensitive Data',
   'Personal Identifiable Information (PII)',
   'Proprietary Technology',
 ] as const;
+
+/** The prototype's seven palette entries. The fourth is `--ss-cyan`. */
+export const PALETTE = ['#0097FD', '#1AFB06', '#6C71FF', '#6CE8FF', '#DAFF6C', '#FF6CBA', '#41FFDC'] as const;
