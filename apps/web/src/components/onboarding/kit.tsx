@@ -393,6 +393,8 @@ export function DropZone({
   height = 160,
   left,
   top,
+  outlined,
+  glyph = 'image',
 }: {
   onFile: (file: File) => void;
   accept: string;
@@ -405,6 +407,15 @@ export function DropZone({
   height?: number;
   left?: number;
   top?: number;
+  /**
+   * The docs drop zone is the one that sits on the white notch card rather than
+   * inside an `#F3F4F8` section, so the prototype gives it no fill and a
+   * `1.26px` ring instead - white-on-white would be invisible. The other three
+   * (logo, avatar, audio) keep the fill.
+   */
+  outlined?: boolean;
+  /** `document` swaps the image glyph for the prototype's file-with-fold. */
+  glyph?: 'image' | 'document';
 }) {
   const id = `dz-${prompt.replace(/\W+/g, '-').toLowerCase()}`;
   const positioned = left !== undefined && top !== undefined;
@@ -423,15 +434,26 @@ export function DropZone({
         width,
         height,
         borderRadius: 12.76,
-        background: '#FFFFFF',
+        background: outlined ? 'transparent' : '#FFFFFF',
+        boxShadow: outlined ? 'inset 0 0 0 1.26px rgba(12,12,12,0.1)' : undefined,
         opacity: disabled ? 0.5 : 1,
       }}
     >
       <svg width="32" height="31" viewBox="0 0 32 31" fill="none" style={{ position: 'absolute', left: width / 2 - 16, top: 22, display: 'block' }} aria-hidden>
-        <path d="M4 21.5V8.2A4.2 4.2 0 0 1 8.2 4h15.6A4.2 4.2 0 0 1 28 8.2v9.6" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="m4 19.5 5.4-5.4a2.6 2.6 0 0 1 3.7 0l6.4 6.4" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
-        <circle cx="20.4" cy="10.6" r="2.1" stroke="#0C0C0C" strokeWidth="1.6" />
-        <path d="M16 25.5v-6m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        {glyph === 'document' ? (
+          <>
+            <path d="M8 4h10.5L26 11.5V25a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="#0C0C0C" strokeWidth="1.7" strokeLinejoin="round" />
+            <path d="M18 4v8h8" stroke="#0C0C0C" strokeWidth="1.7" strokeLinejoin="round" />
+            <path d="M15.5 23.5v-6m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : (
+          <>
+            <path d="M4 21.5V8.2A4.2 4.2 0 0 1 8.2 4h15.6A4.2 4.2 0 0 1 28 8.2v9.6" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
+            <path d="m4 19.5 5.4-5.4a2.6 2.6 0 0 1 3.7 0l6.4 6.4" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
+            <circle cx="20.4" cy="10.6" r="2.1" stroke="#0C0C0C" strokeWidth="1.6" />
+            <path d="M16 25.5v-6m0 0-2.7 2.7m2.7-2.7 2.7 2.7" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
       </svg>
       <span style={{ position: 'absolute', left: 0, right: 0, top: 63, textAlign: 'center', fontSize: 14, color: '#0C0C0C' }}>{prompt}</span>
       <span style={{ position: 'absolute', left: 0, right: 0, top: 83.7, textAlign: 'center', fontSize: 14, color: '#838383' }}>{formats}</span>
@@ -602,15 +624,49 @@ export function PaletteSwatch({ hex, onPick }: { hex: string; onPick: () => void
 }
 
 /** The 15px refresh glyph, its 14px/500 label, and the 16px/500 pickable list. */
-export function Suggestions({ items, onPick }: { items: readonly string[]; onPick: (value: string) => void }) {
+/**
+ * The prototype draws a refresh arc beside the word "Suggestions" and then does
+ * nothing with it - its two lists are string constants. A reload glyph that
+ * does not reload is the sort of small lie that teaches people to distrust the
+ * rest of the screen, so here the row is the button the icon promises: it deals
+ * the next four out of a longer pool.
+ *
+ * The individual suggestions stay clickable to add, which is what the prototype
+ * wires (`sug.add`).
+ */
+export function Suggestions({
+  items,
+  onPick,
+  onRegenerate,
+}: {
+  items: readonly string[];
+  onPick: (value: string) => void;
+  onRegenerate?: () => void;
+}) {
   return (
     <>
-      <div style={{ marginTop: 14, display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 7, paddingLeft: 19 }}>
+      <button
+        type="button"
+        onClick={onRegenerate}
+        disabled={!onRegenerate}
+        title={onRegenerate ? 'Show four different suggestions' : undefined}
+        style={{
+          marginTop: 14,
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 7,
+          paddingLeft: 19,
+          background: 'none',
+          border: 'none',
+          cursor: onRegenerate ? 'pointer' : 'default',
+        }}
+      >
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{ display: 'block' }} aria-hidden>
           <path d="M13 7.5a5.5 5.5 0 1 1-1.6-3.9M13 1v3.2h-3.2" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span style={{ fontSize: 14, fontWeight: 500, color: '#838383' }}>Suggestions</span>
-      </div>
+      </button>
       <div style={{ marginTop: 9, paddingLeft: 19, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
         {items.map((s) => (
           <button
@@ -627,13 +683,52 @@ export function Suggestions({ items, onPick }: { items: readonly string[]; onPic
   );
 }
 
-/** The captures' and prototype's four, in order. */
-export const GUARDRAIL_SUGGESTIONS = [
+/**
+ * The prototype's four of each come first, so the initial render is the design;
+ * the rest are what "Suggestions" deals out on later presses. Guardrails, unlike
+ * the palette, are not a closed set - these are the ones that recur across the
+ * regulated niches this product sells into.
+ */
+const RESTRICTED_POOL = [
   'Confidential Information',
   'Sensitive Data',
   'Personal Identifiable Information (PII)',
   'Proprietary Technology',
+  'Unreleased products',
+  'Staff names and rotas',
+  'Customer complaints',
+  'Legal disputes',
+  'Pricing negotiations',
+  'Politics and elections',
+  'Religion',
+  'Competitor pricing',
 ] as const;
+
+const CLAIMS_POOL = [
+  'Guaranteed results',
+  'Medical or health claims',
+  'Financial return promises',
+  'Competitor disparagement',
+  'Cheapest in the market',
+  'Clinically proven',
+  'Instant results',
+  'Risk free',
+  'Number one in the area',
+  'Award winning',
+  'Fully booked urgency',
+  'Lifetime guarantee',
+] as const;
+
+/** Four at a time, wrapping - `round` is a press count, not an index. */
+function deal(pool: readonly string[], round: number): readonly string[] {
+  const start = (round * 4) % pool.length;
+  return Array.from({ length: 4 }, (_, i) => pool[(start + i) % pool.length] as string);
+}
+
+export const guardrailSuggestions = {
+  restricted: (round: number) => deal(RESTRICTED_POOL, round),
+  claims: (round: number) => deal(CLAIMS_POOL, round),
+};
 
 /** The prototype's seven palette entries. The fourth is `--ss-cyan`. */
 export const PALETTE = ['#0097FD', '#1AFB06', '#6C71FF', '#6CE8FF', '#DAFF6C', '#FF6CBA', '#41FFDC'] as const;

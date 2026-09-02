@@ -56,6 +56,13 @@ export interface StepShellProps {
    */
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
+  /**
+   * Every step but one asks a question, and the prototype sets those in purple.
+   * The docs card does not ask anything - it labels a form - so its heading is
+   * 22px/500 `#0C0C0C` there, not 20px/600 `#A341FF`. One prop rather than a
+   * second shell.
+   */
+  titleTone?: 'question' | 'label';
   onBack?: () => void;
   onContinue?: () => void;
   /** `Finish` on the last step, per `…193231`. */
@@ -89,6 +96,7 @@ export function StepShell({
   eyebrow,
   title,
   subtitle,
+  titleTone = 'question',
   onBack,
   onContinue,
   continueLabel = 'Continue',
@@ -172,7 +180,7 @@ export function StepShell({
       </header>
 
       <main className="relative mx-auto flex w-[750px] max-w-full flex-1 flex-col pt-[81px]">
-        <Assistant eyebrow={eyebrow} title={title} subtitle={subtitle} width={bubbleWidth}>
+        <Assistant eyebrow={eyebrow} title={title} subtitle={subtitle} titleTone={titleTone} width={bubbleWidth}>
           {inBubble ? children : null}
         </Assistant>
         {!inBubble && children ? <div className="mt-8">{children}</div> : null}
@@ -197,12 +205,14 @@ function Assistant({
   eyebrow,
   title,
   subtitle,
+  titleTone = 'question',
   width,
   children,
 }: {
   eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
+  titleTone?: 'question' | 'label';
   width: number;
   children?: React.ReactNode;
 }) {
@@ -220,7 +230,15 @@ function Assistant({
         />
         {eyebrow ? <p className="relative text-18 leading-[1.45] text-ink-muted">{eyebrow}</p> : null}
         {title ? (
-          <p className={cn('relative text-18 font-medium text-brand-purple', eyebrow && 'mt-2')}>{title}</p>
+          <p
+            className={cn(
+              'relative',
+              titleTone === 'label' ? 'text-22 font-medium text-ink' : 'text-18 font-medium text-brand-purple',
+              eyebrow && 'mt-2',
+            )}
+          >
+            {title}
+          </p>
         ) : null}
         {subtitle ? <p className="relative mt-2 text-14 leading-[1.5] text-ink-muted">{subtitle}</p> : null}
         {children ? <div className="relative mt-5">{children}</div> : null}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { DropZone, PreviewTile, UploadSection } from './kit';
+import { DropZone, PreviewTile } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
@@ -36,8 +36,13 @@ import { uploadToStorage } from '@/lib/uploadToStorage';
  */
 
 const ACCEPT = 'application/pdf';
-/** Matches `document-reader.ts`'s own cap, stated here rather than discovered on upload. */
-const MAX_MB = 25;
+/**
+ * `asset.upload_url` bounds `sizeBytes` at `512 * 1024 * 1024`, and the
+ * prototype's four drop zones all read "up to 500MB". I had this at 25MB with a
+ * comment claiming it matched a reader-side cap; there is no such cap, so the
+ * number was mine and it was rejecting files the backend would have taken.
+ */
+const MAX_MB = 500;
 
 interface Attached {
   filename: string;
@@ -118,75 +123,128 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
   const latest = attached[attached.length - 1];
 
   /*
-    `…193059` at the prototype's own numbers: a 547-wide `#F3F4F8` section
-    holding a 340x160 white drop zone and a 129.7 File Preview tile, with the
-    sample-guideline link beneath. Rendered inside `ProtoScale`, so every value
-    here is native 1728-canvas px.
+    The notch card on `SparkSocial Onboarding.dc.html`, at its own numbers. The
+    card is 581x309.5 at (576,174) and the form lives *inside* it, so every value
+    below is card-relative from the drop zone's own origin at (66,69):
+
+      drop zone      0,0     340x160, radius 12.76
+      File Preview   380,4   14px #838383  (the tile draws its own label)
+      preview tile   360,28.2
+      sample link    5,194   17x20 glyph, 18px/500 #838383, gap 10
+
+    What was wrong before: I had wrapped this in an `#F3F4F8` `UploadSection`,
+    which is the treatment the *logo* and *avatar* zones get because they sit on
+    the grey background. This one sits on the white card, and the prototype gives
+    it no fill and a 1.26px ring instead - a white box on a white card is not a
+    box at all. Same reason the glyph here is the file-with-fold rather than the
+    image glyph the other three use.
   */
   return (
-    <ProtoScale native={547}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 22, width: 547 }}>
-        <UploadSection width={547} height={263}>
-          <div style={{ position: 'relative', height: 263 }}>
-            <DropZone
-              left={20}
-              top={86}
-              accept={ACCEPT}
-              formats={`PDF, Docs up to ${MAX_MB}MB`}
-              busy={busy}
-              onFile={(f) => void upload(f)}
-            />
-            <div>
-              <PreviewTile
-                left={385}
-                top={114.2}
-                label="File Preview"
-                onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+    <ProtoScale native={515}>
+      <div style={{ position: 'relative', width: 515, height: 218 }}>
+        <DropZone
+          left={0}
+          top={0}
+          outlined
+          glyph="document"
+          accept={ACCEPT}
+          formats={`PDF, Docs up to ${MAX_MB}MB`}
+          busy={busy}
+          onFile={(f) => void upload(f)}
+        />
+
+        <PreviewTile
+          left={360}
+          top={28.2}
+          label="File Preview"
+          onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+        >
+          {latest ? (
+            <>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 38,
+                  top: 36.8,
+                  display: 'flex',
+                  width: 54,
+                  height: 54,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 6,
+                  background: 'rgba(240,28,28,0.08)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#F01C1C',
+                }}
               >
-                {latest ? (
-                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 8 }}>
-                    <span style={{ display: 'flex', width: 46, height: 58, alignItems: 'center', justifyContent: 'center', borderRadius: 6, background: 'rgba(240,28,28,0.08)', fontSize: 13, fontWeight: 600, color: '#F01C1C' }}>
-                      PDF
-                    </span>
-                    <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: '#838383' }}>
-                      {latest.filename}
-                    </span>
-                  </span>
-                ) : null}
-              </PreviewTile>
-            </div>
-          </div>
-        </UploadSection>
-
-        {error ? (
-          <p role="alert" style={{ fontSize: 16, color: '#F01C1C' }}>
-            {error}
-          </p>
-        ) : null}
-
-        {/*
-          What the read produced. Not in the prototype, and kept: a scanned PDF
-          with no text layer attaches successfully and yields nothing, which is
-          the one outcome the owner must not find out about a week later.
-        */}
-        {latest ? (
-          <p style={{ fontSize: 16, color: '#838383' }}>
-            Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
-            {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
-          </p>
-        ) : null}
+                PDF
+              </span>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 119.2,
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '0 6px',
+                  fontSize: 10.6,
+                  color: '#838383',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {latest.filename}
+              </span>
+            </>
+          ) : null}
+        </PreviewTile>
 
         <a
           href="/brand-guideline-sample.pdf"
           download
-          style={{ display: 'flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', fontSize: 16, fontWeight: 500, color: '#0C0C0C', textDecoration: 'underline' }}
+          style={{
+            position: 'absolute',
+            left: 5,
+            top: 194,
+            height: 24,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 18,
+            fontWeight: 500,
+            lineHeight: 1.33,
+            color: '#838383',
+            textDecoration: 'none',
+          }}
         >
-          <svg width="15" height="16" viewBox="0 0 15 16" fill="none" aria-hidden>
-            <path d="M7.5 1v9m0 0L4 6.5m3.5 3.5L11 6.5M1 14h13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="17" height="20" viewBox="0 0 17 20" fill="none" aria-hidden style={{ display: 'block' }}>
+            <path d="M8.5 1v12m0 0L4 8.6m4.5 4.4L13 8.6" stroke="#000000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1.5 15.5v1.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="#000000" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
           Download sample pdf guideline
         </a>
       </div>
+
+      {/*
+        Both hang below the 309.5 card rather than inside it. The read result is
+        not in the prototype and is kept: a scanned PDF with no text layer
+        attaches successfully and yields nothing, which is the one outcome the
+        owner must not discover a week later.
+      */}
+      {error ? (
+        <p role="alert" style={{ marginTop: 14, fontSize: 16, color: '#F01C1C' }}>
+          {error}
+        </p>
+      ) : null}
+      {latest ? (
+        <p style={{ marginTop: 14, fontSize: 16, color: '#838383' }}>
+          Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
+          {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
+        </p>
+      ) : null}
     </ProtoScale>
   );
 }

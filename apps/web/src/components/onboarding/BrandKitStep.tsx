@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
-  Swatch, PaletteSwatch, GUARDRAIL_SUGGESTIONS, PALETTE,
+  guardrailSuggestions,
+  Swatch, PaletteSwatch, PALETTE,
 } from './kit';
 import { ProtoScale } from './Stage';
 import { invoke } from '@/lib/tools';
@@ -114,6 +115,12 @@ export function BrandKitStep() {
   const [voice, setVoice] = useState<string>('');
   const [timezone, setTimezone] = useState('');
   const [strictMode, setStrictMode] = useState(false);
+  /**
+   * Press counts, not indices, so `guardrailSuggestions` can deal a fresh four
+   * each time the row is pressed and wrap when it runs out of pool.
+   */
+  const [topicRound, setTopicRound] = useState(0);
+  const [claimRound, setClaimRound] = useState(0);
   const [topics, setTopics] = useState('');
   const [claims, setClaims] = useState('');
   const [topicDraft, setTopicDraft] = useState('');
@@ -355,7 +362,33 @@ export function BrandKitStep() {
           <Toggle checked={strictMode} onChange={setStrictMode} label="Enable strict compliance" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '433px 433px', columnGap: 27 }}>
+        {/*
+          The prototype gates both guardrail fields on the toggle:
+          `opacity: strict ? 1 : 0.4` and `pointer-events: strict ? auto : none`,
+          over a 0.25s ease. `strict` starts false, so the fields open only once
+          compliance is switched on - which is the right way round, since an
+          empty restricted-topics list under strict mode is a decision, while
+          the same list with the mode off is just an unanswered question.
+
+          `pointer-events: none` alone would leave the inputs reachable by Tab,
+          so the fieldset carries `disabled` too - that takes the controls out of
+          the tab order and out of form submission, which is what the visual
+          state is claiming.
+        */}
+        <fieldset
+          disabled={!strictMode}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '433px 433px',
+            columnGap: 27,
+            border: 'none',
+            margin: 0,
+            padding: 0,
+            opacity: strictMode ? 1 : 0.4,
+            pointerEvents: strictMode ? 'auto' : 'none',
+            transition: 'opacity 0.25s ease',
+          }}
+        >
           <div>
             <SectionLabel info="Spark will never post or reply about these topics.">Restricted Topics and phrases</SectionLabel>
             <div style={{ marginTop: 11 }}>
@@ -372,7 +405,11 @@ export function BrandKitStep() {
                 ariaLabel="Restricted topics"
               />
             </div>
-            <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setTopics(addTo(topics, v))} />
+            <Suggestions
+              items={guardrailSuggestions.restricted(topicRound)}
+              onPick={(v) => setTopics(addTo(topics, v))}
+              onRegenerate={() => setTopicRound((r) => r + 1)}
+            />
             <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {topicList.map((t) => (
                 <TagChip key={t} onRemove={() => setTopics(removeFrom(topics, t))}>
@@ -398,7 +435,11 @@ export function BrandKitStep() {
                 ariaLabel="Claims to avoid"
               />
             </div>
-            <Suggestions items={GUARDRAIL_SUGGESTIONS} onPick={(v) => setClaims(addTo(claims, v))} />
+            <Suggestions
+              items={guardrailSuggestions.claims(claimRound)}
+              onPick={(v) => setClaims(addTo(claims, v))}
+              onRegenerate={() => setClaimRound((r) => r + 1)}
+            />
             <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {claimList.map((c) => (
                 <TagChip key={c} onRemove={() => setClaims(removeFrom(claims, c))}>
@@ -407,7 +448,7 @@ export function BrandKitStep() {
               ))}
             </div>
           </div>
-        </div>
+        </fieldset>
 
         {busy ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
         {message ? (

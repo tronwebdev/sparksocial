@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
 import { StepShell } from '@/components/onboarding/StepShell';
-import { PromptComposer } from '@/components/onboarding/PromptComposer';
+import { ComposerGlobeIcon, PromptComposer } from '@/components/onboarding/PromptComposer';
 import type { Chip } from '@/components/onboarding/ChipReview';
 import { BrandDetailsStep } from '@/components/onboarding/BrandDetailsStep';
 import { BrandKitStep } from '@/components/onboarding/BrandKitStep';
@@ -303,17 +303,7 @@ export default function OnboardingPage() {
               onSubmit={() => void bootstrap()}
               placeholder="Enter your website URL"
               disabled={busy || manualBusy}
-              icon={
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <path
-                    d="M8.3 11.7a3.5 3.5 0 0 0 5 0l2.6-2.6a3.54 3.54 0 0 0-5-5l-1 1M11.7 8.3a3.5 3.5 0 0 0-5 0L4.1 10.9a3.54 3.54 0 0 0 5 5l1-1"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              }
+              icon={<ComposerGlobeIcon />}
             />
 
             <div className="absolute inset-x-0 top-full mt-4 flex flex-col gap-3">
@@ -378,10 +368,33 @@ export default function OnboardingPage() {
       <StepShell
         group={2}
         onBack={back}
-        title="Upload company Docs (PDF)"
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            Upload company Docs (PDF)
+            <span
+              title="Spark reads these documents to learn your brand voice, offering and facts."
+              style={{
+                width: 21.6,
+                height: 21.6,
+                borderRadius: '50%',
+                boxShadow: 'inset 0 0 0 1.3px #B0B0B0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                color: '#B0B0B0',
+                cursor: 'help',
+              }}
+            >
+              i
+            </span>
+          </span>
+        }
+        titleTone="label"
         onContinue={() => setStep(KIT)}
         inBubble
-        bubbleWidth={469}
+        /* 581 on the 1728 canvas, which is 484 on this shell's 1440 frame. */
+        bubbleWidth={484}
       >
         <CompanyDocsStep genomeId={draft.genomeId} />
       </StepShell>

@@ -1,6 +1,5 @@
 'use client';
 
-import { SparkMark } from '@/components/brand/SparkMark';
 import { cn } from '@/lib/utils';
 
 /**
@@ -46,8 +45,8 @@ export function PromptComposer({
         'shadow-card',
       )}
     >
-      <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center text-ink-muted">
-        {icon ?? <SparkMark variant="card" size={26} />}
+      <span className="flex shrink-0 items-center justify-center text-ink-muted">
+        {icon ?? <ComposerFaceIcon />}
       </span>
 
       <input
@@ -82,5 +81,65 @@ export function PromptComposer({
         </svg>
       </button>
     </div>
+  );
+}
+
+/**
+ * The two leading glyphs, from `SparkSocial Onboarding.dc.html`.
+ *
+ * I had been rendering the Spark mark on the brand-name step and a chain-link on
+ * the URL step. Neither is what the prototype draws. The brand-name composer
+ * carries a *face* outline built from four divs - a ring, a rounded mouth bar
+ * and two eyes - and the URL composer carries a globe. Both are authored here at
+ * the prototype's native pixels and then scaled by `SHRINK`, so the proportions
+ * stay exact rather than being re-guessed against a smaller box.
+ *
+ * `SHRINK` is 65/77: the composer measures 77px tall on the 1728 canvas and 65px
+ * on the frame this shell is built at. It is a ratio between two measured
+ * heights, not a fudge factor.
+ */
+const SHRINK = 65 / 77;
+
+export function ComposerFaceIcon() {
+  const n = 40.9;
+  return (
+    <span
+      aria-hidden
+      style={{ display: 'block', width: n * SHRINK, height: n * SHRINK }}
+    >
+      <span
+        style={{
+          position: 'relative',
+          display: 'block',
+          width: n,
+          height: n,
+          transform: `scale(${SHRINK})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: 'inset 0 0 0 1.4px #838383' }} />
+        <span style={{ position: 'absolute', left: 7.7, top: 14.2, width: 25.5, height: 11.5, borderRadius: 9, boxShadow: 'inset 0 0 0 1.2px #838383' }} />
+        <span style={{ position: 'absolute', left: 13.4, top: 18.2, width: 3.6, height: 3.6, borderRadius: '50%', background: '#838383' }} />
+        <span style={{ position: 'absolute', left: 24.1, top: 18.2, width: 3.6, height: 3.6, borderRadius: '50%', background: '#838383' }} />
+      </span>
+    </span>
+  );
+}
+
+export function ComposerGlobeIcon() {
+  const n = 31.4;
+  return (
+    <svg
+      width={n * SHRINK}
+      height={n * SHRINK}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden
+      style={{ display: 'block' }}
+    >
+      <circle cx="16" cy="16" r="14.6" stroke="#000000" strokeWidth="2" />
+      <ellipse cx="16" cy="16" rx="6.6" ry="14.6" stroke="#000000" strokeWidth="2" />
+      <path d="M2 11h28M2 21h28" stroke="#000000" strokeWidth="2" />
+    </svg>
   );
 }
