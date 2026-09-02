@@ -66,6 +66,17 @@ export async function invoke<T>(name: string, input: unknown, idempotencyKey?: s
    * than the bug.
    */
   const code = body && 'error' in body ? body.error?.code : undefined;
+
+  // A successful call proves the session works, so arm the latch again for a
+  // future expiry. Without this, one transient 401 disables the redirect for the
+  // rest of the tab's life.
+  if (!code && typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.removeItem('ss:forbidden-redirected');
+    } catch {
+      /* storage unavailable — nothing to reset */
+    }
+  }
   if (code === 'NO_ORGANIZATION' && typeof window !== 'undefined') {
     if (!window.location.pathname.startsWith(TASKS_URL)) window.location.assign(TASKS_URL);
   }
@@ -86,7 +97,39 @@ export async function invoke<T>(name: string, input: unknown, idempotencyKey?: s
    * access doesn't redirect to sign-in" looked like from the outside.
    */
   if (code === 'FORBIDDEN' && typeof window !== 'undefined') {
-    if (!window.location.pathname.startsWith(SIGN_IN_URL)) window.location.assign(SIGN_IN_URL);
+    /**
+     * At most one redirect per browsing session, and here is why.
+     *
+     * The guard below used to be only the path check, which stops this
+     * redirecting *away from* sign-in but does nothing about the round trip:
+     * `/home` calls a tool → 401 → assign `/sign-in` → sign-in sees a signed-in
+     * client and `router.replace('/')` → `/` → `/home` → 401 → … Six server
+     * requests per lap, forever, and the actual error never reaches a screen.
+     * That is what "the loop is still happening" looks like in a dev log, and it
+     * is ours, not Clerk's.
+     *
+     * A session-scoped latch turns it into one honest attempt: redirect once, and
+     * if the backend still rejects the session after that, return the failure so
+     * a caller can render it. `sessionStorage` rather than a module variable
+     * because `window.location.assign` reloads the page, which would reset one.
+     */
+    const LATCH = 'ss:forbidden-redirected';
+    let alreadyTried = false;
+    try {
+      alreadyTried = window.sessionStorage.getItem(LATCH) === '1';
+    } catch {
+      // Private mode or blocked storage: fall back to redirecting, since one
+      // extra hop is better than never recovering a genuinely stale session.
+    }
+
+    if (!alreadyTried && !window.location.pathname.startsWith(SIGN_IN_URL)) {
+      try {
+        window.sessionStorage.setItem(LATCH, '1');
+      } catch {
+        /* see above */
+      }
+      window.location.assign(SIGN_IN_URL);
+    }
   }
 
   /**
