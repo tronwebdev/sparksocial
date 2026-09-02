@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyCard } from '@/components/common/EmptyCard';
 import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -239,7 +240,15 @@ export function EngagementFeed() {
       ) : error ? (
         <p className="mt-[20px] text-16 text-ink-muted">{error}</p>
       ) : items.length === 0 ? (
-        <p className="mt-[20px] text-16 text-ink-muted">Nothing here yet.</p>
+        <EmptyCard
+          glyph="chat"
+          title="Nothing in this tab yet"
+          body={
+            tab === 'sales_opportunity'
+              ? 'Leads appear here once your agent spots buying intent in a reply or a DM.'
+              : 'Comments, DMs and story replies land here once your campaign is running and people start answering.'
+          }
+        />
       ) : (
         <div className="mt-[20px] flex flex-col gap-3 lg:flex-row lg:items-start">
           {columns.map((col, ci) => (

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EmptyCard } from './EmptyCard';
+import { EmptyCard } from '@/components/common/EmptyCard';
 import { relativeTime } from '@/lib/relativeTime';
 import type { RankedTrend, UpcomingPost } from './types';
 

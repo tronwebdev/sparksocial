@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
+import { EmptyCard } from '@/components/common/EmptyCard';
 
 /**
  * §7.5's **Plan** queue — the fourth of the four the PRD makes first-class.
@@ -235,10 +236,7 @@ export function PlanQueue({
       {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 
       {items !== null && items.length === 0 ? (
-        <p className="mt-4 text-[14px] text-ink-muted">
-          SPARK has nothing queued. Generate a calendar from a campaign, or create a single post, and it appears
-          here in the order it will go out.
-        </p>
+        <EmptyCard body="Generate a calendar from a campaign, or create a single post, and everything your agent plans appears here in the order it will go out." />
       ) : null}
 
       {undrafted > 0 ? (

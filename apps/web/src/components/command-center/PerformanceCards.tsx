@@ -6,6 +6,7 @@ import { compactNumber } from '@/lib/relativeTime';
 import { platformLabel } from '@/lib/platforms';
 import type { BrandSeries } from '@/components/dashboard/types';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { EmptyCard } from '@/components/common/EmptyCard';
 
 /**
  * `CC-04`'s Performance & Learning body — the Top Post card, the metric tiles,
@@ -230,11 +231,15 @@ export function PerformanceCards({
                 </div>
               </div>
             ) : (
-              <p className="mt-6 max-w-[46ch] text-16 text-ink-muted">
-                {ranked === null
-                  ? 'Working out which post did best…'
-                  : 'No post has enough measured performance yet to be the top one.'}
-              </p>
+              ranked === null ? (
+                <p className="mt-6 text-16 text-ink-muted">Working out which post did best…</p>
+              ) : (
+                <EmptyCard
+                  glyph="chart"
+                  title="No top post yet"
+                  body="Once posts have gone out and the platforms report back, the best performing one appears here."
+                />
+              )
             )}
           </div>
 
@@ -324,9 +329,11 @@ export function PerformanceCards({
         {ranked === null ? (
           <p className="px-6 py-8 text-16 text-ink-muted">Loading…</p>
         ) : ranked.length === 0 ? (
-          <p className="px-6 py-8 text-16 text-ink-muted">
-            Nothing has measured performance yet. Posts appear here once the platforms report back.
-          </p>
+          <EmptyCard
+            glyph="chart"
+            title="Nothing measured yet"
+            body="Your published posts appear here ranked by engagement, once the platforms report their numbers."
+          />
         ) : (
           <ul>
             {ranked.slice(0, 4).map((row, i) => {

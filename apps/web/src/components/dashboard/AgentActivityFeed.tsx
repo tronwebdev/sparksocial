@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { EmptyCard } from './EmptyCard';
+import { EmptyCard } from '@/components/common/EmptyCard';
 import { relativeTime } from '@/lib/relativeTime';
 import type { AgentRun } from './types';
 

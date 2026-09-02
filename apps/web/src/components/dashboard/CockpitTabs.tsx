@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { EmptyCard } from './EmptyCard';
+import { EmptyCard } from '@/components/common/EmptyCard';
 import { platformLabel } from '@/lib/platforms';
 import { compactNumber, relativeTime } from '@/lib/relativeTime';
 import { cn } from '@/lib/utils';

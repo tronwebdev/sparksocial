@@ -119,18 +119,21 @@ export function EngagementGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      {state.kind === 'no_campaign' ? (
-        <section className="rounded-xl border border-border bg-surface p-6">
-          <h2 className="text-[18px] font-semibold text-ink">Engagement starts with a campaign</h2>
-          <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
-            SPARK learns how to answer your audience from how you talk to them, and it needs a campaign
-            running to have anything to learn from.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/calendar">Set up a campaign</Link>
-          </Button>
-        </section>
-      ) : null}
+      {/*
+        The "Engagement starts with a campaign" card used to be here.
+
+        It was a full card explaining that the inbox needs a campaign, sitting
+        above a feed whose own empty state now says the same thing *with the
+        button that fixes it*. Two explanations of one blocker, and the outer one
+        was the version without the action. Removed at the design's request:
+        `no_campaign` falls through to the feed, which is the state it was
+        describing.
+
+        The other two states stay. "Still learning your voice" and "eligible but
+        not configured" are §8.8's own three states, and each is the honest
+        answer to a different question about why the tabs look quiet — neither
+        is a blank-page substitute.
+      */}
 
       {state.kind === 'ineligible' ? (
         <section className="rounded-xl border border-border bg-surface-muted p-6">
