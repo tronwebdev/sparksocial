@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useSignUp } from '@clerk/nextjs';
-import { SparkMark } from '@/components/brand/SparkMark';
-import { Input } from '@/components/ui/input';
+import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, SuccessMark, OtpInput } from '@/components/auth/AuthShell';
 import { Button } from '@/components/ui/button';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 
@@ -49,6 +48,7 @@ export default function VerifyPage() {
    * silent refusal comes back, and nothing tells you to wait.
    */
   const [cooldown, setCooldown] = useState(0);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -66,7 +66,9 @@ export default function VerifyPage() {
 
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.push('/meet-spark');
+        // `Screenshot …192654` puts a confirmation between verifying and the
+        // splash, rather than jumping straight to /meet-spark.
+        setDone(true);
         return;
       }
 
@@ -119,57 +121,95 @@ export default function VerifyPage() {
     }
   }
 
+  if (done) {
+    return (
+      <AuthBackdrop tone="dark">
+        <AuthPanel tone="dark" glow className="text-center">
+          <AuthHeader tone="dark" mark={<SuccessMark />} title={<>Confirmation<br />Successful</>} />
+          <div className="mt-6 flex justify-center">
+            <SuccessBadge />
+          </div>
+          <Button
+            size="cta"
+            variant="secondary"
+            className="mt-6 w-full border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]"
+            onClick={() => router.push('/meet-spark')}
+          >
+            Continue
+          </Button>
+        </AuthPanel>
+      </AuthBackdrop>
+    );
+  }
+
   return (
-    <div className="dark flex min-h-screen flex-col items-center justify-center bg-background px-6">
-      <SparkMark variant="card" />
-      <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">Check your email</h1>
-      <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
-        {/*
-          The address, when Clerk knows it. `signUp.emailAddress` has been
-          available from `useSignUp()` the whole time and was never read, so this
-          screen said "your inbox" to somebody who may have three — and had no way
-          to notice they typed the wrong one.
-        */}
-        We sent a code to{' '}
-        <span className="text-foreground">{signUp?.emailAddress ?? 'your inbox'}</span>. Enter it below to
-        finish setting up your account.
-      </p>
-
-      <form onSubmit={submit} className="mt-8 flex w-[380px] max-w-full flex-col gap-4">
-        <Input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Enter code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          aria-label="Verification code"
-          invalid={Boolean(errors.form || errors.fields.code)}
-          className="text-center"
+    <AuthBackdrop tone="dark">
+      <AuthPanel tone="dark">
+        <AuthHeader
+          tone="dark"
+          title="Enter verification code"
+          subtitle={
+            <>
+              we sent a code to <span className="text-white">{signUp?.emailAddress ?? 'your inbox'}</span>
+            </>
+          }
         />
-        {errors.form || errors.fields.code ? (
-          <p role="alert" className="text-center text-[14px] text-destructive">
-            {errors.form ?? errors.fields.code}
-          </p>
-        ) : null}
 
-        <Button type="submit" size="cta" disabled={!isLoaded || busy || !code}>
-          {busy ? 'Verifying…' : 'Verify'}
-        </Button>
-      </form>
+        <form onSubmit={submit} className="mt-7 flex flex-col">
+          <OtpInput value={code} onChange={setCode} tone="dark" disabled={!isLoaded || busy} />
 
-      <div className="mt-6 flex items-center gap-6 text-[15px]">
+          {errors.form || errors.fields.code ? (
+            <p role="alert" className="mt-3 text-center text-14 text-destructive">
+              {errors.form ?? errors.fields.code}
+            </p>
+          ) : null}
+
+          <div className="mt-[26px] flex items-center justify-between text-14">
+            <span className="text-ink-muted">
+              Didn&apos;t get the code?{' '}
+              <button
+                type="button"
+                onClick={resend}
+                className="text-white/80 underline disabled:no-underline disabled:opacity-50"
+                disabled={!isLoaded || cooldown > 0}
+              >
+                {resent && cooldown === 0 ? 'Code resent' : 'Resend'}
+              </button>
+            </span>
+            {/* The design shows a cooldown readout, so keep the slot occupied
+                rather than letting the row reflow when the timer starts. */}
+            <span className="text-ink-muted">Cooldown: {cooldown > 0 ? `${cooldown}s` : '—'}</span>
+          </div>
+
+          {/*
+            The gradient-outlined button from the capture. A gradient *border*
+            needs two layers — `padding-box` for the fill, `border-box` for the
+            stroke — because `border-image` cannot follow a border radius.
+          */}
+          <Button
+            type="submit"
+            size="cta"
+            className="mt-[26px] w-full border border-transparent bg-white/[0.04] text-white hover:bg-white/[0.08]"
+            style={{
+              backgroundImage:
+                'linear-gradient(var(--ss-ink-900), var(--ss-ink-900)), var(--ss-grad-brand)',
+              backgroundOrigin: 'padding-box, border-box',
+              backgroundClip: 'padding-box, border-box',
+            }}
+            disabled={!isLoaded || busy || code.length < 6}
+          >
+            {busy ? 'Verifying…' : 'Verify Account'}
+          </Button>
+        </form>
+
         <button
           type="button"
-          onClick={resend}
-          className="text-brand-cyan underline disabled:no-underline disabled:opacity-60"
-          disabled={!isLoaded || cooldown > 0}
+          onClick={() => router.push('/sign-up')}
+          className="mt-[22px] block w-full text-center text-16 text-ink-muted transition-colors hover:text-white"
         >
-          {cooldown > 0 ? `Resend in ${cooldown}s` : resent ? 'Code resent' : 'Resend'}
-        </button>
-        <button type="button" onClick={() => router.push('/sign-up')} className="text-ink-muted underline">
           Cancel
         </button>
-      </div>
-    </div>
+      </AuthPanel>
+    </AuthBackdrop>
   );
 }

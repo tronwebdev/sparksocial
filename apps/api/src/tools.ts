@@ -106,6 +106,7 @@ import {
   orgBillingPlanSet,
   orgSecuritySsoConfigure,
   orgAuditQuery,
+  makeOrgBudgetSet,
   makeOrgCreditsGrant,
   makeOrgUsageGet,
   brandCreate,
@@ -123,6 +124,9 @@ import {
   makeTeamRoleSet,
   makeTeamList,
   teamPermissionSet,
+  approvalRuleDelete,
+  approvalRuleList,
+  approvalRuleSet,
   teamGroupList,
   teamGroupCreate,
   teamGroupUpdate,
@@ -839,6 +843,10 @@ export function registerAgencyTools(deps: {
   // balance only ever came back from `org.credits.grant`, so rendering a usage
   // panel meant granting credits to display a number.
   register(makeOrgUsageGet({ credits: deps.credits }));
+  // The write side of the same screen. Without it the allocation bars would be a
+  // control that stores nothing and changes no behaviour — and the sub-caps are
+  // enforced in `policy.ts`, so they change behaviour the moment they are set.
+  register(makeOrgBudgetSet({ credits: deps.credits }));
 
   register(brandCreate);
   register(brandSettingsPatch);
@@ -876,6 +884,12 @@ export function registerAgencyTools(deps: {
   // The Groups tab (`SET-WS-TEAM-GROUPS`). Capability bundles that widen what
   // their members may do on top of their role — see `teamGroups.ts`.
   register(teamGroupList);
+  // The workspace's approval flows. Their own family, not a fifth team-group
+  // capability: capabilities widen and these narrow, and mixing the two would
+  // destroy the property that a misconfigured group cannot lock an owner out.
+  register(approvalRuleList);
+  register(approvalRuleSet);
+  register(approvalRuleDelete);
   register(teamGroupCreate);
   register(teamGroupUpdate);
   register(teamGroupDelete);

@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AgentIdentityCard } from '@/components/command-center/AgentIdentityCard';
+import { AgentBanner } from './AgentBanner';
 import { invoke } from '@/lib/tools';
-import { openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AgentActivityFeed } from './AgentActivityFeed';
 import { BrandKitChip } from './BrandKitChip';
+import { TopBar } from '@/components/shell/TopBar';
+import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
 import { CockpitTabs } from './CockpitTabs';
 import { KpiRow } from './KpiRow';
-import { TrendingRail } from './TrendingRail';
+import { RightRail } from './RightRail';
 import type { AgentRun, BrandKit, BrandSeries, Lead, RankedTrend, UpcomingPost } from './types';
 
 /**
@@ -71,6 +71,8 @@ interface Snapshot {
   leads: Lead[];
   leadCounts: { hot: number; warm: number; cold: number };
   upcoming: UpcomingPost[];
+  /** The rail's other half. Null while loading, as `trends` is. */
+  published: UpcomingPost[] | null;
   trends: RankedTrend[] | null;
 }
 
@@ -81,6 +83,14 @@ export function BrandHome() {
   const { genome, loading } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  /*
+    Pausing the agent from the banner changes `agent.status`, which this page
+    already reads - so rather than lifting the whole loader out of the effect
+    and memoising it, the banner bumps this and the effect re-runs. One number
+    against a `useCallback` whose dependency list would have to be kept in step
+    with nine tool calls.
+  */
+  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -89,7 +99,7 @@ export function BrandHome() {
     void (async () => {
       setSnap(null);
 
-      const [campaigns, agent, gov, runs, series, leads, upcoming, review, trends] = await Promise.all([
+      const [campaigns, agent, gov, runs, series, leads, upcoming, review, published] = await Promise.all([
         invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 5 }),
         invoke<{ paused: boolean }>('agent.status', {}),
         invoke<{ brandKit?: BrandKit }>('brand.governance.get', {}),
@@ -101,7 +111,9 @@ export function BrandHome() {
         ),
         invoke<{ items: UpcomingPost[] }>('content.list', { genomeId, status: 'scheduled', limit: FEED_LIMIT }),
         invoke<{ items: unknown[] }>('content.list', { genomeId, status: 'needs_review', limit: 100 }),
-        invoke<{ trends: RankedTrend[] }>('trend.rank', { genomeId, limit: 5 }),
+        // The rail's "Post published" half. Cheap, local, and unlike
+        // `trend.rank` it does not reach off the machine.
+        invoke<{ items: UpcomingPost[] }>('content.list', { genomeId, status: 'published', limit: 10 }),
       ]);
       if (cancelled) return;
 
@@ -121,17 +133,49 @@ export function BrandHome() {
         leadCounts:
           leads.status === 'succeeded' ? leads.output.counts : { hot: 0, warm: 0, cold: 0 },
         upcoming: upcoming.status === 'succeeded' ? upcoming.output.items : [],
+        published: published.status === 'succeeded' ? published.output.items : [],
         // Null rather than [] on failure, so the rail can show a skeleton for
         // "not loaded" and prose for "nothing worth joining" — two different
-        // facts that an empty array would collapse into one.
-        trends: trends.status === 'succeeded' ? trends.output.trends : null,
+        // facts that an empty array would collapse into one. It starts null and
+        // is filled by the separate effect below.
+        trends: null,
       });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [genomeId]);
+  }, [genomeId, reloads]);
+
+  /*
+    `trend.rank` is the one call on this page that reaches the open internet -
+    Hacker News, Product Hunt, YouTube - and when a source is slow or down it
+    takes tens of seconds to give up. It was inside the snapshot's
+    `Promise.all`, so a single unreachable trend source held back the agent
+    banner, the KPI cards and the activity feed: the whole dashboard sat on
+    skeletons waiting for a panel about the world outside the brand.
+
+    Its own effect, writing into the same snapshot field. The rail already
+    distinguishes null (not loaded) from an empty array (nothing worth
+    joining), so it shows its skeleton until this lands and the rest of the
+    page does not wait.
+  */
+  useEffect(() => {
+    if (!genomeId) return;
+    let cancelled = false;
+
+    void (async () => {
+      const res = await invoke<{ trends: RankedTrend[] }>('trend.rank', { genomeId, limit: 5 });
+      if (cancelled) return;
+      setSnap((prev) =>
+        prev ? { ...prev, trends: res.status === 'succeeded' ? res.output.trends : [] } : prev,
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [genomeId, reloads]);
 
   if (loading || !snap) {
     return (
@@ -147,83 +191,141 @@ export function BrandHome() {
   const hasCampaign = Boolean(snap.campaign);
 
   return (
-    <div className="grid grid-cols-1 gap-6">
-      {/* ── The header row: what this brand is, and the two primary actions ── */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[22px] font-semibold text-ink">{genome?.name ?? 'This brand'}</h1>
-          <p className="mt-0.5 text-[13.5px] text-ink-muted">
-            {/* The prototype's line is "Your Ai Agents are running campaigns",
-                which is false for most of the states this page has to render.
-                This says which one it is in. */}
-            {snap.paused
-              ? 'Your agent is paused.'
-              : !hasCampaign
-                ? 'No campaign yet, so nothing is going out.'
-                : snap.campaign!.status === 'draft'
-                  ? 'A campaign is planned and waiting to be activated.'
-                  : 'Your agent is running a campaign.'}
-          </p>
-        </div>
+    <>
+      {/*
+        One header, and it is the shell's.
 
-        <div className="flex flex-wrap items-center gap-3">
-          {snap.brandKit ? <BrandKitChip kit={snap.brandKit} /> : null}
-          <Button asChild variant="outline">
-            {/* `?new=1` — the calendar owns the wizard, and before this the wizard
-                was reachable only as that screen's empty state, so a brand with
-                one campaign could not start a second one from anywhere. */}
-            <Link href="/calendar?new=1">Create campaign</Link>
-          </Button>
-          <Button onClick={openAskSpark}>Ask Spark</Button>
-        </div>
-      </div>
+        `home/page.tsx` used to render a `TopBar` with the brand switcher while
+        this component rendered a second heading with the brand's *name* — the
+        same brand, twice, in two type sizes. The prototype has one header row:
+        the workspace switcher at 26px/600, the status line at 18px/400 `#838383`
+        beneath it, then the brand-kit chip, Create Campaign and Ask Spark on the
+        right, over a hairline at y=119.5.
 
-      {/* ── The agent, by name. Shared with the Command Center. ───────────── */}
-      <AgentIdentityCard
+        It lives here rather than on the page because every part of it except the
+        switcher is page data — the chip needs the brand kit, the status line
+        needs to know whether the agent is paused — and the page is a server
+        component that cannot see either.
+      */}
+      <TopBar
+        title={<BrandSwitcher />}
+        subtitle={
+          /*
+            The prototype says "Your Ai Agents are running campaigns", which is
+            false in most of the states this screen has to render — no campaign,
+            a draft, a paused agent. Same slot, same type, true sentence.
+          */
+          snap.paused
+            ? 'Your agent is paused.'
+            : !hasCampaign
+              ? 'No campaign yet, so nothing is going out.'
+              : snap.campaign!.status === 'draft'
+                ? 'A campaign is planned and waiting to be activated.'
+                : 'Your Ai Agents are running campaigns'
+        }
+        actions={
+          <>
+            {snap.brandKit ? <BrandKitChip kit={snap.brandKit} /> : null}
+            {/*
+              192x48, radius 12, white with a 1px `rgba(12,12,12,0.35)` ring and
+              a 9px gap to its glyph — an outline button, not a filled one.
+
+              `?new=1` — the calendar owns the wizard, and before this the wizard
+              was reachable only as that screen's empty state, so a brand with
+              one campaign could not start a second one from anywhere.
+            */}
+            {/*
+              192x48 at radius 12, white, with an `inset 0 0 0 1px
+              rgba(12,12,12,0.35)` ring and a 9px gap. Not the `outline`
+              variant: its border is `--ss-border`, which is
+              `rgba(131,131,131,0.25)` - a lighter, greyer line than the design's,
+              and next to Ask Spark the difference reads as a disabled button.
+            */}
+            <Link
+              href="/calendar?new=1"
+              className="flex h-12 w-[192px] shrink-0 items-center justify-center gap-[9px] rounded-md bg-white text-16 font-medium text-ink transition-shadow hover:shadow-card"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.35)' }}
+            >
+              <PlusGlyph />
+              Create Campaign
+            </Link>
+          </>
+        }
+      />
+
+      {/*
+        The prototype's vertical grid, canvas-relative (the canvas card starts
+        at 322,18 on the 1728 stage):
+
+          banner        123 .. 300     1323 wide
+          KPI row       336 .. 443      846 wide, x 34..880
+          activity      474 (label) / 515 .. 876
+          upcoming      901 .. 1355
+          right rail    336 .. 1355     446 wide, x 911..1357
+
+        The rail's top is 336 - the same y as the KPI cards - and its bottom is
+        1355, the same as the upcoming card's. It sits beside the KPI row, not
+        below it.
+      */}
+      <div className="flex flex-col gap-[36px] p-8">
+
+      {/*
+        The agent banner — the dark card the dashboard opens with. This used to
+        be `AgentIdentityCard`, shared with the Command Center on the assumption
+        both screens open the same way; they do not. See `AgentBanner`.
+      */}
+      <AgentBanner
         genomeId={genomeId}
         campaign={snap.campaign ? { name: snap.campaign.name, status: snap.campaign.status } : null}
         paused={snap.paused}
+        planning={snap.needsReview}
+        onChanged={() => setReloads((n) => n + 1)}
       />
 
-      {/* ── The next best action, when there is one. §8.3's first sentence ──
-          survives the cockpit rework: a brand with nothing running has one
-          thing to do, and burying it under a dashboard of zeroes would be the
-          launcher's failure in reverse. */}
-      {!hasCampaign ? (
-        <section className="rounded-xl border border-primary/40 bg-surface p-6">
-          <h2 className="text-[18px] font-medium text-ink">
-            Nothing is posting yet — {genome?.name ?? 'this brand'} needs a campaign
-          </h2>
-          <p className="mt-1.5 max-w-prose text-[14px] text-ink-muted">
-            A campaign is an outcome over a window. Tell SPARK what you want more of and it works out what
-            it can make from what you already have, then starts posting to the accounts you choose.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/calendar?new=1">Set up your first campaign</Link>
-          </Button>
-        </section>
-      ) : snap.needsReview > 0 ? (
-        <section className="rounded-xl border border-warn/40 bg-warn/10 p-4">
-          <p className="text-[14px] text-ink">
-            <span className="font-medium">
-              {snap.needsReview} post{snap.needsReview === 1 ? '' : 's'}
-            </span>{' '}
-            {snap.needsReview === 1 ? 'is' : 'are'} waiting on you before{' '}
-            {snap.needsReview === 1 ? 'it' : 'they'} can go out.
-          </p>
-          <Button asChild size="sm" variant="outline" className="mt-2">
-            <Link href="/calendar">Review them</Link>
-          </Button>
-        </section>
-      ) : null}
+      {/*
+        Between the banner and the metrics there used to be a full-width card:
+        "Nothing is posting yet - <brand> needs a campaign" with a Set up your
+        first campaign button, or a "N posts waiting on you" variant when there
+        was one. Removed at the design's request, and it had stopped earning its
+        place anyway.
 
-      {/* ── How the last week went ───────────────────────────────────────── */}
-      {snap.series ? <KpiRow series={snap.series} /> : null}
+        It was written when the cards below it showed nothing but zeroes, so the
+        one available action needed saying out loud. Now every one of those cards
+        carries `EmptyCard` - "You don't have an active campaign" with the same
+        Create Campaign button - so this was the fifth copy of that sentence and
+        the only one not attached to the thing it was about.
+
+        The review count it also carried is not lost: `needsReview` still goes to
+        `AgentBanner` as `planning`, which says "Planning N posts for the week
+        ahead" on the banner directly above.
+      */}
+
 
       {/* ── The two columns. Activity and the tabbed card carry the page; the
              rail is the one panel about the world outside this brand. ────── */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="flex min-w-0 flex-col gap-6">
+      {/*
+        846 and 446 with a 31px gutter, straight off the prototype — the left
+        column runs 356→1202 and the rail 1233→1679. `2fr / 1fr` at a 24px gap
+        was close enough to look deliberate and wrong enough that the rail's
+        cards were a different width from the ones they mirror.
+      */}
+      <div className="grid grid-cols-1 gap-[31px] xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
+        {/*
+          25px between the cards, and 6 more under the KPI row to make the 31 the
+          prototype has between it and the "Agent Activity" label. Two numbers
+          rather than one because they are two different gaps in the design, and
+          a single 24 was wrong on both.
+
+          The KPI row is *here* rather than above this grid. Three 270px cards on
+          a 288px pitch is 846px — exactly the left column — which is the whole
+          reason the rail can start level with them.
+        */}
+        <div className="flex min-w-0 flex-col gap-[25px]">
+          {snap.series ? (
+            <div className="mb-[6px]">
+              <KpiRow series={snap.series} />
+            </div>
+          ) : null}
           <AgentActivityFeed runs={snap.runs} />
           <CockpitTabs
             upcoming={snap.upcoming}
@@ -233,9 +335,19 @@ export function BrandHome() {
           />
         </div>
         <div className="min-w-0">
-          <TrendingRail trends={snap.trends} />
+          <RightRail trends={snap.trends} published={snap.published} />
         </div>
       </div>
-    </div>
+      </div>
+    </>
+  );
+}
+
+/** The 14px cross on Create Campaign. */
+function PlusGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
   );
 }

@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useSignIn } from '@clerk/nextjs';
-import { SkyBackdrop, GlassCard } from '@/components/auth/GlassCard';
-import { AuthField, MailIcon, LockIcon } from '@/components/auth/AuthField';
+import { SkyBackdrop, GlassCard, AuthHeader } from '@/components/auth/GlassCard';
+import { AuthField, MailIcon, LockIcon, RevealToggle } from '@/components/auth/AuthField';
 import { SocialRow, type OAuthStrategy } from '@/components/auth/SocialRow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,9 @@ import { Wordmark } from '@/components/brand/Wordmark';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 
 /**
- * Login — `Auth.dc.html` state 4. Full-bleed cyan sky, 568px glass card.
+ * Login — built to `ui_screenshot/login.png`. Full-bleed `#6CE8FF` sky, a 472px
+ * frosted panel around a 448px card, and the provider row on the glass *below*
+ * that card rather than inside it. Geometry lives in `--ss-auth-*`.
  *
  * ── The additional-factor states, not just password ────────────────────────
  *
@@ -55,13 +57,27 @@ type Step =
   | { kind: 'second_factor_totp' }
   | { kind: 'second_factor_code'; safeIdentifier: string };
 
+/**
+ * Where a completed sign-in lands.
+ *
+ * Was `/`, which dropped straight into the dashboard of whichever organization
+ * `OrgGuard` happened to activate. Navigating the prototype shows the intended
+ * flow: `SparkSocial Auth.dc.html` hands off to `SparkSocial Account Home.dc.html`
+ * — the workspace picker — so the choice of tenant is the user's, made once and
+ * visibly, rather than a side effect of guard order.
+ *
+ * Sign-*up* deliberately does not come here: a new account has no workspace to
+ * pick from, and its next step is creating one through onboarding.
+ */
+const AFTER_SIGN_IN = '/workspaces';
+
 export default function SignInPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (authLoaded && isSignedIn) router.replace('/');
+    if (authLoaded && isSignedIn) router.replace(AFTER_SIGN_IN);
   }, [authLoaded, isSignedIn, router]);
 
   const [email, setEmail] = useState('');
@@ -71,11 +87,13 @@ export default function SignInPage() {
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   async function complete(result: { status: string | null; createdSessionId: string | null }) {
     if (result.status === 'complete' && result.createdSessionId && setActive) {
       await setActive({ session: result.createdSessionId });
-      router.push('/');
+      router.push(AFTER_SIGN_IN);
       return true;
     }
     return false;
@@ -171,7 +189,7 @@ export default function SignInPage() {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/',
+        redirectUrlComplete: AFTER_SIGN_IN,
       });
     } catch (err) {
       setErrors(toFieldErrors(err));
@@ -182,20 +200,36 @@ export default function SignInPage() {
 
   return (
     <SkyBackdrop>
-      <div className="mb-8 flex justify-center">
-        <Wordmark markSize={45} fontSize={37.5} />
+      <div className="mb-[50px] flex justify-center">
+        <Wordmark showMark={false} fontSize={28} />
       </div>
 
-      <GlassCard>
+      <GlassCard
+        footer={
+          !codeStep ? (
+            <>
+              {/* `SocialRow` owns the "Or continue with" divider — adding one
+                  here too rendered it twice. */}
+              <SocialRow onSelect={social} disabled={!isLoaded || busy} />
+              <p className="mt-5 text-center text-14 text-ink-muted">
+                Don&apos;t have an account yet?{' '}
+                <Link href="/sign-up" className="text-brand-purple underline">
+                  Sign up
+                </Link>
+              </p>
+            </>
+          ) : undefined
+        }
+      >
         {!codeStep ? (
           <>
-            <h1 className="text-center text-[26px] font-semibold leading-[1.4] text-ink-heading">Welcome back</h1>
-            <p className="mt-2 text-center text-[16px] text-ink-muted">Sign in to pick up where SPARK left off.</p>
+            <AuthHeader title="Sign in to continue" subtitle="Welcome back!, enter your login credentials" />
 
-            <form onSubmit={submitPassword} className="mt-8 flex flex-col gap-[14px]">
+            <form onSubmit={submitPassword} className="mt-6 flex flex-col gap-[28px]">
               <AuthField
                 label="Email"
                 type="email"
+                fieldSize="auth"
                 placeholder="youremail@website.com"
                 autoComplete="email"
                 leadingIcon={<MailIcon />}
@@ -205,47 +239,59 @@ export default function SignInPage() {
               />
               <AuthField
                 label="Password"
-                type="password"
-                placeholder="••••••••"
+                type={showPassword ? 'text' : 'password'}
+                fieldSize="auth"
+                placeholder="••••••••••••"
                 autoComplete="current-password"
                 leadingIcon={<LockIcon />}
+                trailingSlot={<RevealToggle shown={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 error={errors.fields.password}
               />
 
-              <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-[15px] text-brand-purple underline">
+              {/*
+                The capture puts the consent checkbox and the reset link on one
+                row under the fields. The checkbox is presentational here — it
+                does not gate submission, because nothing in the design says a
+                returning user is blocked by it, and inventing that rule would
+                lock people out of their own accounts.
+              */}
+              <div className="-mt-1 flex items-center justify-between">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-13 text-ink-subtle">
+                  <input
+                    type="checkbox"
+                    checked={agreed}
+                    onChange={(e) => setAgreed(e.target.checked)}
+                    className="h-[15px] w-[15px] shrink-0 cursor-pointer rounded-[4px] border border-border accent-[--ss-primary]"
+                  />
+                  <span>
+                    I agree to <span className="font-medium text-ink">terms</span> &amp;{' '}
+                    <span className="font-medium text-ink">privacy</span>.
+                  </span>
+                </label>
+                <Link href="/forgot-password" className="text-13 font-medium text-ink underline">
                   Forgot password?
                 </Link>
               </div>
 
               {errors.form ? (
-                <p role="alert" className="text-[14px] text-destructive">
+                <p role="alert" className="text-13 text-destructive">
                   {errors.form}
                 </p>
               ) : null}
 
-              <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
+              <Button type="submit" size="cta" className="w-full" disabled={!isLoaded || busy}>
+                {busy ? 'Signing in…' : 'Login now'}
               </Button>
             </form>
-
-            <SocialRow className="mt-6" onSelect={social} disabled={!isLoaded || busy} />
-
-            <p className="mt-6 text-center text-[16px] text-ink-muted">
-              New here?{' '}
-              <Link href="/sign-up" className="text-brand-purple underline">
-                Create an account
-              </Link>
-            </p>
           </>
         ) : (
           <>
-            <h1 className="text-center text-[26px] font-semibold leading-[1.4] text-ink-heading">
+            <h1 className="text-center text-26 font-semibold leading-[1.4] text-ink-heading">
               {step.kind === 'second_factor_totp' ? 'Enter your authenticator code' : 'Enter the code we sent'}
             </h1>
-            <p className="mt-2 text-center text-[16px] text-ink-muted">
+            <p className="mt-2 text-center text-16 text-ink-muted">
               {step.kind === 'second_factor_totp'
                 ? 'Open your authenticator app for the current 6-digit code.'
                 : `Sent to ${step.kind === 'first_factor_code' || step.kind === 'second_factor_code' ? step.safeIdentifier : ''}.`}
@@ -253,6 +299,7 @@ export default function SignInPage() {
 
             <form onSubmit={submitCode} className="mt-8 flex flex-col gap-[14px]">
               <Input
+                fieldSize="auth"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="Enter code"
@@ -264,7 +311,7 @@ export default function SignInPage() {
                 autoFocus
               />
               {errors.form ? (
-                <p role="alert" className="text-center text-[14px] text-destructive">
+                <p role="alert" className="text-center text-14 text-destructive">
                   {errors.form}
                 </p>
               ) : null}
@@ -274,7 +321,7 @@ export default function SignInPage() {
               </Button>
             </form>
 
-            <div className="mt-6 flex items-center justify-center gap-6 text-[15px]">
+            <div className="mt-6 flex items-center justify-center gap-6 text-16">
               {step.kind !== 'second_factor_totp' ? (
                 <button type="button" onClick={resend} className="text-brand-purple underline" disabled={!isLoaded}>
                   {resent ? 'Code resent' : 'Resend'}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { genomeRequirement, readGenomePath } from '@sparksocial/shared/genomeRequirements';
 import { AssetRole, ToolError } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import type { Beat, Playbook } from '@sparksocial/playbooks';
@@ -204,13 +205,30 @@ function planBeat(
     if (source.kind === 'genome') {
       const text = readGenomePath(genome, source.path);
       if (!text) {
-        // A genome beat with nothing behind it is a *content* gap, not an asset
-        // gap: the brand has not told us its CTA yet. Rendering an empty frame
-        // would be worse than refusing.
-        throw new ToolError('NOT_FOUND', `The genome has no value at "${source.path}".`, {
-          genomePath: source.path,
-          beatId: beat.id,
-        });
+        /**
+         * A genome beat with nothing behind it is a *content* gap, not an asset
+         * gap: the brand has not told us its CTA yet. Rendering an empty frame
+         * would be worse than refusing.
+         *
+         * The resolver now catches this a week earlier — a playbook reading an
+         * unset path comes back `unlockable` with `unlockedBy: 'answer'`, so it
+         * is never counted into a campaign it cannot fill. This throw stays,
+         * because posts scheduled before that check existed are still on real
+         * calendars, and because a genome can be emptied after a post is placed.
+         *
+         * What changed is the words. It used to read *"The genome has no value at
+         * offer.primary_cta"*, which is a schema location shown to a business
+         * owner inside a dialog whose only working button was Close. `app.ts`
+         * serialises `message` and never `meta`, so the message is the entire
+         * surface a person gets — it has to name the thing and the screen.
+         */
+        const requirement = genomeRequirement(source.path);
+        throw new ToolError(
+          'NOT_FOUND',
+          `This post ends with ${requirement.label}, and your brand has not set one yet. ` +
+            `Add it in ${requirement.fixWith} and open this again.`,
+          { genomePath: source.path, beatId: beat.id },
+        );
       }
       return { kind: 'text', beatId: beat.id, durationSec: beat.duration_sec, text, genomePath: source.path };
     }
@@ -246,23 +264,15 @@ function planBeat(
 }
 
 /**
- * Dotted lookup into the genome, e.g. `offer.primary_cta`.
+ * Re-exported, not defined here.
  *
- * Returns undefined for anything that is not a non-empty string: a beat renders
- * text, and an object or a number arriving here means the playbook points at
- * the wrong path. Silently stringifying it would put `[object Object]` on
- * someone's Instagram.
+ * The playbook resolver has to answer the same question a week earlier — "would
+ * this playbook find a value at this path?" — and two implementations of that
+ * would be a guard that agrees with the thing it guards right up until it does
+ * not. The one copy lives in `@sparksocial/shared/genomeRequirements`, which
+ * `packages/playbooks` can also reach.
  */
-export function readGenomePath(genome: Genome, path: string): string | undefined {
-  let current: unknown = genome;
-  for (const key of path.split('.')) {
-    if (current === null || typeof current !== 'object') return undefined;
-    // Own-property only: a path like `constructor.name` must not resolve.
-    if (!Object.prototype.hasOwnProperty.call(current, key)) return undefined;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return typeof current === 'string' && current.trim() ? current : undefined;
-}
+export { readGenomePath };
 
 /**
  * The playbook declares an intended duration band; the beats declare their own

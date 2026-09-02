@@ -41,7 +41,10 @@ export function SidebarNav() {
         <span
           aria-hidden
           className={cn(
-            'pointer-events-none absolute left-[14px] right-[26px] rounded bg-nav-active',
+            /* left 18, width 278 - the prototype's glow spans 18..296 in a
+               322px sidebar. `left-14 right-26` had the right edge correct and
+               the left 4px out. */
+            'pointer-events-none absolute left-[18px] w-[278px] rounded bg-nav-active',
             'transition-transform duration-[250ms] ease-shell motion-reduce:transition-none',
             'max-xl:hidden',
           )}

@@ -10,6 +10,7 @@ import { createDevApprovalStore } from './dev-approvals.js';
 import { createDevHumanLoopStore } from './dev-human-loop.js';
 import { createDevConsentStore } from './dev-consent.js';
 import type {
+  ApprovalRuleRecord,
   ApprovalStore,
   BrandEngagementStore,
   BrandGovernanceStore,
@@ -244,6 +245,8 @@ export function createDevStore(
   /** `${groupId}:${userId}` — the same uniqueness the real index enforces. */
   const groupMembers = new Set<string>();
   let nextGroup = 1;
+  const approvalRuleRows = new Map<string, ApprovalRuleRecord>();
+  let nextApprovalRule = 1;
   const knowledgeChunkRows: Array<{ id: string; orgId: string; genomeId: string; docId: string; text: string; citation?: unknown; createdAt: Date }> = [];
   // Typed as the record itself rather than a hand-listed copy of its fields —
   // the inline literal is how this drifted when §8.12's 2FA/residency/retention
@@ -1338,6 +1341,55 @@ export function createDevStore(
           for (const capability of row.capabilities) union.add(capability);
         }
         return [...union].sort();
+      },
+      async groupIdsForUser(org, userId) {
+        const ids: string[] = [];
+        for (const key of groupMembers) {
+          const [groupId, member] = key.split(':');
+          if (member !== userId) continue;
+          const row = groups.get(groupId!);
+          if (row && row.orgId === org) ids.push(row.id);
+        }
+        return ids;
+      },
+    },
+
+    /**
+     * Approval flows. Enforced in dev exactly as in production, because a rule
+     * that only bites in production is a rule nobody exercises until a customer
+     * does.
+     */
+    approvalRules: {
+      async list(org) {
+        return [...approvalRuleRows.values()].filter((r) => r.orgId === org).map((r) => ({ ...r }));
+      },
+      async active(org) {
+        return [...approvalRuleRows.values()]
+          .filter((r) => r.orgId === org && r.enabled)
+          .map((r) => ({ ...r }));
+      },
+      async upsert({ orgId: org, id, trigger, thresholdCents, requiresRole, groupIds, enabled, createdBy }) {
+        const existing = id ? approvalRuleRows.get(id) : undefined;
+        const rowId = existing && existing.orgId === org ? existing.id : `apr_${nextApprovalRule++}`;
+        const row = {
+          id: rowId,
+          orgId: org,
+          trigger,
+          ...(thresholdCents === undefined ? {} : { thresholdCents }),
+          requiresRole,
+          groupIds,
+          enabled,
+          ...(createdBy ? { createdBy } : {}),
+          updatedAt: new Date(),
+        };
+        approvalRuleRows.set(rowId, row);
+        return { ...row };
+      },
+      async remove({ orgId: org, id }) {
+        const row = approvalRuleRows.get(id);
+        if (!row || row.orgId !== org) return false;
+        approvalRuleRows.delete(id);
+        return true;
       },
     },
 

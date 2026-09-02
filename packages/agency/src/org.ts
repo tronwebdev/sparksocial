@@ -17,7 +17,7 @@ export const Plan = z.enum(['starter', 'growth', 'agency']);
 export type Plan = z.infer<typeof Plan>;
 
 /** Real, defensible starting caps per tier — not a placeholder. Changeable later without a schema change; this is the only place the mapping lives. */
-const PLAN_CAPS_CENTS: Record<Plan, number> = {
+export const PLAN_CAPS_CENTS: Record<Plan, number> = {
   starter: 500_00,
   growth: 2_000_00,
   agency: 10_000_00,

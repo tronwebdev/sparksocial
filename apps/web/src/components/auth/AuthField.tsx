@@ -18,17 +18,47 @@ export function AuthField({ label, hint, error, id, ...inputProps }: AuthFieldPr
   const fieldId = id ?? `f_${label.toLowerCase().replace(/\s+/g, '_')}`;
   return (
     <div className="flex flex-col gap-1.5">
+      {/* Labels take the project default and override nothing: Onest 400, 18px,
+          line-height 100%, `--ss-fg-muted` (#838383). See `Label`. */}
       <div className="flex items-baseline justify-between">
         <Label htmlFor={fieldId}>{label}</Label>
-        {hint ? <span className="text-[14px] text-ink-muted">{hint}</span> : null}
+        {hint ? <span className="text-14 text-ink-muted">{hint}</span> : null}
       </div>
       <Input id={fieldId} invalid={Boolean(error)} {...inputProps} />
       {error ? (
-        <p role="alert" className="text-[14px] text-destructive">
+        <p role="alert" className="text-14 text-destructive">
           {error}
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The eye-with-slash on every password field in the captures. A real button so
+ * it is reachable by keyboard, but out of the tab order for screen readers'
+ * benefit it keeps an explicit label rather than relying on the icon.
+ */
+export function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? 'Hide password' : 'Show password'}
+      className="flex h-6 w-6 items-center justify-center rounded text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
+    >
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+        <path
+          d="M1.7 10S4.9 4.6 10 4.6 18.3 10 18.3 10 15.1 15.4 10 15.4 1.7 10 1.7 10Z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="10" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.4" />
+        {!shown ? <path d="M3.5 16.5 16.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /> : null}
+      </svg>
+    </button>
   );
 }
 

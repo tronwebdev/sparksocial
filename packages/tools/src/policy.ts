@@ -16,7 +16,23 @@ import { toolFamily } from './defineTool.js';
 export type Decision =
   | { kind: 'allow' }
   | { kind: 'confirm'; reason: string; ruleId: string }
-  | { kind: 'approval'; reason: string; ruleId: string }
+  | {
+      kind: 'approval';
+      reason: string;
+      ruleId: string;
+      /**
+       * The minimum role that may release this hold, when the rule that produced
+       * it said so.
+       *
+       * Absent means any reviewer will do, which is every rule that existed
+       * before workspace approval rules — those are "a human must look at this",
+       * not "a particular seniority must look at this". `evaluate` enforces it in
+       * the post-filter, so a rule that names Admin cannot be released by an
+       * Approver; without that, `requiresRole` would be a value stored on a
+       * screen that changed nothing.
+       */
+      requiresRole?: Role;
+    }
   | { kind: 'deny'; reason: string; ruleId: string };
 
 export interface PolicyInput {
@@ -122,7 +138,20 @@ export interface PolicyInput {
     pendingReviewCount?: number;
   };
 
-  budget: { remainingCents: number; estimatedCents: number };
+  budget: {
+    remainingCents: number;
+    estimatedCents: number;
+    /**
+     * The workspace's remaining sub-cap for the category this call charges to,
+     * and the category's own name for the message.
+     *
+     * Both absent when the category has no sub-cap — which is the common case,
+     * and the reason this is optional rather than defaulted: a missing entry
+     * means "not bounded", and reading it as zero would refuse every paid call
+     * in a workspace that never set an allocation.
+     */
+    category?: { name: string; remainingCents: number };
+  };
 
   /** Engagement replies are gated until the campaign clears the eligibility rule. */
   engagement?: { eligible: boolean; autonomyConfigured: boolean };
@@ -138,7 +167,61 @@ export interface PolicyInput {
    * to override, and a grant that could reach them would turn "approve this
    * post" into "approve this post and also bypass every other rule".
    */
-  approval?: { grantedBy: string; grantedAt: Date };
+  approval?: { grantedBy: string; grantedAt: Date; grantedByRole?: Role };
+
+  /**
+   * Workspace approval rules (`SET-WS-TEAM-GROUPS`'s "Approval flows").
+   *
+   * These **narrow**, which is why they are their own field and not a
+   * {@link TeamCapability}. Every capability widens, and that asymmetry is the
+   * entire safety argument for team groups — a mistake in group configuration
+   * cannot lock a workspace out of its own account. Smuggling a narrowing rule
+   * into the same list would quietly destroy that property, and the first sign
+   * of it would be an owner unable to publish.
+   *
+   * Resolved and passed in by `invokeTool`; never read here, because this
+   * function does no I/O.
+   */
+  approvalRules?: ApprovalRule[];
+
+  /**
+   * The team groups this caller belongs to, for matching `ApprovalRule.groupIds`.
+   *
+   * Empty on an agent turn, always: an agent is not a person and is in no group.
+   * See {@link ApprovalRule.groupIds} for what that means for a rule that names
+   * groups versus one that names none.
+   */
+  memberGroupIds?: string[];
+}
+
+/**
+ * One row of the workspace's "Approval flows" — a rule that a class of action
+ * needs a human of at least some seniority to release.
+ *
+ * Two triggers, and deliberately only two: they are the two the design names,
+ * and a trigger vocabulary is the sort of thing that grows into a rules engine
+ * nobody can reason about. Adding a third is a considered change, not a
+ * configuration option.
+ */
+export interface ApprovalRule {
+  id: string;
+  /** `publish` — any publish-effect call. `spend_over` — any call estimated above `thresholdCents`. */
+  trigger: 'publish' | 'spend_over';
+  /** Required by `spend_over`, meaningless to `publish`. */
+  thresholdCents?: number;
+  /** The minimum role that may release the hold. */
+  requiresRole: Role;
+  /**
+   * Which team groups the rule applies to.
+   *
+   * **Empty means everyone**, including SPARK — the design's "Applies to: All
+   * Teams", and the case a workspace actually wants for a spend ceiling, since
+   * unattended agent spend is the spend worth holding. A rule naming specific
+   * groups applies only to people, because an agent belongs to no group and
+   * pretending otherwise would make "Applies to: Design Team" silently also mean
+   * "and the agent".
+   */
+  groupIds: string[];
 }
 
 const REVIEW_FIRST_WEEK_DAYS = 7;
@@ -166,6 +249,34 @@ export function evaluate(input: PolicyInput): Decision {
   const decision = evaluateRules(input);
 
   if (decision.kind === 'approval' && input.approval) {
+    /**
+     * A rule that named a role is released only by that role, or by an
+     * owner/admin.
+     *
+     * **Not `ROLE_RANK`**, and this is the interesting part. That ladder orders
+     * roles by privilege, where `editor` (3) outranks `approver` (2) — because an
+     * editor can do more. Approval authority is not privilege: "publishing
+     * requires Approver review" must not be satisfiable by the editor who wrote
+     * the post, which is exactly what a rank comparison would allow, and it would
+     * do it silently on the one rule whose entire purpose is separation of
+     * duties.
+     *
+     * So: the named role satisfies it, and `owner`/`admin` satisfy it because
+     * they can already change the rule itself — a workspace administrator unable
+     * to sign anything off is a lockout, not a control.
+     *
+     * A grant with no recorded role fails rather than passes. The field is filled
+     * in by the approval executor from the approver's own context, so an absent
+     * role means something upstream did not populate it, and reading that as
+     * "senior enough" would make the requirement optional in precisely the case
+     * where it is unverified.
+     */
+    if (decision.requiresRole) {
+      const granted = input.approval.grantedByRole;
+      const satisfied =
+        granted !== undefined && (granted === decision.requiresRole || granted === 'owner' || granted === 'admin');
+      if (!satisfied) return decision;
+    }
     return { kind: 'allow' };
   }
   return decision;
@@ -258,6 +369,7 @@ const NO_CAMPAIGN_MODE = 'review_everything' as const;
 
 function evaluateRules(input: PolicyInput): Decision {
   const { tool, caller, role, now, brand, subject, budget, engagement } = input;
+  const approvalRules = input.approvalRules ?? [];
   const family = toolFamily(tool.name);
   /**
    * Group capabilities apply to a *person*, so an agent turn never carries
@@ -343,6 +455,26 @@ function evaluateRules(input: PolicyInput): Decision {
         kind: 'deny',
         reason: `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.remainingCents}¢ remaining this month.`,
         ruleId: 'budget.exceeded',
+      };
+    }
+    /**
+     * The per-category sub-cap, checked after the monthly cap.
+     *
+     * After, because "there is no money left at all" is the more useful answer
+     * when both are true — a workspace told only that its render allocation is
+     * gone would go and raise it, and still be refused.
+     *
+     * This is what stops the allocation screen from being a control that stores
+     * a value and changes no behaviour. A sub-cap that did not refuse anything
+     * would be a number on a bar, and the bar would be a lie.
+     */
+    if (budget.category && budget.estimatedCents > budget.category.remainingCents) {
+      return {
+        kind: 'deny',
+        reason:
+          `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.category.remainingCents}¢ left in ` +
+          `this month's ${budget.category.name} allocation.`,
+        ruleId: 'budget.category_exceeded',
       };
     }
   }
@@ -484,6 +616,49 @@ function evaluateRules(input: PolicyInput): Decision {
     // campaign said so.
   }
 
+  /* 7b ─ Workspace approval flows (`SET-WS-TEAM-GROUPS`).
+   *
+   *      Placed after the campaign's own mode and before the tool's default, and
+   *      that position is the whole behaviour: an autopublishing campaign
+   *      `break`s out of rule 7 rather than returning `allow`, so a workspace
+   *      rule still catches it. A rule a campaign could switch off by setting
+   *      itself to autopublish would be a rule that stops applying the moment
+   *      somebody wants it not to.
+   *
+   *      Still after every `deny` above, so a rule cannot be used to *permit*
+   *      something — the worst a misconfigured flow can do is ask a human. */
+  for (const rule of approvalRules) {
+    if (!appliesTo(rule, caller, input.memberGroupIds ?? [])) continue;
+
+    if (rule.trigger === 'publish' && tool.effect === 'publish') {
+      return {
+        kind: 'approval',
+        reason: `Publishing needs ${article(rule.requiresRole)} ${rule.requiresRole} to review it in this workspace.`,
+        ruleId: 'approval_rule.publish',
+        requiresRole: rule.requiresRole,
+      };
+    }
+
+    if (rule.trigger === 'spend_over' && rule.thresholdCents !== undefined) {
+      /**
+       * Strictly greater than, matching the design's "Spending >100". A rule
+       * written at 100 that also held calls costing exactly 100 would refuse the
+       * threshold it names, and somebody would have to discover that by hitting
+       * it.
+       */
+      if (budget.estimatedCents > rule.thresholdCents) {
+        return {
+          kind: 'approval',
+          reason:
+            `Spending over ${money(rule.thresholdCents)} needs ${article(rule.requiresRole)} ` +
+            `${rule.requiresRole} to approve it in this workspace.`,
+          ruleId: 'approval_rule.spend_over',
+          requiresRole: rule.requiresRole,
+        };
+      }
+    }
+  }
+
   /* 8 ── Workspace override for the family, then the tool's own default. */
   const effective: Autonomy = brand.familyOverrides?.[family] ?? tool.autonomy;
 
@@ -499,3 +674,20 @@ function evaluateRules(input: PolicyInput): Decision {
 
   return { kind: 'allow' };
 }
+
+/**
+ * Whether a rule reaches this caller.
+ *
+ * A rule naming no groups reaches everyone, agent included — see
+ * {@link ApprovalRule.groupIds}. A rule naming groups reaches only people, and
+ * only people in one of them, because an agent belongs to no group.
+ */
+function appliesTo(rule: ApprovalRule, caller: 'user' | 'agent', memberGroupIds: string[]): boolean {
+  if (rule.groupIds.length === 0) return true;
+  return caller === 'user' && rule.groupIds.some((id) => memberGroupIds.includes(id));
+}
+
+const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+/** "an admin" / "an approver" / "a client" — the message reads as a sentence or it does not get read. */
+const article = (role: Role) => ('aeiou'.includes(role[0] ?? '') ? 'an' : 'a');

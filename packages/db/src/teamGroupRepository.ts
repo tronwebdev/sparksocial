@@ -21,5 +21,6 @@ export function createTeamGroupRepository(db: Database): TeamGroupStore {
     addMember: ({ orgId, ...args }) => scoped.addTeamGroupMember(db, orgId, args),
     removeMember: ({ orgId, ...args }) => scoped.removeTeamGroupMember(db, orgId, args),
     capabilitiesForUser: (orgId, userId) => scoped.capabilitiesForUser(db, orgId, userId),
+    groupIdsForUser: (orgId, userId) => scoped.groupIdsForUser(db, orgId, userId),
   };
 }

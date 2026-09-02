@@ -2,6 +2,15 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import type { CreditStore } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
+import {
+  CATEGORIES_WITHOUT_TOOLS,
+  CREDIT_CATEGORIES,
+  CREDIT_CATEGORY_LABEL,
+  centsToCredits,
+  creditCategoryFor,
+  forecastCents,
+  type CreditCategory,
+} from '@sparksocial/shared/credits';
 
 /**
  * `org.usage.get` — PRD §8.12's "usage slice and alerts", and the answer to
@@ -46,8 +55,58 @@ const ToolSpend = z.object({
   share: z.number(),
 });
 
+const CategorySpend = z.object({
+  category: z.string(),
+  label: z.string(),
+  costCents: z.number().int(),
+  credits: z.number().int(),
+  calls: z.number().int(),
+  /** Share of this period's spend, 0–1. */
+  share: z.number(),
+  /**
+   * True when no tool in the registry can spend against this category yet.
+   *
+   * The design names Transcription and Stock; nothing bills to either. Reporting
+   * them as a plain zero would read as "you spent nothing on this" when the truth
+   * is "this does not exist yet", and those are different facts to somebody
+   * deciding whether their allocation is wrong.
+   */
+  unavailable: z.boolean(),
+  /**
+   * The workspace's sub-cap for this category, when it has set one.
+   *
+   * Absent means the category is bounded only by the monthly cap — which is not
+   * the same as a sub-cap of zero, and the screen has to render the two
+   * differently or "no allocation set" reads as "spending here is switched off".
+   */
+  allocationCents: z.number().int().optional(),
+  allocationCredits: z.number().int().optional(),
+  /** Spend against the sub-cap, 0–1. Absent when there is no sub-cap. */
+  allocationUsedFraction: z.number().optional(),
+  /**
+   * True when the sub-cap is spent, so paid tools in this category are being
+   * refused — `policy.ts`'s `budget.category_exceeded`. The design's "usage
+   * paused pending reallocation", said only when it is actually true.
+   */
+  paused: z.boolean(),
+});
+
 export const OrgUsageGetOutput = z.object({
   monthlyCapCents: z.number().int(),
+  /** The same cap in the unit the screen shows. See `CENTS_PER_CREDIT`. */
+  monthlyCapCredits: z.number().int(),
+  spentCredits: z.number().int(),
+  remainingCredits: z.number().int(),
+  byCategory: z.array(CategorySpend),
+  /**
+   * Straight-line projection of this month's spend to month end, in cents, or
+   * absent on the first day where the multiplier is unstable enough to be worse
+   * than no number.
+   */
+  forecastCents: z.number().int().optional(),
+  forecastCredits: z.number().int().optional(),
+  /** True when the projection lands above the cap — the screen's "forecast exceeds budget". */
+  forecastOverCap: z.boolean(),
   spentCents: z.number().int(),
   remainingCents: z.number().int(),
   /** 0–1, clamped. Above 1 is possible after an overspend and reads as nonsense on a bar. */
@@ -93,10 +152,20 @@ export function makeOrgUsageGet(deps: UsageDeps) {
 
     async handler(input, ctx) {
       const now = new Date();
-      const [{ monthlyCapCents, spentCents }, breakdown] = await Promise.all([
+      const [{ monthlyCapCents, spentCents, allocationsCents }, everyTool] = await Promise.all([
         deps.credits.budget(ctx.orgId, now),
-        deps.credits.spendByTool(ctx.orgId, now, input.topTools),
+        /**
+         * The **whole** breakdown, then sliced for display.
+         *
+         * `topTools` bounds what the panel lists; it must not bound what the
+         * category totals are computed from, or the tail lands nowhere and the
+         * five categories quietly fail to add up to the headline spend. A billing
+         * screen whose parts do not sum to its total is one nobody trusts twice.
+         * 200 is far above the ~28 tools that can spend at all.
+         */
+        deps.credits.spendByTool(ctx.orgId, now, 200),
       ]);
+      const breakdown = everyTool.slice(0, input.topTools);
 
       if (monthlyCapCents <= 0) {
         // A zero cap is the "no ledger configured" state `readBudget` documents,
@@ -129,17 +198,74 @@ export function makeOrgUsageGet(deps: UsageDeps) {
         share: spentCents > 0 ? Number((r.costCents / spentCents).toFixed(4)) : 0,
       }));
 
+      /**
+       * Categories, rolled up from the complete breakdown.
+       *
+       * Every category is emitted, including the ones nothing spent against, so
+       * the screen's five rows are stable month to month — a category that
+       * appears and vanishes depending on what happened to be rendered reads as a
+       * bug rather than as a zero.
+       */
+      const spendByCategory = new Map<CreditCategory, { costCents: number; calls: number }>();
+      for (const row of everyTool) {
+        const category = creditCategoryFor(row.tool);
+        // A tool with no category spent nothing chargeable. Skipped rather than
+        // bucketed into an "other", which would put every free read on the bill.
+        if (!category) continue;
+        const acc = spendByCategory.get(category) ?? { costCents: 0, calls: 0 };
+        acc.costCents += row.costCents;
+        acc.calls += row.calls;
+        spendByCategory.set(category, acc);
+      }
+
+      const byCategory = CREDIT_CATEGORIES.map((category) => {
+        const acc = spendByCategory.get(category) ?? { costCents: 0, calls: 0 };
+        const allocation = allocationsCents[category];
+        return {
+          category,
+          label: CREDIT_CATEGORY_LABEL[category],
+          costCents: acc.costCents,
+          credits: centsToCredits(acc.costCents),
+          calls: acc.calls,
+          share: spentCents > 0 ? Number((acc.costCents / spentCents).toFixed(4)) : 0,
+          unavailable: CATEGORIES_WITHOUT_TOOLS.includes(category),
+          ...(allocation !== undefined
+            ? {
+                allocationCents: allocation,
+                allocationCredits: centsToCredits(allocation),
+                allocationUsedFraction:
+                  allocation > 0 ? Math.min(1, acc.costCents / allocation) : acc.costCents > 0 ? 1 : 0,
+              }
+            : {}),
+          // Only ever true against a sub-cap that exists. Reporting an unbounded
+          // category as paused would explain a refusal that is not happening.
+          paused: allocation !== undefined && acc.costCents >= allocation,
+        };
+      });
+
+      const period = startOfPeriod(now);
+      const daysInPeriod = new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth() + 1, 0)).getUTCDate();
+      const projected = forecastCents({ spentCents, periodStart: period, now, daysInPeriod });
+
       const money = (c: number) => `$${(c / 100).toFixed(2)}`;
       const biggest = byTool[0];
 
       return {
         monthlyCapCents,
+        monthlyCapCredits: centsToCredits(monthlyCapCents),
         spentCents,
+        spentCredits: centsToCredits(spentCents),
         remainingCents: Math.max(0, monthlyCapCents - spentCents),
+        remainingCredits: centsToCredits(Math.max(0, monthlyCapCents - spentCents)),
         usedFraction,
         alert,
         byTool,
-        periodStart: startOfPeriod(now).toISOString(),
+        byCategory,
+        ...(projected !== undefined
+          ? { forecastCents: projected, forecastCredits: centsToCredits(projected) }
+          : {}),
+        forecastOverCap: projected !== undefined && projected > monthlyCapCents,
+        periodStart: period.toISOString(),
         why: {
           summary:
             alert === 'exhausted'

@@ -1,6 +1,5 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { compactNumber } from '@/lib/relativeTime';
 import type { BrandSeries } from './types';
 
@@ -54,23 +53,92 @@ export function KpiRow({ series }: { series: BrandSeries }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {cards.map((c) => (
-        <div key={c.label} className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-[13px] font-medium text-ink-muted">{c.label}</p>
-          <div className="mt-2 flex flex-wrap items-baseline gap-3">
-            <span className="text-[28px] font-semibold tabular-nums leading-none text-ink">{c.value}</span>
+    /*
+      270x107 at radius 15, on a tint rather than a bordered white card - the
+      prototype gives the three cards `rgba(108,232,255,0.3)`,
+      `rgba(163,65,255,0.2)` and `rgba(254,222,181,0.5)` in that order, and no
+      border at all. The 288px pitch (356, 644, 932) is 270 plus an 18px gutter.
+
+      The prototype's second card is "CTA Clicks", which `analytics.brand_series`
+      does not carry - there is no click field on it. Rather than leave a card
+      showing nothing, the three real metrics keep the three tints in position
+      order; the tint belongs to the slot, not the metric.
+    */
+    <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-3">
+      {cards.map((c, i) => (
+        <div
+          key={c.label}
+          className="relative min-h-[107px] rounded-lg px-[21px] pb-4 pt-[15px]"
+          style={{ background: TINTS[i % TINTS.length] }}
+        >
+          <p className="text-18 font-medium leading-[1.28] text-ink-muted">{c.label}</p>
+          <div className="mt-[13px] flex flex-wrap items-center gap-3">
+            <span className="text-[35px] font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>
-          <p className="mt-2 text-[12px] text-ink-muted">
-            {c.hint ? `${c.hint} · ` : ''}last {series.windowDays} days
-          </p>
+          {/*
+            No caption. The design's card is three things - label, value, delta
+            pill - and the window is stated once on the Performance Insights tab
+            ("Impressions · last 7 days") rather than three times here. The
+            `hint` that used to ride along with it (the maturing-posts caveat)
+            travels with the chart on that tab, which is where it can be read
+            next to the bars it explains.
+          */}
         </div>
       ))}
     </div>
   );
 }
 
+/** The prototype's three card tints, in its own order. */
+const TINTS = ['rgba(108,232,255,0.3)', 'rgba(163,65,255,0.2)', 'rgba(254,222,181,0.5)'] as const;
+
+/**
+ * The 90x36 white pill at radius 11.59 with a `rgba(12,12,12,0.1)` ring: the
+ * sign in 17px/500 coloured, the number in 18px/500 ink, and an arrow.
+ *
+ * `−`/`+` are the prototype's own glyphs - it uses U+2212 for the minus, not a
+ * hyphen, which at 17px is a visibly different width.
+ */
+function Pill({ up, children, title }: { up: boolean; children: React.ReactNode; title?: string }) {
+  return (
+    <span
+      title={title}
+      className="inline-flex h-9 items-center gap-[3px] rounded-[11.59px] bg-white px-[9px]"
+      style={{ boxShadow: 'inset 0 0 0 0.77px rgba(12,12,12,0.1)' }}
+    >
+      <span className="text-[17px] font-medium leading-none" style={{ color: up ? '#13D711' : '#F35525' }}>
+        {up ? '+' : '\u2212'}
+      </span>
+      <span className="text-18 font-medium leading-[1.28] text-ink">{children}</span>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="ml-[3px]">
+        <path
+          d={up ? 'M3 9.5 7 5l4 4.5' : 'M3 4.5 7 9l4-4.5'}
+          stroke={up ? '#13D711' : '#F35525'}
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
+/**
+ * The card always shows a pill, which is a position I argued against and was
+ * wrong about.
+ *
+ * The old rule was: no delta unless there is a real one, because `+100%` is not
+ * a percentage and `0%` is a claim about a period that did not happen. The first
+ * half still holds. The second does not - when the previous window exists and
+ * was also zero, "0%" is simply true, and three cards reading "no comparison
+ * yet" in place of the design's pills is a worse screen than three honest
+ * zeroes.
+ *
+ * What survives of the caution is the `title`: where there is genuinely nothing
+ * to compare against, the pill says 0% and hovering says why. The fact stays
+ * reachable without a sentence where a 90px pill goes.
+ */
 function Delta({
   changePct,
   absolute,
@@ -80,29 +148,36 @@ function Delta({
   absolute?: number;
   before: number;
 }) {
-  // An absolute change of zero is a real answer ("the same as last week"); a
-  // percentage of null is not, and says so.
   if (absolute !== undefined) {
-    if (before === 0 && absolute === 0) return <Muted>nothing either week</Muted>;
-    if (absolute === 0) return <Muted>same as the week before</Muted>;
+    const flat = absolute === 0;
     return (
-      <span className={cn('text-[13px] font-medium', absolute > 0 ? 'text-success' : 'text-warn')}>
-        {absolute > 0 ? '+' : '−'}
-        {Math.abs(absolute)} on the week before
-      </span>
+      <Pill
+        up={absolute >= 0}
+        title={
+          before === 0 && flat
+            ? 'Nothing either week, so there is no change to report.'
+            : flat
+              ? 'The same as the week before.'
+              : undefined
+        }
+      >
+        {Math.abs(absolute)}
+      </Pill>
     );
   }
 
-  if (changePct === null) return <Muted>no comparison yet</Muted>;
-  if (changePct === 0) return <Muted>flat on the week before</Muted>;
-
   return (
-    <span className={cn('text-[13px] font-medium', changePct > 0 ? 'text-success' : 'text-warn')}>
-      {changePct > 0 ? '↑' : '↓'} {Math.abs(changePct)}%
-    </span>
+    <Pill
+      up={(changePct ?? 0) >= 0}
+      title={
+        changePct === null
+          ? 'No previous week to compare against yet, so this reads as no change.'
+          : changePct === 0
+            ? 'Flat on the week before.'
+            : undefined
+      }
+    >
+      {Math.abs(changePct ?? 0)}%
+    </Pill>
   );
-}
-
-function Muted({ children }: { children: React.ReactNode }) {
-  return <span className="text-[13px] text-ink-muted">{children}</span>;
 }

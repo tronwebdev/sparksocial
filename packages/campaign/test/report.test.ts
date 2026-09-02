@@ -26,6 +26,7 @@ const PLAN: CampaignPlan = {
   mixWhy: 'test',
   capture: null,
   readyPlaybookIds: [],
+  answers: null,
 };
 
 function slot(pillar: string, status: string) {

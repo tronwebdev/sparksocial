@@ -24,7 +24,16 @@ export interface ToolCtx {
   runId?: string;           // agent_runs.id when called by SPARK
   approvalMode: 'autopublish' | 'review_first_week' | 'review_everything';
   brandCreatedAt?: Date;    // for review_first_week evaluation
-  budget: { remainingCents: number; monthlyCapCents: number };
+  budget: {
+    remainingCents: number;
+    monthlyCapCents: number;
+    /**
+     * What is left under each per-category sub-cap, for the categories that have
+     * one. Absent category → no sub-cap, so `policy.ts` skips the check rather
+     * than treating a missing entry as zero.
+     */
+    remainingByCategory?: Record<string, number>;
+  };
   db: ScopedDb;             // from packages/db — see scoped.ts
   logger: Logger;
   trace: Trace;
@@ -293,6 +302,8 @@ export interface ScopedDb {
   campaigns: CampaignStore;
   /** Named capability bundles — `team.group.*` (`SET-WS-TEAM-GROUPS`). See {@link TeamGroupStore}. */
   teamGroups: TeamGroupStore;
+  /** Approval flows — `approval.rule.*` (`SET-WS-TEAM-GROUPS`). See {@link ApprovalRuleStore}. */
+  approvalRules: ApprovalRuleStore;
   /** Org-level plan/governance/SSO config — `org.*` (plan §6.9, §12 P6). See {@link OrgSettingsStore}. */
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
@@ -1446,7 +1457,34 @@ export interface CreditStore {
    * single request, and two round-trips on the hot path to compute one
    * subtraction is a cost with no benefit.
    */
-  budget(orgId: string, now: Date): Promise<{ monthlyCapCents: number; spentCents: number }>;
+  budget(
+    orgId: string,
+    now: Date,
+  ): Promise<{
+    monthlyCapCents: number;
+    spentCents: number;
+    /**
+     * This period's spend per tool, for the per-category sub-caps.
+     *
+     * Returned from the same read as the total rather than from a second call:
+     * grouping the period's rows by tool is the same index scan the total
+     * already does, plus a hash aggregate over at most a few dozen rows, so the
+     * hot path keeps its single round-trip. Rolling those into categories is the
+     * caller's job — `packages/shared/src/credits.ts` owns that map, and a
+     * repository that imported it would put a product decision in the data layer.
+     */
+    byTool: Array<{ tool: string; costCents: number }>;
+    /**
+     * The workspace's per-category sub-caps, in cents, keyed by category.
+     *
+     * A category **absent from this map has no sub-cap** and is bounded only by
+     * the monthly cap. Absent and zero are different instructions and must stay
+     * that way: zero means "spend nothing on this", and defaulting an unset
+     * category to it would stop a workspace rendering the first time somebody
+     * opened the allocation screen and saved.
+     */
+    allocationsCents: Record<string, number>;
+  }>;
 
   /**
    * What the money went on this period, biggest first — `org.usage.get`'s read,
@@ -1493,6 +1531,23 @@ export interface CreditStore {
     tool: string;
     costCents: number;
     at: Date;
+  }): Promise<void>;
+
+  /**
+   * `org.budget.set` — the monthly cap and the per-category sub-caps, written
+   * together.
+   *
+   * One verb rather than two because the invariant that makes allocations mean
+   * anything — they may not add up to more than the cap — spans both, and
+   * separate writes force every workspace lowering its cap to pass through a
+   * state the rule forbids. Both fields are optional so either can be left
+   * alone; `allocationsCents` is a **complete replacement** of the set, since a
+   * category left out is a sub-cap the workspace has removed.
+   */
+  setBudget(args: {
+    orgId: string;
+    monthlyCapCents?: number;
+    allocationsCents?: Record<string, number>;
   }): Promise<void>;
 
   /**
@@ -2132,6 +2187,60 @@ export interface TeamGroupStore {
    * somebody to a second group must not silently remove access.
    */
   capabilitiesForUser(orgId: string, userId: string): Promise<string[]>;
+  /**
+   * Which groups this user is in — read on the same hot path as
+   * {@link capabilitiesForUser}, for matching an approval rule's `groupIds`.
+   *
+   * Separate from the capability read rather than folded into it, because the two
+   * answer different questions and one of them is about a *narrowing* rule. A
+   * single call returning both would invite a caller to treat group membership as
+   * a capability, which is the confusion `ApprovalRule` exists to avoid.
+   */
+  groupIdsForUser(orgId: string, userId: string): Promise<string[]>;
+}
+
+/**
+ * APPROVAL RULES — the workspace's "Approval flows".
+ *
+ * Org-scoped, like team groups, and deliberately a separate store from them: a
+ * rule narrows what may happen unattended, a group widens it, and the safety
+ * argument for groups depends on nothing in that list ever narrowing.
+ */
+export interface ApprovalRuleStore {
+  /** Every rule, enabled or not — the settings screen shows both. */
+  list(orgId: string): Promise<ApprovalRuleRecord[]>;
+  /**
+   * Only the enabled ones, for the policy layer.
+   *
+   * Its own method rather than a filter at the call site: this runs on every
+   * tool call, and a caller that forgot the filter would enforce rules somebody
+   * had switched off — a bug that looks exactly like the feature working.
+   */
+  active(orgId: string): Promise<ApprovalRuleRecord[]>;
+  upsert(args: {
+    orgId: string;
+    id?: string;
+    trigger: string;
+    thresholdCents?: number;
+    requiresRole: Role;
+    groupIds: string[];
+    enabled: boolean;
+    createdBy?: string;
+  }): Promise<ApprovalRuleRecord>;
+  /** False when no rule in this org has that id. */
+  remove(args: { orgId: string; id: string }): Promise<boolean>;
+}
+
+export interface ApprovalRuleRecord {
+  id: string;
+  orgId: string;
+  trigger: string;
+  thresholdCents?: number;
+  requiresRole: Role;
+  groupIds: string[];
+  enabled: boolean;
+  createdBy?: string;
+  updatedAt: Date;
 }
 
 export interface BrandMemberStore {

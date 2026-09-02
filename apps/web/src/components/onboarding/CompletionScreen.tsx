@@ -1,166 +1,171 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Wordmark } from '@/components/brand/Wordmark';
-import { invoke } from '@/lib/tools';
-import { HoldButton } from './HoldButton';
+import { Stage, SplashMark, ArchDome, OrbitRings, StageHoldButton } from './Stage';
 
 /**
- * `L5` / `F6` — "Congratulations on creating your first Agent".
+ * "Congratulations on creating your first Agent" — rebuilt from
+ * `ui build/SparkSocial Onboarding.dc.html` (`data-screen-label="Setup
+ * Complete"`, Figma "Steps completed", 1728×1117 on `#EAEFF0`).
  *
- * The flow used to end by pushing to `/`, which meant setup finished by dropping
- * somebody on a dashboard with nothing on it — L5's exact complaint. This is the
- * screen the prototype ends on, with its press-and-hold, and it does one more
- * thing than congratulate: it says what is still missing.
+ * ── Three things this screen was missing ─────────────────────────────────
  *
- * ── Why a completion screen states the gaps ───────────────────────────────
+ * 1. **The arch dome.** Absent entirely. It is a 784×359 white-to-transparent
+ *    arch at 472,515 carrying its own `backdrop-filter: blur(26.19px)`, and the
+ *    title sits *on* it — which is why the title is white on a light ground and
+ *    read as a mistake without it.
+ * 2. **The press-and-hold.** It was a plain button with the caption underneath.
+ *    The prototype is a 432×82.76 white pill whose gradient fill *is* the
+ *    progress, with a dashed arrow and the caption **above** it.
+ * 3. **The readiness list is gone.** Four lines of "what SPARK knows" that the
+ *    design does not have. I had argued for keeping them — skipping is the
+ *    common path, and a bare tick sends a brand with no connected account to an
+ *    empty calendar. That was a product argument against an explicit design, and
+ *    the design wins; the observation belongs in the dashboard's empty state,
+ *    where there is room to act on it, not on a celebration screen.
  *
- * Everything after the routing questions is skippable, and skipping is the
- * common path — so the honest end of setup is not a tick, it is a short list of
- * what SPARK can and cannot do yet. A brand with no connected account and no
- * assets will otherwise read "you're all set", find an empty calendar, and
- * conclude the product does not work.
- *
- * The list is read rather than remembered: `brand.governance.get` for the kit's
- * progress and the agent's name, `integration.health` for accounts, `asset.gaps`
- * for what one upload would unlock. Any of those failing costs a line, not the
- * screen.
+ * Removing the list also removes the three reads that fed it
+ * (`brand.governance.get`, `integration.health`, `asset.gaps`), so this screen
+ * now makes no tool calls at all.
  */
-
-interface Readiness {
-  agentName?: string;
-  brandKitPct?: number;
-  brandKitNext?: string;
-  connected: number;
-  unlockableByUpload: number;
-}
-
-export function CompletionScreen({ genomeId, brandName, onDone }: { genomeId: string; brandName: string; onDone: () => void }) {
-  const [state, setState] = useState<Readiness | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      const [gov, health, gaps] = await Promise.all([
-        invoke<{
-          agentName?: string;
-          brandKit?: { pct: number; next?: { label: string } };
-        }>('brand.governance.get', {}),
-        invoke<{ platforms: Array<{ connected: boolean }> }>('integration.health', {}),
-        invoke<{ gaps: Array<{ playbooksBlocked: string[]; unlockedBy: string }> }>('asset.gaps', { genomeId }),
-      ]);
-
-      setState({
-        ...(gov.status === 'succeeded' && gov.output.agentName ? { agentName: gov.output.agentName } : {}),
-        ...(gov.status === 'succeeded' && gov.output.brandKit
-          ? {
-              brandKitPct: gov.output.brandKit.pct,
-              ...(gov.output.brandKit.next ? { brandKitNext: gov.output.brandKit.next.label } : {}),
-            }
-          : {}),
-        connected: health.status === 'succeeded' ? health.output.platforms.filter((p) => p.connected).length : 0,
-        unlockableByUpload:
-          gaps.status === 'succeeded'
-            ? (gaps.output.gaps.find((g) => g.unlockedBy === 'upload')?.playbooksBlocked.length ?? 0)
-            : 0,
-      });
-    })();
-  }, [genomeId]);
-
-  const agent = state?.agentName;
-
+export function CompletionScreen({ onDone }: { onDone: () => void }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background px-6 py-8 md:px-16">
-      <header>
-        <Wordmark />
-      </header>
+    <Stage background="#EAEFF0">
+      {/* Blurred colour fields, then the outlined pair, exactly as the
+          prototype layers them: two blurs behind, two outlines in front. */}
+      <Blob left={949} top={46} colour="#6CE8FF" opacity={0.4} />
+      <Blob left={359} top={548} colour="#A341FF" opacity={0.35} mirrored />
+      <OrbitRings filled />
 
-      <main className="mx-auto flex w-full max-w-[620px] flex-1 flex-col justify-center py-10 text-center">
-        <p className="text-[15px] text-ink-muted">{brandName || 'Your brand'} is set up</p>
-        <h1 className="mt-3 text-balance text-[34px] font-semibold leading-tight text-ink">
-          {agent ? (
-            <>
-              Congratulations on creating <span className="text-brand-purple">{agent}</span>, your first
-              agent
-            </>
-          ) : (
-            'Congratulations on creating your first agent'
-          )}
-        </h1>
+      {/* The horizon band. `mix-blend-mode: lighten` over a light ground is what
+          darkens the middle of the screen enough for white type to read. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 291.83,
+          top: 0,
+          width: 1148.33,
+          height: 530,
+          mixBlendMode: 'lighten',
+          background:
+            'linear-gradient(0deg, #0C0C0C -3.46%, rgba(12,12,12,0) 58.29%, #0C0C0C 108.81%), url(/auth/horizon-glow.png) 0% 7.652% / 99.979% 131.158% no-repeat',
+          pointerEvents: 'none',
+        }}
+      />
 
-        {/* What is true, in the order it matters. Each line is a fact read from a
-            tool, and the ones that are already done say so rather than being
-            hidden — a checklist of only failures reads as a telling-off. */}
-        <ul className="mx-auto mt-8 flex w-full max-w-[460px] flex-col gap-2 text-left">
-          <Line
-            done
-            text={
-              agent
-                ? `${agent} knows what ${brandName || 'your brand'} does and how it should sound.`
-                : 'SPARK knows what your brand does and how it should sound.'
-            }
-          />
-          <Line
-            done={(state?.brandKitPct ?? 0) >= 100}
-            text={
-              (state?.brandKitPct ?? 0) >= 100
-                ? 'Your brand kit is complete, so posts will carry your colours and type.'
-                : `Brand kit ${state?.brandKitPct ?? 0}% done${
-                    state?.brandKitNext ? ` — ${state.brandKitNext.toLowerCase()} next` : ''
-                  }. Until it is, posts render on defaults.`
-            }
-          />
-          <Line
-            done={(state?.connected ?? 0) > 0}
-            text={
-              (state?.connected ?? 0) > 0
-                ? `${state?.connected} account${state?.connected === 1 ? '' : 's'} connected, so posts can actually go out.`
-                : 'No account connected yet — SPARK will plan and draft, and hold everything until one is.'
-            }
-          />
-          <Line
-            done={(state?.unlockableByUpload ?? 0) === 0}
-            text={
-              (state?.unlockableByUpload ?? 0) === 0
-                ? 'It has enough to work with to start making posts.'
-                : `${state?.unlockableByUpload} more format${
-                    state?.unlockableByUpload === 1 ? '' : 's'
-                  } unlock the moment you upload a photo or clip.`
-            }
-          />
-        </ul>
+      <div
+        className="font-display"
+        style={{ position: 'absolute', left: 778, top: 55.58, fontSize: 33.57, lineHeight: 1.13, color: '#0C0C0C', whiteSpace: 'nowrap' }}
+      >
+        Sparksocial
+      </div>
 
-        <p className="mt-8 text-[14px] text-ink-muted">
-          Next: a campaign. It is one screen, and it is where {agent ?? 'SPARK'} works out what it can make
-          from what you have.
-        </p>
+      <SplashMark tone="light" />
+      <ArchDome tone="light" />
 
-        <div className="mt-6 flex justify-center">
-          <HoldButton label="Continue to your dashboard" caption="Press and hold" onComplete={onDone} />
-        </div>
-      </main>
-    </div>
+      <img
+        src="/auth/confetti.png"
+        alt=""
+        aria-hidden
+        style={{ position: 'absolute', left: 807, top: 564.54, width: 114, height: 88.92, objectFit: 'contain', pointerEvents: 'none' }}
+      />
+
+      {/*
+        Copy, position, size and weight are the prototype's. The COLOUR is not,
+        and this is the one place the two sources cannot both be honoured.
+
+        The prototype sets `color:#FFFFFF` and relies on its horizon band to
+        darken the ground behind it — but that band is `mix-blend-mode: lighten`
+        over `#EAEFF0`, and lighten cannot darken anything, so the white title
+        renders near-invisible. Verified in the browser rather than assumed:
+        the band mounts, blends, and the PNG loads 200; the type is still white
+        on near-white.
+
+        `…193247` disagrees with the prototype here and is legible — "Congratulations"
+        in the brand ramp, the remainder in ink. That is what this uses. Flagged
+        rather than silently reconciled, because it means the prototype has a
+        contrast bug worth fixing at source.
+      */}
+      <h1
+        style={{
+          position: 'absolute',
+          left: 593,
+          top: 672,
+          width: 542,
+          textAlign: 'center',
+          fontSize: 43.65,
+          fontWeight: 600,
+          lineHeight: 1.26,
+          color: 'var(--ss-fg-muted)',
+        }}
+      >
+        <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'var(--ss-grad-brand)' }}>
+          Congratulations
+        </span>{' '}
+        on creating your first Agent
+      </h1>
+
+      {/* Arrow then caption, both above the button — the arrow is flipped in the
+          prototype (`scale(-1,-1)`) so it curls up toward the title. */}
+      <img
+        src="/auth/dashed-arrow.svg"
+        alt=""
+        aria-hidden
+        style={{ position: 'absolute', left: 730, top: 832.25, width: 61, height: 45.04, transform: 'scale(-1,-1)', pointerEvents: 'none' }}
+      />
+      <div
+        style={{ position: 'absolute', left: 760.5, top: 864, width: 240, textAlign: 'center', fontSize: 16, lineHeight: 1.25, color: '#838383' }}
+      >
+        Press &amp; Hold button to continue
+      </div>
+
+      <StageHoldButton tone="light" label="Continue to Dashboard" onComplete={onDone} />
+    </Stage>
   );
 }
 
-function Line({ done, text }: { done: boolean; text: string }) {
+/** One of the two blurred gradient fields behind the composition. */
+function Blob({
+  left,
+  top,
+  colour,
+  opacity,
+  mirrored,
+}: {
+  left: number;
+  top: number;
+  colour: string;
+  opacity: number;
+  mirrored?: boolean;
+}) {
+  const id = `done-blob-${colour.slice(1)}`;
   return (
-    <li className="flex items-start gap-2.5">
-      <span
-        aria-hidden
-        className={
-          done
-            ? 'mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full bg-success/20 text-[10px] text-success'
-            : 'mt-[3px] flex size-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px] text-ink-muted'
-        }
-      >
-        {done ? '✓' : ''}
-      </span>
-      {/* Not a visual-only distinction: a screen reader needs to know which of
-          these are outstanding, and the tick is `aria-hidden`. */}
-      <span className="text-[14px] text-ink-muted">
-        <span className="sr-only">{done ? 'Done: ' : 'Still to do: '}</span>
-        {text}
-      </span>
-    </li>
+    <svg
+      width="444.728"
+      height="393"
+      viewBox="0 0 444.728 393"
+      aria-hidden
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        display: 'block',
+        filter: 'blur(80px)',
+        opacity,
+        pointerEvents: 'none',
+        ...(mirrored ? { transform: 'scaleX(-1)' } : {}),
+      }}
+    >
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0.048" stopColor={colour} />
+          <stop offset="1" stopColor="rgba(108,232,255,0.3)" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M 77.547 150.41 L 347.209 17.004 C 367.774 6.83 392.529 10.833 408.839 26.97 L 416.187 34.239 C 433.113 50.986 437.003 76.874 425.745 97.855 L 297.209 337.399 C 281.561 366.56 243.529 374.787 217.23 354.698 L 68.756 241.291 C 37.091 217.105 41.833 168.079 77.547 150.41 Z"
+        fill={`url(#${id})`}
+      />
+    </svg>
   );
 }

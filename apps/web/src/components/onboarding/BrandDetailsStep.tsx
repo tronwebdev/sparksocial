@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
+import { ProtoScale } from './Stage';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -72,7 +73,7 @@ export function BrandDetailsStep({
   const [savingText, setSavingText] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [generating, setGenerating] = useState(false);
 
   async function saveText() {
     const line = oneLiner.trim();
@@ -95,6 +96,40 @@ export function BrandDetailsStep({
         ? { kind: 'ok', text: 'Saved.' }
         : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval first.' },
     );
+  }
+
+  /**
+   * `…192946` draws a "Generate logo" action beside Upload Logo, and
+   * `brand.logo.generate` has been in the registry the whole time with nothing
+   * calling it. The generated URL goes through the same
+   * `brand.governance.set({ logoUrl })` as an upload, so both paths leave the
+   * brand row in one shape.
+   */
+  async function generateLogo() {
+    setMessage(null);
+    setGenerating(true);
+    /*
+      No brandId and no hint: the schema is `{ brandId?, hint? }` and both are
+      optional, defaulting to the session's brand and to the genome as its own
+      prompt. Passing `genomeId`/`brandName` — which is what this first said —
+      would have been silently stripped by Zod and read as deliberate.
+    */
+    const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
+    setGenerating(false);
+
+    if (res.status !== 'succeeded') {
+      setMessage({
+        kind: 'err',
+        text: res.status === 'failed' ? res.error.message : 'Generating a logo needs approval first.',
+      });
+      return;
+    }
+
+    setLogoUrl(res.output.logoUrl);
+    const saved = await invoke('brand.governance.set', { logoUrl: res.output.logoUrl });
+    if (saved.status !== 'succeeded') {
+      setMessage({ kind: 'err', text: 'Generated, but saving it to the brand failed.' });
+    }
   }
 
   async function uploadLogo(file: File) {
@@ -141,87 +176,81 @@ export function BrandDetailsStep({
     setMessage({ kind: 'ok', text: 'Logo saved.' });
   }
 
+  /*
+    `…192946` at the prototype's own numbers: a 547-wide column with the
+    one-liner, the niche select, and a `#F3F4F8` Upload Logo section 547×263
+    holding a Generate button at 385,16.9, a rule at y=71, a 340×160 drop zone at
+    20,86 and a 129.7 preview tile at 385,114.2.
+
+    Rendered inside `ProtoScale`, so every value is native 1728-canvas px. The
+    three tool calls above are untouched.
+  */
   return (
-    <div className="grid grid-cols-1 gap-6">
-      <div>
-        <label className="text-[13px] font-medium text-ink-muted" htmlFor="onb-oneliner">
-          Tell SPARK a bit more about {brandName || 'your brand'}
-        </label>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          One or two sentences, the way you would say it to somebody in the street. This is what every
-          caption is written from.
-        </p>
+    <ProtoScale native={547}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 22, width: 547 }}>
         <textarea
-          id="onb-oneliner"
           value={oneLiner}
           onChange={(e) => setOneLiner(e.target.value)}
           onBlur={() => void saveText()}
           rows={3}
-          maxLength={400}
-          placeholder="We cut hair for men who want to look sharp without booking a whole afternoon."
-          className="mt-2 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
-        />
-      </div>
-
-      <div>
-        <label className="text-[13px] font-medium text-ink-muted" htmlFor="onb-niche">
-          What kind of business is it?
-        </label>
-        <select
-          id="onb-niche"
-          value={niche}
-          onChange={(e) => setNiche(e.target.value)}
-          onBlur={() => void saveText()}
-          className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
-        >
-          <option value="">Choose one</option>
-          {NICHES.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <p className="text-[13px] font-medium text-ink-muted">Logo</p>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          Used as a corner mark on posts. Six formats need one before they can be made at all.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileInput.current?.click()}>
-            {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload a logo'}
-          </Button>
-          {logoUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={logoUrl}
-              alt="Brand logo"
-              className="h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
-            />
-          ) : (
-            <span className="text-[13px] text-ink-muted">Nothing yet</span>
-          )}
-        </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept={IMAGE_TYPES.join(',')}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) void uploadLogo(file);
+          aria-label={`What ${brandName || 'your brand'} does`}
+          placeholder="We create intelligent AI agents that simplify tasks and enhance productivity for businesses."
+          style={{
+            width: 547, borderRadius: 10, background: '#FFFFFF', border: 'none', outline: 'none',
+            padding: '18px 19px', fontSize: 18, lineHeight: 1.5, color: '#0C0C0C', resize: 'none',
           }}
         />
-      </div>
 
-      {savingText ? <p className="text-[13px] text-ink-muted">Saving…</p> : null}
-      {message ? (
-        <p className={message.kind === 'ok' ? 'text-[13px] text-ink-muted' : 'text-[13px] text-warn'}>
-          {message.text}
-        </p>
-      ) : null}
-    </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <SectionLabel>Choose Business Niche</SectionLabel>
+          <SelectField
+            width={547}
+            ariaLabel="Business niche"
+            placeholder="Choose one"
+            value={niche}
+            onChange={(v: string) => {
+              setNiche(v);
+              void saveText();
+            }}
+            options={NICHES.map((n) => ({ value: n, label: n }))}
+          />
+        </div>
+
+        <UploadSection width={547} height={263}>
+          <span style={{ position: 'absolute', left: 20, top: 24, fontSize: 18, fontWeight: 500, color: '#0C0C0C' }}>
+            Upload Logo
+          </span>
+          <GenerateButton
+            left={385}
+            top={16.9}
+            label={generating ? 'Generating…' : 'Generate logo'}
+            onClick={() => void generateLogo()}
+            disabled={generating}
+          />
+          <SectionRule top={71} />
+          <DropZone
+            left={20}
+            top={86}
+            accept={IMAGE_TYPES.join(',')}
+            formats="Png, Jpeg up to 500MB"
+            busy={uploading}
+            onFile={(f) => void uploadLogo(f)}
+          />
+          <PreviewTile left={385} top={114.2} label="Logo Preview" onClear={logoUrl ? () => setLogoUrl('') : undefined}>
+            {logoUrl ? <img src={logoUrl} alt="" style={{ maxWidth: 118, maxHeight: 118, objectFit: 'contain' }} /> : null}
+          </PreviewTile>
+        </UploadSection>
+
+        {message ? (
+          <p
+            role={message.kind === 'err' ? 'alert' : undefined}
+            style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}
+          >
+            {message.text}
+          </p>
+        ) : null}
+        {savingText ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
+      </div>
+    </ProtoScale>
   );
 }

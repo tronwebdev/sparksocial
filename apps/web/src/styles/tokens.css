@@ -41,6 +41,10 @@
   --ss-teal-900: #043133; /* auth-card headings */
   --ss-teal-500: #0baac7; /* info chips */
 
+  /* Confirmation tick. Sampled from `Screenshot …192600` — a lime, distinct
+     from the ramp's signal greens, and used only for that badge. */
+  --ss-lime: #bbf52e;
+
   --ss-green-500: #13d711;
   --ss-green-600: #3ec332;
   --ss-green-700: #0e9e0c;
@@ -101,9 +105,36 @@
    * which cannot know a colour and an image utility don't conflict, and the
    * colour silently disappears.
    */
-  --ss-grad-canvas: linear-gradient(22.558deg, rgba(245, 107, 255, 0.2) 2.42%, rgba(255, 255, 255, 0) 42.66%),
-    linear-gradient(-18.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
+  /*
+    The prototype's canvas card is `linear-gradient(157.442deg, pink)` over
+    `linear-gradient(198.502deg, cyan)` on `#F7F7F7`, with `transform: scaleX(-1)`
+    on the whole card. Baking that flip into the angles is right; I baked in the
+    wrong flip.
+
+    A CSS gradient angle is clockwise from "to top", so its direction vector is
+    `(sin t, -cos t)`. Mirroring horizontally (x -> -x) needs `sin t' = -sin t`
+    and `cos t' = cos t`, i.e. **t' = -t**. I used `180 - t`, which satisfies
+    `sin t' = sin t` and `cos t' = -cos t` - a *vertical* flip. So the wash ran
+    bottom-to-top instead of top-to-bottom: pink entered from the bottom left
+    where the design has it at the top.
+  */
+  --ss-grad-canvas: linear-gradient(-157.442deg, rgba(245, 107, 255, 0.2) 2.42%, rgba(255, 255, 255, 0) 42.66%),
+    linear-gradient(-198.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
     linear-gradient(var(--ss-canvas), var(--ss-canvas));
+
+  /**
+   * Onboarding's step bar. Sampled across the full-width bar on `…193231`
+   * (step 4 of 4) at 13 points: cyan → pink by 25% → light purple by 65% → a
+   * warm peach at the end. The ramp spans the FILL, not the track, so it
+   * compresses as the bar fills rather than revealing more of a fixed gradient.
+   */
+  --ss-grad-progress: linear-gradient(
+    90deg,
+    #6ce8ff 0%,
+    #eb91f9 25%,
+    #b36cfa 65%,
+    #f7d9be 100%
+  );
 
   --ss-grad-cta: linear-gradient(90deg, #8b3dff 0%, #37c7f4 100%);
   --ss-grad-brand: linear-gradient(90deg, #6ce8ff, #a341ff);
@@ -117,6 +148,41 @@
   /* ── Shell geometry. Read off Dashboard.dc.html. ──────────────────── */
   --ss-rail: 322px;
   --ss-nav-pitch: 65px; /* 27px row + 38px gap — exact, do not round */
+
+  /**
+   * ── Auth geometry — measured from the Figma captures, not the prototype ──
+   *
+   * `ui build/SparkSocial Auth.dc.html` gave 568px of glass around a 540px card.
+   * The Figma capture measures 448px of card inside 472px of glass, centred in a
+   * 1440 frame — about 20% narrower. Both prototype numbers were literals in
+   * component files with nothing to compare them against, which is why the drift
+   * survived.
+   *
+   * Method: detect the design frame inside the capture's window chrome, keyed on
+   * the chrome's sampled colour; `scale = frame width / 1440`. On `login.png`
+   * that is 1077/1440 = 0.7479, and the card reads 447.9 CSS px — 0.3% off 448.
+   * The 36px gutter is the same measurement on both sides of the field stack.
+   *
+   * Radii are not new values: the corner profile solves to r=30 on the card and
+   * r=15/16 on the button, which are `rounded-2xl` and `rounded-lg` already.
+   */
+  /*
+    Read off `ui build/SparkSocial Auth.dc.html`, which sizes the card in real
+    CSS pixels inside a centred column rather than on a fixed canvas.
+
+    These were 472/448/12/36/56 — every one of them a screenshot measurement
+    divided by the 1440-frame scale. That arithmetic was right and the result
+    was still wrong: the prototype renders its glass at 568px at any viewport,
+    so a 472px card is simply a smaller card, not a scaled one. The ratios
+    between the old and new values are not even constant (568/472 = 1.203,
+    69/56 = 1.232, 45/36 = 1.25), which is the tell that the old set was
+    reconstructed rather than measured.
+  */
+  --ss-auth-glass: 568px; /* outer frosted panel */
+  --ss-auth-glass-pad: 14px; /* `padding: 15px 14px` on the glass */
+  --ss-auth-card: 540px; /* 568 − 2×14 */
+  --ss-auth-gutter: 45px; /* `padding: 26px 45px 0` on the field column */
+  --ss-auth-control: 69px; /* field and button height, both */
 }
 
 /**
@@ -167,6 +233,13 @@
   outline-width: 1.5px;
   outline-color: var(--ss-danger);
   outline-offset: -1.5px;
+}
+
+/* The workspace card's corner arrow. Inline styles cannot carry a hover, and
+   the prototype's is a fill plus a darker ring rather than a colour change. */
+.ss-ws-arrow:hover {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1.5px #0c0c0c;
 }
 
 /* ── Keyframes lifted from the prototype. Reused across 60+ screens. ──── */

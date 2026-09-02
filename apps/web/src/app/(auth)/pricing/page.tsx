@@ -67,8 +67,8 @@ export default function PricingPage() {
       <main className="flex items-center justify-center bg-bg p-8">
         <div className="w-full max-w-4xl">
           <header className="text-center">
-            <h1 className="text-[28px] font-medium tracking-tight text-ink">Pick where to start</h1>
-            <p className="mx-auto mt-2 max-w-prose text-[15px] text-ink-muted">
+            <h1 className="text-26 font-medium tracking-tight text-ink">Pick where to start</h1>
+            <p className="mx-auto mt-2 max-w-prose text-16 text-ink-muted">
               Every plan starts as a trial. You can move between them later without losing anything.
             </p>
           </header>
@@ -83,12 +83,12 @@ export default function PricingPage() {
                     : 'flex flex-col rounded-xl border border-border bg-surface p-6'
                 }
               >
-                <h2 className="text-[18px] font-semibold text-ink">{plan.name}</h2>
-                <p className="mt-1 text-[13px] text-ink-muted">{plan.who}</p>
+                <h2 className="text-18 font-semibold text-ink">{plan.name}</h2>
+                <p className="mt-1 text-13 text-ink-muted">{plan.who}</p>
 
                 <ul className="mt-4 grid flex-1 grid-cols-1 gap-1.5">
                   {plan.features.map((f) => (
-                    <li key={f} className="text-[13px] text-ink-muted">
+                    <li key={f} className="text-13 text-ink-muted">
                       {f}
                     </li>
                   ))}
@@ -103,7 +103,7 @@ export default function PricingPage() {
             ))}
           </ul>
 
-          <p className="mt-8 text-center text-[14px] text-ink-muted">
+          <p className="mt-8 text-center text-14 text-ink-muted">
             Already have an account?{' '}
             <Link
               href="/sign-in"

@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import Link from 'next/link';
 import { Wordmark } from '@/components/brand/Wordmark';
 import { SidebarNav } from './SidebarNav';
 import { PlanCard } from './PlanCard';
-import { AskSpark } from './AskSpark';
 
 /**
  * The two-column app frame: a 322px sidebar on white, and a rounded content canvas
@@ -34,16 +34,31 @@ export function AppShell({ children, chrome = 'shell' }: AppShellProps) {
         )}
       >
         <aside className="flex flex-col max-md:hidden">
-          <div className="pl-[22px] pt-[30.8px] max-xl:flex max-xl:justify-center max-xl:pl-0">
+          {/*
+            The wordmark is the route to the dashboard. That is how the
+            prototypes reach it - their nav has no Home row, and the Brand Home
+            screen leaves the glow parked on the first one.
+          */}
+          <Link
+            href="/home"
+            aria-label="SparkSocial home"
+            className="pl-[22px] pt-[30.8px] max-xl:flex max-xl:justify-center max-xl:pl-0"
+          >
             <Wordmark className="max-xl:[&>span]:hidden" />
-          </div>
+          </Link>
           <SidebarNav />
-          {/* F2: the assistant affordance 48 of 61 prototypes put in the
-              sidebar. Above the plan card and below the nav, which is where
-              they put it. */}
-          <div className="mt-auto flex flex-col gap-3 px-[22px] pb-3 max-xl:px-3">
-            <AskSpark />
-          </div>
+          {/*
+            Ask Spark used to sit here, under a docstring claiming 48 of 61
+            prototypes put it in the sidebar. 48 of 61 do have it; not one of
+            them puts it in the sidebar. Measured across every file, the block is
+            196x70 at left 1484-1503, top 30-34 - the header's top right corner,
+            on Dashboard, Command Center, Assets, Discovery and the Settings
+            screens alike. The `left:102px` I must have read as a sidebar
+            coordinate is the label's offset *inside* that block.
+
+            It is a page-header control now, so `TopBar` renders it.
+          */}
+          <div className="mt-auto" />
           <PlanCard />
         </aside>
 

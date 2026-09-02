@@ -96,6 +96,24 @@ export interface CampaignPlan {
   capture: CaptureAsk | null;
   /** Playbook ids usable today, best-scoring first — the calendar's raw material. */
   readyPlaybookIds: string[];
+  /**
+   * Facts the brand has not told us, and what answering them would buy.
+   *
+   * The gap this whole field exists for: fourteen playbooks read
+   * `genome:offer.primary_cta` and, before the resolver checked it, all fourteen
+   * counted toward `buildableNow` against a genome with no CTA. The campaign
+   * looked healthy, the calendar filled, and the failure surfaced a week later
+   * when somebody opened a post. `blockedByAnswers` is that gap stated at the
+   * moment the plan is proposed, which is the only moment it is cheap to close.
+   */
+  answers: {
+    /** Dotted genome paths. `genomeRequirement()` turns each into words. */
+    missingPaths: string[];
+    /** How many more posts the window supports once they are filled in. */
+    unlocksPosts: number;
+    /** How many formats are waiting on them. */
+    blockedPlaybooks: number;
+  } | null;
 }
 
 export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
@@ -114,6 +132,15 @@ export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
   const ready = forObjective.filter((r) => !r.unlockable);
   const unlockable = forObjective.filter((r) => r.unlockable);
   /**
+   * Formats held up only by a fact nobody has typed in.
+   *
+   * Split out from `unlockable` because the ask is categorically different and
+   * far cheaper: not a file, not a shoot, one field. Kept inside `unlockable`
+   * too, so `potentialWithCapture` still describes everything the window could
+   * hold — it is `buildableNow` that had to become honest, not the ceiling.
+   */
+  const answerBlocked = unlockable.filter((r) => r.unlockedBy === 'answer');
+  /**
    * The filmable subset, separately, because only these belong in a capture ask.
    *
    * The resolver now also reports formats unlocked by uploading a file. Those
@@ -123,6 +150,15 @@ export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
    * something a drag-and-drop closes.
    */
   const filmable = unlockable.filter((r) => r.unlockedBy === 'capture');
+
+  /**
+   * Every distinct answer the plan is waiting on, in the order the playbooks rank.
+   *
+   * Deduplicated: fourteen formats blocked on one empty CTA is one question, and
+   * asking it fourteen times is how a readiness panel becomes something people
+   * scroll past.
+   */
+  const missingPaths = [...new Set(answerBlocked.flatMap((r) => r.missingGenomePaths))];
 
   const slots = Math.max(1, Math.round((windowDays / 7) * POSTS_PER_WEEK));
 
@@ -148,6 +184,24 @@ export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
     // and asking anyway trades the owner's Saturday for nothing — which is the
     // fastest way to make them stop trusting the asks that do matter.
     capture: potentialWithCapture > buildableNow && filmable.length > 0 ? buildCaptureAsk(filmable) : null,
+    /**
+     * Counted the same way as everything else — through `capacity`, against the
+     * same cadence — so "answering this buys you N posts" is the real number and
+     * not the count of blocked formats. A brand with one empty CTA and thirty
+     * blocked formats does not gain thirty posts in a month; it gains whatever
+     * the cadence allows.
+     */
+    answers:
+      missingPaths.length > 0
+        ? {
+            missingPaths,
+            unlocksPosts: Math.max(
+              0,
+              Math.min(slots, capacity([...ready, ...answerBlocked], windowDays)) - buildableNow,
+            ),
+            blockedPlaybooks: answerBlocked.length,
+          }
+        : null,
     readyPlaybookIds: ready.map((r) => r.playbook.playbook_id),
   };
 }

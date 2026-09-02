@@ -27,10 +27,10 @@ export default function ChooseOrganizationPage() {
     <div className="dark flex min-h-screen flex-col items-center justify-center gap-8 bg-background px-6">
       <div className="flex flex-col items-center">
         <SparkMark variant="card" />
-        <h1 className="mt-8 text-center text-[26px] font-semibold text-foreground">
+        <h1 className="mt-8 text-center text-26 font-semibold text-foreground">
           Name your account
         </h1>
-        <p className="mt-2 max-w-[420px] text-center text-[16px] text-ink-muted">
+        <p className="mt-2 max-w-[420px] text-center text-16 text-ink-muted">
           Everything SPARK makes lives inside your account. You can add brands to it later.
         </p>
       </div>

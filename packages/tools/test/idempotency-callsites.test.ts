@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { REPO_ROOT, declaredTools, walk } from './support/toolSource.js';
 
 /**
  * A STATIC CHECK OVER `apps/web`: every call to a non-idempotent tool carries an
@@ -35,66 +35,21 @@ import { fileURLToPath } from 'node:url';
  * refuse the one option that is never right: omitting it.
  */
 
-const HERE = fileURLToPath(new URL('.', import.meta.url));
-const REPO_ROOT = join(HERE, '..', '..', '..');
-
-// Same reason `isolation.test.ts` skips these: `.claude/worktrees/*` are full
-// nested checkouts of this repo, and walking one checks a second unrelated copy
-// of every file.
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', '.next', '.turbo', '.claude']);
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.(ts|tsx)$/.test(entry)) out.push(full);
-  }
-  return out;
-}
-
 /**
  * Tools declared `idempotent: false`, read out of the source.
  *
- * Parsed per `defineTool({...})` block rather than per file, because several
- * files declare more than one tool — `approvalTools.ts` has a read and a write,
- * and attributing the file's first `name:` to its `idempotent: false` puts
- * `queue.review.list` on this list, which sends the check hunting a bug that
- * does not exist while hiding the one that does.
+ * Per `defineTool({…})` block rather than per file — see `declaredTools` — because
+ * several files declare more than one tool, and attributing a file's first
+ * `name:` to its `idempotent: false` puts `queue.review.list` on this list, which
+ * sends the check hunting a bug that does not exist while hiding the one that
+ * does.
  */
 function nonIdempotentTools(): Set<string> {
-  const names = new Set<string>();
-  for (const base of ['packages', join('apps', 'api', 'src')]) {
-    for (const file of walk(join(REPO_ROOT, base))) {
-      if (!file.endsWith('.ts') || relative(REPO_ROOT, file).split(sep).includes('test')) continue;
-      const src = readFileSync(file, 'utf8');
-      for (const block of toolBlocks(src)) {
-        const name = /name:\s*'([^']+)'/.exec(block)?.[1];
-        if (name && /idempotent:\s*false/.test(block)) names.add(name);
-      }
-    }
-  }
-  return names;
-}
-
-/** The text of each `defineTool({ … })` argument object. */
-function toolBlocks(src: string): string[] {
-  const blocks: string[] = [];
-  for (const m of src.matchAll(/defineTool\(\s*\{/g)) {
-    const start = src.indexOf('{', m.index!);
-    let depth = 0;
-    let i = start;
-    for (; i < src.length; i++) {
-      const c = src[i]!;
-      if (c === '{' || c === '(' || c === '[') depth++;
-      else if (c === '}' || c === ')' || c === ']') {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
-    blocks.push(src.slice(start, i + 1));
-  }
-  return blocks;
+  return new Set(
+    declaredTools()
+      .filter((t) => /idempotent:\s*false/.test(t.block))
+      .map((t) => t.name),
+  );
 }
 
 /**

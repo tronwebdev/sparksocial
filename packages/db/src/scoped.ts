@@ -3142,6 +3142,21 @@ export async function removeTeamGroupMember(
 }
 
 /**
+ * Which groups this user is in, for matching an approval rule's `groupIds`.
+ *
+ * Reads the membership table alone — no join to `team_groups` — because the ids
+ * are all the policy layer needs, and a membership row pointing at a deleted
+ * group is impossible: `deleteTeamGroup` removes both in one transaction.
+ */
+export async function groupIdsForUser(db: Database, orgId: string, userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ groupId: teamGroupMembers.groupId })
+    .from(teamGroupMembers)
+    .where(and(eq(teamGroupMembers.orgId, orgId), eq(teamGroupMembers.userId, userId)));
+  return rows.map((r) => r.groupId);
+}
+
+/**
  * Every capability this user has from any group — the read the policy layer
  * makes once per tool call.
  *

@@ -1,62 +1,63 @@
-import { SparkMark } from '@/components/brand/SparkMark';
-
 /**
- * Sign Up's left panel — `Auth.dc.html:32-87`. Dark, with a cyan radial bloom,
- * two faint pink discs, the 148px hero mark and floating glass chips.
+ * Sign Up's left panel — the Figma exports, from `ui build/assets/`.
  *
- * The prototype positions everything absolutely on a 938px panel. Those positions
- * are kept as percentages of that width so the panel can flex (it is
- * `flex: 0 1 938px; min-width: 620px`) without the composition falling apart.
+ * This was a reconstruction: a cyan radial bloom, two pink discs and six
+ * hand-placed frosted squares standing in for artwork nobody had exported. The
+ * real composition is three files — the orbit rings, the avatars-and-chips ring,
+ * and the hero mark — so the reconstruction is gone rather than layered under
+ * them.
+ *
+ * Measured from `signup.png` (frame 1440×920, scale 0.7479):
+ *
+ *   panel width   776.5 of 1440  → 53.9%, so the split is `flex-[0_0_53.9%]`
+ *   ground        #0C0C0C (`--ss-ink-900`) with a teal bloom toward the top-left
+ *   title band    y 424-571, centred on the panel
+ *   CTA row       y ~660-680
+ *
+ * The rings are square exports (764×764 and 845×596) centred on the mark, so
+ * they are positioned from the centre and scale with the panel rather than
+ * being pinned to its edges — at 620px minimum width the composition still
+ * holds together.
  */
-const CHIPS = [
-  { left: '21%', top: '14%', size: 62, radius: 16, anim: 'animate-float-a' },
-  { left: '5%', top: '80%', size: 56, radius: 15, anim: 'animate-float-a' },
-  { left: '87%', top: '79%', size: 56, radius: 15, anim: 'animate-float-b' },
-  { left: '74%', top: '20%', size: 48, radius: 14, anim: 'animate-float-b' },
-  { left: '12%', top: '38%', size: 44, radius: 13, anim: 'animate-float-b' },
-  { left: '82%', top: '45%', size: 52, radius: 14, anim: 'animate-float-a' },
-];
-
 export function BrandPanel() {
   return (
-    <div className="relative flex-[0_1_938px] overflow-hidden bg-[#0C0C0C] max-lg:hidden" style={{ minWidth: 620 }}>
-      {/* Cyan bloom */}
+    <div className="relative flex-[0_0_53.9%] overflow-hidden bg-[--ss-ink-900] max-lg:hidden" style={{ minWidth: 620 }}>
+      {/* The teal bloom behind the rings. Sampled at #1A2C2F top-left against a
+          #0C0C0C ground, fading out well before the panel's bottom edge. */}
       <div
-        className="absolute left-1/2 top-[44%] h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
         style={{
           background:
-            'radial-gradient(circle at 50% 46%, rgba(11,170,199,0.34) 0%, rgba(11,170,199,0.10) 34%, rgba(12,12,12,0) 66%)',
+            'radial-gradient(circle at 50% 38%, rgba(11,170,199,0.30) 0%, rgba(11,170,199,0.09) 34%, rgba(12,12,12,0) 64%)',
         }}
       />
-      <div className="absolute left-[9%] top-[5%] h-[762px] w-[762px] rounded-full bg-[rgba(245,107,255,0.05)] opacity-30" />
-      <div className="absolute left-[15%] top-[20%] h-[478px] w-[478px] rounded-full bg-[rgba(245,107,255,0.05)] opacity-30" />
 
-      {CHIPS.map((c, i) => (
-        <div
-          key={i}
-          className={`absolute ${c.anim} motion-reduce:animate-none`}
-          style={{
-            left: c.left,
-            top: c.top,
-            width: c.size,
-            height: c.size,
-            borderRadius: c.radius,
-            background: 'rgba(255,255,255,0.11)',
-            backdropFilter: 'blur(9px)',
-            WebkitBackdropFilter: 'blur(9px)',
-          }}
-          aria-hidden
-        />
-      ))}
+      {/* Orbit rings and the avatar/chip ring share the mark's centre. */}
+      <img
+        src="/auth/signup-orbit-rings.svg"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[38%] w-[764px] max-w-[110%] -translate-x-1/2 -translate-y-1/2"
+      />
+      <img
+        src="/auth/signup-avatars-chips.svg"
+        alt=""
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-[38%] w-[845px] max-w-[120%] -translate-x-1/2 -translate-y-1/2"
+      />
 
       <div className="relative flex h-full flex-col items-center justify-center px-10">
-        <SparkMark variant="hero" animated />
+        <img src="/auth/signup-logo.svg" alt="" aria-hidden className="h-[148px] w-[148px] animate-breathe" />
+
+        {/* CS Mollwish, the display face — not the body type scale. */}
         <div className="mt-[52px] text-center">
           <p className="font-display text-[48.5px] leading-[1.269] text-white">Agent-first Social</p>
           <p className="font-display text-[39.2px] leading-[1.269] text-white">Operating System</p>
         </div>
+
         <div className="mt-[22px] flex items-center gap-[10px]">
-          <span className="text-[15.4px] font-medium text-white/60">Get Started</span>
+          <span className="text-16 font-medium text-white/60">Get Started</span>
           <svg width="28" height="10" viewBox="0 0 28 10" fill="none" aria-hidden>
             <path
               d="M1 5h25m0 0-4-4m4 4-4 4"

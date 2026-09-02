@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import type { CreditStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
-import { creditLedger, orgBudgets } from './schema.js';
+import { creditLedger, orgBudgets, orgCreditAllocations } from './schema.js';
 
 /**
  * `credit_ledger` + `org_budgets` backed by Postgres — plan §9.
@@ -33,16 +33,45 @@ export function createCreditRepository(db: Database): CreditStore {
         cap = created?.cap ?? DEFAULT_MONTHLY_CAP_CENTS;
       }
 
-      const [spent] = await db
-        .select({ total: sql<string>`coalesce(sum(${creditLedger.costCents}), 0)` })
+      /**
+       * The period's spend, grouped by tool.
+       *
+       * Grouped rather than a bare `sum()` because the per-category sub-caps need
+       * the breakdown on every paid call, and this is the same `(org_id, at)`
+       * index scan with a hash aggregate over at most a few dozen rows on top —
+       * cheaper than the second round-trip the alternative costs. The total is
+       * summed from the same rows, which also keeps the two from disagreeing.
+       *
+       * Grants are included in the total (a negative row is a refund and really
+       * does reduce what has been spent) and fall out of the categories on their
+       * own, because `org.credits.grant` belongs to no category.
+       */
+      const rows = await db
+        .select({
+          tool: creditLedger.tool,
+          costCents: sql<string>`sum(${creditLedger.costCents})`,
+        })
         .from(creditLedger)
-        .where(and(eq(creditLedger.orgId, orgId), gte(creditLedger.at, periodStart(now))));
+        .where(and(eq(creditLedger.orgId, orgId), gte(creditLedger.at, periodStart(now))))
+        .groupBy(creditLedger.tool);
+
+      const allocationRows = await db
+        .select({ category: orgCreditAllocations.category, capCents: orgCreditAllocations.capCents })
+        .from(orgCreditAllocations)
+        .where(eq(orgCreditAllocations.orgId, orgId));
 
       // `sum()` comes back as a string from the driver — Postgres widens the
       // sum of an int4 column to bigint, and bigint is not safe as a JS number
       // in general. It is here (cents, capped monthly), but parsing explicitly
       // beats relying on the driver's coercion, which differs across versions.
-      return { monthlyCapCents: cap, spentCents: Number(spent?.total ?? 0) };
+      const byTool = rows.map((r) => ({ tool: r.tool, costCents: Number(r.costCents) }));
+
+      return {
+        monthlyCapCents: cap,
+        spentCents: byTool.reduce((n, r) => n + r.costCents, 0),
+        byTool,
+        allocationsCents: Object.fromEntries(allocationRows.map((r) => [r.category, r.capCents])),
+      };
     },
 
     /**
@@ -116,6 +145,38 @@ export function createCreditRepository(db: Database): CreditStore {
         reason,
         at: new Date(),
         ...(brandId ? { brandId } : {}),
+      });
+    },
+
+    async setBudget({ orgId, monthlyCapCents, allocationsCents }) {
+      await db.transaction(async (tx) => {
+        if (monthlyCapCents !== undefined) {
+          await tx
+            .insert(orgBudgets)
+            .values({ orgId, monthlyCapCents })
+            .onConflictDoUpdate({
+              target: orgBudgets.orgId,
+              set: { monthlyCapCents, updatedAt: new Date() },
+            });
+        }
+
+        if (allocationsCents !== undefined) {
+          /**
+           * Replace, not merge. The caller sends the complete set, so a category
+           * it left out is one the workspace has removed the sub-cap from — and
+           * merging would make removal impossible to express without a second
+           * verb. Inside a transaction so a failed write cannot leave the
+           * workspace with no allocations at all, which reads as "unlimited".
+           */
+          await tx.delete(orgCreditAllocations).where(eq(orgCreditAllocations.orgId, orgId));
+          const rows = Object.entries(allocationsCents).map(([category, capCents]) => ({
+            orgId,
+            category,
+            capCents,
+            updatedAt: new Date(),
+          }));
+          if (rows.length) await tx.insert(orgCreditAllocations).values(rows);
+        }
       });
     },
   };

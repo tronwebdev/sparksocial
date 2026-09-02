@@ -1,4 +1,5 @@
 import type { CreditStore, ToolCtx } from '@sparksocial/tools';
+import { creditCategoryFor } from '@sparksocial/shared/credits';
 
 /**
  * Turn a ledger reading into the `budget` shape `policy.ts` rule 4 expects.
@@ -26,7 +27,34 @@ export async function readBudget(
    */
   if (!credits) return { remainingCents: Number.MAX_SAFE_INTEGER, monthlyCapCents: 0 };
 
-  const { monthlyCapCents, spentCents } = await credits.budget(orgId, now);
+  const { monthlyCapCents, spentCents, byTool, allocationsCents } = await credits.budget(orgId, now);
+
+  /**
+   * Per-category sub-caps, turned into what is *left* under each.
+   *
+   * Only the categories the workspace actually bounded appear. An unbounded
+   * category must stay absent rather than arriving as a large number, because
+   * `policy.ts` keys its check on presence: a default would make "no allocation
+   * set" indistinguishable from "an allocation that happens to be generous", and
+   * the two behave differently the moment someone lowers the monthly cap.
+   */
+  const spentByCategory = new Map<string, number>();
+  /**
+   * Tolerant of a store that returns no breakdown, for the same reason a missing
+   * ledger is tolerated above: no breakdown means no sub-caps, and the monthly
+   * cap still applies. Throwing here would take out every paid call in the
+   * product over a field that only narrows what is allowed.
+   */
+  for (const row of byTool ?? []) {
+    const category = creditCategoryFor(row.tool);
+    if (!category) continue;
+    spentByCategory.set(category, (spentByCategory.get(category) ?? 0) + row.costCents);
+  }
+
+  const remainingByCategory: Record<string, number> = {};
+  for (const [category, capCents] of Object.entries(allocationsCents ?? {})) {
+    remainingByCategory[category] = Math.max(0, capCents - (spentByCategory.get(category) ?? 0));
+  }
 
   return {
     // Clamped at zero. A negative remaining is arithmetically correct after an
@@ -35,5 +63,6 @@ export async function readBudget(
     // estimate once this hits zero.
     remainingCents: Math.max(0, monthlyCapCents - spentCents),
     monthlyCapCents,
+    ...(Object.keys(remainingByCategory).length ? { remainingByCategory } : {}),
   };
 }

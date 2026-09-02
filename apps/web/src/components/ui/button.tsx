@@ -4,10 +4,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 /**
- * Measurements are the prototype's, not shadcn's defaults: the primary CTA is
- * 69px tall with a 20px radius (`ui build/SparkSocial Auth.dc.html`), which is
- * considerably larger than shadcn's h-10. `active:scale-[0.99]` is in the source
- * too — it reads as a deliberate press affordance, so it survives the port.
+ * Measurements are the design's, not shadcn's defaults. `active:scale-[0.99]`
+ * comes from the prototype — it reads as a deliberate press affordance, so it
+ * survives the port.
+ *
+ * `cta` was 69px tall with a 20px radius, taken from
+ * `ui build/SparkSocial Auth.dc.html`. The Figma capture measures **56px with a
+ * 15px radius** (`ui_screenshot/login.png`, button spans y 566.5→622.5 at the
+ * card's full 376px content width). Changing it in place rather than adding a
+ * variant is safe *because* `size="cta"` appears only on the four auth screens
+ * and `OrgGuard` — verified, not assumed. Any wider use would have made this a
+ * new variant instead.
  */
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all ' +
@@ -23,8 +30,9 @@ const buttonVariants = cva(
         danger: 'bg-destructive text-destructive-foreground hover:opacity-90',
       },
       size: {
-        // `cta` is the auth-screen button: 69px tall, 22px label.
-        cta: 'h-[69px] rounded-xl px-6 text-[22px]',
+        // `cta` is the auth-screen button: 56px tall, 15px radius, 17px label.
+        /* `height: 69; border-radius: 20; font: 500 22px` on the prototype. */
+        cta: 'h-auth-control rounded-xl px-6 text-22 font-medium',
         default: 'h-11 rounded px-4 text-base',
         sm: 'h-9 rounded px-3 text-sm',
         icon: 'h-10 w-10 rounded',

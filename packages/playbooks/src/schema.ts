@@ -58,6 +58,31 @@ export const Beat = z.object({
  *  consumes beats directly and needs the inferred shape, not the Zod object. */
 export type Beat = z.infer<typeof Beat>;
 
+/**
+ * The genome paths a playbook's beats read, derived from the record.
+ *
+ * **Derived, not authored.** The list is already written down — it is the
+ * `genome:` beat sources — and a parallel `required_genome_paths` field would be
+ * a second list that has to agree with the first. The failure mode of two such
+ * lists is silence: an author who fills in the beats and forgets the
+ * preconditions produces exactly the state all fourteen CTA playbooks were
+ * already in, where the resolver called them ready and `planBeat` threw a week
+ * later.
+ *
+ * The `genome:` prefix is matched here rather than through
+ * `assemble`'s `parseBeatSource`, because `packages/playbooks` is built first and
+ * cannot import it. The prefix is one string in two places; the guard test in
+ * `packages/assemble/test/readiness.test.ts` is what keeps them honest, by
+ * asserting that nothing the resolver calls ready can reach `planBeat`'s throw.
+ */
+export function requiredGenomePaths(playbook: { structure: { beats: Beat[] } }): string[] {
+  const paths = new Set<string>();
+  for (const beat of playbook.structure.beats) {
+    if (beat.source?.startsWith('genome:')) paths.add(beat.source.slice('genome:'.length));
+  }
+  return [...paths];
+}
+
 export const Playbook = z.object({
   playbook_id: z.string(),
   name: z.string(),

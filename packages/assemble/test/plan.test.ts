@@ -183,7 +183,10 @@ describe('buildRenderPlan', () => {
     const noCta = genome({ offer: { products: [], primary_cta: '' } });
     expect(() =>
       buildRenderPlan({ playbook: workflowClip, genome: noCta, assets: [asset('a1', 'product_screen', 0.9)] }),
-    ).toThrow(/no value at "offer.primary_cta"/);
+    // Named in the brand's language, with the screen that fixes it. The old
+    // message was the schema path, shown to a business owner in a dialog whose
+    // only working button was Close.
+    ).toThrow(/call to action.*Settings/s);
   });
 
   it('refuses a non-assemble playbook', () => {

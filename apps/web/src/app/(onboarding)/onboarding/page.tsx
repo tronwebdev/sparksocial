@@ -1,22 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { StepShell } from '@/components/onboarding/StepShell';
-import { ChipReview, type Chip } from '@/components/onboarding/ChipReview';
-import { QuestionStep } from '@/components/onboarding/QuestionStep';
-import { ConnectAccountsStep } from '@/components/onboarding/ConnectAccountsStep';
-import { GroundingStep } from '@/components/onboarding/GroundingStep';
+import { ComposerGlobeIcon, PromptComposer } from '@/components/onboarding/PromptComposer';
+import type { Chip } from '@/components/onboarding/ChipReview';
 import { BrandDetailsStep } from '@/components/onboarding/BrandDetailsStep';
 import { BrandKitStep } from '@/components/onboarding/BrandKitStep';
 import { CompanyDocsStep } from '@/components/onboarding/CompanyDocsStep';
 import { AgentStep } from '@/components/onboarding/AgentStep';
 import { CompletionScreen } from '@/components/onboarding/CompletionScreen';
-import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
 import { humanError, invoke } from '@/lib/tools';
 
 /**
@@ -80,13 +76,11 @@ import { humanError, invoke } from '@/lib/tools';
 /** Named rather than counted: the arithmetic version broke every time a screen moved. */
 const NAME = 0;
 const URL_STEP = 1;
-const CHIPS = 2;
-const DETAILS = 3;
-/** The questions occupy `QUESTIONS_AT … QUESTIONS_AT + questions.length - 1`. */
-const QUESTIONS_AT = 4;
-
-/** The `identity.*` fields `genome.identity.set` accepts flat, matching `GenomeIdentity`'s scalar keys. */
-const IDENTITY_SCALAR_FIELDS = new Set(['business_name', 'category', 'sub_category', 'one_liner', 'price_tier']);
+const DETAILS = 2;
+const DOCS = 3;
+const KIT = 4;
+const AGENT = 5;
+const DONE = 6;
 
 interface Draft {
   genomeId: string;
@@ -105,7 +99,6 @@ export default function OnboardingPage() {
   const [brandName, setBrandName] = useState('');
   const [url, setUrl] = useState('');
   const [draft, setDraft] = useState<Draft | undefined>();
-  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   // Separate from `busy`: that flag is the ~29s crawl, and the URL step's render
   // used to show *its* copy ("Opening your pages, reading them…") for this
@@ -118,22 +111,11 @@ export default function OnboardingPage() {
   // pre-empting the faster one before it has been tried.
   const [crawlFailed, setCrawlFailed] = useState(false);
   /** Lifted out of `ConnectAccountsStep` so the footer can say Continue rather than Skip. */
-  const [connectedCount, setConnectedCount] = useState(0);
 
   // Which dimensions still need asking depends on what the crawl resolved, so
   // the flow's length is not known until the URL step has run.
-  const questions = useMemo<Question[]>(
-    () => (draft ? questionsFor(draft.unresolved) : QUESTIONS),
-    [draft],
-  );
 
   /** Everything after the questions, whose position depends on how many there are. */
-  const DOCS = QUESTIONS_AT + questions.length;
-  const GROUNDING = DOCS + 1;
-  const KIT = GROUNDING + 1;
-  const AGENT = KIT + 1;
-  const ACCOUNTS = AGENT + 1;
-  const DONE = ACCOUNTS + 1;
 
   /**
    * The cookie the tool proxy forwards as `x-genome-id`.
@@ -199,7 +181,7 @@ export default function OnboardingPage() {
       businessName: result.output.identity?.businessName ?? brandName,
       ...(result.output.identity?.category ? { category: result.output.identity.category } : {}),
     });
-    setStep(CHIPS);
+    setStep(DETAILS);
   }
 
   /**
@@ -251,29 +233,6 @@ export default function OnboardingPage() {
     setStep(DETAILS);
   }
 
-  async function saveAnswers() {
-    if (!draft) return;
-    setBusy(true);
-    setError(undefined);
-
-    const result = await invoke('genome.dimensions.set', {
-      genomeId: draft.genomeId,
-      proof_asset: answers.proof_asset ?? [],
-      capture_capability: answers.capture_capability ?? [],
-      objective: answers.objective?.[0],
-      secondary_objectives: [],
-      talent_availability: answers.talent_availability?.[0],
-    });
-
-    setBusy(false);
-
-    if (result.status !== 'succeeded') {
-      setError(humanError(result, 'That needs approval before it can run.'));
-      return;
-    }
-
-    setStep(DOCS);
-  }
 
   /**
    * ONB-02's missing save. `ChipReview` only ever touched local state — until
@@ -286,40 +245,8 @@ export default function OnboardingPage() {
    * guessed at, since `genome.identity.set` merges one JSON key at a time and
    * a dotted key would not merge into the right place.
    */
-  async function confirmChips() {
-    if (!draft) return;
-    const patch: Record<string, string> = {};
-    for (const chip of draft.chips) {
-      const field = chip.field.startsWith('identity.') ? chip.field.slice('identity.'.length) : null;
-      if (field && !field.includes('.') && IDENTITY_SCALAR_FIELDS.has(field)) {
-        patch[field] = chip.value;
-      }
-    }
-
-    if (Object.keys(patch).length > 0) {
-      setBusy(true);
-      setError(undefined);
-      const result = await invoke('genome.identity.set', { genomeId: draft.genomeId, identity: patch });
-      setBusy(false);
-      if (result.status !== 'succeeded') {
-        setError(humanError(result, 'That correction needs approval before it can run.'));
-        return;
-      }
-      // The completion screen and every later step's eyebrow read this from
-      // local state, not from a fresh fetch — keep it in sync with what was
-      // just saved so a corrected name actually shows corrected.
-      setDraft({
-        ...draft,
-        ...(patch['business_name'] ? { businessName: patch['business_name'] } : {}),
-        ...(patch['category'] ? { category: patch['category'] } : {}),
-      });
-    }
-
-    setStep(DETAILS);
-  }
 
   const back = step > NAME ? () => { setError(undefined); setStep(step - 1); } : undefined;
-  const eyebrow = draft?.businessName;
 
   /* ── 1 · Brand identity ─────────────────────────────────────────────── */
 
@@ -327,54 +254,64 @@ export default function OnboardingPage() {
     return (
       <StepShell
         group={1}
-        within={{ index: 0, total: 4 }}
-        eyebrow="Let’s set up your brand identity"
-        title="What is your brand called?"
-        footer={
-          <Button
-            className="w-full md:w-auto"
-            disabled={brandName.trim().length === 0}
-            onClick={() => setStep(URL_STEP)}
-          >
-            Continue
-          </Button>
+        eyebrow={
+          <>
+            Lets set up your <strong className="font-semibold text-ink">Brand Identity</strong>
+          </>
         }
-      >
-        <Input
-          autoFocus
-          value={brandName}
-          onChange={(e) => setBrandName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && brandName.trim() && setStep(URL_STEP)}
-          placeholder="Enter your brand name"
-          aria-label="Brand name"
-        />
-      </StepShell>
+        title="What is your Brand Name?"
+        onContinue={() => setStep(URL_STEP)}
+        continueDisabled={brandName.trim().length === 0}
+        composer={
+          <PromptComposer
+            autoFocus
+            value={brandName}
+            onChange={setBrandName}
+            onSubmit={() => setStep(URL_STEP)}
+            placeholder="Enter your brand name"
+          />
+        }
+      />
     );
   }
 
   if (step === URL_STEP) {
     return (
       <StepShell
-        group={1}
-        within={{ index: 1, total: 4 }}
+        group={2}
         onBack={back}
-        eyebrow={`Got your brand name, ${brandName.trim()}`}
-        title="What’s your website?"
-        subtitle="SPARK reads a few pages to work out what you do, so you answer fewer questions."
-        footer={
-          <div className="flex flex-col gap-3">
-            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button
-              className="w-full md:w-auto"
-              disabled={!looksLikeUrl(url) || busy || manualBusy}
-              onClick={bootstrap}
-            >
-              {busy ? 'Reading your site…' : 'Continue'}
-            </Button>
+        eyebrow={
+          <>
+            <strong className="font-semibold text-ink">Great news!</strong> Your Brand Identity is ready.
+            <br />
+            Now, let&apos;s dive into your <strong className="font-semibold text-ink">Brand Knowledge!</strong>
+          </>
+        }
+        title="What's your company URL?"
+        onContinue={() => void bootstrap()}
+        continueDisabled={!looksLikeUrl(url) || busy || manualBusy}
+        composer={
+          /* The composer's own box is what the capture anchors at y 526.5, so the
+             hint, error and opt-out hang BELOW it absolutely rather than sharing
+             the anchored block — inside it they pushed the field 25px up. */
+          <div className="relative">
+            <PromptComposer
+              autoFocus
+              type="url"
+              value={url}
+              onChange={setUrl}
+              onSubmit={() => void bootstrap()}
+              placeholder="Enter your website URL"
+              disabled={busy || manualBusy}
+              icon={<ComposerGlobeIcon />}
+            />
+
+            <div className="absolute inset-x-0 top-full mt-4 flex flex-col gap-3">
+            {error ? <p className="text-14 text-destructive">{error}</p> : null}
             {busy ? (
               // Named, because thirty seconds of silence reads as a hang. The
               // steps are the real ones the tool performs.
-              <p className="text-[14px] text-ink-muted">
+              <p className="text-14 text-ink-muted">
                 Opening your pages, reading them, and drafting your profile. This takes about half a
                 minute and only happens once.
               </p>
@@ -391,66 +328,29 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => void createManually()}
                 disabled={brandName.trim().length === 0}
-                className="self-start text-[14px] text-ink-muted underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
+                className="self-start text-14 text-ink-muted underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
               >
                 {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
               </button>
             ) : null}
-            {manualBusy ? <p className="text-[14px] text-ink-muted">Setting up your brand…</p> : null}
+            {manualBusy ? <p className="text-14 text-ink-muted">Setting up your brand…</p> : null}
+            </div>
           </div>
         }
-      >
-        <Input
-          autoFocus
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && looksLikeUrl(url) && !busy && void bootstrap()}
-          placeholder="Enter your website URL"
-          aria-label="Website URL"
-          inputMode="url"
-          disabled={busy || manualBusy}
-        />
-      </StepShell>
-    );
-  }
-
-  if (step === CHIPS && draft) {
-    return (
-      <StepShell
-        group={1}
-        within={{ index: 2, total: 4 }}
-        onBack={back}
-        eyebrow={`Read from ${hostOf(url)}`}
-        title="Here’s what SPARK understood"
-        subtitle="Tap anything that’s wrong. Getting this right now saves a month of off-brand posts."
-        footer={
-          <div className="flex flex-col gap-3">
-            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button className="w-full md:w-auto" disabled={busy} onClick={() => void confirmChips()}>
-              {busy ? 'Saving…' : 'Looks right'}
-            </Button>
-          </div>
-        }
-      >
-        <ChipReview chips={draft.chips} onChange={(chips) => setDraft({ ...draft, chips })} />
-      </StepShell>
+      />
     );
   }
 
   if (step === DETAILS && draft) {
     return (
       <StepShell
-        group={1}
-        within={{ index: 3, total: 4 }}
+        group={2}
         onBack={back}
-        eyebrow={eyebrow}
-        title="A bit more about the brand"
-        subtitle="All optional — but the sentence below is what every caption gets written from, so it is the one worth typing."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(QUESTIONS_AT)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<>Great Got your brand name, <strong className="font-semibold text-brand-purple">{draft.businessName}</strong></>}
+        title="Tell us a bit more about your brand?"
+        onContinue={() => setStep(DOCS)}
+        inBubble
+        bubbleWidth={493}
       >
         <BrandDetailsStep
           genomeId={draft.genomeId}
@@ -463,79 +363,40 @@ export default function OnboardingPage() {
 
   /* ── 2 · Brand knowledge ────────────────────────────────────────────── */
 
-  const questionIndex = step - QUESTIONS_AT;
-  const question = questionIndex >= 0 ? questions[questionIndex] : undefined;
-
-  if (question && draft) {
-    const selected = answers[question.id] ?? [];
-    const last = questionIndex === questions.length - 1;
-
-    return (
-      <StepShell
-        group={2}
-        within={{ index: questionIndex, total: questions.length + 2 }}
-        onBack={back}
-        eyebrow={eyebrow}
-        title={question.prompt}
-        subtitle={question.help}
-        footer={
-          <div className="flex flex-col gap-3">
-            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button
-              className="w-full md:w-auto"
-              disabled={selected.length === 0 || busy}
-              onClick={() => (last ? void saveAnswers() : setStep(step + 1))}
-            >
-              {busy ? 'Saving…' : last ? 'Save answers' : 'Continue'}
-            </Button>
-          </div>
-        }
-      >
-        <QuestionStep
-          question={question}
-          selected={selected}
-          onChange={(values) => setAnswers({ ...answers, [question.id]: values })}
-        />
-      </StepShell>
-    );
-  }
-
   if (draft && step === DOCS) {
     return (
       <StepShell
         group={2}
-        within={{ index: questions.length, total: questions.length + 2 }}
         onBack={back}
-        eyebrow={eyebrow}
-        title="Anything written down?"
-        subtitle="SPARK reads these to learn your voice, your offer and the facts it is allowed to state. Optional, and addable later."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(GROUNDING)}>
-            Continue
-          </Button>
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            Upload company Docs (PDF)
+            <span
+              title="Spark reads these documents to learn your brand voice, offering and facts."
+              style={{
+                width: 21.6,
+                height: 21.6,
+                borderRadius: '50%',
+                boxShadow: 'inset 0 0 0 1.3px #B0B0B0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                color: '#B0B0B0',
+                cursor: 'help',
+              }}
+            >
+              i
+            </span>
+          </span>
         }
+        titleTone="label"
+        onContinue={() => setStep(KIT)}
+        inBubble
+        /* 581 on the 1728 canvas, which is 484 on this shell's 1440 frame. */
+        bubbleWidth={484}
       >
         <CompanyDocsStep genomeId={draft.genomeId} />
-      </StepShell>
-    );
-  }
-
-  if (draft && step === GROUNDING) {
-    return (
-      <StepShell
-        group={2}
-        within={{ index: questions.length + 1, total: questions.length + 2 }}
-        onBack={back}
-        eyebrow={eyebrow}
-        title="What has SPARK got to work with?"
-        subtitle="All optional, all changeable later — but each one is the difference between a post that could be any business and a post that is yours."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(KIT)}>
-            Continue
-          </Button>
-        }
-      >
-        <GroundingStep genomeId={draft.genomeId} />
       </StepShell>
     );
   }
@@ -547,14 +408,8 @@ export default function OnboardingPage() {
       <StepShell
         group={3}
         onBack={back}
-        eyebrow={eyebrow}
-        title="How should it look and sound?"
-        subtitle="Your colours, type and voice, and the things SPARK must never say. Every field here reaches a real post."
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(AGENT)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<><strong className="font-semibold text-ink">Exciting update!</strong> Your Brand Knowledge is complete. Next up, we'll focus on your <strong className="font-semibold text-ink">Brand's Voice, Guardrails, and Time Zone.</strong></>}
+        onContinue={() => setStep(AGENT)}
       >
         <BrandKitStep />
       </StepShell>
@@ -569,51 +424,22 @@ export default function OnboardingPage() {
         group={4}
         within={{ index: 0, total: 2 }}
         onBack={back}
-        eyebrow={eyebrow}
-        title="Who is doing the work?"
-        footer={
-          <Button className="w-full md:w-auto" onClick={() => setStep(ACCOUNTS)}>
-            Continue
-          </Button>
-        }
+        eyebrow={<><strong className="font-semibold text-ink">Great news!</strong> Your Brand Guardrails are set. Ready to <strong className="font-semibold text-ink">customize your media and agent?</strong></>}
+        onContinue={() => setStep(DONE)}
+        // `…193231` labels the last step's action Finish, not Continue.
+        continueLabel="Finish"
       >
         <AgentStep genomeId={draft.genomeId} brandName={draft.businessName} />
       </StepShell>
     );
   }
 
-  if (draft && step === ACCOUNTS) {
-    return (
-      <StepShell
-        group={4}
-        within={{ index: 1, total: 2 }}
-        onBack={back}
-        eyebrow={eyebrow}
-        title="Where should SPARK post?"
-        footer={
-          <div className="flex flex-col gap-3">
-            {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
-            <Button className="w-full md:w-auto" onClick={() => setStep(DONE)}>
-              {connectedCount > 0 ? 'Finish setup' : 'Skip for now'}
-            </Button>
-          </div>
-        }
-      >
-        <ConnectAccountsStep genomeId={draft.genomeId} onConnectedCountChange={setConnectedCount} />
-      </StepShell>
-    );
-  }
-
   /* ── Done (`L5`) ────────────────────────────────────────────────────── */
 
+  // No genome or brand name needed any more: the readiness list that read them
+  // is gone, so this screen makes no tool calls at all.
   if (draft && step === DONE) {
-    return (
-      <CompletionScreen
-        genomeId={draft.genomeId}
-        brandName={draft.businessName}
-        onDone={() => router.push('/')}
-      />
-    );
+    return <CompletionScreen onDone={() => router.push('/')} />;
   }
 
   /* Reachable only if `draft` is missing past the URL step — a refresh mid-flow. */
@@ -642,10 +468,3 @@ function looksLikeUrl(value: string): boolean {
   return /^https?:\/\/[^\s.]+\.[^\s]{2,}$/i.test(trimmed) || /^[^\s.]+\.[^\s]{2,}$/i.test(trimmed);
 }
 
-function hostOf(value: string): string {
-  try {
-    return new URL(value.startsWith('http') ? value : `https://${value}`).hostname.replace(/^www\./, '');
-  } catch {
-    return 'your site';
-  }
-}

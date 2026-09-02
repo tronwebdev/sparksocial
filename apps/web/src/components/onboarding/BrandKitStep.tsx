@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { BrandFontPicker } from '@/components/settings/BrandFontPicker';
+import { BRAND_FONTS } from '@sparksocial/shared';
+import {
+  SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
+  guardrailSuggestions,
+  Swatch, PaletteSwatch, PALETTE,
+} from './kit';
+import { ProtoScale } from './Stage';
 import { invoke } from '@/lib/tools';
-import { cn } from '@/lib/utils';
 
 /**
  * `F6`'s third group and `M8` — the brand kit, asked during onboarding.
@@ -94,8 +97,6 @@ const ZONES = [
   'UTC',
 ];
 
-const COLOR_ROLE = ['Background', 'Text', 'Accent'];
-const NEW_COLOR = '#0C0C0C';
 
 interface Governance {
   brandColors: string[];
@@ -114,8 +115,16 @@ export function BrandKitStep() {
   const [voice, setVoice] = useState<string>('');
   const [timezone, setTimezone] = useState('');
   const [strictMode, setStrictMode] = useState(false);
+  /**
+   * Press counts, not indices, so `guardrailSuggestions` can deal a fresh four
+   * each time the row is pressed and wrap when it runs out of pool.
+   */
+  const [topicRound, setTopicRound] = useState(0);
+  const [claimRound, setClaimRound] = useState(0);
   const [topics, setTopics] = useState('');
   const [claims, setClaims] = useState('');
+  const [topicDraft, setTopicDraft] = useState('');
+  const [claimDraft, setClaimDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -151,7 +160,13 @@ export function BrandKitStep() {
     setBusy(true);
     setMessage(null);
 
-    const preset = VOICE_PRESETS.find((p) => p.id === voice);
+    /*
+      `voice` is a comma list now, because the capture's control is
+      multi-select. `toneVector` is a single vector, so the first pick wins
+      rather than averaging: averaging "formal" with "casual" returns
+      neutral, which is not what selecting both means.
+    */
+    const preset = VOICE_PRESETS.find((p) => p.id === voice.split(',')[0]);
     const res = await invoke('brand.governance.set', {
       brandColors: colors.length ? colors : null,
       brandFonts: fonts.display ?? fonts.body ? fonts : null,
@@ -171,168 +186,278 @@ export function BrandKitStep() {
     return res.status === 'succeeded';
   }
 
-  if (!loaded) return <p className="text-[14px] text-ink-muted">Reading what SPARK already has…</p>;
+  if (!loaded) return <p className="text-14 text-ink-muted">Reading what SPARK already has…</p>;
 
+  const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
+  const toggleVoice = (id: string) =>
+    setVoice(
+      selectedVoices.includes(id)
+        ? selectedVoices.filter((v) => v !== id).join(',')
+        : [...selectedVoices, id].join(','),
+    );
+
+  const topicList = splitList(topics);
+  const claimList = splitList(claims);
+  const addTo = (current: string, value: string) =>
+    splitList(current).includes(value) ? current : [...splitList(current), value].join(', ');
+  const removeFrom = (current: string, value: string) =>
+    splitList(current).filter((v) => v !== value).join(', ');
+
+  const countries = [...new Set(ZONES.map((z) => z.split('/')[0]))];
+  const region = timezone.includes('/') ? timezone.split('/')[0] : countries[0];
+
+  /*
+    `…193155` at the prototype's own numbers: two 432-wide columns 27px apart,
+    a 57px select, a 123px timezone card holding two 190×49 selects at radius 15,
+    a 45×24.3 toggle, 55px guardrail inputs and 44px chips.
+
+    The brand kit is NOT inside the assistant card — the bubble sits above it and
+    these lay out on the background. Saving is on blur of the whole block.
+  */
   return (
-    <div className="grid grid-cols-1 gap-7">
-      {/* ── Colour ─────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Colours</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          In order: the background, the text on it, then an accent. Posts use the defaults until you set
-          them.
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {colors.map((c, i) => (
-            <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
-              <input
-                type="color"
-                value={normaliseHex(c)}
-                onChange={(e) => setColors(colors.map((x, j) => (j === i ? e.target.value : x)))}
-                className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
-                aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
-              />
-              <span className="text-[11.5px] text-ink-muted">{COLOR_ROLE[i] ?? 'extra'}</span>
-              <button
-                type="button"
-                onClick={() => setColors(colors.filter((_, j) => j !== i))}
-                className="text-[13px] text-ink-muted hover:text-ink"
-                aria-label={`Remove ${c}`}
-              >
-                ×
-              </button>
+    <ProtoScale native={891}>
+      <div style={{ width: 891, display: 'flex', flexDirection: 'column', gap: 38 }} onBlur={() => void save()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+          <span style={{ fontSize: 18, color: '#0C0C0C' }}>This is your brand kit generated from your URL</span>
+          {/*
+            Drawn in both sources, inert in both senses: nothing generates a
+            palette from a crawl, so there is no preset to switch to. Kept
+            visible because hiding it would hide a real gap.
+          */}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 14, height: 57, padding: '0 20px', borderRadius: 10, background: '#FFFFFF' }}>
+            <span style={{ fontSize: 18, fontWeight: 500, color: '#0C0C0C' }}>Use This Brand Preset</span>
+            <Toggle
+              checked={false}
+              disabled
+              onChange={() => {}}
+              label="Use this brand preset"
+              title="No generated preset exists — nothing proposes a palette from a crawl."
+            />
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '432px 432px', columnGap: 27, rowGap: 38 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Color Theme</SectionLabel>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: 432, height: 57, borderRadius: 10, background: '#FFFFFF', padding: '0 18px' }}>
+              <span style={{ fontSize: 18.3, color: '#0C0C0C', whiteSpace: 'nowrap' }}>Selected Colors</span>
+              <span style={{ display: 'flex', gap: 10 }}>
+                {colors.map((c, idx) => (
+                  <Swatch key={c + idx} hex={c} onRemove={() => setColors(colors.filter((_, j) => j !== idx))} />
+                ))}
+              </span>
             </div>
-          ))}
-          {colors.length < 3 ? (
-            <Button variant="outline" size="sm" onClick={() => setColors([...colors, NEW_COLOR])}>
-              Add {COLOR_ROLE[colors.length]?.toLowerCase() ?? 'colour'}
-            </Button>
-          ) : null}
-        </div>
-      </section>
-
-      {/* ── Type ───────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Type</h2>
-        <div className="mt-2">
-          <BrandFontPicker
-            value={fonts}
-            onChange={setFonts}
-            {...(colors[0] ? { ground: colors[0] } : {})}
-            {...(colors[1] ? { type: colors[1] } : {})}
-          />
-        </div>
-      </section>
-
-      {/* ── Voice ──────────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Voice</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          How captions read. Adjustable axis by axis later, in Settings.
-        </p>
-        <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {VOICE_PRESETS.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                aria-pressed={voice === p.id}
-                onClick={() => setVoice(p.id)}
-                className={cn(
-                  'h-full w-full rounded-lg border p-3 text-left transition-colors',
-                  voice === p.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 432 }}>
+              {PALETTE.map((c) => (
+                <PaletteSwatch key={c} hex={c} onPick={() => setColors(colors.includes(c) ? colors : [...colors, c])} />
+              ))}
+              {/* The prototype's eyedropper tile. A colour input, because the
+                  `EyeDropper` API is Chromium-only and a throwing button is worse. */}
+              <label
+                style={{
+                  width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
+                  boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
               >
-                <span className="block text-[14px] font-medium text-ink">{p.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{p.note}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ── When it posts ──────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Timezone</h2>
-        <p className="mt-0.5 text-[13px] text-ink-muted">
-          Every posting time is worked out in this zone. Required, because the alternative is posting on
-          UTC hours.
-        </p>
-        <select
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink sm:max-w-[320px]"
-          aria-label="Timezone"
-        >
-          {/* The detected or stored zone first, in case it is outside the list. */}
-          {timezone && !ZONES.includes(timezone) ? <option value={timezone}>{timezone}</option> : null}
-          {ZONES.map((z) => (
-            <option key={z} value={z}>
-              {z}
-            </option>
-          ))}
-        </select>
-      </section>
-
-      {/* ── Guardrails ─────────────────────────────────────────────────── */}
-      <section>
-        <h2 className="text-[14px] font-medium text-ink">Guardrails</h2>
-        <label className="mt-2 flex items-start gap-3 rounded-lg border border-border p-3">
-          <input
-            type="checkbox"
-            checked={strictMode}
-            onChange={(e) => setStrictMode(e.target.checked)}
-            className="mt-1 size-4 accent-[--ss-primary]"
-          />
-          <span>
-            <span className="text-[14px] font-medium text-ink">Strict compliance</span>
-            <span className="mt-0.5 block text-[13px] text-ink-muted">
-              A restricted topic <b>blocks</b> a post rather than flagging it for you. On for anything
-              regulated.
-            </span>
-          </span>
-        </label>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-[13px] text-ink-muted" htmlFor="onb-topics">
-              Topics to stay off
-            </label>
-            <Input
-              id="onb-topics"
-              value={topics}
-              onChange={(e) => setTopics(e.target.value)}
-              placeholder="politics, competitors"
-              className="mt-1.5"
-            />
-            <p className="mt-1 text-[12px] text-ink-muted">Comma separated.</p>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
+                  <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <input type="color" aria-label="Pick a custom colour" style={{ display: 'none' }} onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])} />
+              </label>
+            </div>
           </div>
-          <div>
-            <label className="text-[13px] text-ink-muted" htmlFor="onb-claims">
-              Claims to avoid
-            </label>
-            <Input
-              id="onb-claims"
-              value={claims}
-              onChange={(e) => setClaims(e.target.value)}
-              placeholder="guaranteed results, cheapest in town"
-              className="mt-1.5"
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Typography Style</SectionLabel>
+            <div style={{ width: 432, height: 132, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)', padding: '12.5px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, height: 35, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 20, color: '#0C0C0C' }}>Font Styles:</span>
+                <span style={{ fontSize: 27, fontWeight: 700, color: '#0C0C0C' }}>{fonts.display || 'System'}</span>
+                <span style={{ fontSize: 24, fontWeight: 700, color: '#0C0C0C' }}>, {fonts.body || 'default'}</span>
+              </div>
+              {/*
+                The prototype has a single 393x49 "Choose Fonts" select on
+                `#F3F4F8`, not the settings picker. `BrandFontPicker` renders its
+                own live preview card, which overflowed this 132px card and
+                bled a dark bar across the column — visible in the browser, not
+                in any diff. The font list is still `BRAND_FONTS`, so the same
+                values reach `brandFonts`.
+              */}
+              <div style={{ marginTop: 19, position: 'relative', width: 393, height: 49 }}>
+                <select
+                  aria-label="Choose fonts"
+                  value={fonts.display ?? ''}
+                  onChange={(e) => setFonts({ display: e.target.value, body: e.target.value })}
+                  style={{
+                    width: 393, height: 49, borderRadius: 10, background: '#F3F4F8', border: 'none',
+                    outline: 'none', appearance: 'none', padding: '0 42px 0 18px', fontSize: 18,
+                    color: fonts.display ? '#0C0C0C' : '#838383', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Choose Fonts</option>
+                  {BRAND_FONTS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label ?? f.id}
+                    </option>
+                  ))}
+                </select>
+                <svg width="11" height="5" viewBox="0 0 11 5" fill="none" aria-hidden style={{ position: 'absolute', right: 21, top: 22, display: 'block', pointerEvents: 'none' }}>
+                  <path d="m1 1 4.5 3L10 1" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel>Select Brand Voice:</SectionLabel>
+            {/* Multi-select, as both sources draw it. `toneVector` takes one
+                vector, so `save()` sends the first pick's — see the note there. */}
+            <SelectField
+              ariaLabel="Brand voice"
+              placeholder={selectedVoices.length ? `${selectedVoices.length} selected` : 'Choose a voice'}
+              value=""
+              onChange={(v: string) => v && toggleVoice(v)}
+              options={VOICE_PRESETS.map((pr) => ({ value: pr.id, label: pr.label }))}
             />
-            <p className="mt-1 text-[12px] text-ink-muted">Things you cannot stand behind.</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, width: 432 }}>
+              {selectedVoices.map((id) => (
+                <TagChip key={id} onRemove={() => toggleVoice(id)}>
+                  {VOICE_PRESETS.find((pr) => pr.id === id)?.label ?? id}
+                </TagChip>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <SectionLabel weight={700}>Pick a timezone</SectionLabel>
+            <div style={{ position: 'relative', width: 432, height: 123, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
+              <span style={{ position: 'absolute', left: 23, top: 17, fontSize: 18, color: '#838383' }}>Country</span>
+              <div style={{ position: 'absolute', left: 20, top: 55 }}>
+                <SmallSelect
+                  ariaLabel="Country"
+                  value={region ?? ''}
+                  onChange={(r: string) => setTimezone(ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone)}
+                  options={countries.map((c) => ({ value: c as string, label: c as string }))}
+                />
+              </div>
+              <span style={{ position: 'absolute', left: 226, top: 17, fontSize: 18, color: '#838383' }}>Timezone</span>
+              <div style={{ position: 'absolute', left: 223, top: 55 }}>
+                {/* Only `timezone` reaches the tool: Country filters this list and
+                    is not stored, since an IANA zone already implies its region. */}
+                <SmallSelect
+                  ariaLabel="Timezone"
+                  value={timezone}
+                  placeholder="Select"
+                  onChange={setTimezone}
+                  options={ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </section>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="outline" disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save the kit'}
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20, fontWeight: 700, color: '#0C0C0C' }}>Enable Strict Compliance</span>
+          <Toggle checked={strictMode} onChange={setStrictMode} label="Enable strict compliance" />
+        </div>
+
+        {/*
+          The prototype gates both guardrail fields on the toggle:
+          `opacity: strict ? 1 : 0.4` and `pointer-events: strict ? auto : none`,
+          over a 0.25s ease. `strict` starts false, so the fields open only once
+          compliance is switched on - which is the right way round, since an
+          empty restricted-topics list under strict mode is a decision, while
+          the same list with the mode off is just an unanswered question.
+
+          `pointer-events: none` alone would leave the inputs reachable by Tab,
+          so the fieldset carries `disabled` too - that takes the controls out of
+          the tab order and out of form submission, which is what the visual
+          state is claiming.
+        */}
+        <fieldset
+          disabled={!strictMode}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '433px 433px',
+            columnGap: 27,
+            border: 'none',
+            margin: 0,
+            padding: 0,
+            opacity: strictMode ? 1 : 0.4,
+            pointerEvents: strictMode ? 'auto' : 'none',
+            transition: 'opacity 0.25s ease',
+          }}
+        >
+          <div>
+            <SectionLabel info="Spark will never post or reply about these topics.">Restricted Topics and phrases</SectionLabel>
+            <div style={{ marginTop: 11 }}>
+              <TextInput
+                value={topicDraft}
+                onChange={setTopicDraft}
+                onEnter={() => {
+                  if (topicDraft.trim()) {
+                    setTopics(addTo(topics, topicDraft.trim()));
+                    setTopicDraft('');
+                  }
+                }}
+                placeholder="Input your topics/phrases"
+                ariaLabel="Restricted topics"
+              />
+            </div>
+            <Suggestions
+              items={guardrailSuggestions.restricted(topicRound)}
+              onPick={(v) => setTopics(addTo(topics, v))}
+              onRegenerate={() => setTopicRound((r) => r + 1)}
+            />
+            <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {topicList.map((t) => (
+                <TagChip key={t} onRemove={() => setTopics(removeFrom(topics, t))}>
+                  {t}
+                </TagChip>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionLabel info="Claims Spark must never make, even where they are true.">Claims to Avoid?</SectionLabel>
+            <div style={{ marginTop: 11 }}>
+              <TextInput
+                value={claimDraft}
+                onChange={setClaimDraft}
+                onEnter={() => {
+                  if (claimDraft.trim()) {
+                    setClaims(addTo(claims, claimDraft.trim()));
+                    setClaimDraft('');
+                  }
+                }}
+                placeholder="Input your claims to be avoided"
+                ariaLabel="Claims to avoid"
+              />
+            </div>
+            <Suggestions
+              items={guardrailSuggestions.claims(claimRound)}
+              onPick={(v) => setClaims(addTo(claims, v))}
+              onRegenerate={() => setClaimRound((r) => r + 1)}
+            />
+            <div style={{ marginTop: 22, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {claimList.map((c) => (
+                <TagChip key={c} onRemove={() => setClaims(removeFrom(claims, c))}>
+                  {c}
+                </TagChip>
+              ))}
+            </div>
+          </div>
+        </fieldset>
+
+        {busy ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
         {message ? (
-          <span className={message.kind === 'ok' ? 'text-[13px] text-ink-muted' : 'text-[13px] text-warn'}>
+          <p role={message.kind === 'err' ? 'alert' : undefined} style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}>
             {message.text}
-          </span>
+          </p>
         ) : null}
       </div>
-    </div>
+    </ProtoScale>
   );
 }
 
@@ -343,10 +468,6 @@ const splitList = (text: string): string[] =>
     .filter(Boolean);
 
 /** Falls back to the swatch a colour input can show, rather than claiming the brand's colour is grey. */
-function normaliseHex(value: string): string {
-  const v = value.trim().toLowerCase();
-  return /^#[0-9a-f]{6}$/.test(v) ? v : '#000000';
-}
 
 /**
  * Which preset a stored tone vector is nearest, by squared distance.

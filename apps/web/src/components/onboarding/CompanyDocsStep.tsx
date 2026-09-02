@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { DropZone, PreviewTile } from './kit';
+import { ProtoScale } from './Stage';
 import { uploadToStorage } from '@/lib/uploadToStorage';
 
 /**
@@ -35,8 +36,13 @@ import { uploadToStorage } from '@/lib/uploadToStorage';
  */
 
 const ACCEPT = 'application/pdf';
-/** Matches `document-reader.ts`'s own cap, stated here rather than discovered on upload. */
-const MAX_MB = 25;
+/**
+ * `asset.upload_url` bounds `sizeBytes` at `512 * 1024 * 1024`, and the
+ * prototype's four drop zones all read "up to 500MB". I had this at 25MB with a
+ * comment claiming it matched a reader-side cap; there is no such cap, so the
+ * number was mine and it was rejecting files the backend would have taken.
+ */
+const MAX_MB = 500;
 
 interface Attached {
   filename: string;
@@ -46,7 +52,6 @@ interface Attached {
 }
 
 export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
-  const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [attached, setAttached] = useState<Attached[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,66 +120,131 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
     ]);
   }
 
+  const latest = attached[attached.length - 1];
+
+  /*
+    The notch card on `SparkSocial Onboarding.dc.html`, at its own numbers. The
+    card is 581x309.5 at (576,174) and the form lives *inside* it, so every value
+    below is card-relative from the drop zone's own origin at (66,69):
+
+      drop zone      0,0     340x160, radius 12.76
+      File Preview   380,4   14px #838383  (the tile draws its own label)
+      preview tile   360,28.2
+      sample link    5,194   17x20 glyph, 18px/500 #838383, gap 10
+
+    What was wrong before: I had wrapped this in an `#F3F4F8` `UploadSection`,
+    which is the treatment the *logo* and *avatar* zones get because they sit on
+    the grey background. This one sits on the white card, and the prototype gives
+    it no fill and a 1.26px ring instead - a white box on a white card is not a
+    box at all. Same reason the glyph here is the file-with-fold rather than the
+    image glyph the other three use.
+  */
   return (
-    <div className="grid grid-cols-1 gap-5">
-      <div className="rounded-xl border border-dashed border-border p-6 text-center">
-        <p className="text-[15px] font-medium text-ink">Drop a PDF here, or browse</p>
-        <p className="mt-1 text-[13px] text-ink-muted">
-          A brand guideline, a price list, an FAQ. Up to {MAX_MB}MB, text PDFs — a scan has no words in it
-          to read.
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3"
-          disabled={busy}
-          onClick={() => input.current?.click()}
-        >
-          {busy ? 'Reading it…' : 'Browse files'}
-        </Button>
-        <input
-          ref={input}
-          type="file"
+    <ProtoScale native={515}>
+      <div style={{ position: 'relative', width: 515, height: 218 }}>
+        <DropZone
+          left={0}
+          top={0}
+          outlined
+          glyph="document"
           accept={ACCEPT}
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            // Cleared so the same file can be re-picked after a failure —
-            // otherwise `change` never fires again and the control looks dead.
-            e.target.value = '';
-            if (file) void upload(file);
-          }}
+          formats={`PDF, Docs up to ${MAX_MB}MB`}
+          busy={busy}
+          onFile={(f) => void upload(f)}
         />
+
+        <PreviewTile
+          left={360}
+          top={28.2}
+          label="File Preview"
+          onClear={latest ? () => setAttached((prev) => prev.slice(0, -1)) : undefined}
+        >
+          {latest ? (
+            <>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 38,
+                  top: 36.8,
+                  display: 'flex',
+                  width: 54,
+                  height: 54,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 6,
+                  background: 'rgba(240,28,28,0.08)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#F01C1C',
+                }}
+              >
+                PDF
+              </span>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 119.2,
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '0 6px',
+                  fontSize: 10.6,
+                  color: '#838383',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {latest.filename}
+              </span>
+            </>
+          ) : null}
+        </PreviewTile>
+
+        <a
+          href="/brand-guideline-sample.pdf"
+          download
+          style={{
+            position: 'absolute',
+            left: 5,
+            top: 194,
+            height: 24,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            fontSize: 18,
+            fontWeight: 500,
+            lineHeight: 1.33,
+            color: '#838383',
+            textDecoration: 'none',
+          }}
+        >
+          <svg width="17" height="20" viewBox="0 0 17 20" fill="none" aria-hidden style={{ display: 'block' }}>
+            <path d="M8.5 1v12m0 0L4 8.6m4.5 4.4L13 8.6" stroke="#000000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1.5 15.5v1.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="#000000" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          Download sample pdf guideline
+        </a>
       </div>
 
-      {attached.length > 0 ? (
-        <ul className="flex flex-col gap-2">
-          {attached.map((doc) => (
-            <li
-              key={doc.filename}
-              className="flex flex-wrap items-baseline justify-between gap-3 rounded-lg border border-border p-3"
-            >
-              <span className="text-[14px] font-medium text-ink">{doc.filename}</span>
-              {/* What was actually read, not "uploaded". The number of chunks is
-                  the number of things retrieval can now find. */}
-              <span className="text-[12.5px] text-ink-muted">
-                {doc.pages} page{doc.pages === 1 ? '' : 's'} · {doc.characters.toLocaleString('en-US')}{' '}
-                characters read · {doc.chunks} passage{doc.chunks === 1 ? '' : 's'} SPARK can quote
-              </span>
-            </li>
-          ))}
-        </ul>
+      {/*
+        Both hang below the 309.5 card rather than inside it. The read result is
+        not in the prototype and is kept: a scanned PDF with no text layer
+        attaches successfully and yields nothing, which is the one outcome the
+        owner must not discover a week later.
+      */}
+      {error ? (
+        <p role="alert" style={{ marginTop: 14, fontSize: 16, color: '#F01C1C' }}>
+          {error}
+        </p>
       ) : null}
-
-      {error ? <p className="text-[13px] text-warn">{error}</p> : null}
-
-      <a
-        href="/brand-guideline-sample.pdf"
-        download
-        className="self-start text-[14px] font-medium text-brand-purple underline underline-offset-2"
-      >
-        Download a sample guideline
-      </a>
-    </div>
+      {latest ? (
+        <p style={{ marginTop: 14, fontSize: 16, color: '#838383' }}>
+          Read {latest.pages} page{latest.pages === 1 ? '' : 's'} — {latest.chunks} passage
+          {latest.chunks === 1 ? '' : 's'} SPARK can quote from.
+        </p>
+      ) : null}
+    </ProtoScale>
   );
 }
