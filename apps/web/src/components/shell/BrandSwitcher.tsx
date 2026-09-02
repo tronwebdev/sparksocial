@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
-import { Plus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -197,19 +196,16 @@ export function BrandSwitcher() {
             <path d="m1 1 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
         {/*
-          The other half of "add a new brand from the dashboard": a second
-          *brand* inside this account, not a second Clerk organization (full
-          multi-tenancy is explicitly out of scope for the alpha — CLAUDE.md).
-          Onboarding already writes `spark_genome` to whatever it creates, so
-          re-running it here needs no new tool — the gap was purely that
-          nothing linked to it after the first run.
+          "Add a brand" was here, and is gone at the design's request.
+
+          Adding a brand is not a switcher action - the menu's job is to say
+          which brand you are looking at and let you change it. Creating one is
+          reached the way a workspace is: through Account Home, which is the row
+          directly above this and the level that owns creation. `/onboarding`
+          still writes `spark_genome` to whatever it creates, so nothing about
+          the flow changed; only the door.
         */}
-        <DropdownMenuItem onSelect={() => router.push('/onboarding')} className="h-[46px] gap-3 rounded-[10px] px-3">
-          <Plus className="h-[16px] w-[16px] text-ink-muted" aria-hidden />
-          <span>Add a brand</span>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AgentBanner } from './AgentBanner';
 import { invoke } from '@/lib/tools';
@@ -283,37 +282,23 @@ export function BrandHome() {
         onChanged={() => setReloads((n) => n + 1)}
       />
 
-      {/* ── The next best action, when there is one. §8.3's first sentence ──
-          survives the cockpit rework: a brand with nothing running has one
-          thing to do, and burying it under a dashboard of zeroes would be the
-          launcher's failure in reverse. */}
-      {!hasCampaign ? (
-        <section className="rounded-xl border border-primary/40 bg-surface p-6">
-          <h2 className="text-[18px] font-medium text-ink">
-            Nothing is posting yet — {genome?.name ?? 'this brand'} needs a campaign
-          </h2>
-          <p className="mt-1.5 max-w-prose text-[14px] text-ink-muted">
-            A campaign is an outcome over a window. Tell SPARK what you want more of and it works out what
-            it can make from what you already have, then starts posting to the accounts you choose.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/calendar?new=1">Set up your first campaign</Link>
-          </Button>
-        </section>
-      ) : snap.needsReview > 0 ? (
-        <section className="rounded-xl border border-warn/40 bg-warn/10 p-4">
-          <p className="text-[14px] text-ink">
-            <span className="font-medium">
-              {snap.needsReview} post{snap.needsReview === 1 ? '' : 's'}
-            </span>{' '}
-            {snap.needsReview === 1 ? 'is' : 'are'} waiting on you before{' '}
-            {snap.needsReview === 1 ? 'it' : 'they'} can go out.
-          </p>
-          <Button asChild size="sm" variant="outline" className="mt-2">
-            <Link href="/calendar">Review them</Link>
-          </Button>
-        </section>
-      ) : null}
+      {/*
+        Between the banner and the metrics there used to be a full-width card:
+        "Nothing is posting yet - <brand> needs a campaign" with a Set up your
+        first campaign button, or a "N posts waiting on you" variant when there
+        was one. Removed at the design's request, and it had stopped earning its
+        place anyway.
+
+        It was written when the cards below it showed nothing but zeroes, so the
+        one available action needed saying out loud. Now every one of those cards
+        carries `EmptyCard` - "You don't have an active campaign" with the same
+        Create Campaign button - so this was the fifth copy of that sentence and
+        the only one not attached to the thing it was about.
+
+        The review count it also carried is not lost: `needsReview` still goes to
+        `AgentBanner` as `planning`, which says "Planning N posts for the week
+        ahead" on the banner directly above.
+      */}
 
 
       {/* ── The two columns. Activity and the tabbed card carry the page; the
