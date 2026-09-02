@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { platformLabel } from '@/lib/platforms';
@@ -41,23 +41,57 @@ export function CockpitTabs({
   const [tab, setTab] = useState<Tab>('upcoming');
   const openLeads = leadCounts.hot + leadCounts.warm;
 
+  /*
+    The chip is drawn behind the active label, so its box comes from that
+    label's own layout rather than a table of hardcoded widths - `Sales
+    Opportunities` grows by a count badge, and a fixed 206px would clip it.
+  */
+  const labelRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [chip, setChip] = useState<{ left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    const el = labelRefs.current[tab];
+    if (!el?.offsetParent) return;
+    const PAD = 17;
+    setChip({ left: el.offsetLeft - PAD, width: el.offsetWidth + PAD * 2 });
+  }, [tab, openLeads]);
+
   return (
-    <section className="rounded-xl border border-border bg-surface">
+    /*
+      The card is plain white at radius 15 - no border. Its tab row is not three
+      buttons with their own backgrounds: it is one 51px chip at radius 10 on
+      `#F7F7F7` with a `rgba(12,12,12,0.1)` ring, sitting *behind* whichever
+      label is active, and three 18px/500 labels at a 44px gap over the top.
+      Active is `#0C0C0C`, inactive `#838383`, and the row is closed by a
+      `rgba(131,131,131,0.2)` hairline at y=80.
+
+      One chip that moves rather than three that toggle, for the same reason the
+      sidebar glow is one element: it is what produces the slide between tabs.
+      The prototype hardcodes the chip's box per tab (11/202, 218/216, 438/206);
+      here it is measured off the active label so it stays correct at any font
+      metric, with 17px of padding either side - the mean of the prototype's
+      three, which are 17, 17 and 18.
+    */
+    <section className="rounded-lg bg-white">
       <div
         role="tablist"
         aria-label="Cockpit panels"
-        className="flex flex-wrap gap-1 border-b border-border p-2"
+        className="relative flex flex-wrap items-center gap-x-11 gap-y-2 px-7 pb-[15px] pt-[29px]"
+        style={{ borderBottom: '1px solid rgba(131,131,131,0.2)' }}
       >
         {TABS.map((t) => (
           <button
             key={t.id}
+            ref={(el) => {
+              labelRefs.current[t.id] = el;
+            }}
             role="tab"
             type="button"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              'flex items-center gap-2 rounded-lg px-3.5 py-2 text-[14px] font-medium transition-colors',
-              tab === t.id ? 'bg-surface-muted text-ink' : 'text-ink-muted hover:bg-surface-muted',
+              'relative z-10 flex items-center gap-2 bg-transparent text-18 font-medium leading-[1.28] transition-colors',
+              tab === t.id ? 'text-ink' : 'text-ink-muted hover:text-ink',
             )}
           >
             {t.label}
@@ -68,6 +102,21 @@ export function CockpitTabs({
             ) : null}
           </button>
         ))}
+
+        {chip ? (
+          <span
+            aria-hidden
+            /* radius 10, not `rounded-lg` - that token is 15px here, which is
+               the *card's* radius, not the chip's. */
+            className="pointer-events-none absolute top-[14px] h-[51px] rounded-[10px] transition-[left,width] duration-200 ease-shell motion-reduce:transition-none"
+            style={{
+              left: chip.left,
+              width: chip.width,
+              background: '#F7F7F7',
+              boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)',
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="p-5">
