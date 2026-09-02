@@ -187,7 +187,7 @@ export function GlassCard({
 }) {
   return (
     <div
-      className={cn('mx-auto w-auth-glass max-w-full rounded-[42px] p-auth-glass-pad', className)}
+      className={cn('mx-auto w-auth-glass max-w-full rounded-3xl p-auth-glass-pad', className)}
       style={{
         background: 'rgba(255,255,255,0.25)',
         backdropFilter: 'blur(30px)',
@@ -197,8 +197,9 @@ export function GlassCard({
     >
       {/* `overflow-hidden` is what lets AuthHeader's halftone bleed to the card
           edge from inside the 36px gutter, instead of needing its own wrapper. */}
-      <div className="relative overflow-hidden rounded-2xl bg-white px-auth-gutter pb-[38px] pt-10">{children}</div>
-      {footer ? <div className="px-auth-gutter pb-2 pt-5">{footer}</div> : null}
+      <div className="relative overflow-hidden rounded-[38px] bg-white px-auth-gutter pb-[44px] pt-10">{children}</div>
+      {/* `padding: 20px 17px 26px` on the glass, under the white card. */}
+      {footer ? <div className="px-[17px] pb-[26px] pt-5">{footer}</div> : null}
     </div>
   );
 }

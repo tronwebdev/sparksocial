@@ -153,11 +153,23 @@
    * Radii are not new values: the corner profile solves to r=30 on the card and
    * r=15/16 on the button, which are `rounded-2xl` and `rounded-lg` already.
    */
-  --ss-auth-card: 448px;
-  --ss-auth-glass: 472px; /* measured 473; 448 + 2×12 */
-  --ss-auth-glass-pad: 12px; /* (472 − 448) / 2 */
-  --ss-auth-gutter: 36px; /* card padding-x; field width = 448 − 72 = 376 */
-  --ss-auth-control: 56px; /* field and button height, both */
+  /*
+    Read off `ui build/SparkSocial Auth.dc.html`, which sizes the card in real
+    CSS pixels inside a centred column rather than on a fixed canvas.
+
+    These were 472/448/12/36/56 — every one of them a screenshot measurement
+    divided by the 1440-frame scale. That arithmetic was right and the result
+    was still wrong: the prototype renders its glass at 568px at any viewport,
+    so a 472px card is simply a smaller card, not a scaled one. The ratios
+    between the old and new values are not even constant (568/472 = 1.203,
+    69/56 = 1.232, 45/36 = 1.25), which is the tell that the old set was
+    reconstructed rather than measured.
+  */
+  --ss-auth-glass: 568px; /* outer frosted panel */
+  --ss-auth-glass-pad: 14px; /* `padding: 15px 14px` on the glass */
+  --ss-auth-card: 540px; /* 568 − 2×14 */
+  --ss-auth-gutter: 45px; /* `padding: 26px 45px 0` on the field column */
+  --ss-auth-control: 69px; /* field and button height, both */
 }
 
 /**
@@ -208,6 +220,13 @@
   outline-width: 1.5px;
   outline-color: var(--ss-danger);
   outline-offset: -1.5px;
+}
+
+/* The workspace card's corner arrow. Inline styles cannot carry a hover, and
+   the prototype's is a fill plus a darker ring rather than a colour change. */
+.ss-ws-arrow:hover {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1.5px #0c0c0c;
 }
 
 /* ── Keyframes lifted from the prototype. Reused across 60+ screens. ──── */

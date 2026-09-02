@@ -57,13 +57,27 @@ type Step =
   | { kind: 'second_factor_totp' }
   | { kind: 'second_factor_code'; safeIdentifier: string };
 
+/**
+ * Where a completed sign-in lands.
+ *
+ * Was `/`, which dropped straight into the dashboard of whichever organization
+ * `OrgGuard` happened to activate. Navigating the prototype shows the intended
+ * flow: `SparkSocial Auth.dc.html` hands off to `SparkSocial Account Home.dc.html`
+ * — the workspace picker — so the choice of tenant is the user's, made once and
+ * visibly, rather than a side effect of guard order.
+ *
+ * Sign-*up* deliberately does not come here: a new account has no workspace to
+ * pick from, and its next step is creating one through onboarding.
+ */
+const AFTER_SIGN_IN = '/workspaces';
+
 export default function SignInPage() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (authLoaded && isSignedIn) router.replace('/');
+    if (authLoaded && isSignedIn) router.replace(AFTER_SIGN_IN);
   }, [authLoaded, isSignedIn, router]);
 
   const [email, setEmail] = useState('');
@@ -79,7 +93,7 @@ export default function SignInPage() {
   async function complete(result: { status: string | null; createdSessionId: string | null }) {
     if (result.status === 'complete' && result.createdSessionId && setActive) {
       await setActive({ session: result.createdSessionId });
-      router.push('/');
+      router.push(AFTER_SIGN_IN);
       return true;
     }
     return false;
@@ -175,7 +189,7 @@ export default function SignInPage() {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: '/',
+        redirectUrlComplete: AFTER_SIGN_IN,
       });
     } catch (err) {
       setErrors(toFieldErrors(err));

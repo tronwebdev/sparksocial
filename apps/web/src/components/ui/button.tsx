@@ -31,7 +31,8 @@ const buttonVariants = cva(
       },
       size: {
         // `cta` is the auth-screen button: 56px tall, 15px radius, 17px label.
-        cta: 'h-auth-control rounded-lg px-6 text-[17px]',
+        /* `height: 69; border-radius: 20; font: 500 22px` on the prototype. */
+        cta: 'h-auth-control rounded-xl px-6 text-22 font-medium',
         default: 'h-11 rounded px-4 text-base',
         sm: 'h-9 rounded px-3 text-sm',
         icon: 'h-10 w-10 rounded',

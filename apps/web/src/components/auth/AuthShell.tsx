@@ -88,7 +88,7 @@ export function AuthPanel({
   return (
     <div
       className={cn(
-        'relative mx-auto w-auth-card max-w-full overflow-hidden rounded-2xl px-auth-gutter pb-[38px] pt-10',
+        'relative mx-auto w-auth-card max-w-full overflow-hidden rounded-[38px] px-auth-gutter pb-[44px] pt-10',
         tone === 'light' ? 'bg-white' : 'border border-white/[0.06] bg-white/[0.04]',
         className,
       )}
@@ -147,13 +147,15 @@ export function AuthHeader({
         {mark ?? <SparkMark variant="card" size={48} animated />}
         <h1
           className={cn(
-            'mt-[23px] text-center text-22 font-semibold',
+            /* 26px/600 `#043133`, `margin-top: 14`. */
+            'mt-[14px] text-center text-26 font-semibold',
             tone === 'light' ? 'text-ink-heading' : 'text-white',
           )}
         >
           {title}
         </h1>
-        {subtitle ? <p className="mt-[7px] text-center text-14 text-ink-muted">{subtitle}</p> : null}
+        {/* 16px/400 `#838383`, `margin-top: 5`. */}
+        {subtitle ? <p className="mt-[5px] text-center text-16 text-ink-muted">{subtitle}</p> : null}
       </div>
     </div>
   );

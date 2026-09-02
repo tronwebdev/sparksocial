@@ -86,27 +86,32 @@ export function SocialRow({
   if (providers.length === 0) return null;
 
   /*
-    A centred label inside the rule — rule, gap, "Or continue with", gap, rule.
+    A centred label inside the rule - rule, gap, "Or continue with", gap, rule.
+    That shape was hard-won: counting "ink" per row against a fixed reference x
+    cannot tell a full rule from a rule-plus-glyphs, because the sky gradient
+    alone clears the threshold. Re-measured against the SAME x on an empty row,
+    y=685 of `login.png` resolves into two segments with glyphs between them.
 
-    I previously built this as rule-then-label-below, on a measurement that was
-    wrong: counting "ink" per row against a fixed reference x cannot tell a full
-    rule from a rule-plus-glyphs, because the sky gradient alone clears the
-    threshold. Re-measured against the SAME x on an empty row (which cancels the
-    gradient), y=685 of `login.png` resolves into two segments, 508-667 and
-    771-929, with glyphs between them. `signup.png` shows the same shape at
-    y=655: 884-1051, glyphs, 1163-1330.
+    The rest is now read off `SparkSocial Auth.dc.html` rather than inferred:
 
-    Offsets from the card's bottom edge: divider row 20, buttons 46 (Login);
-    22 and 53 on Sign Up. Same component, same treatment.
+      divider row   gap 14, 1px rules at rgba(12,12,12,0.11)
+      label         14px `#0C0C0C` - not the muted grey I had
+      button row    gap 26
+      button        flex:1, height 51, radius 7.9, inset ring rgba(12,12,12,0.25)
+
+    And no labels beside the glyphs. I had "Google"/"Facebook"/"X" next to each
+    icon; the prototype's buttons are the glyph alone, which is also why they fit
+    three across at 51px with a 26px gutter. The accessible name moves to
+    `aria-label`, so nothing is lost to a screen reader.
   */
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-14 text-ink-muted">Or continue with</span>
-        <span className="h-px flex-1 bg-border" />
+    <div className={cn('flex flex-col gap-4', className)}>
+      <div className="flex items-center gap-[14px]">
+        <span className="h-px flex-1" style={{ background: 'rgba(12,12,12,0.11)' }} />
+        <span className="text-14 text-ink">Or continue with</span>
+        <span className="h-px flex-1" style={{ background: 'rgba(12,12,12,0.11)' }} />
       </div>
-      <div className="flex gap-3">
+      <div className="flex gap-[26px]">
         {providers.map((p) => (
           <button
             key={p.strategy}
@@ -117,17 +122,16 @@ export function SocialRow({
             className={cn(
               // Not `bg-input`. Sampled inside a provider button in login.png the
               // fill reads #CFE8F6 against #CDE9F8 for the glass immediately
-              // above it — i.e. no fill at all, just a border. A grey fill here
-              // is the difference between "on the glass" and "a grey chip".
-              'flex h-[56px] flex-1 items-center justify-center gap-2 rounded-lg',
-              'border border-border bg-transparent',
-              'text-16 font-medium text-ink transition-colors hover:bg-white/40',
+              // above it - i.e. no fill at all, just a ring. A grey fill here is
+              // the difference between "on the glass" and "a grey chip".
+              'flex h-[51px] flex-1 items-center justify-center rounded-[7.9px] bg-transparent',
+              'transition-colors hover:bg-white/50',
               'focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring',
               'disabled:pointer-events-none disabled:opacity-50',
             )}
+            style={{ boxShadow: 'inset 0 0 0 1.1px rgba(12,12,12,0.25)' }}
           >
             {p.icon}
-            <span className="max-sm:hidden">{p.label}</span>
           </button>
         ))}
       </div>
