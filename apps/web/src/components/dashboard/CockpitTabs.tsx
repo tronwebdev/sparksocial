@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { EmptyCard } from './EmptyCard';
 import { platformLabel } from '@/lib/platforms';
 import { compactNumber, relativeTime } from '@/lib/relativeTime';
 import { cn } from '@/lib/utils';
@@ -102,6 +102,19 @@ export function CockpitTabs({
           </button>
         ))}
 
+        {/*
+          The design puts an info glyph at the row's right edge (x=803 of 846),
+          which this header did not have. `ml-auto` rather than an absolute x, so
+          it stays at the edge whatever the tab labels measure.
+        */}
+        <span
+          title="What your agent has lined up, how the last week performed, and who is showing buying intent."
+          className="relative z-10 ml-auto flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+        >
+          i
+        </span>
+
         {chip ? (
           <span
             aria-hidden
@@ -132,12 +145,7 @@ export function CockpitTabs({
 function Upcoming({ posts }: { posts: UpcomingPost[] }) {
   if (posts.length === 0) {
     return (
-      <Empty
-        title="Nothing scheduled"
-        body="Activate a campaign and SPARK fills the calendar. Posts appear here as their slots are placed."
-        href="/calendar"
-        cta="Open Calendar"
-      />
+      <EmptyCard body={<>Create your first campaign to get started and view upcoming contents</>} />
     );
   }
 
@@ -207,9 +215,11 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
       {/* 134.3x39 at radius 8.29, `rgba(163,65,255,0.1)` inside a 1.06px
           `#A341FF` ring - an outlined purple button, not the shell's default. */}
       <div className="mt-4 flex justify-end">
+        {/* 134.3x39 at radius 8.29 - a fixed box, not padding-sized. The
+            label is 14.92px/500, which at `px-4` made the button 118px. */}
         <Link
           href="/calendar"
-          className="flex h-[39px] items-center justify-center rounded-lg px-4 text-[14.92px] font-medium"
+          className="flex h-[39px] w-[134.3px] items-center justify-center rounded-lg text-[14.92px] font-medium"
           style={{ background: 'rgba(163,65,255,0.1)', boxShadow: 'inset 0 0 0 1.06px #A341FF', color: '#A341FF' }}
         >
           Open Calendar
@@ -222,12 +232,7 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
 function Insights({ series }: { series: BrandSeries | null }) {
   if (!series || series.totals.posts === 0) {
     return (
-      <Empty
-        title="Nothing published yet"
-        body="Performance appears once posts have gone out and their first metrics have come back."
-        href="/calendar"
-        cta="Open Calendar"
-      />
+      <EmptyCard body={<>Create your first campaign to get started and see how it performs</>} />
     );
   }
 
@@ -380,12 +385,7 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
   if (total === 0) {
     return (
-      <Empty
-        title="No leads raised yet"
-        body="When someone in the inbox sounds like a customer, SPARK raises them here with a recommended next step."
-        href="/engagement"
-        cta="Open the inbox"
-      />
+      <EmptyCard body={<>Create your first campaign to get started and see who is showing buying intent</>} />
     );
   }
 
@@ -532,14 +532,3 @@ function DeltaChip({ changePct }: { changePct: number | null }) {
   );
 }
 
-function Empty({ title, body, href, cta }: { title: string; body: string; href: string; cta: string }) {
-  return (
-    <div className="py-4">
-      <p className="text-[15px] font-medium text-ink">{title}</p>
-      <p className="mt-1 max-w-prose text-[13px] text-ink-muted">{body}</p>
-      <Button asChild variant="outline" size="sm" className="mt-3">
-        <Link href={href}>{cta}</Link>
-      </Button>
-    </div>
-  );
-}

@@ -76,9 +76,14 @@ export function KpiRow({ series }: { series: BrandSeries }) {
             <span className="text-[35px] font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>
-          <p className="mt-2 text-[12px] text-ink-muted">
-            {c.hint ? `${c.hint} · ` : ''}last {series.windowDays} days
-          </p>
+          {/*
+            No caption. The design's card is three things - label, value, delta
+            pill - and the window is stated once on the Performance Insights tab
+            ("Impressions · last 7 days") rather than three times here. The
+            `hint` that used to ride along with it (the maturing-posts caveat)
+            travels with the chart on that tab, which is where it can be read
+            next to the bars it explains.
+          */}
         </div>
       ))}
     </div>
@@ -95,9 +100,10 @@ const TINTS = ['rgba(108,232,255,0.3)', 'rgba(163,65,255,0.2)', 'rgba(254,222,18
  * `−`/`+` are the prototype's own glyphs - it uses U+2212 for the minus, not a
  * hyphen, which at 17px is a visibly different width.
  */
-function Pill({ up, children }: { up: boolean; children: React.ReactNode }) {
+function Pill({ up, children, title }: { up: boolean; children: React.ReactNode; title?: string }) {
   return (
     <span
+      title={title}
       className="inline-flex h-9 items-center gap-[3px] rounded-[11.59px] bg-white px-[9px]"
       style={{ boxShadow: 'inset 0 0 0 0.77px rgba(12,12,12,0.1)' }}
     >
@@ -118,6 +124,21 @@ function Pill({ up, children }: { up: boolean; children: React.ReactNode }) {
   );
 }
 
+/**
+ * The card always shows a pill, which is a position I argued against and was
+ * wrong about.
+ *
+ * The old rule was: no delta unless there is a real one, because `+100%` is not
+ * a percentage and `0%` is a claim about a period that did not happen. The first
+ * half still holds. The second does not - when the previous window exists and
+ * was also zero, "0%" is simply true, and three cards reading "no comparison
+ * yet" in place of the design's pills is a worse screen than three honest
+ * zeroes.
+ *
+ * What survives of the caution is the `title`: where there is genuinely nothing
+ * to compare against, the pill says 0% and hovering says why. The fact stays
+ * reachable without a sentence where a 90px pill goes.
+ */
 function Delta({
   changePct,
   absolute,
@@ -127,22 +148,36 @@ function Delta({
   absolute?: number;
   before: number;
 }) {
-  // An absolute change of zero is a real answer ("the same as last week"); a
-  // percentage of null is not, and says so. Neither gets the pill: the pill's
-  // whole shape is sign-plus-number-plus-arrow, and there is no sign for
-  // "unchanged" or "unknown" that would not be read as a direction.
   if (absolute !== undefined) {
-    if (before === 0 && absolute === 0) return <Muted>nothing either week</Muted>;
-    if (absolute === 0) return <Muted>same as the week before</Muted>;
-    return <Pill up={absolute > 0}>{Math.abs(absolute)}</Pill>;
+    const flat = absolute === 0;
+    return (
+      <Pill
+        up={absolute >= 0}
+        title={
+          before === 0 && flat
+            ? 'Nothing either week, so there is no change to report.'
+            : flat
+              ? 'The same as the week before.'
+              : undefined
+        }
+      >
+        {Math.abs(absolute)}
+      </Pill>
+    );
   }
 
-  if (changePct === null) return <Muted>no comparison yet</Muted>;
-  if (changePct === 0) return <Muted>flat on the week before</Muted>;
-
-  return <Pill up={changePct > 0}>{Math.abs(changePct)}%</Pill>;
-}
-
-function Muted({ children }: { children: React.ReactNode }) {
-  return <span className="text-[13px] text-ink-muted">{children}</span>;
+  return (
+    <Pill
+      up={(changePct ?? 0) >= 0}
+      title={
+        changePct === null
+          ? 'No previous week to compare against yet, so this reads as no change.'
+          : changePct === 0
+            ? 'Flat on the week before.'
+            : undefined
+      }
+    >
+      {Math.abs(changePct ?? 0)}%
+    </Pill>
+  );
 }

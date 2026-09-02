@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { EmptyCard } from './EmptyCard';
 import { relativeTime } from '@/lib/relativeTime';
 import type { AgentRun } from './types';
 
@@ -54,11 +54,8 @@ export function AgentActivityFeed({ runs }: { runs: AgentRun[] }) {
     return (
       <section>
         <SectionHeading />
-        <div className="mt-[9px] rounded-lg bg-white p-5">
-        <p className="text-16 text-ink-muted">
-          Nothing yet. Once a campaign is running, every piece of work SPARK does shows up here — and
-          each row can be replayed step by step.
-        </p>
+        <div className="mt-[9px] rounded-lg bg-white">
+          <EmptyCard body={<>Create your first campaign to get started and view agent activities</>} />
         </div>
       </section>
     );
@@ -120,12 +117,13 @@ function SectionHeading() {
       >
         i
       </span>
-      <Link
-        href="/agents"
-        className="ml-auto text-14 font-medium text-brand-purple underline underline-offset-2"
-      >
-        Full timeline
-      </Link>
+      {/*
+        "Full timeline" is not in the design. It was mine, on the argument that
+        four rows is a preview and there has to be a way to the rest - which is
+        true, and the way is the Command Center button on the banner directly
+        above this card. A second link to the same place, in a colour nothing
+        else in this header uses, is one more thing to read.
+      */}
     </div>
   );
 }

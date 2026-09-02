@@ -105,8 +105,21 @@
    * which cannot know a colour and an image utility don't conflict, and the
    * colour silently disappears.
    */
-  --ss-grad-canvas: linear-gradient(22.558deg, rgba(245, 107, 255, 0.2) 2.42%, rgba(255, 255, 255, 0) 42.66%),
-    linear-gradient(-18.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
+  /*
+    The prototype's canvas card is `linear-gradient(157.442deg, pink)` over
+    `linear-gradient(198.502deg, cyan)` on `#F7F7F7`, with `transform: scaleX(-1)`
+    on the whole card. Baking that flip into the angles is right; I baked in the
+    wrong flip.
+
+    A CSS gradient angle is clockwise from "to top", so its direction vector is
+    `(sin t, -cos t)`. Mirroring horizontally (x -> -x) needs `sin t' = -sin t`
+    and `cos t' = cos t`, i.e. **t' = -t**. I used `180 - t`, which satisfies
+    `sin t' = sin t` and `cos t' = -cos t` - a *vertical* flip. So the wash ran
+    bottom-to-top instead of top-to-bottom: pink entered from the bottom left
+    where the design has it at the top.
+  */
+  --ss-grad-canvas: linear-gradient(-157.442deg, rgba(245, 107, 255, 0.2) 2.42%, rgba(255, 255, 255, 0) 42.66%),
+    linear-gradient(-198.502deg, rgba(108, 232, 255, 0.2) 4.4%, rgba(255, 255, 255, 0) 38.06%),
     linear-gradient(var(--ss-canvas), var(--ss-canvas));
 
   /**

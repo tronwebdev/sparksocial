@@ -40,6 +40,9 @@ interface GenomeRow {
 }
 
 
+/** The workspace cards' tints, reused so a brand keeps one colour per slot. */
+const TILES = ['#C9F0FA', '#D9F4DC', '#FBDCD4', '#FBF0D4', '#EDDBF8'] as const;
+
 export function BrandSwitcher() {
   const router = useRouter();
   const { orgId } = useAuth();
@@ -112,14 +115,18 @@ export function BrandSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="group flex items-center gap-2 text-left outline-none">
-        <div>
-          <span className="flex items-center gap-2 text-[26px] font-semibold text-ink">
-            {active.name}
-            <ChevronDown className="h-[14px] w-[14px] transition-transform group-data-[state=open]:rotate-180" />
-          </span>
-          <span className="mt-1 block text-[18px] font-normal text-ink-muted">{genomes.length} brand{genomes.length === 1 ? '' : 's'}</span>
-        </div>
+      {/*
+        A 44px row at radius 12 with `0 16px 0 10px` of padding and a 13px gap,
+        holding the name at 26px/600 and a chevron. Nothing else.
+
+        It used to render "1 brand" underneath, which put *three* headings in a
+        header the design gives two: the name, then "N brands", then the status
+        line from `TopBar`. The count is already the length of the list one click
+        away, and it was the least useful of the three.
+      */}
+      <DropdownMenuTrigger className="group -ml-2.5 flex h-11 items-center gap-[13px] rounded-md pl-2.5 pr-4 text-left outline-none transition-colors hover:bg-[rgba(131,131,131,0.08)]">
+        <span className="text-[26px] font-semibold leading-[1.27] text-black">{active.name}</span>
+        <ChevronDown className="h-[14px] w-[14px] shrink-0 text-ink transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-[348px]">
@@ -135,13 +142,61 @@ export function BrandSwitcher() {
           `DASH-A-01` — the word the build already used for that level). The
           component was `WorkspaceSwitcher` until the same pass renamed it.
         */}
-        <DropdownMenuLabel>Brands</DropdownMenuLabel>
-        {genomes.map((g) => (
-          <DropdownMenuItem key={g.genomeId} onSelect={() => select(g.genomeId)}>
-            <span className="truncate">{g.name}</span>
+        <DropdownMenuLabel className="px-3 pb-1.5 pt-2 text-[12.5px] font-semibold uppercase tracking-[0.6px] text-ink-muted">
+          Brands
+        </DropdownMenuLabel>
+        {genomes.map((g, i) => (
+          <DropdownMenuItem
+            key={g.genomeId}
+            onSelect={() => select(g.genomeId)}
+            className="h-[46px] gap-3 rounded-[10px] px-3"
+          >
+            {/* The design's 28px rounded tile, tinted per row. A brand has no
+                colour of its own, so the tint comes from its position - the
+                same cycle the workspace cards use. */}
+            <span
+              aria-hidden
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-ink"
+              style={{ background: TILES[i % TILES.length] }}
+            >
+              {g.name.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-16 font-semibold">{g.name}</span>
             <DropdownMenuCheck checked={g.genomeId === active.genomeId} />
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        {/*
+          The design's "Account Home / All workspaces & organization" row, which
+          this menu did not have — a 52px row with a black tile and a chevron.
+
+          Worth being precise about what it switches, because the design uses one
+          word for two levels. This menu lists **brands**: businesses inside one
+          Clerk organization, which is what every panel on the dashboard is
+          scoped to. `/workspaces` lists the **organizations** themselves. The
+          design calls both "workspace", and collapsing them here would make
+          "why do all my workspaces have the same name" an ambiguous bug report
+          again — which is the reason `M3` separated the words in the first
+          place.
+        */}
+        <DropdownMenuItem onSelect={() => router.push('/workspaces')} className="h-[52px] gap-3 rounded-[10px] px-3">
+          <span
+            aria-hidden
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: '#0C0C0C' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M2 6.5 8 2l6 4.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6.5Z" stroke="#FFFFFF" strokeWidth="1.4" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="truncate text-16 font-semibold">Account Home</span>
+            <span className="truncate text-13 font-normal text-ink-muted">All workspaces &amp; organization</span>
+          </span>
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden className="shrink-0">
+            <path d="m1 1 5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         {/*
           The other half of "add a new brand from the dashboard": a second
@@ -151,7 +206,7 @@ export function BrandSwitcher() {
           re-running it here needs no new tool — the gap was purely that
           nothing linked to it after the first run.
         */}
-        <DropdownMenuItem onSelect={() => router.push('/onboarding')}>
+        <DropdownMenuItem onSelect={() => router.push('/onboarding')} className="h-[46px] gap-3 rounded-[10px] px-3">
           <Plus className="h-[16px] w-[16px] text-ink-muted" aria-hidden />
           <span>Add a brand</span>
         </DropdownMenuItem>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyCard } from './EmptyCard';
 import { relativeTime } from '@/lib/relativeTime';
 import type { RankedTrend, UpcomingPost } from './types';
 
@@ -89,12 +90,20 @@ export function RightRail({
             onClick={() => setSeg('published')}
             className="absolute left-[25px] top-[21px] flex h-[23px] items-center gap-2.5 bg-transparent"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+            {/* A paper plane, not a tick. The tick was mine and it reads as
+                "done"; the design's glyph is the send icon, which is what
+                publishing a post is. */}
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden>
               <path
-                d="M2 9.5 6.5 14 16 4"
+                d="M18 2 2 8.6l6.4 2.4L18 2Z"
                 stroke={seg === 'published' ? '#000000' : '#838383'}
-                strokeWidth="1.8"
-                strokeLinecap="round"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M18 2 8.4 11l1.2 6.6L18 2Z"
+                stroke={seg === 'published' ? '#000000' : '#838383'}
+                strokeWidth="1.6"
                 strokeLinejoin="round"
               />
             </svg>
@@ -150,10 +159,11 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
 
   if (posts.length === 0) {
     return (
-      <p className="text-16 text-ink-muted">
-        Nothing published yet. Once your agent starts posting, the last few land here with what went
-        out on each platform.
-      </p>
+      <EmptyCard
+        narrow
+        glyph="plane"
+        body={<>Create your first campaign to get started and see all published post.</>}
+      />
     );
   }
 
@@ -252,8 +262,14 @@ function Trending({ trends }: { trends: RankedTrend[] | null }) {
   }
 
   if (trends.length === 0) {
+    /*
+      Not the shared empty card. This one is empty for a different reason from
+      every other card on the screen: there *are* trends, and none of them is
+      one this brand can credibly speak to. "Create a campaign" would not change
+      that, so offering it here would be the wrong instruction.
+    */
     return (
-      <p className="text-16 text-ink-muted">
+      <p className="px-1 py-6 text-[15px] leading-[1.5] text-ink-muted">
         Nothing worth joining right now. SPARK skips trends this brand cannot credibly speak to, and
         says why on each one in Discovery.
       </p>

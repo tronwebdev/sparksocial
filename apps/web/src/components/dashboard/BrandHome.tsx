@@ -235,12 +235,21 @@ export function BrandHome() {
               was reachable only as that screen's empty state, so a brand with
               one campaign could not start a second one from anywhere.
             */}
-            <Button asChild variant="outline" className="h-12 gap-[9px] rounded-md px-4 text-16 font-medium">
-              <Link href="/calendar?new=1">
-                <PlusGlyph />
-                Create Campaign
-              </Link>
-            </Button>
+            {/*
+              192x48 at radius 12, white, with an `inset 0 0 0 1px
+              rgba(12,12,12,0.35)` ring and a 9px gap. Not the `outline`
+              variant: its border is `--ss-border`, which is
+              `rgba(131,131,131,0.25)` - a lighter, greyer line than the design's,
+              and next to Ask Spark the difference reads as a disabled button.
+            */}
+            <Link
+              href="/calendar?new=1"
+              className="flex h-12 w-[192px] shrink-0 items-center justify-center gap-[9px] rounded-md bg-white text-16 font-medium text-ink transition-shadow hover:shadow-card"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.35)' }}
+            >
+              <PlusGlyph />
+              Create Campaign
+            </Link>
           </>
         }
       />
