@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { PerformanceCards } from './PerformanceCards';
+import type { BrandSeries } from '@/components/dashboard/types';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 
@@ -91,10 +93,40 @@ function duration(hours: number): string {
   return `${Math.round(hours / 24)} days`;
 }
 
-export function PerformancePanel({ genomeId }: { genomeId: string | undefined }) {
+export function PerformancePanel({
+  genomeId,
+  onOpenPost,
+}: {
+  genomeId: string | undefined;
+  /** Opens the draft panel — `CC-04`'s "View insights" and the trending rows. */
+  onOpenPost?: (contentItemId: string) => void;
+}) {
+  /*
+    `brand_series` for the tiles, on the same window the Date chip sets.
+    `metrics.snapshot` (below) is the agent-feedback half; the two answer
+    different questions and are read separately rather than merged into one
+    call that neither half needs all of.
+  */
+  const [series2, setSeries2] = useState<BrandSeries | null>(null);
   const [windowDays, setWindowDays] = useState<number>(30);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!genomeId) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<BrandSeries>('analytics.brand_series', {
+        genomeId,
+        // The tool caps the window at 90, which is also this panel's largest.
+        windowDays: Math.min(windowDays, 90),
+      });
+      if (!cancelled && res.status === 'succeeded') setSeries2(res.output);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [genomeId, windowDays]);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -206,6 +238,14 @@ export function PerformancePanel({ genomeId }: { genomeId: string | undefined })
         ))}
       </div>
       </div>
+
+      {/*
+        `CC-04`'s body — the Top Post card, the five metric tiles, the insight
+        banner and the Top Trending Post list. It sits between this panel's
+        header and its agent-feedback sections, which is where the design has
+        it, and reads `brand_series` for the tiles.
+      */}
+      <PerformanceCards genomeId={genomeId} series={series2} onOpenPost={onOpenPost} />
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
 
