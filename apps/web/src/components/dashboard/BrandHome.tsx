@@ -98,7 +98,7 @@ export function BrandHome() {
     void (async () => {
       setSnap(null);
 
-      const [campaigns, agent, gov, runs, series, leads, upcoming, review, trends] = await Promise.all([
+      const [campaigns, agent, gov, runs, series, leads, upcoming, review] = await Promise.all([
         invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 5 }),
         invoke<{ paused: boolean }>('agent.status', {}),
         invoke<{ brandKit?: BrandKit }>('brand.governance.get', {}),
@@ -110,7 +110,6 @@ export function BrandHome() {
         ),
         invoke<{ items: UpcomingPost[] }>('content.list', { genomeId, status: 'scheduled', limit: FEED_LIMIT }),
         invoke<{ items: unknown[] }>('content.list', { genomeId, status: 'needs_review', limit: 100 }),
-        invoke<{ trends: RankedTrend[] }>('trend.rank', { genomeId, limit: 5 }),
       ]);
       if (cancelled) return;
 
@@ -132,9 +131,40 @@ export function BrandHome() {
         upcoming: upcoming.status === 'succeeded' ? upcoming.output.items : [],
         // Null rather than [] on failure, so the rail can show a skeleton for
         // "not loaded" and prose for "nothing worth joining" — two different
-        // facts that an empty array would collapse into one.
-        trends: trends.status === 'succeeded' ? trends.output.trends : null,
+        // facts that an empty array would collapse into one. It starts null and
+        // is filled by the separate effect below.
+        trends: null,
       });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [genomeId, reloads]);
+
+  /*
+    `trend.rank` is the one call on this page that reaches the open internet -
+    Hacker News, Product Hunt, YouTube - and when a source is slow or down it
+    takes tens of seconds to give up. It was inside the snapshot's
+    `Promise.all`, so a single unreachable trend source held back the agent
+    banner, the KPI cards and the activity feed: the whole dashboard sat on
+    skeletons waiting for a panel about the world outside the brand.
+
+    Its own effect, writing into the same snapshot field. The rail already
+    distinguishes null (not loaded) from an empty array (nothing worth
+    joining), so it shows its skeleton until this lands and the rest of the
+    page does not wait.
+  */
+  useEffect(() => {
+    if (!genomeId) return;
+    let cancelled = false;
+
+    void (async () => {
+      const res = await invoke<{ trends: RankedTrend[] }>('trend.rank', { genomeId, limit: 5 });
+      if (cancelled) return;
+      setSnap((prev) =>
+        prev ? { ...prev, trends: res.status === 'succeeded' ? res.output.trends : [] } : prev,
+      );
     })();
 
     return () => {
