@@ -6,6 +6,7 @@ import {
   unlockRouteFor,
   type AssetRole,
   type Genome,
+  type Objective,
 } from '@sparksocial/shared';
 import type { AssetInventory } from './golden.js';
 import { PLAYBOOKS } from './records.js';
@@ -69,7 +70,26 @@ export interface Resolution {
   rejected: Array<{ playbook_id: string; because: string }>;
 }
 
-export function resolve(genome: Genome, assets: AssetInventory, library: readonly Playbook[] = PLAYBOOKS): Resolution {
+export function resolve(
+  genome: Genome,
+  assets: AssetInventory,
+  library: readonly Playbook[] = PLAYBOOKS,
+  /**
+   * Which objective to gate and score against.
+   *
+   * Defaults to the genome's standing objective, which is what every caller got
+   * before and is right for "what could this brand make at all" — the asset-gap
+   * report, the capture fallback, the playbook browser.
+   *
+   * It is wrong for a campaign, and that was a real bug. A campaign has its own
+   * objective: `planCampaign` asked for one, then re-sorted a list that had
+   * already been filtered by the *brand's* objective — so a "hiring" campaign
+   * for a brand onboarded as "leads" could never reach a playbook that only
+   * fits hiring. It had been rejected two steps earlier, and the re-sort had
+   * nothing to rescue. The gate has to move, not the ordering.
+   */
+  objective: Objective = genome.dimensions.objective,
+): Resolution {
   const { dimensions: d, constraints } = genome;
   const ranked: ResolvedPlaybook[] = [];
   const rejected: Resolution['rejected'] = [];
@@ -174,9 +194,9 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
     const unlockedBy = !hasGenome ? ('answer' as const) : hasAssets ? undefined : unlockRouteFor(missingRoles);
 
     /* 5 ── Score. §5.2's four multiplicands. */
-    const objectiveFit = p.objective_fit[d.objective] ?? 0;
+    const objectiveFit = p.objective_fit[objective] ?? 0;
     if (objectiveFit === 0) {
-      rejected.push({ playbook_id: p.playbook_id, because: `no fit for objective "${d.objective}"` });
+      rejected.push({ playbook_id: p.playbook_id, because: `no fit for objective "${objective}"` });
       continue;
     }
 

@@ -97,7 +97,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
   async function attemptWrite({
-    genome, playbook, promptRef, intent, beatId, durationSec, outline,
+    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective,
   }: Parameters<TextWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'copy writer',
@@ -107,7 +107,12 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
             model,
             max_tokens: 500,
             system: SYSTEM,
-            messages: [{ role: 'user', content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }) }],
+            messages: [
+              {
+                role: 'user',
+                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective),
+              },
+            ],
             tools: [
               {
                 name: TOOL_NAME,
@@ -288,6 +293,40 @@ const OVERLAY_WORDS: [number, number] = [6, 16];
  * must not pitch; I do not know that about a pillar I have not seen, and the
  * safe default there is the behaviour that was already there.
  */
+/**
+ * What each campaign objective wants out of a post, in the writer's terms.
+ *
+ * The pillar says what kind of post this is; the objective says what the
+ * campaign is trying to achieve. The writer had neither, then gained the pillar,
+ * and this is the other half — without it a hiring campaign and a sales
+ * campaign produce identical copy from identical playbooks, which is what made
+ * "What is this campaign for?" a question with no visible consequence.
+ *
+ * Deliberately about *emphasis*, not a licence to pitch. A `sales` objective
+ * does not let an educational beat become an advert — `PILLAR_BRIEF` still
+ * forbids that, and it is stated after this line so it reads last.
+ */
+const OBJECTIVE_BRIEF: Record<string, string> = {
+  bookings:
+    "The campaign's goal is bookings: appointments, tables or jobs. Favour the concrete — what " +
+    'happens when someone books, how soon, what it costs.',
+  leads:
+    "The campaign's goal is enquiries: someone should want to ask a question. Leave a real reason " +
+    'to get in touch rather than answering everything.',
+  trials:
+    "The campaign's goal is sign-ups for a trial. Make the first five minutes of using it legible: " +
+    'what they will do, and what they will see.',
+  sales:
+    "The campaign's goal is sales. Be specific about what is being bought and for whom; vagueness " +
+    'reads as evasion at the point of purchase.',
+  audience:
+    "The campaign's goal is a bigger audience. Write something worth following whether or not the " +
+    'reader ever buys — shareable beats persuasive here.',
+  hiring:
+    "The campaign's goal is hiring. Write for someone deciding whether to work here: the work, the " +
+    'people, how decisions get made. Not for a customer.',
+};
+
 const NO_CTA_PILLARS = new Set(['educational', 'proof', 'personality']);
 
 const PILLAR_BRIEF: Record<string, string> = {
@@ -343,6 +382,7 @@ function prompt(
   promptRef: string,
   intent: string | undefined,
   beat: { beatId: string; durationSec: number; outline: BeatOutlineEntry[] },
+  objective?: string,
 ): string {
   const { identity, voice, audience, offer } = genome;
   const budget = beatBudget(playbook, beat.durationSec);
@@ -417,6 +457,15 @@ function prompt(
       ? 'A later beat already carries the call to action. Do not write one, and do not end on an ' +
         'invitation to book, buy or get in touch.'
       : '',
+    /**
+     * What the campaign is for.
+     *
+     * Placed after the pillar, because the two together are the whole brief:
+     * the pillar says what kind of post this is and the objective says what the
+     * campaign wants out of it. Either alone produces the same post for every
+     * campaign, which is what it did.
+     */
+    objective ? OBJECTIVE_BRIEF[objective] ?? `The campaign's goal: ${objective}.` : '',
     intent ? `What this specific post is about: ${intent}` : '',
   ]
     .filter(Boolean)

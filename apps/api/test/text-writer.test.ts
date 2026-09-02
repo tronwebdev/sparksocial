@@ -279,3 +279,42 @@ describe('the content pillar reaches the writer', () => {
     }
   });
 });
+
+describe('the campaign objective reaches the writer', () => {
+  /*
+    The gap: the writer got the brand, its offer and a CTA and nothing about the
+    campaign, so a post in a hiring campaign read like a post in a sales one.
+    The objective chose the playbooks and stopped at the door.
+  */
+  it('says what a hiring campaign wants, and that it is not for a customer', async () => {
+    const s = spy();
+    await call(s, { objective: 'hiring' } as Partial<WriteArgs>);
+    const sent = s.sent();
+    expect(sent).toMatch(/goal is hiring/i);
+    expect(sent).toMatch(/not for a customer/i);
+  });
+
+  it('says something different for every objective the wizard offers', async () => {
+    const seen = new Set<string>();
+    for (const objective of ['leads', 'bookings', 'trials', 'sales', 'audience', 'hiring']) {
+      const s = spy();
+      await call(s, { objective } as Partial<WriteArgs>);
+      const line = s
+        .sent()
+        .split('\n')
+        .find((l) => l.startsWith("The campaign's goal"));
+      expect(line, objective).toBeTruthy();
+      seen.add(line!);
+    }
+    // Six distinct briefs, not one sentence with the word swapped — otherwise
+    // the objective is decoration.
+    expect(seen.size).toBe(6);
+  });
+
+  it('says nothing about a campaign when the post belongs to none', async () => {
+    // `content.draft`'s ad-hoc path creates posts with no campaign.
+    const s = spy();
+    await call(s);
+    expect(s.sent()).not.toContain("The campaign's goal");
+  });
+});
