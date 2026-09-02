@@ -47,7 +47,7 @@ export default function MeetSparkPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[--ss-ink-900] px-6">
+    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden bg-[--ss-ink-900] px-6 pt-[156px]">
       {/*
         One export, not a stack: `meet spark background.svg` is #0C0C0C with the
         particle field and its gradients already composited in, so the separate
@@ -60,7 +60,7 @@ export default function MeetSparkPage() {
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
       />
 
-      <div className="relative flex flex-col items-center">
+      <div className="relative flex flex-col items-center pb-20">
         <img
           src="/auth/signup-logo.svg"
           alt=""
@@ -69,7 +69,7 @@ export default function MeetSparkPage() {
         />
 
         {/* The dome sits behind the title, overlapping the orb's lower edge. */}
-        <div className="relative mt-[59px] flex flex-col items-center">
+        <div className="relative mt-[94px] flex flex-col items-center">
           <img
             src="/auth/splash-dome.svg"
             alt=""
@@ -91,7 +91,7 @@ export default function MeetSparkPage() {
           <p className="relative mt-[18px] text-18 text-white/70">your Ai Social Agent</p>
         </div>
 
-        <div className="relative mt-[121px] w-[376px] max-w-full">
+        <div className="relative mt-[138px] w-[376px] max-w-full">
           <Button
             size="cta"
             onClick={begin}

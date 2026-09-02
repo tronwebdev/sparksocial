@@ -417,6 +417,8 @@ export default function OnboardingPage() {
         eyebrow={<><strong className="font-semibold text-ink">Great news!</strong> Your Brand Guardrails are set. Ready to <strong className="font-semibold text-ink">customize your media and agent?</strong></>}
         title="Name your agent"
         onContinue={() => setStep(DONE)}
+        // `…193231` labels the last step's action Finish, not Continue.
+        continueLabel="Finish"
         inBubble
         bubbleWidth={436}
       >
