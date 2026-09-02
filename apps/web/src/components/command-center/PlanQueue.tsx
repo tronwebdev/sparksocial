@@ -74,6 +74,7 @@ const SHOWN = 8;
 export function PlanQueue({
   genomeId,
   onOpen,
+  layout = 'rows',
 }: {
   genomeId: string | undefined;
   /**
@@ -88,6 +89,16 @@ export function PlanQueue({
    * unreachable for exactly this reason.
    */
   onOpen: (contentItemId: string) => void;
+  /**
+   * `rows` is the Overview's Queue card. `table` is the Agent Calendar tab's
+   * List View — the design's six-column table (Content, Type, Preview,
+   * Channel, Status, Action) over exactly this data.
+   *
+   * A prop rather than a second component, because a second component means a
+   * second `content.list` and two views of one queue that can disagree about
+   * what is in it.
+   */
+  layout?: 'rows' | 'table';
 }) {
   const [items, setItems] = useState<PlanItem[] | null>(null);
   const [held, setHeld] = useState<PlanItem[]>([]);
@@ -240,7 +251,108 @@ export function PlanQueue({
         </p>
       ) : null}
 
-      {upcoming.length > 0 ? (
+      {upcoming.length > 0 && layout === 'table' ? (
+        /*
+          The design's table. Columns at 28 / 690 / 838 / 1035 / 1190 / 1462 of
+          1629, which is 1.7% / 42% / 51% / 63% / 73% / 90% — expressed as a
+          grid so it holds at any width rather than only at 1629.
+
+          Rows are 157px: the title at 20px/600 with its date beneath at
+          18px/500, a 127x110 preview well, the platform icons at 28px, the
+          status chip, and the same action buttons the row layout uses.
+        */
+        <div role="table" className="w-full">
+          <div
+            role="row"
+            className="grid grid-cols-[minmax(0,42fr)_minmax(0,9fr)_minmax(0,12fr)_minmax(0,10fr)_minmax(0,17fr)_minmax(0,10fr)] items-center gap-4 px-7 pb-3"
+          >
+            {['Content', 'Type', 'Preview', 'Channel', 'Status', 'Action'].map((h) => (
+              <span key={h} role="columnheader" className="text-18 font-medium text-ink-muted">
+                {h}
+              </span>
+            ))}
+          </div>
+
+          <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.2)' }} />
+
+          {upcoming.map((item, i) => {
+            const chip = STATUS_CHIP[item.status] ?? STATUS_CHIP.scheduled!;
+            return (
+              <div
+                key={item.contentItemId}
+                role="row"
+                className="grid grid-cols-[minmax(0,42fr)_minmax(0,9fr)_minmax(0,12fr)_minmax(0,10fr)_minmax(0,17fr)_minmax(0,10fr)] items-center gap-4 px-7 py-6"
+                style={{ borderTop: i === 0 ? undefined : '1px solid rgba(131,131,131,0.12)' }}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-20 font-semibold leading-[1.28] text-ink">
+                    {item.summary === NO_COPY ? (
+                      <span className="italic text-ink-muted">not written yet</span>
+                    ) : (
+                      item.summary
+                    )}
+                  </p>
+                  <p className="mt-2.5 flex items-center gap-2.5 text-18 font-medium text-ink">
+                    <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
+                      <rect x="2" y="3.2" width="14" height="12.6" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
+                      <path d="M2 7h14M6 1.8v2.6M12 1.8v2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                    {when(item.scheduledAt!)}
+                  </p>
+                </div>
+
+                <span className="text-18 font-medium text-ink-muted">{item.mediaType ?? 'text'}</span>
+
+                <div
+                  className="flex h-[110px] w-[127px] items-center justify-center rounded-md text-[12px] text-ink-muted"
+                  style={{ background: 'rgba(131,131,131,0.1)' }}
+                >
+                  {/* No `mediaUrl` on a content item — the fourth card on this
+                      screen with the same hole. */}
+                  no preview
+                </div>
+
+                <span className="text-18 font-medium text-ink">
+                  {item.platform ? platformLabel(item.platform) : '—'}
+                </span>
+
+                <span
+                  className="flex h-[41px] w-fit items-center rounded-lg px-[18px] text-[15px] font-medium"
+                  style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
+                >
+                  {chip.label}
+                </span>
+
+                <div className="flex items-center gap-2.5">
+                  <RowAction
+                    label="Preview"
+                    title={`Open ${item.playbookName ?? 'this post'}`}
+                    onClick={() => onOpen(item.contentItemId)}
+                    style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
+                  >
+                    <svg width="16" height="12" viewBox="0 0 18 12" fill="none" aria-hidden>
+                      <path d="M1 6s2.9-5 8-5 8 5 8 5-2.9 5-8 5-8-5-8-5Z" stroke="#0C0C0C" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="9" cy="6" r="2.2" stroke="#0C0C0C" strokeWidth="1.4" />
+                    </svg>
+                  </RowAction>
+                  <RowAction
+                    disabled
+                    label="Remove"
+                    title="No delete tool exists — a planned post is removed from the calendar."
+                    style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
+                  >
+                    <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
+                      <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </RowAction>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {upcoming.length > 0 && layout === 'rows' ? (
         <ol>
           {upcoming.map((item, i) => {
             const chip = STATUS_CHIP[item.status] ?? STATUS_CHIP.scheduled!;

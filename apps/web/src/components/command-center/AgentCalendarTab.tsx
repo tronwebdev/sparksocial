@@ -29,12 +29,11 @@ import { cn } from '@/lib/utils';
  *
  * ── List View and Calendar Mode ───────────────────────────────────────────
  *
- * The toggle is real. List View is `PlanQueue` — already the design's queue,
- * already reading `content.list` — and Calendar Mode is `CalendarBoard`, the
- * month grid. The design's List View is a six-column table rather than
- * `PlanQueue`'s rows; that is a presentation difference over the same data, and
- * a second table over one dataset is how two views start disagreeing. Noted
- * rather than duplicated.
+ * The toggle is real. Calendar Mode is `CalendarBoard`, the month grid. List
+ * View is the design's six-column table — `PlanQueue` with `layout="table"`,
+ * rather than a component of its own, because a second component means a second
+ * `content.list` and two views of one queue that can disagree about what is in
+ * it.
  */
 
 export function AgentCalendarTab({
@@ -203,7 +202,11 @@ export function AgentCalendarTab({
         </div>
       </div>
 
-      {view === 'list' ? <PlanQueue genomeId={genomeId} onOpen={onOpenDraft} /> : <CalendarBoard />}
+      {view === 'list' ? (
+        <PlanQueue genomeId={genomeId} onOpen={onOpenDraft} layout="table" />
+      ) : (
+        <CalendarBoard />
+      )}
     </div>
   );
 }
