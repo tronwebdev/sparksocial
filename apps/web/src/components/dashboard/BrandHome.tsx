@@ -245,7 +245,21 @@ export function BrandHome() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 p-8">
+      {/*
+        The prototype's vertical grid, canvas-relative (the canvas card starts
+        at 322,18 on the 1728 stage):
+
+          banner        123 .. 300     1323 wide
+          KPI row       336 .. 443      846 wide, x 34..880
+          activity      474 (label) / 515 .. 876
+          upcoming      901 .. 1355
+          right rail    336 .. 1355     446 wide, x 911..1357
+
+        The rail's top is 336 - the same y as the KPI cards - and its bottom is
+        1355, the same as the upcoming card's. It sits beside the KPI row, not
+        below it.
+      */}
+      <div className="flex flex-col gap-[36px] p-8">
 
       {/*
         The agent banner — the dark card the dashboard opens with. This used to
@@ -292,8 +306,6 @@ export function BrandHome() {
         </section>
       ) : null}
 
-      {/* ── How the last week went ───────────────────────────────────────── */}
-      {snap.series ? <KpiRow series={snap.series} /> : null}
 
       {/* ── The two columns. Activity and the tabbed card carry the page; the
              rail is the one panel about the world outside this brand. ────── */}
@@ -304,7 +316,22 @@ export function BrandHome() {
         cards were a different width from the ones they mirror.
       */}
       <div className="grid grid-cols-1 gap-[31px] xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
-        <div className="flex min-w-0 flex-col gap-6">
+        {/*
+          25px between the cards, and 6 more under the KPI row to make the 31 the
+          prototype has between it and the "Agent Activity" label. Two numbers
+          rather than one because they are two different gaps in the design, and
+          a single 24 was wrong on both.
+
+          The KPI row is *here* rather than above this grid. Three 270px cards on
+          a 288px pitch is 846px — exactly the left column — which is the whole
+          reason the rail can start level with them.
+        */}
+        <div className="flex min-w-0 flex-col gap-[25px]">
+          {snap.series ? (
+            <div className="mb-[6px]">
+              <KpiRow series={snap.series} />
+            </div>
+          ) : null}
           <AgentActivityFeed runs={snap.runs} />
           <CockpitTabs
             upcoming={snap.upcoming}
