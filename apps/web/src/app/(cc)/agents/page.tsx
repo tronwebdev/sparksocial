@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CommandCenterShell, type CcTab } from '@/components/command-center/CommandCenterShell';
 import { CommandCenterOverview } from '@/components/command-center/CommandCenterOverview';
+import { SparkRailContainer } from '@/components/command-center/SparkRailContainer';
 import { PerformancePanel } from '@/components/command-center/PerformancePanel';
 import { RunTimeline } from '@/components/agents/RunTimeline';
 import { CalendarBoard } from '@/components/calendar/CalendarBoard';
@@ -75,7 +76,7 @@ export default function CommandCenterPage() {
   );
 
   return (
-    <CommandCenterShell tab={tab} onTab={onTab}>
+    <CommandCenterShell tab={tab} onTab={onTab} rail={<SparkRailContainer />}>
       {tab === 'overview' ? (
         <div className="flex flex-col gap-10">
           <CommandCenterOverview />

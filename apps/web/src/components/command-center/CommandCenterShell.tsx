@@ -92,11 +92,17 @@ export function CommandCenterShell({
   onTab,
   /** Shown on the Engagement Intelligence tab's label, as the design does not. */
   engagementCount = 0,
+  rail,
   children,
 }: {
   tab: CcTab;
   onTab: (t: CcTab) => void;
   engagementCount?: number;
+  /**
+   * The Spark rail. `railVisible` is false only on Agent Calendar in the
+   * design, so the shell drops it there rather than each tab remembering to.
+   */
+  rail?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const labelRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -220,7 +226,23 @@ export function CommandCenterShell({
           </select>
         </div>
 
-        <div className="px-[17px] pb-10 pt-[26px] sm:px-[47px]">{children}</div>
+        {/*
+          1159 and 453 with a 21px gutter — the design's 47..1206 for the
+          content and 1227..1680 for the rail. The rail is why the hero and the
+          Queue card are not full-bleed, and it goes on the Calendar tab, which
+          needs the width for a month grid.
+        */}
+        <div
+          className={cn(
+            'gap-[21px] px-[17px] pb-10 pt-[26px] sm:px-[47px]',
+            rail && tab !== 'calendar'
+              ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,1159fr)_minmax(0,453fr)]'
+              : 'block',
+          )}
+        >
+          <div className="min-w-0">{children}</div>
+          {rail && tab !== 'calendar' ? <div className="min-w-0">{rail}</div> : null}
+        </div>
       </div>
     </div>
   );
