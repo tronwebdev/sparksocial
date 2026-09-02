@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AgentIdentityCard } from '@/components/command-center/AgentIdentityCard';
+import { AgentBanner } from './AgentBanner';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AgentActivityFeed } from './AgentActivityFeed';
@@ -82,6 +82,14 @@ export function BrandHome() {
   const { genome, loading } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  /*
+    Pausing the agent from the banner changes `agent.status`, which this page
+    already reads - so rather than lifting the whole loader out of the effect
+    and memoising it, the banner bumps this and the effect re-runs. One number
+    against a `useCallback` whose dependency list would have to be kept in step
+    with nine tool calls.
+  */
+  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -132,7 +140,7 @@ export function BrandHome() {
     return () => {
       cancelled = true;
     };
-  }, [genomeId]);
+  }, [genomeId, reloads]);
 
   if (loading || !snap) {
     return (
@@ -203,11 +211,17 @@ export function BrandHome() {
 
       <div className="grid grid-cols-1 gap-6 p-8">
 
-      {/* ── The agent, by name. Shared with the Command Center. ───────────── */}
-      <AgentIdentityCard
+      {/*
+        The agent banner — the dark card the dashboard opens with. This used to
+        be `AgentIdentityCard`, shared with the Command Center on the assumption
+        both screens open the same way; they do not. See `AgentBanner`.
+      */}
+      <AgentBanner
         genomeId={genomeId}
         campaign={snap.campaign ? { name: snap.campaign.name, status: snap.campaign.status } : null}
         paused={snap.paused}
+        planning={snap.needsReview}
+        onChanged={() => setReloads((n) => n + 1)}
       />
 
       {/* ── The next best action, when there is one. §8.3's first sentence ──
