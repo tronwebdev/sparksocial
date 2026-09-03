@@ -103,21 +103,25 @@ export function resolve(
     const pre = p.preconditions;
 
     /* 1 ── Dimension preconditions. Absent means "no constraint on this axis". */
-    if (pre.proof_asset_any?.length && !pre.proof_asset_any.some((v) => d.proof_asset.includes(v))) {
+    if (pre.proof_asset_any?.length && !pre.proof_asset_any.some((v) => (d.proof_asset ?? []).includes(v))) {
       rejected.push({
         playbook_id: p.playbook_id,
-        because: `needs proof asset ${pre.proof_asset_any.join('/')}, genome has ${d.proof_asset.join('/')}`,
+        because:
+          `needs proof asset ${pre.proof_asset_any.join('/')}, genome has ` +
+          `${(d.proof_asset ?? []).join('/') || 'none recorded'}`,
       });
       continue;
     }
 
     if (
       pre.capture_capability_any?.length &&
-      !pre.capture_capability_any.some((v) => d.capture_capability.includes(v))
+      !pre.capture_capability_any.some((v) => (d.capture_capability ?? []).includes(v))
     ) {
       rejected.push({
         playbook_id: p.playbook_id,
-        because: `needs capture ${pre.capture_capability_any.join('/')}, genome has ${d.capture_capability.join('/')}`,
+        because:
+          `needs capture ${pre.capture_capability_any.join('/')}, genome has ` +
+          `${(d.capture_capability ?? []).join('/') || 'none recorded'}`,
       });
       continue;
     }

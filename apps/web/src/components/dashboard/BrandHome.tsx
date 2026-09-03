@@ -267,7 +267,15 @@ export function BrandHome() {
         1355, the same as the upcoming card's. It sits beside the KPI row, not
         below it.
       */}
-      <div className="flex flex-col gap-[36px] p-8">
+      {/*
+        `p-8` was 32 on all four sides, and three of the four are wrong. The
+        canvas card runs 322→1713 and the design's content column starts at 356
+        and ends at 1679 — 34 either side, which is also exactly the banner's
+        1323 width. Vertically the divider is at 119.5 and the banner top at 141,
+        so the top pad is 21.5, not 32; the 10.5px difference was landing on top
+        of the header's own 22.5 and moving the whole page down by 33.
+      */}
+      <div className="flex flex-col gap-[36px] p-6 sm:px-[34px] sm:pb-9 sm:pt-[21.5px]">
 
       {/*
         The agent banner — the dark card the dashboard opens with. This used to

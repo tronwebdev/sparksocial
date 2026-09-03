@@ -54,7 +54,7 @@ export function AgentActivityFeed({ runs }: { runs: AgentRun[] }) {
     return (
       <section>
         <SectionHeading />
-        <div className="mt-[9px] rounded-lg bg-white">
+        <div className="mt-[18px] rounded-lg bg-white">
           <EmptyCard body={<>Create your first campaign to get started and view agent activities</>} />
         </div>
       </section>
@@ -71,11 +71,14 @@ export function AgentActivityFeed({ runs }: { runs: AgentRun[] }) {
       Row type: 20px/600 ink for the goal, 16px/400 `#838383` for the meta, and
       `rgba(131,131,131,0.3)` hairlines that run the full width of the card
       rather than being inset with the text.
+
+      The label-to-card gap is 18, not 9: the design has the label at y=492 in
+      18px/1.28 type (23.04 tall), and the card at 533.
     */
     <section>
       <SectionHeading />
 
-      <div className="mt-[9px] rounded-lg bg-white">
+      <div className="mt-[18px] rounded-lg bg-white">
         <ul>
           {runs.slice(0, VISIBLE).map((run, i) => {
             const status = STATUS[run.status] ?? { label: run.status, variant: 'neutral' as const };

@@ -264,25 +264,38 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
         identity: GenomeIdentity.parse(row.identity),
         /*
           `.partial()` tolerates a draft's incomplete dimensions, which is the
-          point — but it also turns `secondary_objectives`, the one field with a
-          `.default([])`, from "always an array" into "possibly undefined", and
-          then the `as` cast tells every caller it is an array anyway.
+          point — but it turns every array field from "always an array" into
+          "possibly undefined", and then the `as` cast tells every caller they
+          are arrays anyway.
 
-          That cast is what crashed campaign creation: `resolver.ts` trusted the
-          type and called `.reduce` on it, so a brand whose onboarding never
-          wrote the field got `Cannot read properties of undefined (reading
-          'reduce')` out of `campaign.propose_plan`.
+          That cast is what has crashed campaign creation twice. First
+          `secondary_objectives`, where `resolver.ts` trusted the type and
+          called `.reduce` on it. Then `proof_asset` and `capture_capability`,
+          where `classifyProfile` and the resolver's precondition checks call
+          `.includes` — a brand whose onboarding never wrote them got
+          `Cannot read properties of undefined (reading 'includes')`.
 
-          So the default is re-applied here. The remaining fields have no default
-          and a draft may genuinely lack them; consumers already guard those
-          (`p.objective_fit[d.objective] ?? 0`), and inventing a `proof_asset`
-          would be worse than absent.
+          The first fix defaulted `secondary_objectives` alone, reasoning that
+          "consumers already guard" the rest. They do not, and the second crash
+          was the same bug one field over. So all three arrays are defaulted
+          here: an empty array is the honest reading of an absent one — "we know
+          of no proof assets" — and it is a shape every consumer already handles,
+          since a brand with nothing uploaded is an ordinary state.
+
+          `objective` and `talent_availability` are deliberately left absent.
+          They are single values with no defensible default: inventing an
+          objective would make the resolver score against a goal nobody chose,
+          which is worse than the caller having to notice it is missing.
         */
-        dimensions: {
-          ...GenomeDimensions.partial().parse(row.dimensions),
-          secondary_objectives:
-            GenomeDimensions.partial().parse(row.dimensions).secondary_objectives ?? [],
-        } as GenomeT['dimensions'],
+        dimensions: (() => {
+          const parsed = GenomeDimensions.partial().parse(row.dimensions);
+          return {
+            ...parsed,
+            proof_asset: parsed.proof_asset ?? [],
+            capture_capability: parsed.capture_capability ?? [],
+            secondary_objectives: parsed.secondary_objectives ?? [],
+          } as GenomeT['dimensions'];
+        })(),
         voice: GenomeVoice.parse(row.voice),
         audience: GenomeAudience.parse(row.audience),
         offer: GenomeOffer.parse(row.offer),

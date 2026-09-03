@@ -126,7 +126,14 @@ export const coldStartWeights = (profile: GenomeProfile): Required<Pick<PillarWe
  * both `product_ui` and `person`; it is a SaaS, so `product_ui` is checked first.
  */
 export function classifyProfile(d: GenomeDimensions): GenomeProfile {
-  const has = (p: GenomeDimensions['proof_asset'][number]) => d.proof_asset.includes(p);
+  /*
+    `?? []` for the same reason the resolver guards `secondary_objectives`: a
+    draft genome's dimensions are legitimately incomplete, and this classifier
+    is reached from campaign planning, the asset-gap report and the capture
+    fallback. An absent proof asset means "we know of none", which falls through
+    to the `b2b_saas` default below — a defensible answer. A TypeError is not.
+  */
+  const has = (p: GenomeDimensions['proof_asset'][number]) => (d.proof_asset ?? []).includes(p);
 
   // Physical craft is unambiguous: a barbershop, a welder, a tailor, a kitchen.
   if (has('physical_craft')) return 'local_business';
@@ -175,7 +182,7 @@ export function deriveMix(genome: Genome, objective?: Objective): DerivedMix {
       source: 'cold_start',
       why:
         `Cold-start ratio for a ${profile.replace('_', ' ')} profile — derived from ` +
-        `proof asset (${genome.dimensions.proof_asset.join(', ')})` +
+        `proof asset (${(genome.dimensions.proof_asset ?? []).join(', ') || 'none recorded'})` +
         (objective
           ? `, then tilted toward this campaign's objective (${objective})`
           : ` and objective (${genome.dimensions.objective})`) +
