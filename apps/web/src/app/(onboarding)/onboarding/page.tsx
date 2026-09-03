@@ -9,6 +9,8 @@ import { StepShell } from '@/components/onboarding/StepShell';
 import { ComposerGlobeIcon, PromptComposer } from '@/components/onboarding/PromptComposer';
 import type { Chip } from '@/components/onboarding/ChipReview';
 import { BrandDetailsStep } from '@/components/onboarding/BrandDetailsStep';
+import { QuestionStep } from '@/components/onboarding/QuestionStep';
+import { QUESTIONS, questionsFor, type Question } from '@/components/onboarding/questions';
 import { BrandKitStep } from '@/components/onboarding/BrandKitStep';
 import { CompanyDocsStep } from '@/components/onboarding/CompanyDocsStep';
 import { AgentStep } from '@/components/onboarding/AgentStep';
@@ -73,14 +75,61 @@ import { humanError, invoke } from '@/lib/tools';
  * is worth the wait, and the wait is the only place in onboarding that has one.
  */
 
-/** Named rather than counted: the arithmetic version broke every time a screen moved. */
+/**
+ * Named rather than counted: the arithmetic version broke every time a screen moved.
+ *
+ * Only the screens *before* the questions can be numbered up front. How many
+ * question screens there are depends on what the crawl resolved, so `DOCS`
+ * onward are derived from `asks.length` inside the component.
+ */
 const NAME = 0;
 const URL_STEP = 1;
 const DETAILS = 2;
-const DOCS = 3;
-const KIT = 4;
-const AGENT = 5;
-const DONE = 6;
+/** The first question screen. There are between zero and four of them. */
+const Q_FIRST = 3;
+
+/** The four routing dimensions, as `genome.dimensions.set` takes them. */
+type Answers = Partial<Record<Question['id'], string[]>>;
+
+/*
+ * ── Why these screens did not exist ───────────────────────────────────────
+ *
+ * `genome.create` (the no-website path) writes `dimensions: {}` and says so in
+ * its own `why`: "the next questions cover everything that matters". There were
+ * no next questions. `QuestionStep`, `QUESTIONS` and `questionsFor` have been
+ * complete in this directory the whole time with nothing importing them, so
+ * every genome created through the app carried four empty dimensions — which is
+ * why `classifyProfile` returned one profile for every brand, why the pillar
+ * mix came out the same whatever the campaign asked for, and why `buildableNow`
+ * was zero for brands whose owners had answered every question the app put to
+ * them.
+ *
+ * Which ones get asked is `questionsFor`'s decision, not this file's: the
+ * unresolved ones, and all four when the crawl resolved everything, since
+ * confirming an inference costs one tap and is the last cheap moment to catch
+ * it. That also means the step is never empty, so the complete set
+ * `DimensionsSetInput` requires is always collected.
+ */
+/**
+ * Flatten the crawl's dimensions into the one shape the question cards use.
+ *
+ * `proof_asset` and `capture_capability` are arrays in the genome; `objective`
+ * and `talent_availability` are single values. `QuestionStep` is a `string[]`
+ * either way — `multiple: false` just means it replaces rather than toggles —
+ * so the split is undone here and re-applied when saving.
+ */
+function normaliseInferred(raw: Record<string, string | string[] | undefined> | undefined): Answers {
+  const out: Answers = {};
+  for (const q of QUESTIONS) {
+    const value = raw?.[q.id];
+    if (Array.isArray(value)) {
+      if (value.length) out[q.id] = value;
+    } else if (value) {
+      out[q.id] = [value];
+    }
+  }
+  return out;
+}
 
 interface Draft {
   genomeId: string;
@@ -89,6 +138,11 @@ interface Draft {
   businessName: string;
   /** What the crawl guessed, so the details screen opens on the guess. */
   category?: string;
+  /**
+   * The dimensions the crawl inferred, so the questions open on the inference
+   * and only the genuinely unknown ones are asked. Empty on the manual path.
+   */
+  dimensions?: Answers;
 }
 
 export default function OnboardingPage() {
@@ -110,6 +164,13 @@ export default function OnboardingPage() {
   // Set once the crawl has failed, so the manual path is offered rather than
   // pre-empting the faster one before it has been tried.
   const [crawlFailed, setCrawlFailed] = useState(false);
+  /**
+   * The four dimensions, lifted here for the same reason the connect step's
+   * state was: `StepShell` owns the footer, so the button that saves them and
+   * advances cannot live inside the card that collects them.
+   */
+  const [answers, setAnswers] = useState<Answers>({});
+  const [savingDimensions, setSavingDimensions] = useState(false);
   /** Lifted out of `ConnectAccountsStep` so the footer can say Continue rather than Skip. */
 
   // Which dimensions still need asking depends on what the crawl resolved, so
@@ -154,6 +215,8 @@ export default function OnboardingPage() {
       identity: { businessName: string; category?: string };
       chips: Chip[];
       unresolved: string[];
+      /** `GenomeDimensions.partial()` — single-valued for objective and talent. */
+      dimensions?: Record<string, string | string[] | undefined>;
     }>('genome.bootstrap_from_url', {
       url: url.trim(),
       brandId: orgId,
@@ -180,6 +243,7 @@ export default function OnboardingPage() {
       unresolved: result.output.unresolved ?? [],
       businessName: result.output.identity?.businessName ?? brandName,
       ...(result.output.identity?.category ? { category: result.output.identity.category } : {}),
+      dimensions: normaliseInferred(result.output.dimensions),
     });
     setStep(DETAILS);
   }
@@ -245,6 +309,64 @@ export default function OnboardingPage() {
    * guessed at, since `genome.identity.set` merges one JSON key at a time and
    * a dotted key would not merge into the right place.
    */
+
+  /* ── Where the screens after the questions sit ─────────────────────── */
+
+  const asks = draft ? questionsFor(draft.unresolved) : [];
+  const DOCS = Q_FIRST + asks.length;
+  const KIT = DOCS + 1;
+  const AGENT = KIT + 1;
+  const DONE = AGENT + 1;
+
+  /** Whatever the crawl inferred, overridden by anything the owner answered. */
+  const dimensionValues: Answers = { ...draft?.dimensions, ...answers };
+
+  /**
+   * Save all four dimensions and advance.
+   *
+   * Sent as one call rather than one per screen: `genome.dimensions.set` derives
+   * `avatarEnabled` from `proof_asset` *and* `talent_availability` together, and
+   * resolves the three production modes from the whole set. Saving a partial set
+   * would have it deriving an avatar decision from half the answers.
+   */
+  async function saveDimensions(next: number) {
+    if (!draft) return;
+
+    const [proof, capture, objective, talent] = [
+      dimensionValues.proof_asset ?? [],
+      dimensionValues.capture_capability ?? [],
+      dimensionValues.objective?.[0],
+      dimensionValues.talent_availability?.[0],
+    ];
+
+    // The card cannot submit without these — `continueDisabled` holds the
+    // button — but the tool requires them, so the guard is stated rather than
+    // implied by a UI invariant two screens away.
+    if (!proof.length || !capture.length || !objective || !talent) {
+      setError('Pick an answer for each of these before continuing.');
+      return;
+    }
+
+    setSavingDimensions(true);
+    setError(undefined);
+
+    const res = await invoke('genome.dimensions.set', {
+      genomeId: draft.genomeId,
+      proof_asset: proof,
+      capture_capability: capture,
+      objective,
+      talent_availability: talent,
+    });
+
+    setSavingDimensions(false);
+
+    if (res.status !== 'succeeded') {
+      setError(humanError(res, 'That needs approval before it can run.'));
+      return;
+    }
+
+    setStep(next);
+  }
 
   const back = step > NAME ? () => { setError(undefined); setStep(step - 1); } : undefined;
 
@@ -348,7 +470,9 @@ export default function OnboardingPage() {
         onBack={back}
         eyebrow={<>Great Got your brand name, <strong className="font-semibold text-brand-purple">{draft.businessName}</strong></>}
         title="Tell us a bit more about your brand?"
-        onContinue={() => setStep(DOCS)}
+        // `Q_FIRST` collapses onto `DOCS` when the crawl resolved all four, so
+        // a brand with a readable site never sees a question it answered.
+        onContinue={() => setStep(Q_FIRST)}
         inBubble
         bubbleWidth={493}
       >
@@ -357,6 +481,38 @@ export default function OnboardingPage() {
           brandName={draft.businessName}
           {...(draft.category ? { initialNiche: draft.category } : {})}
         />
+      </StepShell>
+    );
+  }
+
+  /* ── 2 · The routing questions ──────────────────────────────────────── */
+
+  if (draft && step >= Q_FIRST && step < DOCS) {
+    const question = asks[step - Q_FIRST] as Question;
+    const selected = dimensionValues[question.id] ?? [];
+    const last = step === DOCS - 1;
+
+    return (
+      <StepShell
+        group={2}
+        onBack={back}
+        title={question.prompt}
+        {...(question.help ? { eyebrow: question.help } : {})}
+        onContinue={
+          // The last question is the one that saves: the four are one call.
+          last ? () => void saveDimensions(DOCS) : () => setStep(step + 1)
+        }
+        continueDisabled={selected.length === 0 || savingDimensions}
+        {...(last && savingDimensions ? { continueLabel: 'Saving…' } : {})}
+        inBubble
+        bubbleWidth={493}
+      >
+        <QuestionStep
+          question={question}
+          selected={selected}
+          onChange={(values) => setAnswers((prev) => ({ ...prev, [question.id]: values }))}
+        />
+        {error ? <p className="mt-4 text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
       </StepShell>
     );
   }
