@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import { useSearchParams } from 'next/navigation';
 
 import { useCallback, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,14 +7,8 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AgentControlBar, type AgentStatusView } from './AgentControlBar';
 import { ApprovalModeControl } from './ApprovalModeControl';
-import { NeedsAttentionBanner } from './NeedsAttentionBanner';
-import { PendingQuestionsPanel } from './PendingQuestionsPanel';
-import { NotificationsPanel } from './NotificationsPanel';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
 import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
-import { ChatDrawer } from './ChatDrawer';
-import { DraftPanel } from './draft-panel/DraftPanel';
-import { DraftList } from './DraftList';
 import { PlanQueue } from './PlanQueue';
 
 /**
@@ -49,7 +42,20 @@ import { PlanQueue } from './PlanQueue';
  * morning is about to go out unwritten.
  */
 
-export function CommandCenterOverview() {
+export function CommandCenterOverview({
+  /*
+    Opening a draft is the page's job, not this tab's.
+
+    The `DraftPanel` used to live here, which meant it only existed while the
+    Overview was mounted — so the Agent Calendar's own "view draft" had to
+    `router.replace('?tab=overview&draft=...')` to reach it, throwing you onto
+    another tab before the panel opened. The panel is at page level now and every
+    tab just calls this.
+  */
+  onOpenDraft,
+}: {
+  onOpenDraft: (contentItemId: string) => void;
+}) {
   const { genome, loading: genomeLoading, error: genomeError } = useSelectedGenome();
 
   const [status, setStatus] = useState<AgentStatusView | null>(null);
@@ -57,20 +63,6 @@ export function CommandCenterOverview() {
   const [campaign, setCampaign] = useState<CampaignSummary | null | undefined>(undefined); // undefined = not checked yet, null = none exists
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  /**
-   * `?draft=<id>` opens the panel on load.
-   *
-   * Added for the shell's Ask Spark (`F2`), which can produce a draft from a
-   * screen that has no draft panel of its own and so navigates here. Useful
-   * beyond that button: a draft is now addressable, so a notification or a bug
-   * report can link to one.
-   */
-  const initialDraft = useSearchParams().get('draft') ?? undefined;
-  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>(
-    initialDraft ? { open: true, contentItemId: initialDraft } : { open: false },
-  );
-  const [draftListRefresh, setDraftListRefresh] = useState(0);
 
   const loadStatus = useCallback(async () => {
     const res = await invoke<AgentStatusView>('agent.status', {});
@@ -142,36 +134,24 @@ export function CommandCenterOverview() {
     );
   }
 
+  /* 19px between panels: the design's hero ends at 538 and its Queue card
+     starts at 557. */
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-[19px]">
       {/*
-        The design's header row: the title at 28px/600 on the left and the
-        Needs Attention banner on the right of the *same* row — 53,143 against
-        831,147 on the stage. The banner used to sit in the body, five panels
-        down, which is a strange place for the one thing that says something is
-        waiting on you.
+        The title, subtitle and Needs Attention strip used to be a `header` row
+        here, and they cannot live in this component.
 
-        The two buttons that were here are gone. Ask Spark is in the chrome now,
-        where the design has it, so a second copy 60px below the first was
-        pointing at the same drawer. "New post" was mine; the design starts a
-        post from the Queue card's rows and the campaign hero, both of which are
-        on this screen.
+        The design puts the strip at 831..1680 — past this column's right edge at
+        1206, across the rail's own x range. Inside the column it had 1159px to
+        share with a 521px title, so it wrapped onto a second line: the header
+        row measured 123.5 instead of the design's 63, and the hero and the whole
+        Spark rail sat 50px below the 241 they belong on.
+
+        They are the shell's `band` slot now, which spans the card. See
+        `(cc)/agents/page.tsx`, which owns the copy because the title is
+        per-tab.
       */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[28px] font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
-          <p className="mt-[9px] text-16 text-ink-muted">
-            Your Ai Agent is running {genome?.name ?? 'this brand'}&rsquo;s social presence for this brand
-          </p>
-        </div>
-
-        {review && review.length > 0 ? (
-          <div className="w-full max-w-[849px] shrink-0 xl:w-[849px]">
-            <NeedsAttentionBanner count={review.length} />
-          </div>
-        ) : null}
-      </header>
-
       <CampaignFocusCard
         campaign={campaign}
         calendarView={calendarView}
@@ -191,12 +171,20 @@ export function CommandCenterOverview() {
         `agent.approval_mode.get/set`, which is the only route to autonomy
         anywhere in the app.
 
-        Neither has a home in the design's Overview, so they sit under the chips
-        until the hero grows the two buttons that would absorb them. A control
-        in a slightly wrong place beats a capability that silently disappeared.
+        Neither has a home in the design's Overview — and "under the chips",
+        where they were, is the one place they must not be: the design puts the
+        Queue card at 557, directly under the hero's 538, and these two pushed it
+        to 904. So they are `order-last`.
+
+        That keeps both capabilities on the screen and puts the design's own
+        sequence back. `order` rather than moving the JSX because they read the
+        same state as everything above them, and the flex column is already the
+        thing deciding the order.
       */}
-      <AgentControlBar status={status} onChange={setStatus} />
-      <ApprovalModeControl />
+      <div className="order-last flex flex-col gap-6">
+        <AgentControlBar status={status} onChange={setStatus} />
+        <ApprovalModeControl />
+      </div>
 
       {error ? <p className="text-14 text-destructive">{error}</p> : null}
 
@@ -205,7 +193,7 @@ export function CommandCenterOverview() {
       */}
       <PlanQueue
         genomeId={genome?.genomeId}
-        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
+        onOpen={onOpenDraft}
       />
 
       {/*
@@ -223,42 +211,10 @@ export function CommandCenterOverview() {
         <ReviewQueueList items={review} onDecide={decide} />
       </div>
 
-      <PendingQuestionsPanel />
-      {/*
-        Directly below the questions, because the two are one thought: what SPARK
-        needs from you, then what it wants you to know.
-      */}
-      <NotificationsPanel />
 
-      <div id="drafts">
-        <DraftList
-          genomeId={genome?.genomeId}
-          refreshKey={draftListRefresh}
-          onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-        />
-      </div>
 
-      {/*
-        Still this screen's drawer, and still the reason `AskSpark` defers on
-        `/agents` — but it is opened from the chrome now, via `onAskSparkOpen`,
-        rather than by a button in the header beside it.
-      */}
-      <ChatDrawer
-        genomeId={genome?.genomeId}
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onOpenDraft={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-      />
 
-      <DraftPanel
-        genomeId={genome?.genomeId}
-        contentItemId={draftPanel.contentItemId}
-        open={draftPanel.open}
-        onClose={() => {
-          setDraftPanel({ open: false });
-          setDraftListRefresh((n) => n + 1);
-        }}
-      />
+
     </div>
   );
 }

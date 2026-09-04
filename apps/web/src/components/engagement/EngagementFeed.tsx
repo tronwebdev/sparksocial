@@ -7,6 +7,7 @@ import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { platformLabel } from '@/lib/platforms';
 import { ReplyAction } from './ReplyAction';
 import { EngagementCardActions } from './EngagementCardActions';
 import { OpportunityActions } from './OpportunityActions';
@@ -72,6 +73,7 @@ const KIND_LABEL: Record<string, string> = {
 export function EngagementFeed() {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const genomeId = genome?.genomeId;
+  const [filters, setFilters] = useState({ platform: 'any', kind: 'any', when: 'any' });
   const [tab, setTab] = useState<EngagementCategory>('needs_review');
   /** `ENG-02.4`'s drawer. The message whose conversation is open, or undefined. */
   const [openThread, setOpenThread] = useState<string | undefined>();
@@ -134,8 +136,23 @@ export function EngagementFeed() {
     through the middle of one is a card split across two columns. So the split
     is explicit.
   */
+  /* The design's five boxes, over the rows already in memory. */
+  const rows = items ?? [];
+  const platforms = [...new Set(rows.map((i) => i.platform))].sort();
+  const kinds = [...new Set(rows.map((i) => i.kind))].sort();
+  const shown = rows.filter((i) => {
+    if (filters.platform !== 'any' && i.platform !== filters.platform) return false;
+    if (filters.kind !== 'any' && i.kind !== filters.kind) return false;
+    if (filters.when !== 'any') {
+      const days = Number(filters.when);
+      const at = Date.parse(i.receivedAt);
+      if (!Number.isFinite(at) || at < Date.now() - days * 86_400_000) return false;
+    }
+    return true;
+  });
+
   const columns: EngagementItem[][] = [[], [], []];
-  (items ?? []).forEach((item, i) => {
+  shown.forEach((item, i) => {
     columns[i % 3]!.push(item);
   });
 
@@ -150,10 +167,11 @@ export function EngagementFeed() {
         divider   0,196
         cards     16,216  three 364px columns, 12px apart, 16px stack
     */
-    <section className="rounded-xl bg-white px-[32px] pb-[24px] pt-[36px]">
-      <div className="flex flex-wrap items-center gap-x-[38px] gap-y-4">
+    <section className="ml-0 rounded-[20px] bg-white px-[32px] pb-[24px] pt-[44px] xl:ml-[21px]">
+      <div className="relative flex flex-wrap items-center gap-x-[38px] gap-y-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-[24px] font-semibold leading-[1.27] text-ink">Command Center</h2>
+          {/* 36 in the design; its filter row below sits on 32. */}
+          <h2 className="text-[24px] font-semibold leading-[1.27] text-ink xl:ml-[4px]">Command Center</h2>
           <span
             title="Comments, DMs and story replies from the audience, sorted by what each one needs."
             className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
@@ -163,7 +181,13 @@ export function EngagementFeed() {
           </span>
         </div>
 
-        <div role="tablist" aria-label="Engagement categories" className="flex flex-wrap items-center">
+        {/* 390 in the design, regardless of how wide the heading runs. In a flex
+            row they followed the heading and started on 299. */}
+        <div
+          role="tablist"
+          aria-label="Engagement categories"
+          className="flex flex-wrap items-center xl:absolute xl:left-[358px] xl:top-[-4px]"
+        >
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -197,39 +221,69 @@ export function EngagementFeed() {
         disabled and saying which field is missing — the design toasts all five
         as mocks.
       */}
-      <div className="mt-[26px] flex flex-wrap gap-[19px]">
-        {(
-          [
-            ['Date', 'There is no date range on engage.message.list.'],
-            ['Channels', 'There is no channel filter on engage.message.list.'],
-            ['Content type', 'There is no content-type filter on engage.message.list.'],
-            ['By Status', 'The four tabs above are the status filter.'],
-            ['By Account', 'There is no per-account filter on engage.message.list.'],
-          ] as const
-        ).map(([label, why]) => (
-          <button
-            key={label}
-            type="button"
-            disabled
-            title={why}
-            className="flex h-[58px] w-[196px] cursor-not-allowed items-center gap-3 rounded-xl px-[18px] opacity-60"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
-          >
-            {label === 'Date' ? (
-              <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden>
-                <rect x="2.4" y="3.6" width="15.2" height="14" rx="2.4" stroke="#0C0C0C" strokeWidth="1.5" />
-                <path d="M2.4 7.8h15.2M6.6 2v3M13.4 2v3" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            ) : null}
-            <span className="flex-1 text-left text-[17px] font-medium text-ink">{label}</span>
-            <svg width="11" height="7" viewBox="0 0 12 8" fill="none" aria-hidden>
-              <path d="m1 1 5 5 5-5" stroke="#0C0C0C" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        ))}
+      {/*
+        114 in the design: the heading closes on 74.
+
+        These were five inert boxes, each with a title naming the field
+        `engage.message.list` does not take. Three of them did not need it:
+        the tool returns the whole category in one read and this component
+        already holds it to split into columns, so filtering is client-side over
+        rows already in memory — the same correction the queue card's filters
+        needed.
+
+        `Date` and `By Account` stay disabled and say why: a message carries
+        `receivedAt`, so a date *window* is real, but "Content type" has no
+        equivalent on a comment or a DM — a message is not a post — and an
+        account is a connected login the message rows do not name.
+      */}
+      <div className="mt-[40px] flex flex-wrap gap-[19px]">
+        <EiFilter
+          label="Date"
+          hasCal
+          value={filters.when}
+          onChange={(when) => setFilters({ ...filters, when })}
+          options={[
+            { value: 'any', label: 'Date' },
+            { value: '1', label: 'Last 24 hours' },
+            { value: '7', label: 'Last 7 days' },
+            { value: '30', label: 'Last 30 days' },
+          ]}
+        />
+        <EiFilter
+          label="Channels"
+          value={filters.platform}
+          onChange={(platform) => setFilters({ ...filters, platform })}
+          options={[
+            { value: 'any', label: 'Channels' },
+            ...platforms.map((pf) => ({ value: pf, label: platformLabel(pf) })),
+          ]}
+        />
+        <EiFilter
+          label="Content type"
+          value="any"
+          onChange={() => undefined}
+          options={[{ value: 'any', label: 'Content type' }]}
+          disabledReason="A message is not a post — a comment or a DM has no content type to filter by."
+        />
+        <EiFilter
+          label="By Status"
+          value={filters.kind}
+          onChange={(kind) => setFilters({ ...filters, kind })}
+          options={[
+            { value: 'any', label: 'By Status' },
+            ...kinds.map((k) => ({ value: k, label: k[0]!.toUpperCase() + k.slice(1) })),
+          ]}
+        />
+        <EiFilter
+          label="By Account"
+          value="any"
+          onChange={() => undefined}
+          options={[{ value: 'any', label: 'By Account' }]}
+          disabledReason="An account is a connected social login. `engage.message.list` rows carry a platform and no account id."
+        />
       </div>
 
-      <div className="mt-[20px] h-px" style={{ background: 'rgba(131,131,131,0.15)' }} />
+      <div className="mt-[24px] h-px" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
       {items === null ? (
         <div className="mt-[20px] grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -362,5 +416,56 @@ export function EngagementFeed() {
 
       <ConversationDrawer genomeId={genomeId} messageId={openThread} onClose={() => setOpenThread(undefined)} />
     </section>
+  );
+}
+
+/** The design's 196x58 filter box, holding a native select. */
+function EiFilter({
+  label,
+  value,
+  options,
+  onChange,
+  hasCal,
+  disabledReason,
+}: {
+  label: string;
+  value: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  onChange: (v: string) => void;
+  hasCal?: boolean;
+  disabledReason?: string;
+}) {
+  const inert = Boolean(disabledReason) || options.length <= 1;
+  return (
+    <div
+      title={disabledReason ?? (options.length <= 1 ? `Nothing here to filter by ${label.toLowerCase()}.` : undefined)}
+      className={`relative flex h-[58px] w-[196px] items-center gap-[12px] rounded-xl px-[18px] ${
+        inert ? 'opacity-55' : 'hover:shadow-[inset_0_0_0_1.4px_#838383]'
+      }`}
+      style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
+    >
+      {hasCal ? (
+        <svg width="20" height="21" viewBox="0 0 24 25" fill="none" aria-hidden className="shrink-0">
+          <rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" strokeWidth="1.8" />
+          <path d="M2.9 9.9h18.2" stroke="#838383" strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      ) : null}
+      <label className="sr-only" htmlFor={`ei-filter-${label}`}>{label}</label>
+      <select
+        id={`ei-filter-${label}`}
+        value={value}
+        disabled={inert}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-w-0 flex-1 appearance-none border-0 bg-transparent text-[17px] font-medium text-ink outline-none disabled:cursor-not-allowed"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      <svg width="13" height="8" viewBox="0 0 13 8" fill="none" aria-hidden className="shrink-0">
+        <path d="m1 1 5.5 6L12 1" stroke="#0C0C0C" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
   );
 }

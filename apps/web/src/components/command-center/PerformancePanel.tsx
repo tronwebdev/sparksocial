@@ -82,7 +82,7 @@ interface Metrics {
 }
 
 /** 7 / 30 / 90, matching the tool's own 7-day floor and the default campaign window. */
-const WINDOWS = [7, 30, 90] as const;
+export const WINDOWS = [7, 30, 90] as const;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -95,9 +95,12 @@ function duration(hours: number): string {
 
 export function PerformancePanel({
   genomeId,
+  windowDays,
   onOpenPost,
 }: {
   genomeId: string | undefined;
+  /** 7, 30 or 90 — see `PerformanceHeader`, which owns the control. */
+  windowDays: number;
   /** Opens the draft panel — `CC-04`'s "View insights" and the trending rows. */
   onOpenPost?: (contentItemId: string) => void;
 }) {
@@ -108,7 +111,8 @@ export function PerformancePanel({
     call that neither half needs all of.
   */
   const [series2, setSeries2] = useState<BrandSeries | null>(null);
-  const [windowDays, setWindowDays] = useState<number>(30);
+  /* Held by the page, because the header that changes it lives in the shell's
+     full-width band and the body that reads it lives in the 1159 column. */
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -155,6 +159,15 @@ export function PerformancePanel({
 
   if (!genomeId) return null;
 
+  /*
+    No card of its own.
+
+    This was `rounded-xl bg-white/60 p-6`, a translucent panel wrapping the whole
+    tab — and the design has nothing there: its Top Post card sits at 47,241
+    directly on the canvas wash, the same x as the Overview's hero. The wrapper
+    inset every card by 24 and took 48px off their width, so the tile row
+    measured 1111.7 where the design gives it 1159.
+  */
   return (
     /*
       The tab's own header, off the design: the title at 24px/600, the subtitle
@@ -168,76 +181,7 @@ export function PerformancePanel({
       disabled, each saying so — the design toasts all five as mocks, so nothing
       is lost that was ever real.
     */
-    <section className="rounded-xl bg-white/60 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 shrink-0">
-          <h2 className="text-[24px] font-semibold leading-[1.27] text-ink">
-            Agent Command Center &mdash; Performance &amp; Learning
-          </h2>
-          <p className="mt-[9px] text-16 text-ink-muted">
-            {/* The design's line, and this panel is the reason it is true — see
-                the note at the top of the file on why these are agent-feedback
-                measures rather than platform analytics. */}
-            This is agent feedback, not raw analytics
-            {metrics
-              ? ` · since ${new Date(metrics.since).toLocaleDateString('en', { day: 'numeric', month: 'long' })}`
-              : ''}
-          </p>
-        </div>
-      {/* On the title's row, right-aligned — rendering the prototype put the
-          five chips level with the heading at y=150 against its y=147, not on a
-          row of their own beneath it. */}
-      <div className="flex flex-1 flex-wrap justify-end gap-[16px]">
-        {/* Date — the live one. */}
-        <div
-          className="flex h-[54px] w-[190px] items-center gap-[11px] rounded-xl bg-white px-4"
-          style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.3)' }}
-        >
-          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <rect x="2.4" y="3.6" width="15.2" height="14" rx="2.4" stroke="#0C0C0C" strokeWidth="1.5" />
-            <path d="M2.4 7.8h15.2M6.6 2v3M13.4 2v3" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          <label htmlFor="perf-window" className="sr-only">
-            Reporting window
-          </label>
-          <select
-            id="perf-window"
-            value={windowDays}
-            onChange={(e) => setWindowDays(Number(e.target.value))}
-            className="flex-1 border-0 bg-transparent text-16 font-medium text-ink outline-none"
-          >
-            {WINDOWS.map((d) => (
-              <option key={d} value={d}>
-                Last {d} days
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {(
-          [
-            ['Channels', 'There is no per-channel breakdown on the metrics snapshot.'],
-            ['Content type', 'There is no per-content-type breakdown on the metrics snapshot.'],
-            ['By Status', 'There is no status filter on the metrics snapshot.'],
-            ['By Account', 'There is no per-account breakdown on the metrics snapshot.'],
-          ] as const
-        ).map(([label, why]) => (
-          <button
-            key={label}
-            type="button"
-            disabled
-            title={why}
-            className="flex h-[54px] w-[190px] cursor-not-allowed items-center gap-[11px] rounded-xl bg-white px-4 opacity-55"
-            style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.3)' }}
-          >
-            <span className="flex-1 text-left text-16 font-medium text-ink">{label}</span>
-            <svg width="11" height="7" viewBox="0 0 12 8" fill="none" aria-hidden>
-              <path d="m1 1 5 5 5-5" stroke="#0C0C0C" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        ))}
-      </div>
-      </div>
+    <section className="flex flex-col gap-[19px]">
 
       {/*
         `CC-04`'s body — the Top Post card, the five metric tiles, the insight

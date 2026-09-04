@@ -168,10 +168,11 @@ export function CampaignFocusCard({
         Primary CTA          181,186 grey label, 14px/600 `#2474ED` value
         media carousel       658/810/962 at top 31, 131.5x233.8 r12, arrows at 611 and 1109
     */
+    <>
     <section
       className="relative overflow-hidden rounded-xl px-[26px] py-[18px]"
       style={{
-        minHeight: 297,
+        height: 297,
         background:
           'linear-gradient(34.352deg, #FEDEB5 -13.04%, rgba(255,255,255,0.53) 16.32%), linear-gradient(90deg, #FFFFFF 0%, #C2F4FD 100%)',
         boxShadow: 'inset 0 0 0 2px #FFFFFF',
@@ -213,7 +214,7 @@ export function CampaignFocusCard({
 
       <h2 className="mt-[20px] text-[34px] font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
 
-      <div className="mt-[24px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16">
+      <div className="mt-[16px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16 leading-[1.3]">
         <span className="text-ink-muted">
           Goal - <b className="font-semibold text-ink">{campaign.objective}</b>
         </span>
@@ -232,7 +233,7 @@ export function CampaignFocusCard({
         platforms this campaign actually posts to, badged the same way, and
         nothing pretends to be a face.
       */}
-      <div className="mt-[26px] flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="mt-[15px] flex flex-wrap items-center gap-x-6 gap-y-3">
         {pillars.length > 0 ? (
           <div className="flex items-center">
             {pillars.map((pillar, i) => {
@@ -273,7 +274,29 @@ export function CampaignFocusCard({
         the left column already fills the card.
       */}
       {upcoming.length > 0 ? (
-        <div className="absolute right-[29px] top-[31px] hidden items-start gap-[20.5px] xl:flex">
+        <>
+        {/* 21.2px circles at 611 and 1109 — decorative in the design (its own
+            markup gives them a cursor and no handler), so they are `aria-hidden`
+            rather than dead buttons. */}
+        <span
+          aria-hidden
+          className="absolute right-[527.5px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full xl:flex"
+          style={{ boxShadow: 'inset 0 0 0 0.5px #838383', background: 'rgba(255,255,255,0.6)' }}
+        >
+          <svg width="5" height="8" viewBox="0 0 5 8" fill="none" className="-scale-x-100">
+            <path d="m1 1 3 3-3 3" stroke="#838383" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <span
+          aria-hidden
+          className="absolute right-[29px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full xl:flex"
+          style={{ boxShadow: 'inset 0 0 0 0.5px #838383', background: 'rgba(255,255,255,0.6)' }}
+        >
+          <svg width="5" height="8" viewBox="0 0 5 8" fill="none">
+            <path d="m1 1 3 3-3 3" stroke="#838383" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <div className="absolute right-[66.2px] top-[31px] hidden items-start gap-[20.5px] xl:flex">
           {upcoming.slice(0, 3).map((slot) => (
             <div
               key={slot.id}
@@ -298,6 +321,7 @@ export function CampaignFocusCard({
             </div>
           ))}
         </div>
+        </>
       ) : null}
 
       {/*
@@ -314,7 +338,7 @@ export function CampaignFocusCard({
         .list` takes a status, not a playbook family, so there is nothing to
         filter by. Drawn because the design draws them, disabled and saying why.
       */}
-      <div className="mt-[22px] flex flex-wrap gap-[8.5px]">
+      <div className="mt-[15px] flex flex-wrap gap-[8.5px]">
         {['Lead magnets', 'Authority Builder', 'Social Campaign'].map((label, i) => (
           <button
             key={label}
@@ -344,10 +368,20 @@ export function CampaignFocusCard({
         ))}
       </div>
 
-      {/* Pause, resume and duplicate have no place in the design's hero, and
-          all three are real. They sit under the meta row as text actions rather
-          than competing with the two framed buttons above. */}
-      <div className="mt-[18px] flex flex-wrap items-center gap-4 text-14">
+    </section>
+
+      {/*
+        Pause, resume and duplicate are real and the design's hero has none of
+        them — so they sit *under* the card, not in it.
+
+        Inside it they were the last row of a `minHeight: 297` box, which meant
+        the box was 297 *or taller*: measured 346.7 against the design's 297, and
+        every panel below inherited the difference. The hero is a fixed 297 now
+        (the design's own five rows fill it exactly) and these follow it on the
+        canvas as text actions, which is also where they stop competing with the
+        two framed buttons at the top.
+      */}
+      <div className="order-last flex flex-wrap items-center gap-4 text-14">
         {campaign.status === 'paused' ? (
           <button type="button" disabled={busy} onClick={() => void resume()} className="font-medium text-ink underline underline-offset-2 disabled:opacity-50">
             Resume campaign
@@ -363,10 +397,10 @@ export function CampaignFocusCard({
       </div>
 
       {message ? (
-        <p className={`mt-3 text-14 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+        <p className={`order-last text-14 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
           {message.text}
         </p>
       ) : null}
-    </section>
+    </>
   );
 }

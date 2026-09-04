@@ -7,6 +7,7 @@ import { platformLabel } from '@/lib/platforms';
 import type { BrandSeries } from '@/components/dashboard/types';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { EmptyCard } from '@/components/common/EmptyCard';
+import { cn } from '@/lib/utils';
 
 /**
  * `CC-04`'s Performance & Learning body — the Top Post card, the metric tiles,
@@ -51,6 +52,9 @@ interface Published {
   summary: string;
   scheduledAt?: string;
 }
+
+/** The design's three learning-row tints, in its order. */
+const LEARNING_TINTS = ['#F5E9FB', '#E7F7EC', '#E9F0FB'] as const;
 
 export function PerformanceCards({
   genomeId,
@@ -149,14 +153,28 @@ export function PerformanceCards({
   return (
     <div className="mt-6 flex flex-col gap-6">
       {/* ── Top Post card ────────────────────────────────────────────── */}
+      {/*
+        1159x330 at radius 20, and it is two *rows*, not two columns.
+
+        The design lays it out as: the post itself on the left of row one with
+        Views at 584 and Likes at 865 beside it, then four tiles across the full
+        width of row two at 18 / 298 / 582 / 865. It was a two-column grid with
+        all five tiles stacked 2-up in the right half, which is a different card
+        — taller than 330, and with no tile on the design's second row.
+
+        The columns are `fr` so they hold at the 1159.7 the card actually
+        measures: row one 542/265/268 with 20px gutters puts Views on 580, and
+        row two 267/271/267/268 with 14px gutters puts the four on 18/299/584/865
+        — the design's own numbers to within 2px.
+      */}
       <section
-        className="rounded-xl p-[18px]"
+        className="rounded-[20px] px-[18px] pb-[16px] pt-[14px] xl:min-h-[330px]"
         style={{
           background: 'linear-gradient(122deg, #FCE3F6 0%, #FDF0FA 46%, #FFF8FD 100%)',
           boxShadow: 'inset 0 0 0 2px #FFFFFF',
         }}
       >
-        <div className="grid grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,540fr)_minmax(0,565fr)]">
+        <div className="grid grid-cols-1 gap-[18px] xl:grid-cols-[minmax(0,542fr)_minmax(0,265fr)_minmax(0,268fr)] xl:gap-x-[20px]">
           {/* the post itself */}
           <div className="min-w-0">
             <span
@@ -243,23 +261,70 @@ export function PerformanceCards({
             )}
           </div>
 
-          {/* ── the five tiles ─────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 gap-[16px] sm:grid-cols-2">
-            <Tile label="Views" value={t?.views} colour="#0BAAC7" change={c?.views} days={series?.days} pick={(d) => d.views} kind="line" />
-            <Tile label="Likes" value={t?.likes} colour="#F56BFF" change={c?.likes} days={series?.days} pick={(d) => d.likes} kind="line" />
-            <Tile label="Impressions" value={t?.impressions} colour="#13A711" change={c?.impressions} days={series?.days} pick={(d) => d.impressions} kind="bars" />
-            <Tile label="Saves" value={t?.saves} colour="#F5A623" change={c?.saves} days={series?.days} pick={(d) => d.saves} kind="bars" />
-            <Tile label="Replies" value={t?.comments} colour="#2474ED" change={c?.comments} days={series?.days} pick={(d) => d.comments} kind="line" />
-          </div>
+          {/* Row one's two tiles: 265 and 268 wide, 146 tall. */}
+          <Tile label="Views" value={t?.views} colour="#0BAAC7" change={c?.views} days={series?.days} pick={(d) => d.views} kind="line" tall />
+          <Tile label="Likes" value={t?.likes} colour="#F56BFF" change={c?.likes} days={series?.days} pick={(d) => d.likes} kind="line" tall />
+        </div>
+
+        {/*
+          Row two — four tiles at 18 / 298 / 582 / 865, 138 tall.
+
+          `Clicks` is the design's fourth metric and the one thing here with no
+          source: `analytics.brand_series` carries no click field on purpose — a
+          click is a CTA-link event Dub owns, read by `analytics.cta_traffic`,
+          and putting it on this snapshot would either duplicate Dub's number or
+          make the tab wait on an external API. So the slot is kept and the tile
+          says why rather than the row losing a column.
+        */}
+        <div className="mt-[16px] grid grid-cols-2 gap-[14px] xl:grid-cols-[minmax(0,267fr)_minmax(0,271fr)_minmax(0,267fr)_minmax(0,268fr)]">
+          <Tile label="Impressions" value={t?.impressions} colour="#13A711" change={c?.impressions} days={series?.days} pick={(d) => d.impressions} kind="bars" />
+          <Tile
+            label="Clicks"
+            value={undefined}
+            colour="#A341FF"
+            change={undefined}
+            days={undefined}
+            pick={() => 0}
+            kind="line"
+            note="Clicks are CTA-link events Dub owns — read by analytics.cta_traffic, not by this snapshot."
+          />
+          <Tile label="Saves" value={t?.saves} colour="#F5A623" change={c?.saves} days={series?.days} pick={(d) => d.saves} kind="bars" />
+          <Tile label="Replies" value={t?.comments} colour="#2474ED" change={c?.comments} days={series?.days} pick={(d) => d.comments} kind="line" />
         </div>
       </section>
 
-      {/* ── the insight banner ───────────────────────────────────────── */}
+      {/*
+        ── the insight banner ──────────────────────────────────────────
+
+        1159x135 at radius 20 on `#C9F1FA` inside a 1.5px `#7ADCEF` ring. The
+        colours were already right; the box was not — `p-[26px]` put the title
+        on 26 where the design has it on 62, because the design clears a 24px
+        arrow at 16,56 on each side. Those arrows carry a cursor and no handler
+        in the prototype, exactly like the campaign hero's, so they are drawn
+        `aria-hidden` rather than as controls that would do nothing.
+      */}
       {insight && !dismissed ? (
         <section
-          className="rounded-xl p-[26px]"
+          className="relative rounded-[20px] px-[62px] py-[26px] xl:h-[135px]"
           style={{ background: '#C9F1FA', boxShadow: 'inset 0 0 0 1.5px #7ADCEF' }}
         >
+          {/* 24px at 16,56 and 1119,56 — decorative in the design. */}
+          {[0, 1].map((i) => (
+            <span
+              key={i}
+              aria-hidden
+              className={cn(
+                'absolute top-[56px] hidden h-[24px] w-[24px] items-center justify-center rounded-full xl:flex',
+                i === 0 ? 'left-[16px]' : 'right-[16px]',
+              )}
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.4)', background: 'rgba(255,255,255,0.5)' }}
+            >
+              <svg width="5" height="9" viewBox="0 0 5 9" fill="none" className={i === 0 ? '-scale-x-100' : undefined}>
+                <path d="m1 1 3 3.5L1 8" stroke="#0C0C0C" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          ))}
+
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[24px] font-semibold leading-[1.27] text-ink">What the agent has learned</p>
@@ -299,6 +364,67 @@ export function PerformanceCards({
               </button>
             </div>
           </div>
+        </section>
+      ) : null}
+
+      {/*
+        ── What the Agent learned ──────────────────────────────────────
+
+        1159x360 at radius 15: the heading on 24,26 with an info glyph at 262,
+        then three 1131x80 rows at radius 15 on 72 / 166 / 260 — a 94px pitch —
+        each with a sparkle glyph and its line in 18/500, on `#F5E9FB`,
+        `#E7F7EC` and `#E9F0FB`.
+
+        The card did not exist. The design fills it with three written
+        conclusions ("Short hooks outperform long introductions on LinkedIn");
+        what the build actually has is `learning.explain`'s factors, which are
+        the same thing one level less polished — the reasons the mix engine is
+        weighted the way it is, each with its own detail. So the rows are the
+        factors, and the card only appears when there are any. Three tints for
+        three slots, cycled if the explanation returns more.
+      */}
+      {insight?.factors?.length ? (
+        <section className="rounded-lg bg-white px-[14px] pb-[14px] pt-0">
+          <div className="flex items-center gap-3 px-[10px] pb-[16px] pt-[26px]">
+            <h3 className="text-20 font-semibold leading-none text-ink">What the Agent learned</h3>
+            <span
+              title="What SPARK has concluded from how this brand's posts have performed, and why the mix is weighted the way it is."
+              className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+              style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
+            >
+              i
+            </span>
+          </div>
+
+          <ul className="flex flex-col gap-[14px]">
+            {insight.factors.map((f, i) => (
+              <li
+                key={`${f.label}-${i}`}
+                title={f.detail}
+                className="flex min-h-[80px] items-center gap-[16px] rounded-[15px] px-[26px]"
+                style={{ background: LEARNING_TINTS[i % LEARNING_TINTS.length] }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+                  <path
+                    d="M12 2.2a10 10 0 1 0 .01 20.01 10 10 0 0 0 4.4-19"
+                    stroke="#0C0C0C"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  <path d="m12 7 1 2.7 2.7 1-2.7 1-1 2.7-1-2.7-2.7-1 2.7-1 1-2.7Z" fill="#0C0C0C" />
+                  <path d="m18.6 2.3.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6Z" fill="#0C0C0C" />
+                </svg>
+                <span className="text-18 font-medium text-ink">{f.label}</span>
+                {/* The weight is what makes a factor a *finding* rather than a
+                    remark, and the design has nowhere to put it. */}
+                {typeof f.weight === 'number' ? (
+                  <span className="ml-auto shrink-0 text-16 font-semibold tabular-nums text-ink-muted">
+                    {Math.round(f.weight * 100)}%
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
@@ -428,6 +554,8 @@ function Tile({
   days,
   pick,
   kind,
+  tall,
+  note,
 }: {
   label: string;
   value: number | undefined;
@@ -436,13 +564,24 @@ function Tile({
   days: BrandSeries['days'] | undefined;
   pick: (d: BrandSeries['days'][number]) => number;
   kind: 'bars' | 'line';
+  /** Row one's tiles are 146 in the design; row two's are 138. */
+  tall?: boolean;
+  /** Shown on hover where a metric has no source — see the Clicks tile. */
+  note?: string;
 }) {
   const points = (days ?? []).map(pick);
   const peak = Math.max(1, ...points);
   const up = (change ?? 0) >= 0;
 
   return (
-    <div className="relative min-h-[138px] rounded-lg bg-white p-[18px]">
+    <div
+      title={note}
+      className={cn(
+        'relative rounded-lg bg-white p-[18px]',
+        tall ? 'min-h-[146px] xl:h-[146px]' : 'min-h-[138px] xl:h-[138px]',
+        note ? 'cursor-help' : undefined,
+      )}
+    >
       <p className="text-16 font-medium text-ink">{label}</p>
       <p className="mt-2 text-[32px] font-semibold leading-none" style={{ color: colour }}>
         {value === undefined ? '—' : compactNumber(value)}
