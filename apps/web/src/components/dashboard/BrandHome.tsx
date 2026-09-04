@@ -275,7 +275,7 @@ export function BrandHome() {
         so the top pad is 21.5, not 32; the 10.5px difference was landing on top
         of the header's own 22.5 and moving the whole page down by 33.
       */}
-      <div className="flex flex-col gap-[36px] p-6 sm:px-[34px] sm:pb-9 sm:pt-[21.5px]">
+      <div className="flex flex-col gap-dash-band-gap p-6 sm:px-dash-gutter sm:pb-9 sm:pt-dash-band-top">
 
       {/*
         The agent banner — the dark card the dashboard opens with. This used to
@@ -317,7 +317,7 @@ export function BrandHome() {
         was close enough to look deliberate and wrong enough that the rail's
         cards were a different width from the ones they mirror.
       */}
-      <div className="grid grid-cols-1 gap-[31px] xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
+      <div className="grid grid-cols-1 gap-dash-col-gap xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
         {/*
           25px between the cards, and 6 more under the KPI row to make the 31 the
           prototype has between it and the "Agent Activity" label. Two numbers
@@ -328,7 +328,7 @@ export function BrandHome() {
           a 288px pitch is 846px — exactly the left column — which is the whole
           reason the rail can start level with them.
         */}
-        <div className="flex min-w-0 flex-col gap-[25px]">
+        <div className="flex min-w-0 flex-col gap-dash-card-gap">
           {snap.series ? (
             <div className="mb-[6px]">
               <KpiRow series={snap.series} />

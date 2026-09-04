@@ -54,3 +54,24 @@ export function compactNumber(n: number): string {
   if (Math.abs(n) >= 10_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
   return n.toLocaleString('en-US');
 }
+
+/**
+ * A scheduled slot, in the calendar's own words: `Tue 12 Apr, 10:00`.
+ *
+ * `relativeTime` was used for this and it is the wrong unit on a schedule.
+ * `Dashboard.dc.html`'s Upcoming rows read "Tue 12 Apr, 10:00" — a reader
+ * checking what is about to go out wants the slot, not its distance from now,
+ * and "in 23 hours" cannot be matched against a calendar.
+ *
+ * 24-hour clock and a short weekday, both as the design writes them. Rendered in
+ * the viewer's own zone: a slot is a wall-clock promise about when a post
+ * appears, so it has to read as the local time it will happen at.
+ */
+export function slotDateTime(at: string | Date): string {
+  const d = at instanceof Date ? at : new Date(at);
+  if (Number.isNaN(d.getTime())) return 'Not scheduled yet';
+  const day = d.toLocaleDateString('en-GB', { weekday: 'short' });
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day} ${date}, ${time}`;
+}

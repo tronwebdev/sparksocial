@@ -131,31 +131,67 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               { label: 'Analyzing engagement signals', spin: true },
             ];
 
+  /*
+    No `overflow-hidden` on the card.
+
+    It was clipping the Adjust Frequency popover, which opens 44px below its
+    button and so falls outside the 177px card. Nothing needed the clip: the
+    card's only decoration is a background gradient, and a background is already
+    bounded by `rounded-2xl` — `overflow` governs children, and the only child
+    that leaves the box is the popover we want to see.
+  */
   return (
-    <section
-      className="relative overflow-hidden rounded-[30px]"
-      style={{
-        minHeight: 177,
-        background:
-          'linear-gradient(117.732deg, rgba(65,139,153,0) 83.25%, rgba(92,197,216,0.37) 92.13%, rgba(245,107,255,0.5) 99.02%), radial-gradient(661.5px 88.5px at 50% 50%, #044956 0%, #0C0C0C 100%)',
-      }}
-    >
+    <section className="relative min-h-dash-banner rounded-2xl bg-agent-banner">
       <div className="flex flex-wrap items-start gap-y-6 py-[28.6px] pl-[39px] pr-[39px]">
         {/* ── identity ─────────────────────────────────────────────────── */}
         {/*
-          `min-w`, not `w`. The prototype's identity block is 318 wide and its
-          name is `white-space:nowrap` inside a card that does not clip it, so a
-          long agent name runs past 318 rather than being cut - which is what a
-          fixed width plus `truncate` did here, rendering "Unnamed a...".
+          318 exactly, and the name overflows it.
+
+          `min-w-[318px]` was right to refuse `truncate` - the prototype's name
+          is `white-space:nowrap` in a card that does not clip, so a long name is
+          meant to run past the block rather than be cut - but content-sizing the
+          block made the *layout* depend on the name's width. The divider is
+          pinned at x=410 and the status column at x=464 in every state of the
+          design; with a name wider than the 179px status row underneath it, the
+          block grew and carried both of them right, which is what pushed the
+          three agent-status lines onto two rows.
+
+          So the box is the design's 318 (118.94 orb + 20.06 + a 179 column) and
+          the 30px name paints past its column, unclipped, exactly as the
+          prototype's does. Nothing downstream moves, whatever it is called.
         */}
-        <div className="flex min-w-[318px] shrink-0 items-start gap-0">
+        <div className="flex w-[318px] shrink-0 items-start gap-0">
           <span className="block h-[118.94px] w-[118.94px] shrink-0">
             <SparkMark variant="shell" size={118.94} animated />
           </span>
 
-          <span className="ml-[20.06px] flex min-w-0 flex-col">
+          <span className="ml-[20.06px] flex w-[179px] shrink-0 flex-col">
+            {/*
+              The name slot — and where naming lives when there is no name.
+
+              The route to naming was a second line under the status pill. That
+              added 27px to a column the 118.94px orb is supposed to measure, so
+              the card rendered 191.7 against the design's 177 and the KPI row,
+              the feed and the rail all sat 15px low. Moving it beside "Active"
+              traded that for a worse fault: it widened the identity block from
+              the design's 318 to 421.8 and carried the divider and the entire
+              right-hand column 104px right with it.
+
+              So it is the name slot itself. The design's slot holds the agent's
+              name; unnamed, it holds the one action that gives it one, in the
+              same 30px type and the same box. Nothing moves, and the state the
+              design does not draw costs the layout nothing.
+            */}
             <span className="mt-[6.4px] whitespace-nowrap text-[30px] font-semibold leading-[1.27] text-white">
-              {name ?? <span style={{ color: WHITE_60 }}>Unnamed agent</span>}
+              {name ?? (
+                <Link
+                  href="/settings/brand-kit"
+                  className="underline decoration-1 underline-offset-4 transition-colors hover:text-white"
+                  style={{ color: WHITE_60 }}
+                >
+                  Name your agent
+                </Link>
+              )}
             </span>
 
             {/* 113×35 pill, then the dot and label outside it. */}
@@ -176,24 +212,27 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                 {paused ? 'Paused' : 'Active'}
               </span>
             </span>
-
-            {!name ? (
-              <Link
-                href="/settings/brand-kit"
-                className="mt-[10px] text-[13.53px] font-medium underline underline-offset-2"
-                style={{ color: '#6CE8FF' }}
-              >
-                Give it a name
-              </Link>
-            ) : null}
           </span>
         </div>
 
-        {/* 1px × 134.5 at x=410, i.e. 53px past the identity block. */}
+        {/*
+          1px × 134.5 at x=410, i.e. 53px past the identity block.
+
+          The design's rule runs 19.5→154 while the orb beside it runs
+          28.6→147.5 — longer than the row it divides, on both ends. As an
+          absolutely-positioned element in the prototype that costs nothing; as a
+          flex item with `minHeight: 134.5` it became the tallest thing in the
+          line and set the card's height to 191.7 against the design's 177,
+          which then pushed the KPI row, the feed and the rail down 15px.
+
+          The negative cross-axis margins give it back its real length without
+          the height: outer size 134.5 − 9.1 − 6.5 = 118.9, the orb's, so the
+          line measures the orb and the rule overhangs it exactly as drawn.
+        */}
         <span
           aria-hidden
-          className="mx-[53px] hidden w-px self-stretch xl:block"
-          style={{ background: 'rgba(255,255,255,0.15)', minHeight: 134.5 }}
+          className="mx-[53px] hidden h-[134.5px] w-px self-start xl:block"
+          style={{ background: 'rgba(255,255,255,0.15)', marginTop: -9.1, marginBottom: -6.5 }}
         />
 
         {/* ── activity and controls ────────────────────────────────────── */}

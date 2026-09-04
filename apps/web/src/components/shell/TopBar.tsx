@@ -51,7 +51,7 @@ export interface TopBarProps {
 
 export function TopBar({ title, subtitle, actions, className, askSpark = true }: TopBarProps) {
   return (
-    <header className={cn('border-b border-border px-4 pb-5 pt-5 sm:px-[34px] sm:pb-[17.5px] sm:pt-3', className)}>
+    <header className={cn('border-b border-border px-4 pb-5 pt-5 sm:px-dash-gutter sm:pb-dash-head-bottom sm:pt-dash-head-top', className)}>
       <div className="flex items-start justify-between gap-3 sm:gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 md:hidden">
@@ -63,7 +63,7 @@ export function TopBar({ title, subtitle, actions, className, askSpark = true }:
             ) : (
               title
             )}
-            {subtitle ? <p className="mt-[3px] truncate text-[14px] font-normal text-ink-muted sm:text-[18px]">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-[3px] truncate text-[14px] font-normal leading-[1.28] text-ink-muted sm:text-[18px]">{subtitle}</p> : null}
           </div>
         </div>
         {actions || askSpark ? (

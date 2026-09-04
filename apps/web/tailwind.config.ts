@@ -76,6 +76,19 @@ const config: Config = {
           cyan: alpha('--ss-accent-cyan'),
           pink: alpha('--ss-accent-pink'),
         },
+        // Brand Home's three metric tints. Already rgba, so they go in raw
+        // rather than through `alpha()` — the opacity is the design's own.
+        'kpi-1': 'var(--ss-dash-kpi-1)',
+        'kpi-2': 'var(--ss-dash-kpi-2)',
+        'kpi-3': 'var(--ss-dash-kpi-3)',
+        'seg-track': 'var(--ss-dash-seg-track)',
+        'cal-sunday': 'var(--ss-cal-sunday)',
+        'cal-amber': 'var(--ss-cal-day-amber)',
+        'cal-cyan': 'var(--ss-cal-day-cyan)',
+        'cal-purple': 'var(--ss-cal-day-purple)',
+        'attn': 'var(--ss-cc-attn-bg)',
+        'attn-ring': 'var(--ss-cc-attn-ring)',
+
         success: alpha('--ss-success'),
         warn: alpha('--ss-warn'),
         info: alpha('--ss-info'),
@@ -127,6 +140,8 @@ const config: Config = {
       // so the gradient is `canvas-wash`. A shared key makes `bg-canvas` ambiguous.
       backgroundImage: {
         'nav-active': 'var(--ss-grad-nav-active)',
+        'agent-banner': 'var(--ss-grad-agent-banner)',
+        'post-card': 'var(--ss-grad-post-card)',
         'canvas-wash': 'var(--ss-grad-canvas)',
         'cta-wash': 'var(--ss-grad-cta)',
         'brand-wash': 'var(--ss-grad-brand)',
@@ -142,6 +157,40 @@ const config: Config = {
 
       spacing: {
         rail: 'var(--ss-rail)',
+        // Brand Home's vertical cascade — see the block in tokens.css. Named
+        // because six components share the grid and an arbitrary value in one
+        // of them has nothing to be checked against.
+        'dash-gutter': 'var(--ss-dash-gutter)',
+        'dash-head-top': 'var(--ss-dash-head-top)',
+        'dash-head-bottom': 'var(--ss-dash-head-bottom)',
+        'dash-band-top': 'var(--ss-dash-band-top)',
+        'dash-band-gap': 'var(--ss-dash-band-gap)',
+        'dash-card-gap': 'var(--ss-dash-card-gap)',
+        'dash-col-gap': 'var(--ss-dash-col-gap)',
+        'dash-label-gap': 'var(--ss-dash-label-gap)',
+        'dash-banner': 'var(--ss-dash-banner)',
+        'dash-kpi': 'var(--ss-dash-kpi)',
+        'dash-tab-top': 'var(--ss-dash-tab-top)',
+        'dash-tab-bottom': 'var(--ss-dash-tab-bottom)',
+        'dash-row-inset': 'var(--ss-dash-row-inset)',
+        'dash-row': 'var(--ss-dash-row)',
+        'cal-inset': 'var(--ss-cal-inset)',
+        'cal-cell': 'var(--ss-cal-cell)',
+        'cal-cell-gap': 'var(--ss-cal-cell-gap)',
+        'dash-row-body': 'var(--ss-dash-row-body)',
+        'dash-panel-inset': 'var(--ss-dash-panel-inset)',
+        // Command Center chrome — see the block in tokens.css.
+        'cc-chrome-x': 'var(--ss-cc-chrome-x)',
+        'cc-chrome-r': 'var(--ss-cc-chrome-r)',
+        'cc-top-mark': 'var(--ss-cc-top-mark)',
+        'cc-top-back': 'var(--ss-cc-top-back)',
+        'cc-top-pill': 'var(--ss-cc-top-pill)',
+        'cc-chrome-h': 'var(--ss-cc-chrome-h)',
+        'cc-content-x': 'var(--ss-cc-content-x)',
+        'cc-content-top': 'var(--ss-cc-content-top)',
+        'cc-chrome-gap': 'var(--ss-cc-chrome-gap)',
+        'cc-band-x': 'var(--ss-cc-band-x)',
+        'cc-band-gap': 'var(--ss-cc-band-gap)',
         // Auth geometry, measured from the Figma captures — see tokens.css.
         'auth-card': 'var(--ss-auth-card)',
         'auth-gutter': 'var(--ss-auth-gutter)',

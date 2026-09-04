@@ -30,9 +30,16 @@ export interface NavItem {
  * `home` and `account` were mine. Every prototype's nav is exactly these seven,
  * and neither destination is lost:
  *
- *   Home     the wordmark links to it, which is what the prototypes do - the
- *            dashboard's own nav glow parks on the first row rather than
- *            highlighting a Home entry, because there isn't one.
+ *   Home     the Agents row *is* the dashboard. `Dashboard.dc.html` renders
+ *            Brand Home with the glow on the first row and "Agents" in
+ *            `#0C0C0C`, which is the design saying these are one destination,
+ *            not two. Pointing this row at `/agents` split them: the row lit up
+ *            on the Command Center and went dark on the screen the design draws
+ *            it lit on, and `/home` was reachable only from the wordmark.
+ *            `SidebarNav` needed a special case to fake the parked glow; with
+ *            the href correct the ordinary match produces it and that case is
+ *            gone. The Command Center keeps its own route, reached from the
+ *            banner's "Command Center" button.
  *   Account  lives under the workspace switcher as "Account Home / All
  *            workspaces & organization", which is the row `Dashboard.dc.html`
  *            draws in that dropdown and which now points at `/workspaces`.
@@ -42,7 +49,7 @@ export interface NavItem {
  * nav into it at any viewport shorter than the 1409px stage.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'agents', label: 'Agents', href: '/agents', icon: AgentsIcon, labelPx: 18 },
+  { id: 'agents', label: 'Agents', href: '/home', icon: AgentsIcon, labelPx: 18 },
   { id: 'discovery', label: 'Discovery', href: '/discovery', icon: DiscoveryIcon, labelPx: 18 },
   { id: 'calendar', label: 'Calendar', href: '/calendar', icon: CalendarIcon, labelPx: 18 },
   { id: 'automation', label: 'Automation Recipes', href: '/automation', icon: AutomationIcon, labelPx: 18 },

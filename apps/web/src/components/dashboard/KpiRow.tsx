@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import { compactNumber } from '@/lib/relativeTime';
 import type { BrandSeries } from './types';
 
@@ -59,6 +60,14 @@ export function KpiRow({ series }: { series: BrandSeries }) {
       `rgba(163,65,255,0.2)` and `rgba(254,222,181,0.5)` in that order, and no
       border at all. The 288px pitch (356, 644, 932) is 270 plus an 18px gutter.
 
+      `h-[107px]`, not `min-h-`: with a `pb-4` under it the card measured
+      111.8, so the design's 107 became a floor nothing sat on and the whole
+      left column below - activity feed, tab card - ran 5px low. The design's
+      interior is the label at 15 (22 tall) and the value at 50 (44.8 tall),
+      leaving 12 under it, which is exactly the 15/13 top offsets with no
+      bottom padding. `flex-wrap` came off the value row for the same reason:
+      a wrap grows a card that no longer has room to grow.
+
       The prototype's second card is "CTA Clicks", which `analytics.brand_series`
       does not carry - there is no click field on it. Rather than leave a card
       showing nothing, the three real metrics keep the three tints in position
@@ -68,11 +77,10 @@ export function KpiRow({ series }: { series: BrandSeries }) {
       {cards.map((c, i) => (
         <div
           key={c.label}
-          className="relative min-h-[107px] rounded-lg px-[21px] pb-4 pt-[15px]"
-          style={{ background: TINTS[i % TINTS.length] }}
+          className={cn('relative h-dash-kpi rounded-lg px-[21px] pt-[15px]', TINTS[i % TINTS.length])}
         >
           <p className="text-18 font-medium leading-[1.28] text-ink-muted">{c.label}</p>
-          <div className="mt-[13px] flex flex-wrap items-center gap-3">
+          <div className="mt-[13px] flex items-center gap-3">
             <span className="text-[35px] font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>
@@ -90,8 +98,13 @@ export function KpiRow({ series }: { series: BrandSeries }) {
   );
 }
 
-/** The prototype's three card tints, in its own order. */
-const TINTS = ['rgba(108,232,255,0.3)', 'rgba(163,65,255,0.2)', 'rgba(254,222,181,0.5)'] as const;
+/**
+ * The prototype's three card tints, in its own order — now `bg-kpi-*` utilities
+ * over `--ss-dash-kpi-*` rather than three rgba literals in an inline style.
+ * CLAUDE.md's rule: exact values go in `tokens.css`/`tailwind.config.ts`, not in
+ * a component.
+ */
+const TINTS = ['bg-kpi-1', 'bg-kpi-2', 'bg-kpi-3'] as const;
 
 /**
  * The 90x36 white pill at radius 11.59 with a `rgba(12,12,12,0.1)` ring: the

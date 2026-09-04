@@ -48,3 +48,32 @@ export function platformLabel(platform: string): string {
     .map((w) => (w.length > 0 ? w[0]!.toUpperCase() + w.slice(1) : w))
     .join(' ');
 }
+
+/**
+ * What a post *is*, the way the design names it: "Instagram Reel", "Carousel",
+ * "Linkedin Post".
+ *
+ * `Dashboard.dc.html` labels its Upcoming rows and its published-post cards with
+ * the platform and the format. Both surfaces were rendering `playbookName`
+ * instead — the strategy that produced the post, an internal label ("proof--
+ * of-work carousel", or in a fixture simply "p") that a reader of the dashboard
+ * has no use for and which leaked into the design's slot.
+ *
+ * The medium wins when it is the distinctive thing (a carousel is a carousel on
+ * any platform); otherwise the platform leads. Title case throughout: the design
+ * writes "Instagram Reel", "X Post" and "Linkedin Post" that way and only its
+ * rail slips to a lowercase "post".
+ */
+export function postKindLabel(platform?: string, mediaType?: string): string {
+  if (mediaType === 'carousel') return 'Carousel';
+  if (!platform) return mediaType ? `${mediaType[0]!.toUpperCase()}${mediaType.slice(1)}` : 'Post';
+  const name = platformLabel(platform);
+  // A short-form video is a Reel on Instagram and a Short on YouTube; the design
+  // shows the former, and neither is just "a video post".
+  if (mediaType === 'video') {
+    if (platform.startsWith('instagram')) return `${name} Reel`;
+    if (platform.startsWith('youtube')) return `${name} Short`;
+    return `${name} Video`;
+  }
+  return `${name} Post`;
+}

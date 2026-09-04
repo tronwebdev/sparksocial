@@ -54,7 +54,7 @@ export function AgentActivityFeed({ runs }: { runs: AgentRun[] }) {
     return (
       <section>
         <SectionHeading />
-        <div className="mt-[18px] rounded-lg bg-white">
+        <div className="mt-dash-label-gap rounded-lg bg-white">
           <EmptyCard body={<>Create your first campaign to get started and view agent activities</>} />
         </div>
       </section>
@@ -78,7 +78,7 @@ export function AgentActivityFeed({ runs }: { runs: AgentRun[] }) {
     <section>
       <SectionHeading />
 
-      <div className="mt-[18px] rounded-lg bg-white">
+      <div className="mt-dash-label-gap rounded-lg bg-white">
         <ul>
           {runs.slice(0, VISIBLE).map((run, i) => {
             const status = STATUS[run.status] ?? { label: run.status, variant: 'neutral' as const };

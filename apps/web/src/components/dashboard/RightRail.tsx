@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyCard } from '@/components/common/EmptyCard';
+import { postKindLabel } from '@/lib/platforms';
+import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { relativeTime } from '@/lib/relativeTime';
 import type { RankedTrend, UpcomingPost } from './types';
 
@@ -47,10 +49,32 @@ const VISIBLE_POSTS = 3;
 
 type Seg = 'published' | 'trending';
 
-/** Track geometry, straight off the prototype. */
-const TRACK_W = 427;
-const THUMB_W = 196;
-const THUMB_X = { published: 10, trending: 221 } as const;
+/**
+ * Track geometry, straight off the prototype — but as the *relationships* the
+ * design's numbers encode, not the numbers themselves.
+ *
+ * The prototype measures a 427px track holding two 196px thumbs at x=10 and
+ * x=221, inside a 446px card. Ported literally that became `maxWidth: 427`, and
+ * 427 is not a width the design chose: it is `446 − 9 − 10`, the card minus its
+ * own padding. So on any window wider than 1728 the rail card grew and the track
+ * stopped dead at 427 — at 2185px the card is 602 wide and the control floated
+ * with a 167px gap to its right, which is exactly "does not fill the card".
+ *
+ * Solving the design's own arithmetic for a track of any width:
+ *
+ *   end insets     10 + 10   the thumb's gap to each end of the track
+ *   centre gap          15   between the two thumbs (206 → 221)
+ *   thumb        (100% − 35) / 2      = 196 at 427 ✓
+ *   trending x   100% − 10 − thumb
+ *                = 50% + 7.5px        = 221 at 427 ✓
+ *
+ * The labels hang off the same anchors — 15px into the first thumb, 19px into
+ * the second — so they travel with it instead of being pinned to 25 and 240.
+ */
+const THUMB_W = 'calc((100% - 35px) / 2)';
+const THUMB_X = { published: '10px', trending: 'calc(50% + 7.5px)' } as const;
+/** 10 + 15, and (50% + 7.5) + 19 — each label's offset inside its own thumb. */
+const LABEL_X = { published: '25px', trending: 'calc(50% + 26.5px)' } as const;
 
 export function RightRail({
   trends,
@@ -65,12 +89,12 @@ export function RightRail({
   return (
     <section className="overflow-hidden rounded-lg bg-white">
       {/* ── the segmented control ───────────────────────────────────────── */}
-      <div className="px-[9px] pt-[10px]">
+      {/* 9 left, 10 right — the card's own asymmetric padding in the design. */}
+      <div className="pl-[9px] pr-[10px] pt-[10px]">
         <div
           role="tablist"
           aria-label="Right rail panels"
-          className="relative h-[63px] rounded-[10px]"
-          style={{ background: '#EAEAEA', maxWidth: TRACK_W }}
+          className="relative h-[63px] rounded bg-seg-track"
         >
           <span
             aria-hidden
@@ -88,7 +112,8 @@ export function RightRail({
             type="button"
             aria-selected={seg === 'published'}
             onClick={() => setSeg('published')}
-            className="absolute left-[25px] top-[21px] flex h-[23px] items-center gap-2.5 bg-transparent"
+            className="absolute top-[21px] flex h-[23px] items-center gap-2.5 bg-transparent"
+            style={{ left: LABEL_X.published }}
           >
             {/* A paper plane, not a tick. The tick was mine and it reads as
                 "done"; the design's glyph is the send icon, which is what
@@ -120,7 +145,8 @@ export function RightRail({
             type="button"
             aria-selected={seg === 'trending'}
             onClick={() => setSeg('trending')}
-            className="absolute left-[240px] top-[15px] flex h-[29px] items-center gap-0.5 bg-transparent"
+            className="absolute top-[15px] flex h-[29px] items-center gap-0.5 bg-transparent"
+            style={{ left: LABEL_X.trending }}
           >
             <img src="/dashboard/fire.png" alt="" width={27} height={27} className="block object-cover" />
             <span
@@ -144,9 +170,6 @@ export function RightRail({
 /* ── Published ─────────────────────────────────────────────────────────── */
 
 /** The prototype's card fill, shared by both halves at different alphas. */
-const CARD_BG =
-  'linear-gradient(218.668deg, rgba(131,131,131,0.11) 7.52%, rgba(12,12,12,0.11) 92.4%)';
-
 function Published({ posts }: { posts: UpcomingPost[] | null }) {
   if (posts === null) {
     return (
@@ -171,23 +194,33 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
     <ul className="flex flex-col gap-5">
       {posts.slice(0, VISIBLE_POSTS).map((p) => (
         <li key={p.contentItemId}>
-          <article
-            className="relative overflow-hidden rounded-[36.34px]"
-            style={{ background: CARD_BG }}
-          >
+          <article className="relative overflow-hidden rounded-[36.34px] bg-post-card">
             <div className="flex items-center gap-2 px-[20.8px] pt-[13.6px]">
+              {/* 31.4px frosted well holding the platform's own mark — the
+                  design's, now that `public/icons` exists. It was the first two
+                  letters of the enum ("IN", "X"). */}
               <span
-                className="flex h-[31.4px] w-[31.4px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold uppercase text-ink"
+                className="flex h-[31.4px] w-[31.4px] shrink-0 items-center justify-center rounded-full"
                 style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(7.85px)' }}
               >
-                {(p.platform ?? '—').slice(0, 2)}
+                <PlatformIcon platform={p.platform} size={22} />
               </span>
+              {/*
+                What the post is, not which playbook made it.
+
+                The design's three titles are "Instagram post", "Carousel" and
+                "X Post" - the platform and the kind. `playbookName` is the
+                strategy that produced it, an internal label a reader of this
+                rail has no use for, and it rendered here in the design's slot.
+                Both fields are already on the row; this is the one the design
+                shows.
+              */}
               <span className="min-w-0 flex-1 truncate text-[16.28px] font-medium leading-[1.28] text-ink-muted">
-                {p.playbookName}
+                {postKindLabel(p.platform, p.mediaType)}
               </span>
               <Link
                 href={`/agents?draft=${encodeURIComponent(p.contentItemId)}`}
-                aria-label={`Open ${p.playbookName}`}
+                aria-label={`Open ${postKindLabel(p.platform, p.mediaType)}`}
                 className="flex h-[36.2px] w-[36.2px] shrink-0 items-center justify-center rounded-full"
                 style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(9.05px)' }}
               >
@@ -236,8 +269,20 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
                 borderRadius: '18.09px 18.09px 36.34px 36.34px',
               }}
             >
-              <p className="text-[16.28px] font-medium leading-[1.28] text-black">{p.playbookName}</p>
-              <p className="mt-[6px] line-clamp-2 max-w-[299.5px] text-[14.48px] font-medium leading-[1.25] text-ink-muted">
+              {/*
+                The design's footer is the post's own headline over two lines of
+                its body copy. This printed `playbookName` as the headline, so
+                the internal strategy name sat where the post's title goes - "p"
+                in a fixture, "proof-of-work carousel" in production.
+
+                `content.list` returns one piece of prose per item (`summary`),
+                not a title and a body, so the headline is the summary and the
+                second line is simply absent. A `title` (or `bodyText`) on
+                `ContentListItem` is what would fill it; inventing a headline by
+                truncating the summary and then repeating it underneath would
+                fill the space without adding anything to read.
+              */}
+              <p className="line-clamp-2 max-w-[299.5px] text-[16.28px] font-medium leading-[1.28] text-black">
                 {p.summary}
               </p>
             </div>

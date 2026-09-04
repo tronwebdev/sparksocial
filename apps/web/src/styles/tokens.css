@@ -139,6 +139,26 @@
   --ss-grad-cta: linear-gradient(90deg, #8b3dff 0%, #37c7f4 100%);
   --ss-grad-brand: linear-gradient(90deg, #6ce8ff, #a341ff);
 
+  /**
+   * The agent banner's ground: a near-black radial with a cyan-to-pink sweep
+   * across the last 17% of its width. Two layers, in this order — the sweep
+   * paints over the radial, and swapping them loses the pink entirely.
+   */
+  --ss-grad-agent-banner: linear-gradient(
+      117.732deg,
+      rgba(65, 139, 153, 0) 83.25%,
+      rgba(92, 197, 216, 0.37) 92.13%,
+      rgba(245, 107, 255, 0.5) 99.02%
+    ),
+    radial-gradient(661.5px 88.5px at 50% 50%, #044956 0%, #0c0c0c 100%);
+
+  /* The published-post cards in the right rail, at radius 36.34. */
+  --ss-grad-post-card: linear-gradient(
+    218.668deg,
+    rgba(131, 131, 131, 0.11) 7.52%,
+    rgba(12, 12, 12, 0.11) 92.4%
+  );
+
   /* ── Shadows. The hairline ring is used far more than any real shadow. ── */
   --ss-shadow-hairline: 0 0 0 1px rgba(131, 131, 131, 0.2);
   --ss-shadow-card: 0 10px 26px -18px rgba(12, 12, 12, 0.35);
@@ -148,6 +168,138 @@
   /* ── Shell geometry. Read off Dashboard.dc.html. ──────────────────── */
   --ss-rail: 322px;
   --ss-nav-pitch: 65px; /* 27px row + 38px gap — exact, do not round */
+
+  /**
+   * ── Brand Home geometry — `SparkSocial Dashboard.dc.html`, verbatim ──────
+   *
+   * The screen is one vertical cascade: get the header's height wrong and the
+   * banner, the metrics, the feed and the rail all move by the same amount. So
+   * the bands are named here rather than left as arbitrary values in six
+   * components, which is how the header ended up 22.5px too tall with nothing
+   * to compare it against.
+   *
+   * Every number is a subtraction between two absolute tops in the prototype,
+   * whose canvas card sits at 322,18 and measures 1391×1391:
+   *
+   *   gutter      356 − 322     content column's left inset
+   *   head-top     30 − 18      switcher block top
+   *   head-bottom  119.5 − 102  divider, under a 72px-tall header row
+   *   band-top    141 − 119.5   divider to banner
+   *   band-gap    354 − 318     banner bottom to the metrics row
+   *   label-gap   533 − 515     "Agent Activity" baseline to its card
+   *   tab-bottom   80 − 52      tab labels to the card's hairline
+   *
+   * The two insets differ because the design insets the tab card's panels by
+   * different amounts: Upcoming's rows carry 17 and rule full-bleed, while
+   * Insights and Sales start at 28.
+   */
+  --ss-dash-gutter: 34px;
+  --ss-dash-head-top: 12px;
+  --ss-dash-head-bottom: 17.5px;
+  --ss-dash-band-top: 21.5px;
+  --ss-dash-band-gap: 36px;
+  --ss-dash-card-gap: 25px;
+  --ss-dash-col-gap: 31px; /* left column 356→1202, rail 1233 */
+  --ss-dash-label-gap: 18px;
+  --ss-dash-banner: 177px;
+  --ss-dash-kpi: 107px;
+  --ss-dash-tab-top: 29px;
+  --ss-dash-tab-bottom: 28px;
+  --ss-dash-row-inset: 17px;
+  /* Upcoming rows: 89px pitch, an 80px body, and a full-bleed rule beneath. */
+  --ss-dash-row: 89px;
+  --ss-dash-row-body: 80px;
+  --ss-dash-panel-inset: 28px;
+
+  /**
+   * The three metric tints, in the design's slot order — `rgba(108,232,255,.3)`,
+   * `rgba(163,65,255,.2)`, `rgba(254,222,181,.5)`. The tint belongs to the
+   * position, not the metric: the design's second card is "CTA Clicks", which
+   * `analytics.brand_series` has no field for, so a different metric occupies
+   * that slot and keeps its colour.
+   */
+  --ss-dash-kpi-1: rgba(108, 232, 255, 0.3);
+  --ss-dash-kpi-2: rgba(163, 65, 255, 0.2);
+  --ss-dash-kpi-3: rgba(254, 222, 181, 0.5);
+
+  /**
+   * ── Calendar screen — `SparkSocial Calendar.dc.html`, verbatim ───────────
+   *
+   * Full-bleed like the Command Center: the same 1698-wide card at 15,18 and
+   * the same 30px radius, so the chrome tokens are shared. What is its own is
+   * the month grid, whose cells are more than three times the height of the
+   * Command Center's (226 against 140) because this screen is the calendar
+   * rather than a panel inside one.
+   *
+   *   card        48,250   1629 wide — 1345 tall in Calendar Mode, 860 in List
+   *   month nav   24,22    242x54
+   *   filters     top 22   194x54 at 601 / 811 / 1021 / 1231 / 1441
+   *   weekdays    24,100   1581 wide, 7 columns, 8px gaps
+   *   cells       24,146   same grid, 226 tall at radius 20
+   *
+   * Sunday's label is `#E23B3B` — the one weekday the design colours, and the
+   * only red on the screen.
+   */
+  --ss-cal-card-x: 48px;
+  --ss-cal-card-y: 250px;
+  --ss-cal-inset: 24px;
+  --ss-cal-cell: 226px;
+  --ss-cal-cell-gap: 8px;
+  --ss-cal-grid-top: 146px;
+  --ss-cal-weekday-top: 100px;
+  --ss-cal-sunday: #e23b3b;
+
+  /* The three day tints, each with its own ring — a planned day is coloured by
+     what is planned on it, not by a single accent. */
+  --ss-cal-day-amber: #fdf1df;
+  --ss-cal-day-amber-ring: #e8b06b;
+  --ss-cal-day-cyan: #c9eef7;
+  --ss-cal-day-cyan-ring: #35b7d4;
+  --ss-cal-day-purple: #e9d7fa;
+  --ss-cal-day-purple-ring: #b37be8;
+
+  /* The rail's segmented-control track. Its own grey, in the ramp nowhere. */
+  --ss-dash-seg-track: #eaeaea;
+
+  /**
+   * ── Command Center geometry — `SparkSocial Command Center.dc.html` ───────
+   *
+   * This screen is full-bleed: its card sits at 15,18 and is 1698 wide, so
+   * every number below is stated **card-relative** (stage minus 15/18) because
+   * that is the box the components actually live in.
+   *
+   *   chrome-x        32 − 15    the wordmark's edge
+   *   chrome-r        1713 − 1676  Ask Spark stops short of the card edge
+   *   wordmark/spark  34 − 18    both sit on the same line
+   *   back            30 − 18    higher than the wordmark, as drawn
+   *   pill            41 − 18    lower again; the header is four different tops
+   *   divider         117 − 18   1623 wide, closing the chrome
+   *   content-x       47 − 15    the hero's edge
+   *   content-top     143 − 117  divider to the page title
+   *
+   * The four header tops are not a mistake to normalise away: the design draws
+   * the wordmark and Ask Spark on one line (34), Back 4px above it (30) and the
+   * nav pill 7px below (41). `items-center` averaged them into one line and put
+   * every item ~9px low.
+   */
+  --ss-cc-chrome-x: 17px;
+  --ss-cc-chrome-r: 37px;
+  --ss-cc-top-mark: 16px;
+  --ss-cc-top-back: 12px;
+  --ss-cc-top-pill: 23px;
+  --ss-cc-chrome-h: 99px;
+  --ss-cc-divider-w: 1623px;
+  --ss-cc-content-x: 32px;
+  --ss-cc-content-top: 26px;
+  /* Ask Spark sits 11px right of the nav pill; the pill is 867 wide. */
+  --ss-cc-chrome-gap: 11px;
+  --ss-cc-pill: 867px;
+  /* The band above the two columns: title 143, banner 147, hero/rail 241. */
+  --ss-cc-band-x: 38px;
+  --ss-cc-band-gap: 34px;
+  /* "Needs Attention" strip. Its own amber pair, not the warn ramp's. */
+  --ss-cc-attn-bg: #fff0dc;
+  --ss-cc-attn-ring: #ffb453;
 
   /**
    * ── Auth geometry — measured from the Figma captures, not the prototype ──

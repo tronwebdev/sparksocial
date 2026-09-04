@@ -29,9 +29,25 @@ const LOGO_BLOCK = 30.8 + 53.57; // padding + mark height
 const NAV_OFFSET = FIRST_TOP - LOGO_BLOCK; // 47.63
 const GLOW_H = 50;
 
+/**
+ * The glow follows the route, with no special case for Brand Home.
+ *
+ * There was one, briefly: `/home` matched no nav row, so `findIndex` returned -1
+ * and the whole rail rendered inert - no glow, seven grey labels - against a
+ * design that draws the first row lit. The fix was a `PARKED_ON_FIRST_ROW` list
+ * that lit row 0 without selecting it.
+ *
+ * That was treating the symptom. The Agents row *is* the dashboard in this
+ * design; it pointed at `/agents` (the Command Center) instead, which is the
+ * actual defect - see `nav-items.ts`. With the href corrected the ordinary match
+ * lights the row on the screen the design lights it on, and the special case,
+ * along with the split between "looks active" and "is active", is gone.
+ */
 export function SidebarNav() {
   const pathname = usePathname();
-  const activeIndex = NAV_ITEMS.findIndex((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
+  const activeIndex = NAV_ITEMS.findIndex(
+    (i) => pathname === i.href || pathname.startsWith(`${i.href}/`),
+  );
 
   return (
     <nav className="relative" aria-label="Main">
@@ -57,9 +73,9 @@ export function SidebarNav() {
       )}
 
       <ul className="relative flex flex-col" style={{ paddingTop: NAV_OFFSET, gap: GAP }}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map((item, i) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = i === activeIndex;
 
           return (
             <li key={item.id}>
