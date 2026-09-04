@@ -101,7 +101,62 @@ const ADJUST_STEP = 0.12;
  */
 const SCHEDULE_HOUR_UTC = 12;
 
-export function CalendarBoard() {
+/**
+ * The board's flow handlers, handed to whatever renders the design's modals.
+ *
+ * Each closes over the loaded `calendar.get` view, so they are only valid while
+ * a campaign is loaded — hence `onActions(null)` when it is not.
+ */
+export interface BoardActions {
+  campaignId: string;
+  /** Draft the named playbook onto a day. `mode` branches filmed formats. */
+  acceptRecommendation: (day: string, playbookId: string, mode?: string) => Promise<void>;
+  /** Reschedule an existing post onto a day. */
+  acceptMove: (day: string, contentItemId: string) => Promise<void>;
+  /** Hand off to the Draft Panel's trigger phase, pinned to a day. */
+  openTriggerFor: (day: string) => void;
+}
+
+export function CalendarBoard({
+  /*
+    The view, owned by the screen.
+
+    This held its own `layout` state and drew its own pill toggle. The design
+    puts that control in the chrome at 1372,156 — a 304x56 card beside the
+    Month/Week/Day segmented control — not inside the board, so the screen owns
+    it and passes it down. Optional so the board still works standalone.
+  */
+  layout: layoutProp,
+  dayFor,
+  onDayForChange,
+  onActions,
+}: {
+  layout?: 'calendar' | 'list';
+  /*
+    A day the screen above wants the action sheet opened on.
+
+    The Calendar screen draws the design's 226px month grid itself, so its cells
+    are not this component's — but the sheet those cells open needs
+    `campaignId`, the loaded `calendar.get` view, `acceptRecommendation`,
+    `acceptMove` and `reload`, all of which live here. Rather than lift five
+    handlers out (or reimplement them and have two versions of "accept a
+    recommendation"), the screen passes a date in and this opens its own sheet.
+  */
+  dayFor?: string | null;
+  onDayForChange?: (day: string | null) => void;
+  /*
+    Publishes this component's own flow handlers upward.
+
+    The Calendar screen draws the design's four modals itself, and each needs one
+    of these: accepting a recommendation, accepting a move, handing off to the
+    Draft Panel's trigger. All three close over the loaded `calendar.get` view,
+    the campaign and `reload`, so they cannot be reimplemented above without a
+    second copy of each — and two versions of "accept a recommendation" is
+    exactly the kind of thing that drifts apart. So the board hands them out
+    instead, and stays the only place they exist.
+  */
+  onActions?: (actions: BoardActions | null) => void;
+} = {}) {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const [view, setView] = useState<CalendarView | null>(null);
   const [override, setOverride] = useState<Record<string, number>>({});
@@ -120,9 +175,16 @@ export function CalendarBoard() {
    * replacing it: "create something specific" is still there, and is now one of
    * three answers instead of the only one.
    */
-  const [daySheet, setDaySheet] = useState<string | null>(null);
+  const [daySheetOwn, setDaySheetOwn] = useState<string | null>(null);
+  /* Controlled when the screen supplies it, self-owned otherwise. */
+  const daySheet = dayFor !== undefined ? dayFor : daySheetOwn;
+  const setDaySheet = (day: string | null) => {
+    if (dayFor !== undefined) onDayForChange?.(day);
+    else setDaySheetOwn(day);
+  };
   /** Calendar grid or a flat list — `CAL-08`. */
-  const [layout, setLayout] = useState<'calendar' | 'list'>('calendar');
+  const [layoutOwn, setLayoutOwn] = useState<'calendar' | 'list'>('calendar');
+  const layout = layoutProp ?? layoutOwn;
   const [mixPreview, setMixPreview] = useState<MixImpactPreview | null>(null);
   /** §8.7's three filters. `all` rather than an empty string so the select's value is never ambiguous. */
   const [filters, setFilters] = useState<SlotFilterState>({ status: 'all', platform: 'all', mediaType: 'all' });
@@ -397,6 +459,24 @@ export function CalendarBoard() {
     [genome, view, reload],
   );
 
+  /* Republished whenever a handler identity changes — each is a `useCallback`,
+     so that is only when the view or genome behind it actually changed. */
+  useEffect(() => {
+    if (!onActions) return;
+    onActions(
+      view
+        ? {
+            campaignId: view.campaignId,
+            acceptRecommendation,
+            acceptMove,
+            openTriggerFor,
+          }
+        : null,
+    );
+    return () => onActions(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onActions, view, acceptRecommendation, acceptMove, openTriggerFor]);
+
   const moveSlot = useCallback(
     async (slot: Slot, toDay: string) => {
       if (!genome || !view) return;
@@ -620,12 +700,14 @@ export function CalendarBoard() {
           "what is next", and the second question is the one somebody with 40
           scheduled posts is actually asking.
         */}
+        {/* Only when nothing above is driving it — see the prop. */}
+        {layoutProp === undefined ? (
         <div className="flex shrink-0 items-center gap-1 rounded border border-border p-0.5">
           {(['calendar', 'list'] as const).map((l) => (
             <button
               key={l}
               type="button"
-              onClick={() => setLayout(l)}
+              onClick={() => setLayoutOwn(l)}
               className={`rounded px-3 py-1.5 text-[13px] capitalize ${
                 layout === l ? 'bg-ink text-surface' : 'text-ink-muted'
               }`}
@@ -634,6 +716,7 @@ export function CalendarBoard() {
             </button>
           ))}
         </div>
+        ) : null}
       </div>
 
       {layout === 'list' ? (
