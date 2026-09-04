@@ -128,6 +128,19 @@ export const SuccessMetricsOutput = z.object({
 });
 
 /** Rounded to two places — these are read on a dashboard, not reconciled against a ledger. */
+/**
+ * Epoch millis from a value the schema calls a `Date`.
+ *
+ * Storage layers disagree: Postgres hands back `Date`, the dev store hands back
+ * whatever survived its last serialisation. Returns null for anything
+ * unreadable rather than throwing, because a metric is not worth a screen.
+ */
+function millis(at: Date | string | null | undefined): number | null {
+  if (at === null || at === undefined) return null;
+  const t = at instanceof Date ? at.getTime() : Date.parse(String(at));
+  return Number.isFinite(t) ? t : null;
+}
+
 const r2 = (n: number) => Number(n.toFixed(2));
 /** A rate with an honest empty case: no denominator means "no answer", not zero. */
 const rate = (numerator: number, denominator: number): number | null =>
@@ -178,9 +191,21 @@ export const analyticsSuccessMetrics = defineTool({
     const publishAttempts = calls.publishAttempts;
     const blockedOrHeld = calls.publishBlocked + calls.publishHeld;
 
+    /*
+      `getTime()` straight off these two threw `rows.firstPublishedAt.getTime is
+      not a function` and took the whole Performance & Learning tab down with it.
+
+      Both are typed `Date | null`, and the Postgres reader does return Dates —
+      but the dev store round-trips its rows, so a `publishedAt` that has been
+      through JSON comes back as an ISO *string* that still satisfies the type at
+      compile time. `millis` accepts either and refuses anything it cannot read,
+      so a bad timestamp costs one null metric rather than the tab.
+    */
+    const startMs = millis(rows.firstCampaignStartAt);
+    const publishedMs = millis(rows.firstPublishedAt);
     const hoursToFirstPost =
-      rows.firstCampaignStartAt && rows.firstPublishedAt
-        ? r2(Math.max(0, rows.firstPublishedAt.getTime() - rows.firstCampaignStartAt.getTime()) / 3_600_000)
+      startMs !== null && publishedMs !== null
+        ? r2(Math.max(0, publishedMs - startMs) / 3_600_000)
         : null;
 
     const activation = {
