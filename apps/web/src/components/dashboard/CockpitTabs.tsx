@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { EmptyCard } from './EmptyCard';
-import { platformLabel } from '@/lib/platforms';
-import { compactNumber, relativeTime } from '@/lib/relativeTime';
+import { EmptyCard } from '@/components/common/EmptyCard';
+import { platformLabel, postKindLabel } from '@/lib/platforms';
+import { compactNumber, relativeTime, slotDateTime } from '@/lib/relativeTime';
 import { cn } from '@/lib/utils';
 import type { BrandSeries, Lead, UpcomingPost } from './types';
 
@@ -62,7 +62,10 @@ export function CockpitTabs({
       `#F7F7F7` with a `rgba(12,12,12,0.1)` ring, sitting *behind* whichever
       label is active, and three 18px/500 labels at a 44px gap over the top.
       Active is `#0C0C0C`, inactive `#838383`, and the row is closed by a
-      `rgba(131,131,131,0.2)` hairline at y=80.
+      `rgba(131,131,131,0.2)` hairline at y=80 - which is what `pb-[28px]` buys:
+      29 + 23.04 + 28 puts it on 80. `pb-[15px]` closed the row at 67, 2px
+      under the chip instead of the design's 15, and pulled everything below
+      the card up with it.
 
       One chip that moves rather than three that toggle, for the same reason the
       sidebar glow is one element: it is what produces the slide between tabs.
@@ -75,7 +78,7 @@ export function CockpitTabs({
       <div
         role="tablist"
         aria-label="Cockpit panels"
-        className="relative flex flex-wrap items-center gap-x-11 gap-y-2 px-7 pb-[15px] pt-[29px]"
+        className="relative flex flex-wrap items-center gap-x-11 gap-y-2 px-7 pb-dash-tab-bottom pt-dash-tab-top"
         style={{ borderBottom: '1px solid rgba(131,131,131,0.2)' }}
       >
         {TABS.map((t) => (
@@ -131,7 +134,14 @@ export function CockpitTabs({
         ) : null}
       </div>
 
-      <div className="p-5">
+      {/*
+        No horizontal padding here. The design insets the three panels by
+        different amounts - Upcoming's row content by 17, Insights and Sales by
+        28 - and Upcoming's row rules are full-bleed (`left:0;width:846px`)
+        while its content is inset. A single `px` on this wrapper pulled those
+        rules 17px off both card edges, so each panel sets its own.
+      */}
+      <div>
         {tab === 'upcoming' ? <Upcoming posts={upcoming} /> : null}
         {tab === 'insights' ? <Insights series={series} /> : null}
         {tab === 'sales' ? <Sales leads={leads} counts={leadCounts} /> : null}
@@ -141,6 +151,26 @@ export function CockpitTabs({
 }
 
 /* ── Upcoming Contents ───────────────────────────────────────────────────── */
+
+/**
+ * The 23x24 calendar at the head of every Upcoming row — `#838383` strokes over
+ * an `rgba(131,131,131,0.3)` header block, traced from the prototype's own path
+ * data. Not `nav-icons`' CalendarIcon: that one is 26x26 and drawn for the rail,
+ * where it carries a star rather than a tinted header.
+ */
+function SlotCalendarGlyph() {
+  return (
+    <svg width="23" height="24" viewBox="0 0 24 25" fill="none" aria-hidden>
+      <path
+        d="M3 6.5A3.5 3.5 0 0 1 6.5 3h11A3.5 3.5 0 0 1 21 6.5v-.4c.1.9.2 1.9.3 2.9H2.7c.1-1 .2-2 .3-2.9Z"
+        fill="rgba(131,131,131,0.3)"
+      />
+      <rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#838383" strokeWidth="1.7" />
+      <path d="M2.9 9.9h18.2" stroke="#838383" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function Upcoming({ posts }: { posts: UpcomingPost[] }) {
   if (posts.length === 0) {
@@ -157,7 +187,7 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
       `rgba(131,131,131,0.1)` hairlines. Row type was 14px and 13px before,
       which is the size this list uses in the *draft panel*, not here.
     */
-    <div>
+    <div className="pt-[14px]">
       <ul className="flex flex-col">
         {posts.map((p, i) => (
           <li
@@ -165,38 +195,83 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
             className={i < posts.length - 1 ? 'border-b' : undefined}
             style={i < posts.length - 1 ? { borderColor: 'rgba(131,131,131,0.1)' } : undefined}
           >
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 py-[11px]">
-              <div className="min-w-0 flex-1">
-                <p className="text-20 font-semibold leading-[1.28] text-ink">
-                  {/* The slot's own time, in words. An absolute date is the wrong
-                      unit here — "in 2 days" is what tells you whether you have
-                      time to change it. */}
-                  {p.scheduledAt ? relativeTime(p.scheduledAt) : 'Not scheduled yet'}
+            {/*
+              The row is a grid, not a flex line.
+
+              The docstring above has described this layout correctly for a while
+              and the markup underneath it was a `flex flex-wrap` row: the slot
+              time flexed to fill, the media well floated after it, the platform
+              sat in a 150px box and View trailed the lot. So none of the design's
+              columns landed where it puts them, and the row measured 102 tall
+              against an 89px pitch.
+
+              Absolute offsets inside an 80px body, which is what the prototype
+              is: the body is inset 17 and 804 wide, and every child is placed
+              against its left edge. View is the one exception - anchored to the
+              right rather than to x=748 - because 748 of 804 *is* the right edge
+              (its box ends at 808) and anchoring it there keeps the row correct
+              at the 844px the card actually measures.
+            */}
+            {/*
+              A **bounded flex row**, not absolute offsets.
+
+              It was absolute — the slot time at x=52, the media well at 242,
+              the platform at 467, View pinned right — because those are the
+              design's own coordinates. But an absolutely-placed child has no
+              width, so a long summary ran straight under the media well and a
+              "no account chosen" platform ran under View. Every column
+              overlapped its neighbour the moment real text was longer than the
+              prototype's.
+
+              The widths below reproduce the same geometry at the card's own
+              844: a 23px glyph, 13 of gap, a 173-wide text column (52..225),
+              the 127 media well (225..352), a 98px gutter, then the platform,
+              with View trailing. Each column now *has* a width, so text
+              truncates at its own edge instead of crossing into the next one —
+              and below `xl`, where the card is narrower than the design ever
+              considered, the gutter collapses and the columns shrink rather
+              than colliding.
+            */}
+            <div className="flex h-dash-row-body items-center gap-[13px] px-dash-row-inset">
+              <span className="shrink-0" aria-hidden>
+                <SlotCalendarGlyph />
+              </span>
+
+              <div className="min-w-0 shrink xl:w-[173px] xl:shrink-0">
+                <p className="truncate text-20 font-semibold leading-[1.28] text-ink">
+                  {p.scheduledAt ? slotDateTime(p.scheduledAt) : 'Not scheduled yet'}
                 </p>
-                <p className="mt-[9px] truncate text-16 text-ink-muted">{p.summary}</p>
+                <p className="mt-[10px] truncate text-16 font-normal text-ink-muted" title={p.summary}>
+                  {p.summary}
+                </p>
               </div>
 
               {/*
                 The 127x80 media well. `content.list` carries `mediaType` but no
                 URL, so it names the medium instead of showing a still that is
-                not the post's - the same gap the rail has, and the same field
+                not the post's — the same gap the rail has, and the same field
                 (`mediaUrl` on `ContentListItem`) would close both.
               */}
               <div
-                className="flex h-20 w-[127px] shrink-0 items-center justify-center rounded-md text-[12px] text-ink-muted"
+                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-[12px] text-ink-muted xl:w-[127px]"
                 style={{ background: 'rgba(131,131,131,0.1)' }}
               >
                 {p.mediaType ?? 'text'}
               </div>
 
-              <div className="flex w-[150px] shrink-0 items-center">
-                {/* "no account chosen" is a real state — `calendar.generate`
-                    places the slot and leaves the platform to the slot's own
-                    choice — so it says that rather than showing nothing. */}
-                <span className="text-18 font-medium text-ink">
-                  {p.platform ? platformLabel(p.platform) : 'no account chosen'}
-                </span>
-              </div>
+              {/*
+                The design's "Instagram Reel" / "Carousel" / "Linkedin Post" —
+                the platform *and* the format, not the platform alone. "no
+                account chosen" is a real state: `calendar.generate` places the
+                slot and leaves the platform to the slot's own choice, so it
+                says that rather than showing nothing.
+              */}
+              <span
+                className="min-w-0 flex-1 truncate text-18 font-medium text-ink xl:pl-[98px]"
+                title={p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+              >
+                {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+              </span>
 
               <Link
                 href={`/agents?draft=${encodeURIComponent(p.contentItemId)}`}
@@ -208,13 +283,16 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 </svg>
               </Link>
             </div>
+            {/* 89px pitch: an 80px body, 8 of gap, and the 1px rule the li's
+                own border draws — the rule is inside the 89, not under it. */}
+            <div className="h-[8px]" aria-hidden />
           </li>
         ))}
       </ul>
 
       {/* 134.3x39 at radius 8.29, `rgba(163,65,255,0.1)` inside a 1.06px
           `#A341FF` ring - an outlined purple button, not the shell's default. */}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-end px-[24.7px] pb-4">
         {/* 134.3x39 at radius 8.29 - a fixed box, not padding-sized. The
             label is 14.92px/500, which at `px-4` made the button 118px. */}
         <Link
@@ -239,7 +317,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
   const peak = Math.max(1, ...series.days.map((d) => d.impressions));
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-8 px-dash-panel-inset pb-5 pt-5 lg:grid-cols-2">
       <div>
         {/* "Impressions · last 7 days" at 16px/500 grey, the figure at 32px/600,
             and the delta chip beside it - a 26px pill at radius 8 on `#E7FAE7`
@@ -251,7 +329,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
           <p className="text-[32px] font-semibold tabular-nums leading-none text-ink">
             {compactNumber(series.totals.impressions)}
           </p>
-          <DeltaChip changePct={series.impressionsChangePct} />
+          <DeltaChip changePct={series.changePct.impressions} />
         </div>
 
         {/* A column per day, including empty ones. Bars rather than a line,
@@ -399,7 +477,7 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
       Everything here was 13-15px before, which is the draft panel's scale.
     */
-    <div>
+    <div className="px-dash-panel-inset pb-5 pt-5">
       <p className="text-20 font-semibold text-ink">
         {total} sales {total === 1 ? 'opportunity' : 'opportunities'}
       </p>
@@ -449,10 +527,14 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
                       &ldquo;{lead.messageText}&rdquo;
                     </p>
                   ) : null}
-                  {/* The recommended action is the reason the row exists — a lead
-                      with no next step is just a name. Not in the prototype's
-                      row, and the row is the wrong place to drop it. */}
-                  <p className="mt-[6px] text-[15px] text-ink">{lead.recommendedAction}</p>
+                  {/* The recommended action rode here as a third line, under a
+                      comment that already said "not in the prototype's row, and
+                      the row is the wrong place to drop it" - and then dropped it
+                      there anyway. The design's row is name+handle, the quote,
+                      the chip and time, and Engage; an always-present fourth
+                      line pushed every row past its 52px and the list past the
+                      card. It is on the button now, which is the control that
+                      carries it out. */}
                   {lead.routedTo ? (
                     <p className="mt-[4px] text-[13px] text-ink-muted">Sent to {lead.routedTo}</p>
                   ) : null}
@@ -472,6 +554,7 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
                 <Link
                   href="/engagement"
+                  title={lead.recommendedAction}
                   className="flex h-9 w-[88px] shrink-0 items-center justify-center rounded-[9px] bg-ink text-14 font-semibold text-white"
                 >
                   Engage

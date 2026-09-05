@@ -119,12 +119,24 @@ export interface CampaignPlan {
 export function planCampaign(args: CampaignPlanArgs): CampaignPlan {
   const { genome, inventory, objective, windowDays } = args;
 
-  const { ranked } = resolve(genome, inventory);
-  const mix = deriveMix(genome);
+  /*
+    A campaign has its own objective, which need not be the genome's standing
+    one — "fill quiet days" this month, "book calls" next. Both of these used to
+    ignore it.
 
-  // A campaign has its own objective, which need not be the genome's standing
-  // one — "fill quiet days" this month, "book calls" next. Re-ranking on the
-  // campaign's objective is the difference between a plan and a template.
+    `resolve` gated on `genome.dimensions.objective`, so a playbook that fits
+    only this campaign's goal had already been rejected before the sort below
+    could reach it: a hiring campaign for a brand onboarded as "leads" could
+    never surface a hiring playbook. `deriveMix` took only the genome, so every
+    campaign for a brand produced the same pillar ratio whatever was chosen.
+    Between them, "What is this campaign for?" changed almost nothing about the
+    result.
+  */
+  const { ranked } = resolve(genome, inventory, undefined, objective);
+  const mix = deriveMix(genome, objective);
+
+  // The sort stays. `resolve` now gates on the right objective, and this orders
+  // what survived by how well it fits — a gate and a ranking, not one doing both.
   const forObjective = [...ranked].sort(
     (a, b) => objectiveFit(b.playbook, objective) - objectiveFit(a.playbook, objective),
   );

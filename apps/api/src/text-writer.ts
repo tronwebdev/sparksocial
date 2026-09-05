@@ -97,7 +97,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
   async function attemptWrite({
-    genome, playbook, promptRef, intent, beatId, durationSec, outline,
+    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective,
   }: Parameters<TextWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'copy writer',
@@ -107,7 +107,12 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
             model,
             max_tokens: 500,
             system: SYSTEM,
-            messages: [{ role: 'user', content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }) }],
+            messages: [
+              {
+                role: 'user',
+                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective),
+              },
+            ],
             tools: [
               {
                 name: TOOL_NAME,
@@ -247,6 +252,104 @@ const OVERLAY_WORDS: [number, number] = [6, 16];
  * The narrowest platform wins when a playbook targets several: copy that fits X
  * can be posted to LinkedIn, and the reverse gets truncated by the platform.
  */
+/**
+ * What each content pillar is *for*, in the words the writer needs.
+ *
+ * ── The bug this fixes ────────────────────────────────────────────────────
+ *
+ * The brief handed the model the business, the offer and — whenever no later
+ * beat carried one — `Primary call to action: …`, and then said nothing about
+ * what kind of post this was. `playbook.content_pillar` was sitting in scope,
+ * unused. So a model given a brand, its offer and a CTA wrote the only thing
+ * that brief describes: an advert. Every pillar came out promotional, and the
+ * reported symptom was educational posts that were all about promotions and
+ * demos.
+ *
+ * The mix engine exists to balance these five against each other (§5.2, and the
+ * promotional ceiling in `mix.ts`). That balance is meaningless if four of the
+ * five read like the fifth — a brand posting 20% product and 80% "education"
+ * that is also product is posting 100% product, and the ceiling it thinks it is
+ * enforcing does nothing.
+ *
+ * Stated as prohibitions as well as intentions, because "teach something
+ * useful" alone loses to a CTA sitting four lines above it. The writer needs to
+ * be told what *not* to reach for.
+ *
+ * `product` is the one pillar where selling is the job, and it says so — the
+ * point is not that promotion is bad, it is that it belongs in one fifth of the
+ * mix rather than all of it.
+ */
+/**
+ * The pillars a call to action is withheld from.
+ *
+ * A post that must not pitch must also not be handed the pitch. These three
+ * still end on the playbook's own literal CTA beat where it has one — that is a
+ * fixed line from the genome, not something the writer talked itself into.
+ *
+ * A denylist rather than an allowlist, and the first version got this wrong:
+ * `CTA_PILLARS.has(pillar ?? '')` withheld the CTA from any playbook with no
+ * pillar at all, which silently changed behaviour for every unpillared one and
+ * broke an existing test that had been asserting it. I know which three pillars
+ * must not pitch; I do not know that about a pillar I have not seen, and the
+ * safe default there is the behaviour that was already there.
+ */
+/**
+ * What each campaign objective wants out of a post, in the writer's terms.
+ *
+ * The pillar says what kind of post this is; the objective says what the
+ * campaign is trying to achieve. The writer had neither, then gained the pillar,
+ * and this is the other half — without it a hiring campaign and a sales
+ * campaign produce identical copy from identical playbooks, which is what made
+ * "What is this campaign for?" a question with no visible consequence.
+ *
+ * Deliberately about *emphasis*, not a licence to pitch. A `sales` objective
+ * does not let an educational beat become an advert — `PILLAR_BRIEF` still
+ * forbids that, and it is stated after this line so it reads last.
+ */
+const OBJECTIVE_BRIEF: Record<string, string> = {
+  bookings:
+    "The campaign's goal is bookings: appointments, tables or jobs. Favour the concrete — what " +
+    'happens when someone books, how soon, what it costs.',
+  leads:
+    "The campaign's goal is enquiries: someone should want to ask a question. Leave a real reason " +
+    'to get in touch rather than answering everything.',
+  trials:
+    "The campaign's goal is sign-ups for a trial. Make the first five minutes of using it legible: " +
+    'what they will do, and what they will see.',
+  sales:
+    "The campaign's goal is sales. Be specific about what is being bought and for whom; vagueness " +
+    'reads as evasion at the point of purchase.',
+  audience:
+    "The campaign's goal is a bigger audience. Write something worth following whether or not the " +
+    'reader ever buys — shareable beats persuasive here.',
+  hiring:
+    "The campaign's goal is hiring. Write for someone deciding whether to work here: the work, the " +
+    'people, how decisions get made. Not for a customer.',
+};
+
+const NO_CTA_PILLARS = new Set(['educational', 'proof', 'personality']);
+
+const PILLAR_BRIEF: Record<string, string> = {
+  educational:
+    'This is an EDUCATIONAL post. Teach one specific, useful thing the reader can act on today — ' +
+    'whether or not they ever buy from this business. Do not pitch, do not list features, do not ' +
+    'compare against alternatives, and do not frame the lesson as a reason to choose this business. ' +
+    'The reader should finish it better informed even if they never heard of the brand again.',
+  product:
+    'This is a PRODUCT post. Selling is the job here: say plainly what the thing is, who it is for, ' +
+    'and why it is worth the money. Be concrete about what it does rather than how it feels.',
+  proof:
+    'This is a PROOF post. Let the evidence carry it — a result, a number, a before and after, a ' +
+    "customer's own words. State what happened and for whom. Do not add persuasion on top of it; " +
+    'the evidence is the argument, and adjectives weaken it.',
+  personality:
+    'This is a PERSONALITY post. It is about the people, the craft and how the work actually gets ' +
+    'done. No pitch and no offer — someone should be able to read it and simply like these people.',
+  community:
+    'This is a COMMUNITY post. Speak to the audience about something they share: a local event, a ' +
+    'shared frustration, a question worth answering. Invite a reply rather than a purchase.',
+};
+
 function beatBudget(playbook: Playbook, durationSec: number): { min: number; max: number; why: string } {
   if (durationSec > 0) {
     const mid = Math.round(durationSec * WORDS_PER_SEC);
@@ -279,6 +382,7 @@ function prompt(
   promptRef: string,
   intent: string | undefined,
   beat: { beatId: string; durationSec: number; outline: BeatOutlineEntry[] },
+  objective?: string,
 ): string {
   const { identity, voice, audience, offer } = genome;
   const budget = beatBudget(playbook, beat.durationSec);
@@ -318,10 +422,24 @@ function prompt(
      * reading "Book a chair". Naming a thing and banning it in the same breath is
      * a prompt bug, not a model failure.
      */
-    offer?.primary_cta && !ctaHandled ? `Primary call to action: ${offer.primary_cta}` : '',
+    /**
+     * Withheld from the pillars that must not pitch, as well as when a later
+     * beat carries it.
+     *
+     * Naming the CTA to an educational beat and then asking it not to sell is
+     * the same contradiction the note below describes, and the model resolves
+     * it the same way: it sells. `product` gets the CTA because selling is that
+     * pillar's job; `community` gets it because inviting a reply needs
+     * somewhere to send people.
+     */
+    offer?.primary_cta && !ctaHandled && !NO_CTA_PILLARS.has(playbook.content_pillar ?? '')
+      ? `Primary call to action: ${offer.primary_cta}`
+      : '',
     '',
     `Playbook: ${playbook.name} — ${playbook.description}`,
     `Publishing to: ${playbook.output.platforms.join(', ')} as ${playbook.output.media_type}`,
+    // The pillar, and what it forbids. See `PILLAR_BRIEF`.
+    playbook.content_pillar ? PILLAR_BRIEF[playbook.content_pillar] ?? '' : '',
     '',
     `Beat to write: ${promptRef} (the "${beat.beatId}" beat)`,
     `Length: ${budget.min}-${budget.max} words (${budget.why}). Use the range; do not come in far under it.`,
@@ -339,6 +457,15 @@ function prompt(
       ? 'A later beat already carries the call to action. Do not write one, and do not end on an ' +
         'invitation to book, buy or get in touch.'
       : '',
+    /**
+     * What the campaign is for.
+     *
+     * Placed after the pillar, because the two together are the whole brief:
+     * the pillar says what kind of post this is and the objective says what the
+     * campaign wants out of it. Either alone produces the same post for every
+     * campaign, which is what it did.
+     */
+    objective ? OBJECTIVE_BRIEF[objective] ?? `The campaign's goal: ${objective}.` : '',
     intent ? `What this specific post is about: ${intent}` : '',
   ]
     .filter(Boolean)

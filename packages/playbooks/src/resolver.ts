@@ -6,6 +6,7 @@ import {
   unlockRouteFor,
   type AssetRole,
   type Genome,
+  type Objective,
 } from '@sparksocial/shared';
 import type { AssetInventory } from './golden.js';
 import { PLAYBOOKS } from './records.js';
@@ -69,7 +70,26 @@ export interface Resolution {
   rejected: Array<{ playbook_id: string; because: string }>;
 }
 
-export function resolve(genome: Genome, assets: AssetInventory, library: readonly Playbook[] = PLAYBOOKS): Resolution {
+export function resolve(
+  genome: Genome,
+  assets: AssetInventory,
+  library: readonly Playbook[] = PLAYBOOKS,
+  /**
+   * Which objective to gate and score against.
+   *
+   * Defaults to the genome's standing objective, which is what every caller got
+   * before and is right for "what could this brand make at all" — the asset-gap
+   * report, the capture fallback, the playbook browser.
+   *
+   * It is wrong for a campaign, and that was a real bug. A campaign has its own
+   * objective: `planCampaign` asked for one, then re-sorted a list that had
+   * already been filtered by the *brand's* objective — so a "hiring" campaign
+   * for a brand onboarded as "leads" could never reach a playbook that only
+   * fits hiring. It had been rejected two steps earlier, and the re-sort had
+   * nothing to rescue. The gate has to move, not the ordering.
+   */
+  objective: Objective = genome.dimensions.objective,
+): Resolution {
   const { dimensions: d, constraints } = genome;
   const ranked: ResolvedPlaybook[] = [];
   const rejected: Resolution['rejected'] = [];
@@ -83,21 +103,25 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
     const pre = p.preconditions;
 
     /* 1 ── Dimension preconditions. Absent means "no constraint on this axis". */
-    if (pre.proof_asset_any?.length && !pre.proof_asset_any.some((v) => d.proof_asset.includes(v))) {
+    if (pre.proof_asset_any?.length && !pre.proof_asset_any.some((v) => (d.proof_asset ?? []).includes(v))) {
       rejected.push({
         playbook_id: p.playbook_id,
-        because: `needs proof asset ${pre.proof_asset_any.join('/')}, genome has ${d.proof_asset.join('/')}`,
+        because:
+          `needs proof asset ${pre.proof_asset_any.join('/')}, genome has ` +
+          `${(d.proof_asset ?? []).join('/') || 'none recorded'}`,
       });
       continue;
     }
 
     if (
       pre.capture_capability_any?.length &&
-      !pre.capture_capability_any.some((v) => d.capture_capability.includes(v))
+      !pre.capture_capability_any.some((v) => (d.capture_capability ?? []).includes(v))
     ) {
       rejected.push({
         playbook_id: p.playbook_id,
-        because: `needs capture ${pre.capture_capability_any.join('/')}, genome has ${d.capture_capability.join('/')}`,
+        because:
+          `needs capture ${pre.capture_capability_any.join('/')}, genome has ` +
+          `${(d.capture_capability ?? []).join('/') || 'none recorded'}`,
       });
       continue;
     }
@@ -174,9 +198,9 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
     const unlockedBy = !hasGenome ? ('answer' as const) : hasAssets ? undefined : unlockRouteFor(missingRoles);
 
     /* 5 ── Score. §5.2's four multiplicands. */
-    const objectiveFit = p.objective_fit[d.objective] ?? 0;
+    const objectiveFit = p.objective_fit[objective] ?? 0;
     if (objectiveFit === 0) {
-      rejected.push({ playbook_id: p.playbook_id, because: `no fit for objective "${d.objective}"` });
+      rejected.push({ playbook_id: p.playbook_id, because: `no fit for objective "${objective}"` });
       continue;
     }
 
@@ -186,8 +210,21 @@ export function resolve(genome: Genome, assets: AssetInventory, library: readonl
 
     // A secondary objective contributes at a discount — it is a tiebreaker, not a
     // second primary, or the mix drifts toward whatever serves two goals weakly.
+    /*
+      `?? []` because a *draft* genome legitimately has incomplete dimensions —
+      `genomeRepository.createDraft` writes them through
+      `GenomeDimensions.partial()` and says so — and this resolver runs against
+      exactly that shape during onboarding and campaign planning.
+
+      The read boundary now re-applies this field's `.default([])`, so the value
+      should always arrive as an array. This stays because a crash here takes the
+      whole of campaign creation with it, and the resolver is reached from four
+      tools: being wrong about one optional field should cost a tiebreaker, not
+      the plan.
+    */
     const secondary =
-      d.secondary_objectives.reduce((best, o) => Math.max(best, p.objective_fit[o] ?? 0), 0) * 0.25;
+      (d.secondary_objectives ?? []).reduce((best, o) => Math.max(best, p.objective_fit[o] ?? 0), 0) *
+      0.25;
 
     const score = (objectiveFit + secondary) * availability * saturation * learned;
 

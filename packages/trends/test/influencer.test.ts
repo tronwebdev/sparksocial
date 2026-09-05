@@ -93,6 +93,7 @@ const post = (over: Partial<Trend> = {}): Trend => ({
   id: 'p1',
   source: 'instagram' as Trend['source'],
   topic: 'One continuous shot of a fade',
+  regions: [],
   tags: ['before_after', 'craft'],
   metrics: { volume: 4_000, velocity: 0.6, saturation: 0.2, growth: 1.1 },
   samples: [],

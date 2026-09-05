@@ -13,6 +13,7 @@
       "port": 8080
     },
     {
+      "//web": "Pinned to 3000, not autoPort: Clerk's dev instance authorises http://localhost:3000 (CLERK_AUTHORIZED_PARTIES) and the API's CORS allowlist matches it, so on any other port sign-in fails. Free the port rather than moving the app.",
       "name": "web",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -21,7 +22,8 @@
         "-w",
         "@sparksocial/web"
       ],
-      "port": 3000
+      "port": 3000,
+      "autoPort": false
     },
     {
       "name": "web-verify",
@@ -32,7 +34,20 @@
         "-w",
         "@sparksocial/web"
       ],
-      "port": 3000
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "proto",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4173",
+        "--directory",
+        "ui build"
+      ],
+      "port": 4173
     }
   ]
 }

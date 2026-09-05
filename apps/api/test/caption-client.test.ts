@@ -227,3 +227,32 @@ describe('video and audio', () => {
     expect(call.messages[0]!.content).toContain('</untrusted>');
   });
 });
+
+describe('documents', () => {
+  it('sends a PDF as a document block by URL, not as an image', async () => {
+    const anthropic = say('A two-page takeaway menu, wood-fired pizzas and sides, with prices.');
+    const out = await createCaptionClient({ anthropic }).caption('https://cdn.example/menu.pdf', 'document');
+
+    const call = (anthropic.messages.create as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]![0] as {
+      messages: Array<{ content: Array<{ type: string; source?: { type?: string; url?: string } }> }>;
+    };
+    const doc = call.messages[0]!.content.find((c) => c.type === 'document');
+    expect(doc?.source).toEqual({ type: 'url', url: 'https://cdn.example/menu.pdf' });
+    expect(out).toMatch(/menu/i);
+  });
+
+  it('falls back to the filename when no document-capable vendor answers', async () => {
+    /* The OpenAI shim maps text and image blocks only, so a `document` block
+       has no second vendor — the file still has to become an asset. */
+    const anthropic = {
+      messages: { create: vi.fn(async () => { throw new Error('400 unsupported content part'); }) },
+    } as unknown as Anthropic;
+
+    const out = await createCaptionClient({ anthropic }).caption(
+      'https://cdn.example/rate%20card.pdf',
+      'document',
+    );
+    expect(out).toContain('rate card.pdf');
+    expect(out).toMatch(/not read/i);
+  });
+});

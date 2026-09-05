@@ -10,15 +10,56 @@
  * the point of use.
  */
 
-/** `analytics.brand_series` */
+/**
+ * `analytics.brand_series`
+ *
+ * The tool now returns the interactions individually as well as summed —
+ * likes, comments, shares and saves beside `engagements` — because `CC-04`'s
+ * Performance tiles need the parts. `changePct` replaced the two scalar
+ * `*ChangePct` fields for the same reason: six tiles each want a delta, and
+ * six scalars would put the "null when there was nothing before" rule in six
+ * places.
+ *
+ * Clicks are not here on purpose. A click is a CTA-link event Dub owns, read
+ * by `analytics.cta_traffic` — putting it on this tool would either duplicate
+ * Dub's number or make the dashboard's main read wait on an external API.
+ */
+export interface SeriesTotals {
+  posts: number;
+  impressions: number;
+  views: number;
+  engagements: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+}
+
 export interface BrandSeries {
   windowDays: number;
   basis: string;
-  days: Array<{ date: string; posts: number; impressions: number; engagements: number }>;
-  totals: { posts: number; impressions: number; views: number; engagements: number };
-  previous: { posts: number; impressions: number; views: number; engagements: number };
-  impressionsChangePct: number | null;
-  engagementsChangePct: number | null;
+  days: Array<{
+    date: string;
+    posts: number;
+    impressions: number;
+    engagements: number;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    saves: number;
+  }>;
+  totals: SeriesTotals;
+  previous: SeriesTotals;
+  changePct: {
+    impressions: number | null;
+    engagements: number | null;
+    views: number | null;
+    likes: number | null;
+    comments: number | null;
+    shares: number | null;
+    saves: number | null;
+  };
   byPlatform: Array<{ platform: string; impressions: number; share: number }>;
   maturing: number;
   unmeasured: number;

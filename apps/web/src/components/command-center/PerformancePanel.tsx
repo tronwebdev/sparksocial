@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { PerformanceCards } from './PerformanceCards';
+import type { BrandSeries } from '@/components/dashboard/types';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 
@@ -80,7 +82,7 @@ interface Metrics {
 }
 
 /** 7 / 30 / 90, matching the tool's own 7-day floor and the default campaign window. */
-const WINDOWS = [7, 30, 90] as const;
+export const WINDOWS = [7, 30, 90] as const;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -91,10 +93,44 @@ function duration(hours: number): string {
   return `${Math.round(hours / 24)} days`;
 }
 
-export function PerformancePanel({ genomeId }: { genomeId: string | undefined }) {
-  const [windowDays, setWindowDays] = useState<number>(30);
+export function PerformancePanel({
+  genomeId,
+  windowDays,
+  onOpenPost,
+}: {
+  genomeId: string | undefined;
+  /** 7, 30 or 90 — see `PerformanceHeader`, which owns the control. */
+  windowDays: number;
+  /** Opens the draft panel — `CC-04`'s "View insights" and the trending rows. */
+  onOpenPost?: (contentItemId: string) => void;
+}) {
+  /*
+    `brand_series` for the tiles, on the same window the Date chip sets.
+    `metrics.snapshot` (below) is the agent-feedback half; the two answer
+    different questions and are read separately rather than merged into one
+    call that neither half needs all of.
+  */
+  const [series2, setSeries2] = useState<BrandSeries | null>(null);
+  /* Held by the page, because the header that changes it lives in the shell's
+     full-width band and the body that reads it lives in the 1159 column. */
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!genomeId) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<BrandSeries>('analytics.brand_series', {
+        genomeId,
+        // The tool caps the window at 90, which is also this panel's largest.
+        windowDays: Math.min(windowDays, 90),
+      });
+      if (!cancelled && res.status === 'succeeded') setSeries2(res.output);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [genomeId, windowDays]);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -123,37 +159,37 @@ export function PerformancePanel({ genomeId }: { genomeId: string | undefined })
 
   if (!genomeId) return null;
 
-  return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-[18px] font-semibold text-ink">Performance</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">
-            {metrics
-              ? `Since ${new Date(metrics.since).toLocaleDateString('en', { day: 'numeric', month: 'long' })}.`
-              : 'How this brand is actually doing.'}
-          </p>
-        </div>
+  /*
+    No card of its own.
 
-        <div className="flex shrink-0 gap-1" role="group" aria-label="Reporting window">
-          {WINDOWS.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setWindowDays(d)}
-              aria-pressed={windowDays === d}
-              className={cn(
-                'rounded-full border px-3 py-1 text-[12px]',
-                windowDays === d
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border text-ink hover:bg-surface-muted',
-              )}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
+    This was `rounded-xl bg-white/60 p-6`, a translucent panel wrapping the whole
+    tab — and the design has nothing there: its Top Post card sits at 47,241
+    directly on the canvas wash, the same x as the Overview's hero. The wrapper
+    inset every card by 24 and took 48px off their width, so the tile row
+    measured 1111.7 where the design gives it 1159.
+  */
+  return (
+    /*
+      The tab's own header, off the design: the title at 24px/600, the subtitle
+      at 16px, and five 190x54 filter chips at radius 12 on white with a
+      `0 10px 26px -18px` shadow, on a 206px pitch.
+
+      This was an 18px heading with three little `7d / 30d / 90d` pills. The
+      chips are the design's, and only the first of them can work: Date is this
+      panel's reporting window, and there is no channel, content-type, status or
+      account filter on `metrics.snapshot` at all. The other four are drawn and
+      disabled, each saying so — the design toasts all five as mocks, so nothing
+      is lost that was ever real.
+    */
+    <section className="flex flex-col gap-[19px]">
+
+      {/*
+        `CC-04`'s body — the Top Post card, the five metric tiles, the insight
+        banner and the Top Trending Post list. It sits between this panel's
+        header and its agent-feedback sections, which is where the design has
+        it, and reads `brand_series` for the tiles.
+      */}
+      <PerformanceCards genomeId={genomeId} series={series2} onOpenPost={onOpenPost} />
 
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
 

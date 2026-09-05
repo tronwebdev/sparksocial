@@ -61,6 +61,14 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
       return scoped.setAssetCaption(db, { orgId, brandId: orgId, genomeId }, { id, caption, embedding });
     },
 
+    async unfiled(genomeId, orgId) {
+      return scoped.listUnfiledAssets(db, { orgId, brandId: orgId, genomeId });
+    },
+
+    async awaitingRights(genomeId, orgId) {
+      return scoped.listAssetsAwaitingRights(db, { orgId, brandId: orgId, genomeId });
+    },
+
     async setRights({ id, genomeId, orgId, rightsStatus }) {
       return scoped.setAssetRights(db, { orgId, brandId: orgId, genomeId }, { id, rightsStatus });
     },

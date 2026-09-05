@@ -1,4 +1,4 @@
-import type { InfluencerWatchStore, TrendWatchlistStore } from '@sparksocial/tools/defineTool';
+import type { InfluencerWatchStore, TrendSourceMuteStore, TrendWatchlistStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import * as scoped from './scoped.js';
 
@@ -33,6 +33,28 @@ function toEntry(row: scoped.TrendWatchlistRow) {
     topic: row.topic,
     createdAt: row.createdAt,
     ...(row.note ? { note: row.note } : {}),
+  };
+}
+
+/**
+ * `trend_source_mutes` backed by Postgres — `trend.source.mute`. Genome-scoped
+ * for the same reason the watchlist is: which vendors a client has turned off
+ * is that client's business, and two brands in one agency are allowed to
+ * disagree about it.
+ */
+export function createTrendSourceMuteRepository(db: Database): TrendSourceMuteStore {
+  return {
+    async list(genomeId, orgId) {
+      return scoped.listMutedTrendSources(db, { orgId, brandId: orgId, genomeId });
+    },
+
+    async mute({ genomeId, orgId, source }) {
+      await scoped.muteTrendSource(db, { orgId, brandId: orgId, genomeId }, source);
+    },
+
+    async unmute({ genomeId, orgId, source }) {
+      await scoped.unmuteTrendSource(db, { orgId, brandId: orgId, genomeId }, source);
+    },
   };
 }
 

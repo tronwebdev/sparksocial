@@ -21,9 +21,15 @@ import {
   makeAssetIngestUrl,
   makeAssetUploadUrl,
   assetRightsSet,
+  assetRightsPending,
   assetReuse,
   assetCooldownCheck,
   assetFolderCreate,
+  assetFolderRename,
+  assetUnfiled,
+  assetFolderMembers,
+  assetFolderMemberSet,
+  assetFolderDelete,
   assetFolderMove,
   assetFolderList,
 } from '@sparksocial/assetgraph';
@@ -165,7 +171,7 @@ import {
   trendInfluencerWatch,
   makeTrendInfluencerReview,
   makeTrendSources,
-  describeKeywordSupport,
+  makeTrendSourceMute,
 } from '@sparksocial/trends';
 import {
   recipeValidate,
@@ -180,7 +186,7 @@ import {
   recipeOutputDecide,
 } from '@sparksocial/recipes';
 import { fetchTextForRecipes, fetchWithAuthForRecipes } from './recipe-fetch.js';
-import { buildTrendSource, buildTrendSourceEntries } from './trend-sources.js';
+import { buildTrendSource, describeAllTrendSources } from './trend-sources.js';
 import { learningRecordOutcome, learningReweight, learningConfidence, learningExplain, learningFreeze, learningReset } from '@sparksocial/learning';
 import {
   makeAnalyticsSync,
@@ -370,11 +376,17 @@ export function registerAlphaTools(): void {
   register(makeAssetCaptionSet(embed));
   register(assetGaps);
   register(assetRightsSet);
+  register(assetRightsPending);
   register(assetReuse);
   register(assetCooldownCheck);
   register(assetFolderCreate);
   register(assetFolderMove);
   register(assetFolderList);
+  register(assetFolderRename);
+  register(assetUnfiled);
+  register(assetFolderMembers);
+  register(assetFolderMemberSet);
+  register(assetFolderDelete);
 
   // Assemble (§6.5): build a post from what the brand already owns. The
   // highest-value path for SaaS, agency, freelancer and e-commerce.
@@ -582,7 +594,17 @@ export function registerAlphaTools(): void {
    * owner should act on and one they should ignore. Described from the same
    * entries the composite was built from, so the two cannot disagree.
    */
-  register(makeTrendSources(() => describeKeywordSupport(buildTrendSourceEntries())));
+  /* `describeAllTrendSources`, not `describeKeywordSupport(entries)`: the rail
+     lists every vendor with its state, and the entries list only holds the ones
+     that have credentials. */
+  register(makeTrendSources(() => describeAllTrendSources()));
+  /**
+   * The brand's own switch, as opposed to the operator's
+   * `TREND_SOURCE_*_ENABLED`. Unconditional: muting is a preference over
+   * whatever happens to be configured, so it stays callable even when the
+   * deployment is running on the stub source.
+   */
+  register(makeTrendSourceMute());
   register(makeTrendExplain(trendSource));
   register(makeTrendObserve(trendSource));
 

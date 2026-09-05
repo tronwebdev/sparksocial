@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { and, asc, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
-import type { HumanLoopStore, HumanMessage } from '@sparksocial/tools/defineTool';
+import type { HumanLoopStore, HumanMessage, NotificationTopic } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { humanMessages } from './schema.js';
 
@@ -14,7 +14,7 @@ import { humanMessages } from './schema.js';
  */
 export function createHumanLoopRepository(db: Database): HumanLoopStore {
   return {
-    async create({ brandId, orgId, kind, body, options, urgency, runId }) {
+    async create({ brandId, orgId, kind, body, options, urgency, runId, topic, target }) {
       const [row] = await db
         .insert(humanMessages)
         .values({
@@ -26,6 +26,8 @@ export function createHumanLoopRepository(db: Database): HumanLoopStore {
           urgency,
           ...(options?.length ? { options } : {}),
           ...(runId ? { runId } : {}),
+          ...(topic ? { topic } : {}),
+          ...(target ? { targetType: target.type, targetId: target.id } : {}),
         })
         .returning();
 
@@ -184,5 +186,10 @@ function toMessage(row: typeof humanMessages.$inferSelect): HumanMessage {
     ...(row.answeredBy ? { answeredBy: row.answeredBy } : {}),
     ...(row.channel ? { channel: row.channel } : {}),
     ...(row.readAt ? { readAt: row.readAt } : {}),
+    ...(row.topic ? { topic: row.topic as NotificationTopic } : {}),
+    /* Both halves or neither — a target type with no id points at nothing. */
+    ...(row.targetType === 'content_item' && row.targetId
+      ? { target: { type: 'content_item' as const, id: row.targetId } }
+      : {}),
   };
 }

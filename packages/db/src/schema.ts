@@ -112,6 +112,46 @@ export const assetFolders = pgTable(
 );
 
 /**
+ * WHO IS ON A FOLDER — `asset.folder.member.set`.
+ *
+ * ── What this is, and pointedly what it is not ────────────────────────────
+ *
+ * It is a *responsibility* marker: who is looking after the footage in this
+ * folder. It is **not** an access control, and nothing reads it to decide what
+ * anybody may see. Retrieval is scoped by genome
+ * (`buildRetrieveQuery` in `scoped.ts`) and never by folder, so a folder is
+ * visible to everyone who can reach the brand — writing rows here does not
+ * change that, and a UI that implied otherwise would be promising a boundary
+ * the query layer does not enforce.
+ *
+ * It is also deliberately **separate from `brand_members`**. Assigning somebody
+ * to a folder must not grant, revoke or alter their standing on the brand: that
+ * lives in Clerk's org membership plus `brand_members`, is what `team.role.set`
+ * writes, and is what the session claims are built from. Two tables, one
+ * direction of travel — a folder row can be added and removed all day without
+ * a single brand permission moving.
+ *
+ * `userId` is Clerk's, unvalidated against Clerk on write: the id comes from
+ * `team.list`, and a stale row for somebody who has left the org is a name that
+ * no longer resolves, not a security hole (see above — it grants nothing).
+ */
+export const assetFolderMembers = pgTable(
+  'asset_folder_members',
+  {
+    orgId: text('org_id').notNull(),
+    folderId: uuid('folder_id').notNull(),
+    userId: text('user_id').notNull(),
+    /** Who did the assigning, for the same reason `connectedBy` exists on a token. */
+    assignedBy: text('assigned_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.folderId, t.userId] }),
+    index('asset_folder_members_scope_idx').on(t.orgId, t.folderId),
+  ],
+);
+
+/**
  * `content_links` — `link.shorten`'s CTA attribution, when called with a
  * `contentItemId`. `link.shorten` itself is a pure passthrough to Dub with no
  * storage of its own; this is what lets `analytics.cta_traffic` later ask
@@ -1006,6 +1046,26 @@ export const humanMessages = pgTable(
      * decision somebody made.
      */
     readAt: timestamp('read_at', { withTimezone: true }),
+    /**
+     * What kind of thing happened — `content_ready`, `published`, `failed`,
+     * `queued`, `connection`, or absent for a plain message.
+     *
+     * A notification list is read by glance, not by sentence: the icon and the
+     * colour are what tell somebody "a render failed" apart from "four posts
+     * were queued" before they read a word. Deriving that by matching on
+     * `body` would be guessing at prose the writer is free to change, so the
+     * writer states it. Nullable because every row written before this column
+     * existed has no honest value for it, and a default would invent one.
+     */
+    topic: text('topic'),
+    /**
+     * What the notification is *about*, so "Review" has somewhere to go —
+     * `content_item` plus its id, today. Without it a notification can only
+     * ever be read, never acted on, which is the difference between an inbox
+     * and a ticker.
+     */
+    targetType: text('target_type'),
+    targetId: text('target_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1488,6 +1548,36 @@ export const influencerWatchlist = pgTable(
     // Watching the same account twice is one watch. Normalising the handle
     // before it reaches here is what makes this constraint mean what it says.
     uniqueIndex('influencer_watchlist_unique_idx').on(t.genomeId, t.platform, t.handle),
+  ],
+);
+
+/**
+ * Sources a brand has muted — `trend.source.mute`.
+ *
+ * Per **genome**, not per org: two brands in one agency legitimately disagree
+ * about whether TikTok is worth reading, and the mute has to travel with the
+ * brand rather than the account. Scoped through `scoped.ts` like every other
+ * per-brand row, because which vendors a client has turned off is that client's
+ * business.
+ *
+ * A row means muted; no row means live. There is no `muted` boolean, because a
+ * three-state column (`true`/`false`/missing) invites the reader to wonder what
+ * `false` means when the operator has *also* disabled the source server-side —
+ * and those two switches are deliberately separate (see `composite.ts`).
+ */
+export const trendSourceMutes = pgTable(
+  'trend_source_mutes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    genomeId: text('genome_id').notNull(),
+    /** The adapter's own `TrendSource.name` — `youtube`, `x`, `tiktok`, `google`… */
+    source: text('source').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('trend_source_mutes_scope_idx').on(t.orgId, t.genomeId),
+    uniqueIndex('trend_source_mutes_unique_idx').on(t.genomeId, t.source),
   ],
 );
 

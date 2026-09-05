@@ -57,12 +57,38 @@ export const BrandSeriesInput = z.object({
   windowDays: z.number().int().min(1).max(90).default(7),
 });
 
+/**
+ * ── Why likes, comments, shares and saves are here individually ───────────
+ *
+ * `CC-04`'s Performance & Learning tab shows six tiles: Views, Likes,
+ * Impressions, Clicks, Saves and Replies. Five of those are columns
+ * `content_metrics` has held all along — this tool was folding four of them
+ * into `engagements` and returning the sum, so the UI could show a total it
+ * could not break down.
+ *
+ * `engagements` stays, because "the interactions, as against the reach" is the
+ * number the dashboard's KPI row wants and computing it in three callers would
+ * be three chances to define it differently. The parts are now beside it.
+ *
+ * Clicks are deliberately absent. They are not a `content_metrics` column and
+ * should not become one: a click is a CTA-link event that Dub owns, and
+ * `analytics.cta_traffic` already reads it per link. Adding a `clicks` column
+ * here would either duplicate Dub's number or, worse, make this tool fetch it —
+ * putting an external API on the dashboard's critical read, which is exactly
+ * the failure `trend.rank` caused on the cockpit until it was moved off the
+ * blocking path.
+ */
 const Totals = z.object({
   posts: z.number().int(),
   impressions: z.number().int(),
   views: z.number().int(),
   /** Likes + comments + shares + saves — the interactions, as against the reach. */
   engagements: z.number().int(),
+  likes: z.number().int(),
+  /** The design's "Replies" tile. A comment on a post is what a reply is. */
+  comments: z.number().int(),
+  shares: z.number().int(),
+  saves: z.number().int(),
 });
 
 export const BrandSeriesOutput = z.object({
@@ -75,6 +101,14 @@ export const BrandSeriesOutput = z.object({
    */
   basis: z.literal('publication_date'),
   /** Oldest first, one entry per day in the window, including days with nothing. */
+  /**
+   * Oldest first, one entry per day in the window, including days with nothing.
+   *
+   * Carries the same metrics as `totals` because the design's tiles each have
+   * their own sparkline — Impressions and Saves draw bars, Views and Replies a
+   * line. A tile that shows a total it cannot plot is a tile that needs a
+   * second call.
+   */
   days: z.array(
     z.object({
       /** `YYYY-MM-DD`, UTC. */
@@ -82,19 +116,39 @@ export const BrandSeriesOutput = z.object({
       posts: z.number().int(),
       impressions: z.number().int(),
       engagements: z.number().int(),
+      views: z.number().int(),
+      likes: z.number().int(),
+      comments: z.number().int(),
+      shares: z.number().int(),
+      saves: z.number().int(),
     }),
   ),
   totals: Totals,
   /** The same length of time immediately before the window — the delta's denominator. */
   previous: Totals,
   /**
-   * Percentage change in impressions against `previous`, rounded to a whole
-   * number. Null when the previous period had no impressions at all: "up from
+   * Percentage change against `previous`, rounded to a whole number, per metric.
+   *
+   * Null when the previous period had none of that metric at all: "up from
    * nothing" is not a percentage, and rendering it as +100% or ∞ would be the
    * kind of number people screenshot.
+   *
+   * An object rather than the two scalars this used to expose
+   * (`impressionsChangePct`, `engagementsChangePct`), because the tab needs six
+   * of these and `likesChangePct`/`savesChangePct`/... would put the same null
+   * rule in six places. Both callers moved in the same commit, so the scalars
+   * are gone rather than deprecated - a deprecated field nothing reads is just
+   * a field.
    */
-  impressionsChangePct: z.number().nullable(),
-  engagementsChangePct: z.number().nullable(),
+  changePct: z.object({
+    impressions: z.number().nullable(),
+    engagements: z.number().nullable(),
+    views: z.number().nullable(),
+    likes: z.number().nullable(),
+    comments: z.number().nullable(),
+    shares: z.number().nullable(),
+    saves: z.number().nullable(),
+  }),
   byPlatform: z.array(
     z.object({
       platform: z.string(),
@@ -153,6 +207,10 @@ export function aggregateSeries(rows: Row[], windowDays: number, now: Date): z.i
     impressions: set.reduce((n, r) => n + r.impressions, 0),
     views: set.reduce((n, r) => n + r.views, 0),
     engagements: set.reduce((n, r) => n + engagementsOf(r), 0),
+    likes: set.reduce((n, r) => n + r.likes, 0),
+    comments: set.reduce((n, r) => n + r.comments, 0),
+    shares: set.reduce((n, r) => n + r.shares, 0),
+    saves: set.reduce((n, r) => n + r.saves, 0),
   });
 
   const windowTotals = totals(inWindow);
@@ -163,12 +221,27 @@ export function aggregateSeries(rows: Row[], windowDays: number, now: Date): z.i
 
   // Every day in the window, not only the days something happened: a chart that
   // skips empty days compresses a quiet week into a busy-looking one.
-  const buckets = new Map<string, { posts: Set<string>; impressions: number; engagements: number }>();
+  interface Bucket {
+    posts: Set<string>;
+    impressions: number;
+    engagements: number;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    saves: number;
+  }
+  const buckets = new Map<string, Bucket>();
   for (let i = windowDays - 1; i >= 0; i -= 1) {
     buckets.set(dayKey(new Date(now.getTime() - i * DAY_MS)), {
       posts: new Set(),
       impressions: 0,
       engagements: 0,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
     });
   }
   for (const row of inWindow) {
@@ -181,6 +254,11 @@ export function aggregateSeries(rows: Row[], windowDays: number, now: Date): z.i
     bucket.posts.add(row.contentItemId);
     bucket.impressions += row.impressions;
     bucket.engagements += engagementsOf(row);
+    bucket.views += row.views;
+    bucket.likes += row.likes;
+    bucket.comments += row.comments;
+    bucket.shares += row.shares;
+    bucket.saves += row.saves;
   }
 
   const byPlatformMap = new Map<string, number>();
@@ -203,11 +281,23 @@ export function aggregateSeries(rows: Row[], windowDays: number, now: Date): z.i
       posts: b.posts.size,
       impressions: b.impressions,
       engagements: b.engagements,
+      views: b.views,
+      likes: b.likes,
+      comments: b.comments,
+      shares: b.shares,
+      saves: b.saves,
     })),
     totals: windowTotals,
     previous: previousTotals,
-    impressionsChangePct: change(windowTotals.impressions, previousTotals.impressions),
-    engagementsChangePct: change(windowTotals.engagements, previousTotals.engagements),
+    changePct: {
+      impressions: change(windowTotals.impressions, previousTotals.impressions),
+      engagements: change(windowTotals.engagements, previousTotals.engagements),
+      views: change(windowTotals.views, previousTotals.views),
+      likes: change(windowTotals.likes, previousTotals.likes),
+      comments: change(windowTotals.comments, previousTotals.comments),
+      shares: change(windowTotals.shares, previousTotals.shares),
+      saves: change(windowTotals.saves, previousTotals.saves),
+    },
     byPlatform: [...byPlatformMap.entries()]
       .map(([platform, impressions]) => ({
         platform,
@@ -225,9 +315,10 @@ export const analyticsBrandSeries = defineTool({
   version: 1,
 
   summary:
-    'How this brand did over a trailing window: impressions and engagements per day, the same window ' +
-    'before it for comparison, and the split by platform. Grouped by publication date, not measurement ' +
-    'date — content_metrics holds current values, not history. Free.',
+    'How this brand did over a trailing window: impressions, views, likes, comments, shares and saves ' +
+    'per day, the same window before it for comparison, and the split by platform. Grouped by ' +
+    'publication date, not measurement date — content_metrics holds current values, not history. ' +
+    'Link clicks are not here: they belong to analytics.cta_traffic, which reads them from Dub. Free.',
 
   input: BrandSeriesInput,
   output: BrandSeriesOutput,

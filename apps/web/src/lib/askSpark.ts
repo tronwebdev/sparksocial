@@ -33,3 +33,56 @@ export function onAskSparkOpen(handler: () => void): () => void {
   window.addEventListener(OPEN_EVENT, handler);
   return () => window.removeEventListener(OPEN_EVENT, handler);
 }
+
+/* ── Pinning ─────────────────────────────────────────────────────────────
+ *
+ * "Pin" on the drawer's header meant nothing — it was drawn because the design
+ * draws it and disabled because there was no preference to store. There is a
+ * right place to store it, though, and it is not the database: a pinned panel
+ * is a property of *this browser*, not of the brand, and a schema column would
+ * make one person's pin follow the whole team around.
+ *
+ * So it lives in `localStorage`, and it does two things:
+ *
+ *   1. The drawer stays open across navigation — every mounting site reads
+ *      `isSparkPinned()` for its initial `open`, so walking from Discovery to
+ *      the Calendar keeps the conversation on screen instead of closing it.
+ *   2. Escape and the scrim stop closing it. A pin whose panel still vanished
+ *      on the next keystroke would not be a pin.
+ *
+ * Wrapped in try/catch because a private window, cleared site data or a browser
+ * set to block storage all throw on access rather than returning null, and a
+ * drawer that cannot remember a pin must still open.
+ */
+
+const PIN_KEY = 'spark:ask-pinned';
+const PIN_EVENT = 'spark:ask-pin-changed';
+
+export function isSparkPinned(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(PIN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setSparkPinned(pinned: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (pinned) window.localStorage.setItem(PIN_KEY, '1');
+    else window.localStorage.removeItem(PIN_KEY);
+  } catch {
+    /* Unavailable storage is not a reason to refuse the toggle — the pin simply
+       does not survive a reload, which is strictly better than an error. */
+  }
+  window.dispatchEvent(new CustomEvent(PIN_EVENT, { detail: pinned }));
+}
+
+/** Returns a teardown, for `useEffect` to hand back. */
+export function onSparkPinChanged(handler: (pinned: boolean) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const listener = (e: Event) => handler(Boolean((e as CustomEvent<boolean>).detail));
+  window.addEventListener(PIN_EVENT, listener);
+  return () => window.removeEventListener(PIN_EVENT, listener);
+}

@@ -37,6 +37,18 @@ export interface TextWriter {
     promptRef: string;
     /** What this specific post is about. Optional — grounding still works from the genome alone. */
     intent?: string;
+    /**
+     * What the campaign this post belongs to is trying to achieve.
+     *
+     * The writer never had this. It received the brand, its offer and a call to
+     * action, and wrote to those — so a post in a hiring campaign and a post in
+     * a sales campaign came out of the same brief. The objective decided which
+     * playbooks were picked and then never reached the words.
+     *
+     * Optional because `content.draft`'s ad-hoc path (CC-02) creates posts with
+     * no campaign at all; those fall back to the genome's standing objective.
+     */
+    objective?: string;
     /** Which beat this is, so the writer can find itself in `outline`. */
     beatId: string;
     /**

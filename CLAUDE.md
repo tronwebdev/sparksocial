@@ -140,7 +140,14 @@ Note this keeps the plan's "do not reorder P2" rule intact: the capture loop sta
   `@/*` — stay in the root map.
 - **The `.dc.html` files in `ui build/` are the design source of truth**, not
   `figma-system/fig-tokens.css` (generic Figma boilerplate that no screen references) and
-  not `BUILD_PLAN.md`'s prose, which is stale in the same way.
+  not `BUILD_PLAN.md`'s prose, which is stale in the same way. This means: before building
+  or editing any screen, open the matching `.dc.html` file and read its actual
+  classes/inline styles — never approximate spacing, color, or type from memory or
+  convention. Extract exact hex/px/rem values into `tailwind.config.ts` / `tokens.json`
+  rather than hardcoding them in a component. After building, render the `.dc.html` file
+  and the live screen at the same viewport width, screenshot both, and diff them before
+  calling the screen done. If a `.dc.html` file can't be read, stop and say so — don't
+  proceed on a guess.
 
 ## Reference implementation
 

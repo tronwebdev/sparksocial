@@ -1,26 +1,12 @@
 ﻿'use client';
 
-import { useSearchParams } from 'next/navigation';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { AgentControlBar, type AgentStatusView } from './AgentControlBar';
-import { ApprovalModeControl } from './ApprovalModeControl';
-import { NeedsAttentionBanner } from './NeedsAttentionBanner';
-import { PendingQuestionsPanel } from './PendingQuestionsPanel';
-import { NotificationsPanel } from './NotificationsPanel';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
-import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
-import { ChatDrawer } from './ChatDrawer';
-import { DraftPanel } from './draft-panel/DraftPanel';
-import { DraftList } from './DraftList';
-import { PerformancePanel } from './PerformancePanel';
 import { PlanQueue } from './PlanQueue';
-import { AgentIdentityCard } from './AgentIdentityCard';
-import { QuickActions } from './QuickActions';
 
 /**
  * CC-01 — Command Center Overview (`ui build/SparkSocial Command Center.dc.html`,
@@ -53,43 +39,24 @@ import { QuickActions } from './QuickActions';
  * morning is about to go out unwritten.
  */
 
-export function CommandCenterOverview() {
+export function CommandCenterOverview({
+  /*
+    Opening a draft is the page's job, not this tab's.
+
+    The `DraftPanel` used to live here, which meant it only existed while the
+    Overview was mounted — so the Agent Calendar's own "view draft" had to
+    `router.replace('?tab=overview&draft=...')` to reach it, throwing you onto
+    another tab before the panel opened. The panel is at page level now and every
+    tab just calls this.
+  */
+  onOpenDraft,
+}: {
+  onOpenDraft: (contentItemId: string) => void;
+}) {
   const { genome, loading: genomeLoading, error: genomeError } = useSelectedGenome();
 
-  const [status, setStatus] = useState<AgentStatusView | null>(null);
-  const [review, setReview] = useState<ReviewItem[] | null>(null);
   const [campaign, setCampaign] = useState<CampaignSummary | null | undefined>(undefined); // undefined = not checked yet, null = none exists
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  /**
-   * `?draft=<id>` opens the panel on load.
-   *
-   * Added for the shell's Ask Spark (`F2`), which can produce a draft from a
-   * screen that has no draft panel of its own and so navigates here. Useful
-   * beyond that button: a draft is now addressable, so a notification or a bug
-   * report can link to one.
-   */
-  const initialDraft = useSearchParams().get('draft') ?? undefined;
-  const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string }>(
-    initialDraft ? { open: true, contentItemId: initialDraft } : { open: false },
-  );
-  const [draftListRefresh, setDraftListRefresh] = useState(0);
-
-  const loadStatus = useCallback(async () => {
-    const res = await invoke<AgentStatusView>('agent.status', {});
-    if (res.status === 'succeeded') setStatus(res.output);
-  }, []);
-
-  const loadReview = useCallback(async () => {
-    const res = await invoke<{ items: ReviewItem[] }>('queue.review.list', { limit: 25 });
-    if (res.status === 'succeeded') setReview(res.output.items);
-  }, []);
-
-  useEffect(() => {
-    void loadStatus();
-    void loadReview();
-  }, [loadStatus, loadReview]);
 
   const loadCampaign = useCallback(async () => {
     if (!genome) return;
@@ -112,23 +79,6 @@ export function CommandCenterOverview() {
     void loadCampaign();
   }, [loadCampaign]);
 
-  const decide = useCallback(
-    async (callId: string, decision: 'approve' | 'reject') => {
-      // idempotent: false — approving replays the original held call, so a
-      // retried click must not decide it twice. Deterministic on
-      // callId+decision (unlike a fresh-take tool) so an accidental double
-      // click or a network retry of the same decision dedupes correctly.
-      const res = await invoke('approval.decide', { callId, decision }, `approval-decide:${callId}:${decision}`);
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That decision was gated.');
-        return;
-      }
-      setError(null);
-      await loadReview();
-    },
-    [loadReview],
-  );
-
   if (genomeLoading) {
     return (
       <div className="grid grid-cols-1 gap-6">
@@ -146,108 +96,77 @@ export function CommandCenterOverview() {
     );
   }
 
+  /* 19px between panels: the design's hero ends at 538 and its Queue card
+     starts at 557. */
   return (
-    <div className="grid grid-cols-1 gap-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-semibold text-ink">Agent Command Center</h1>
-          <p className="mt-1 text-[16px] text-ink-muted">
-            Your AI agent is running {genome?.name ?? 'this brand'}&rsquo;s social presence.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setChatOpen(true)}>
-            Ask Spark
-          </Button>
-          <Button onClick={() => setDraftPanel({ open: true })}>New post</Button>
-        </div>
-      </header>
-
-      {/* ── The shell band (`F1`) ───────────────────────────────────────
-          Who the agent is, what it is working toward, and what you came here to
-          do. The prototype keeps these three together and persistent, and it is
-          the arrangement eighteen draft-panel prototypes render behind their
-          drawer — which is why one missing band looked like eighteen gaps.
-
-          Two columns from `xl`: below that the identity and the campaign each
-          want the full width for their own wrapping, and stacking them is
-          better than two cramped columns. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <AgentIdentityCard
-          genomeId={genome?.genomeId}
-          campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
-          paused={Boolean(status?.paused)}
-        />
-        <CampaignFocusCard
-          campaign={campaign}
-          calendarView={calendarView}
-          genomeName={genome?.name}
-          genomeId={genome?.genomeId}
-          onRefresh={() => void loadCampaign()}
-        />
-      </div>
-
-      <QuickActions onOpenChat={() => setChatOpen(true)} />
-
-      <AgentControlBar status={status} onChange={setStatus} />
-      <ApprovalModeControl />
-
-      {review && review.length > 0 ? (
-        <NeedsAttentionBanner count={review.length} />
-      ) : null}
-
-      <PendingQuestionsPanel />
+    <div className="flex flex-col gap-[19px]">
       {/*
-        Directly below the questions, because the two are one thought: what SPARK
-        needs from you, then what it wants you to know. Until this landed the
-        second half was written to a table nothing read.
+        The title, subtitle and Needs Attention strip used to be a `header` row
+        here, and they cannot live in this component.
+
+        The design puts the strip at 831..1680 — past this column's right edge at
+        1206, across the rail's own x range. Inside the column it had 1159px to
+        share with a 521px title, so it wrapped onto a second line: the header
+        row measured 123.5 instead of the design's 63, and the hero and the whole
+        Spark rail sat 50px below the 241 they belong on.
+
+        They are the shell's `band` slot now, which spans the card. See
+        `(cc)/agents/page.tsx`, which owns the copy because the title is
+        per-tab.
       */}
-      <NotificationsPanel />
+      <CampaignFocusCard
+        campaign={campaign}
+        calendarView={calendarView}
+        genomeName={genome?.name}
+        genomeId={genome?.genomeId}
+        onRefresh={() => void loadCampaign()}
+      />
 
-      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+      {/*
+        Three panels that used to sit under the queue are gone from this tab:
+        `ReviewQueueList` ("Waiting on you"), `AgentControlBar` and
+        `ApprovalModeControl`.
 
-      {/* §7.5's four queues, in the order a person needs them: what happens
-          next, then what is blocked on them. `PlanQueue` links to the second by
-          anchor, which is why the wrapper carries an id. */}
+        The design's Overview is the hero and the queue, in that order, and
+        nothing else — these pushed the queue from 557 down past 900 and made
+        the tab a stack of panels rather than the one thing it is for.
+
+        Neither capability was dropped, because that is the rule:
+        `AgentControlBar` (pause/resume, `agent.frequency.set`) and
+        `ApprovalModeControl` (`agent.approval_mode.get/set`) moved to
+        **Settings → Brand Kit**, beside `GovernancePanel`, which is where every
+        other "how autonomous is the agent" control already lives. The review
+        queue moved to the **Needs Attention** screen the banner's Review link
+        opens — a list of things waiting on a person is exactly that screen's
+        subject.
+      */}
+
+
+      {/*
+        The Queue card — "What is your Agent doing next?".
+      */}
       <PlanQueue
         genomeId={genome?.genomeId}
-        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
+        onOpen={onOpenDraft}
       />
 
-      <div id="review">
-        <ReviewQueueList items={review} onDecide={decide} />
-      </div>
+      {/*
+        Below the queue: what needs a person, then the material itself.
 
-      {/* Below the queue, above the drafts: what needs a person comes first,
-          then how the brand is doing, then the material itself. */}
-      <div id="performance">
-        <PerformancePanel genomeId={genome?.genomeId} />
-      </div>
+        Three panels that used to be here are not any more, because the Command
+        Center now has the tabs the design gives it. `PerformancePanel` is the
+        Performance & Learning tab and was rendering here as well - the same
+        component twice on one screen, one of them behind a tab that already
+        shows it. `AgentIdentityCard` is gone from this screen entirely: the
+        design's identity band is the *dashboard's* banner, and the Overview
+        opens on the campaign. Engagement's panels live on their own tab.
+      */}
 
-      <div id="drafts">
-        <DraftList
-        genomeId={genome?.genomeId}
-        refreshKey={draftListRefresh}
-        onOpen={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-        />
-      </div>
 
-      <ChatDrawer
-        genomeId={genome?.genomeId}
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onOpenDraft={(contentItemId) => setDraftPanel({ open: true, contentItemId })}
-      />
 
-      <DraftPanel
-        genomeId={genome?.genomeId}
-        contentItemId={draftPanel.contentItemId}
-        open={draftPanel.open}
-        onClose={() => {
-          setDraftPanel({ open: false });
-          setDraftListRefresh((n) => n + 1);
-        }}
-      />
+
+
+
     </div>
   );
 }

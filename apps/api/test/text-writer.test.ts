@@ -214,3 +214,107 @@ describe('what comes back is publishable as-is', () => {
     await expect(call(spy('   '))).rejects.toMatchObject({ code: 'UPSTREAM_FAILED' });
   });
 });
+
+/**
+ * The pillar directive, and the CTA it withholds.
+ *
+ * The regression: the brief handed the model the business, the offer and
+ * `Primary call to action: …` and never said what kind of post it was, so every
+ * pillar came out promotional — the reported symptom was educational posts that
+ * were all promotions and demos. `playbook.content_pillar` was in scope and
+ * unused.
+ *
+ * This matters beyond one prompt line. The mix engine balances five pillars and
+ * caps promotional content; if four of the five read like the fifth, a brand
+ * posting 20% product and 80% product-shaped "education" is posting 100%
+ * product and the ceiling enforces nothing.
+ */
+const pillarPb = (pillar: string): Playbook =>
+  ({
+    name: 'Test',
+    description: 'A test playbook.',
+    content_pillar: pillar,
+    output: { media_type: 'carousel', platforms: ['instagram'], aspect_ratios: ['4:5'] },
+  }) as unknown as Playbook;
+
+/** No literal beat, so the CTA is only withheld if the *pillar* withholds it. */
+const noCtaOutline: BeatOutlineEntry[] = [
+  { beatId: 'body', kind: 'copy', promptRef: 'teach.one_idea' },
+];
+
+describe('the content pillar reaches the writer', () => {
+  it('tells an educational beat to teach and not to pitch', async () => {
+    const s = spy();
+    await call(s, { playbook: pillarPb('educational') });
+    const sent = s.sent();
+    expect(sent).toContain('EDUCATIONAL');
+    expect(sent).toMatch(/do not pitch/i);
+    // The specific failure reported: education that reads as a demo.
+    expect(sent).toMatch(/do not list features/i);
+  });
+
+  it('withholds the call to action from a pillar that must not pitch', async () => {
+    const s = spy();
+    await call(s, { playbook: pillarPb('educational'), outline: noCtaOutline });
+    // Naming the CTA and then forbidding a sell is a contradiction the model
+    // resolves by selling — so it is not named at all.
+    expect(s.sent()).not.toContain('Primary call to action');
+  });
+
+  it('gives the call to action to a product beat, where selling is the job', async () => {
+    const s = spy();
+    await call(s, { playbook: pillarPb('product'), outline: noCtaOutline });
+    const sent = s.sent();
+    expect(sent).toContain('PRODUCT');
+    expect(sent).toContain('Primary call to action: Book a chair');
+  });
+
+  it('says something specific for every pillar the mix engine can produce', async () => {
+    // If the mix engine can schedule it, the writer must know what it is for —
+    // a missing entry would silently fall back to "an advert with no brief".
+    for (const pillar of ['educational', 'product', 'proof', 'personality', 'community']) {
+      const s = spy();
+      await call(s, { playbook: pillarPb(pillar) });
+      expect(s.sent()).toContain(pillar.toUpperCase());
+    }
+  });
+});
+
+describe('the campaign objective reaches the writer', () => {
+  /*
+    The gap: the writer got the brand, its offer and a CTA and nothing about the
+    campaign, so a post in a hiring campaign read like a post in a sales one.
+    The objective chose the playbooks and stopped at the door.
+  */
+  it('says what a hiring campaign wants, and that it is not for a customer', async () => {
+    const s = spy();
+    await call(s, { objective: 'hiring' } as Partial<WriteArgs>);
+    const sent = s.sent();
+    expect(sent).toMatch(/goal is hiring/i);
+    expect(sent).toMatch(/not for a customer/i);
+  });
+
+  it('says something different for every objective the wizard offers', async () => {
+    const seen = new Set<string>();
+    for (const objective of ['leads', 'bookings', 'trials', 'sales', 'audience', 'hiring']) {
+      const s = spy();
+      await call(s, { objective } as Partial<WriteArgs>);
+      const line = s
+        .sent()
+        .split('\n')
+        .find((l) => l.startsWith("The campaign's goal"));
+      expect(line, objective).toBeTruthy();
+      seen.add(line!);
+    }
+    // Six distinct briefs, not one sentence with the word swapped — otherwise
+    // the objective is decoration.
+    expect(seen.size).toBe(6);
+  });
+
+  it('says nothing about a campaign when the post belongs to none', async () => {
+    // `content.draft`'s ad-hoc path creates posts with no campaign.
+    const s = spy();
+    await call(s);
+    expect(s.sent()).not.toContain("The campaign's goal");
+  });
+});

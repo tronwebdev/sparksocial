@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 /**
  * Workspaces — `ui build/SparkSocial Account Home.dc.html`.
@@ -168,19 +169,12 @@ export default function WorkspacesPage() {
             </BarButton>
           </div>
 
-          <button
-            type="button"
-            disabled
-            title="The notification centre is not built yet."
-            aria-label="Notifications (unavailable)"
-            className="hidden h-14 w-14 shrink-0 cursor-not-allowed items-center justify-center rounded-full border-0 bg-white opacity-55 sm:flex"
-            style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.35)' }}
-          >
-            <svg width="20" height="21" viewBox="0 0 22 22" fill="none" aria-hidden>
-              <path d="M11 3a5.6 5.6 0 0 1 5.6 5.6c0 3 .8 4.8 1.6 5.9.3.4 0 1-.5 1H4.3c-.5 0-.8-.6-.5-1 .8-1.1 1.6-2.9 1.6-5.9A5.6 5.6 0 0 1 11 3Z" stroke={MUTED} strokeWidth="1.6" strokeLinejoin="round" />
-              <path d="M9 18.6a2.1 2.1 0 0 0 4 0" stroke={MUTED} strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </button>
+          {/* Was a disabled placeholder titled "the notification centre is not
+              built yet". It is now, and this is the same component the app
+              header carries — see `components/notifications/NotificationBell`. */}
+          <span className="hidden shrink-0 sm:block">
+            <NotificationBell />
+          </span>
 
           {/* 254×56 chip. Under `sm` the name drops and it is the avatar plus
               the kebab, which is the only part that has to stay reachable. */}

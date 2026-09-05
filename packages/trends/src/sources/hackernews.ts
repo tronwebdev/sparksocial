@@ -62,6 +62,8 @@ export function createHackerNewsTrendSource(config: HackerNewsTrendSourceConfig 
       },
       samples: [{ url: item.url ?? `https://news.ycombinator.com/item?id=${item.id}`, caption: item.title }],
       language: 'en',
+      /* HN is one global front page — no region to attribute it to. */
+      regions: [],
     };
   }
 

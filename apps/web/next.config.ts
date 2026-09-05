@@ -61,6 +61,23 @@ const nextConfig: NextConfig = {
    * `extensionAlias` tells webpack to try `.ts`/`.tsx` for a `.js` request. The
    * `.js` fallback stays last so genuine JavaScript still resolves.
    */
+  /**
+   * Engagement Intelligence is a Command Center tab, not a screen of its own.
+   *
+   * A redirect here rather than a `redirect()` page, because the page under
+   * `(app)/` sits inside a client layout (`AppShell`, `OrgGuard`) and the
+   * `NEXT_REDIRECT` a server component throws never reaches the router through
+   * that boundary — the route rendered "Application error: a client-side
+   * exception has occurred" instead. Routing is the layer that owns this
+   * anyway: nothing needs to render to know where `/engagement` goes.
+   *
+   * Not `permanent`. The tab layout of the Command Center is a product decision
+   * that could move again, and a 308 is cached by browsers effectively forever.
+   */
+  async redirects() {
+    return [{ source: '/engagement', destination: '/agents?tab=engagement', permanent: false }];
+  },
+
   webpack: (config) => {
     config.resolve.extensionAlias = {
       ...config.resolve.extensionAlias,

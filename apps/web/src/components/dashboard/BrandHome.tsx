@@ -267,7 +267,15 @@ export function BrandHome() {
         1355, the same as the upcoming card's. It sits beside the KPI row, not
         below it.
       */}
-      <div className="flex flex-col gap-[36px] p-8">
+      {/*
+        `p-8` was 32 on all four sides, and three of the four are wrong. The
+        canvas card runs 322→1713 and the design's content column starts at 356
+        and ends at 1679 — 34 either side, which is also exactly the banner's
+        1323 width. Vertically the divider is at 119.5 and the banner top at 141,
+        so the top pad is 21.5, not 32; the 10.5px difference was landing on top
+        of the header's own 22.5 and moving the whole page down by 33.
+      */}
+      <div className="flex flex-col gap-dash-band-gap p-6 sm:px-dash-gutter sm:pb-9 sm:pt-dash-band-top">
 
       {/*
         The agent banner — the dark card the dashboard opens with. This used to
@@ -309,7 +317,7 @@ export function BrandHome() {
         was close enough to look deliberate and wrong enough that the rail's
         cards were a different width from the ones they mirror.
       */}
-      <div className="grid grid-cols-1 gap-[31px] xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
+      <div className="grid grid-cols-1 gap-dash-col-gap xl:grid-cols-[minmax(0,846fr)_minmax(0,446fr)]">
         {/*
           25px between the cards, and 6 more under the KPI row to make the 31 the
           prototype has between it and the "Agent Activity" label. Two numbers
@@ -320,13 +328,28 @@ export function BrandHome() {
           a 288px pitch is 846px — exactly the left column — which is the whole
           reason the rail can start level with them.
         */}
-        <div className="flex min-w-0 flex-col gap-[25px]">
+        <div className="flex min-w-0 flex-col gap-dash-card-gap">
           {snap.series ? (
             <div className="mb-[6px]">
               <KpiRow series={snap.series} />
             </div>
           ) : null}
-          <AgentActivityFeed runs={snap.runs} />
+          {/* The upcoming list is already loaded and carries
+              contentItemId → summary, which is what lets an activity row name
+              the post a goal was about instead of printing its UUID. Free:
+              no extra call. */}
+          <AgentActivityFeed
+            runs={snap.runs}
+            /* Scheduled *and* published — both lists are already loaded, and a
+               run's goal is at least as likely to name a post that has gone out
+               as one still waiting. Anything outside both still reads "a post",
+               which is the honest fallback. */
+            titles={
+              new Map(
+                [...snap.upcoming, ...(snap.published ?? [])].map((u) => [u.contentItemId.toLowerCase(), u.summary]),
+              )
+            }
+          />
           <CockpitTabs
             upcoming={snap.upcoming}
             series={snap.series}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,13 +25,40 @@ export interface AgentStatusView {
   postsPerWeek: number;
 }
 
+/**
+ * `status`/`onChange` are optional now, and that is what let this move.
+ *
+ * The Command Center's Overview owned the `agent.status` read and passed it
+ * down. Settings → Brand Kit is this control's home now (see that page), and a
+ * settings page has no reason to hold one panel's state for it — so with no
+ * props it reads `agent.status` itself. Given props, it stays a controlled
+ * component, which is what any caller that shows the same status elsewhere on
+ * its screen needs.
+ */
 export function AgentControlBar({
-  status,
+  status: controlled,
   onChange,
 }: {
-  status: AgentStatusView | null;
-  onChange: (next: AgentStatusView) => void;
-}) {
+  status?: AgentStatusView | null;
+  onChange?: (next: AgentStatusView) => void;
+} = {}) {
+  const [own, setOwn] = useState<AgentStatusView | null>(null);
+  const status = controlled !== undefined ? controlled : own;
+
+  const load = useCallback(async () => {
+    const res = await invoke<AgentStatusView>('agent.status', {});
+    if (res.status === 'succeeded') setOwn(res.output);
+  }, []);
+
+  useEffect(() => {
+    if (controlled === undefined) void load();
+  }, [controlled, load]);
+
+  const publish = (next: AgentStatusView) => {
+    if (onChange) onChange(next);
+    else setOwn(next);
+  };
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [freqDraft, setFreqDraft] = useState<string | null>(null);
@@ -47,7 +74,7 @@ export function AgentControlBar({
       setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
       return;
     }
-    onChange(res.output);
+    publish(res.output);
   }
 
   async function submitFrequency() {
@@ -65,7 +92,7 @@ export function AgentControlBar({
       setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
       return;
     }
-    onChange(res.output);
+    publish(res.output);
     setFreqNote(res.output.why.summary);
     setFreqDraft(null);
   }

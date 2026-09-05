@@ -35,12 +35,17 @@ import { ToolError } from '@sparksocial/shared';
 
 const Urgency = z.enum(['low', 'normal', 'high']);
 
+/** Mirrors `NotificationTopic` in defineTool.ts — see the column comment in schema.ts. */
+const NotificationTopic = z.enum(['content_ready', 'published', 'failed', 'queued', 'connection', 'generic']);
+
 const MessageOutput = z.object({
   messageId: z.string(),
   brandId: z.string(),
   kind: z.enum(['ask', 'notify']),
   body: z.string(),
   urgency: Urgency,
+  topic: NotificationTopic.optional(),
+  target: z.object({ type: z.literal('content_item'), id: z.string() }).optional(),
   createdAt: z.string(),
   /** Where the owner will see it, once a transport has taken it. */
   pendingDelivery: z.boolean(),
@@ -121,6 +126,16 @@ export const humanNotify = defineTool({
   input: z.object({
     message: z.string().min(1).max(600),
     urgency: Urgency.default('low'),
+    /**
+     * What kind of event this is, and what it is about.
+     *
+     * Both optional, because every caller that existed before them was writing
+     * a sentence and nothing else, and a default would be the tool inventing a
+     * classification its caller never made. Supplying them is what turns a row
+     * in a log into a row somebody can act on — see `human_messages.topic`.
+     */
+    topic: NotificationTopic.optional(),
+    target: z.object({ type: z.literal('content_item'), id: z.string().min(1) }).optional(),
   }),
   output: MessageOutput,
 
@@ -143,6 +158,8 @@ export const humanNotify = defineTool({
       kind: 'notify',
       body: input.message,
       urgency: input.urgency,
+      ...(input.topic ? { topic: input.topic } : {}),
+      ...(input.target ? { target: input.target } : {}),
       ...(ctx.runId ? { runId: ctx.runId } : {}),
     });
 
@@ -204,6 +221,10 @@ export const humanNotifications = defineTool({
         urgency: Urgency,
         at: z.string(),
         read: z.boolean(),
+        /** The row's icon and colour in the notification centre. */
+        topic: NotificationTopic.optional(),
+        /** What Review opens, when there is something to open. */
+        target: z.object({ type: z.literal('content_item'), id: z.string() }).optional(),
         /** Which agent run produced it, when one did — the link back to the Agent Timeline. */
         runId: z.string().optional(),
         /** The transport that accepted it, if any. Absent means it was never delivered anywhere. */
@@ -237,6 +258,8 @@ export const humanNotifications = defineTool({
         urgency: m.urgency,
         at: m.createdAt.toISOString(),
         read: m.readAt !== undefined,
+        ...(m.topic ? { topic: m.topic } : {}),
+        ...(m.target ? { target: m.target } : {}),
         ...(m.runId ? { runId: m.runId } : {}),
         ...(m.channel ? { channel: m.channel } : {}),
       })),
@@ -428,6 +451,8 @@ function toOutput(m: {
   urgency: 'low' | 'normal' | 'high';
   createdAt: Date;
   channel?: string;
+  topic?: 'content_ready' | 'published' | 'failed' | 'queued' | 'connection' | 'generic';
+  target?: { type: 'content_item'; id: string };
 }) {
   return {
     messageId: m.id,
@@ -435,6 +460,8 @@ function toOutput(m: {
     kind: m.kind,
     body: m.body,
     urgency: m.urgency,
+    ...(m.topic ? { topic: m.topic } : {}),
+    ...(m.target ? { target: m.target } : {}),
     createdAt: m.createdAt.toISOString(),
     pendingDelivery: !m.channel,
   };

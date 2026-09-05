@@ -1,7 +1,7 @@
 import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
-import { ToolError, type AssetRole } from '@sparksocial/shared/types';
+import { ToolError, type AssetMediaType, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
-import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
+import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
 
 /**
@@ -25,7 +25,7 @@ import type { Database } from './client.js';
 /** Tables that carry client-confidential material and must always be genome-scoped. */
 const SCOPED_TABLES = {
   assets, assetFolders, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities,
-  trendWatchlist, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
+  trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks,
 } as const;
 export type ScopedTable = keyof typeof SCOPED_TABLES;
 
@@ -267,7 +267,7 @@ export async function retrieveAssets(
 export interface CreateAssetArgs {
   url: string;
   assetRole: AssetRole;
-  mediaType: 'image' | 'video' | 'audio';
+  mediaType: AssetMediaType;
   rightsStatus: 'cleared' | 'pending' | 'restricted';
   caption: string;
   embedding: number[];
@@ -410,6 +410,66 @@ export async function setAssetRights(
   return row;
 }
 
+/**
+ * Every asset in the genome that retrieval will *not* return because its rights
+ * are not cleared — the Assets Library's "awaiting rights clearance" list.
+ *
+ * A separate function rather than a flag on `retrieveAssets`, deliberately.
+ * `buildRetrieveQuery`'s `rightsStatus = 'cleared'` is the filter that keeps an
+ * uncleared asset out of `assemble.plan`, and a filter a caller can switch off
+ * is a filter that will be switched off. This reads the same rows through a
+ * different door: ordered by upload, no embedding, no scoring, and nothing
+ * downstream of the library ever calls it.
+ */
+export async function listAssetsAwaitingRights(
+  db: Database,
+  scope: Scope,
+): Promise<
+  Array<{
+    assetId: string;
+    role: AssetRole;
+    rightsStatus: string;
+    caption: string | null;
+    url: string;
+    mediaType: AssetMediaType;
+    folderId: string | null;
+    filename: string | null;
+    sizeBytes: number | null;
+    createdAt: Date;
+  }>
+> {
+  assertScope(scope);
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      role: assets.assetRole,
+      rightsStatus: assets.rightsStatus,
+      caption: assets.caption,
+      url: assets.storagePath,
+      mediaType: assets.mediaType,
+      folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
+    })
+    .from(assets)
+    .where(
+      and(
+        scopePredicate('assets', scope),          // ← non-negotiable
+        ne(assets.rightsStatus, 'cleared'),
+        isNull(assets.archivedAt),
+      ),
+    )
+    .orderBy(sql`${assets.createdAt} DESC`)
+    .limit(200);
+
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    mediaType: r.mediaType as AssetMediaType,
+  }));
+}
+
 export interface AssetRightsRow {
   id: string;
   rightsStatus: string;
@@ -486,6 +546,113 @@ export async function listAssetFolders(db: Database, scope: Scope): Promise<Asse
     .groupBy(assetFolders.id, assetFolders.genomeId, assetFolders.name, assetFolders.createdAt)
     .orderBy(assetFolders.name);
   return rows.map((r) => ({ ...r, assetCount: Number(r.assetCount) }));
+}
+
+/**
+ * Assets in this genome that are in no folder — what `asset.folder.delete`
+ * leaves behind, plus anything ingested without a folder (the WhatsApp capture
+ * loop files nothing).
+ *
+ * The Library lists a folder's contents through `asset.retrieve`, which is
+ * semantic and takes no folder predicate, so there was no way to ask for "the
+ * ones with no folder" at all — deleting a folder would have put its files
+ * somewhere the product could not show. Same door as
+ * `listAssetsAwaitingRights`: a direct listing, no embedding, no scoring, and
+ * the rights filter still applies because these are the same assets the
+ * resolver may use.
+ */
+export async function listUnfiledAssets(
+  db: Database,
+  scope: Scope,
+): Promise<
+  Array<{
+    assetId: string;
+    role: AssetRole;
+    rightsStatus: string;
+    caption: string | null;
+    url: string;
+    mediaType: AssetMediaType;
+    folderId: string | null;
+    filename: string | null;
+    sizeBytes: number | null;
+    createdAt: Date;
+  }>
+> {
+  assertScope(scope);
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      role: assets.assetRole,
+      rightsStatus: assets.rightsStatus,
+      caption: assets.caption,
+      url: assets.storagePath,
+      mediaType: assets.mediaType,
+      folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
+    })
+    .from(assets)
+    .where(
+      and(
+        scopePredicate('assets', scope),          // ← non-negotiable
+        isNull(assets.folderId),
+        isNull(assets.archivedAt),
+      ),
+    )
+    .orderBy(sql`${assets.createdAt} DESC`)
+    .limit(200);
+
+  return rows.map((r) => ({ ...r, role: r.role as AssetRole, mediaType: r.mediaType as AssetMediaType }));
+}
+
+/** `asset.folder.rename`. Undefined when the id is out of scope — same "one outcome for both" rule as the rest of this file. */
+export async function renameAssetFolder(
+  db: Database,
+  scope: Scope,
+  args: { folderId: string; name: string },
+): Promise<{ id: string; name: string } | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .update(assetFolders)
+    .set({ name: args.name })
+    .where(and(eq(assetFolders.id, args.folderId), scopePredicate('assetFolders', scope)))
+    .returning({ id: assetFolders.id, name: assetFolders.name });
+  return row;
+}
+
+/**
+ * `asset.folder.delete` — removes the folder and unfiles what was in it.
+ *
+ * Deliberately not a cascade. A folder is a filing decision; the assets inside
+ * it are the work. Deleting the shelf must not delete the books, so every
+ * `folderId` pointing at it is nulled first and the assets stay in the graph,
+ * retrievable exactly as before — `buildRetrieveQuery` never filters on folder.
+ * Removing an asset for real is `asset.archive`, one at a time, on purpose.
+ *
+ * Both statements run in one transaction: a half-applied delete would leave
+ * rows pointing at a folder that no longer exists.
+ */
+export async function deleteAssetFolder(
+  db: Database,
+  scope: Scope,
+  args: { folderId: string },
+): Promise<{ id: string; unfiled: number } | undefined> {
+  assertScope(scope);
+  return db.transaction(async (tx) => {
+    const unfiled = await tx
+      .update(assets)
+      .set({ folderId: null })
+      .where(and(eq(assets.folderId, args.folderId), scopePredicate('assets', scope)))
+      .returning({ id: assets.id });
+
+    const [row] = await tx
+      .delete(assetFolders)
+      .where(and(eq(assetFolders.id, args.folderId), scopePredicate('assetFolders', scope)))
+      .returning({ id: assetFolders.id });
+
+    return row ? { id: row.id, unfiled: unfiled.length } : undefined;
+  });
 }
 
 export interface ContentLinkRow {
@@ -2112,6 +2279,38 @@ export async function listTrendWatchlist(db: Database, scope: Scope): Promise<Tr
     .from(trendWatchlist)
     .where(scopePredicate('trendWatchlist', scope))
     .orderBy(desc(trendWatchlist.createdAt));
+}
+
+/**
+ * MUTED SOURCES — `trend.source.mute`.
+ *
+ * A row means muted. `muteTrendSource` is idempotent by the unique index, so
+ * muting twice is one mute, and `unmuteTrendSource` on an unmuted source is a
+ * no-op rather than an error: both are the natural result of a toggle being
+ * pressed twice, and neither is worth an exception.
+ */
+export async function muteTrendSource(db: Database, scope: Scope, source: string): Promise<void> {
+  assertScope(scope);
+  await db
+    .insert(trendSourceMutes)
+    .values({ orgId: scope.orgId, genomeId: scope.genomeId, source })
+    .onConflictDoNothing({ target: [trendSourceMutes.genomeId, trendSourceMutes.source] });
+}
+
+export async function unmuteTrendSource(db: Database, scope: Scope, source: string): Promise<void> {
+  assertScope(scope);
+  await db
+    .delete(trendSourceMutes)
+    .where(and(scopePredicate('trendSourceMutes', scope), eq(trendSourceMutes.source, source)));
+}
+
+export async function listMutedTrendSources(db: Database, scope: Scope): Promise<string[]> {
+  const rows = await db
+    .select({ source: trendSourceMutes.source })
+    .from(trendSourceMutes)
+    .where(scopePredicate('trendSourceMutes', scope))
+    .orderBy(desc(trendSourceMutes.createdAt));
+  return rows.map((r) => r.source);
 }
 
 // ---------------------------------------------------------------------------

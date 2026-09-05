@@ -379,10 +379,31 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const plan = await resolvePlan(playbook, genome, input, ctx, deps.embed);
 
+      /**
+       * What the campaign this post belongs to is trying to achieve.
+       *
+       * The writer used to get the brand, its offer and a call to action, and
+       * nothing about the campaign — so a post in a hiring campaign read exactly
+       * like a post in a sales one. The objective picked the playbooks and then
+       * stopped at the door.
+       *
+       * Read from the campaign when the slot has one. `content.draft`'s ad-hoc
+       * path (CC-02) creates posts with no `campaignId` at all, and those fall
+       * back to the genome's standing objective — which is the honest answer for
+       * a post that belongs to no campaign, rather than no answer.
+       */
+      const campaignId = input.contentItemId
+        ? (await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId))?.campaignId
+        : undefined;
+      const campaign = campaignId ? await ctx.db.campaigns.get(campaignId, ctx.orgId) : undefined;
+      const objective = campaign?.objective ?? genome.dimensions.objective;
+
       const outline = buildOutline(plan.beats);
 
       const beats: ResolvedBeat[] = await Promise.all(
-        plan.beats.map((beat) => resolveBeat(beat, { genome, playbook, intent: input.intent, outline }, deps.text)),
+        plan.beats.map((beat) =>
+          resolveBeat(beat, { genome, playbook, intent: input.intent, outline, objective }, deps.text),
+        ),
       );
 
       const why = explain(plan, playbook.name, beats);
@@ -533,7 +554,14 @@ export function buildOutline(beats: readonly PlannedBeat[]): BeatOutlineEntry[] 
 
 export async function resolveBeat(
   beat: PlannedBeat,
-  ground: { genome: Genome; playbook: Playbook; intent: string; outline: BeatOutlineEntry[] },
+  ground: {
+    genome: Genome;
+    playbook: Playbook;
+    intent: string;
+    outline: BeatOutlineEntry[];
+    /** The campaign's objective, or the genome's when there is no campaign. */
+    objective?: string;
+  },
   text: TextWriter,
 ): Promise<ResolvedBeat> {
   /**
@@ -564,6 +592,7 @@ export async function resolveBeat(
     playbook: ground.playbook,
     promptRef: beat.promptRef,
     ...(ground.intent ? { intent: ground.intent } : {}),
+    ...(ground.objective ? { objective: ground.objective } : {}),
     beatId: beat.beatId,
     durationSec: beat.durationSec,
     outline: ground.outline,

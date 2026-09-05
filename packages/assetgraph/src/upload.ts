@@ -29,6 +29,22 @@ const MAX_BYTES = 512 * 1024 * 1024; // 512 MB — a long phone video, not a fil
  * Allowlist, not a denylist. The Finish pipeline and the captioner only handle
  * these, and an unbounded content type would let the container become general
  * file hosting for anything a caller cares to name.
+ *
+ * ── Why `application/pdf` is on a media allowlist ─────────────────────────
+ *
+ * It is not media, and it is not going anywhere near the Finish pipeline. This
+ * tool only mints a presigned URL — nothing enters the Asset Graph until
+ * `asset.ingest_url` is called with a role — so what a key holds is decided by
+ * whoever uploaded it. A knowledge PDF is uploaded here and then read by
+ * `brand.knowledge.attach_document`, which fetches it, extracts the text and
+ * writes chunks; no asset row is ever created and the captioner never sees it.
+ *
+ * Two screens have been calling this with `application/pdf` since they were
+ * written — the onboarding "Upload company Docs" step and Settings' knowledge
+ * panel — and both got `Invalid enum value ... received 'application/pdf'`
+ * from the input schema. I wrote both of those upload paths and exercised
+ * neither, which is how a button that cannot work ships next to copy telling
+ * you it cannot work.
  */
 const ALLOWED_CONTENT_TYPES = [
   'image/jpeg',
@@ -41,6 +57,7 @@ const ALLOWED_CONTENT_TYPES = [
   'audio/mpeg',
   'audio/mp4',
   'audio/wav',
+  'application/pdf',
 ] as const;
 
 export const AssetUploadUrlInput = z.object({
@@ -63,8 +80,9 @@ export function makeAssetUploadUrl(store: BlobStore) {
     version: 1,
 
     summary:
-      'Get a short-lived URL for uploading a photo, video or audio file straight to storage. ' +
-      'Follow it with asset.ingest_url to add the result to the Asset Graph. Free.',
+      'Get a short-lived URL for uploading a photo, video, audio file or knowledge PDF straight to ' +
+      'storage. Follow it with asset.ingest_url to add media to the Asset Graph, or ' +
+      'brand.knowledge.attach_document to read a PDF into retrievable chunks. Free.',
 
     input: AssetUploadUrlInput,
     output: AssetUploadUrlOutput,

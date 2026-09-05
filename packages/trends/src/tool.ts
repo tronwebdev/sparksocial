@@ -25,6 +25,21 @@ const RankedTrendOut = z.object({
   opportunity: z.number(),
   metrics: Trend.shape.metrics,
   factors: z.array(z.object({ label: z.string(), detail: z.string(), weight: z.number().optional() })),
+  /**
+   * The three fields `toOutput` used to drop on the floor.
+   *
+   * `DISC-01`'s card is a picture, a topic, four numbers and three actions, and
+   * this schema was handing the UI everything but the picture — so the feed
+   * rendered as text no matter what the sources returned. `media` is the fix;
+   * `samples` and `tags` come with it because the card's link target and the
+   * descriptors that earned a trend its relevance score were invisible for the
+   * same reason.
+   */
+  media: Trend.shape.media,
+  samples: Trend.shape.samples,
+  tags: Trend.shape.tags,
+  /** `DISC-02`'s Geo & Audience panel. Largest region first. */
+  regions: Trend.shape.regions,
 });
 
 export const TrendRankInput = z.object({
@@ -36,14 +51,18 @@ export const TrendRankInput = z.object({
 
 export const TrendRankOutput = z.object({
   trends: z.array(RankedTrendOut),
-  /** Surfaced, not hidden — the refusals are the product's argument. */
-  excluded: z.array(
-    z.object({
-      trendId: z.string(),
-      topic: z.string(),
-      because: z.string(),
-    }),
-  ),
+  /**
+   * Surfaced, not hidden — the refusals are the product's argument.
+   *
+   * The same shape as a ranked trend, plus the reason. It was a name and a
+   * sentence, which forced the feed to render a rejection as a line of text
+   * beneath the grid: less than the excluded trend deserves, given that
+   * `rankTrends` scores **every** fetched trend before splitting them and the
+   * numbers, factors and media already exist for each one. A user disagreeing
+   * with a rejection needs to see what was rejected — the metrics that made it
+   * look interesting and the actions to act on it anyway — not just its title.
+   */
+  excluded: z.array(RankedTrendOut.extend({ because: z.string() })),
   why: Explanation,
 });
 
@@ -70,10 +89,19 @@ export function makeTrendRank(source: TrendSource) {
       const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
       if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId: input.genomeId });
 
+      /**
+       * Muted sources are excluded **before** the fetch, not after the merge.
+       * X bills per call and YouTube spends a daily quota, so a mute that
+       * fetched and then discarded would cost an owner exactly as much as not
+       * muting — see `TrendFetchArgs.excludeSources`.
+       */
+      const excludeSources = await ctx.db.trendSourceMutes.list(input.genomeId, ctx.orgId);
+
       const fetched = await source.fetch({
         limit: Math.max(input.limit * 3, 20), // over-fetch: safety removes some
         ...(input.region ? { region: input.region } : {}),
         ...(input.language ? { language: input.language } : {}),
+        ...(excludeSources.length ? { excludeSources } : {}),
       });
 
       // Everything fetched, not just what survived ranking: a trend excluded
@@ -94,8 +122,7 @@ export function makeTrendRank(source: TrendSource) {
       return {
         trends: top.map(toOutput),
         excluded: excluded.map((r) => ({
-          trendId: r.trend.id,
-          topic: r.trend.topic,
+          ...toOutput(r),
           because: r.safety.safe
             ? 'nothing this brand can credibly say about it'
             : (r.safety.detail ?? r.safety.reasons.join(', ')),
@@ -150,6 +177,10 @@ function toOutput(r: RankedTrend) {
     opportunity: r.opportunity,
     metrics: r.trend.metrics,
     factors: r.factors,
+    ...(r.trend.media ? { media: r.trend.media } : {}),
+    samples: r.trend.samples,
+    tags: r.trend.tags,
+    regions: r.trend.regions,
   };
 }
 
@@ -502,6 +533,8 @@ function adhocTrend(topic: string, tags: string[], language?: string): Trend {
     source: 'manual',
     topic,
     tags,
+    /* A caller-supplied topic has no region. */
+    regions: [],
     metrics: { volume: 0, velocity: 0, saturation: 0, growth: 0 },
     samples: [],
     language: language ?? 'en',
@@ -672,6 +705,110 @@ export function makeTrendReshare(source: TrendSource) {
           summary: `Reusing ${referencedAssetIds.length || 'no'} asset${referencedAssetIds.length === 1 ? '' : 's'} from this post, reframed around "${trend.topic}".`,
           factors: [{ label: 'source item', detail: item.playbookId }],
           evidence: [{ kind: 'trend' as const, id: trend.id, note: trend.topic }],
+          alternatives: [],
+        },
+      };
+    },
+  });
+}
+
+/* ── trend.source.mute ───────────────────────────────────────────────── */
+
+export const TrendSourceMuteInput = z.object({
+  genomeId: z.string().min(1),
+  /** The adapter's own name: `youtube`, `x`, `tiktok`, `google`, `reddit`… */
+  source: z.string().min(1).max(40),
+  /** `true` mutes, `false` unmutes. One tool, because it is one toggle. */
+  muted: z.boolean(),
+});
+
+export const TrendSourceMuteOutput = z.object({
+  source: z.string(),
+  muted: z.boolean(),
+  /** Every source this brand has muted after the change — what the UI re-renders from. */
+  mutedSources: z.array(z.string()),
+  why: Explanation,
+});
+
+/**
+ * `trend.source.mute` — a brand switches a trend source off for itself.
+ *
+ * ── Why this is a tool and not a setting ─────────────────────────────────
+ *
+ * The detail screen's "Mute Source" control had nothing behind it, and the
+ * honest thing on the button was a tooltip explaining that muting lived in the
+ * API environment (`TREND_SOURCE_<VENDOR>_ENABLED=false`). That is true of the
+ * *operator's* switch and it is the wrong answer for a user: an owner whose
+ * feed is 40 K-pop videos deep does not have access to the container's
+ * environment, and should not need it to stop reading YouTube.
+ *
+ * So there are two switches now, deliberately separate (see `composite.ts`):
+ * the operator's, which takes a source out of the deployment, and this one,
+ * which takes it out of **one brand's** feed. Per genome, not per org, because
+ * two brands in one agency are allowed to disagree.
+ *
+ * ── Where it takes effect ────────────────────────────────────────────────
+ *
+ * `trend.rank` passes the muted list to the composite as `excludeSources`,
+ * which drops those entries *before* it calls anything. That matters for money
+ * rather than tidiness: X bills per request and YouTube spends a daily quota,
+ * so filtering the merged list afterwards would have kept the bill and removed
+ * only the rows.
+ *
+ * `effect: 'write'` with `autonomy: 'auto'` — it writes one row of the brand's
+ * own preferences, spends nothing, and is trivially reversible, which is the
+ * same profile as `trend.watchlist`.
+ */
+export function makeTrendSourceMute() {
+  return defineTool({
+    name: 'trend.source.mute',
+    version: 1,
+
+    summary:
+      "Mute or unmute a trend source for this brand. A muted source is not requested at all on the next " +
+      'rank, so it stops costing quota as well as attention. Cheap, reversible.',
+
+    input: TrendSourceMuteInput,
+    output: TrendSourceMuteOutput,
+
+    effect: 'write',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin', 'editor'],
+    /** Idempotent by the unique index: muting twice is one mute. */
+    idempotent: true,
+    surfaces: ['DISC-01', 'DISC-02'],
+
+    async handler(input, ctx) {
+      const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
+      if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId: input.genomeId });
+
+      if (input.muted) {
+        await ctx.db.trendSourceMutes.mute({ genomeId: input.genomeId, orgId: ctx.orgId, source: input.source });
+      } else {
+        await ctx.db.trendSourceMutes.unmute({ genomeId: input.genomeId, orgId: ctx.orgId, source: input.source });
+      }
+
+      const mutedSources = await ctx.db.trendSourceMutes.list(input.genomeId, ctx.orgId);
+      ctx.logger.info('trend source mute changed', { genomeId: input.genomeId, source: input.source, muted: input.muted });
+
+      return {
+        source: input.source,
+        muted: input.muted,
+        mutedSources,
+        why: {
+          summary: input.muted
+            ? `${input.source} is muted for this brand — it will not be requested on the next rank.`
+            : `${input.source} is live again for this brand.`,
+          factors: [
+            { label: 'scope', detail: 'this brand only — other brands in the org are unaffected' },
+            {
+              label: 'effect',
+              detail: input.muted
+                ? 'excluded before the fetch, so it stops spending quota as well as attention'
+                : 'included in the next fetch',
+            },
+          ],
+          evidence: [],
           alternatives: [],
         },
       };

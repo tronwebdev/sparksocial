@@ -4,6 +4,7 @@ import {
   type Genome,
   type GenomeDimensions,
   type PillarWeights,
+  type Objective,
 } from '@sparksocial/shared';
 
 /**
@@ -61,6 +62,58 @@ const COLD_START: Record<GenomeProfile, Required<Pick<PillarWeights, ContentPill
   coach: { educational: 0.45, product: 0.1, proof: 0.2, personality: 0.25, community: 0 },
 };
 
+const PILLARS: ContentPillar[] = ['educational', 'product', 'proof', 'personality', 'community'];
+
+/**
+ * How each objective tilts the pillar mix.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────
+ *
+ * `deriveMix` took only the genome, so every campaign for a given brand got the
+ * identical ratio — a bookings campaign and an audience campaign both came out
+ * 50/25/15/10/0 for a SaaS. The campaign objective reached the *ordering* of
+ * playbooks and never the shape of the plan, which made "What is this campaign
+ * for?" a question with almost no consequence: the same Teach/Offer/Team split
+ * whatever you picked.
+ *
+ * Multipliers rather than replacement ratios, so the profile still decides the
+ * character of the account and the objective only leans on it. A local business
+ * chasing sales is still a local business; it just posts more product and proof
+ * than it would while growing an audience.
+ *
+ * Applied through `normalise` and `capPromotional`, which is what keeps this
+ * safe: no tilt can push an account past the promotional ceiling, and a pillar
+ * the profile has at zero stays at zero — `hiring` cannot invent community
+ * content for a profile that does not do any.
+ */
+const OBJECTIVE_TILT: Record<Objective, Partial<Record<ContentPillar, number>>> = {
+  // Somebody has to be convinced this specific business is the one to book.
+  bookings: { product: 1.4, proof: 1.35, educational: 0.8, personality: 1.1 },
+  // A lead gives you their details in exchange for something useful first.
+  leads: { educational: 1.25, proof: 1.2, product: 0.9 },
+  // A trial is self-serve: the product has to be legible before anyone starts one.
+  trials: { product: 1.35, educational: 1.1, proof: 1.15, personality: 0.8 },
+  // The shortest path, and the one the ceiling most needs to hold.
+  sales: { product: 1.5, proof: 1.4, educational: 0.7, personality: 0.8 },
+  // Reach comes from being worth following, not from being for sale.
+  audience: { educational: 1.3, personality: 1.5, community: 1.4, product: 0.5, proof: 0.8 },
+  // People apply to people. The product is the least interesting thing here.
+  hiring: { personality: 1.8, community: 1.4, educational: 1.1, product: 0.4, proof: 0.7 },
+};
+
+/** Apply a tilt to a weight set. Absent multipliers mean "leave it alone". */
+function tilt(
+  w: Required<Pick<PillarWeights, ContentPillar>>,
+  objective: Objective | undefined,
+): Required<Pick<PillarWeights, ContentPillar>> {
+  if (!objective) return w;
+  const factors = OBJECTIVE_TILT[objective];
+  if (!factors) return w;
+  const out = { ...w };
+  for (const pillar of PILLARS) out[pillar] = w[pillar] * (factors[pillar] ?? 1);
+  return out;
+}
+
 export const coldStartWeights = (profile: GenomeProfile): Required<Pick<PillarWeights, ContentPillar>> => ({
   ...COLD_START[profile],
 });
@@ -73,7 +126,14 @@ export const coldStartWeights = (profile: GenomeProfile): Required<Pick<PillarWe
  * both `product_ui` and `person`; it is a SaaS, so `product_ui` is checked first.
  */
 export function classifyProfile(d: GenomeDimensions): GenomeProfile {
-  const has = (p: GenomeDimensions['proof_asset'][number]) => d.proof_asset.includes(p);
+  /*
+    `?? []` for the same reason the resolver guards `secondary_objectives`: a
+    draft genome's dimensions are legitimately incomplete, and this classifier
+    is reached from campaign planning, the asset-gap report and the capture
+    fallback. An absent proof asset means "we know of none", which falls through
+    to the `b2b_saas` default below — a defensible answer. A TypeError is not.
+  */
+  const has = (p: GenomeDimensions['proof_asset'][number]) => (d.proof_asset ?? []).includes(p);
 
   // Physical craft is unambiguous: a barbershop, a welder, a tailor, a kitchen.
   if (has('physical_craft')) return 'local_business';
@@ -109,7 +169,7 @@ export interface DerivedMix {
  * clears 0.4 (§3.2), then that account's own weights — always re-capped and
  * re-normalised, so no path can produce a 100%-promotional account.
  */
-export function deriveMix(genome: Genome): DerivedMix {
+export function deriveMix(genome: Genome, objective?: Objective): DerivedMix {
   const profile = classifyProfile(genome.dimensions);
   const { learned } = genome;
 
@@ -118,16 +178,21 @@ export function deriveMix(genome: Genome): DerivedMix {
   if (!useLearned) {
     return {
       profile,
-      weights: coldStartWeights(profile),
+      weights: capPromotional(normalise(tilt(coldStartWeights(profile), objective))),
       source: 'cold_start',
       why:
         `Cold-start ratio for a ${profile.replace('_', ' ')} profile — derived from ` +
-        `proof asset (${genome.dimensions.proof_asset.join(', ')}) and objective ` +
-        `(${genome.dimensions.objective}), not from any category label.`,
+        `proof asset (${(genome.dimensions.proof_asset ?? []).join(', ') || 'none recorded'})` +
+        (objective
+          ? `, then tilted toward this campaign's objective (${objective})`
+          : ` and objective (${genome.dimensions.objective})`) +
+        `, not from any category label.`,
     };
   }
 
-  const capped = capPromotional(normalise({ ...coldStartWeights(profile), ...learned.mix_weights_override }));
+  const capped = capPromotional(
+    normalise(tilt({ ...coldStartWeights(profile), ...learned.mix_weights_override }, objective)),
+  );
   return {
     profile,
     weights: capped,
@@ -140,7 +205,6 @@ export function deriveMix(genome: Genome): DerivedMix {
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 
-const PILLARS: ContentPillar[] = ['educational', 'product', 'proof', 'personality', 'community'];
 
 function normalise(w: Partial<Record<ContentPillar, number>>): Required<Pick<PillarWeights, ContentPillar>> {
   const clamped = PILLARS.map((p) => [p, Math.max(0, w[p] ?? 0)] as const);

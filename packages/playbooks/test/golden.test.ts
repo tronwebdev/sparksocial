@@ -32,6 +32,49 @@ const TOP_N = 8;
  */
 const SPEC_PROMOTIONAL_CEILING = 0.35;
 
+describe('a draft genome, whose dimensions are legitimately incomplete', () => {
+  /*
+    `genomeRepository.createDraft` writes dimensions through
+    `GenomeDimensions.partial()` — a draft is allowed to be missing answers
+    nobody has given yet — and `get` reads them back the same way. The resolver
+    runs against that shape during onboarding and campaign planning.
+
+    This is the regression test for a real failure: `campaign.propose_plan`
+    returned `UPSTREAM_FAILED: Cannot read properties of undefined (reading
+    'reduce')` for a brand whose `secondary_objectives` had never been written.
+    The read boundary casts the partial parse to the full type, so the resolver
+    trusted the type and reduced over `undefined`.
+  */
+  it('resolves without secondary_objectives rather than throwing', () => {
+    const draft = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions },
+    };
+    // The exact shape the DB hands back for a genome that never answered it.
+    delete (draft.dimensions as { secondary_objectives?: unknown }).secondary_objectives;
+
+    expect(() => resolve(draft, lagosBarbershop.assets)).not.toThrow();
+    const { ranked } = resolve(draft, lagosBarbershop.assets);
+    expect(ranked.length).toBeGreaterThan(0);
+  });
+
+  it('scores the same as an empty secondary list, since that is what absent means', () => {
+    const withEmpty = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions, secondary_objectives: [] },
+    };
+    const withAbsent = {
+      ...lagosBarbershop.genome,
+      dimensions: { ...lagosBarbershop.genome.dimensions },
+    };
+    delete (withAbsent.dimensions as { secondary_objectives?: unknown }).secondary_objectives;
+
+    const a = resolve(withEmpty, lagosBarbershop.assets).ranked.map((r) => r.score);
+    const b = resolve(withAbsent, lagosBarbershop.assets).ranked.map((r) => r.score);
+    expect(b).toEqual(a);
+  });
+});
+
 describe('§13 — zero anti-pattern selections', () => {
   it.each(GOLDEN_SET.map((c) => [c.label, c] as const))(
     '%s never selects a format that would get it cancelled',
@@ -338,5 +381,75 @@ describe('library hygiene', () => {
     for (const p of PLAYBOOKS) {
       expect(Object.keys(p.objective_fit).length, `${p.playbook_id} has no objective_fit`).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the campaign objective shapes the plan, not just its ordering', () => {
+  /*
+    Two bugs reported together, both of which made "What is this campaign for?"
+    a question with almost no consequence:
+
+      - `deriveMix` took only the genome, so every campaign for one brand got
+        the same pillar ratio. A bookings campaign and an audience campaign both
+        came out 50/25/15/10/0 for a SaaS.
+      - `resolve` gated on `genome.dimensions.objective`, so a playbook that
+        fits only the *campaign's* objective had already been rejected before
+        `planCampaign` re-sorted. The re-sort had nothing to rescue.
+  */
+  it('tilts the mix toward what the campaign is for', () => {
+    const base = deriveMix(torontoSaas.genome).weights;
+    const forSales = deriveMix(torontoSaas.genome, 'sales').weights;
+    const forAudience = deriveMix(torontoSaas.genome, 'audience').weights;
+
+    // Sales leans on product, audience leans away from it.
+    expect(forSales.product).toBeGreaterThan(base.product);
+    expect(forAudience.product).toBeLessThan(base.product);
+    // And audience leans into the pillars that earn a follow.
+    expect(forAudience.personality).toBeGreaterThan(base.personality);
+  });
+
+  it('still cannot breach the promotional ceiling, whatever the objective asks for', () => {
+    // The tilt runs through `capPromotional`, which is what makes it safe to
+    // let an objective push on the mix at all.
+    for (const objective of ['leads', 'bookings', 'trials', 'sales', 'audience', 'hiring'] as const) {
+      for (const brand of [torontoSaas, lagosBarbershop, manilaFreelancer]) {
+        const w = deriveMix(brand.genome, objective).weights;
+        expect(w.product, `${objective}`).toBeLessThanOrEqual(PROMOTIONAL_CEILING + 1e-9);
+        const total = Object.values(w).reduce((a, b) => a + b, 0);
+        expect(total).toBeCloseTo(1, 6);
+      }
+    }
+  });
+
+  it('never invents a pillar the profile does not use', () => {
+    // `community` is 0 for a SaaS. Hiring leans on community; it must not
+    // conjure some for a profile that does none.
+    const w = deriveMix(torontoSaas.genome, 'hiring').weights;
+    expect(coldStartWeights('b2b_saas').community).toBe(0);
+    expect(w.community).toBe(0);
+  });
+
+  it('gates on the objective it is given, not the brand standing one', () => {
+    const forHiring = resolve(torontoSaas.genome, torontoSaas.assets, undefined, 'hiring');
+    const forSales = resolve(torontoSaas.genome, torontoSaas.assets, undefined, 'sales');
+
+    // Different objectives reject different playbooks — which is the whole
+    // point, and was not happening.
+    const rejectedFor = (r: typeof forHiring) =>
+      r.rejected.filter((x) => x.because.startsWith('no fit for objective')).map((x) => x.playbook_id);
+    expect(rejectedFor(forHiring)).not.toEqual(rejectedFor(forSales));
+
+    // And the rejection says which objective did it.
+    for (const r of rejectedFor(forHiring).length ? forHiring.rejected : []) {
+      if (r.because.startsWith('no fit for objective')) expect(r.because).toContain('hiring');
+    }
+  });
+
+  it('defaults to the genome objective, so every other caller is unchanged', () => {
+    const explicit = resolve(torontoSaas.genome, torontoSaas.assets, undefined, torontoSaas.genome.dimensions.objective);
+    const implicit = resolve(torontoSaas.genome, torontoSaas.assets);
+    expect(implicit.ranked.map((r) => r.playbook.playbook_id)).toEqual(
+      explicit.ranked.map((r) => r.playbook.playbook_id),
+    );
   });
 });
