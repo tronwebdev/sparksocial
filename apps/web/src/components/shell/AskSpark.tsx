@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChatDrawer } from '@/components/command-center/ChatDrawer';
-import { onAskSparkOpen, openAskSpark } from '@/lib/askSpark';
+import { isSparkPinned, onAskSparkOpen, openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SparkMark } from '@/components/brand/SparkMark';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 
 /**
@@ -85,7 +86,19 @@ import { cn } from '@/lib/utils';
 export function AskSpark({ compact = false, delegate = false }: { compact?: boolean; delegate?: boolean } = {}) {
   const router = useRouter();
   const { genome } = useSelectedGenome();
+  /**
+   * A pinned drawer opens with the page.
+   *
+   * `useState` runs on the server too, where `localStorage` does not exist, so
+   * the initial value is `false` and the effect below corrects it after mount —
+   * initialising from storage directly would make the server and client
+   * disagree and React would discard the markup.
+   */
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (isSparkPinned()) setOpen(true);
+  }, []);
 
   /**
    * The cockpit's header lists Ask Spark as a primary action, and it opens *this*
@@ -122,6 +135,16 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
 
   return (
     <>
+      {/*
+        The bell rides with Ask Spark rather than being added to nineteen
+        headers: this block is the one control every screen's chrome already
+        renders, and the user's screenshot puts the bell immediately left of it.
+        Right-anchored callers (Discovery pins this block to `right-35`) simply
+        grow leftwards.
+      */}
+      <span className="flex shrink-0 items-center gap-[14px]">
+      <NotificationBell compact={compact} />
+
       {/*
         196x70.2: the orb at 0,0 and a 126x47 bubble at 70,12, whose tail
         overlaps the orb by 0.2px — which is why the two are positioned rather
@@ -168,6 +191,7 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
           Ask Spark?
         </span>
       </button>
+      </span>
 
       {delegate ? null : (
       <ChatDrawer

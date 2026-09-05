@@ -1,6 +1,7 @@
 import type { DraftCaptureBrief } from '@sparksocial/capture';
 import type { TextWriter } from '@sparksocial/generate';
 import type { EngagementClassifier, ReplyWriter } from '@sparksocial/engage';
+import type { AssetMediaType } from '@sparksocial/shared';
 import { deterministicEmbedding } from './dev-store.js';
 
 /**
@@ -19,7 +20,7 @@ import { deterministicEmbedding } from './dev-store.js';
 
 export function devCaptionClient() {
   return {
-    async caption(url: string, mediaType: 'image' | 'video' | 'audio'): Promise<string> {
+    async caption(url: string, mediaType: AssetMediaType): Promise<string> {
       return `${mediaType} at ${url}`;
     },
   };

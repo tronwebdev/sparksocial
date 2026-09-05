@@ -338,6 +338,10 @@ async function publishOne(
               `A scheduled post stopped retrying after ${attempts} attempts (${platform}). ` +
               `Last error: ${result.error.message}. Check Settings \u2192 Connections, then reschedule it.`,
             urgency: 'high',
+            /* So the notification centre can draw it as a failure and offer to
+               open the post, rather than as one more line of prose. */
+            topic: 'failed',
+            target: { type: 'content_item', id: item.id },
           },
           caller: 'agent',
           ctx,

@@ -212,44 +212,70 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
               (its box ends at 808) and anchoring it there keeps the row correct
               at the 844px the card actually measures.
             */}
-            <div className="relative h-dash-row-body px-dash-row-inset">
-              <span className="absolute left-dash-row-inset top-[12px] block" aria-hidden>
+            {/*
+              A **bounded flex row**, not absolute offsets.
+
+              It was absolute — the slot time at x=52, the media well at 242,
+              the platform at 467, View pinned right — because those are the
+              design's own coordinates. But an absolutely-placed child has no
+              width, so a long summary ran straight under the media well and a
+              "no account chosen" platform ran under View. Every column
+              overlapped its neighbour the moment real text was longer than the
+              prototype's.
+
+              The widths below reproduce the same geometry at the card's own
+              844: a 23px glyph, 13 of gap, a 173-wide text column (52..225),
+              the 127 media well (225..352), a 98px gutter, then the platform,
+              with View trailing. Each column now *has* a width, so text
+              truncates at its own edge instead of crossing into the next one —
+              and below `xl`, where the card is narrower than the design ever
+              considered, the gutter collapses and the columns shrink rather
+              than colliding.
+            */}
+            <div className="flex h-dash-row-body items-center gap-[13px] px-dash-row-inset">
+              <span className="shrink-0" aria-hidden>
                 <SlotCalendarGlyph />
               </span>
 
-              <p className="absolute left-[52px] top-[11px] text-20 font-semibold leading-[1.28] text-ink">
-                {p.scheduledAt ? slotDateTime(p.scheduledAt) : 'Not scheduled yet'}
-              </p>
-              <p className="absolute left-[52px] top-[47px] truncate text-16 font-normal text-ink-muted">
-                {p.summary}
-              </p>
+              <div className="min-w-0 shrink xl:w-[173px] xl:shrink-0">
+                <p className="truncate text-20 font-semibold leading-[1.28] text-ink">
+                  {p.scheduledAt ? slotDateTime(p.scheduledAt) : 'Not scheduled yet'}
+                </p>
+                <p className="mt-[10px] truncate text-16 font-normal text-ink-muted" title={p.summary}>
+                  {p.summary}
+                </p>
+              </div>
 
               {/*
-                The 127x80 media well at x=225. `content.list` carries
-                `mediaType` but no URL, so it names the medium instead of showing
-                a still that is not the post's - the same gap the rail has, and
-                the same field (`mediaUrl` on `ContentListItem`) would close both.
+                The 127x80 media well. `content.list` carries `mediaType` but no
+                URL, so it names the medium instead of showing a still that is
+                not the post's — the same gap the rail has, and the same field
+                (`mediaUrl` on `ContentListItem`) would close both.
               */}
               <div
-                className="absolute left-[242px] top-0 flex h-dash-row-body w-[127px] items-center justify-center rounded text-[12px] text-ink-muted"
+                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-[12px] text-ink-muted xl:w-[127px]"
                 style={{ background: 'rgba(131,131,131,0.1)' }}
               >
                 {p.mediaType ?? 'text'}
               </div>
 
-              {/* x=450 in the design's body, i.e. 467 on the row. */}
-              {/* x=450: the design's "Instagram Reel" / "Carousel" /
-                  "Linkedin Post" - the platform and the format, not the platform
-                  alone. "no account chosen" is a real state: `calendar.generate`
-                  places the slot and leaves the platform to the slot's own
-                  choice, so it says that rather than showing nothing. */}
-              <span className="absolute left-[467px] top-[30px] text-18 font-medium text-ink">
+              {/*
+                The design's "Instagram Reel" / "Carousel" / "Linkedin Post" —
+                the platform *and* the format, not the platform alone. "no
+                account chosen" is a real state: `calendar.generate` places the
+                slot and leaves the platform to the slot's own choice, so it
+                says that rather than showing nothing.
+              */}
+              <span
+                className="min-w-0 flex-1 truncate text-18 font-medium text-ink xl:pl-[98px]"
+                title={p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+              >
                 {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
               </span>
 
               <Link
                 href={`/agents?draft=${encodeURIComponent(p.contentItemId)}`}
-                className="absolute right-dash-row-inset top-[30px] flex items-center gap-[11px] text-16 font-medium text-ink-muted transition-colors hover:text-ink"
+                className="flex shrink-0 items-center gap-[11px] text-16 font-medium text-ink-muted transition-colors hover:text-ink"
               >
                 View
                 <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden>

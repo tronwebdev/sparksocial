@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
+import { AgentIdentityModal } from './AgentIdentityModal';
 import { PlanQueue } from './PlanQueue';
 import { CalendarMonthGrid } from './CalendarMonthGrid';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,7 @@ export function AgentCalendarTab({
   busy?: boolean;
 }) {
   const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [identityOpen, setIdentityOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-8">
@@ -196,7 +198,7 @@ export function AgentCalendarTab({
         {/* attention — 452,107, 830 wide */}
         {reviewCount > 0 ? (
           <div className="absolute left-[452px] top-[107px] w-[830px] max-w-[calc(100%-692px)]">
-            <NeedsAttentionBanner count={reviewCount} />
+            <NeedsAttentionBanner count={reviewCount} href="?tab=calendar&attention=1" />
           </div>
         ) : null}
 
@@ -218,13 +220,16 @@ export function AgentCalendarTab({
           </svg>
           {paused ? 'Resume Agent' : 'Pause Agent'}
         </button>
-        <a
-          href="/settings/brand-kit"
+        {/* The same modal the Spark rail's button opens — *view*, not a jump
+            to a settings page, which is what this used to do. */}
+        <button
+          type="button"
+          onClick={() => setIdentityOpen(true)}
           className="absolute right-[27px] top-[90px] flex h-12 w-[190px] items-center justify-center rounded-[10px] bg-white text-16 font-medium text-ink"
           style={{ boxShadow: '0 8px 22px -12px rgba(12,12,12,0.3)' }}
         >
           View Agent Identity
-        </a>
+        </button>
       </section>
 
       {/* ── heading and the view toggle ──────────────────────────────── */}
@@ -295,6 +300,7 @@ export function AgentCalendarTab({
       ) : (
         <CalendarMonthGrid genomeId={genomeId} onOpenDraft={onOpenDraft} />
       )}
+    {identityOpen ? <AgentIdentityModal paused={paused} onClose={() => setIdentityOpen(false)} /> : null}
     </div>
   );
 }

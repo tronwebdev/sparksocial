@@ -56,7 +56,16 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: 'engagement',
     label: 'Engagement Intelligence',
-    href: '/engagement',
+    /**
+     * Points into the Command Center's tab, not at a screen of its own.
+     *
+     * Engagement Intelligence is one of the Command Center's four tabs
+     * (`app/(cc)/agents/page.tsx`), and it was also a standalone route — the
+     * same feed in two places, reachable two ways, with a sidebar on one and
+     * not the other. One destination now; `/engagement` redirects here so old
+     * links and bookmarks still land somewhere real.
+     */
+    href: '/agents?tab=engagement',
     icon: EngagementIcon,
     labelPx: 17,
   },

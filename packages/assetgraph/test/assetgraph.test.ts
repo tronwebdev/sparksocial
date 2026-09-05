@@ -5,10 +5,16 @@ import { lagosBarbershop, torontoSaas } from '@sparksocial/playbooks';
 import { makeAssetRetrieve } from '../src/retrieve.js';
 import { assetGaps } from '../src/gaps.js';
 import { makeAssetIngestUrl } from '../src/ingest.js';
-import { assetRightsSet } from '../src/rights.js';
+import { assetRightsPending, assetRightsSet } from '../src/rights.js';
 import { assetReuse } from '../src/reuse.js';
 import { assetCooldownCheck } from '../src/cooldown.js';
-import { assetFolderCreate, assetFolderMove, assetFolderList } from '../src/folders.js';
+import {
+  assetFolderCreate,
+  assetFolderMove,
+  assetFolderList,
+  assetFolderDelete,
+  assetFolderMemberSet,
+} from '../src/folders.js';
 
 /**
  * §4 tests. The behaviours that matter most are the ones the spec calls out by
@@ -41,6 +47,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         captionsByRole: async () => [],
         info: async () => ({}),
         setRights: async () => undefined,
+        awaitingRights: async () => [],
+        unfiled: async () => [],
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
         setArchived: async () => undefined,
@@ -49,6 +57,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
         list: async () => [],
+        rename: async () => undefined,
+        delete: async () => undefined,
+        members: async () => [],
+        setMembers: async () => undefined,
       },
       content: {
         recent: async () => [],
@@ -123,6 +135,12 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         add: async () => { throw new Error('trends.add not stubbed in this test'); },
         remove: async () => {},
         list: async () => [],
+      },
+      /** `trend.source.mute`'s rows. Nothing here mutes anything; the shape is the contract. */
+      trendSourceMutes: {
+        list: async () => [],
+        mute: async () => {},
+        unmute: async () => {},
       },
       trendObservations: {
         record: async () => {},
@@ -514,6 +532,46 @@ describe('asset.ingest_url', () => {
     expect(tool.idempotent).toBe(false);
   });
 
+  it('files a PDF as a document and captions it through the same pass', async () => {
+    const seen: Array<[string, string]> = [];
+    const caption = async (url: string, mediaType: string) => {
+      seen.push([url, mediaType]);
+      return 'A two-page takeaway menu with prices.';
+    };
+    const create = vi.fn(async () => ({ id: 'asset_pdf' }));
+    const tool = makeAssetIngestUrl({ caption, embed: async () => [0.1] });
+
+    await tool.handler(
+      {
+        genomeId: 'gen_1',
+        url: 'https://example.com/menu.pdf',
+        assetRole: 'knowledge',
+        mediaType: 'document',
+        rightsStatus: 'cleared',
+      },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, create } } }),
+    );
+
+    expect(seen).toEqual([['https://example.com/menu.pdf', 'document']]);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'document' }));
+  });
+
+  it('refuses a PDF in a role the composer renders — a document is not footage', async () => {
+    const tool = makeAssetIngestUrl({ caption: async () => 'x', embed: async () => [0.1] });
+    await expect(
+      tool.handler(
+        {
+          genomeId: 'gen_1',
+          url: 'https://example.com/menu.pdf',
+          assetRole: 'product_shot',
+          mediaType: 'document',
+          rightsStatus: 'cleared',
+        },
+        ctx(),
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
   /**
    * `trustedLocalUrlPrefix` exists only for `apps/api`'s local-disk storage
    * (CLAUDE.md § Infrastructure — Azure is production; local disk is dev-only).
@@ -606,6 +664,94 @@ describe('asset.rights.set', () => {
 
   it('is human_only — a rights determination is a person’s call, never SPARK’s to propose', () => {
     expect(assetRightsSet.autonomy).toBe('human_only');
+  });
+});
+
+describe('asset.folder.member.set', () => {
+  it('replaces the folder’s list and never touches brand membership', async () => {
+    const setMembers = vi.fn(async () => ({ folderId: 'f1', userIds: ['u1', 'u2'] }));
+    const out = await assetFolderMemberSet.handler(
+      { genomeId: 'gen_1', folderId: 'f1', userIds: ['u1', 'u2', 'u1'] },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, setMembers } } }),
+    );
+    /* De-duplicated: the same person twice is one assignment. */
+    expect(setMembers).toHaveBeenCalledWith({
+      folderId: 'f1',
+      genomeId: 'gen_1',
+      orgId: 'org_1',
+      userIds: ['u1', 'u2'],
+      /* The shared `ctx()` helper here carries no `userId`, so the handler's
+         own fallback is what lands — see `ctx.userId ?? 'agent'`. */
+      assignedBy: 'agent',
+    });
+    expect(out).toEqual({ folderId: 'f1', userIds: ['u1', 'u2'] });
+  });
+
+  it('takes an empty list as "nobody", not as a no-op', async () => {
+    const setMembers = vi.fn(async () => ({ folderId: 'f1', userIds: [] }));
+    await assetFolderMemberSet.handler(
+      { genomeId: 'gen_1', folderId: 'f1', userIds: [] },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, setMembers } } }),
+    );
+    expect(setMembers).toHaveBeenCalledWith(expect.objectContaining({ userIds: [] }));
+  });
+
+  it('throws NOT_FOUND when the folder is not this genome’s', async () => {
+    await expect(
+      assetFolderMemberSet.handler(
+        { genomeId: 'gen_1', folderId: 'nope', userIds: ['u1'] },
+        ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, setMembers: async () => undefined } } }),
+      ),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('is human_only — who is responsible for work is a person’s call about people', () => {
+    expect(assetFolderMemberSet.autonomy).toBe('human_only');
+  });
+});
+
+describe('asset.folder.delete', () => {
+  it('unfiles rather than cascades, and reports how many came loose', async () => {
+    const del = vi.fn(async () => ({ id: 'f1', unfiled: 3 }));
+    const out = await assetFolderDelete.handler(
+      { genomeId: 'gen_1', folderId: 'f1' },
+      ctx({ db: { ...ctx().db, assetFolders: { ...ctx().db.assetFolders, delete: del } } }),
+    );
+    expect(out).toEqual({ folderId: 'f1', unfiled: 3 });
+  });
+
+  it('is human_only — an agent tidying up must not be able to destroy a filing scheme', () => {
+    expect(assetFolderDelete.autonomy).toBe('human_only');
+  });
+});
+
+describe('asset.rights.pending', () => {
+  const row = {
+    assetId: 'asset_1',
+    role: 'product_shot' as const,
+    rightsStatus: 'pending',
+    caption: 'a mug',
+    url: 'https://cdn.example.com/mug.jpg',
+    mediaType: 'image' as const,
+    folderId: 'folder_1',
+    filename: 'mug.jpg',
+    sizeBytes: 1234,
+    createdAt: new Date('2026-09-01T10:00:00Z'),
+  };
+
+  it('lists what retrieval is holding back, scoped to the caller’s org', async () => {
+    const awaitingRights = vi.fn(async () => [row]);
+    const out = await assetRightsPending.handler(
+      { genomeId: 'gen_1' },
+      ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, awaitingRights } } }),
+    );
+    expect(awaitingRights).toHaveBeenCalledWith('gen_1', 'org_1');
+    expect(out.assets).toEqual([{ ...row, createdAt: '2026-09-01T10:00:00.000Z' }]);
+  });
+
+  it('is a read — seeing your own uploads is not a decision to gate', () => {
+    expect(assetRightsPending.effect).toBe('read');
+    expect(assetRightsPending.autonomy).toBe('auto');
   });
 });
 

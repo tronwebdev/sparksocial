@@ -2,6 +2,8 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { onest, mollwish } from './fonts';
 import { Toaster } from '@/components/ui/toaster';
+import { NotificationProvider } from '@/lib/notifications';
+import { NotificationToasts } from '@/components/notifications/NotificationToasts';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
@@ -36,7 +38,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <html lang="en" className={`${onest.variable} ${mollwish.variable}`}>
         <body>
-          {children}
+          {/*
+            One notification system for the whole app, mounted at the root so it
+            spans every route group — `(app)`, `(cc)`, and the pages outside both
+            (`/workspaces`, `/account`). It polls nothing until Clerk says the
+            session is signed in, so the auth screens pay no cost for being
+            inside it. See `lib/notifications.tsx`.
+          */}
+          <NotificationProvider>
+            {children}
+            <NotificationToasts />
+          </NotificationProvider>
           <Toaster />
         </body>
       </html>

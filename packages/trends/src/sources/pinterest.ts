@@ -106,5 +106,8 @@ function toTrend(item: PinterestTrendItem): Trend {
     },
     samples: [],
     language: 'en',
+    /* The growing-keywords endpoint is read per region but reports relative
+       growth rather than a volume, so there is no per-region count to record. */
+    regions: [],
   };
 }

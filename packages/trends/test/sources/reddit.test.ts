@@ -9,7 +9,7 @@ function tokenBody() {
   return { access_token: 'tok_abc', expires_in: 3600 };
 }
 
-function listingBody(posts: Array<Partial<{ id: string; title: string; score: number; num_comments: number; created_utc: number; permalink: string; stickied: boolean; over_18: boolean; link_flair_text: string | null }>>) {
+function listingBody(posts: Array<Partial<{ id: string; title: string; score: number; num_comments: number; created_utc: number; permalink: string; stickied: boolean; over_18: boolean; link_flair_text: string | null; thumbnail: string; preview: { images?: Array<{ source?: { url?: string } }> } }>>) {
   return {
     data: {
       children: posts.map((p) => ({
@@ -54,6 +54,47 @@ describe('createRedditTrendSource', () => {
     expect(out[0]!.samples[0]!.url).toBe('https://reddit.com/r/test/comments/p1');
     expect(calls.some((c) => c.includes('access_token'))).toBe(true);
     expect(calls.some((c) => c.includes('/r/marketing/hot'))).toBe(true);
+  });
+
+  it('takes the preview image and decodes the escaped query string Reddit sends', async () => {
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      if (String(url).includes('access_token')) return jsonResponse(tokenBody());
+      return jsonResponse(
+        listingBody([
+          {
+            id: 'withpic',
+            // Reddit HTML-escapes these; an unescaped `&amp;` breaks the
+            // signature it checks and the image 403s in the browser.
+            preview: { images: [{ source: { url: 'https://preview.redd.it/x.jpg?width=640&amp;s=abc' } }] },
+          },
+        ]),
+      );
+    });
+    const source = createRedditTrendSource({
+      clientId: 'id',
+      clientSecret: 'secret',
+      userAgent: 'test-agent/1.0',
+      subreddits: ['marketing'],
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const out = await source.fetch({ limit: 10 });
+    expect(out[0]!.media).toEqual({ url: 'https://preview.redd.it/x.jpg?width=640&s=abc', kind: 'image' });
+  });
+
+  it('leaves media unset for a text post, whose thumbnail is a sentinel word rather than a URL', async () => {
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      if (String(url).includes('access_token')) return jsonResponse(tokenBody());
+      return jsonResponse(listingBody([{ id: 'selfpost', thumbnail: 'self' }]));
+    });
+    const source = createRedditTrendSource({
+      clientId: 'id',
+      clientSecret: 'secret',
+      userAgent: 'test-agent/1.0',
+      subreddits: ['marketing'],
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const out = await source.fetch({ limit: 10 });
+    expect(out[0]!.media).toBeUndefined();
   });
 
   it('filters out stickied and over-18 posts', async () => {

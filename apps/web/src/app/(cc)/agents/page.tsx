@@ -6,9 +6,11 @@ import { CommandCenterShell, type CcTab } from '@/components/command-center/Comm
 import { CommandCenterOverview } from '@/components/command-center/CommandCenterOverview';
 import { SparkRailContainer } from '@/components/command-center/SparkRailContainer';
 import { PerformancePanel } from '@/components/command-center/PerformancePanel';
+import { PerformanceGate } from '@/components/command-center/PerformanceGate';
 import { PerformanceHeader } from '@/components/command-center/PerformanceHeader';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
 import { AgentCalendarTab } from '@/components/command-center/AgentCalendarTab';
+import { NeedsAttentionScreen } from '@/components/command-center/NeedsAttentionScreen';
 import { NeedsAttentionBanner } from '@/components/command-center/NeedsAttentionBanner';
 import { EngagementFeed } from '@/components/engagement/EngagementFeed';
 import { EngagementGate } from '@/components/engagement/EngagementGate';
@@ -59,6 +61,16 @@ export default function CommandCenterPage() {
   const agent = useCcAgent(genome?.genomeId);
 
   const fromUrl = params.get('tab');
+  /**
+   * `?attention=1` — the Needs Attention screen.
+   *
+   * A **view**, not a fifth tab, because the design's nav pill has four and the
+   * screenshot shows this state under the same four. The amber banner's
+   * "Review" link used to be `href="#review-queue"`, an anchor to a queue that
+   * has since moved off the Overview — so it scrolled to nothing. It opens this
+   * now, and closing it returns to whichever tab you were on.
+   */
+  const attention = params.get('attention') === '1';
   const hasDraft = params.get('draft') !== null;
   /* The reporting window. Its control sits in the shell's full-width band and
      the body that reads it sits in the 1159 column, so neither can own it. */
@@ -144,7 +156,8 @@ export default function CommandCenterPage() {
             design's 831,147 against a title at 53,143. */}
         {agent.reviewCount > 0 ? (
           <div className="mt-[4px] w-full shrink-0 xl:w-[849px]">
-            <NeedsAttentionBanner count={agent.reviewCount} />
+            {/* Keeps the tab you were on, so "Back to …" returns there. */}
+            <NeedsAttentionBanner count={agent.reviewCount} href={`?tab=${tab}&attention=1`} />
           </div>
         ) : null}
       </div>
@@ -152,14 +165,34 @@ export default function CommandCenterPage() {
 
   return (
     <CommandCenterShell tab={tab} onTab={onTab} band={band} rail={<SparkRailContainer />}>
-      {tab === 'overview' ? (
+      {attention ? (
+        <div className="flex flex-col gap-6">
+          <button
+            type="button"
+            onClick={() => {
+              const q = new URLSearchParams(params.toString());
+              q.delete('attention');
+              router.replace(`/agents?${q.toString()}`, { scroll: false });
+            }}
+            className="flex w-fit items-center gap-[10px] text-16 font-semibold text-ink"
+          >
+            <svg width="8" height="15" viewBox="0 0 8 16" fill="none" aria-hidden>
+              <path d="M7 1 1 8l6 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Back to {tab === 'overview' ? 'Overview' : tab === 'calendar' ? 'Agent Calendar' : tab === 'performance' ? 'Performance & Learning' : 'Engagement Intelligence'}
+          </button>
+          <NeedsAttentionScreen onOpenDraft={(id) => setDraft({ open: true, contentItemId: id })} />
+        </div>
+      ) : null}
+
+      {!attention && tab === 'overview' ? (
         <div className="flex flex-col gap-10">
           <CommandCenterOverview onOpenDraft={(id) => setDraft({ open: true, contentItemId: id })} />
 
         </div>
       ) : null}
 
-      {tab === 'calendar' ? (
+      {!attention && tab === 'calendar' ? (
         <AgentCalendarTab
           genomeId={genome?.genomeId}
           paused={agent.paused}
@@ -173,12 +206,17 @@ export default function CommandCenterPage() {
         />
       ) : null}
 
-      {tab === 'performance' ? (
-        <PerformancePanel genomeId={genome?.genomeId} windowDays={perfWindow} />
+      {!attention && tab === 'performance' ? (
+        /* The tab is gated on the learning engine having enough measured
+           outcomes to say anything — see `PerformanceGate`. */
+        <PerformanceGate genomeId={genome?.genomeId}>
+          <PerformancePanel genomeId={genome?.genomeId} windowDays={perfWindow} />
+        </PerformanceGate>
       ) : null}
 
-      {tab === 'engagement' ? (
-        <EngagementGate>
+      {/* No "still learning your voice" card on this tab — see `EngagementGate`. */}
+      {!attention && tab === 'engagement' ? (
+        <EngagementGate showLearningNotice={false}>
           <EngagementFeed />
         </EngagementGate>
       ) : null}

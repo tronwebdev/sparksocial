@@ -21,6 +21,12 @@ export interface YouTubeTrendSourceConfig {
   fetchImpl?: typeof fetch;
 }
 
+interface YouTubeThumbnail {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
 interface YouTubeVideoItem {
   id: string;
   snippet: {
@@ -29,6 +35,11 @@ interface YouTubeVideoItem {
     categoryId?: string;
     publishedAt: string;
     defaultLanguage?: string;
+    /**
+     * Already in every `part=snippet` response — declaring it costs no quota,
+     * which is the whole reason `Trend.media` can be filled here at all.
+     */
+    thumbnails?: Record<string, YouTubeThumbnail | undefined>;
   };
   statistics: {
     viewCount?: string;
@@ -141,6 +152,34 @@ function toTrend(item: YouTubeVideoItem): Trend {
     tags: item.snippet.tags?.slice(0, 5) ?? (item.snippet.categoryId ? [`category_${item.snippet.categoryId}`] : []),
     metrics: { volume: views, velocity, saturation, growth: 0 },
     samples: [{ url: `https://youtube.com/watch?v=${item.id}`, caption: item.snippet.title }],
+    media: { url: bestThumbnail(item), kind: 'video' },
     language: item.snippet.defaultLanguage ?? 'en',
+    /* The chart is fetched per `regionCode`, so the region this batch came from
+       is real — but it is a property of the *request*, which `toTrend` does not
+       see. `createMultiRegionTrendSource` fills it in from the region it asked
+       for, which is the only place that knows. */
+    regions: [],
   };
+}
+
+/**
+ * The largest thumbnail the response offered, or the canonical i.ytimg.com URL
+ * for the video id.
+ *
+ * The fallback is not a guess: `https://i.ytimg.com/vi/<id>/hqdefault.jpg` is
+ * generated for every public video, so a response that omitted `thumbnails`
+ * (an older `part` set, a trimmed test fixture) still yields a real image
+ * rather than an empty card.
+ */
+const THUMB_PREFERENCE = ['maxres', 'standard', 'high', 'medium', 'default'] as const;
+
+function bestThumbnail(item: YouTubeVideoItem): string {
+  const thumbs = item.snippet.thumbnails;
+  if (thumbs) {
+    for (const size of THUMB_PREFERENCE) {
+      const url = thumbs[size]?.url;
+      if (url) return url;
+    }
+  }
+  return `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
 }

@@ -53,7 +53,24 @@ type GateState =
   | { kind: 'unconfigured'; eligibility: Eligibility }
   | { kind: 'active'; eligibility: Eligibility };
 
-export function EngagementGate({ children }: { children: React.ReactNode }) {
+export function EngagementGate({
+  children,
+  showLearningNotice = true,
+}: {
+  children: React.ReactNode;
+  /**
+   * The "SPARK is still learning your voice" card.
+   *
+   * Off on the Command Center's Engagement Intelligence tab, at the design's
+   * request: that tab already leads with the agent's own status band, and a
+   * second card explaining that auto-reply is not on yet reads as a warning
+   * about the tab rather than a fact about the brand. It stays on `/engagement`,
+   * the standalone inbox, where it is the only thing that explains why nothing
+   * is replying — and `state.kind === 'ineligible'` still gates auto-reply
+   * either way. Suppressing the notice does not enable anything.
+   */
+  showLearningNotice?: boolean;
+}) {
   const { genome, loading } = useSelectedGenome();
   const genomeId = genome?.genomeId;
   const [state, setState] = useState<GateState>({ kind: 'loading' });
@@ -135,7 +152,7 @@ export function EngagementGate({ children }: { children: React.ReactNode }) {
         is a blank-page substitute.
       */}
 
-      {state.kind === 'ineligible' ? (
+      {state.kind === 'ineligible' && showLearningNotice ? (
         <section className="rounded-xl border border-border bg-surface-muted p-6">
           <h2 className="text-[18px] font-semibold text-ink">SPARK is still learning your voice</h2>
           <p className="mt-1 max-w-prose text-[14px] text-ink-muted">{state.eligibility.reason}</p>

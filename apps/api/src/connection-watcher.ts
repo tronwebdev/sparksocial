@@ -110,7 +110,7 @@ async function notifyOne(
   const result = await invokeTool(
     {
       tool: 'human.notify',
-      input: { message: expiryMessage(conn, now), urgency: 'high' },
+      input: { message: expiryMessage(conn, now), urgency: 'high', topic: 'connection' },
       caller: 'agent',
       ctx,
       brand,

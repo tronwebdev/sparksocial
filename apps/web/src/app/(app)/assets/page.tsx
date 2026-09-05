@@ -1,45 +1,31 @@
-'use client';
-
-import { useState } from 'react';
-import { TopBar } from '@/components/shell/TopBar';
-import { BrandSwitcher } from '@/components/shell/BrandSwitcher';
-import { UserMenu } from '@/components/shell/UserMenu';
-import { AssetUploadForm } from '@/components/assets/AssetUploadForm';
-import { AssetSearchGrid } from '@/components/assets/AssetSearchGrid';
-import { AssetGapsPanel } from '@/components/assets/AssetGapsPanel';
-import { FolderLibrary } from '@/components/assets/FolderLibrary';
+import { AssetsLibraryScreen } from '@/components/assets/AssetsLibraryScreen';
 
 /**
- * Was a placeholder tagged `phase="P2"`. Asset Graph — ingest, caption,
- * embed, retrieve, gap detection — has been real since P2; this is the first
- * screen that reaches any of it.
+ * `LIB-01` / `LIB-02` — `ui build/SparkSocial Assets Library.dc.html`.
+ *
+ * The page is the screen and nothing else. It used to be a stack of four
+ * panels under a `TopBar` — an upload form, a gaps panel, a folder list and a
+ * semantic search grid — which was the right *set* of capabilities and none of
+ * the design: the prototype has no top bar at all, and its card carries the
+ * title, the folder grid and the folder contents in one frame with Ask Spark at
+ * the top right.
+ *
+ * Where the four went:
+ *
+ *   `FolderLibrary`   replaced. `AssetsLibraryScreen` is the design's version
+ *                     of exactly this — folders, then a folder's assets in grid
+ *                     or list — reading the same two tools.
+ *   `AssetUploadForm` replaced by the design's Upload Files modal, which runs
+ *                     the identical `asset.upload_url` → PUT →
+ *                     `asset.ingest_url` sequence.
+ *   `AssetSearchGrid` folded in as the folder search box. The screen searches
+ *                     within an open folder rather than across the graph.
+ *   `AssetGapsPanel`  not in this design, and not deleted — it answers
+ *                     "what is missing", which the Command Center's queue asks
+ *                     when a playbook cannot run. It stays a component with no
+ *                     caller on this screen rather than being wired somewhere
+ *                     the design does not put it.
  */
 export default function AssetsPage() {
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  return (
-    <>
-      <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
-      <div className="grid grid-cols-1 gap-6 p-8">
-        <header>
-          <h1 className="text-[20px] font-medium text-ink">Assets Library</h1>
-          <p className="mt-1 text-[14px] text-ink-muted">Everything this brand can make content from</p>
-        </header>
-
-        <section className="rounded-xl border border-border bg-surface p-6">
-          <h2 className="text-[18px] font-semibold text-ink">Add an asset</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">Photos, video, or audio — captioned and embedded automatically so it's retrievable by intent.</p>
-          <div className="mt-4">
-            <AssetUploadForm onIngested={() => setRefreshKey((n) => n + 1)} />
-          </div>
-        </section>
-
-        <AssetGapsPanel refreshKey={refreshKey} />
-        {/* LIB-01/LIB-02 — the folder list and detail. Above the semantic search
-            because a library is browsed before it is queried. */}
-        <FolderLibrary refreshKey={refreshKey} />
-        <AssetSearchGrid refreshKey={refreshKey} />
-      </div>
-    </>
-  );
+  return <AssetsLibraryScreen />;
 }

@@ -75,6 +75,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         captionsByRole: async () => [],
         info: async () => ({}),
         setRights: async () => undefined,
+        awaitingRights: async () => [],
+        unfiled: async () => [],
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
         setArchived: async () => undefined,
@@ -83,6 +85,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       assetFolders: {
         create: async () => { throw new Error('assetFolders.create not stubbed in this test'); },
         list: async () => [],
+        rename: async () => undefined,
+        delete: async () => undefined,
+        members: async () => [],
+        setMembers: async () => undefined,
       },
       content: {
         recent: async () => [],
@@ -157,6 +163,12 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         add: async () => { throw new Error('trends.add not stubbed in this test'); },
         remove: async () => {},
         list: async () => [],
+      },
+      /** `trend.source.mute`'s rows. Nothing here mutes anything; the shape is the contract. */
+      trendSourceMutes: {
+        list: async () => [],
+        mute: async () => {},
+        unmute: async () => {},
       },
       trendObservations: {
         record: async () => {},

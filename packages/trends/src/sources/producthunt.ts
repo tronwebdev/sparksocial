@@ -31,6 +31,8 @@ interface ProductHuntPostNode {
   createdAt: string;
   url: string;
   website?: string | null;
+  /** One more field on the query already being sent — see `Trend.media`. */
+  thumbnail?: { url?: string | null } | null;
   topics: { edges: Array<{ node: { name: string } }> };
 }
 
@@ -52,6 +54,7 @@ const QUERY = `
           createdAt
           url
           website
+          thumbnail { url }
           topics { edges { node { name } } }
         }
       }
@@ -142,6 +145,9 @@ function toTrend(post: ProductHuntPostNode): Trend {
       growth: 0,
     },
     samples: [{ url: post.url, caption: post.tagline }],
+    ...(post.thumbnail?.url ? { media: { url: post.thumbnail.url, kind: 'image' as const } } : {}),
     language: 'en',
+    /* One global leaderboard — Product Hunt takes no region. */
+    regions: [],
   };
 }

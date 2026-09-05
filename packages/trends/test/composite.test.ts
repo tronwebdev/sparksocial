@@ -28,6 +28,7 @@ const trendOf = (id: string, topic: string): Trend => ({
   tags: [],
   metrics: { volume: 100, velocity: 0.5, saturation: 0.2, growth: 0 },
   samples: [],
+  regions: [],
   language: 'en',
 });
 

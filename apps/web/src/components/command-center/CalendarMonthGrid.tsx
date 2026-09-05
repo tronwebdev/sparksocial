@@ -118,9 +118,20 @@ export function CalendarMonthGrid({
 
   const load = useCallback(async () => {
     if (!genomeId) return;
+    /**
+     * **Every** status, not `status: 'scheduled'`.
+     *
+     * This asked for scheduled posts only, which meant the calendar could not
+     * show a published post — the thing that actually went out — or a draft, or
+     * anything waiting on approval. A month grid that hides everything except
+     * one status is not a calendar of the brand's month; it is a calendar of
+     * one queue state, and the missing rows read as "nothing was planned".
+     *
+     * The filter row above still narrows by status, so asking for one is the
+     * user's move, not the loader's.
+     */
     const res = await invoke<{ items: Slot[] }>('content.list', {
       genomeId,
-      status: 'scheduled',
       // `content.list` caps this at 100; 200 came back as a validation error.
       limit: 100,
     });
@@ -129,6 +140,13 @@ export function CalendarMonthGrid({
       return;
     }
     setError(null);
+    /**
+     * A slot needs a date to sit on a day, and `scheduledAt` is the only date
+     * `content.list` returns — so a draft that has never been placed still
+     * cannot appear on the grid, and that is honest rather than a gap: it has
+     * no day. Everything *with* a date now appears whatever its status, which
+     * is what was actually broken.
+     */
     setSlots(res.output.items.filter((s) => Boolean(s.scheduledAt)));
   }, [genomeId]);
 
@@ -173,9 +191,31 @@ export function CalendarMonthGrid({
     */
     <section className="overflow-hidden rounded-lg bg-white">
       {variant === 'panel' ? (
+        /*
+          The filter row belongs to the **card**, not to List View.
+          `SparkSocial Command Center.dc.html` places "Filters:" and its five
+          boxes at top 16–33 of the queue card, *outside* the `calIsList` /
+          `calIsCalendar` switch — so they stay put when the toggle flips. Ours
+          rendered them inside `PlanQueue`, which meant flipping to Calendar
+          Mode took the whole filter row off the screen and left the month grid
+          with no way to narrow anything.
+
+          Same five, same three that work — this grid holds its slots
+          client-side too, so Date, Content type and By Status all filter here.
+        */
         <QueueCardHeader
           title="Upcoming action queue"
-          hint="Every post your agent has placed this month. A day with a post opens it."
+          hint="Every post your agent has placed this month, whatever its status. A day with a post opens it."
+          filters={
+            <QueueFilters
+              value={filters}
+              onChange={setFilters}
+              platforms={platforms}
+              mediaTypes={mediaTypes}
+              statuses={statuses}
+              statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1).replace(/_/g, ' ')}
+            />
+          }
         />
       ) : (
         /*

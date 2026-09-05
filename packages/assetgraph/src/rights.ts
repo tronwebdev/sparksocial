@@ -53,3 +53,66 @@ export const assetRightsSet = defineTool({
     return { assetId: row.id, rightsStatus: row.rightsStatus };
   },
 });
+
+/**
+ * `asset.rights.pending` — the list `asset.rights.set` acts on.
+ *
+ * Without it, clearing an asset after upload required knowing its id, and the
+ * only screen that shows ids is the one that cannot show these assets at all:
+ * `asset.retrieve` returns `'cleared'` rows and nothing else, so a `'pending'`
+ * upload was invisible everywhere in the product while still counting toward
+ * its folder's file count. The Assets Library reads this to say what is being
+ * held back and offer to clear it.
+ *
+ * `read`, so it is never gated — seeing what you uploaded is not a decision.
+ * Setting the status still is (`asset.rights.set` is `human_only`).
+ */
+export const assetRightsPending = defineTool({
+  name: 'asset.rights.pending',
+  version: 1,
+
+  summary:
+    'List the assets that retrieval is holding back because their rights are not cleared — ' +
+    'uploads marked pending, and anything pulled out of rotation as restricted. Free.',
+
+  input: z.object({ genomeId: z.string().min(1) }),
+  output: z.object({
+    assets: z.array(
+      z.object({
+        assetId: z.string(),
+        role: z.string(),
+        rightsStatus: z.string(),
+        caption: z.string().nullable(),
+        url: z.string(),
+        mediaType: z.string(),
+        folderId: z.string().nullable(),
+        filename: z.string().nullable(),
+        sizeBytes: z.number().nullable(),
+        createdAt: z.string(),
+      }),
+    ),
+  }),
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor'],
+  idempotent: true,
+
+  async handler(input, ctx) {
+    const rows = await ctx.db.assets.awaitingRights(input.genomeId, ctx.orgId);
+    return {
+      assets: rows.map((r) => ({
+        assetId: r.assetId,
+        role: r.role as string,
+        rightsStatus: r.rightsStatus,
+        caption: r.caption,
+        url: r.url,
+        mediaType: r.mediaType as string,
+        folderId: r.folderId,
+        filename: r.filename,
+        sizeBytes: r.sizeBytes,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
+  },
+});

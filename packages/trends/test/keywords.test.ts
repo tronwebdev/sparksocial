@@ -32,6 +32,7 @@ function trend(over: Partial<Trend> & { id: string }): Trend {
     topic: '',
     tags: [],
     metrics: { volume: 1000, velocity: 0.5, saturation: 0.2, growth: 1 },
+    regions: [],
     samples: [],
     language: 'en',
     ...over,

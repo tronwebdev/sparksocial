@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { AssetRole, PublicHttpUrl } from '@sparksocial/shared';
+import { AssetMediaType, AssetRole, PublicHttpUrl, ToolError } from '@sparksocial/shared';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
 
 /**
@@ -57,7 +57,7 @@ export const AssetIngestUrlOutput = z.object({
 
 export interface CaptionClient {
   /** Vision/audio pass → semantic description. Real impl calls a multimodal model. */
-  caption(url: string, mediaType: 'image' | 'video' | 'audio'): Promise<string>;
+  caption(url: string, mediaType: AssetMediaType): Promise<string>;
 }
 
 // Reuses EmbedClient from retrieve.ts — ingest and retrieval must embed with the
@@ -75,13 +75,16 @@ export interface AssetIngestUrlDeps extends CaptionClient, EmbedClient {
   trustedLocalUrlPrefix?: string;
 }
 
+/** See the guard in `asset.ingest_url`'s handler. */
+const DOCUMENT_ROLES: AssetRole[] = ['knowledge', 'brand_kit'];
+
 export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
   return defineTool({
     name: 'asset.ingest_url',
     version: 1,
 
     summary:
-      'Add a media asset (photo, video, audio) to the Asset Graph from a URL — a WhatsApp upload, ' +
+      'Add an asset (photo, video, audio or PDF) to the Asset Graph from a URL — a WhatsApp upload, ' +
       'a Drive file, a scraped image. Captions and embeds it so it becomes retrievable by intent. ' +
       'Cheap; a couple seconds.',
 
@@ -92,7 +95,7 @@ export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
       // except this server's own local-disk storage in dev (see urlSchema).
       url: urlSchema(deps.trustedLocalUrlPrefix),
       assetRole: AssetRole,
-      mediaType: z.enum(['image', 'video', 'audio']),
+      mediaType: AssetMediaType,
       /** 'cleared' only when consent/licensing is already confirmed; else 'pending'. */
       rightsStatus: z.enum(['cleared', 'pending', 'restricted']).default('pending'),
       source: z.string().optional(),
@@ -125,6 +128,26 @@ export function makeAssetIngestUrl(deps: AssetIngestUrlDeps) {
     estimateCents: () => 4,
 
     async handler(input, ctx) {
+      /**
+       * A document is not footage.
+       *
+       * `assemble.plan` asks retrieval for a role and hands whatever comes back
+       * to the timeline, which renders anything that isn't audio as a picture
+       * (`packages/compose/src/timeline.ts`). A PDF filed as `product_shot`
+       * would therefore end up as a beat in a video. The roles a document *is*
+       * allowed to take are the two the timeline never asks for, so the
+       * exclusion is structural rather than a check the composer has to
+       * remember.
+       */
+      if (input.mediaType === 'document' && !DOCUMENT_ROLES.includes(input.assetRole)) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `A PDF can be filed as ${DOCUMENT_ROLES.join(' or ')}, not ${input.assetRole} — ` +
+            'the other roles are the ones the composer pulls into a render.',
+          { assetRole: input.assetRole },
+        );
+      }
+
       const caption = await deps.caption(input.url, input.mediaType);
       const embedding = await deps.embed(caption);
 

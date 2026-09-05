@@ -5,10 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { AgentControlBar, type AgentStatusView } from './AgentControlBar';
-import { ApprovalModeControl } from './ApprovalModeControl';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
-import { ReviewQueueList, type ReviewItem } from './ReviewQueueList';
 import { PlanQueue } from './PlanQueue';
 
 /**
@@ -58,26 +55,8 @@ export function CommandCenterOverview({
 }) {
   const { genome, loading: genomeLoading, error: genomeError } = useSelectedGenome();
 
-  const [status, setStatus] = useState<AgentStatusView | null>(null);
-  const [review, setReview] = useState<ReviewItem[] | null>(null);
   const [campaign, setCampaign] = useState<CampaignSummary | null | undefined>(undefined); // undefined = not checked yet, null = none exists
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadStatus = useCallback(async () => {
-    const res = await invoke<AgentStatusView>('agent.status', {});
-    if (res.status === 'succeeded') setStatus(res.output);
-  }, []);
-
-  const loadReview = useCallback(async () => {
-    const res = await invoke<{ items: ReviewItem[] }>('queue.review.list', { limit: 25 });
-    if (res.status === 'succeeded') setReview(res.output.items);
-  }, []);
-
-  useEffect(() => {
-    void loadStatus();
-    void loadReview();
-  }, [loadStatus, loadReview]);
 
   const loadCampaign = useCallback(async () => {
     if (!genome) return;
@@ -99,23 +78,6 @@ export function CommandCenterOverview({
   useEffect(() => {
     void loadCampaign();
   }, [loadCampaign]);
-
-  const decide = useCallback(
-    async (callId: string, decision: 'approve' | 'reject') => {
-      // idempotent: false — approving replays the original held call, so a
-      // retried click must not decide it twice. Deterministic on
-      // callId+decision (unlike a fresh-take tool) so an accidental double
-      // click or a network retry of the same decision dedupes correctly.
-      const res = await invoke('approval.decide', { callId, decision }, `approval-decide:${callId}:${decision}`);
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That decision was gated.');
-        return;
-      }
-      setError(null);
-      await loadReview();
-    },
-    [loadReview],
-  );
 
   if (genomeLoading) {
     return (
@@ -161,32 +123,24 @@ export function CommandCenterOverview({
       />
 
       {/*
-        These two stay, and I nearly cut them.
+        Three panels that used to sit under the queue are gone from this tab:
+        `ReviewQueueList` ("Waiting on you"), `AgentControlBar` and
+        `ApprovalModeControl`.
 
-        The design's hero carries "Edit Campaign" and "Adjust Frequency", and
-        `CampaignFocusCard`'s own docstring says it resolves those to a calendar
-        link "plus the frequency control this page already has" - meaning
-        `AgentControlBar`. Removing it would have taken `agent.frequency.set`
-        off the screen with nothing replacing it. `ApprovalModeControl` owns
-        `agent.approval_mode.get/set`, which is the only route to autonomy
-        anywhere in the app.
+        The design's Overview is the hero and the queue, in that order, and
+        nothing else — these pushed the queue from 557 down past 900 and made
+        the tab a stack of panels rather than the one thing it is for.
 
-        Neither has a home in the design's Overview — and "under the chips",
-        where they were, is the one place they must not be: the design puts the
-        Queue card at 557, directly under the hero's 538, and these two pushed it
-        to 904. So they are `order-last`.
-
-        That keeps both capabilities on the screen and puts the design's own
-        sequence back. `order` rather than moving the JSX because they read the
-        same state as everything above them, and the flex column is already the
-        thing deciding the order.
+        Neither capability was dropped, because that is the rule:
+        `AgentControlBar` (pause/resume, `agent.frequency.set`) and
+        `ApprovalModeControl` (`agent.approval_mode.get/set`) moved to
+        **Settings → Brand Kit**, beside `GovernancePanel`, which is where every
+        other "how autonomous is the agent" control already lives. The review
+        queue moved to the **Needs Attention** screen the banner's Review link
+        opens — a list of things waiting on a person is exactly that screen's
+        subject.
       */}
-      <div className="order-last flex flex-col gap-6">
-        <AgentControlBar status={status} onChange={setStatus} />
-        <ApprovalModeControl />
-      </div>
 
-      {error ? <p className="text-14 text-destructive">{error}</p> : null}
 
       {/*
         The Queue card — "What is your Agent doing next?".
@@ -207,9 +161,7 @@ export function CommandCenterOverview({
         design's identity band is the *dashboard's* banner, and the Overview
         opens on the campaign. Engagement's panels live on their own tab.
       */}
-      <div id="review">
-        <ReviewQueueList items={review} onDecide={decide} />
-      </div>
+
 
 
 

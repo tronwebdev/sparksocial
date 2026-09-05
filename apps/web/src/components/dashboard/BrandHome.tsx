@@ -334,7 +334,22 @@ export function BrandHome() {
               <KpiRow series={snap.series} />
             </div>
           ) : null}
-          <AgentActivityFeed runs={snap.runs} />
+          {/* The upcoming list is already loaded and carries
+              contentItemId → summary, which is what lets an activity row name
+              the post a goal was about instead of printing its UUID. Free:
+              no extra call. */}
+          <AgentActivityFeed
+            runs={snap.runs}
+            /* Scheduled *and* published — both lists are already loaded, and a
+               run's goal is at least as likely to name a post that has gone out
+               as one still waiting. Anything outside both still reads "a post",
+               which is the honest fallback. */
+            titles={
+              new Map(
+                [...snap.upcoming, ...(snap.published ?? [])].map((u) => [u.contentItemId.toLowerCase(), u.summary]),
+              )
+            }
+          />
           <CockpitTabs
             upcoming={snap.upcoming}
             series={snap.series}

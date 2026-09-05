@@ -84,6 +84,18 @@ export function createCompositeTrendSource(entries: TrendSourceEntry[], deps: Co
 
   const active = () => entries.filter((e) => e.enabled !== false);
 
+  /**
+   * The operator's switch (`enabled`) and the brand's switch
+   * (`excludeSources`) are different things and both apply.
+   *
+   * `enabled: false` is a deployment decision — the source is configured but
+   * turned off for everyone. `excludeSources` arrives per call, from one
+   * brand's `trend.source.mute` rows, and must not leak into any other brand's
+   * feed. Applied here, before `fetch()`, so a muted vendor is never asked.
+   */
+  const liveFor = (excluded: readonly string[] | undefined) =>
+    excluded?.length ? active().filter((e) => !excluded.includes(e.source.name)) : active();
+
   return {
     name: `composite(${active().map((e) => e.source.name).join('+') || 'none'})`,
 
@@ -102,7 +114,7 @@ export function createCompositeTrendSource(entries: TrendSourceEntry[], deps: Co
       : 'filter',
 
     async fetch(args) {
-      const live = active();
+      const live = liveFor(args.excludeSources);
       const results = await Promise.allSettled(
         live.map((e) => e.source.fetch(args)),
       );

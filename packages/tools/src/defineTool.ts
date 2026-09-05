@@ -1,6 +1,6 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
-  Role, Effect, Autonomy, AssetRole, RunStatus, RunTrigger, StepType, Explanation,
+  Role, Effect, Autonomy, AssetRole, AssetMediaType, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -194,7 +194,7 @@ export interface ScopedDb {
       orgId: string;
       url: string;
       assetRole: AssetRole;
-      mediaType: 'image' | 'video' | 'audio';
+      mediaType: AssetMediaType;
       rightsStatus: 'cleared' | 'pending' | 'restricted';
       caption: string;
       embedding: number[];
@@ -222,6 +222,37 @@ export interface ScopedDb {
       orgId: string;
       rightsStatus: 'cleared' | 'pending' | 'restricted';
     }): Promise<{ id: string; rightsStatus: string } | undefined>;
+    /**
+     * `asset.rights.pending`'s read — the assets retrieval is holding back
+     * because their rights are not cleared. See `listAssetsAwaitingRights` in
+     * `packages/db/src/scoped.ts` for why this is its own query and not a flag
+     * on `retrieve`.
+     */
+    /** `asset.unfiled`'s read — assets in no folder. See `listUnfiledAssets`. */
+    unfiled(genomeId: string, orgId: string): Promise<Array<{
+      assetId: string;
+      role: AssetRole;
+      rightsStatus: string;
+      caption: string | null;
+      url: string;
+      mediaType: AssetMediaType;
+      folderId: string | null;
+      filename: string | null;
+      sizeBytes: number | null;
+      createdAt: Date;
+    }>>;
+    awaitingRights(genomeId: string, orgId: string): Promise<Array<{
+      assetId: string;
+      role: AssetRole;
+      rightsStatus: string;
+      caption: string | null;
+      url: string;
+      mediaType: AssetMediaType;
+      folderId: string | null;
+      filename: string | null;
+      sizeBytes: number | null;
+      createdAt: Date;
+    }>>;
     /**
      * `asset.reuse`'s write, also called automatically by `publish.now` for
      * every `referencedAssetIds` entry on success — see that tool's own
@@ -308,6 +339,8 @@ export interface ScopedDb {
   orgSettings: OrgSettingsStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
   trends: TrendWatchlistStore;
+  /** Sources this brand has muted — `trend.source.mute`. See {@link TrendSourceMuteStore}. */
+  trendSourceMutes: TrendSourceMuteStore;
   /** The `DISC-02` metric history. Cross-tenant by design. See {@link TrendObservationStore}. */
   trendObservations: TrendObservationStore;
   /** Accounts this brand studies — §8.9's influencer watchlist. See {@link InfluencerWatchStore}. */
@@ -698,7 +731,27 @@ export interface HumanMessage {
   channel?: string;
   /** When the owner saw it. Only ever set on a `notify`. */
   readAt?: Date;
+  /** What kind of event this was — the notification list's icon. See the column's comment. */
+  topic?: NotificationTopic;
+  /** What it is about, so a notification can be acted on and not only read. */
+  target?: { type: 'content_item'; id: string };
 }
+
+/**
+ * The kinds of thing SPARK tells somebody about.
+ *
+ * A closed set on purpose: each one is a row shape in the notification centre
+ * (icon, colour, and whether a Review button appears), so an open string would
+ * be a value the UI cannot render. `generic` is the honest fallback for a
+ * message that is just a message.
+ */
+export type NotificationTopic =
+  | 'content_ready'
+  | 'published'
+  | 'failed'
+  | 'queued'
+  | 'connection'
+  | 'generic';
 
 export interface HumanLoopStore {
   create(args: {
@@ -709,6 +762,8 @@ export interface HumanLoopStore {
     options?: string[];
     urgency: 'low' | 'normal' | 'high';
     runId?: string;
+    topic?: NotificationTopic;
+    target?: { type: 'content_item'; id: string };
   }): Promise<HumanMessage>;
   get(id: string, orgId: string): Promise<HumanMessage | undefined>;
   /** Unanswered `ask` items, oldest first — the owner's inbox. */
@@ -1866,6 +1921,21 @@ export interface TrendObservation {
   growth: number;
 }
 
+/**
+ * Which trend sources a brand has muted.
+ *
+ * A list of names, not rows: nothing about a mute is worth reading back except
+ * whether it exists, and the caller that matters —
+ * `TrendFetchArgs.excludeSources` — wants exactly this shape. `mute` and
+ * `unmute` are both idempotent, because they are what a toggle pressed twice
+ * does.
+ */
+export interface TrendSourceMuteStore {
+  list(genomeId: string, orgId: string): Promise<string[]>;
+  mute(args: { genomeId: string; orgId: string; source: string }): Promise<void>;
+  unmute(args: { genomeId: string; orgId: string; source: string }): Promise<void>;
+}
+
 export interface TrendObservationStore {
   /**
    * Records a batch, bucketed to the hour, last-write-wins within a bucket.
@@ -2020,6 +2090,24 @@ export interface AssetFolderRecord {
 export interface AssetFolderStore {
   create(args: { genomeId: string; orgId: string; name: string }): Promise<AssetFolderRecord>;
   list(genomeId: string, orgId: string): Promise<AssetFolderRecord[]>;
+  /** `asset.folder.rename`. Undefined when the folder is not this genome's. */
+  rename(args: { folderId: string; genomeId: string; orgId: string; name: string }): Promise<{ id: string; name: string } | undefined>;
+  /**
+   * `asset.folder.delete` — drops the folder and unfiles its assets rather than
+   * cascading. See `deleteAssetFolder` in `packages/db/src/scoped.ts` for why
+   * the assets survive.
+   */
+  delete(args: { folderId: string; genomeId: string; orgId: string }): Promise<{ id: string; unfiled: number } | undefined>;
+  /** Who is assigned to this folder. A label, not a permission — see the table's comment. */
+  members(folderId: string, orgId: string): Promise<Array<{ userId: string; assignedBy: string; createdAt: Date }>>;
+  /** Replaces the folder's assignment list wholesale. Undefined when the folder is not this genome's. */
+  setMembers(args: {
+    folderId: string;
+    genomeId: string;
+    orgId: string;
+    userIds: string[];
+    assignedBy: string;
+  }): Promise<{ folderId: string; userIds: string[] } | undefined>;
 }
 
 /** A brand's stored OAuth token for one third-party provider (Canva, or a native publishing platform). */

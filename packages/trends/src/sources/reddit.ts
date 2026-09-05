@@ -46,6 +46,14 @@ interface RedditPostData {
   stickied: boolean;
   link_flair_text: string | null;
   over_18: boolean;
+  /**
+   * Both already present in the listing this adapter is reading — no second
+   * request. `thumbnail` is sometimes a sentinel word rather than a URL
+   * ('self', 'default', 'nsfw', 'spoiler', ''), which is why `preview` is
+   * preferred and the sentinel case is checked for below.
+   */
+  thumbnail?: string;
+  preview?: { images?: Array<{ source?: { url?: string } }> };
 }
 
 interface RedditListing {
@@ -169,6 +177,7 @@ function toTrend(post: RedditPostData, subreddit: string): Trend {
   // saturated at 48h old is a judgement call, not a measurement; documented
   // as one.
   const saturation = clamp01(ageHours / 48);
+  const image = previewImage(post);
 
   return {
     id: post.id,
@@ -182,6 +191,26 @@ function toTrend(post: RedditPostData, subreddit: string): Trend {
       growth: 0,
     },
     samples: [{ url: `https://reddit.com${post.permalink}`, caption: post.title }],
+    ...(image ? { media: { url: image, kind: 'image' as const } } : {}),
     language: 'en',
+    /* Subreddits are global; Reddit's listing takes no region. */
+    regions: [],
   };
+}
+
+/**
+ * A renderable image for the post, or nothing.
+ *
+ * Reddit HTML-escapes the query string on `preview` URLs — an unescaped
+ * `&amp;` in an `<img src>` breaks the signature Reddit checks and the image
+ * 403s, so the entities are decoded here rather than in the component.
+ *
+ * A text post has no image, and saying so lets the card fall back to the
+ * prototype's text variant instead of rendering a broken frame.
+ */
+function previewImage(post: RedditPostData): string | undefined {
+  const preview = post.preview?.images?.[0]?.source?.url;
+  if (preview) return preview.replace(/&amp;/g, '&');
+  const thumb = post.thumbnail;
+  return thumb && /^https?:\/\//.test(thumb) ? thumb : undefined;
 }

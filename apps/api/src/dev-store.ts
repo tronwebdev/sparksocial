@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ScopedDb } from '@sparksocial/tools';
-import type { AssetRole, Genome, Role } from '@sparksocial/shared';
+import type { AssetMediaType, AssetRole, Genome, Role } from '@sparksocial/shared';
 import { EMBEDDING_DIM, deterministicEmbedding } from '@sparksocial/shared/embedding';
 import { createDevRunStore, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
@@ -71,7 +71,7 @@ interface AssetRow {
   genomeId: string;
   orgId: string;
   role: AssetRole;
-  mediaType: 'image' | 'video' | 'audio';
+  mediaType: AssetMediaType;
   rightsStatus: 'cleared' | 'pending' | 'restricted';
   caption: string;
   embedding: number[];
@@ -212,6 +212,8 @@ export function createDevStore(
   const genomes = new Map<string, GenomeRow>();
   const assets = new Map<string, AssetRow>();
   const assetFolders = new Map<string, AssetFolderRow>();
+  /* Folder assignment — a label, never a permission. See `asset_folder_members`. */
+  const folderMembers = new Map<string, { orgId: string; folderId: string; userId: string; assignedBy: string; createdAt: Date }>();
   const content: ContentRow[] = [];
   // Drafts and scheduled slots — separate from `content`, which only ever
   // holds the *published* seed history `recent()` reads. A draft's fuller
@@ -229,6 +231,8 @@ export function createDevStore(
   const renders: (RenderRecord & { orgId: string; genomeId: string })[] = [];
   const opportunities: (Opportunity & { orgId: string })[] = [];
   const trendWatchlist: (TrendWatchlistEntry & { orgId: string; genomeId: string })[] = [];
+  /** `trend_source_mutes` — a row means muted; see the store below. */
+  const trendSourceMutes: { orgId: string; genomeId: string; source: string }[] = [];
   /** `DISC-02`'s time series, keyed by [source, trendId, hour] — the same bucket the Postgres unique index enforces. */
   const trendObservationRows = new Map<string, TrendObservation>();
   /** §8.9's influencer watchlist, keyed `org:genome:platform:handle` — the real unique index. */
@@ -494,6 +498,42 @@ export function createDevStore(
         return out;
       },
 
+      async unfiled(genomeId, org) {
+        return [...assets.entries()]
+          .filter(([, a]) => a.genomeId === genomeId && a.orgId === org && !a.archivedAt && a.folderId === null)
+          .map(([id, a]) => ({
+            assetId: id,
+            role: a.role,
+            rightsStatus: a.rightsStatus,
+            caption: a.caption ?? null,
+            url: a.url,
+            mediaType: a.mediaType,
+            folderId: null,
+            filename: a.filename ?? null,
+            sizeBytes: a.sizeBytes ?? null,
+            createdAt: a.createdAt ?? new Date(),
+          }))
+          .sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
+      },
+
+      async awaitingRights(genomeId, org) {
+        return [...assets.entries()]
+          .filter(([, a]) => a.genomeId === genomeId && a.orgId === org && !a.archivedAt && a.rightsStatus !== 'cleared')
+          .map(([id, a]) => ({
+            assetId: id,
+            role: a.role,
+            rightsStatus: a.rightsStatus,
+            caption: a.caption ?? null,
+            url: a.url,
+            mediaType: a.mediaType,
+            folderId: a.folderId,
+            filename: a.filename ?? null,
+            sizeBytes: a.sizeBytes ?? null,
+            createdAt: a.createdAt ?? new Date(),
+          }))
+          .sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
+      },
+
       async setRights({ id, genomeId, orgId: org, rightsStatus }) {
         const a = assets.get(id);
         if (!a || a.genomeId !== genomeId || a.orgId !== org) return undefined;
@@ -559,6 +599,44 @@ export function createDevStore(
             ...f,
             assetCount: [...assets.values()].filter((a) => a.orgId === org && a.folderId === f.id).length,
           }));
+      },
+
+      async members(folderId, org) {
+        return [...folderMembers.values()].filter((m) => m.folderId === folderId && m.orgId === org);
+      },
+
+      async setMembers({ folderId, genomeId, orgId: org, userIds, assignedBy }) {
+        const f = assetFolders.get(folderId);
+        if (!f || f.genomeId !== genomeId || f.orgId !== org) return undefined;
+        for (const [k, m] of folderMembers) {
+          if (m.folderId === folderId && m.orgId === org) folderMembers.delete(k);
+        }
+        for (const userId of userIds) {
+          folderMembers.set(`${folderId}:${userId}`, { orgId: org, folderId, userId, assignedBy, createdAt: new Date() });
+        }
+        return { folderId, userIds };
+      },
+
+      async rename({ folderId, genomeId, orgId: org, name }) {
+        const f = assetFolders.get(folderId);
+        if (!f || f.genomeId !== genomeId || f.orgId !== org) return undefined;
+        f.name = name;
+        return { id: f.id, name };
+      },
+
+      async delete({ folderId, genomeId, orgId: org }) {
+        const f = assetFolders.get(folderId);
+        if (!f || f.genomeId !== genomeId || f.orgId !== org) return undefined;
+        // Unfile rather than cascade — see `deleteAssetFolder` in scoped.ts.
+        let unfiled = 0;
+        for (const a of assets.values()) {
+          if (a.orgId === org && a.folderId === folderId) {
+            a.folderId = null;
+            unfiled += 1;
+          }
+        }
+        assetFolders.delete(folderId);
+        return { id: folderId, unfiled };
       },
     },
 
@@ -1083,6 +1161,24 @@ export function createDevStore(
       },
       async list(genomeId, org) {
         return trendWatchlist.filter((w) => w.genomeId === genomeId && w.orgId === org);
+      },
+    },
+
+    /**
+     * Muted sources — `trend.source.mute`. A row means muted, and both writes
+     * are idempotent, matching `trend_source_mutes`' unique index.
+     */
+    trendSourceMutes: {
+      async list(genomeId, org) {
+        return trendSourceMutes.filter((m) => m.genomeId === genomeId && m.orgId === org).map((m) => m.source);
+      },
+      async mute({ genomeId, orgId: org, source }) {
+        if (trendSourceMutes.some((m) => m.genomeId === genomeId && m.orgId === org && m.source === source)) return;
+        trendSourceMutes.push({ genomeId, orgId: org, source });
+      },
+      async unmute({ genomeId, orgId: org, source }) {
+        const idx = trendSourceMutes.findIndex((m) => m.genomeId === genomeId && m.orgId === org && m.source === source);
+        if (idx >= 0) trendSourceMutes.splice(idx, 1);
       },
     },
 

@@ -1,6 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ChatDrawer } from '@/components/command-center/ChatDrawer';
+import { isSparkPinned, onAskSparkOpen } from '@/lib/askSpark';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 
 /**
@@ -52,6 +58,25 @@ export function CalendarScreenChrome({
   headline?: string;
   children: React.ReactNode;
 }) {
+  /**
+   * A **pinned** Ask Spark drawer, and nothing else.
+   *
+   * This screen has no Ask Spark button — its header pill is a stat, per the
+   * design — so it never mounted a drawer, and a pinned conversation vanished
+   * the moment you walked onto the Calendar and came back empty. A pin that
+   * only holds on some screens is not a pin. The drawer is mounted here for
+   * that case alone: it opens if the pin is set (or if something on the page
+   * asks through `openAskSpark`), and stays absent otherwise, so the screen's
+   * own chrome is unchanged.
+   */
+  const router = useRouter();
+  const { genome } = useSelectedGenome();
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => onAskSparkOpen(() => setChatOpen(true)), []);
+  useEffect(() => {
+    if (isSparkPinned()) setChatOpen(true);
+  }, []);
   return (
     <div className="min-h-screen bg-white p-[15px] pt-[18px]">
       {/*
@@ -100,6 +125,10 @@ export function CalendarScreenChrome({
               telling you. Both hidden under `xl`, where the row cannot hold them
               beside the summary. */}
           <div className="ml-auto hidden items-center gap-[12px] xl:flex">
+            {/* Outside the `headline` branch: the bell is not part of the stat
+                pill and must not disappear with it on a calendar that has
+                nothing to summarise. */}
+            <NotificationBell compact />
             {headline ? (
               <>
                 <span
@@ -217,6 +246,15 @@ export function CalendarScreenChrome({
         {/* The card is at 48,250 — 33 in, 38 under the subtitle. */}
         <div className="px-[17px] pb-10 pt-[38px] sm:px-[33px]">{children}</div>
       </div>
+      <ChatDrawer
+        genomeId={genome?.genomeId}
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onOpenDraft={(contentItemId) => {
+          setChatOpen(false);
+          router.push(`/agents?draft=${encodeURIComponent(contentItemId)}`);
+        }}
+      />
     </div>
   );
 }

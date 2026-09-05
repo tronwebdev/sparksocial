@@ -96,6 +96,56 @@ const ctx = (s: HumanLoopStore, over: Partial<ToolCtx> = {}): ToolCtx =>
     ...over,
   }) as unknown as ToolCtx;
 
+describe('what a notification is about', () => {
+  it('carries the topic and target through to the store', async () => {
+    const create = vi.fn(async (args: Record<string, unknown>) => ({
+      id: 'hm_1',
+      brandId: 'brand_1',
+      kind: 'notify' as const,
+      body: String(args.body),
+      urgency: 'low' as const,
+      createdAt: new Date('2026-09-05T10:00:00Z'),
+      topic: args.topic as 'content_ready',
+      target: args.target as { type: 'content_item'; id: string },
+    }));
+
+    const out = await humanNotify.handler(
+      {
+        message: 'Your carousel is ready to review.',
+        urgency: 'low',
+        topic: 'content_ready',
+        target: { type: 'content_item', id: 'ci_9' },
+      },
+      ctx({ create } as unknown as HumanLoopStore),
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ topic: 'content_ready', target: { type: 'content_item', id: 'ci_9' } }),
+    );
+    // Echoed back, so a caller can render the row it just wrote without re-reading.
+    expect(out.topic).toBe('content_ready');
+    expect(out.target).toEqual({ type: 'content_item', id: 'ci_9' });
+  });
+
+  it('stays a plain message when the caller says nothing about either', async () => {
+    // Every producer written before topics existed passes neither, and a
+    // default here would be the tool inventing a classification.
+    const create = vi.fn(async () => ({
+      id: 'hm_2',
+      brandId: 'brand_1',
+      kind: 'notify' as const,
+      body: 'Something happened.',
+      urgency: 'low' as const,
+      createdAt: new Date('2026-09-05T10:00:00Z'),
+    }));
+
+    const out = await humanNotify.handler({ message: 'Something happened.', urgency: 'low' }, ctx({ create } as unknown as HumanLoopStore));
+    expect(create).toHaveBeenCalledWith(expect.not.objectContaining({ topic: expect.anything() }));
+    expect(out.topic).toBeUndefined();
+    expect(out.target).toBeUndefined();
+  });
+});
+
 describe('the registry contract', () => {
   it('both leave the building, so both are external', () => {
     // Not `write`. These reach a person on a channel that costs money per

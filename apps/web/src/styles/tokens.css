@@ -258,6 +258,170 @@
   --ss-cal-day-purple: #e9d7fa;
   --ss-cal-day-purple-ring: #b37be8;
 
+  /**
+   * ── Discovery screen — `SparkSocial Discovery.dc.html`, verbatim ─────────
+   *
+   * Full-bleed on the same 1698-wide card as the Calendar and Command Center,
+   * so the frame tokens are shared. Its own geometry is the feed: a filter rail
+   * down the left of one big card, and a three-up grid of tall trend cards.
+   *
+   *   card      48,140   1632 wide, 1630 tall on the feed
+   *   rail      20,140   300 wide, sections 48 tall on an 8px gap
+   *   grid      352,158  1256 wide, 3 columns, 18px gaps
+   *   card      470 tall at radius 18; its media well 270 at radius 12
+   *   strip     44 tall at top 66 — Vol / window / Accel / Saturation
+   *
+   * The active feed tab is `#6CE8FF` — the same cyan the Calendar's view toggle
+   * uses, and the one accent this screen leans on.
+   */
+  /* ── Assets Library (`SparkSocial Assets Library.dc.html`) ────────────────
+     The card is the shell's own (324,18 · 1386x1084, radius 30), so only the
+     screen's own geometry is here. Every number is the prototype's, measured
+     from the card's left edge at 324: the title at 352 is an inset of 28. */
+  --ss-lib-inset: 28px;
+  --ss-lib-rule: 1300px;
+  /* Folder card: 248x266 on a 270 pitch, so the gap is 22. */
+  --ss-lib-folder: 248px;
+  --ss-lib-folder-h: 266px;
+  --ss-lib-folder-gap: 22px;
+  --ss-lib-folder-thumb: 132px;
+  /* Asset card: 316x338 on a 328 pitch. */
+  --ss-lib-asset: 316px;
+  --ss-lib-asset-h: 338px;
+  --ss-lib-asset-gap: 12px;
+  --ss-lib-asset-media: 186px;
+  /* List view: a 60px header over 114px rows, and its 140x76 thumbnail. */
+  --ss-lib-row: 114px;
+  --ss-lib-row-head: 60px;
+  --ss-lib-row-thumb: 140px;
+
+  /* The three greys the screen fills wells with — all different, all the
+     prototype's own: folder thumb, grid media, list thumb. */
+  --ss-lib-thumb: #f3f4f6;
+  --ss-lib-well: #efefef;
+  --ss-lib-list-thumb: #f1f1f3;
+  /* The view toggle's active pill, and the upload modal's cyan disc. */
+  --ss-lib-toggle: #9cefff;
+  --ss-lib-upload-disc: #63def5;
+  /* Type chips. Video reads magenta, Image purple. */
+  --ss-lib-chip-video-bg: rgba(245, 107, 255, 0.14);
+  --ss-lib-chip-video: #d24ed9;
+  --ss-lib-chip-image-bg: rgba(163, 65, 255, 0.12);
+  --ss-lib-chip-image: #a341ff;
+
+  /* This screen's wash. Not `--ss-grad-canvas`: that one is two gradients at
+     -157/-198deg with 0.2 alphas, and this card is 115/245deg with 0.35 and
+     0.3 over `#F7F7F7` — a warmer, stronger pair. Kept apart rather than
+     reconciled, because changing the shared token would repaint every other
+     screen. */
+  --ss-grad-lib: linear-gradient(115deg, rgba(108, 232, 255, 0.35) 0%, rgba(238, 251, 253, 0.3) 28%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(245deg, rgba(245, 107, 255, 0.3) 0%, rgba(252, 238, 252, 0.3) 28%, rgba(255, 255, 255, 0) 52%), #f7f7f7;
+  /* Create-folder modal, and the upload modal's four-stop cyan fall. */
+  --ss-grad-lib-create: linear-gradient(180deg, #fcfcfd 0%, #f3f4f7 100%);
+  --ss-grad-lib-upload: linear-gradient(180deg, #7fe5f8 0%, #b9effa 12%, #eafafd 30%, #ffffff 52%);
+  /* The folder glyph's two plates. */
+  --ss-grad-lib-folder-back: linear-gradient(180deg, #a9ecf8 0%, #7adcef 100%);
+  --ss-grad-lib-folder-front: linear-gradient(180deg, #cdf4fc 0%, #94e5f3 100%);
+  /* The upload progress bar. */
+  --ss-grad-lib-progress: linear-gradient(90deg, #6ce8ff 0%, #a341ff 60%, #fedeb5 100%);
+
+  /* ── Automation Recipes (`SparkSocial Automation.dc.html`) ────────────────
+     The main card is the shell's own; every number below is the prototype's,
+     measured from that card's left edge at 348 — so the hero at 370 is an
+     inset of 22, and its 1318 width is 1362 minus 22 on each side. */
+  --ss-auto-inset: 22px;
+  --ss-auto-wide: 1318px;
+  --ss-auto-hero-h: 230px;
+  /* Recipe cards: 426 wide at 370 / 816 / 1262, so a 446 pitch and a 20 gap. */
+  --ss-auto-card: 426px;
+  --ss-auto-card-h: 250px;
+  --ss-auto-card-gap: 20px;
+  /* The output queue's own rhythm: rows on a 118 pitch under a rule at 240. */
+  --ss-auto-row: 118px;
+  /* The wizard: a 812-wide form column at 375 beside a 470 rail at 1216. */
+  --ss-auto-form: 812px;
+  --ss-auto-rail: 470px;
+
+  /* The hero's night sky — three stacked radials over near-black, with the
+     star field and its twinkle carried by `--ss-grad-auto-stars`. */
+  --ss-auto-night: #0d0b14;
+  --ss-auto-hero-title: #7fe9fd;
+  /* The "Add New Recipe" button's violet ring, and the wizard's connect CTA. */
+  --ss-auto-violet: #c46bf5;
+  --ss-auto-violet-deep: #8f7bff;
+
+  /* Queue status chips. Four of the five map onto a real state; see
+     `statusChip` in `components/automation/recipeMeta.ts` for the one that
+     does not. */
+  --ss-auto-published-bg: #e9f9e7;
+  --ss-auto-published: #13a711;
+  --ss-auto-scheduled-bg: rgba(94, 100, 244, 0.06);
+  --ss-auto-scheduled: #5e64f4;
+  --ss-auto-review-bg: #fff6e9;
+  --ss-auto-review-ring: #ffb453;
+  --ss-auto-failed-bg: #fdecec;
+  --ss-auto-failed: #f35525;
+  --ss-auto-draft-bg: rgba(131, 131, 131, 0.1);
+
+  /* One tint per recipe kind — cyan AutoTrend, amber Bulk, purple RSS. The
+     same three run through the cards, the queue chips and the wizard. */
+  --ss-auto-trend-chip: #d3f4fb;
+  --ss-auto-bulk-chip: #fdf1df;
+  --ss-auto-rss-chip: #efe0fb;
+  --ss-auto-kw-chip: #d9f6fc;
+  --ss-auto-ex-chip: #fbdede;
+  --ss-auto-ex-ink: #b23a3a;
+  --ss-auto-note: #d9f2fb;
+
+  --ss-grad-auto-hero: radial-gradient(560px 220px at 22% 10%, #241b33 0%, rgba(20, 14, 30, 0) 70%),
+    radial-gradient(620px 260px at 80% 90%, #1e1530 0%, rgba(18, 12, 28, 0) 70%), #0d0b14;
+  --ss-grad-auto-stars: radial-gradient(circle 1.6px at 8% 24%, rgba(108, 232, 255, 0.9) 40%, transparent 41%),
+    radial-gradient(circle 1.2px at 18% 72%, rgba(128, 171, 255, 0.8) 40%, transparent 41%),
+    radial-gradient(circle 1.8px at 27% 38%, rgba(255, 255, 255, 0.75) 40%, transparent 41%),
+    radial-gradient(circle 1.2px at 36% 84%, rgba(108, 232, 255, 0.7) 40%, transparent 41%),
+    radial-gradient(circle 1.6px at 47% 18%, rgba(128, 171, 255, 0.85) 40%, transparent 41%),
+    radial-gradient(circle 1.2px at 58% 66%, rgba(255, 255, 255, 0.6) 40%, transparent 41%),
+    radial-gradient(circle 1.8px at 67% 30%, rgba(108, 232, 255, 0.75) 40%, transparent 41%),
+    radial-gradient(circle 1.2px at 77% 78%, rgba(128, 171, 255, 0.7) 40%, transparent 41%),
+    radial-gradient(circle 1.6px at 88% 22%, rgba(255, 255, 255, 0.7) 40%, transparent 41%),
+    radial-gradient(circle 1.2px at 94% 58%, rgba(108, 232, 255, 0.8) 40%, transparent 41%);
+  /* The three recipe card washes, and the discs their glyphs sit on. */
+  --ss-grad-auto-trend: linear-gradient(140deg, #dff7fd 0%, #f4fdff 70%);
+  --ss-grad-auto-trend-icon: linear-gradient(140deg, #57d4e8 0%, #9cefff 100%);
+  --ss-grad-auto-bulk: linear-gradient(140deg, #fcefda 0%, #fef9f0 70%);
+  --ss-grad-auto-bulk-icon: linear-gradient(140deg, #f0a94f 0%, #f6c98a 100%);
+  --ss-grad-auto-rss: linear-gradient(140deg, #efdffb 0%, #fbf5ff 70%);
+  --ss-grad-auto-rss-icon: linear-gradient(140deg, #a341ff 0%, #c88af6 100%);
+  /* The wizard's progress bar, and the launch modal's summary wash. */
+  --ss-grad-auto-progress: linear-gradient(90deg, #6ce8ff 0%, #a341ff 55%, #f5a76b 100%);
+  --ss-grad-auto-launch: linear-gradient(120deg, #dcf1fe 0%, #e9f7fe 55%, #f4fbff 100%);
+  --ss-grad-auto-connect: linear-gradient(90deg, #8f7bff 0%, #c46bf5 100%);
+
+  --ss-disc-card-x: 48px;
+  --ss-disc-card-y: 140px;
+  --ss-disc-rail: 300px;
+  --ss-disc-rail-row: 48px;
+  --ss-disc-grid-x: 352px;
+  --ss-disc-grid: 1256px;
+  --ss-disc-grid-gap: 18px;
+  --ss-disc-trend: 470px;
+  --ss-disc-media: 270px;
+  --ss-disc-strip: 44px;
+  --ss-disc-tab-active: #6ce8ff;
+
+  /* The 120x4 rule under the tab row, left to right. */
+  --ss-grad-disc-rule: linear-gradient(
+    90deg,
+    #6ce8ff 0%,
+    #f56bff 40%,
+    #a341ff 80%,
+    #fedeb5 100%
+  );
+
+  /* The rail's section header, and its hover. */
+  --ss-disc-sec: rgba(131, 131, 131, 0.07);
+  --ss-disc-sec-hover: rgba(131, 131, 131, 0.12);
+
   /* The rail's segmented-control track. Its own grey, in the ramp nowhere. */
   --ss-dash-seg-track: #eaeaea;
 
@@ -482,6 +646,16 @@
 @keyframes ss-dot {
   0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* `Spark Chat.dc.html`'s own entrance, which is **not** `ss-drawer-in`: the
+   chat drawer slides 36px and fades rather than travelling its full width, over
+   0.3s instead of 0.28. A panel that already sits 24px from the edge sliding in
+   from 100% would start off-screen and arrive late; 36px is the design's own
+   number. */
+@keyframes ss-chat-in {
+  0% { opacity: 0; transform: translateX(36px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes ss-spin {

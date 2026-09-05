@@ -11,6 +11,7 @@ import {
   makeTrendRepurpose,
   makeTrendReshare,
   makeTrendWatchlist,
+  makeTrendSourceMute,
   makeTrendExplain,
   makeTrendObserve,
 } from '../src/tool.js';
@@ -82,7 +83,31 @@ function observationStore() {
   };
 }
 
-function ctx(over: Partial<ToolCtx> = {}, observations = observationStore().store): ToolCtx {
+/** `trend_source_mutes` in memory — a row means muted, both writes idempotent. */
+function muteStore() {
+  const rows: Array<{ genomeId: string; source: string }> = [];
+  return {
+    rows,
+    store: {
+      async list(genomeId: string) {
+        return rows.filter((r) => r.genomeId === genomeId).map((r) => r.source);
+      },
+      async mute({ genomeId, source }: { genomeId: string; orgId: string; source: string }) {
+        if (!rows.some((r) => r.genomeId === genomeId && r.source === source)) rows.push({ genomeId, source });
+      },
+      async unmute({ genomeId, source }: { genomeId: string; orgId: string; source: string }) {
+        const i = rows.findIndex((r) => r.genomeId === genomeId && r.source === source);
+        if (i >= 0) rows.splice(i, 1);
+      },
+    },
+  };
+}
+
+function ctx(
+  over: Partial<ToolCtx> = {},
+  observations = observationStore().store,
+  mutes = muteStore().store,
+): ToolCtx {
   const { store } = watchlistStore();
   return {
     orgId: 'org_1',
@@ -95,6 +120,7 @@ function ctx(over: Partial<ToolCtx> = {}, observations = observationStore().stor
       content: { get: async () => undefined },
       trends: store,
       trendObservations: observations,
+      trendSourceMutes: mutes,
     } as unknown as ToolCtx['db'],
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -240,6 +266,67 @@ describe('trend.detail — §8.9 time series', () => {
   });
 });
 
+/**
+ * `trend.source.mute` — the brand's own switch, as opposed to the operator's
+ * `TREND_SOURCE_*_ENABLED`. The property that matters is the third test: a
+ * muted source must be excluded *before* the fetch, because X bills per call
+ * and YouTube spends a quota, so filtering afterwards would keep the bill.
+ */
+describe('trend.source.mute', () => {
+  it('mutes, unmutes, and is idempotent both ways — it is a toggle', async () => {
+    const mutes = muteStore();
+    const tool = makeTrendSourceMute();
+    const c = ctx({}, observationStore().store, mutes.store);
+
+    const on = await tool.handler({ genomeId: 'gen_barber', source: 'youtube', muted: true }, c);
+    expect(on.mutedSources).toEqual(['youtube']);
+
+    // Pressed twice: still one mute, no error.
+    const again = await tool.handler({ genomeId: 'gen_barber', source: 'youtube', muted: true }, c);
+    expect(again.mutedSources).toEqual(['youtube']);
+
+    const off = await tool.handler({ genomeId: 'gen_barber', source: 'youtube', muted: false }, c);
+    expect(off.mutedSources).toEqual([]);
+    // Unmuting something that was never muted is a no-op, not a failure.
+    await expect(tool.handler({ genomeId: 'gen_barber', source: 'youtube', muted: false }, c)).resolves.toBeTruthy();
+  });
+
+  it('refuses a genome the caller cannot see', async () => {
+    const tool = makeTrendSourceMute();
+    await expect(
+      tool.handler({ genomeId: 'gen_nope', source: 'youtube', muted: true }, ctx()),
+    ).rejects.toThrow(ToolError);
+  });
+
+  it('keeps one brand’s mute out of another brand’s feed', async () => {
+    const mutes = muteStore();
+    const tool = makeTrendSourceMute();
+    const c = ctx({}, observationStore().store, mutes.store);
+
+    await tool.handler({ genomeId: 'gen_barber', source: 'youtube', muted: true }, c);
+    expect(await mutes.store.list('gen_saas')).toEqual([]);
+  });
+
+  it('excludes a muted source before trend.rank fetches, not after it merges', async () => {
+    const mutes = muteStore();
+    mutes.rows.push({ genomeId: 'gen_barber', source: 'tiktok' });
+
+    let sawExcluded: readonly string[] | undefined;
+    const spy = {
+      name: 'spy',
+      async fetch(args: { limit: number; excludeSources?: readonly string[] }) {
+        sawExcluded = args.excludeSources;
+        return [];
+      },
+    };
+
+    const tool = makeTrendRank(spy as never);
+    await tool.handler({ genomeId: 'gen_barber', limit: 5 }, ctx({}, observationStore().store, mutes.store));
+
+    expect(sawExcluded).toEqual(['tiktok']);
+  });
+});
+
 describe('trend.rank — sampling', () => {
   it('records every trend it fetched, including the ones it excluded', async () => {
     // A trend this brand cannot touch is still a trend whose history another
@@ -249,6 +336,38 @@ describe('trend.rank — sampling', () => {
     const out = await tool.handler({ genomeId: 'gen_barber', limit: 2 }, ctx({}, obs.store));
     expect(out.excluded.length).toBeGreaterThan(0);
     expect(obs.rows.size).toBe(6); // every trend in the stub source
+  });
+
+  /**
+   * `DISC-01` renders a rejection as a card beside the ones it kept, with the
+   * same numbers and the same actions — a user disagreeing with a rejection is
+   * the case this screen has to serve, and it cannot be served by a title and
+   * a sentence. `rankTrends` scores every fetched trend before splitting them,
+   * so the full shape costs nothing to return.
+   */
+  it('returns excluded trends in the same shape as ranked ones, plus the reason', async () => {
+    const tool = makeTrendRank(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', limit: 2 }, ctx());
+    const skipped = out.excluded[0]!;
+    expect(skipped.because).toBeTruthy();
+    expect(skipped.metrics.volume).toBeGreaterThanOrEqual(0);
+    expect(typeof skipped.score).toBe('number');
+    expect(typeof skipped.relevance).toBe('number');
+    expect(Array.isArray(skipped.factors)).toBe(true);
+    expect(Array.isArray(skipped.tags)).toBe(true);
+  });
+
+  it('passes the media, samples and tags a source returned through to the card', async () => {
+    const tool = makeTrendRank(source);
+    const out = await tool.handler({ genomeId: 'gen_barber', limit: 6 }, ctx());
+    const all = [...out.trends, ...out.excluded];
+    const withMedia = all.find((t) => t.trendId === 'tr_rising')!;
+    expect(withMedia.media).toEqual({ url: 'https://example.invalid/1/thumb.jpg', kind: 'video' });
+    expect(withMedia.samples[0]!.url).toBe('https://example.invalid/1');
+    expect(withMedia.tags).toContain('craft');
+    // A source with no image leaves it unset rather than inventing one — the
+    // card falls back to the prototype's text variant.
+    expect(all.find((t) => t.trendId === 'tr_dying')!.media).toBeUndefined();
   });
 
   it('collapses repeated calls within the hour into one point per trend', async () => {

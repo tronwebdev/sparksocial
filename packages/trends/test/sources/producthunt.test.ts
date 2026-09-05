@@ -5,7 +5,7 @@ function jsonResponse(body: unknown, ok = true, status = 200) {
   return { ok, status, statusText: ok ? 'OK' : 'Error', json: async () => body } as Response;
 }
 
-function graphqlBody(posts: Array<Partial<{ id: string; name: string; tagline: string; votesCount: number; commentsCount: number; createdAt: string; url: string }>>) {
+function graphqlBody(posts: Array<Partial<{ id: string; name: string; tagline: string; votesCount: number; commentsCount: number; createdAt: string; url: string; thumbnail: { url?: string | null } | null }>>) {
   return {
     data: {
       posts: {
@@ -73,5 +73,28 @@ describe('createProductHuntTrendSource', () => {
     expect(out[0]!.metrics.volume).toBe(230);
     expect(out[0]!.metrics.growth).toBe(0);
     expect(out[0]!.tags).toEqual(['productivity']);
+  });
+
+  it('asks for the thumbnail in the query it was already sending, and maps it', async () => {
+    let body = '';
+    const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      if (String(url).includes('oauth/token')) return jsonResponse({ access_token: 'tok', expires_in: 3600 });
+      body = String(init?.body ?? '');
+      return jsonResponse(graphqlBody([{ id: 'p1', thumbnail: { url: 'https://ph-files.imgix.net/p1.png' } }]));
+    });
+    const source = createProductHuntTrendSource({ clientId: 'id', clientSecret: 'secret', fetchImpl: fetchImpl as unknown as typeof fetch });
+    const out = await source.fetch({ limit: 5 });
+    expect(body).toContain('thumbnail');
+    expect(out[0]!.media).toEqual({ url: 'https://ph-files.imgix.net/p1.png', kind: 'image' });
+  });
+
+  it('leaves media unset when a launch has no thumbnail', async () => {
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      if (String(url).includes('oauth/token')) return jsonResponse({ access_token: 'tok', expires_in: 3600 });
+      return jsonResponse(graphqlBody([{ id: 'p1' }]));
+    });
+    const source = createProductHuntTrendSource({ clientId: 'id', clientSecret: 'secret', fetchImpl: fetchImpl as unknown as typeof fetch });
+    const out = await source.fetch({ limit: 5 });
+    expect(out[0]!.media).toBeUndefined();
   });
 });

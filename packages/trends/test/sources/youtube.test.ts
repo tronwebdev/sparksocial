@@ -26,6 +26,48 @@ describe('createYouTubeTrendSource', () => {
     expect(out[0]!.samples[0]!.url).toBe('https://youtube.com/watch?v=vid1');
   });
 
+  it('takes the largest thumbnail the snippet already returned — no extra request', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        items: [
+          {
+            id: 'vid1',
+            snippet: {
+              title: 'A trending video',
+              publishedAt: new Date(Date.now() - 3_600_000).toISOString(),
+              thumbnails: {
+                default: { url: 'https://i.ytimg.com/vi/vid1/default.jpg', width: 120 },
+                high: { url: 'https://i.ytimg.com/vi/vid1/hqdefault.jpg', width: 480 },
+                maxres: { url: 'https://i.ytimg.com/vi/vid1/maxresdefault.jpg', width: 1280 },
+              },
+            },
+            statistics: { viewCount: '50000' },
+          },
+        ],
+      }),
+    );
+    const source = createYouTubeTrendSource({ apiKey: 'key', fetchImpl: fetchImpl as unknown as typeof fetch });
+    const out = await source.fetch({ limit: 10 });
+    expect(out[0]!.media).toEqual({ url: 'https://i.ytimg.com/vi/vid1/maxresdefault.jpg', kind: 'video' });
+  });
+
+  it('falls back to the canonical thumbnail URL when the response carried none', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        items: [
+          {
+            id: 'vid2',
+            snippet: { title: 'No thumbs here', publishedAt: new Date(Date.now() - 3_600_000).toISOString() },
+            statistics: { viewCount: '10' },
+          },
+        ],
+      }),
+    );
+    const source = createYouTubeTrendSource({ apiKey: 'key', fetchImpl: fetchImpl as unknown as typeof fetch });
+    const out = await source.fetch({ limit: 10 });
+    expect(out[0]!.media).toEqual({ url: 'https://i.ytimg.com/vi/vid2/hqdefault.jpg', kind: 'video' });
+  });
+
   it('clamps maxResults at the API\'s real ceiling of 50', async () => {
     let requestedUrl = '';
     const fetchImpl = vi.fn(async (url: string | URL) => {

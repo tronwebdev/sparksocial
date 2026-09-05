@@ -371,7 +371,14 @@ export function PlanQueue({
           <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.2)' }} />
 
           {upcoming.map((item, i) => {
-            const chip = STATUS_CHIP[item.status] ?? STATUS_CHIP.scheduled!;
+            /* An unknown status shows *itself*, neutrally. Falling back to
+               `scheduled` made every unmapped status claim to be scheduled. */
+            const chip = STATUS_CHIP[item.status] ?? {
+              label: item.status.replace(/_/g, ' '),
+              bg: '#F1F1F4',
+              ring: 'rgba(12,12,12,0.18)',
+              fg: '#5B5B5B',
+            };
             return (
               <div
                 key={item.contentItemId}
@@ -457,7 +464,14 @@ export function PlanQueue({
       {upcoming.length > 0 && layout === 'rows' ? (
         <ol>
           {upcoming.map((item, i) => {
-            const chip = STATUS_CHIP[item.status] ?? STATUS_CHIP.scheduled!;
+            /* An unknown status shows *itself*, neutrally. Falling back to
+               `scheduled` made every unmapped status claim to be scheduled. */
+            const chip = STATUS_CHIP[item.status] ?? {
+              label: item.status.replace(/_/g, ' '),
+              bg: '#F1F1F4',
+              ring: 'rgba(12,12,12,0.18)',
+              fg: '#5B5B5B',
+            };
             const absolute = current * shown + i;
             return (
               <li
@@ -542,11 +556,23 @@ export function PlanQueue({
                   missing, and preview opens the draft panel, which is a real
                   route to everything the other two would do.
                 */}
+                {/*
+                  Right-anchored, not pinned at x=985/1032/1079.
+
+                  Those are the design's coordinates and they were absolute
+                  offsets, so the cluster stayed where the 1629-wide card put it
+                  while the card itself shrank — the buttons crossed under the
+                  status chip and then off the row's own edge, which is the
+                  "action button shrinking on resize" this fixes. A right-anchored
+                  flex with a 10px gap lands on exactly those three x positions at
+                  the design's width (1079 + 37 = 1116, then 47 back for each) and
+                  keeps all three whole at any narrower one.
+                */}
+                <div className="absolute right-[13px] top-[32px] flex shrink-0 items-center gap-[10px]">
                 {item.status === 'needs_review' ? (
                   <RowAction
                     disabled
-                    className="absolute left-[985px] top-[32px]"
-                    label="Approve"
+                                        label="Approve"
                     title="Approving is keyed on the held call, not the post - use the review list below."
                     style={{ background: '#3EC332', opacity: 0.45 }}
                   >
@@ -557,8 +583,7 @@ export function PlanQueue({
                 ) : item.status === 'scheduled' ? (
                   <RowAction
                     disabled
-                    className="absolute left-[985px] top-[32px]"
-                    label="Send now"
+                                        label="Send now"
                     title="No publish-now tool exists - a post goes out on its scheduled slot."
                     style={{ background: '#9CEFFF', opacity: 0.45 }}
                   >
@@ -569,8 +594,7 @@ export function PlanQueue({
                 ) : null}
 
                 <RowAction
-                  className="absolute left-[1032px] top-[32px]"
-                  label="Preview"
+                                    label="Preview"
                   title={`Open ${item.playbookName ?? 'this post'}`}
                   onClick={() => onOpen(item.contentItemId)}
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
@@ -582,8 +606,7 @@ export function PlanQueue({
                 </RowAction>
                 <RowAction
                   disabled
-                  className="absolute left-[1079px] top-[32px]"
-                  label="Remove"
+                                    label="Remove"
                   title="No delete tool exists - a planned post is removed from the calendar."
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
                 >
@@ -591,6 +614,7 @@ export function PlanQueue({
                     <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </RowAction>
+                </div>
               </li>
             );
           })}
@@ -677,6 +701,20 @@ export function PlanQueue({
  * nobody can reach is worse than four.
  */
 const STATUS_CHIP: Record<string, { label: string; bg: string; ring: string; fg: string }> = {
+  /**
+   * `draft` and `failed` were absent from this map, and every row fell back to
+   * `STATUS_CHIP.scheduled` — so a draft with no slot rendered a blue
+   * "Scheduled" chip. That is not a missing style, it is the queue asserting
+   * something untrue about every post SPARK has written and not yet placed
+   * (`content_items.status` defaults to `'draft'`, so it is the most common
+   * status in the table).
+   *
+   * The seven here are the seven the writers actually set: draft,
+   * needs_review, approved, scheduled, published, blocked, failed — plus the
+   * design's own two display-only states, `regenerating` and `optimized`.
+   */
+  draft: { label: 'Draft', bg: '#F1F1F4', ring: 'rgba(12,12,12,0.18)', fg: '#5B5B5B' },
+  failed: { label: 'Failed', bg: '#FDE9E2', ring: '#F35525', fg: '#D2470F' },
   needs_review: { label: 'Waiting for approval', bg: '#FFF0DC', ring: '#FFB453', fg: '#E48915' },
   approved: { label: 'Approved', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
   scheduled: { label: 'Scheduled', bg: '#EEEEFE', ring: '#5E64F4', fg: '#5E64F4' },

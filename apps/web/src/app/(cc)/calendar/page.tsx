@@ -13,6 +13,8 @@ import {
   MoveExistingModal,
 } from '@/components/calendar/CalendarDayModals';
 import { DraftReviewModal } from '@/components/calendar/DraftReviewModal';
+import { CalendarWeekGrid } from '@/components/calendar/CalendarWeekGrid';
+import { CalendarDayQueue } from '@/components/calendar/CalendarDayQueue';
 import type { BoardActions } from '@/components/calendar/CalendarBoard';
 import {
   CalendarScreenChrome,
@@ -48,13 +50,23 @@ import {
 export default function CalendarPage() {
   const [layout, setLayout] = useState<CalendarLayout>('calendar');
   /*
-    Month / Week / Day. Only Month is designed — the prototype toasts the other
-    two as mocks — and `calendar.get` returns a month's slots, so the control is
-    real for Month and says what it cannot do for the rest rather than
-    pretending to rescope.
+    Month / Week / Day, all three now rendering.
+
+    The prototype toasts Week and Day as mocks, so this used to be a segmented
+    control that changed a variable and nothing on screen. The designs for both
+    arrived with the request; `CalendarWeekGrid` and `CalendarDayQueue` are
+    them, reading the same `content.list` rows Month reads through
+    `useCalendarSlots`.
+
+    One offset per span rather than one shared number: stepping a week forward
+    and switching to Month should land on this month, not four weeks out.
   */
   const [span, setSpan] = useState<CalendarSpan>('month');
   const [monthOffset, setMonthOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [dayOffset, setDayOffset] = useState(0);
+  /* What the header's "N posts" counts — reported by whichever span is up. */
+  const [spanCount, setSpanCount] = useState<number | null>(null);
   const [draft, setDraft] = useState<{ open: boolean; contentItemId?: string }>({ open: false });
   /*
     Two day-keyed states, because the design has two steps.
@@ -95,7 +107,11 @@ export default function CalendarPage() {
         month-over-month number behind it. A made-up 89% on the calendar is the
         kind of thing that makes the honest numbers unreadable.
       */
-      summary={undefined}
+      summary={
+        span === 'month' || spanCount === null
+          ? undefined
+          : `${spanCount} post${spanCount === 1 ? '' : 's'} ${span === 'week' ? 'this week' : 'on this day'}`
+      }
     >
       {/*
         The design's card at 48,250 — 1629 wide, 1345 tall in Calendar Mode and
@@ -105,7 +121,25 @@ export default function CalendarPage() {
         columns, same 157px rows, same five filters — so it is that component
         rather than a second table.
       */}
-      {layout === 'calendar' ? (
+      {layout === 'calendar' && span === 'week' ? (
+        <CalendarWeekGrid
+          genomeId={genome?.genomeId}
+          weekOffset={weekOffset}
+          onWeekOffset={setWeekOffset}
+          onOpenDraft={(id) => setModal({ kind: 'review', contentItemId: id })}
+          onAddPost={(day) => setModal({ kind: 'add', day })}
+          onCount={setSpanCount}
+        />
+      ) : layout === 'calendar' && span === 'day' ? (
+        <CalendarDayQueue
+          genomeId={genome?.genomeId}
+          dayOffset={dayOffset}
+          onDayOffset={setDayOffset}
+          onOpenDraft={(id) => setModal({ kind: 'review', contentItemId: id })}
+          onAddPost={(day) => setModal({ kind: 'add', day })}
+          onCount={setSpanCount}
+        />
+      ) : layout === 'calendar' ? (
         <section className="overflow-hidden rounded-lg bg-white">
           <CalendarMonthGrid
             variant="screen"

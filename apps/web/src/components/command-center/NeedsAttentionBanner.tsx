@@ -26,11 +26,16 @@
  * invented: nothing here knows when the campaign ends, and the strip is the one
  * element on the screen whose whole job is to be trusted.
  *
- * "Review" scrolls to the queue on this page — there is no separate Review
- * route, and the prototype's own handler switches to a tab rather than
- * navigating.
+ * "Review" opens the **Needs Attention** screen (`?attention=1`).
+ *
+ * It was `href="#review-queue"` — an anchor to the review queue that used to
+ * sit on the Overview tab. That queue has moved to the Needs Attention screen,
+ * so the anchor pointed at an element that no longer exists and the link did
+ * nothing. `href` rather than a callback because it is a link to a URL state,
+ * and a URL is worth having here: it makes "the thing waiting on me" something
+ * you can send to a colleague.
  */
-export function NeedsAttentionBanner({ count }: { count: number }) {
+export function NeedsAttentionBanner({ count, href = '?attention=1' }: { count: number; href?: string }) {
   return (
     <div
       className="relative flex h-[51.5px] items-center rounded-[15.6px] bg-attn pl-[9.2px] pr-[13.5px]"
@@ -56,7 +61,7 @@ export function NeedsAttentionBanner({ count }: { count: number }) {
       {/* Right-anchored rather than pinned to 733.5/800: the strip is 849 in the
           design and fluid here, and both controls hang off its right edge. */}
       <a
-        href="#review-queue"
+        href={href}
         className="ml-auto flex shrink-0 items-center gap-[10.5px] text-[16.65px] font-normal text-ink"
       >
         Review

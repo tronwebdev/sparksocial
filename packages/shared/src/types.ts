@@ -97,6 +97,21 @@ export const AssetRole = z.enum([
 export type AssetRole = z.infer<typeof AssetRole>;
 
 /**
+ * What kind of file an asset is — the captioner's dispatch and the library's
+ * chip.
+ *
+ * `document` is the PDF case: a menu, a price list, a brand deck, a one-pager.
+ * It arrives through the same upload path as media (`asset.upload_url` has
+ * allowed `application/pdf` since the onboarding docs step needed it) and it is
+ * captioned by reading the document rather than looking at it. Distinct from
+ * `brand.knowledge.attach_document`, which chunks a PDF into retrievable
+ * *knowledge*: this keeps the file itself as an asset a post can reference, and
+ * the two are not exclusive — the same PDF can be both.
+ */
+export const AssetMediaType = z.enum(['image', 'video', 'audio', 'document']);
+export type AssetMediaType = z.infer<typeof AssetMediaType>;
+
+/**
  * Asset roles as words, for the sentences they appear in.
  *
  * Every `Explanation` is user-facing by invariant 4, and six of them

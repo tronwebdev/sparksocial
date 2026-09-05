@@ -21,6 +21,7 @@ const trend = (over: Partial<Trend> & { id: string }): Trend => ({
   topic: 'a topic',
   tags: [],
   metrics: { volume: 100_000, velocity: 0.5, saturation: 0.3, growth: 1 },
+  regions: [],
   samples: [],
   language: 'en',
   ...over,

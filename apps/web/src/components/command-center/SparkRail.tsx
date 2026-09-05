@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { QuickActions } from './QuickActions';
+import { AgentIdentityModal } from './AgentIdentityModal';
 import { cn } from '@/lib/utils';
 
 /**
@@ -51,6 +52,7 @@ export function SparkRail({
   paused,
   campaign,
   planning = 0,
+  approvalMode,
   onOpenChat,
   onTogglePause,
   busy,
@@ -58,12 +60,24 @@ export function SparkRail({
   paused: boolean;
   campaign: { name: string; status: string } | null;
   planning?: number;
+  /** Passed through to the identity modal's Autonomy row. */
+  approvalMode?: string;
   onOpenChat: () => void;
   onTogglePause: () => void;
   busy?: boolean;
 }) {
   const [gov, setGov] = useState<Governance | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
+  /**
+   * "View Agent Identity" opens the identity modal.
+   *
+   * It was an `<a href="/settings/brand-kit">` — a reasonable stand-in when
+   * there was no design for the panel, and wrong now that there is one: the
+   * button says *view* and it was navigating away from the screen to a page of
+   * editable settings. The modal reads the same `brand.governance.get` this
+   * rail already has open.
+   */
+  const [identityOpen, setIdentityOpen] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -338,8 +352,9 @@ export function SparkRail({
           {paused ? 'Resume Agent' : 'Pause Agent'}
         </button>
 
-        <a
-          href="/settings/brand-kit"
+        <button
+          type="button"
+          onClick={() => setIdentityOpen(true)}
           className="absolute right-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center rounded-[8.37px] text-[15px] font-medium text-ink"
           style={{
             background: 'rgba(131,131,131,0.1)',
@@ -348,8 +363,16 @@ export function SparkRail({
           }}
         >
           View Agent Identity
-        </a>
+        </button>
       </div>
+
+      {identityOpen ? (
+        <AgentIdentityModal
+          paused={paused}
+          {...(approvalMode ? { approvalMode } : {})}
+          onClose={() => setIdentityOpen(false)}
+        />
+      ) : null}
     </aside>
   );
 }

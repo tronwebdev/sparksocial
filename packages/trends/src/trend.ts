@@ -43,6 +43,68 @@ export const Trend = z.object({
   metrics: TrendMetrics,
   /** Example posts, for the DISC-02 detail view. */
   samples: z.array(z.object({ url: z.string(), caption: z.string().optional() })).default([]),
+  /**
+   * A preview image for the trend, where the source hands one back **in the
+   * response it was already making**.
+   *
+   * `DISC-01`'s card is mostly a picture — the prototype draws five media
+   * variants — and a feed of trends with no imagery is a different product
+   * from the one designed. The reason it was missing is that nothing in this
+   * file carried an image: `samples` holds permalinks, and a permalink is not
+   * something a card can render.
+   *
+   * The rule for filling it is the constraint that matters: **no extra
+   * request.** YouTube's `part=snippet` already returns `thumbnails`, a Reddit
+   * listing already returns `preview`, and Product Hunt's `thumbnail` is one
+   * more field on a GraphQL query we are already sending. Pinterest's
+   * growing-keywords endpoint and Hacker News have no image at any price, so
+   * they leave this unset and the card falls back to the prototype's own text
+   * variant. Fetching thumbnails source-by-source would trade a quota bill for
+   * decoration.
+   *
+   * `kind` is what the card draws over it: `video` gets the design's centred
+   * play badge, `image` does not.
+   */
+  media: z.object({ url: z.string(), kind: z.enum(['image', 'video']) }).optional(),
+  /**
+   * Where this trend is trending, and how hard, per region.
+   *
+   * `DISC-02`'s Geo & Audience panel needs a breakdown and `region` is one
+   * string, so the panel had nothing to draw and said so. This is the real
+   * version of it, and the constraint that shapes it is that **no vendor
+   * returns a distribution**: every trends endpoint in this directory answers
+   * "what is trending *in this country*". A breakdown is therefore something
+   * this package *builds*, by asking more than one country and merging — which
+   * `createMultiRegionTrendSource` does, and which costs one request per
+   * region per fetch. That is why it is opt-in (`TREND_REGIONS`) and why a
+   * single-region deployment sees exactly one entry here rather than an
+   * invented spread.
+   *
+   * Ordered by volume, largest first, so the panel's "top geo" is `regions[0]`
+   * without the UI re-sorting.
+   */
+  regions: z
+    .array(
+      z.object({
+        code: z.string(),
+        /**
+         * Optional, and the optionality is the whole point.
+         *
+         * Only some vendors report a volume that is *about* the region:
+         * Google Trends' `approx_traffic` is per-geo, and a hashtag's TikTok
+         * publish count is per country. YouTube's `viewCount` is **global** —
+         * asking for the US chart and the UK chart returns the same video with
+         * the same 64.6M views, and summing those produced 129M out of thin
+         * air. So an adapter attributes a volume only when the number really
+         * belongs to that region; where it does not, the entry says *where the
+         * trend is trending* and the trend's own `metrics.volume` stays the one
+         * global figure the vendor gave. `DISC-02` renders bars for the first
+         * kind and a plain list for the second.
+         */
+        volume: z.number().min(0).optional(),
+      }),
+    )
+    .default([]),
   language: z.string().default('en'),
   region: z.string().optional(),
 });
@@ -91,6 +153,17 @@ export interface TrendFetchArgs {
    * it matched.
    */
   excludeKeywords?: readonly string[];
+  /**
+   * Sources this brand has muted (`trend.source.mute`), by name.
+   *
+   * Read by the **composite**, not by individual adapters, and read *before*
+   * anything is requested — which is the whole point of putting it here rather
+   * than filtering the merged list afterwards. Two of these vendors bill per
+   * call (X, and YouTube against a daily quota); a mute that still fetched and
+   * then discarded would cost the same as not muting, and an owner who muted a
+   * source to stop paying for it would keep paying.
+   */
+  excludeSources?: readonly string[];
 }
 
 export interface TrendSource {
@@ -163,7 +236,12 @@ export function createStubTrendSource(): TrendSource {
       tags: ['before_after', 'craft', 'transformation'],
       metrics: { volume: 120_000, velocity: 0.82, saturation: 0.18, growth: 2.4 },
       samples: [{ url: 'https://example.invalid/1', caption: 'one take, no cuts' }],
+      // One fixture with media and the rest without, so both of `DISC-01`'s
+      // card variants — the image well and the text fallback — are exercised
+      // by anything running against the stub.
+      media: { url: 'https://example.invalid/1/thumb.jpg', kind: 'video' },
       language: 'en',
+      regions: [],
     },
     {
       id: 'tr_saturated',
@@ -174,6 +252,7 @@ export function createStubTrendSource(): TrendSource {
       metrics: { volume: 9_400_000, velocity: 0.21, saturation: 0.93, growth: 0.1 },
       samples: [],
       language: 'en',
+      regions: [],
     },
     {
       id: 'tr_dying',
@@ -183,6 +262,7 @@ export function createStubTrendSource(): TrendSource {
       metrics: { volume: 400_000, velocity: 0.12, saturation: 0.71, growth: -0.6 },
       samples: [],
       language: 'en',
+      regions: [],
     },
     {
       id: 'tr_unsafe',
@@ -192,6 +272,7 @@ export function createStubTrendSource(): TrendSource {
       metrics: { volume: 800_000, velocity: 0.74, saturation: 0.22, growth: 1.9 },
       samples: [],
       language: 'en',
+      regions: [],
     },
     {
       id: 'tr_local',
@@ -201,6 +282,7 @@ export function createStubTrendSource(): TrendSource {
       metrics: { volume: 22_000, velocity: 0.55, saturation: 0.3, growth: 0.9 },
       samples: [],
       language: 'en',
+      regions: [],
     },
     {
       // Present so the fixture exercises a screen-capture genome as well as a
@@ -214,6 +296,7 @@ export function createStubTrendSource(): TrendSource {
       metrics: { volume: 310_000, velocity: 0.68, saturation: 0.24, growth: 1.6 },
       samples: [],
       language: 'en',
+      regions: [],
     },
   ];
 
