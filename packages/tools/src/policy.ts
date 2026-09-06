@@ -689,5 +689,15 @@ function appliesTo(rule: ApprovalRule, caller: 'user' | 'agent', memberGroupIds:
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-/** "an admin" / "an approver" / "a client" — the message reads as a sentence or it does not get read. */
-const article = (role: Role) => ('aeiou'.includes(role[0] ?? '') ? 'an' : 'a');
+/**
+ * "an admin" / "an approver" / "a client" — the message reads as a sentence or
+ * it does not get read.
+ *
+ * A regex rather than `'aeiou'.includes(role[0] ?? '')`. That `?? ''` was
+ * unreachable: `Role` is a `z.enum` of non-empty strings, so `role[0]` is
+ * always defined and the fallback existed only to satisfy
+ * `noUncheckedIndexedAccess`. Being unreachable, it could not be covered — and
+ * it was the one branch keeping `policy.ts` off the 100% threshold CLAUDE.md
+ * invariant 3 requires, which failed the build rather than being an untidiness.
+ */
+const article = (role: Role) => (/^[aeiou]/i.test(role) ? 'an' : 'a');

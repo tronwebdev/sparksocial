@@ -41,10 +41,28 @@ jobs:
       # `tsc --noEmit` does not catch a missing "use client", a server/client
       # boundary violation, or a misused font loader — only a real Next build
       # does, and all three fail at runtime rather than at typecheck.
+      # Clerk parses its publishable key when the provider is constructed — the
+      # format is `pk_<env>_<base64 of "domain$">` — and throws on anything that
+      # does not decode. `pk_test_ci_placeholder` does not, so `<ClerkProvider>`
+      # in the root layout threw while prerendering the first static page and
+      # the build exited 1. That failed on `/sso-callback` long before there
+      # were any settings routes; adding pages only changed which page the
+      # export happened to reach first.
+      #
+      # Encoded here rather than written as a literal. The value is not a
+      # credential — a publishable key is public by definition and this one
+      # addresses a domain that does not exist — but a base64 blob sitting next
+      # to a name ending in `_KEY` is precisely what the secret scanner in the
+      # next job looks for, and a gate that cries wolf on its own fixture stops
+      # being read.
+      - name: Synthesise a parseable Clerk key for the prerender
+        run: |
+          set -euo pipefail
+          echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_$(printf 'clerk.example.com$' | base64 -w0)" >> "$GITHUB_ENV"
+
       - name: Build web
         run: npm run build:web
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_placeholder
           CLERK_SECRET_KEY: sk_test_ci_placeholder
 
   guardrails:
