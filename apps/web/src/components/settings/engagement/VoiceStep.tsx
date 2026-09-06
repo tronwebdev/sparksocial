@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { EiSectionChip } from './EiPrimitives';
 import { EMOJI_LEVELS, TONE_AXES, type EmojiLevel, type EngagementTone } from './types';
 
 /**
@@ -101,7 +102,7 @@ export function VoiceStep({
       </div>
 
       <div>
-        <h3 className="text-[14px] font-medium text-ink">Emoji</h3>
+        <EiSectionChip>Emoji</EiSectionChip>
         <p className="mt-0.5 text-[12px] text-ink-muted">
           Stated either way. Left unsaid, a model reaches for them about half the time.
         </p>

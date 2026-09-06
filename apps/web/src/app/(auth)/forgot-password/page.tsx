@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, useSignIn } from '@clerk/nextjs';
@@ -53,7 +53,43 @@ import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
  * back into their account, and that must not be discoverable only by trying.
  */
 const RESET_LINK_TEMPLATE_READY = process.env.NEXT_PUBLIC_RESET_LINK_READY === '1';
+/**
+ * The Suspense boundary `next build` requires, and why it is a boundary rather
+ * than the effect trick used elsewhere.
+ *
+ * `useSearchParams()` opts a page out of static prerendering unless something
+ * above it can suspend — without this, `next build` fails outright on
+ * *"useSearchParams() should be wrapped in a suspense boundary"* and the whole
+ * export exits non-zero. `selectedPlan.ts` hit the same wall on sign-up and
+ * solved it by reading `window.location` in an effect instead.
+ *
+ * That solution does not fit here. This page is reached from an emailed link
+ * carrying `?code=&email=`, and those values pick the **initial** state — which
+ * step renders, and what the email field starts as. Read in an effect they
+ * arrive one render late, so a user following a reset link would see the "enter
+ * your email" step flash before being swapped to the password form. A boundary
+ * keeps the params synchronous on first client render, so there is no flash.
+ *
+ * The fallback is the page's own shell rather than a spinner: it occupies the
+ * same space, so resolving the boundary does not move the layout.
+ */
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthBackdrop tone="light">
+          <AuthPanel tone="light">
+            <AuthHeader title="Reset password" subtitle="One moment…" />
+          </AuthPanel>
+        </AuthBackdrop>
+      }
+    >
+      <ForgotPasswordFlow />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordFlow() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const router = useRouter();

@@ -55,15 +55,20 @@ type GateState =
 
 const LATCH = 'ss-perf-unlocked:';
 
-export function PerformanceGate({
-  genomeId,
-  children,
-}: {
-  genomeId: string | undefined;
-  children: React.ReactNode;
-}) {
+/**
+ * The eligibility read, on its own so the tab strip can ask *before* it moves.
+ *
+ * The gate used to be only a wrapper: you clicked Performance & Learning, the
+ * tab switched, and then the card appeared over a blurred panel you had already
+ * been taken to. Being told you cannot go somewhere after arriving is the wrong
+ * order. The Command Center now calls this hook and refuses the switch, so the
+ * card opens over the tab you were on.
+ *
+ * The wrapper below still exists for the case the tab strip cannot intercept:
+ * a link straight to `/agents?tab=performance`.
+ */
+export function usePerformanceEligibility(genomeId: string | undefined): GateState {
   const [state, setState] = useState<GateState>({ kind: 'loading' });
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +116,60 @@ export function PerformanceGate({
     };
   }, [genomeId]);
 
+  return state;
+}
+
+/**
+ * The blocked / just-unlocked card, on its own so it can be opened by the tab
+ * strip as well as by the wrapper.
+ */
+export function PerformanceGateModal({ state, onClose }: { state: GateState; onClose: () => void }) {
+  if (state.kind === 'blocked') {
+    return (
+      <GateCard
+        tone="blocked"
+        onClose={onClose}
+        action={{ label: 'Learn More', onClick: onClose }}
+        detail={
+          state.observations > 0
+            ? `SPARK has ${state.observations} measured ${state.observations === 1 ? 'outcome' : 'outcomes'} on its strongest content pillar${
+                state.needed ? `, and needs ${state.needed}` : ''
+              }. Keep publishing — this opens by itself.`
+            : 'Nothing has been published and measured yet, so there is nothing to learn from. This opens by itself once there is.'
+        }
+      >
+        <span style={{ color: '#E14A4A' }}>Oops!, you&rsquo;re not eligible</span> to access the
+        performance &amp; learning feature
+      </GateCard>
+    );
+  }
+
+  if (state.kind === 'allowed') {
+    return (
+      <GateCard
+        tone="unlocked"
+        onClose={onClose}
+        action={{ label: 'View Performance & Learning', onClick: onClose }}
+      >
+        <span style={{ color: '#1E8C42' }}>Great news!</span> You now have access to the performance
+        &amp; learning feature.
+      </GateCard>
+    );
+  }
+
+  return null;
+}
+
+export function PerformanceGate({
+  genomeId,
+  children,
+}: {
+  genomeId: string | undefined;
+  children: React.ReactNode;
+}) {
+  const state = usePerformanceEligibility(genomeId);
+  const [dismissed, setDismissed] = useState(false);
+
   const showBlocked = state.kind === 'blocked' && !dismissed;
   const showUnlocked = state.kind === 'allowed' && state.justUnlocked && !dismissed;
 
@@ -126,36 +185,8 @@ export function PerformanceGate({
         {children}
       </div>
 
-      {showBlocked ? (
-        <GateCard
-          tone="blocked"
-          onClose={() => setDismissed(true)}
-          action={{
-            label: 'Learn More',
-            onClick: () => setDismissed(true),
-          }}
-          detail={
-            state.observations > 0
-              ? `SPARK has ${state.observations} measured ${state.observations === 1 ? 'outcome' : 'outcomes'} on its strongest content pillar${
-                  state.needed ? `, and needs ${state.needed}` : ''
-                }. Keep publishing — this opens by itself.`
-              : 'Nothing has been published and measured yet, so there is nothing to learn from. This opens by itself once there is.'
-          }
-        >
-          <span style={{ color: '#E14A4A' }}>Oops!, you&rsquo;re not eligible</span> to access the
-          performance &amp; learning feature
-        </GateCard>
-      ) : null}
-
-      {showUnlocked ? (
-        <GateCard
-          tone="unlocked"
-          onClose={() => setDismissed(true)}
-          action={{ label: 'View Performance & Learning', onClick: () => setDismissed(true) }}
-        >
-          <span style={{ color: '#1E8C42' }}>Great news!</span> You now have access to the performance
-          &amp; learning feature.
-        </GateCard>
+      {showBlocked || showUnlocked ? (
+        <PerformanceGateModal state={state} onClose={() => setDismissed(true)} />
       ) : null}
     </>
   );
@@ -183,11 +214,11 @@ function GateCard({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-start justify-center px-4 pt-[14vh]" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[130] flex items-start justify-center px-4 pt-[11vh]" role="dialog" aria-modal="true">
       <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-transparent" />
 
       <div
-        className="relative w-[320px] max-w-full animate-modal-in rounded-[16px] px-[26px] pb-[24px] pt-[16px] text-center motion-reduce:animate-none"
+        className="relative w-[520px] max-w-full animate-modal-in rounded-[22px] px-[44px] pb-[38px] pt-[24px] text-center motion-reduce:animate-none"
         style={{
           background:
             tone === 'blocked'
@@ -196,30 +227,30 @@ function GateCard({
           boxShadow: '0 30px 70px -28px rgba(12,12,12,0.45)',
         }}
       >
-        <span aria-hidden className="absolute left-[14px] top-[14px] block h-[15px] w-[15px] rounded-full text-[10px] font-bold leading-[15px]" style={{ color: '#9A9A9A', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.5)' }}>
+        <span aria-hidden className="absolute left-[20px] top-[20px] block h-[20px] w-[20px] rounded-full text-[13px] font-bold leading-[20px]" style={{ color: '#9A9A9A', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.5)' }}>
           i
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-[12px] top-[12px] flex h-[20px] w-[20px] items-center justify-center rounded-full transition-colors hover:bg-[rgba(131,131,131,0.14)]"
+          className="absolute right-[18px] top-[18px] flex h-[28px] w-[28px] items-center justify-center rounded-full transition-colors hover:bg-[rgba(131,131,131,0.14)]"
         >
-          <svg width="9" height="9" viewBox="0 0 11 11" fill="none" aria-hidden>
+          <svg width="12" height="12" viewBox="0 0 11 11" fill="none" aria-hidden>
             <path d="m1 1 9 9m0-9-9 9" stroke="#838383" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
         </button>
 
-        <span className="mx-auto mt-[10px] flex h-[62px] w-[62px] items-center justify-center">
+        <span className="mx-auto mt-[14px] flex h-[96px] w-[96px] items-center justify-center">
           {tone === 'blocked' ? (
-            <svg width="58" height="52" viewBox="0 0 58 52" fill="none" aria-hidden>
+            <svg width="90" height="81" viewBox="0 0 58 52" fill="none" aria-hidden>
               <path d="M29 4.5 55 47H3L29 4.5Z" fill="#F2A0A0" />
               <path d="M29 4.5 55 47H3L29 4.5Z" stroke="#E14A4A" strokeWidth="2.4" strokeLinejoin="round" />
               <path d="M29 20v11" stroke="#FFFFFF" strokeWidth="3.4" strokeLinecap="round" />
               <circle cx="29" cy="38.4" r="2.1" fill="#FFFFFF" />
             </svg>
           ) : (
-            <svg width="58" height="52" viewBox="0 0 58 52" fill="none" aria-hidden>
+            <svg width="90" height="81" viewBox="0 0 58 52" fill="none" aria-hidden>
               <circle cx="29" cy="26" r="18" fill="#5AD1B4" />
               <path d="m20.5 26.4 6 6L38 20.6" stroke="#FFFFFF" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M8 12.5 5 8m9-2 1-5m6 6 3-4" stroke="#F5B23C" strokeWidth="2" strokeLinecap="round" />
@@ -228,13 +259,13 @@ function GateCard({
           )}
         </span>
 
-        <p className="mt-[12px] text-[16px] font-semibold leading-[1.35] text-ink">{children}</p>
-        {detail ? <p className="mt-[9px] text-[12.5px] leading-[1.45] text-ink-muted">{detail}</p> : null}
+        <p className="mt-[20px] text-[24px] font-semibold leading-[1.32] text-ink">{children}</p>
+        {detail ? <p className="mt-[14px] text-[16px] leading-[1.5] text-ink-muted">{detail}</p> : null}
 
         <button
           type="button"
           onClick={action.onClick}
-          className="mt-[16px] h-[34px] rounded-[7px] bg-white px-[16px] text-[13px] font-medium text-ink transition-colors hover:bg-[#F4F5F7]"
+          className="mt-[26px] h-[48px] rounded-[10px] bg-white px-[28px] text-[16px] font-medium text-ink transition-colors hover:bg-[#F4F5F7]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
         >
           {action.label}

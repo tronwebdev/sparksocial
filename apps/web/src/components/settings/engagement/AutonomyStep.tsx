@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { EiOptionRow, EiSectionChip } from './EiPrimitives';
 import { ENGAGEMENT_LEVELS, ENGAGEMENT_TYPES, type EngagementAutonomy } from './types';
 
 /**
@@ -22,31 +23,26 @@ export function AutonomyStep({
 }) {
   return (
     <div>
-      <p className="text-[13px] text-ink-muted">
-        SPARK cannot reply at all until a campaign has been running two weeks with five posts out. This
-        decides what happens after that.
+      {/* The design's cyan section chip, then its 592x79 option rows on a 93 pitch. */}
+      <EiSectionChip>Autonomy Level</EiSectionChip>
+
+      <p className="mt-[16px] max-w-[592px] text-16 font-normal leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
+        SPARK cannot reply at all until a campaign has been running two weeks with five posts out.
+        This decides what happens after that.
       </p>
 
-      <ul className="mt-4 grid grid-cols-1 gap-2">
+      <ul className="mt-[18px] grid grid-cols-1 gap-[14px]" role="radiogroup" aria-label="Autonomy level">
         {ENGAGEMENT_LEVELS.map((l) => (
           <li key={l.value}>
-            <button
-              type="button"
-              aria-pressed={autonomy === l.value}
-              onClick={() => onAutonomy(l.value)}
-              className={cn(
-                'w-full rounded-lg border p-3 text-left transition-colors',
-                autonomy === l.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-              )}
-            >
-              <span className="block text-[14px] font-medium text-ink">{l.label}</span>
-              <span className="mt-0.5 block text-[12px] text-ink-muted">{l.hint}</span>
-            </button>
+            <EiOptionRow title={l.label} detail={l.hint} on={autonomy === l.value} onToggle={() => onAutonomy(l.value)} />
           </li>
         ))}
       </ul>
 
-      <p className="mt-5 text-[12px] font-medium text-ink-muted">Where it may answer</p>
+      <div className="mt-[26px]">
+        <EiSectionChip>Engagement Types</EiSectionChip>
+      </div>
+      <p className="mt-[16px] text-16" style={{ color: 'rgb(131,131,131)' }}>Where it may answer</p>
       <div className="mt-1.5 flex flex-wrap gap-1.5">
         {ENGAGEMENT_TYPES.map((t) => {
           // Empty means all three, so nothing selected reads as "everywhere".

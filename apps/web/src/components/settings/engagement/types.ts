@@ -182,14 +182,31 @@ export const splitList = (text: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-/** The five steps, in the prototype's order. */
-export const STEPS = ['autonomy', 'boundaries', 'platforms', 'voice', 'sales'] as const;
+/**
+ * The five steps, in the prototype's order.
+ *
+ * That order is stated by the design's own Continue links: `ws15` Autonomy →
+ * `ws16` Platforms → `ws17` Voice → `ws18` Boundaries → `ws19` Sales. This list
+ * previously ran autonomy → boundaries → platforms → voice → sales, which put
+ * the hard rules before the platforms they apply to.
+ */
+export const STEPS = ['autonomy', 'platforms', 'voice', 'boundaries', 'sales'] as const;
 export type Step = (typeof STEPS)[number];
 
+/** The 32/600 heading each step carries, in the design's own words. */
 export const STEP_TITLES: Record<Step, string> = {
-  autonomy: 'How much may SPARK say on its own?',
-  boundaries: 'Set boundaries for your Agent',
-  platforms: 'Platforms',
+  autonomy: 'Configure Engagement Intelligence',
+  platforms: 'Configure Engagement Intelligence',
   voice: 'How should your Agent sound?',
+  boundaries: 'Set boundaries for your Agent',
   sales: 'Sales Assist Configuration',
+};
+
+/** The 18/400 line under it. */
+export const STEP_BLURBS: Record<Step, string> = {
+  autonomy: 'Control the extent of autonomy your agent has when engaging with followers.',
+  platforms: 'Define the boundaries for how your agent will handle comments and direct messages.',
+  voice: 'Replies will follow your brand voice.',
+  boundaries: 'Your agent will never cross these lines.',
+  sales: 'Decide how your agent qualifies leads.',
 };

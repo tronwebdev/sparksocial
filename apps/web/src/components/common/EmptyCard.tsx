@@ -33,7 +33,7 @@ export function EmptyCard({
   body,
   title = "You don't have an active campaign",
   narrow,
-  action = { label: 'Create Campaign', href: '/calendar?new=1' },
+  action = { label: 'Create Campaign', href: '/home?new=1' },
 }: {
   glyph?: 'document' | 'plane' | 'chat' | 'chart';
   /** The second line. The only part that differs between cards. */

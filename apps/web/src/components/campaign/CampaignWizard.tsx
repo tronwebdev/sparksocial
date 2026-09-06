@@ -1,21 +1,35 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRef } from 'react';
 import {
   rungFromBrandAutonomy,
   type CampaignType,
   type CampaignWeight,
   type EngagementRung,
 } from '@sparksocial/shared';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
+import { Button } from '@/components/ui/button';
 import { EmptyCalendarReason } from '@/components/calendar/EmptyCalendarReason';
-import { cn } from '@/lib/utils';
 import { MissingFactsRequest } from '@/components/campaign/MissingFactsRequest';
-import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import type { Explanation } from '@/components/explain/WhyPopover';
+import {
+  AgentOrb,
+  Chevron,
+  ModalBlobs,
+  STAGE,
+  STEP_GEOM,
+  Spinner,
+  isLateHeader,
+  type Step,
+} from './campaignChrome';
+import { CampaignIntro } from './CampaignIntro';
+import { GoalStep, TypeStep } from './CampaignChoiceSteps';
+import { OfferStep, type BrandCard } from './CampaignOfferStep';
+import { AccountsStep, type PlatformStatus } from './CampaignAccountsStep';
+import { AutonomyStep } from './CampaignAutonomyStep';
+import { ReviewStep } from './CampaignReviewStep';
+import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
 
 /**
  * `CMP-01` — the campaign wizard, PRD §8.4.
@@ -66,121 +80,6 @@ import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
  *     they change the plan, because today they do not.
  */
 
-const OBJECTIVES = [
-  { value: 'bookings', label: 'More bookings', hint: 'Appointments, tables, jobs' },
-  { value: 'leads', label: 'More enquiries', hint: 'People asking about you' },
-  { value: 'sales', label: 'More sales', hint: 'Orders and purchases' },
-  { value: 'trials', label: 'More sign-ups', hint: 'Trials and free accounts' },
-  { value: 'audience', label: 'A bigger audience', hint: 'Reach and following' },
-  { value: 'hiring', label: 'Hiring', hint: 'Applications from good people' },
-] as const;
-
-const APPROVAL_MODES = [
-  {
-    value: 'autopublish',
-    label: 'Publish on its own',
-    // Was "The PRD default." — a document the owner has never seen, offered as
-    // the reason to pick an oversight level. What they need to know is what it
-    // does and what still stops it.
-    hint: 'The usual choice. Guardrails still hold anything risky back for you to look at.',
-  },
-  {
-    value: 'review_first_week',
-    label: 'Review the first week',
-    hint: 'Then it publishes on its own once you have seen how it writes.',
-  },
-  { value: 'review_everything', label: 'Review everything', hint: 'Nothing goes out unseen.' },
-] as const;
-
-/**
- * `CMP-01.2`'s type, in the prototype's own words.
- *
- * Four, matching the four `campaigns.campaign_type` accepts. Note that the
- * prototype's step 1 and step 2 lists overlap — "Build Authority & Trust" is
- * offered there as a *goal* and "Authority / Education" as a *type* — which is
- * exactly the conflation the build keeps apart: the goal is what success looks
- * like and the type is the shape of the content chasing it.
- */
-const CAMPAIGN_TYPES: ReadonlyArray<{ value: CampaignType; label: string; hint: string }> = [
-  {
-    value: 'promotion',
-    label: 'Promotion / Offers',
-    hint: 'Direct benefits, urgency, and a clear thing to do next.',
-  },
-  {
-    value: 'lead_magnet',
-    label: 'Lead magnet',
-    hint: 'Teaching that earns an email or an enquiry.',
-  },
-  {
-    value: 'authority',
-    label: 'Authority / Education',
-    hint: 'Explaining your work until people trust it.',
-  },
-  {
-    value: 'launch',
-    label: 'Launch / Announcement',
-    hint: 'A short burst of visibility around one thing.',
-  },
-];
-
-/**
- * The type this goal usually implies — a preselection, not a decision.
- *
- * The prototype phrases this as the agent's choice ("I've chosen a type for you
- * based on your goal"). It is presented as a default here instead, because
- * invariant 4 makes anything the owner sees SPARK *decide* owe them a structured
- * `Explanation`, and a two-line lookup table has no reasoning to show. Calling
- * it a preselection is both cheaper and truer.
- *
- * `launch` is absent on purpose: nothing about an objective says "short burst",
- * so it is a choice the owner makes rather than one a goal implies.
- */
-const TYPE_FOR_OBJECTIVE: Record<string, CampaignType> = {
-  bookings: 'promotion',
-  sales: 'promotion',
-  leads: 'lead_magnet',
-  trials: 'lead_magnet',
-  audience: 'authority',
-  hiring: 'authority',
-};
-
-/**
- * The prototype's "how much attention should this get?", as three buttons rather
- * than its three-stop slider.
- *
- * A slider implies a continuum and this is three named values; it also has to be
- * dragged, where the buttons are reachable by keyboard for nothing.
- */
-const WEIGHTS: ReadonlyArray<{ value: CampaignWeight; label: string; hint: string }> = [
-  { value: 'light', label: 'Light', hint: 'A thread running under everything else' },
-  { value: 'balanced', label: 'Balanced', hint: 'Shares the month with your usual posting' },
-  { value: 'dominant', label: 'Dominant', hint: 'The main thing this month is about' },
-];
-
-/**
- * The engagement ladder — four rungs, the prototype's labels, explanations
- * written against what the build actually does.
- *
- * The prototype greys this whole group out; it is live here. `sales_assist` is
- * the one rung with configuration behind it, which is why it says where that
- * configuration lives.
- */
-const RUNGS: ReadonlyArray<{ value: EngagementRung; label: string; hint: string }> = [
-  { value: 'observe', label: 'Observe only', hint: 'Reads and sorts everything. Replies to nothing.' },
-  { value: 'suggest', label: 'Suggest replies', hint: 'Drafts a reply and waits for you to send it.' },
-  {
-    value: 'auto_reply',
-    label: 'Auto reply (safe)',
-    hint: 'Answers the straightforward ones itself. Anything sensitive still waits for you.',
-  },
-  {
-    value: 'sales_assist',
-    label: 'Sales assist',
-    hint: 'Also works leads — qualifies them in DMs and applies your handoff rules.',
-  },
-];
-
 
 /**
  * How many posts the proposed mix adds up to.
@@ -213,45 +112,26 @@ interface ProposedPlan {
   why: Explanation;
 }
 
-interface PlatformStatus {
-  platform: string;
-  connected: boolean;
-  accountLabel?: string;
-  supported: boolean;
-}
-
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
-
-const STEP_TITLES: Record<Step, string> = {
-  1: 'What is this campaign for?',
-  2: 'What SPARK plans to make',
-  3: 'What are you pointing people at?',
-  4: 'Where should it post?',
-  5: 'How much should this campaign do on its own?',
-  6: 'Ready to go',
-};
-
 export function CampaignWizard({
   genomeId,
   onActivated,
   onCancel,
+  showIntro = false,
 }: {
   genomeId: string;
   onActivated: (campaignId: string) => void;
   onCancel: () => void;
+  /**
+   * Show the prototype's entry card before step 1.
+   *
+   * Off by default: the calendar mounts this on a button press, where an "are
+   * you sure you want to begin" card is a second click for nothing. The
+   * first-run route turns it on.
+   */
+  showIntro?: boolean;
 }) {
   const [step, setStep] = useState<Step>(1);
 
-  /**
-   * The campaign's name, asked rather than derived.
-   *
-   * It was `` `${month} campaign` `` — so two campaigns started in August were
-   * both "August campaign" and indistinguishable in any list. Defaulted to that
-   * same string, because a default is what stops this becoming another required
-   * field on a six-step form, and pre-filled rather than placeholdered so the
-   * owner can see what they are accepting.
-   */
-  const [name, setName] = useState(() => `${new Date().toLocaleString('en', { month: 'long' })} campaign`);
 
   /**
    * Set when the campaign was created but its calendar came back empty.
@@ -265,11 +145,22 @@ export function CampaignWizard({
    */
   const [emptyResult, setEmptyResult] = useState<{ campaignId: string; planned: number } | null>(null);
 
+  /** The stage scale — see `campaignChrome.tsx`. */
+  const [pageW, setPageW] = useState(STAGE);
+  /** The prototype's entry card. Only shown where a caller asks for it. */
+  const [intro, setIntro] = useState(showIntro);
+
   // CMP-01.1
-  const [objective, setObjective] = useState<string>('bookings');
+  /**
+   * Which of the design's four goal cards is chosen, if any.
+   *
+   * Stored beside `objective` rather than derived from it because two cards
+   * write `audience` — see `campaignDraft.ts`. Null means the objective came
+   * from the row beneath the grid instead.
+   */
+  const [goalKey, setGoalKey] = useState<string | null>('leads');
+  const [objective, setObjective] = useState<string>('leads');
   const [windowDays, setWindowDays] = useState(30);
-  const [targetCount, setTargetCount] = useState('');
-  const [targetLabel, setTargetLabel] = useState('');
 
   // CMP-01.2
   const [plan, setPlan] = useState<ProposedPlan | null>(null);
@@ -280,14 +171,18 @@ export function CampaignWizard({
    * every objective change would quietly undo that choice.
    */
   const [typeChoice, setTypeChoice] = useState<CampaignType | null>(null);
-  const campaignType: CampaignType = typeChoice ?? TYPE_FOR_OBJECTIVE[objective] ?? 'promotion';
+  /** What the chosen goal card implies, until step 2 is answered outright. */
+  const [suggestedType, setSuggestedType] = useState<CampaignType>('lead_magnet');
+  const campaignType: CampaignType = typeChoice ?? suggestedType;
 
   // CMP-01.3
+  /** The design gates the URL field behind a switch; unset means "no CTA". */
+  const [ctaOn, setCtaOn] = useState(false);
   const [ctaUrl, setCtaUrl] = useState('');
-  const [offerNote, setOfferNote] = useState('');
 
   // CMP-01.4
   const [platforms, setPlatforms] = useState<PlatformStatus[] | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
 
   // CMP-01.5
@@ -296,8 +191,6 @@ export function CampaignWizard({
   const [adjustMixAutomatically, setAdjustMixAutomatically] = useState(true);
   const [weight, setWeight] = useState<CampaignWeight>('balanced');
   const [engagementRung, setEngagementRung] = useState<EngagementRung>('observe');
-  /** Also change the brand's default, not just this campaign's — off by default. */
-  const [applyToWholeBrand, setApplyToWholeBrand] = useState(false);
   /**
    * Set the moment the owner touches either governance control, so a slow
    * governance read cannot land afterwards and overwrite their choice.
@@ -308,6 +201,11 @@ export function CampaignWizard({
    * inside the fetch without making the effect depend on it and re-run.
    */
   const governanceTouched = useRef(false);
+
+  /** The brand card on step 3, and the agent's name in the header. */
+  const [brand, setBrand] = useState<BrandCard | null>(null);
+  const [agentName, setAgentName] = useState('your agent');
+  const [timezone, setTimezone] = useState('UTC');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -389,40 +287,17 @@ export function CampaignWizard({
     })();
   }, [step, platforms]);
 
-  /**
-   * `CMP-01.3`'s brand-level write. Skipped entirely when no product was named.
-   *
-   * `GenomeOffer` carries `primary_cta` and a `products` list, and no free-text
-   * summary field — so the "anything specific to push" answer becomes a named
-   * product rather than being dropped or a new column being invented for it.
-   * The CTA url is attached to that product, since it is where the offer points.
-   *
-   * ── Why the url no longer goes into `offer.primary_cta` ──────────────────
-   *
-   * It used to, and that was wrong in kind. `genome:offer.primary_cta` is the
-   * source for a `cta` beat in sixteen playbooks — it becomes the words on the
-   * screen and in the voiceover, which is why `publish/linkTool.ts` says
-   * outright that it is free text ("Book Now"), not a URL. Writing `https://…`
-   * into it put a URL where a phrase belongs, in every video the brand made.
-   *
-   * The url now goes to `campaigns.primary_cta`, which is where a destination
-   * that lasts one campaign belongs anyway: the brand's own CTA is a standing
-   * default, and a lead-magnet campaign pointing at its opt-in page should stop
-   * pointing there when the campaign ends.
-   */
-  async function saveOffer(): Promise<boolean> {
-    const cta = ctaUrl.trim();
-    const note = offerNote.trim();
-    if (!note) return true;
+  /*
+    `genome.offer.set` used to be called here, writing a named product from a
+    free-text "what are you pushing" field on step 3.
 
-    const res = await invoke('genome.offer.set', {
-      genomeId,
-      offer: { products: [{ name: note, ...(cta ? { cta_url: cta } : {}) }] },
-    });
-    if (res.status === 'succeeded') return true;
-    setError(res.status === 'failed' ? res.error.message : 'Saving the offer needs approval.');
-    return false;
-  }
+    The design's step 3 has no such field: its anchor is the brand card — what
+    SPARK already knows about the brand — plus the campaign's CTA url. So there
+    is nothing to write to the *brand's* offer, and the url goes where it
+    belongs, on `campaigns.primary_cta`, which is also where a destination that
+    lasts one campaign should live. Products are edited in the Brand Kit, which
+    is where both buttons on that step now go.
+  */
 
   /* CMP-01.6 — activate. Four calls, in the order their effects depend on. */
   async function activate() {
@@ -430,24 +305,15 @@ export function CampaignWizard({
     setError(null);
 
     /**
-     * The oversight choice is stored on the *campaign* now, not the brand — PRD
-     * §7.2's per-campaign approval scope, which had no representation until
-     * `campaigns.approval_mode` existed.
-     *
-     * That is the meaningful change from setting `agent.approval_mode.set` here:
-     * it used to overwrite the whole brand's posture, so activating a cautious
-     * launch campaign quietly put every *other* running campaign into review
-     * too. A campaign's mode now applies to its own posts and nothing else, and
-     * `applyToWholeBrand` is the explicit way to do the old thing on purpose.
-     */
-    if (applyToWholeBrand) {
-      const modeRes = await invoke('agent.approval_mode.set', { mode: approvalMode });
-      if (modeRes.status !== 'succeeded') {
-        setBusy(false);
-        setError(modeRes.status === 'failed' ? modeRes.error.message : 'Setting the approval mode was gated.');
-        return;
-      }
-    }
+      * The oversight choice is stored on the *campaign*, not the brand — PRD
+      * §7.2's per-campaign approval scope.
+      *
+      * `agent.approval_mode.set` used to be called here behind an "apply to the
+      * whole brand" tickbox. The design has no such control, and its absence is
+      * the better default: activating a cautious launch campaign should not
+      * quietly put every *other* running campaign into review too. The brand's
+      * own posture is changed in the Brand Kit, deliberately, on its own screen.
+      */
 
     if (!learnFromPerformance) {
       // Freezing is the explicit act; leaving it unfrozen is the default, so
@@ -478,8 +344,6 @@ export function CampaignWizard({
         learnFromPerformance,
         adjustMixAutomatically,
         ...(ctaUrl.trim() ? { primaryCta: ctaUrl.trim() } : {}),
-        ...(targetCount.trim() && Number(targetCount) > 0 ? { targetCount: Number(targetCount) } : {}),
-        ...(targetLabel.trim() ? { targetLabel: targetLabel.trim() } : {}),
       },
       // Non-idempotent: without a key the API refuses, which is the guard
       // against a double-click creating two campaigns.
@@ -560,7 +424,122 @@ export function CampaignWizard({
     onActivated(created.output.campaignId);
   }
 
-  const connectedCount = platforms?.filter((p) => p.connected).length ?? 0;
+
+  /* The stage scales to the viewport, exactly as the prototype's own script
+     does — a resize listener plus one read at mount. */
+  useEffect(() => {
+    const onResize = () => setPageW(window.innerWidth || STAGE);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  /**
+   * The brand card, the agent's name and the timezone — three reads that fill
+   * the header on every step and the card on step 3.
+   *
+   * `brand.governance.get` carries the logo, colours, fonts, timezone and the
+   * agent's own voice adjectives; `genome.list` carries the brand's name;
+   * `knowledge.list` carries what SPARK has actually read about it. A failed
+   * read leaves the card empty rather than filled with something plausible.
+   */
+  useEffect(() => {
+    void (async () => {
+      const [gov, list, docs] = await Promise.all([
+        invoke<{
+          logoUrl?: string;
+          brandColors: string[];
+          brandFonts?: { display?: string; body?: string };
+          timezone: string;
+          agentIdentity: { name: string; voice: string[] };
+        }>('brand.governance.get', {}),
+        invoke<{ genomes: Array<{ genomeId: string; name: string }> }>('genome.list', {}),
+        invoke<{ docs: Array<{ docId: string; citationLabel?: string; preview: string }> }>(
+          'knowledge.list',
+          { genomeId },
+        ),
+      ]);
+
+      const g = gov.status === 'succeeded' ? gov.output : null;
+      if (g) {
+        setAgentName(g.agentIdentity.name);
+        setTimezone(g.timezone);
+      }
+
+      const name =
+        list.status === 'succeeded'
+          ? (list.output.genomes.find((x) => x.genomeId === genomeId)?.name ?? 'This brand')
+          : 'This brand';
+
+      setBrand({
+        name,
+        logoUrl: g?.logoUrl,
+        colors: g?.brandColors ?? [],
+        fonts: g?.brandFonts ?? {},
+        timezone: g?.timezone ?? 'UTC',
+        voice: g?.agentIdentity.voice ?? [],
+        docs:
+          docs.status === 'succeeded'
+            ? docs.output.docs.map((d) => ({
+                docId: d.docId,
+                label: d.citationLabel ?? 'Attached document',
+                preview: d.preview,
+              }))
+            : [],
+      });
+    })();
+  }, [genomeId]);
+
+  /**
+   * Connecting an account from the tile grid.
+   *
+   * `integration.connect` is `human_only`, so it can only run from a real
+   * click — which is what this is. It answers with an authorize url that has to
+   * be opened in a window the user drives; the tiles re-read on focus, so
+   * coming back from the provider updates the grid without a reload.
+   */
+  async function connectPlatform(platform: string) {
+    setConnecting(platform);
+    setError(null);
+    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { platform });
+    setConnecting(null);
+    if (res.status !== 'succeeded') {
+      setError(
+        res.status === 'failed'
+          ? res.error.message
+          : 'Connecting an account needs an approval this screen cannot give.',
+      );
+      return;
+    }
+    window.open(res.output.authorizeUrl, '_blank', 'noopener');
+  }
+
+  /* Coming back from a provider's consent screen should show the new account. */
+  useEffect(() => {
+    if (step !== 4) return;
+    const refresh = () => setPlatforms(null);
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [step]);
+
+  const goalLabel =
+    GOAL_CARDS.find((c) => c.key === goalKey)?.title ??
+    EXTRA_OBJECTIVES.find((o) => o.value === objective)?.label ??
+    objective;
+
+  /**
+   * The campaign's name, derived — the design never asks for one.
+   *
+   * It carries the goal as well as the month, because "August campaign" twice
+   * over is what this used to produce and two campaigns started in the same
+   * month were then indistinguishable in any list. The goal is the thing that
+   * actually differs between two campaigns started together, so it is what
+   * tells them apart. Renaming lives on the calendar, where campaigns are
+   * managed; putting a field here would add a seventh question to a six-step
+   * form the design deliberately keeps to six.
+   */
+  const name = `${new Date().toLocaleString('en', { month: 'long' })} ${goalLabel.toLowerCase()}`;
+
 
   /**
    * The campaign exists and its calendar is empty — said here rather than left to
@@ -596,665 +575,248 @@ export function CampaignWizard({
       </section>
     );
   }
+  /**
+   * The stage, scaled.
+   *
+   * The prototype places every element absolutely on a 1728-wide stage and
+   * scales the whole thing by `pageW / 1728`. That is reproduced rather than
+   * reflowed — see `campaignChrome.tsx` for why this screen earns the
+   * exception.
+   */
+  const geom = STEP_GEOM[step];
+  const scale = pageW / STAGE;
+
+  if (intro) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Create a campaign">
+        <div className="relative w-full overflow-hidden" style={{ height: Math.round(1117 * scale) }}>
+          <div className="absolute left-0 top-0 w-[1728px] origin-top-left" style={{ transform: `scale(${scale})`, height: 1117 }}>
+            <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const lateHdr = isLateHeader(step);
+  const hdrTop = lateHdr ? 51.262 : 46.262;
+  const progTop = lateHdr ? 80.961 : 75.961;
+  const avTop = step === 1 ? 109 : 104;
+
+  /** Continue on the last step activates; everywhere else it advances. */
+  function forward() {
+    setError(null);
+    if (step === 1) {
+      void propose();
+      return;
+    }
+    if (step === 6) {
+      void activate();
+      return;
+    }
+    setStep((step + 1) as Step);
+  }
+
+  function backward() {
+    setError(null);
+    if (step === 1) {
+      onCancel();
+      return;
+    }
+    setStep((step - 1) as Step);
+  }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
-            Step {step} of 6
-          </p>
-          <h2 className="mt-1 text-[20px] font-medium text-ink">{STEP_TITLES[step]}</h2>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-
-      {/* Progress. Six segments, because six is few enough to show honestly. */}
-      <div className="mt-4 flex gap-1" aria-hidden>
-        {([1, 2, 3, 4, 5, 6] as Step[]).map((s) => (
-          <span
-            key={s}
-            className={cn('h-1 flex-1 rounded-full', s <= step ? 'bg-primary' : 'bg-border')}
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
+      <div className="relative w-full overflow-hidden" style={{ height: Math.round(geom.frame * scale) }}>
+        <div className="absolute left-0 top-0 w-[1728px] origin-top-left" style={{ transform: `scale(${scale})`, height: geom.frame }}>
+          {/* The scrim. Clicking it leaves, the way a modal backdrop should. */}
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onCancel}
+            className="absolute left-0 top-0 w-[1728px] cursor-default"
+            style={{ height: geom.frame, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)' }}
           />
-        ))}
-      </div>
 
-      <div className="mt-6">
-        {/* ── CMP-01.1 ────────────────────────────────────────────────── */}
-        {step === 1 ? (
-          <div className="grid grid-cols-1 gap-5">
-            {/* Asked, not derived. Two campaigns started in the same month were
-                both "August campaign" and told apart by nothing. */}
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-name">
-                Call it
-              </label>
-              <Input
-                id="cmp-name"
-                value={name}
-                maxLength={120}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="August campaign"
-                className="mt-1.5 max-w-md"
+          <div
+            className="absolute w-cmp-modal overflow-hidden rounded-2xl bg-surface-200"
+            style={{ left: 346, top: geom.modalTop, height: geom.modalH }}
+          >
+            <ModalBlobs />
+
+            {/* ── header ────────────────────────────────────────────────── */}
+            <button
+              type="button"
+              onClick={backward}
+              className="absolute left-[47px] h-[43.522px] w-[110.023px] cursor-pointer rounded-[8.457px] transition-colors hover:bg-white/60 active:scale-[0.98]"
+              style={{ top: hdrTop, backdropFilter: 'blur(26.946px)', boxShadow: '0 0 0 0.846px rgb(131,131,131)' }}
+            >
+              <Chevron className="absolute left-[13.532px] top-[14.125px]" style={{ transform: 'scaleX(-1)' }} />
+              <span className="absolute left-[55px] top-[10.996px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
+                Back
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={forward}
+              disabled={busy}
+              className="absolute left-[857.023px] h-[43px] w-[132px] cursor-pointer rounded-[8.457px] transition-colors hover:bg-white/60 active:scale-[0.98] disabled:opacity-60"
+              style={{ top: hdrTop, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(26.946px)' }}
+            >
+              <span className="absolute top-[10.768px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
+                {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
+              </span>
+              <Chevron className="absolute left-[109.135px] top-[13.864px]" color="rgb(12,12,12)" />
+            </button>
+
+            <span className="absolute left-[265px] top-[47px] whitespace-nowrap text-[18px] font-semibold leading-none text-ink">
+              Step {step}
+              <span className="font-normal"> of 6</span>
+            </span>
+
+            <div
+              className="absolute left-[264px] h-[15px] w-cmp-progress overflow-hidden rounded-[16.843px]"
+              style={{ top: progTop, background: 'rgba(12,12,12,0.05)' }}
+              role="progressbar"
+              aria-valuenow={step}
+              aria-valuemin={1}
+              aria-valuemax={6}
+              aria-label={`Step ${step} of 6`}
+            >
+              <div
+                className="absolute left-[1px] top-[1.039px] h-[13px] rounded-[24.137px] bg-cmp-progress"
+                style={{ width: geom.prog, transition: 'width 0.5s cubic-bezier(0.22,1,0.36,1)' }}
               />
-              <p className="mt-1 text-[12px] text-ink-muted">
-                Just for you &mdash; it is how you will tell this campaign from the next one.
-              </p>
             </div>
 
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {OBJECTIVES.map((o) => (
-                <li key={o.value}>
-                  <button
-                    type="button"
-                    onClick={() => setObjective(o.value)}
-                    aria-pressed={objective === o.value}
-                    className={cn(
-                      'w-full rounded-lg border p-3 text-left transition-colors',
-                      objective === o.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:bg-surface-muted',
-                    )}
-                  >
-                    <span className="block text-[14px] font-medium text-ink">{o.label}</span>
-                    <span className="mt-0.5 block text-[12px] text-ink-muted">{o.hint}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-window">
-                  Over how long
-                </label>
-                <select
-                  id="cmp-window"
-                  value={windowDays}
-                  onChange={(e) => setWindowDays(Number(e.target.value))}
-                  className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
-                >
-                  <option value={14}>2 weeks</option>
-                  <option value={30}>A month</option>
-                  <option value={60}>2 months</option>
-                  <option value={90}>3 months</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-target">
-                  Target (optional)
-                </label>
-                <Input
-                  id="cmp-target"
-                  value={targetCount}
-                  inputMode="numeric"
-                  onChange={(e) => setTargetCount(e.target.value)}
-                  placeholder="40"
-                  className="mt-1.5"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-target-label">
-                  Of what
-                </label>
-                <Input
-                  id="cmp-target-label"
-                  value={targetLabel}
-                  onChange={(e) => setTargetLabel(e.target.value)}
-                  placeholder="bookings"
-                  className="mt-1.5"
-                />
-              </div>
+            <div className="absolute left-[514px] top-[49px] h-[18px] w-[258px]">
+              <Spinner className="absolute left-0 top-[2px]" />
+              <span className="absolute right-0 top-0 whitespace-nowrap text-right text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+                Assigning this campaign to <span className="font-bold text-purple">{agentName}</span>
+              </span>
             </div>
 
-            <div className="flex justify-end">
-              <Button disabled={busy} onClick={() => void propose()}>
-                {busy ? 'Working it out…' : 'See the plan'}
-              </Button>
-            </div>
-          </div>
-        ) : null}
+            {step !== 6 ? <AgentOrb size={113} className="left-[461px]" style={{ top: avTop }} /> : null}
 
-        {/* ── CMP-01.2 ────────────────────────────────────────────────── */}
-        {step === 2 && plan ? (
-          <div className="grid grid-cols-1 gap-5">
-            <div className="rounded-lg border border-border bg-surface-muted p-4">
-              <p className="text-[14px] text-ink">{plan.why.summary}</p>
-              <WhyPopover why={plan.why} label="How this plan was worked out" />
-            </div>
-
-            {/* The type, preselected from the goal. Deliberately *not* framed as
-                SPARK's choice — see TYPE_FOR_OBJECTIVE. */}
-            <div>
-              <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
-                What kind of campaign
-              </p>
-              <p className="mt-1 text-[13px] text-ink-muted">
-                Preselected from your goal. Change it if it is the wrong shape for what you have in mind.
-              </p>
-              <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {CAMPAIGN_TYPES.map((t) => (
-                  <li key={t.value}>
-                    <button
-                      type="button"
-                      aria-pressed={campaignType === t.value}
-                      onClick={() => setTypeChoice(t.value)}
-                      className={cn(
-                        'w-full rounded-lg border p-3 text-left transition-colors',
-                        campaignType === t.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:bg-surface-muted',
-                      )}
-                    >
-                      <span className="block text-[14px] font-medium text-ink">{t.label}</span>
-                      <span className="mt-0.5 block text-[12px] text-ink-muted">{t.hint}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* The mix describes the *plan's* balance, so it is both labelled
-                and scaled by the plan total.
-
-                It used to be labelled `{plan.buildableNow} posts SPARK can make
-                right now` — which read "0 posts SPARK can make right now" above
-                five rows summing to 13 — and each bar was divided by
-                `buildableNow` too, so with nothing buildable yet every width
-                came out as `count * 100%` and the track's `overflow-hidden`
-                clipped all five to full. The chart carried no information in
-                exactly the case a new brand always starts in.
-
-                How many are buildable today is a different fact, and the
-                summary above already states it against the alternative
-                ("0 posts from what you have now — 13 if you film 3 × 5
-                minutes"), which is the comparison that tells someone what to
-                do next. */}
-            <div>
-              <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
-                {mixTotal(plan.mix)} posts, balanced like this
-              </p>
-              <ul className="mt-2 grid grid-cols-1 gap-1.5">
-                {plan.mix
-                  .filter((m) => m.count > 0)
-                  .map((m) => (
-                    <li key={m.pillar} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 text-[13px] capitalize text-ink">{m.pillar}</span>
-                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-border">
-                        <span
-                          className="block h-full rounded-full bg-primary"
-                          style={{
-                            width: `${Math.round((m.count / Math.max(1, mixTotal(plan.mix))) * 100)}%`,
-                          }}
-                        />
-                      </span>
-                      <span className="w-8 text-right text-[13px] tabular-nums text-ink-muted">
-                        {m.count}
-                      </span>
-                    </li>
-                  ))}
-              </ul>
-              <p className="mt-3 text-[12px] text-ink-muted">
-                You can shift this balance any time from the calendar — nothing here is locked in.
-              </p>
-            </div>
-
-            {/* Placed above the mix, not below it. The mix describes what would be
-                made; this says part of it cannot be made yet, and reading those
-                in the other order means agreeing to a plan before learning it is
-                short. */}
-            {plan.answers && !answersDismissed ? (
-              <MissingFactsRequest
-                genomeId={genomeId}
-                facts={plan.answers.missing}
-                unlocksPosts={plan.answers.unlocksPosts}
-                blockedPlaybooks={plan.answers.blockedPlaybooks}
-                onFilled={async () => {
-                  // Re-propose rather than patch the local plan: the counts,
-                  // the mix and the `why` all move when a format becomes
-                  // buildable, and recomputing them here would be a second
-                  // implementation of `planCampaign` in a component.
-                  await propose();
+            {/* ── the step ──────────────────────────────────────────────── */}
+            {step === 1 ? (
+              <GoalStep
+                goalKey={goalKey}
+                objective={objective}
+                onPickCard={(c) => {
+                  setGoalKey(c.key);
+                  setObjective(c.objective);
+                  // The card carries the type it implies; an explicit later
+                  // choice on step 2 still wins, which is why this only seeds
+                  // the suggestion rather than setting `typeChoice`.
+                  setSuggestedType(c.type);
                 }}
-                onSkip={() => setAnswersDismissed(true)}
+                onPickExtra={(v) => {
+                  setGoalKey(null);
+                  setObjective(v);
+                }}
               />
             ) : null}
 
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(1)}>
-                Back
-              </Button>
-              {/* Gated while the request is still standing. Not a hard refusal —
-                  "Continue without it" is right there, and a couple of formats
-                  have no CTA beat and would build fine — but sailing past it
-                  silently is what produced the 404-on-open in the first place. */}
-              <Button onClick={() => setStep(3)} disabled={Boolean(plan.answers) && !answersDismissed}>
-                Looks right
-              </Button>
-            </div>
-          </div>
-        ) : null}
+            {step === 2 ? <TypeStep value={campaignType} onPick={setTypeChoice} /> : null}
 
-        {/* ── CMP-01.3 ────────────────────────────────────────────────── */}
-        {step === 3 ? (
-          <div className="grid grid-cols-1 gap-5">
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-cta">
-                Where should posts send people?
-              </label>
-              <p className="mt-0.5 text-[12px] text-ink-muted">
-                A booking page, a product page, a form. Every post that needs a link uses this one.
-              </p>
-              <Input
-                id="cmp-cta"
-                value={ctaUrl}
-                onChange={(e) => setCtaUrl(e.target.value)}
-                placeholder="https://…"
-                className="mt-1.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="cmp-offer">
-                Anything specific to push? (optional)
-              </label>
-              <Input
-                id="cmp-offer"
-                value={offerNote}
-                onChange={(e) => setOfferNote(e.target.value)}
-                placeholder="20% off first visit through August"
-                className="mt-1.5"
-              />
-            </div>
-
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(2)}>
-                Back
-              </Button>
-              <Button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  const ok = await saveOffer();
-                  setBusy(false);
-                  if (ok) setStep(4);
-                }}
-              >
-                {busy ? 'Saving…' : 'Next'}
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* ── CMP-01.4 ────────────────────────────────────────────────── */}
-        {step === 4 ? (
-          <div className="grid grid-cols-1 gap-5">
-            {platforms === null ? (
-              <Skeleton className="h-32 w-full rounded-lg" />
-            ) : connectedCount === 0 ? (
-              <div className="rounded-lg border border-border bg-surface-muted p-4">
-                <p className="text-[14px] font-medium text-ink">No accounts connected yet</p>
-                <p className="mt-1 text-[13px] text-ink-muted">
-                  SPARK will plan and draft the whole month, and hold everything until you connect an
-                  account in Settings. Nothing is lost by continuing.
-                </p>
-              </div>
-            ) : (
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {platforms
-                  .filter((p) => p.connected)
-                  .map((p) => {
-                    const on = selected.includes(p.platform);
-                    return (
-                      <li key={p.platform}>
-                        <button
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() =>
-                            setSelected((prev) =>
-                              prev.includes(p.platform)
-                                ? prev.filter((x) => x !== p.platform)
-                                : [...prev, p.platform],
-                            )
-                          }
-                          className={cn(
-                            'w-full rounded-lg border p-3 text-left transition-colors',
-                            on ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                          )}
-                        >
-                          <span className="block text-[14px] font-medium text-ink">
-                            {platformLabel(p.platform)}
-                          </span>
-                          <span className="mt-0.5 block text-[12px] text-ink-muted">
-                            {p.accountLabel ?? 'Connected'}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(3)}>
-                Back
-              </Button>
-              <Button onClick={() => setStep(5)}>Next</Button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* ── CMP-01.5 ────────────────────────────────────────────────── */}
-        {step === 5 ? (
-          <div className="grid grid-cols-1 gap-6">
-            {/* The prototype's step 5 has five groups. Four are here; its
-                "Campaign Duration" is not, because the window is asked on step 1
-                and a second control for the same field is how two answers come
-                to disagree. */}
-            <Group
-              title="Content responsibility"
-              hint="What this campaign may publish without you looking first."
-            >
-              <ul className="grid grid-cols-1 gap-2">
-                {APPROVAL_MODES.map((m) => (
-                  <li key={m.value}>
-                    <button
-                      type="button"
-                      aria-pressed={approvalMode === m.value}
-                      onClick={() => {
-                        governanceTouched.current = true;
-                        setApprovalMode(m.value);
-                      }}
-                      className={cn(
-                        'w-full rounded-lg border p-3 text-left transition-colors',
-                        approvalMode === m.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:bg-surface-muted',
-                      )}
-                    >
-                      <span className="block text-[14px] font-medium text-ink">{m.label}</span>
-                      <span className="mt-0.5 block text-[12px] text-ink-muted">{m.hint}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              <label className="mt-2 flex items-start gap-3 rounded-lg border border-border p-3">
-                <input
-                  type="checkbox"
-                  checked={applyToWholeBrand}
-                  onChange={(e) => setApplyToWholeBrand(e.target.checked)}
-                  className="mt-1 size-4 accent-[--ss-primary]"
+            {step === 3 ? (
+              <>
+                <OfferStep
+                  brand={brand}
+                  ctaOn={ctaOn}
+                  ctaUrl={ctaUrl}
+                  onToggleCta={() => {
+                    setCtaOn((v) => !v);
+                    if (ctaOn) setCtaUrl('');
+                  }}
+                  onCtaUrl={setCtaUrl}
                 />
-                <span>
-                  <span className="text-[14px] font-medium text-ink">Use this for every campaign</span>
-                  <span className="mt-0.5 block text-[13px] text-ink-muted">
-                    Off by default: this choice applies to this campaign only, so a cautious launch does
-                    not put your routine posting into review as well.
-                  </span>
-                </span>
-              </label>
-            </Group>
+                {/*
+                  Facts the brand has not supplied that its formats read
+                  directly. The design has no slot for this; it is shown anyway,
+                  below the panel, because it is the one check that catches a
+                  campaign which looks complete and produces refusals a week
+                  later. Step 3 is where it belongs — these are offer facts.
+                */}
+                {plan?.answers && !answersDismissed ? (
+                  <div className="absolute left-[199px] top-[1032px] w-[638px]">
+                    <MissingFactsRequest
+                      genomeId={genomeId}
+                      facts={plan.answers.missing}
+                      unlocksPosts={plan.answers.unlocksPosts}
+                      blockedPlaybooks={plan.answers.blockedPlaybooks}
+                      onFilled={propose}
+                      onSkip={() => setAnswersDismissed(true)}
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : null}
 
-            {/* The ladder. Greyed out in the prototype; live here, and the one
-                control on this screen that governs something irreversible —
-                `policy.ts` rule 6 reads it through `rungAutonomy` before any
-                reply goes out. */}
-            <Group
-              title="Engagement responsibilities"
-              hint="How far it may go with comments and DMs. Each rung includes the ones below it."
-            >
-              <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {RUNGS.map((r) => (
-                  <li key={r.value}>
-                    <button
-                      type="button"
-                      aria-pressed={engagementRung === r.value}
-                      onClick={() => {
-                        governanceTouched.current = true;
-                        setEngagementRung(r.value);
-                      }}
-                      className={cn(
-                        'h-full w-full rounded-lg border p-3 text-left transition-colors',
-                        engagementRung === r.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:bg-surface-muted',
-                      )}
-                    >
-                      <span className="block text-[14px] font-medium text-ink">{r.label}</span>
-                      <span className="mt-0.5 block text-[12px] text-ink-muted">{r.hint}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {/* Said only on the rung it applies to, because on any other rung
-                  the handoff rules are dormant and pointing at them would send
-                  someone to change a setting and watch nothing happen. */}
-              {engagementRung === 'sales_assist' ? (
-                <p className="mt-2 text-[12px] text-ink-muted">
-                  Where hot and warm leads go is set once for the brand, in Settings → Engagement. Words
-                  you never want answered automatically are honoured on every rung, not just this one.
-                </p>
-              ) : null}
-            </Group>
+            {step === 4 ? (
+              <AccountsStep
+                platforms={platforms}
+                selected={selected}
+                onToggle={(p) => setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]))}
+                onConnect={(p) => void connectPlatform(p)}
+                connecting={connecting}
+              />
+            ) : null}
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <Group
-                title="Optimisation and learning"
-                hint="Whether it adapts on its own as results come in."
-              >
-                <label className="flex items-start gap-3 rounded-lg border border-border p-3">
-                  <input
-                    type="checkbox"
-                    checked={learnFromPerformance}
-                    onChange={(e) => setLearnFromPerformance(e.target.checked)}
-                    className="mt-1 size-4 accent-[--ss-primary]"
-                  />
-                  <span>
-                    <span className="text-[14px] font-medium text-ink">Learn from performance</span>
-                    <span className="mt-0.5 block text-[13px] text-ink-muted">
-                      What this audience responds to feeds back into what gets made next.
-                    </span>
-                  </span>
-                </label>
-                <label className="mt-2 flex items-start gap-3 rounded-lg border border-border p-3">
-                  <input
-                    type="checkbox"
-                    checked={adjustMixAutomatically}
-                    onChange={(e) => setAdjustMixAutomatically(e.target.checked)}
-                    className="mt-1 size-4 accent-[--ss-primary]"
-                  />
-                  <span>
-                    <span className="text-[14px] font-medium text-ink">Adjust the content mix</span>
-                    <span className="mt-0.5 block text-[13px] text-ink-muted">
-                      Lets the balance between pillars move over the month rather than holding the shape
-                      you approved.
-                    </span>
-                  </span>
-                </label>
-              </Group>
+            {step === 5 ? (
+              <AutonomyStep
+                approvalMode={approvalMode}
+                onApprovalMode={(m) => {
+                  governanceTouched.current = true;
+                  setApprovalMode(m);
+                }}
+                learn={learnFromPerformance}
+                onLearn={() => setLearnFromPerformance((v) => !v)}
+                mix={adjustMixAutomatically}
+                onMix={() => setAdjustMixAutomatically((v) => !v)}
+                windowDays={windowDays}
+                onWindowDays={setWindowDays}
+                weight={weight}
+                onWeight={setWeight}
+                rung={engagementRung}
+                onRung={(r) => {
+                  governanceTouched.current = true;
+                  setEngagementRung(r);
+                }}
+                timezone={timezone}
+              />
+            ) : null}
 
-              <Group title="Campaign frequency" hint="How much attention should this get?">
-                <div className="flex gap-2">
-                  {WEIGHTS.map((w) => (
-                    <button
-                      key={w.value}
-                      type="button"
-                      aria-pressed={weight === w.value}
-                      onClick={() => setWeight(w.value)}
-                      className={cn(
-                        'flex-1 rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors',
-                        weight === w.value
-                          ? 'border-primary bg-primary/5 text-ink'
-                          : 'border-border text-ink-muted hover:bg-surface-muted',
-                      )}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-[13px] text-ink-muted">
-                  {WEIGHTS.find((w) => w.value === weight)?.hint}
-                </p>
-              </Group>
-            </div>
+            {step === 6 ? (
+              <ReviewStep
+                agentName={agentName}
+                brandLogo={brand?.logoUrl}
+                goalLabel={goalLabel}
+                typeLabel={TYPE_CARDS.find((t) => t.value === campaignType)?.title ?? campaignType}
+                windowDays={windowDays}
+                weight={weight}
+                ctaUrl={ctaUrl.trim()}
+                requireApproval={approvalMode === 'review_everything'}
+                onRequireApproval={() => {
+                  governanceTouched.current = true;
+                  setApprovalMode(approvalMode === 'review_everything' ? 'review_first_week' : 'review_everything');
+                }}
+                onActivate={() => void activate()}
+                busy={busy}
+              />
+            ) : null}
 
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(4)}>
-                Back
-              </Button>
-              <Button onClick={() => setStep(6)}>Next</Button>
-            </div>
+            {error ? (
+              <p className="absolute left-[265px] w-[720px] text-[15px] text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
+                {error}
+              </p>
+            ) : null}
           </div>
-        ) : null}
-
-        {/* ── CMP-01.6 ────────────────────────────────────────────────── */}
-        {step === 6 ? (
-          <div className="grid grid-cols-1 gap-5">
-            <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-              <Row label="Name" value={name.trim() || 'August campaign'} />
-              <Row label="Goal" value={OBJECTIVES.find((o) => o.value === objective)?.label ?? objective} />
-              <Row
-                label="Type"
-                value={CAMPAIGN_TYPES.find((t) => t.value === campaignType)?.label ?? campaignType}
-              />
-              <Row label="Over" value={`${windowDays} days`} />
-              <Row
-                label="Weight"
-                value={WEIGHTS.find((w) => w.value === weight)?.label ?? weight}
-                note={WEIGHTS.find((w) => w.value === weight)?.hint}
-              />
-              {/* Both numbers, because either alone misleads here.
-                  `plan.buildableNow` on its own — what this showed — said
-                  "Posts planned: 0" for any brand without assets yet, which is
-                  every brand at this point in onboarding, and made the plan
-                  look empty on the screen that asks you to commit to it. The
-                  plan total on its own overstates it the other way: activation
-                  places `plan.mix`, but `placeCalendar` can only fill a slot a
-                  ready playbook serves, so with nothing filmed the calendar
-                  that appears next genuinely reads "0 posts".
-
-                  "0 of 13" matches that calendar and still shows the size of
-                  what was planned, and the note says what closes the gap. */}
-              <Row
-                label="Posts planned"
-                value={
-                  plan
-                    ? plan.buildableNow === mixTotal(plan.mix)
-                      ? `${mixTotal(plan.mix)}`
-                      : `${plan.buildableNow} of ${mixTotal(plan.mix)}`
-                    : '—'
-                }
-                note={
-                  plan && plan.answers
-                    ? // Named ahead of filming because it is the cheaper fix and it
-                      // blocks more formats. Telling somebody to film while a
-                      // one-line answer holds the same posts wastes their day.
-                      `${plan.answers.missing.map((m) => m.label).join(', ')} is still missing — ` +
-                      `${plan.answers.blockedPlaybooks} formats are waiting on it.`
-                    : plan && plan.buildableNow < mixTotal(plan.mix)
-                      ? 'Filming unlocks the rest — SPARK will ask, and the calendar fills in as you send clips.'
-                      : undefined
-                }
-              />
-              <Row
-                label="Posting to"
-                value={
-                  selected.length
-                    ? selected.map((p) => platformLabel(p)).join(', ')
-                    : 'Nothing connected yet'
-                }
-              />
-              <Row
-                label="Oversight"
-                value={`${APPROVAL_MODES.find((m) => m.value === approvalMode)?.label ?? approvalMode}${
-                  applyToWholeBrand ? ' — for every campaign' : ' — this campaign only'
-                }`}
-              />
-              {/* The rung, in the same words step 5 used. `sales_assist` is the
-                  only one that reaches outside this campaign for its settings,
-                  so it is the only one that says so. */}
-              <Row
-                label="Comments and DMs"
-                value={RUNGS.find((r) => r.value === engagementRung)?.label ?? engagementRung}
-                note={
-                  engagementRung === 'sales_assist'
-                    ? 'Handoff rules come from Settings → Engagement.'
-                    : RUNGS.find((r) => r.value === engagementRung)?.hint
-                }
-              />
-              <Row
-                label="Learning"
-                value={
-                  !learnFromPerformance
-                    ? 'Frozen for now'
-                    : adjustMixAutomatically
-                      ? 'Learns, and may shift the mix'
-                      : 'Learns, mix stays as approved'
-                }
-              />
-              <Row label="CTA" value={ctaUrl.trim() || 'None set'} />
-            </dl>
-
-            <p className="text-[13px] text-ink-muted">
-              Activating writes the plan onto your calendar and SPARK starts working through it. You can
-              pause it at any time from the Command Center.
-            </p>
-
-            <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(5)}>
-                Back
-              </Button>
-              <Button disabled={busy} onClick={() => void activate()}>
-                {busy ? 'Activating…' : 'Activate campaign'}
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        </div>
       </div>
-
-      {error ? <p className="mt-4 text-[13px] text-ink-muted">{error}</p> : null}
-    </section>
-  );
-}
-
-/**
- * One labelled group of controls on step 5.
- *
- * Step 5 asks four unrelated questions — what it may publish, how far it may go
- * with replies, whether it adapts, and how loud it should be — and before the
- * last three existed it was a flat stack that read as one list. The headings are
- * what stop "Adjust the content mix" from looking like another approval mode.
- */
-function Group({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint: string;
-  children: ReactNode;
-}) {
-  return (
-    <section>
-      <h3 className="text-[14px] font-medium text-ink">{title}</h3>
-      <p className="mt-0.5 text-[13px] text-ink-muted">{hint}</p>
-      <div className="mt-3">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, value, note }: { label: string; value: string; note?: string }) {
-  return (
-    <div className="bg-surface p-3">
-      <dt className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 break-words text-[14px] text-ink">{value}</dd>
-      {/* The confirm step is the last chance to say something that changes the
-          decision, and "how many of these need filming first" is the only fact
-          here that does. */}
-      {note ? <dd className="mt-0.5 break-words text-[12px] text-ink-muted">{note}</dd> : null}
     </div>
   );
 }

@@ -59,6 +59,13 @@ function nonIdempotentTools(): Set<string> {
  * object literal full of them. Quote tracking matters for the same reason —
  * `publish:${id}:${platform}` is a template literal containing a colon and, in
  * other call sites, a comma.
+ *
+ * Comments are skipped, and that is not a nicety. An apostrophe inside a
+ * comment — `the design's cadence` — reads as an opening quote to a scanner
+ * that does not know it is in a comment, and every argument after it is
+ * swallowed into a string that never ends. The call site then looks like it
+ * passes two arguments when it passes three, and this check fails on correct
+ * code.
  */
 export function topLevelArgs(callFromOpenParen: string): string[] {
   const args: string[] = [];
@@ -76,6 +83,20 @@ export function topLevelArgs(callFromOpenParen: string): string[] {
       }
       if (c === quote) quote = undefined;
       buf += c;
+      continue;
+    }
+    /* Comments first: their contents are not code, and must not be scanned
+       for quotes or brackets. */
+    if (c === '/' && callFromOpenParen[i + 1] === '/') {
+      const nl = callFromOpenParen.indexOf('\n', i);
+      if (nl === -1) break;
+      i = nl;
+      continue;
+    }
+    if (c === '/' && callFromOpenParen[i + 1] === '*') {
+      const end = callFromOpenParen.indexOf('*/', i + 2);
+      if (end === -1) break;
+      i = end + 1;
       continue;
     }
     if (c === '"' || c === "'" || c === '`') {
@@ -116,6 +137,19 @@ describe('static check — non-idempotent tools are called with an idempotency k
     // A read declared idempotent must not appear, which is what catches the
     // per-file misattribution described above.
     expect(tools.has('queue.review.list')).toBe(false);
+  });
+
+  it('counts arguments through comments, quotes and nested literals', () => {
+    // The parser is the whole check: if it under-counts, correct call sites are
+    // reported as offenders; if it over-counts, missing keys go unnoticed.
+    expect(topLevelArgs("('a', { b: 1, c: [2, 3] }, key)")).toHaveLength(3);
+    expect(topLevelArgs("('a', { b: `x:${y}, z` }, key)")).toHaveLength(3);
+    // An apostrophe in a block comment used to open a string that never closed,
+    // swallowing the key argument and failing a correct call site.
+    expect(
+      topLevelArgs("('a',\n  { b: 1 },\n  /* the design's key, fresh per press */ key,\n)"),
+    ).toHaveLength(3);
+    expect(topLevelArgs("('a',\n  { b: 1 }, // it's the second\n)")).toHaveLength(2);
   });
 
   it('every apps/web call site passes one', () => {

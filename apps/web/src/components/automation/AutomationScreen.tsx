@@ -7,7 +7,8 @@ import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AutomationHome } from './AutomationHome';
 import { CampaignManage } from './CampaignManage';
 import { LaunchModal, RecipeChooserModal } from './LaunchModal';
-import { RecipeWizard, emptyDraft, type WizardDraft } from './RecipeWizard';
+import { RecipeWizard, type Validation } from './RecipeWizard';
+import { configFor, emptyDraft, intervalMinutesFor, type WizardDraft } from './wizardDraft';
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import { useAutomation, type ManageRow, type QueueRow, type RecipeItem } from './useAutomation';
 
@@ -61,8 +62,13 @@ export function AutomationScreen() {
   const [error, setError] = useState<string | null>(null);
   const [launched, setLaunched] = useState<{ draft: WizardDraft; recipeId: string } | null>(null);
   const [requireApproval, setRequireApproval] = useState(true);
-  const [validation, setValidation] = useState<{ valid: boolean; error?: string; notApplied: string[] } | null>(null);
+  const [validation, setValidation] = useState<Validation | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /* Canva's connect state, for the source step's dashed strip. Read when a bulk
+     wizard opens rather than on mount: no other step asks. */
+  const [canvaConnected, setCanvaConnected] = useState<boolean | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connectNote, setConnectNote] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const say = useCallback((msg: string) => {
@@ -87,25 +93,6 @@ export function AutomationScreen() {
       : 'That needs an approval before it can run — check the approvals queue.';
   }, []);
 
-  /** The config `recipe.create` stores, per kind. */
-  const configFor = useCallback((d: WizardDraft): Record<string, unknown> => {
-    if (d.kind === 'rss') return { feedUrl: d.feedUrl.trim() };
-    if (d.kind === 'auto_trend') {
-      return {
-        /* The engine's own floor. The design has no score control, and a recipe
-           that accepted everything would fill the queue with noise. */
-        minScore: 0.6,
-        ...(d.keywords.length ? { keywords: d.keywords } : {}),
-        ...(d.excludeKeywords.length ? { excludeKeywords: d.excludeKeywords } : {}),
-      };
-    }
-    return d.bulkSource === 'csv'
-      ? { source: 'csv', csvUrl: d.sourceRef.trim() }
-      : d.bulkSource === 'drive'
-        ? { source: 'drive', driveFolderId: d.sourceRef.trim() }
-        : { source: 'canva', canvaFolderId: d.sourceRef.trim() };
-  }, []);
-
   /* The validate step asks the engine what it makes of the config so far. */
   const stepKind = draft ? KIND_META[draft.kind].steps[Math.min(step, KIND_META[draft.kind].steps.length - 1)] : null;
   useEffect(() => {
@@ -113,7 +100,7 @@ export function AutomationScreen() {
     let cancelled = false;
     setValidation(null);
     void (async () => {
-      const res = await invoke<{ valid: boolean; error?: string; notApplied: string[] }>('recipe.validate', {
+      const res = await invoke<Validation>('recipe.validate', {
         genomeId,
         kind: draft.kind,
         config: configFor(draft),
@@ -130,6 +117,33 @@ export function AutomationScreen() {
     };
   }, [draft, genomeId, stepKind, configFor]);
 
+  useEffect(() => {
+    if (!genomeId || draft?.kind !== 'bulk_connector') return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<{ connected: boolean }>('brand.oauth.status', { genomeId, provider: 'canva' });
+      if (!cancelled) setCanvaConnected(res.status === 'succeeded' ? res.output.connected : false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [genomeId, draft?.kind]);
+
+  async function connectCanva() {
+    if (!genomeId || connecting) return;
+    setConnecting(true);
+    setConnectNote(null);
+    const res = await invoke<{ authorizeUrl: string }>('brand.oauth.connect', { genomeId, provider: 'canva' });
+    setConnecting(false);
+    if (res.status !== 'succeeded') {
+      setConnectNote(whyNot(res));
+      return;
+    }
+    /* A new tab: the wizard is mid-flight, and Canva redirects to the API. */
+    window.open(res.output.authorizeUrl, '_blank', 'noopener,noreferrer');
+    setConnectNote('Finish in the Canva tab, then come back — press Continue to re-check.');
+  }
+
   async function launch() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
@@ -142,8 +156,9 @@ export function AutomationScreen() {
         kind: draft.kind,
         name: draft.name.trim() || KIND_META[draft.kind].name,
         config: configFor(draft),
-        /* `recipe.create` takes minutes, and refuses anything under 15. */
-        intervalMinutes: Math.max(15, draft.everyHours * 60),
+        /* Both halves of the design's cadence toggle land on this one number —
+           see `intervalMinutesFor`. */
+        intervalMinutes: intervalMinutesFor(draft),
       },
       /* Not idempotent — two presses are two recipes — so a fresh key per press. */
       crypto.randomUUID(),
@@ -270,6 +285,7 @@ export function AutomationScreen() {
 
       {view === 'wizard' && draft ? (
         <RecipeWizard
+          genomeId={genomeId}
           draft={draft}
           onDraft={setDraft}
           step={step}
@@ -286,6 +302,10 @@ export function AutomationScreen() {
           busy={busy}
           error={error}
           validation={validation}
+          canvaConnected={canvaConnected}
+          connecting={connecting}
+          onConnectCanva={() => void connectCanva()}
+          connectNote={connectNote}
         />
       ) : null}
 

@@ -74,8 +74,27 @@ const nextConfig: NextConfig = {
    * Not `permanent`. The tab layout of the Command Center is a product decision
    * that could move again, and a 308 is cached by browsers effectively forever.
    */
+  /**
+   * Settings' section slugs changed when the screen was rebuilt to
+   * `ui build/Settings *.dc.html`: the prototype names seven brand sections and
+   * six personal ones, and three of the old paths are not among them.
+   *
+   * Redirects rather than a find-and-replace across the app: `/settings/brand-kit`
+   * is linked from the dashboard, the Command Center, the campaign wizard and
+   * four other places, and a redirect keeps every one of those working — including
+   * any link somebody has already bookmarked or pasted into a runbook.
+   *
+   * Not `permanent`: these are product-naming decisions, and a 308 is cached by
+   * browsers effectively forever.
+   */
   async redirects() {
-    return [{ source: '/engagement', destination: '/agents?tab=engagement', permanent: false }];
+    return [
+      { source: '/engagement', destination: '/agents?tab=engagement', permanent: false },
+      { source: '/settings/brand-kit', destination: '/settings/brand-kits', permanent: false },
+      { source: '/settings/connections', destination: '/settings/accounts', permanent: false },
+      // Learning folded into Brand kits — see that page's own note.
+      { source: '/settings/learning', destination: '/settings/brand-kits', permanent: false },
+    ];
   },
 
   webpack: (config) => {

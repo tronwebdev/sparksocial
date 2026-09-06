@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { CampaignWizard } from '@/components/campaign/CampaignWizard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AgentBanner } from './AgentBanner';
 import { invoke } from '@/lib/tools';
@@ -91,6 +91,34 @@ export function BrandHome() {
     with nine tool calls.
   */
   const [reloads, setReloads] = useState(0);
+
+  /**
+   * The Create Campaign flow, hosted here.
+   *
+   * It used to live on the calendar, reached as `/calendar?new=1` — so pressing
+   * Create Campaign on this screen left it, and the wizard opened over a screen
+   * the person had not asked for. `SparkSocial Create Campaign.dc.html` draws
+   * its backdrop as *this* screen: the sidebar, the Create Campaign button, Ask
+   * Spark, the Agent Activity feed. The modal belongs over the screen it is
+   * launched from, and this is that screen.
+   *
+   * `?new=1` still works, so every existing link into the flow — the empty
+   * cards, the calendar's own prompt — lands here rather than on the calendar.
+   * Read once into state rather than off the URL each render, so cancelling
+   * does not get undone by a parameter still sitting in the address bar.
+   */
+  const [creating, setCreating] = useState(false);
+
+  /*
+    Read in an effect rather than through `useSearchParams`, which would make
+    `/home` — a server component today — need a Suspense boundary purely to
+    read one optional flag. One frame without the modal is the whole cost.
+  */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') setCreating(true);
+  }, []);
+  /** Remount counter, so Cancel then Create Campaign restarts at step one. */
+  const [wizardRun, setWizardRun] = useState(0);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -193,6 +221,34 @@ export function BrandHome() {
   return (
     <>
       {/*
+        The Create Campaign flow — `SparkSocial Create Campaign.dc.html`.
+
+        A fixed overlay over this screen, which is exactly what the design
+        draws: its backdrop is this dashboard, blurred. Rendered before the
+        header so it reads in source order the way it stacks on screen.
+      */}
+      {creating && genomeId ? (
+        <CampaignWizard
+          key={wizardRun}
+          genomeId={genomeId}
+          onActivated={() => {
+            setCreating(false);
+            // The banner, the KPI row and the upcoming feed all describe the
+            // campaign that was just created, so the screen behind the modal
+            // has to be re-read rather than left describing the state before.
+            setReloads((n) => n + 1);
+          }}
+          onCancel={() => {
+            setCreating(false);
+            // So the next press starts at step one rather than wherever this
+            // one was abandoned — a key bump rather than threading a reset
+            // through six steps of state.
+            setWizardRun((n) => n + 1);
+          }}
+        />
+      ) : null}
+
+      {/*
         One header, and it is the shell's.
 
         `home/page.tsx` used to render a `TopBar` with the brand switcher while
@@ -230,9 +286,10 @@ export function BrandHome() {
               192x48, radius 12, white with a 1px `rgba(12,12,12,0.35)` ring and
               a 9px gap to its glyph — an outline button, not a filled one.
 
-              `?new=1` — the calendar owns the wizard, and before this the wizard
-              was reachable only as that screen's empty state, so a brand with
-              one campaign could not start a second one from anywhere.
+              Opens the wizard over this screen rather than navigating: the
+              design's own backdrop for the Create Campaign modal is this
+              dashboard, and sending someone to the calendar to start a campaign
+              made the button a navigation rather than an action.
             */}
             {/*
               192x48 at radius 12, white, with an `inset 0 0 0 1px
@@ -241,14 +298,15 @@ export function BrandHome() {
               `rgba(131,131,131,0.25)` - a lighter, greyer line than the design's,
               and next to Ask Spark the difference reads as a disabled button.
             */}
-            <Link
-              href="/calendar?new=1"
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
               className="flex h-12 w-[192px] shrink-0 items-center justify-center gap-[9px] rounded-md bg-white text-16 font-medium text-ink transition-shadow hover:shadow-card"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.35)' }}
             >
               <PlusGlyph />
               Create Campaign
-            </Link>
+            </button>
           </>
         }
       />

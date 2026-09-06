@@ -1,7 +1,7 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { EiOptionRow, EiSectionChip } from './EiPrimitives';
 import { ESCALATION_BEHAVIORS, HARD_RULES, splitList, type EscalationBehavior } from './types';
 
 /**
@@ -33,38 +33,28 @@ export function BoundariesStep({
   return (
     <div className="grid grid-cols-1 gap-7">
       <div>
-        <h3 className="text-[14px] font-medium text-ink">Hard rules</h3>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
-          Your agent will never cross these lines.
-        </p>
+        <EiSectionChip>Hard rules</EiSectionChip>
 
-        <ul className="mt-3 grid grid-cols-1 gap-2">
+        <ul className="mt-[18px] grid grid-cols-1 gap-[14px]">
           {HARD_RULES.map((r) => {
             const on = hardRules.includes(r.value);
             return (
               <li key={r.value}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() =>
+                <EiOptionRow
+                  kind="check"
+                  on={on}
+                  onToggle={() =>
                     onHardRules(on ? hardRules.filter((x) => x !== r.value) : [...hardRules, r.value])
                   }
-                  className={cn(
-                    'w-full rounded-lg border p-3 text-left transition-colors',
-                    on ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                  )}
-                >
-                  <span className="block text-[13px] font-medium text-ink">{r.label}</span>
-                  {/*
+                  title={r.label}
+                  /*
                     Only one rule carries a note, and it is the one whose
                     mechanism differs: it stops the send rather than shaping the
                     words. Saying so is the difference between a rule the owner
                     trusts and a rule they assume is advisory.
-                  */}
-                  {'note' in r && r.note ? (
-                    <span className="mt-0.5 block text-[12px] text-ink-muted">{r.note}</span>
-                  ) : null}
-                </button>
+                  */
+                  detail={'note' in r && r.note ? r.note : undefined}
+                />
               </li>
             );
           })}
@@ -78,32 +68,26 @@ export function BoundariesStep({
       </div>
 
       <div>
-        <h3 className="text-[14px] font-medium text-ink">Escalation behavior</h3>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
+        <EiSectionChip>Escalation behavior</EiSectionChip>
+        <p className="mt-[14px] max-w-[592px] text-16" style={{ color: 'rgb(131,131,131)' }}>
           What happens once SPARK has decided a person is needed.
         </p>
-        <ul className="mt-3 grid grid-cols-1 gap-2">
+        <ul className="mt-[16px] grid grid-cols-1 gap-[14px]" role="radiogroup" aria-label="Escalation behavior">
           {ESCALATION_BEHAVIORS.map((b) => (
             <li key={b.value}>
-              <button
-                type="button"
-                aria-pressed={escalation === b.value}
-                onClick={() => onEscalation(b.value)}
-                className={cn(
-                  'w-full rounded-lg border p-3 text-left transition-colors',
-                  escalation === b.value ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
-                )}
-              >
-                <span className="block text-[13px] font-medium text-ink">{b.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{b.hint}</span>
-              </button>
+              <EiOptionRow
+                title={b.label}
+                detail={b.hint}
+                on={escalation === b.value}
+                onToggle={() => onEscalation(b.value)}
+              />
             </li>
           ))}
         </ul>
       </div>
 
       <div>
-        <label className="block text-[14px] font-medium text-ink" htmlFor="ei-escalation">
+        <label className="block text-18 font-medium" style={{ color: 'rgb(131,131,131)' }} htmlFor="ei-escalation">
           Sensitive keywords
         </label>
         <p className="mt-0.5 text-[12px] text-ink-muted">

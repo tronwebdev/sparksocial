@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { PanelSkeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
@@ -15,6 +14,7 @@ import {
   PLATFORMS,
   STEPS,
   STEP_TITLES,
+  STEP_BLURBS,
   splitList,
   type EmojiLevel,
   type EngagementAutonomy,
@@ -270,57 +270,96 @@ export function EngagementPanel() {
   }
 
   // ── Start / Done ──────────────────────────────────────────────────────────
+  /*
+    `Settings WS Engagement Start` and `… Done`, measured off the prototype:
+    a 622x679 r30 white card centred in the section's own 1350x943 cyan card,
+    holding three concentric rings (279 at 12% cyan, 196 at 19%, 127 at 20%
+    white) over a 32/700 title, a 24/500 line, an 18/400 paragraph, and a
+    365x68 r10.828 button on `#0C0C0C` with a 17.643/600 white label.
+
+    The Configured state swaps that one button for a 168x54 "Configured" chip
+    beside a 225x54 "Edit Configuration".
+  */
   if (step === null) {
     return (
-      <section className="rounded-xl border border-border bg-surface p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[18px] font-semibold text-ink">Engagement Intelligence</h2>
-            <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
-              Decide how your agent listens, responds, and escalates conversations.
-            </p>
-          </div>
-          {configuredAt ? (
-            <span className="rounded-full border border-ok/40 bg-ok/10 px-3 py-1 text-[12px] text-ink">
-              Configured
+      <div className="flex justify-center py-[47px]">
+        <div className="w-[622px] max-w-full rounded-[30px] bg-white px-[69px] py-[16px] text-center">
+          {/* the rings */}
+          <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px]">
+            <span className="absolute left-[32px] top-[22px] block h-[279px] w-[279px] rounded-full" style={{ background: 'rgba(108,232,255,0.12)' }} />
+            <span className="absolute left-[74px] top-[63px] block h-[196px] w-[196px] rounded-full" style={{ background: 'rgba(132,201,214,0.19)' }} />
+            <span className="absolute left-[108px] top-[102px] flex h-[127px] w-[127px] items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }}>
+              <span className="relative block h-[75px] w-[83px]">
+                <span className="absolute left-[31px] top-0 block h-[34px] w-[34px] rounded-full" style={{ background: 'rgb(245,107,255)' }} />
+                <span className="absolute left-0 top-[5px] block h-[50px] w-[50px] rounded-full" style={{ background: 'rgb(108,232,255)' }} />
+                <span className="absolute left-[25px] top-[40px] block h-[29px] w-[29px] rounded-full" style={{ background: 'rgb(163,65,255)' }} />
+                <span className="absolute left-[47px] top-[22px] block h-[29px] w-[29px] rounded-full bg-white" />
+                <span
+                  className="absolute left-[3px] top-[21px] block h-[31px] w-[78px] rounded-[23.471px]"
+                  style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(21px)', boxShadow: 'inset 0 0 11.8px -2.1px rgb(108,232,255)' }}
+                />
+                <span className="absolute left-[14px] top-[30px] block h-[13px] w-[13px] rounded-full bg-white" />
+                <span className="absolute left-[57px] top-[30px] block h-[13px] w-[13px] rounded-full bg-white" />
+              </span>
             </span>
+          </span>
+
+          <h2 className="mt-[20px] text-[32px] font-bold leading-[1.22] text-black">Engagement Intelligence</h2>
+
+          <p className="mt-[18px] text-[24px] font-medium leading-[1.29] text-ink">
+            Decide how your Agent listens, responds, and escalates conversations.
+          </p>
+
+          <p className="mt-[15px] text-18 font-normal leading-[1.28]" style={{ color: 'rgb(131,131,131)' }}>
+            Your Agent can do more than post content. It can monitor comments and DMs, draft replies,
+            or respond automatically, all within the boundaries you set.
+          </p>
+
+          {configuredAt ? (
+            <>
+              <div className="mt-[23px] flex flex-wrap items-center justify-center gap-[7px]">
+                <span className="flex h-[54px] w-[168px] items-center justify-center rounded-[10.828px] text-[17.643px] font-semibold text-white" style={{ background: 'var(--ss-green-600)' }}>
+                  Configured
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setStep(STEPS[0])}
+                  className="flex h-[54px] w-[225px] items-center justify-center rounded-[10.828px] bg-white text-[17.643px] font-semibold text-ink transition-colors hover:bg-surface-200"
+                  style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
+                >
+                  Edit Configuration
+                </button>
+              </div>
+              <dl className="mt-[22px] grid grid-cols-1 gap-3 text-left sm:grid-cols-3">
+                <Summary label="Replies" value={ENGAGEMENT_LEVELS.find((l) => l.value === autonomy)?.label ?? autonomy} />
+                <Summary label="Hard rules" value={hardRules.length ? `${hardRules.length} of 5` : 'None set'} />
+                <Summary
+                  label="Platforms"
+                  value={
+                    platformDrafts.filter((d) => d.choice !== 'inherit').length
+                      ? `${platformDrafts.filter((d) => d.choice !== 'inherit').length} overridden`
+                      : 'All follow your default'
+                  }
+                />
+              </dl>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setStep(STEPS[0])}
+              className="mt-[23px] h-[68px] w-[365px] max-w-full rounded-[10.828px] bg-ink text-[17.643px] font-semibold text-white transition-colors hover:bg-ink-800"
+            >
+              Configure Engagement Intelligence
+            </button>
+          )}
+
+          {message ? (
+            <p className={cn('mt-[14px] text-16', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
+              {message.text}
+            </p>
           ) : null}
         </div>
-
-        <p className="mt-4 max-w-2xl text-[13px] text-ink-muted">
-          Your agent can do more than post content. It can monitor comments and DMs, draft replies, or
-          respond automatically, all within the boundaries you set.
-        </p>
-
-        {configuredAt ? (
-          <dl className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Summary label="Replies" value={ENGAGEMENT_LEVELS.find((l) => l.value === autonomy)?.label ?? autonomy} />
-            <Summary
-              label="Hard rules"
-              value={hardRules.length ? `${hardRules.length} of 5` : 'None set'}
-            />
-            <Summary
-              label="Platforms"
-              value={
-                platformDrafts.filter((d) => d.choice !== 'inherit').length
-                  ? `${platformDrafts.filter((d) => d.choice !== 'inherit').length} overridden`
-                  : 'All follow your default'
-              }
-            />
-          </dl>
-        ) : null}
-
-        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
-          <Button size="sm" onClick={() => setStep(STEPS[0])}>
-            {configuredAt ? 'Edit configuration' : 'Configure Engagement Intelligence'}
-          </Button>
-          {message && (
-            <span className={cn('text-[13px]', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
-              {message.text}
-            </span>
-          )}
-        </div>
-      </section>
+      </div>
     );
   }
 
@@ -328,32 +367,36 @@ export function EngagementPanel() {
   const index = STEPS.indexOf(step);
   const last = index === STEPS.length - 1;
 
+  /*
+    `Settings WS EI *`, measured: a 728x681 frame at 311,45 inside the section's
+    card, whose lower 581 is a r33.458 glass panel on
+    `linear-gradient(227.026deg, rgba(108,232,255,0.15) …)` inside a 692x668
+    r41.977 white hairline. Title 32/600 at 381,97; the step chip 138x37
+    r8.786 on `#6CE8FF` with a 14.013/500 label; the footer's Cancel 110x44 and
+    Continue 132x43, both r8.457, at y613.
+  */
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <div
-        className="flex items-center gap-2"
-        role="progressbar"
-        aria-valuenow={index + 1}
-        aria-valuemin={1}
-        aria-valuemax={STEPS.length}
-        aria-valuetext={`Step ${index + 1} of ${STEPS.length}`}
-      >
-        {STEPS.map((s, i) => (
-          <span key={s} className="h-[5px] flex-1 overflow-hidden rounded-full bg-border">
-            <span
-              className="block h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: i <= index ? '100%' : '0%' }}
-            />
-          </span>
-        ))}
-      </div>
-      <p className="mt-2.5 text-[12px] text-ink-muted">
-        Step {index + 1} of {STEPS.length}
-      </p>
+    <section className="flex justify-center py-[45px]">
+      <div className="relative w-[728px] max-w-full">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 top-[100px] rounded-[33.458px]"
+          style={{ background: 'linear-gradient(227.026deg, rgba(108,232,255,0.15) 9%, rgba(255,255,255,0) 70%), rgba(255,255,255,0.55)' }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-x-[18px] inset-y-0 rounded-[41.977px]"
+          style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.9)' }}
+        />
 
-      <h2 className="mt-3 text-[18px] font-semibold text-ink">{STEP_TITLES[step]}</h2>
+        <div className="relative px-[70px] pb-[36px] pt-[52px]">
+          <h2 className="text-[32px] font-semibold leading-[1.22] text-black">{STEP_TITLES[step]}</h2>
 
-      <div className="mt-5">
+          <p className="mt-[13px] max-w-[470px] text-18 font-normal leading-[1.33]" style={{ color: 'rgb(131,131,131)' }}>
+            {STEP_BLURBS[step]}
+          </p>
+
+          <div className="mt-[19px]">
         {step === 'autonomy' && (
           <AutonomyStep autonomy={autonomy} onAutonomy={setAutonomy} types={types} onTypes={setTypes} />
         )}
@@ -394,31 +437,41 @@ export function EngagementPanel() {
             onDestination={setDestination}
           />
         )}
-      </div>
+          </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
-        <Button size="sm" disabled={busy} onClick={() => void advance(step)}>
-          {busy ? 'Saving…' : last ? 'Finish' : 'Continue'}
-        </Button>
-        {/*
-          Back revisits an answer; it does not undo the save the previous Continue
-          already made. That is the honest reading — each step is committed — and
-          it is why this is the flow's own control rather than browser history,
-          which would imply the other thing.
-        */}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => setStep(index === 0 ? null : STEPS[index - 1]!)}
-          className="text-[13px] text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
-        >
-          Back
-        </button>
-        {message && (
-          <span className={cn('text-[13px]', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
-            {message.text}
-          </span>
-        )}
+          <div className="mt-[36px] flex flex-wrap items-center justify-end gap-[45px]">
+            {/*
+              Back revisits an answer; it does not undo the save the previous
+              Continue already made. That is the honest reading — each step is
+              committed — and it is why this is the flow's own control rather
+              than browser history, which would imply the other thing.
+            */}
+            <button
+              type="button"
+              onClick={() => (index === 0 ? setStep(null) : setStep(STEPS[index - 1] ?? null))}
+              className="flex h-[44px] w-[110px] items-center justify-center rounded-[8.457px] text-[16.915px] font-medium transition-colors hover:bg-white/60"
+              style={{ color: 'rgb(131,131,131)' }}
+            >
+              {index === 0 ? 'Cancel' : 'Back'}
+            </button>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void advance(step)}
+              className="flex h-[43px] w-[132px] items-center justify-center rounded-[8.457px] text-[16.915px] font-medium text-ink transition-colors hover:bg-white disabled:opacity-60"
+              style={{ background: 'rgba(255,255,255,0.6)' }}
+            >
+              {busy ? 'Saving…' : last ? 'Finish Setup' : 'Continue'}
+            </button>
+          </div>
+
+          {message ? (
+            <p className={cn('mt-[14px] text-right text-16', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
+              {message.text}
+            </p>
+          ) : null}
+        </div>
       </div>
     </section>
   );
