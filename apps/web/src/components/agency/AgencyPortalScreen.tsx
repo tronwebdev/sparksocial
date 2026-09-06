@@ -166,6 +166,7 @@ export function AgencyPortalScreen() {
           step={wizStep}
           draft={draft}
           onDraft={setDraft}
+          accounts={accounts}
           onBack={() => setWizStep((s) => (s === null || s === 0 ? null : ((s - 1) as WizStep)))}
           onNext={() => {
             if (wizStep === 3) {

@@ -145,7 +145,7 @@ export function AgencyClientTable({
           {/* The design's industry chip, carrying the fact the roster exists to
               surface: a paying client whose account has gone silent. */}
           <span
-            className="absolute left-[1318px] flex h-[40px] items-center rounded-[9px] px-[12px] text-[15px] font-semibold"
+            className="absolute left-[1318px] flex h-[40px] items-center rounded-[9px] px-[15px] text-[15px] font-semibold"
             style={{
               top: 38,
               background: b.quiet ? '#FBD9FA' : '#D8F5E6',
@@ -201,7 +201,7 @@ export function AgencyClientTable({
             onClick={() => toggle(b.genomeId)}
             aria-expanded={isOpen}
             aria-label={isOpen ? `Collapse ${b.name}` : `Expand ${b.name}`}
-            className="absolute top-[38px] flex h-[40px] w-[40px] items-center justify-center rounded-[10px] bg-cyan-200"
+            className="absolute top-[38px] flex h-[40px] w-[40px] items-center justify-center rounded-[10px] bg-cyan-200 transition-colors hover:bg-cyan"
             style={{ left: 1604 }}
           >
             <svg
@@ -216,6 +216,9 @@ export function AgencyClientTable({
               <path d="M1 1l5 5 5-5" stroke="rgb(12,12,12)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+
+          {/* The design rules every row off at its own bottom edge. */}
+          <div aria-hidden className="absolute bottom-0 left-0 h-px w-full" style={{ background: 'rgba(131,131,131,0.1)' }} />
 
           {/* ── the expanded half ─────────────────────────────────────── */}
           {isOpen ? (
@@ -253,9 +256,30 @@ export function AgencyClientTable({
 
       {/* ── footer ─────────────────────────────────────────────────────── */}
       <div aria-hidden className="absolute left-0 h-px w-full" style={{ top: height - 66, background: 'rgba(131,131,131,0.1)' }} />
-      <span className="absolute left-[26px] text-[16px] font-medium" style={{ top: height - 44, color: 'rgb(91,91,91)' }}>
+      <span className="absolute bottom-[24px] left-[26px] text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
         {brands.length} {brands.length === 1 ? 'workspace' : 'workspaces'}
       </span>
+
+      {/*
+        The design's pagers. `agency.roster` returns the whole org in one read —
+        there is no cursor and no second page — so both are present and inert
+        rather than wired to a page that does not exist.
+      */}
+      {([
+        { left: 1548, flip: true },
+        { left: 1592, flip: false },
+      ] as const).map((pg) => (
+        <span
+          key={pg.left}
+          aria-hidden
+          className="absolute bottom-[20px] flex h-[34px] w-[34px] items-center justify-center rounded-full"
+          style={{ left: pg.left, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', opacity: 0.45 }}
+        >
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="block" style={{ transform: pg.flip ? 'scaleX(-1)' : undefined }}>
+            <path d="m1 1 5 5-5 5" stroke="#838383" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      ))}
     </section>
   );
 }

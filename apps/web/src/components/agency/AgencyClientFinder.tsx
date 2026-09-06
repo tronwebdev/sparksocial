@@ -221,10 +221,14 @@ export function AgencyClientFinder({ onConnected }: { onConnected: (v: boolean) 
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
       >
         <input
-          placeholder="Search leads"
-          aria-label="Search leads"
+          placeholder="Search clients"
+          aria-label="Search clients"
           className="w-full bg-transparent text-[15.5px] font-medium text-ink outline-none"
         />
+        <svg width="18" height="18" viewBox="0 0 26 26" fill="none" aria-hidden className="ml-[10px] block shrink-0">
+          <circle cx="11" cy="11" r="8" stroke="#838383" strokeWidth="2" />
+          <path d="m17 17 6 6" stroke="#838383" strokeWidth="2" strokeLinecap="round" />
+        </svg>
       </label>
 
       {[
@@ -233,11 +237,14 @@ export function AgencyClientFinder({ onConnected }: { onConnected: (v: boolean) 
       ].map((d) => (
         <span
           key={d.label}
-          className="absolute top-[190px] flex h-[56px] w-[170px] items-center justify-center rounded-[14px] bg-white text-[15.5px] font-semibold text-ink"
+          className="absolute top-[190px] flex h-[56px] w-[170px] items-center justify-between rounded-[14px] bg-white px-[18px] text-[15.5px] font-semibold text-ink"
           style={{ left: d.x, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)', opacity: 0.55 }}
           title="Filters need leads to filter"
         >
-          {d.label}
+          <span className="whitespace-nowrap">{d.label}</span>
+          <svg width="12" height="7" viewBox="0 0 13 8" fill="none" aria-hidden className="block">
+            <path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
       ))}
 
@@ -250,7 +257,7 @@ export function AgencyClientFinder({ onConnected }: { onConnected: (v: boolean) 
       </span>
 
       <span
-        className="absolute left-[1508px] top-[190px] flex h-[56px] items-center rounded-[14px] px-[20px] text-[15.5px] font-bold text-white"
+        className="absolute left-[1508px] top-[190px] flex h-[56px] items-center rounded-[14px] px-[22px] text-[15.5px] font-bold text-white"
         style={{ background: 'var(--ss-ag-clienforce)', opacity: 0.55 }}
         title="No lead-capture tool exists yet"
       >
