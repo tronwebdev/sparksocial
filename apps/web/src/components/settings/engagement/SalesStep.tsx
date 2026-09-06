@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { EiSectionChip } from './EiPrimitives';
 import { HANDOFF_DESTINATIONS, QUALIFICATION_OPTIONS, TEMPERATURES } from './types';
 
 /**
@@ -38,7 +39,9 @@ export function SalesStep({
         it and where the lead goes.
       </p>
 
-      <p className="mt-4 text-[12px] font-medium text-ink-muted">Lead Qualification Options</p>
+      <div className="mt-[4px]">
+        <EiSectionChip>Lead Qualification Options</EiSectionChip>
+      </div>
       <ul className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {QUALIFICATION_OPTIONS.map((o) => {
           const on = qualification.includes(o.value);
@@ -70,7 +73,9 @@ export function SalesStep({
         </p>
       )}
 
-      <p className="mt-5 text-[12px] font-medium text-ink-muted">Handoff Rules</p>
+      <div className="mt-[26px]">
+        <EiSectionChip>Handoff Rules</EiSectionChip>
+      </div>
       <div className="mt-1.5 space-y-2">
         {TEMPERATURES.map((t) => (
           <div key={t.value} className="flex flex-wrap items-center gap-2">

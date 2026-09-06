@@ -1,15 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
-import { CampaignWizard } from '@/components/campaign/CampaignWizard';
 import { EmptyCalendarReason } from './EmptyCalendarReason';
+import { EmptyCard } from '@/components/common/EmptyCard';
 import { CampaignList, type CampaignRow } from './CampaignList';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
@@ -117,6 +117,25 @@ export interface BoardActions {
   openTriggerFor: (day: string) => void;
 }
 
+/**
+ * Cards switched off on the Calendar screen, kept rather than deleted.
+ *
+ * The screen above this board already draws the month grid, the week and day
+ * views and the upcoming queue, so several of the board's own cards were a
+ * second, smaller copy of the same information further down the page. Each is
+ * behind its own flag so any one can come back on its own — flip the constant,
+ * nothing else moves.
+ *
+ * Kept live: the campaign header (name, mix, activate), the empty-calendar
+ * reason, the day sheet and the draft panel — none of which the screen above
+ * duplicates.
+ */
+const SHOW_CAMPAIGN_LIST = false;
+const SHOW_REPORT_PANEL = false;
+const SHOW_POST_PICKER = false;
+const SHOW_SLOT_FILTERS = false;
+const SHOW_MONTH_GRID = false;
+
 export function CalendarBoard({
   /*
     The view, owned by the screen.
@@ -203,26 +222,18 @@ export function CalendarBoard({
   const visibleSlots = useMemo(() => filterSlots(view?.slots ?? [], filters), [view?.slots, filters]);
   const [previewing, setPreviewing] = useState(false);
   const [pickerDate, setPickerDate] = useState('');
-  // The objective and the proposed plan moved to `CampaignWizard` (CMP-01.1/.2)
-  // along with the screen that collected them.
-  /** Remount counter for the CMP-01 wizard — see its `onCancel` below. */
-  const [wizardRun, setWizardRun] = useState(0);
+  const router = useRouter();
 
-  /**
-   * `?new=1` — the cockpit's Create Campaign action, arriving here.
-   *
-   * The wizard used to be reachable only as this screen's *empty state*, which
-   * meant a brand with one campaign had no way to start a second one from
-   * anywhere in the app. `/home`'s primary action needed a destination, and the
-   * honest one is the screen that already owns the wizard rather than a second
-   * copy of it behind a modal.
-   *
-   * Read once into state rather than off the URL on every render, so cancelling
-   * returns to the calendar instead of being re-opened by the parameter that is
-   * still sitting in the address bar.
-   */
-  const searchParams = useSearchParams();
-  const [creating, setCreating] = useState(searchParams.get('new') === '1');
+  /*
+    The Create Campaign flow lived here, and `?new=1` opened it.
+
+    It has moved to `/home`, which is the screen the design draws behind the
+    modal and the screen its button is on — pressing Create Campaign there used
+    to leave for this one. This screen keeps everything about an *existing*
+    campaign: the picker, the calendar, Edit and Activate. Creating one starts
+    where you already are.
+  */
+
   /**
    * Every campaign for this brand, not just the one on screen.
    *
@@ -519,39 +530,18 @@ export function CalendarBoard({
     );
   }
 
-  if (!view || creating) {
+  if (!view) {
     /**
-     * `CMP-01` — the six-step wizard, replacing the two-click propose-then-create
-     * control that used to live here.
+     * No campaign to draw.
      *
-     * That control captured an objective and a window and nothing else, which is
-     * why `campaign.create` accepted nothing else — no accounts, no offer, no
-     * oversight choice. See `CampaignWizard`'s own header on what each step
-     * writes and why the scheduler had to guess a platform without step 4.
-     *
-     * Two ways in: this screen's empty state, and `?new=1` from the cockpit's
-     * Create Campaign action. Cancel means different things in each — see below.
+     * This used to mount the wizard inline, which made the calendar the only
+     * place a campaign could be created and meant a brand with one campaign had
+     * no route to a second. The flow now lives on `/home`; this says so and
+     * links to it rather than hosting a second copy.
      */
     return (
-      <CampaignWizard
-        key={wizardRun}
-        genomeId={genome!.genomeId}
-        onActivated={(campaignId) => {
-          setCreating(false);
-          void reload(campaignId);
-          // So the new one appears in the picker beside the old ones, rather than
-          // being the only one reachable until the next full page load.
-          if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
-        }}
-        onCancel={() => {
-          // Arrived deliberately: Cancel means "never mind", so it goes back to
-          // the calendar that is already there. As the empty state there is
-          // nowhere to go back *to*, so it restarts the wizard at step one by
-          // remounting — bumping a key rather than threading a reset through six
-          // steps of state.
-          if (view) setCreating(false);
-          else setWizardRun((n) => n + 1);
-        }}
+      <EmptyCard
+        body="A campaign is what fills this calendar — a goal, a window, and the accounts to post to. Start one from your home screen and it will appear here."
       />
     );
   }
@@ -566,7 +556,7 @@ export function CalendarBoard({
         unanswerable — this screen drew `campaigns[0]` and offered no way to the
         rest, which reads exactly like a product that allows one.
       */}
-      {campaigns.length > 0 ? (
+      {SHOW_CAMPAIGN_LIST && campaigns.length > 0 ? (
         <CampaignList
           campaigns={campaigns}
           selectedId={view.campaignId}
@@ -578,7 +568,7 @@ export function CalendarBoard({
             if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
             void reload(view.campaignId);
           }}
-          onNew={() => setCreating(true)}
+          onNew={() => router.push('/home?new=1')}
         />
       ) : null}
 
@@ -659,9 +649,11 @@ export function CalendarBoard({
         ) : null}
 
         {/* Step 6 — on demand, not auto-loaded, since it reads real metrics. */}
-        <div className="mt-4">
-          <CampaignReportPanel campaignId={view.campaignId} />
-        </div>
+        {SHOW_REPORT_PANEL ? (
+          <div className="mt-4">
+            <CampaignReportPanel campaignId={view.campaignId} />
+          </div>
+        ) : null}
 
         {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
       </section>
@@ -669,19 +661,21 @@ export function CalendarBoard({
       {/* CAL-02 for a day with nothing on it yet — the grid below only ever
           renders days that already have a slot, so an empty day needs its own
           entry point. */}
-      <section className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface p-4">
-        <span className="text-[13px] font-medium text-ink-muted">What would you like to post, and when?</span>
-        <Input
-          type="date"
-          value={pickerDate}
-          onChange={(e) => setPickerDate(e.target.value)}
-          className="h-10 w-auto"
-          aria-label="Date"
-        />
-        <Button size="sm" disabled={!pickerDate} onClick={() => openTriggerFor(pickerDate)}>
-          Create post
-        </Button>
-      </section>
+      {SHOW_POST_PICKER ? (
+        <section className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface p-4">
+          <span className="text-[13px] font-medium text-ink-muted">What would you like to post, and when?</span>
+          <Input
+            type="date"
+            value={pickerDate}
+            onChange={(e) => setPickerDate(e.target.value)}
+            className="h-10 w-auto"
+            aria-label="Date"
+          />
+          <Button size="sm" disabled={!pickerDate} onClick={() => openTriggerFor(pickerDate)}>
+            Create post
+          </Button>
+        </section>
+      ) : null}
 
       {undo ? (
         <div className="flex items-center gap-3 rounded border border-border bg-surface-muted px-4 py-2 text-[13px] text-ink-muted">
@@ -692,47 +686,52 @@ export function CalendarBoard({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SlotFilters slots={view.slots} value={filters} onChange={setFilters} />
-        {/*
-          `CAL-08`'s calendar-versus-list toggle. The list is not a lesser view:
-          a month grid answers "what is this week shaped like" and a list answers
-          "what is next", and the second question is the one somebody with 40
-          scheduled posts is actually asking.
-        */}
-        {/* Only when nothing above is driving it — see the prop. */}
-        {layoutProp === undefined ? (
-        <div className="flex shrink-0 items-center gap-1 rounded border border-border p-0.5">
-          {(['calendar', 'list'] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLayoutOwn(l)}
-              className={`rounded px-3 py-1.5 text-[13px] capitalize ${
-                layout === l ? 'bg-ink text-surface' : 'text-ink-muted'
-              }`}
-            >
-              {l}
-            </button>
-          ))}
+      {SHOW_SLOT_FILTERS ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SlotFilters slots={view.slots} value={filters} onChange={setFilters} />
+          {/*
+            `CAL-08`'s calendar-versus-list toggle. The list is not a lesser view:
+            a month grid answers "what is this week shaped like" and a list answers
+            "what is next", and the second question is the one somebody with 40
+            scheduled posts is actually asking.
+          */}
+          {/* Only when nothing above is driving it — see the prop. */}
+          {layoutProp === undefined ? (
+          <div className="flex shrink-0 items-center gap-1 rounded border border-border p-0.5">
+            {(['calendar', 'list'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLayoutOwn(l)}
+                className={`rounded px-3 py-1.5 text-[13px] capitalize ${
+                  layout === l ? 'bg-ink text-surface' : 'text-ink-muted'
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          ) : null}
         </div>
-        ) : null}
-      </div>
+      ) : null}
 
-      {layout === 'list' ? (
-        <SlotList
-          slots={visibleSlots}
-          onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
-        />
-      ) : (
-      <MonthGrid
-        slots={visibleSlots}
-        busy={busy}
-        onAddToDay={(day) => setDaySheet(day)}
-        onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
-        onDropSlot={(slot, day) => void moveSlot(slot, day)}
-      />
-      )}
+      {/* The list and the month grid the screen above already draws. */}
+      {SHOW_MONTH_GRID ? (
+        layout === 'list' ? (
+          <SlotList
+            slots={visibleSlots}
+            onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
+          />
+        ) : (
+          <MonthGrid
+            slots={visibleSlots}
+            busy={busy}
+            onAddToDay={(day) => setDaySheet(day)}
+            onOpenSlot={(id) => setDraftPanel({ open: true, contentItemId: id })}
+            onDropSlot={(slot, day) => void moveSlot(slot, day)}
+          />
+        )
+      ) : null}
 
       {/*
         `F9`'s day action sheet. Mounted here rather than inside the grid so it

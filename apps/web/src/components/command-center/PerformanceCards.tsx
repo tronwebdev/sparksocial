@@ -39,6 +39,19 @@ import { cn } from '@/lib/utils';
  * label is the only thing that would have told you.
  */
 
+/**
+ * The per-row detail columns under Top Trending Post, switched off.
+ *
+ * Each row carried four secondary columns beside the post: a media-type tile,
+ * the media type again as text, the platform, and the interaction count. Two of
+ * them said the same thing, and the platform read an em dash for every post
+ * that had not recorded one. Flip this back on to restore them.
+ *
+ * The post itself stays: its name, when it went out, and View. That is what a
+ * ranking is for.
+ */
+const SHOW_TOP_POST_DETAILS = false;
+
 interface TopPostRow {
   contentItemId: string;
   engagement: number;
@@ -491,27 +504,31 @@ export function PerformanceCards({
                     </p>
                   </div>
 
-                  <div
-                    className="flex h-[94px] w-[94px] shrink-0 items-center justify-center rounded-xl text-[11px] text-ink-muted"
-                    style={{ background: 'rgba(131,131,131,0.08)' }}
-                  >
-                    {post?.mediaType ?? 'text'}
-                  </div>
+                  {SHOW_TOP_POST_DETAILS ? (
+                    <>
+                    <div
+                      className="flex h-[94px] w-[94px] shrink-0 items-center justify-center rounded-xl text-[11px] text-ink-muted"
+                      style={{ background: 'rgba(131,131,131,0.08)' }}
+                    >
+                      {post?.mediaType ?? 'text'}
+                    </div>
 
-                  <span className="w-[110px] shrink-0 text-18 font-medium text-ink">
-                    {post?.mediaType ?? 'text'}
-                  </span>
+                    <span className="w-[110px] shrink-0 text-18 font-medium text-ink">
+                      {post?.mediaType ?? 'text'}
+                    </span>
 
-                  <span className="w-[130px] shrink-0 text-18 font-medium text-ink">
-                    {post?.platform ? platformLabel(post.platform) : '—'}
-                  </span>
+                    <span className="w-[130px] shrink-0 text-18 font-medium text-ink">
+                      {post?.platform ? platformLabel(post.platform) : '—'}
+                    </span>
 
-                  {/* The design shows an avatar cluster here. There is no
-                      per-post audience list, so this is the number the ranking
-                      is actually made of. */}
-                  <span className="w-[130px] shrink-0 text-16 text-ink-muted">
-                    {compactNumber(row.engagement)} interactions
-                  </span>
+                    {/* The design shows an avatar cluster here. There is no
+                        per-post audience list, so this is the number the ranking
+                        is actually made of. */}
+                    <span className="w-[130px] shrink-0 text-16 text-ink-muted">
+                      {compactNumber(row.engagement)} interactions
+                    </span>
+                    </>
+                  ) : null}
 
                   {onOpenPost ? (
                     <button

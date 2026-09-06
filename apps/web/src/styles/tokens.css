@@ -499,6 +499,159 @@
   --ss-auth-card: 540px; /* 568 − 2×14 */
   --ss-auth-gutter: 45px; /* `padding: 26px 45px 0` on the field column */
   --ss-auth-control: 69px; /* field and button height, both */
+
+  /* ── Create Campaign (`SparkSocial Create Campaign.dc.html`) ──────────────
+
+     A 1036-wide modal over a blurred backdrop, six steps deep. Its geometry is
+     per-step rather than fixed — the modal's top and height change with the
+     step, because the panels inside it are different heights and the design
+     centres each one rather than letting a tall step scroll. Those per-step
+     numbers live in `campaignChrome.ts` beside the code that switches on the
+     step; only what is constant across steps is a token.
+
+     The palette is the brand ramp already in this file (`--ss-cyan`,
+     `--ss-pink`, `--ss-purple`) plus one warm terminator the progress bar ends
+     on, which appears nowhere else. */
+  --ss-peach: #fedeb5; /* the last stop of the campaign progress ramp */
+  --ss-link-blue: #2474ed; /* the brand card's url, and "Visit Opt-in page" */
+
+  /* The modal, and the two columns of geometry that never move with the step. */
+  --ss-cmp-modal: 1036px;
+  --ss-cmp-modal-x: 346px; /* left edge on the 1728 stage */
+  --ss-cmp-panel: 596px; /* steps 1, 2 and 6 share this panel width */
+  --ss-cmp-progress: 508px;
+  --ss-cmp-card: 252px; /* the goal / type cards */
+  --ss-cmp-tile: 123px; /* the platform tiles on step 4 */
+  --ss-cmp-tile-h: 98px;
+  --ss-cmp-row: 54px; /* every switch row on step 5 */
+
+  /* The switch, which is the same 45×24.324 control in three places. */
+  --ss-cmp-switch-w: 45px;
+  --ss-cmp-switch-h: 24.324px;
+  --ss-cmp-knob: 19.459px;
+  --ss-cmp-knob-on: 23.108px;
+  --ss-cmp-knob-off: 3px;
+
+  /**
+   * The progress ramp. Four stops, and unlike `--ss-grad-progress` (onboarding's
+   * bar) it ends on a peach rather than a pink — they are different bars in
+   * different screens and sharing one token would make a change to either
+   * silently move the other.
+   */
+  --ss-grad-cmp-progress: linear-gradient(
+    90deg,
+    #6ce8ff 0%,
+    #f56bff 27.26%,
+    #a341ff 66.83%,
+    #fedeb5 100%
+  );
+
+  /**
+   * The selection tick — cyan to pink, on every chosen card and on step 6's
+   * approval checkbox. Distinct from `--ss-grad-brand`, which runs cyan to
+   * purple; these read as the same gradient at a glance and are not.
+   */
+  --ss-grad-cmp-tick: linear-gradient(90deg, #6ce8ff 0%, #f56bff 100%);
+
+  /* The popup's ground: a flat scrim under a cyan-to-pink diagonal wash. Both
+     layers, in this order — the scrim alone is what makes the white card legible. */
+  --ss-grad-cmp-backdrop: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)),
+    linear-gradient(126.04deg, rgba(108, 232, 255, 0.4) 3.85%, rgba(245, 107, 255, 0.4) 85.15%);
+
+  /* Every step panel fades from white to nothing over its own height, so the
+     modal's grey shows through the bottom of the panel rather than at its edge. */
+  --ss-grad-cmp-panel: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0) 100%);
+
+  /* Step 3's panel holds the fade until halfway, because its content runs to
+     the bottom and a fade from the top would wash out the brand card. */
+  --ss-grad-cmp-panel-tall: linear-gradient(180deg, #ffffff 48.96%, rgba(255, 255, 255, 0) 100%);
+
+  /* Step 6 arrives in colour — the one panel that is not white at the top. */
+  --ss-grad-cmp-review: linear-gradient(
+    180deg,
+    #acf2ff 0%,
+    #fde1ff 17.15%,
+    #ffefd9 34.28%,
+    rgba(255, 255, 255, 0.6993) 56.66%,
+    rgba(255, 255, 255, 0) 100%
+  );
+
+  /* The two blobs behind the modal. Same clipped shape, mirrored, different ramp. */
+  --ss-grad-cmp-blob-a: linear-gradient(90deg, #6ce8ff 4.81%, rgba(108, 232, 255, 0.3) 100%);
+  --ss-grad-cmp-blob-b: linear-gradient(90deg, #a341ff 4.81%, rgba(108, 232, 255, 0.3) 100%);
+
+  /* ── Settings (`ui build/Settings *.dc.html`) ─────────────────────────────
+
+     Twenty-six states across two navigation trees on one shared frame. The
+     frame is what these tokens describe; each section's own geometry lives with
+     its component, because none of it is shared.
+
+     The screen is full-bleed on the same 1698 card as Calendar, Discovery and
+     the Command Center — but its wash is *not* mirrored the way theirs is, so
+     it needs its own gradient rather than reusing `--ss-grad-canvas`. Reusing
+     that one would flip the pink to the wrong corner. */
+  --ss-grad-set-card: linear-gradient(152.69deg, rgba(245, 107, 255, 0.2) 2.9%, rgba(255, 255, 255, 0) 65.06%),
+    linear-gradient(209.142deg, rgba(108, 232, 255, 0.3) 2.94%, rgba(255, 255, 255, 0) 69.43%),
+    linear-gradient(#f7f7f7, #f7f7f7);
+
+  /**
+   * The active row in the settings nav.
+   *
+   * Cyan on the **right**, fading to nothing on the left — the mirror of
+   * `--ss-grad-nav-active`, which the app sidebar uses and which runs the other
+   * way. They look like the same gradient in a screenshot and are not, so the
+   * two are separate tokens rather than one shared by both navs.
+   */
+  --ss-grad-set-nav-active: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(148, 238, 255, 0.4) 67.15%,
+    rgba(108, 232, 255, 0.4) 100%
+  );
+
+  /* Engagement Intelligence's own card: a cyan head that clears by 60%. */
+  --ss-grad-set-ei: linear-gradient(180deg, rgb(108, 232, 255) 0%, rgba(255, 255, 255, 0) 60.18%),
+    linear-gradient(#ffffff, #ffffff);
+
+  /* ── Frame geometry, measured off the stage ──────────────────────────── */
+  --ss-set-card-x: 15px; /* the 1698 card's left edge */
+  --ss-set-nav: 285px; /* the nav panel */
+  --ss-set-nav-r: 15.5556px;
+  --ss-set-nav-row: 266px;
+  --ss-set-nav-row-h: 50px;
+  /* Row pitch differs by tree: 58 in workspace, 56 in personal. Not an
+     accident of content — both are fixed lists at fixed stops. */
+  --ss-set-nav-pitch-ws: 58px;
+  --ss-set-nav-pitch-ps: 56px;
+
+  --ss-set-content: 1350px; /* every section's card */
+  --ss-set-content-x: 338px;
+  --ss-set-content-y: 143px;
+  --ss-set-head-x: 368px; /* section heading and its subtitle */
+
+  /* The Workspace / Personal switch. */
+  --ss-set-pill-w: 435px;
+  --ss-set-pill-h: 50px;
+  --ss-set-pill-r: 92.405px;
+  --ss-set-seg-w: 224px;
+  --ss-set-seg-h: 42px;
+  --ss-set-seg-r: 76.383px;
+  --ss-set-pill-shadow: 0px -100px 40px 0px rgba(0, 0, 0, 0.1);
+
+  /* The save bar every editable section carries. */
+  --ss-set-btn-h: 44.809px;
+  --ss-set-btn-r: 9.704px;
+
+  /* Role chips on Team Roles — one hue per role, straight off the design. */
+  --ss-set-role-owner: #f39824;
+  --ss-set-role-admin: #2654eb;
+  --ss-set-role-editor: #e93af5;
+  --ss-set-role-creator: #18c4e4;
+  --ss-set-role-approver: #1faf13;
+  --ss-set-role-publisher: #8134f5;
+  --ss-set-role-client: #0dbc6d;
+  --ss-set-role-viewer: #838383;
+  --ss-set-online: #1faf13;
 }
 
 /**

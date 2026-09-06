@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { EiSectionChip } from './EiPrimitives';
 import { ENGAGEMENT_LEVELS, ENGAGEMENT_TYPES, PLATFORMS, type EngagementAutonomy } from './types';
 
 /**
@@ -64,7 +65,10 @@ export function PlatformsStep({
 }) {
   return (
     <div>
-      <p className="text-[13px] text-ink-muted">
+      <div className="mb-[18px]">
+        <EiSectionChip>Platforms</EiSectionChip>
+      </div>
+      <p className="max-w-[592px] text-16" style={{ color: 'rgb(131,131,131)' }}>
         Where your default is not the right answer. A platform can be quieter than your default, never
         louder &mdash; step 1 is the ceiling.
       </p>

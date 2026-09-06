@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { RecipeGlyph } from './RecipeGlyph';
 import { KIND_META, type RecipeKind } from './recipeMeta';
-import type { WizardDraft } from './RecipeWizard';
+import type { WizardDraft } from './wizardDraft';
 
 /**
  * "Congratulations On Successfully Launching Your Campaign" — the design's
@@ -124,7 +124,10 @@ export function LaunchModal({
             {draft.name}
           </p>
           <p className="mt-[16px] text-[15.5px] font-medium text-ink">
-            <b className="font-bold">Runs:</b> every {draft.everyHours} hour{draft.everyHours === 1 ? '' : 's'}
+            <b className="font-bold">Runs:</b>{' '}
+            {draft.cadence === 'regular'
+              ? `every ${draft.everyN} ${draft.everyUnit === 'days' ? 'day' : 'hour'}${draft.everyN === 1 ? '' : 's'}`
+              : draft.frequency}
             {draft.startToday ? ' · starting now' : ''}
           </p>
           <div className="mt-[14px] flex flex-wrap items-center gap-[10px]">

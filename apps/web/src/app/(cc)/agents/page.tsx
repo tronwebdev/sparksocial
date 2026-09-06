@@ -1,12 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CommandCenterShell, type CcTab } from '@/components/command-center/CommandCenterShell';
 import { CommandCenterOverview } from '@/components/command-center/CommandCenterOverview';
 import { SparkRailContainer } from '@/components/command-center/SparkRailContainer';
 import { PerformancePanel } from '@/components/command-center/PerformancePanel';
-import { PerformanceGate } from '@/components/command-center/PerformanceGate';
+import {
+  PerformanceGate,
+  PerformanceGateModal,
+  usePerformanceEligibility,
+} from '@/components/command-center/PerformanceGate';
 import { PerformanceHeader } from '@/components/command-center/PerformanceHeader';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
 import { AgentCalendarTab } from '@/components/command-center/AgentCalendarTab';
@@ -49,7 +53,36 @@ function isTab(v: string | null): v is CcTab {
   return v !== null && (TABS as readonly string[]).includes(v);
 }
 
+/**
+ * The Suspense boundary `next build` requires.
+ *
+ * `useSearchParams()` opts a page out of static prerendering unless something
+ * above it can suspend; without a boundary the export fails with
+ * *"useSearchParams() should be wrapped in a suspense boundary"* and the build
+ * exits non-zero. `/forgot-password` hit this first and carries the longer note
+ * on why a boundary is right here and the `window.location`-in-an-effect trick
+ * (`selectedPlan.ts`) is not: `?tab=` picks which tab renders **first**, so
+ * reading it one render late would paint Overview and then jump to whichever
+ * tab was actually asked for.
+ *
+ * The fallback is the shell with the default tab, so the chrome does not move
+ * when the boundary resolves.
+ */
 export default function CommandCenterPage() {
+  return (
+    <Suspense
+      fallback={
+        <CommandCenterShell tab="overview" onTab={() => {}}>
+          <div className="min-h-[40vh]" />
+        </CommandCenterShell>
+      }
+    >
+      <CommandCenter />
+    </Suspense>
+  );
+}
+
+function CommandCenter() {
   const router = useRouter();
   const params = useSearchParams();
   const { genome } = useSelectedGenome();
@@ -59,6 +92,17 @@ export default function CommandCenterPage() {
     cannot disagree about the agent's name or whether it is paused.
   */
   const agent = useCcAgent(genome?.genomeId);
+
+  /**
+   * Performance & Learning eligibility, read here rather than inside the tab.
+   *
+   * The gate used to wrap the tab's own body: clicking the tab switched to it,
+   * and only then did the card appear over a blurred panel. Being told you
+   * cannot go somewhere after you have been taken there is the wrong order — so
+   * `onTab` checks this first and opens the card without moving.
+   */
+  const perfEligibility = usePerformanceEligibility(genome?.genomeId);
+  const [perfGate, setPerfGate] = useState(false);
 
   const fromUrl = params.get('tab');
   /**
@@ -111,6 +155,15 @@ export default function CommandCenterPage() {
 
   const onTab = useCallback(
     (next: CcTab) => {
+      /*
+        Refused, not deferred: the tab stays where it is and the card explains
+        why. `loading` and `unknown` both fall through — a slow or refused
+        eligibility read must not lock a tab that might be open to this brand.
+      */
+      if (next === 'performance' && perfEligibility.kind === 'blocked') {
+        setPerfGate(true);
+        return;
+      }
       setTab(next);
       const q = new URLSearchParams(Array.from(params.entries()));
       q.set('tab', next);
@@ -122,7 +175,7 @@ export default function CommandCenterPage() {
       if (next !== 'overview') q.delete('draft');
       router.replace(`/agents?${q.toString()}`, { scroll: false });
     },
-    [params, router],
+    [params, router, perfEligibility.kind],
   );
 
   /*
@@ -204,6 +257,11 @@ export default function CommandCenterPage() {
           onOpenDraft={(contentItemId) => setDraft({ open: true, contentItemId })}
           busy={agent.busy}
         />
+      ) : null}
+
+      {/* Opened by the tab strip, over whichever tab the person is on. */}
+      {perfGate ? (
+        <PerformanceGateModal state={perfEligibility} onClose={() => setPerfGate(false)} />
       ) : null}
 
       {!attention && tab === 'performance' ? (
