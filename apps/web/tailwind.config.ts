@@ -83,6 +83,16 @@ const config: Config = {
           cyan: alpha('--ss-accent-cyan'),
           pink: alpha('--ss-accent-pink'),
         },
+        /*
+          `--ss-cyan-200` (#9CEFFF) is the tint every active pill in the Agency
+          Portal sits on. It has to be registered here: without it `bg-cyan-200`
+          resolves to Tailwind's own cyan-200 (#A5F3FC) and the screen goes
+          subtly wrong with no error anywhere.
+        */
+        cyan: {
+          DEFAULT: alpha('--ss-cyan'),
+          200: alpha('--ss-cyan-200'),
+        },
         // Brand Home's three metric tints. Already rgba, so they go in raw
         // rather than through `alpha()` — the opacity is the design's own.
         'kpi-1': 'var(--ss-dash-kpi-1)',
@@ -113,6 +123,16 @@ const config: Config = {
         'auto-note': 'var(--ss-auto-note)',
         // Create Campaign — see the `--ss-cmp-*` block in tokens.css.
         peach: 'var(--ss-peach)',
+        'ag-page': 'var(--ss-ag-page)',
+        'ag-card': 'var(--ss-ag-card)',
+        'ag-row-open': 'var(--ss-ag-row-open)',
+        'ag-mint': 'var(--ss-ag-stat-mint)',
+        'ag-peach': 'var(--ss-ag-stat-peach)',
+        'ag-assets': 'var(--ss-ag-assets)',
+        'ag-growth': 'var(--ss-ag-growth)',
+        'ag-pay': 'var(--ss-ag-pay)',
+        'ag-clienforce': 'var(--ss-ag-clienforce)',
+        'ag-stripe': 'var(--ss-ag-stripe)',
         'set-owner': 'var(--ss-set-role-owner)',
         'set-admin': 'var(--ss-set-role-admin)',
         'set-editor': 'var(--ss-set-role-editor)',
@@ -209,6 +229,13 @@ const config: Config = {
         'lib-folder-back': 'var(--ss-grad-lib-folder-back)',
         'lib-folder-front': 'var(--ss-grad-lib-folder-front)',
         'lib-progress': 'var(--ss-grad-lib-progress)',
+        'ag-stage': 'var(--ss-grad-ag-stage)',
+        'ag-hero': 'var(--ss-grad-ag-hero)',
+        'ag-wiz': 'var(--ss-grad-ag-wiz)',
+        'ag-dark': 'var(--ss-grad-ag-dark)',
+        'ag-jf': 'var(--ss-grad-ag-jf)',
+        'ag-summary': 'var(--ss-grad-ag-summary)',
+        'ag-progress': 'var(--ss-grad-ag-progress)',
         'set-card': 'var(--ss-grad-set-card)',
         'set-nav-active': 'var(--ss-grad-set-nav-active)',
         'set-ei': 'var(--ss-grad-set-ei)',
@@ -252,6 +279,16 @@ const config: Config = {
         'dash-tab-bottom': 'var(--ss-dash-tab-bottom)',
         'dash-row-inset': 'var(--ss-dash-row-inset)',
         'dash-row': 'var(--ss-dash-row)',
+        'ag-stage': 'var(--ss-ag-stage)',
+        /* The home cards inset 42 and the tool views 46 — used as `left-*`, so
+           they must be in `spacing` or the class silently resolves to nothing. */
+        'ag-gutter': 'var(--ss-ag-gutter)',
+        'ag-tool-x': 'var(--ss-ag-tool-x)',
+        'ag-wide': 'var(--ss-ag-wide)',
+        'ag-tool-wide': 'var(--ss-ag-tool-wide)',
+        'ag-wiz-x': 'var(--ss-ag-wiz-x)',
+        'ag-wiz-w': 'var(--ss-ag-wiz-w)',
+        'ag-wiz-card': 'var(--ss-ag-wiz-card)',
         'set-nav': 'var(--ss-set-nav)',
         'set-nav-row': 'var(--ss-set-nav-row)',
         'set-nav-row-h': 'var(--ss-set-nav-row-h)',

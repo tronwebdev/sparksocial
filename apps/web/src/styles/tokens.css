@@ -652,6 +652,76 @@
   --ss-set-role-client: #0dbc6d;
   --ss-set-role-viewer: #838383;
   --ss-set-online: #1faf13;
+
+  /* ── Agency Portal (`ui build/SparkSocial Agency Portal.dc.html`) ─────────
+
+     The one screen that is not on the 1698 card. It has its own page ground
+     and a 1728 stage centred and scaled to the viewport, so its geometry is
+     stated here rather than borrowed from the shell the other screens share.
+
+     Nine of its colours are new. `#9CEFFF` is already `--ss-cyan-200` and
+     `#13D711` is `--ss-green-500`, so those are reused rather than restated —
+     a second name for the same hex is how two screens drift apart. */
+  --ss-ag-page: #e7f3f6; /* the ground behind the stage */
+  --ss-ag-card: #fcfcfc; /* the launched home card */
+  --ss-ag-row-open: #f4f4f6; /* a workspace row while expanded */
+
+  /* The four tinted stat/band fills, each used once and named for its job
+     rather than its hue — the design reuses the peach for two different
+     things and a `--ss-peach-2` would say nothing about either. */
+  --ss-ag-stat-mint: #d8f5e6; /* Total Workspaces */
+  --ss-ag-stat-peach: #fbe4c2; /* Total Clients, and the revenue chip */
+  --ss-ag-assets: #dcf1f8; /* the generated-asset panel */
+  --ss-ag-growth: #fae3c2; /* the Growth Tools band */
+  --ss-ag-pay: #efe3fb; /* Payment Information */
+
+  /* Clienforce's brand green, which the design uses for both the connect CTA
+     and "Find Clients". Not `--ss-green-*`: those are the product's own signal
+     greens and this is a third party's. */
+  --ss-ag-clienforce: #26d34a;
+  --ss-ag-stripe: #635bff; /* the Stripe mark on a job card and a payment row */
+
+  /* ── Geometry, measured off the 1728 stage ───────────────────────────── */
+  --ss-ag-stage: 1728px;
+  --ss-ag-gutter: 42px; /* the home cards' left edge */
+  --ss-ag-wide: 1644px; /* every home card */
+  --ss-ag-tool-x: 46px; /* the tool views inset 4px further */
+  --ss-ag-tool-wide: 1636px;
+
+  /* Workspace rows: 108 closed, 196 open, 8 apart. Stated because three
+     separate values in the prototype's own script depend on all three. */
+  --ss-ag-ws-row: 108px;
+  --ss-ag-ws-row-open: 196px;
+  --ss-ag-ws-gap: 8px;
+
+  /* Lead rows on Client Finder do the same thing at a different size. */
+  --ss-ag-lead-row: 92px;
+  --ss-ag-lead-row-open: 170px;
+
+  /* The launch wizard. Four heights, and the inner card is always 320 less. */
+  --ss-ag-wiz-w: 1036px;
+  --ss-ag-wiz-x: 346px;
+  --ss-ag-wiz-card: 988px;
+
+  /* Its progress ramp — the same four stops as the campaign wizard's bar but a
+     different track, so it is its own token rather than a shared one that a
+     change to either would silently move. */
+  --ss-grad-ag-progress: linear-gradient(
+    90deg,
+    #6ce8ff 0%,
+    #f56bff 27%,
+    #a341ff 67%,
+    #fedeb5 100%
+  );
+
+  --ss-grad-ag-stage: linear-gradient(180deg, #e2f1f5 0%, #eaf5f7 60%, #eef6f7 100%);
+  --ss-grad-ag-hero: linear-gradient(100deg, #f3fafc 0%, #eff6fa 46%, #f4edf9 78%, #f7eaf6 100%);
+  --ss-grad-ag-wiz: linear-gradient(159deg, #def3fa 0%, #edf3f8 38%, #f1eaf9 70%, #e8ddf6 100%);
+  --ss-grad-ag-dark: radial-gradient(700px 300px at 20% 20%, #101826 0%, #05070c 70%);
+  /* The Job Finder hero is a *different* dark: lifted, and off-centre the other
+     way. Two tokens, because the design draws two gradients. */
+  --ss-grad-ag-jf: radial-gradient(700px 280px at 24% 24%, #131b2a 0%, #05070c 72%);
+  --ss-grad-ag-summary: linear-gradient(118deg, #daeffb 0%, #e8f3fb 52%, #eff4fa 100%);
 }
 
 /**

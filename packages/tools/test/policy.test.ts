@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluate, type Decision, type PolicyInput } from '../src/policy.js';
+import { evaluate, isTeamCapability, type Decision, type PolicyInput } from '../src/policy.js';
 import type { Autonomy, Effect, Role } from '@sparksocial/shared/types';
 
 /**
@@ -1181,6 +1181,24 @@ describe('7b — workspace approval flows', () => {
     expect(d.kind === 'approval' && d.requiresRole).toBe('approver');
   });
 
+  it('says "a client" and not "an client" when the required role starts with a consonant', () => {
+    /*
+      The reason `article` exists at all. Every other rule test names `approver`
+      or `admin`, both of which take "an" — so the consonant branch never ran,
+      and a message reading "needs an client to review it" would have shipped
+      unnoticed. The assertion is on the sentence, because the sentence is the
+      whole point of the helper.
+    */
+    const d = evaluate(
+      input({
+        tool: { name: 'publish.now', effect: 'publish' },
+        approvalRules: [{ ...publishRule, requiresRole: 'client' as const }],
+      }),
+    );
+    expect(ruleOf(d)).toBe('approval_rule.publish');
+    expect(d.kind === 'approval' && d.reason).toContain('needs a client to review it');
+  });
+
   it('holds nothing when the rule names a group the caller is not in', () => {
     const d = evaluate(
       input({
@@ -1367,5 +1385,29 @@ describe('approval grants against a rule that names a role', () => {
       }),
     );
     expect(d.kind).toBe('allow');
+  });
+});
+
+/**
+ * `isTeamCapability` — the narrowing guard over `team_groups.capabilities`.
+ *
+ * Untested until now, which is why the 100% threshold invariant 3 sets was
+ * failing the build. It is worth a test on the merits, not just for the number:
+ * the column is jsonb, so a value written by an older build or by hand can be
+ * any string, and the guard is the only thing standing between that and a
+ * capability grant. The important case is the last one — an unrecognised
+ * capability must grant nothing rather than falling through to something.
+ */
+describe('team capability guard', () => {
+  it('admits exactly the four capabilities the policy knows', () => {
+    for (const c of ['publish', 'spend_credits', 'manage_brand', 'approve']) {
+      expect(isTeamCapability(c)).toBe(true);
+    }
+  });
+
+  it('rejects anything else, so an unknown value grants nothing', () => {
+    for (const c of ['', 'admin', 'owner', 'Publish', 'manage_brands', 'spend credits', '*']) {
+      expect(isTeamCapability(c)).toBe(false);
+    }
   });
 });
