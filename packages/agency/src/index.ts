@@ -12,3 +12,5 @@ export * from './engagementPlatforms.js';
 export * from './roster.js';
 export * from './budget.js';
 export * from './approvalRules.js';
+export * from './leads.js';
+export * from './proposals.js';

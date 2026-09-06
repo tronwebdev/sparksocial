@@ -11,6 +11,12 @@ import type {
   HardRule,
 } from '@sparksocial/shared/engagementConfig';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
+import type {
+  LeadSource,
+  LeadStatus,
+  ProposalLineItem,
+  ProposalStatus,
+} from '@sparksocial/shared/agencyPipeline';
 
 /* ── Context handed to every handler ───────────────────────────────── */
 
@@ -357,6 +363,10 @@ export interface ScopedDb {
   brandMembers: BrandMemberStore;
   /** Unauthenticated, expiring client review links — `whitelabel.link.create`. See {@link ReviewLinkStore}. */
   reviewLinks: ReviewLinkStore;
+  /** The agency's own sales pipeline — businesses that are not clients yet. See {@link LeadStore}. */
+  leads: LeadStore;
+  /** Priced offers sent to those leads. See {@link ProposalStore}. */
+  proposals: ProposalStore;
   /** The Review queue. See {@link ApprovalStore}. */
   approvals: ApprovalStore;
   /** The approval ladder's storage (PRD §7.1). */
@@ -2364,6 +2374,189 @@ export interface ReviewLinkStore {
   getByToken(token: string): Promise<ReviewLink | undefined>;
   revoke(args: { orgId: string; id: string }): Promise<void>;
   listForBrand(orgId: string, brandId: string): Promise<ReviewLink[]>;
+}
+
+/* ── The agency sales pipeline (`lead.*`, `proposal.*`) ─────────────── */
+
+/**
+ * A lead as stored. Every field beyond the ids came from outside the workspace,
+ * so anything rendering one into a model prompt wraps it in `untrusted()` first.
+ */
+export interface Lead {
+  id: string;
+  orgId: string;
+  businessName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  interest?: string;
+  notes?: string;
+  rating?: number;
+  source: LeadSource;
+  status: LeadStatus;
+  dedupeKey: string;
+  convertedBrandId?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** The fields a caller may supply when creating or importing. */
+export interface LeadInputFields {
+  businessName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  interest?: string;
+  notes?: string;
+  rating?: number;
+}
+
+/**
+ * `leads` backed by Postgres. Org-scoped rather than genome-scoped — see the
+ * table header in `schema.ts`: a lead has no genome, which is what makes it a
+ * lead. Every method takes `orgId` and every query filters on it.
+ */
+export interface LeadStore {
+  create(args: LeadInputFields & {
+    orgId: string;
+    source: LeadSource;
+    dedupeKey: string;
+    createdBy: string;
+  }): Promise<Lead>;
+
+  /**
+   * Inserts many, skipping rows whose `dedupeKey` an org already holds, and
+   * reports which were skipped so the caller can explain the difference between
+   * what was offered and what landed.
+   *
+   * One statement rather than a loop of `create` calls: a 2,000-row sheet is the
+   * normal import size, and per-row round trips make it a timeout. `ON CONFLICT
+   * DO NOTHING` against `leads_dedupe_idx` is what makes it safe to re-run.
+   */
+  importMany(args: {
+    orgId: string;
+    source: LeadSource;
+    createdBy: string;
+    rows: Array<LeadInputFields & { dedupeKey: string }>;
+  }): Promise<{ inserted: Lead[]; skippedKeys: string[] }>;
+
+  get(args: { orgId: string; id: string }): Promise<Lead | undefined>;
+
+  /**
+   * The `leads_dedupe_idx` lookup — one indexed read, used to turn a unique
+   * violation into an error that can name the lead already holding the key.
+   * The index stays the guarantee; this only buys the better message.
+   */
+  getByDedupeKey(args: { orgId: string; dedupeKey: string }): Promise<Lead | undefined>;
+
+  list(args: {
+    orgId: string;
+    status?: LeadStatus[];
+    source?: LeadSource[];
+    /** Case-insensitive substring over business name, contact and email. */
+    search?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ rows: Lead[]; total: number }>;
+
+  /** Counts per status for the whole org, so a header need not page to total. */
+  countsByStatus(orgId: string): Promise<Record<LeadStatus, number>>;
+
+  update(args: {
+    orgId: string;
+    id: string;
+    patch: Partial<LeadInputFields> & {
+      status?: LeadStatus;
+      /** Recomputed by the caller when an identifying field changed. */
+      dedupeKey?: string;
+      convertedBrandId?: string;
+    };
+  }): Promise<Lead>;
+}
+
+/** A proposal as stored — the document, as quoted. */
+export interface Proposal {
+  id: string;
+  orgId: string;
+  leadId: string;
+  title: string;
+  currency: string;
+  status: ProposalStatus;
+  termMonths: number;
+  lineItems: ProposalLineItem[];
+  monthlyCents: number;
+  oneOffCents: number;
+  totalContractCents: number;
+  notes?: string;
+  shareToken?: string;
+  shareExpiresAt?: Date;
+  shareRevokedAt?: Date;
+  sentAt?: Date;
+  decidedAt?: Date;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * `proposals` backed by Postgres. Org-scoped for the same reason as
+ * {@link LeadStore}, with one deliberate exception: `getByShareToken` carries no
+ * `orgId`, because the unauthenticated reader of a shared proposal has nothing
+ * but the token to present — the same posture as `ReviewLinkStore.getByToken`.
+ */
+export interface ProposalStore {
+  create(args: {
+    orgId: string;
+    leadId: string;
+    title: string;
+    currency: string;
+    termMonths: number;
+    lineItems: ProposalLineItem[];
+    monthlyCents: number;
+    oneOffCents: number;
+    totalContractCents: number;
+    notes?: string;
+    createdBy: string;
+  }): Promise<Proposal>;
+
+  get(args: { orgId: string; id: string }): Promise<Proposal | undefined>;
+
+  list(args: {
+    orgId: string;
+    leadId?: string;
+    status?: ProposalStatus[];
+    limit: number;
+    offset: number;
+  }): Promise<{ rows: Proposal[]; total: number }>;
+
+  update(args: {
+    orgId: string;
+    id: string;
+    patch: {
+      title?: string;
+      currency?: string;
+      status?: ProposalStatus;
+      termMonths?: number;
+      lineItems?: ProposalLineItem[];
+      monthlyCents?: number;
+      oneOffCents?: number;
+      totalContractCents?: number;
+      notes?: string;
+      shareToken?: string;
+      shareExpiresAt?: Date;
+      shareRevokedAt?: Date | null;
+      sentAt?: Date;
+      decidedAt?: Date;
+    };
+  }): Promise<Proposal>;
+
+  /** Resolves a public share token. Undefined once expired or revoked. */
+  getByShareToken(token: string): Promise<Proposal | undefined>;
 }
 
 /** One row in the Timeline's run list. */

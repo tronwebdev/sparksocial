@@ -139,6 +139,16 @@ import {
   teamGroupDelete,
   teamGroupMemberSet,
   whitelabelLinkCreate,
+  leadCreate,
+  leadImport,
+  leadList,
+  leadUpdate,
+  leadConvert,
+  proposalDraft,
+  proposalList,
+  proposalUpdate,
+  proposalShare,
+  proposalDecide,
   makeBrandOAuthConnect,
   brandOAuthStatus,
   brandOAuthDisconnect,
@@ -918,6 +928,29 @@ export function registerAgencyTools(deps: {
   register(teamGroupMemberSet);
 
   register(whitelabelLinkCreate);
+
+  // ── The agency's own sales pipeline (`lead.*`, `proposal.*`) ──────────
+  //
+  // Org-level like `agency.roster`, and for the same reason: a lead has no
+  // genome because a lead is not a client yet. `lead.convert` is the bridge —
+  // it links a won lead to the brand `brand.create` made for it, and from that
+  // point the client is genome-scoped like every other.
+  //
+  // Capture only. Nothing here prospects: no tool harvests businesses out of a
+  // directory, which is why the portal's "Find Clients" button stays honestly
+  // unavailable. See the header in `leads.ts`.
+  register(leadCreate);
+  register(leadImport);
+  register(leadList);
+  register(leadUpdate);
+  register(leadConvert);
+  // Proposals price what the agency supplies and never invent a rate — a
+  // contractual offer carrying a model's guess would bind the agency to it.
+  register(proposalDraft);
+  register(proposalList);
+  register(proposalUpdate);
+  register(proposalShare);
+  register(proposalDecide);
 
   // Canva OAuth (bulk_connector's canva source). `brand.oauth.connect` needs
   // an app registration to mint an authorize URL against — unset →

@@ -258,6 +258,9 @@ export function createDevStore(
   const orgSettingsMap = new Map<string, OrgSettingsRecord>();
   const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
   const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
+  /** The agency pipeline's dev rows. Same lifetime as every other map here. */
+  const leadRows = new Map<string, any>();
+  const proposalRows = new Map<string, any>();
 
   let nextDraft = 1;
   let nextRecipe = 1;
@@ -1623,6 +1626,112 @@ export function createDevStore(
       },
     },
 
+    /**
+     * The agency sales pipeline, in memory.
+     *
+     * A real implementation rather than throwing stubs, because the Agency
+     * Portal's Client Finder is a screen somebody runs the dev server to look at,
+     * and a table that 500s is not a preview of anything. The semantics that
+     * matter are reproduced exactly: dedupe on insert, filters and totals that
+     * agree, and a share token that expires.
+     */
+    leads: {
+      async create({ orgId, source, dedupeKey, createdBy, ...fields }) {
+        const now = new Date();
+        const row = { id: `lead_${randomUUID()}`, orgId, source, dedupeKey, createdBy, status: 'new' as const, createdAt: now, updatedAt: now, ...fields };
+        leadRows.set(row.id, row);
+        return row;
+      },
+      async importMany({ orgId, source, createdBy, rows }) {
+        const inserted = [];
+        const skippedKeys = [];
+        for (const r of rows) {
+          const clash = [...leadRows.values()].find((l) => l.orgId === orgId && l.dedupeKey === r.dedupeKey);
+          if (clash) { skippedKeys.push(r.dedupeKey); continue; }
+          const now = new Date();
+          const row = { id: `lead_${randomUUID()}`, orgId, source, createdBy, status: 'new' as const, createdAt: now, updatedAt: now, ...r };
+          leadRows.set(row.id, row);
+          inserted.push(row);
+        }
+        return { inserted, skippedKeys };
+      },
+      async get({ orgId, id }) {
+        const row = leadRows.get(id);
+        return row && row.orgId === orgId ? row : undefined;
+      },
+      async getByDedupeKey({ orgId, dedupeKey }) {
+        return [...leadRows.values()].find((l) => l.orgId === orgId && l.dedupeKey === dedupeKey);
+      },
+      async list({ orgId, status, source, search, limit, offset }) {
+        const term = search?.trim().toLowerCase();
+        const all = [...leadRows.values()]
+          .filter((l) => l.orgId === orgId)
+          .filter((l) => !status?.length || status.includes(l.status))
+          .filter((l) => !source?.length || source.includes(l.source))
+          .filter((l) =>
+            !term ||
+            l.businessName.toLowerCase().includes(term) ||
+            (l.contactName ?? '').toLowerCase().includes(term) ||
+            (l.email ?? '').toLowerCase().includes(term))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return { rows: all.slice(offset, offset + limit), total: all.length };
+      },
+      async countsByStatus(orgId) {
+        const out = { new: 0, contacted: 0, qualified: 0, won: 0, lost: 0 };
+        for (const l of leadRows.values()) {
+          // A status outside the five is not representable, but the rows are
+          // `any` here so the guard is what keeps this from writing NaN.
+          if (l.orgId === orgId && l.status in out) out[l.status as keyof typeof out] += 1;
+        }
+        return out;
+      },
+      async update({ orgId, id, patch }) {
+        const row = leadRows.get(id);
+        if (!row || row.orgId !== orgId) return undefined as never;
+        // `undefined` in a patch means "leave alone", matching the SQL `set`.
+        for (const [key, value] of Object.entries(patch)) {
+          if (value !== undefined) (row as Record<string, unknown>)[key] = value;
+        }
+        row.updatedAt = new Date();
+        return row;
+      },
+    },
+    proposals: {
+      async create(args) {
+        const now = new Date();
+        const row = { id: `prop_${randomUUID()}`, status: 'draft' as const, createdAt: now, updatedAt: now, ...args };
+        proposalRows.set(row.id, row);
+        return row;
+      },
+      async get({ orgId, id }) {
+        const row = proposalRows.get(id);
+        return row && row.orgId === orgId ? row : undefined;
+      },
+      async list({ orgId, leadId, status, limit, offset }) {
+        const all = [...proposalRows.values()]
+          .filter((p) => p.orgId === orgId)
+          .filter((p) => !leadId || p.leadId === leadId)
+          .filter((p) => !status?.length || status.includes(p.status))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return { rows: all.slice(offset, offset + limit), total: all.length };
+      },
+      async update({ orgId, id, patch }) {
+        const row = proposalRows.get(id);
+        if (!row || row.orgId !== orgId) return undefined as never;
+        for (const [key, value] of Object.entries(patch)) {
+          // `null` clears the revocation; `undefined` leaves the field alone.
+          if (value === null) (row as Record<string, unknown>)[key] = undefined;
+          else if (value !== undefined) (row as Record<string, unknown>)[key] = value;
+        }
+        row.updatedAt = new Date();
+        return row;
+      },
+      async getByShareToken(token) {
+        const row = [...proposalRows.values()].find((p) => p.shareToken === token);
+        if (!row || row.shareRevokedAt || !row.shareExpiresAt || row.shareExpiresAt.getTime() < Date.now()) return undefined;
+        return row;
+      },
+    },
     reviewLinks: {
       async create({ orgId, brandId, scope, targetId, createdBy, expiresAt }) {
         const row = { id: `link_${randomUUID()}`, token: randomUUID(), brandId, scope, createdBy, expiresAt, createdAt: new Date(), orgId, ...(targetId ? { targetId } : {}) };
