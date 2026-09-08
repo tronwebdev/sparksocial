@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT_INLINE } from '@sparksocial/shared/agentIdentity';
 import type { CampaignWeight } from '@sparksocial/shared';
 import { PANEL_CLIP, Spinner, StepPanel, TickPath } from './campaignChrome';
 import { DURATIONS, WEIGHT_STOPS } from './campaignDraft';
@@ -26,7 +27,7 @@ import { DURATIONS, WEIGHT_STOPS } from './campaignDraft';
 const ROW_Y = [339, 394.5, 450, 505.5];
 
 export function ReviewStep({
-  agentName,
+  agent,
   brandLogo,
   goalLabel,
   typeLabel,
@@ -38,7 +39,8 @@ export function ReviewStep({
   onActivate,
   busy,
 }: {
-  agentName: string;
+  /** The name, and whether it is one — see `UNNAMED_AGENT`. */
+  agent: { name: string; named: boolean };
   brandLogo?: string;
   goalLabel: string;
   typeLabel: string;
@@ -84,7 +86,15 @@ export function ReviewStep({
           Review &amp; Activate
         </h2>
         <p className="absolute left-[31px] top-[57px] whitespace-nowrap text-[18px] font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
-          Here&rsquo;s what <span className="font-bold text-purple">{agentName}</span> will do with this focus
+          {/* Mid-sentence: the lowercase form when there is no name, and no
+              name styling on a placeholder. */}
+          Here&rsquo;s what{' '}
+          {agent.named ? (
+            <span className="font-bold text-purple">{agent.name}</span>
+          ) : (
+            UNNAMED_AGENT_INLINE
+          )}{' '}
+          will do with this focus
         </p>
 
         {/* ── summary card ────────────────────────────────────────────── */}
@@ -95,8 +105,13 @@ export function ReviewStep({
             className="absolute left-[20px] top-[14.279px] h-[103px] w-[103px] rounded-full bg-surface-200 bg-cover bg-center"
             style={{ backgroundImage: brandLogo ? `url('${brandLogo}')` : undefined }}
           />
-          <span className="absolute left-0 top-[129.279px] block w-[146px] text-center text-[16px] font-semibold leading-[0.9986]" style={{ color: 'rgb(131,131,131)' }}>
-            {agentName}
+          {/* A standalone caption, so this one takes the capitalised form —
+              and drops the semibold when it is a placeholder. */}
+          <span
+            className={`absolute left-0 top-[129.279px] block w-[146px] text-center text-[16px] leading-[0.9986] ${agent.named ? 'font-semibold' : 'font-normal italic'}`}
+            style={{ color: 'rgb(131,131,131)' }}
+          >
+            {agent.name}
           </span>
 
           {rows.map(([label, value], i) => (

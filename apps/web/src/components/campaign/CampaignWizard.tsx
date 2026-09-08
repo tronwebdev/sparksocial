@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT, UNNAMED_AGENT_INLINE } from '@sparksocial/shared/agentIdentity';
 import { useCallback, useEffect, useState } from 'react';
 import { useRef } from 'react';
 import {
@@ -204,7 +205,20 @@ export function CampaignWizard({
 
   /** The brand card on step 3, and the agent's name in the header. */
   const [brand, setBrand] = useState<BrandCard | null>(null);
-  const [agentName, setAgentName] = useState('your agent');
+  /**
+   * The agent, with whether it actually has a name.
+   *
+   * This was a bare string defaulting to the literal `'your agent'`, which then
+   * disagreed in case with the `UNNAMED_AGENT` the tool substitutes once the
+   * fetch lands — the header visibly changed capitalisation on load. And with
+   * only the string, an unnamed agent got rendered in bold purple as if "Your
+   * agent" were somebody's choice, which is the one thing that constant's own
+   * comment says not to do.
+   */
+  const [agent, setAgent] = useState<{ name: string; named: boolean }>({
+    name: UNNAMED_AGENT,
+    named: false,
+  });
   const [timezone, setTimezone] = useState('UTC');
 
   const [busy, setBusy] = useState(false);
@@ -451,7 +465,12 @@ export function CampaignWizard({
           brandColors: string[];
           brandFonts?: { display?: string; body?: string };
           timezone: string;
-          agentIdentity: { name: string; voice: string[] };
+          /* `named` matters as much as `name`: without it there is no way to
+             tell a chosen name from the `UNNAMED_AGENT` placeholder the tool
+             substitutes, and the wizard renders one in bold as if it were the
+             other. Hand-written assertions over tool output are where these
+             omissions hide — the compiler cannot check a shape you invented. */
+          agentIdentity: { name: string; named: boolean; voice: string[] };
         }>('brand.governance.get', {}),
         invoke<{ genomes: Array<{ genomeId: string; name: string }> }>('genome.list', {}),
         invoke<{ docs: Array<{ docId: string; citationLabel?: string; preview: string }> }>(
@@ -462,7 +481,7 @@ export function CampaignWizard({
 
       const g = gov.status === 'succeeded' ? gov.output : null;
       if (g) {
-        setAgentName(g.agentIdentity.name);
+        setAgent({ name: g.agentIdentity.name, named: g.agentIdentity.named });
         setTimezone(g.timezone);
       }
 
@@ -694,7 +713,14 @@ export function CampaignWizard({
             <div className="absolute left-[514px] top-[49px] h-[18px] w-[258px]">
               <Spinner className="absolute left-0 top-[2px]" />
               <span className="absolute right-0 top-0 whitespace-nowrap text-right text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
-                Assigning this campaign to <span className="font-bold text-purple">{agentName}</span>
+                {/* Mid-sentence, so the unnamed form is the lowercase one — and
+                    unstyled, because it is a placeholder rather than a name. */}
+                Assigning this campaign to{' '}
+                {agent.named ? (
+                  <span className="font-bold text-purple">{agent.name}</span>
+                ) : (
+                  UNNAMED_AGENT_INLINE
+                )}
               </span>
             </div>
 
@@ -792,7 +818,7 @@ export function CampaignWizard({
 
             {step === 6 ? (
               <ReviewStep
-                agentName={agentName}
+                agent={agent}
                 brandLogo={brand?.logoUrl}
                 goalLabel={goalLabel}
                 typeLabel={TYPE_CARDS.find((t) => t.value === campaignType)?.title ?? campaignType}
