@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useOrganization } from '@clerk/nextjs';
 import {
   PROPOSAL_SERVICE_LABELS,
   PROPOSAL_TRANSITIONS,
@@ -122,6 +123,14 @@ export function ProposalModal({
   const [view, setView] = useState<View>({ kind: 'list' });
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * The sending agency, for the pasted text. The public page gets the same name
+   * from the API rather than from here — a client-supplied sender on a
+   * document the client reads would be worth nothing.
+   */
+  const { organization } = useOrganization();
+  const from = organization?.name;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -187,6 +196,7 @@ export function ProposalModal({
               busy={busy}
               lead={lead}
               onEdit={(p) => setView({ kind: 'edit', proposal: p })}
+              from={from}
               onSend={send}
               onDecide={async (id, outcome) => setError(await onDecide(id, outcome))}
             />
@@ -220,7 +230,7 @@ export function ProposalModal({
           ) : null}
 
           {view.kind === 'sent' ? (
-            <SentPanel proposal={view.proposal} token={view.token} expiresAt={view.expiresAt} lead={lead} />
+            <SentPanel proposal={view.proposal} token={view.token} expiresAt={view.expiresAt} lead={lead} from={from} />
           ) : null}
         </div>
 
@@ -237,6 +247,7 @@ function ProposalList({
   capped,
   busy,
   lead,
+  from,
   onEdit,
   onSend,
   onDecide,
@@ -245,6 +256,7 @@ function ProposalList({
   capped: boolean;
   busy: boolean;
   lead: { businessName: string };
+  from?: string;
   onEdit: (p: Proposal) => void;
   onSend: (p: Proposal) => void;
   onDecide: (id: string, outcome: 'accepted' | 'declined' | 'withdrawn') => void;
@@ -307,7 +319,7 @@ function ProposalList({
               ) : null}
 
               {p.status === 'sent' ? (
-                <CopyButton text={proposalToText(p, lead.businessName)} label="Copy again" />
+                <CopyButton text={proposalToText(p, lead.businessName, from)} label="Copy again" />
               ) : null}
 
               {/* The moves the lifecycle actually permits, read from the shared
@@ -619,13 +631,15 @@ function SentPanel({
   token,
   expiresAt,
   lead,
+  from,
 }: {
   proposal: Proposal;
   token: string;
   expiresAt: string;
   lead: { businessName: string };
+  from?: string;
 }) {
-  const text = proposalToText(proposal, lead.businessName);
+  const text = proposalToText(proposal, lead.businessName, from);
 
   /**
    * `origin` is read in an effect rather than at render, because this component

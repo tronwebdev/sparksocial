@@ -58,6 +58,21 @@ registerAlphaTools();
 // than quietly insecure.
 const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY && process.env.CLERK_PUBLISHABLE_KEY);
 
+/**
+ * One Clerk client for the process.
+ *
+ * It was constructed inline at each call site, which meant a fresh client — and
+ * a fresh connection pool and token cache — per resolution on a route that can
+ * be hit by anyone with a link. Built once here, and `undefined` when Clerk is
+ * unconfigured so every consumer has to decide what it does without one.
+ */
+const clerk = clerkConfigured
+  ? createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY ?? '',
+      publishableKey: process.env.CLERK_PUBLISHABLE_KEY ?? '',
+    })
+  : undefined;
+
 if (env === 'production' && !clerkConfigured && process.env.ALLOW_DEV_AUTH !== 'true') {
   // Without Clerk the only resolver left trusts request headers for tenancy,
   // which makes genome isolation forgeable by any caller. Refuse to start rather
@@ -151,9 +166,7 @@ const socialRedirectUri = envStr('SOCIAL_REDIRECT_URI', `http://127.0.0.1:${port
 
 registerAgencyTools({
   credits,
-  ...(clerkConfigured
-    ? { clerk: createClerkClient({ secretKey: envStr('CLERK_SECRET_KEY', ''), publishableKey: envStr('CLERK_PUBLISHABLE_KEY', '') }) }
-    : {}),
+  ...(clerk ? { clerk } : {}),
   ...(canvaOAuthConfigured
     ? { canvaOAuth: { clientId: envStr('CANVA_CLIENT_ID', ''), redirectUri: canvaRedirectUri, stateSecret: envStr('OAUTH_STATE_SECRET', '') } }
     : {}),
@@ -491,7 +504,26 @@ if (!agentConfigured) {
   is 256 bits, expires, and is revoked the moment a decision is recorded. Not a
   tool, and deliberately read-only — see `public-proposal.ts`.
 */
-registerPublicProposal(app, { db: scopedDb });
+registerPublicProposal(app, {
+  db: scopedDb,
+  /*
+    Who the proposal is from. Clerk owns organisation names, so this is the
+    only place the answer exists — and the route gets a one-string lookup
+    rather than the Clerk client, because it is the one surface in this
+    product that answers to no session. Unconfigured (dev) means the page
+    renders with no sender named, which is the honest degradation.
+  */
+  ...(clerk
+    ? {
+        resolveAgency: async (orgId: string) => {
+          const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+          /* Name only. `org.imageUrl` base64-embeds the org and instance ids —
+             see `Agency` in `public-proposal.ts`. */
+          return org.name ? { name: org.name } : undefined;
+        },
+      }
+    : {}),
+});
 
 if (canvaOAuthConfigured) {
   registerCanvaOAuthCallback(app, {

@@ -30,6 +30,21 @@ import { PROPOSAL_SERVICE_LABELS, type ProposalService } from '@sparksocial/shar
  *
  * Every string here came from the agency's own typing or a third party's
  * spreadsheet, and is rendered as text by React — never `dangerouslySetInnerHTML`.
+ *
+ * ── One thing about this page that is not yet right ───────────────────────
+ *
+ * It inherits the root layout, so `ClerkProvider` mounts and clerk-js loads —
+ * roughly 200KB of auth SDK, and a handful of requests to Clerk, on a page
+ * whose reader has no account. The content is server-rendered and does not wait
+ * on any of it, and `referrer: no-referrer` is verified to keep the token out of
+ * those requests, so nothing leaks. But it is the same third-party-disclosure
+ * objection that kept the agency's logo off this page, and it applies here too.
+ *
+ * Fixing it means giving this route its own root layout, which in the App Router
+ * means removing the single top-level layout and giving every existing group one
+ * — a refactor of the whole app's shell, and not something to do on the way past
+ * while adding a letterhead. Written down rather than left for somebody to
+ * rediscover.
  */
 
 const API_URL = process.env.SPARK_API_URL ?? 'http://localhost:8080';
@@ -62,6 +77,14 @@ interface LineItem {
 interface PublicProposal {
   title: string;
   preparedFor: string;
+  /**
+   * The sending agency, by name. Absent when Clerk is unconfigured.
+   *
+   * No logo, deliberately: Clerk's image URL base64-embeds the organisation and
+   * instance ids, and linking it would also make every prospect's read a request
+   * to a third-party CDN. See `Agency` in `apps/api/src/public-proposal.ts`.
+   */
+  from?: { name: string };
   currency: string;
   status: string;
   termMonths: number;
@@ -119,6 +142,35 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
         style={{ boxShadow: '0 30px 70px -50px rgba(12,12,12,0.45)' }}
       >
         <header className="px-[40px] pb-[28px] pt-[38px]" style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.18)' }}>
+          {/*
+            The letterhead. A priced offer with no sender is not a proposal, and
+            this page is frequently forwarded past the email that carried it —
+            so who it is from has to survive on the document itself.
+
+            Absent when the API could not name the agency (Clerk unconfigured,
+            or briefly unreachable). The offer still renders: the sender is the
+            letterhead, not the contract.
+          */}
+          {proposal.from ? (
+            <div className="mb-[22px] flex items-center gap-[12px]">
+              {/* The initial, drawn here rather than fetched: see the note on
+                  `from` above for why no remote logo is loaded. */}
+              <span
+                aria-hidden
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[9px] text-[16px] font-bold text-ink"
+                style={{ background: '#F4F5F7' }}
+              >
+                {proposal.from.name.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11.5px] font-bold uppercase tracking-[0.07em]" style={{ color: 'rgb(131,131,131)' }}>
+                  From
+                </span>
+                <span className="mt-[2px] block truncate text-[16px] font-bold text-ink">{proposal.from.name}</span>
+              </span>
+            </div>
+          ) : null}
+
           <h1 className="text-[30px] font-bold leading-[1.2] text-ink">{proposal.title}</h1>
           <p className="mt-[10px] text-[16px]" style={{ color: 'rgb(91,91,91)' }}>
             Prepared for <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>{proposal.preparedFor}</b>
@@ -204,7 +256,9 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
         <footer className="px-[40px] pb-[36px]">
           <div className="rounded-[14px] p-[20px]" style={{ background: '#E4EEFB' }}>
             <p className="text-[15.5px] font-semibold" style={{ color: '#2B5EA7' }}>
-              To accept, reply to the email this link came from.
+              {proposal.from
+                ? `To accept, reply to ${proposal.from.name}.`
+                : 'To accept, reply to the email this link came from.'}
             </p>
             <p className="mt-[6px] text-[14.5px] leading-[1.5]" style={{ color: '#3A6295' }}>
               This page is a copy of the offer to read and share internally. Nothing on it commits you to

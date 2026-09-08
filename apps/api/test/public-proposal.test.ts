@@ -299,3 +299,126 @@ describe('the surface is exactly one read', () => {
     expect(app.routes[0]?.method).toBe('GET');
   });
 });
+
+describe('the sender', () => {
+  const agency = (impl?: (orgId: string) => Promise<{ name: string } | undefined>) => {
+    const calls: string[] = [];
+    return {
+      calls,
+      resolveAgency: async (orgId: string) => {
+        calls.push(orgId);
+        return impl ? impl(orgId) : { name: 'Clientforce Ai' };
+      },
+    };
+  };
+
+  it('names the agency the offer is from', async () => {
+    const a = agency();
+    const res = await get(appFor({ ...deps([row()]), resolveAgency: a.resolveAgency }), HEX);
+    expect((await body(res)).from).toEqual({ name: 'Clientforce Ai' });
+  });
+
+  it('discloses only the name, whatever else a resolver hands back', async () => {
+    /**
+     * THE REGRESSION THIS EXISTS FOR.
+     *
+     * A logo URL shipped briefly, read straight from Clerk's `imageUrl`. That
+     * URL base64-embeds the organisation and instance ids, so the public page
+     * was publishing both — and a grep for `org_` did not catch it. The route
+     * now rebuilds the object from `name` alone, and this proves a resolver
+     * cannot widen the disclosure by returning more.
+     */
+    const leaky = async () => ({
+      name: 'Clientforce Ai',
+      logoUrl: 'https://img.clerk.com/eyJyaWQiOiJvcmdfc2VjcmV0In0',
+      imageUrl: 'https://img.clerk.com/whatever',
+      id: 'org_secret',
+    });
+    const res = await get(
+      appFor({ ...deps([row()]), resolveAgency: leaky as unknown as PublicProposalDeps['resolveAgency'] }),
+      HEX,
+    );
+    const got = await body(res);
+    expect(got.from).toEqual({ name: 'Clientforce Ai' });
+    expect(JSON.stringify(got)).not.toContain('img.clerk.com');
+  });
+
+  it('looks the sender up by the proposal’s own org, never anything from the request', async () => {
+    const a = agency();
+    await get(appFor({ ...deps([row()]), resolveAgency: a.resolveAgency }), HEX);
+    expect(a.calls).toEqual(['org_secret']);
+  });
+
+  it('still never discloses the org id itself', async () => {
+    /** The name is the letterhead; the id is the tenancy key every scoped query filters on. */
+    const a = agency();
+    const res = await get(appFor({ ...deps([row()]), resolveAgency: a.resolveAgency }), HEX);
+    const text = JSON.stringify(await body(res));
+    expect(text).toContain('Clientforce Ai');
+    expect(text).not.toContain('org_secret');
+  });
+
+  it('never carries a logo, however the org is configured', async () => {
+    const a = agency(async () => ({ name: 'No Logo Co' }));
+    const res = await get(appFor({ ...deps([row()]), resolveAgency: a.resolveAgency }), HEX);
+    const from = (await body(res)).from as Record<string, unknown>;
+    expect(Object.keys(from)).toEqual(['name']);
+  });
+
+  it('omits the sender entirely when there is no resolver — Clerk unconfigured', async () => {
+    const res = await get(appFor(deps([row()])), HEX);
+    expect(await body(res)).not.toHaveProperty('from');
+  });
+
+  it('serves the offer anyway when the lookup throws', async () => {
+    /**
+     * A Clerk outage must not 500 a client-facing page. The sender is the
+     * letterhead, not the contract.
+     */
+    const res = await get(
+      appFor({ ...deps([row()]), resolveAgency: async () => { throw new Error('clerk down'); } }),
+      HEX,
+    );
+    expect(res.status).toBe(200);
+    const got = await body(res);
+    expect(got).not.toHaveProperty('from');
+    expect(got.totalContractCents).toBe(1_250_000);
+  });
+
+  it('caches the lookup, so a refreshed link is not a Clerk call each time', async () => {
+    /**
+     * The rate limiter caps requests; this caps the *upstream* calls, which is
+     * the ceiling that costs money. Without it an unauthenticated URL is an
+     * amplifier pointed at our own Clerk quota.
+     */
+    const a = agency();
+    const app = appFor({ ...deps([row()]), resolveAgency: a.resolveAgency, rateLimit: { max: 100, windowMs: 60_000 } });
+    for (let i = 0; i < 5; i++) await get(app, HEX);
+    expect(a.calls).toHaveLength(1);
+  });
+
+  it('caches a miss too, so an unnamed org is not looked up every time', async () => {
+    const a = agency(async () => undefined);
+    const app = appFor({ ...deps([row()]), resolveAgency: a.resolveAgency, rateLimit: { max: 100, windowMs: 60_000 } });
+    for (let i = 0; i < 4; i++) await get(app, HEX);
+    expect(a.calls).toHaveLength(1);
+  });
+
+  it('caches per org rather than globally', async () => {
+    const a = agency(async (orgId) => ({ name: `Agency ${orgId}` }));
+    const app = appFor({
+      ...deps([row(), row({ shareToken: OTHER, orgId: 'org_two' })]),
+      resolveAgency: a.resolveAgency,
+      rateLimit: { max: 100, windowMs: 60_000 },
+    });
+    expect((await body(await get(app, HEX))).from).toEqual({ name: 'Agency org_secret' });
+    expect((await body(await get(app, OTHER))).from).toEqual({ name: 'Agency org_two' });
+    expect(a.calls.sort()).toEqual(['org_secret', 'org_two']);
+  });
+
+  it('does not look the sender up for a token that resolves to nothing', async () => {
+    const a = agency();
+    await get(appFor({ ...deps([row()]), resolveAgency: a.resolveAgency }), OTHER);
+    expect(a.calls).toEqual([]);
+  });
+});

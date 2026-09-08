@@ -6,18 +6,17 @@ import {
 /**
  * Money, and a proposal rendered as something a person can paste into an email.
  *
- * ── Why "copy as text" is the primary way to send ─────────────────────────
+ * ── Why the text exists alongside the link ───────────────────────────────
  *
- * `proposal.share` mints a real expiring credential, and there is no page that
- * serves it: the tool proxy is deliberately not public (`middleware.ts`), and
- * CLAUDE.md allows exactly two route handlers under `src/app/api`, so a third
- * one to read a proposal by token is not a thing to add here. A public viewer
- * needs its own unauthenticated surface on `apps/api`, which is a security
- * decision with its own review rather than a side effect of building a modal.
+ * `/p/[token]` serves the proposal to a reader with no account, so the link is
+ * real. The text is not a fallback for it — an agency sending a proposal by
+ * email wants the offer *in the body*, because a client who has to click
+ * something to see a price reads it later or not at all. The link is for
+ * forwarding; the text is for reading.
  *
- * Meanwhile the agency's actual need — get the offer in front of the client
- * today — is met by handing them the text. So that is the primary action, the
- * link is shown with the truth attached, and neither pretends to be the other.
+ * Both name the sender, and they must agree: the page reads its name from the
+ * API, this reads it from Clerk in the browser, and both are the same
+ * organisation.
  */
 
 /**
@@ -79,12 +78,14 @@ export interface ProposalForText {
  * structure that matters — which lines recur and which do not — is carried in
  * words, because that is the distinction a client misreads.
  */
-export function proposalToText(p: ProposalForText, agencyFor: string): string {
+export function proposalToText(p: ProposalForText, agencyFor: string, from?: string): string {
   const lines: string[] = [];
 
   lines.push(p.title);
   lines.push('');
   lines.push(`Prepared for ${agencyFor}`);
+  /* Named when we know it, so the pasted body says the same thing the page does. */
+  if (from?.trim()) lines.push(`From ${from.trim()}`);
   lines.push(`Term: ${p.termMonths} ${p.termMonths === 1 ? 'month' : 'months'}`);
   lines.push('');
   lines.push('What is included');
