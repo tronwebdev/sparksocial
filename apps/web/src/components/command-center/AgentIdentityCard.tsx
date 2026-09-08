@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT } from '@sparksocial/shared/agentIdentity';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -102,7 +103,7 @@ export function AgentIdentityCard({
               /* Not styled as a name, because it is not one. The prototype
                  assumes every agent has been named; a build has to render the
                  state before that happened. */
-              <span className="text-ink-muted">Unnamed agent</span>
+              <span className="text-ink-muted">{UNNAMED_AGENT}</span>
             )}
           </h2>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT } from '@sparksocial/shared/agentIdentity';
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { SparkMark } from '@/components/brand/SparkMark';
@@ -233,7 +234,7 @@ export function SparkRail({
           </span>
 
           <p className="absolute left-[123px] right-[12px] top-[28px] truncate text-[22.58px] font-semibold leading-[1.28] text-ink">
-            {id?.named ? id.name : 'Unnamed agent'}
+            {id?.named ? id.name : UNNAMED_AGENT}
           </p>
 
           {/* 180x28.9 at 125,67.6: the word, then a white pill holding the dot

@@ -32,14 +32,38 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Read once, because somebody may have named it already and an empty field
-  // would read as "not set" and then overwrite it with nothing on blur.
+  /**
+   * Read once, because somebody may have named it already and an empty field
+   * would read as "not set".
+   *
+   * ── The bug this comment used to describe and then have ──────────────
+   *
+   * It read `res.output.agentName`. `brand.governance.get` does not return
+   * that: the name comes back inside the derived identity, as
+   * `agentIdentity.name` (`brand.governance.set` is the side that takes a bare
+   * `agentName`, which is what made the mistake plausible). So the read was
+   * always `undefined`, the field never prefilled, and anyone who named their
+   * agent and came back to this step saw an empty box and concluded it had not
+   * saved. It had.
+   *
+   * The hand-written type parameter is why the compiler was no help — asserting
+   * `{ agentName?: string }` on a response that has no such field type-checks
+   * perfectly. It now names the shape it actually receives.
+   */
   useEffect(() => {
     void (async () => {
-      const res = await invoke<{ agentName?: string }>('brand.governance.get', {});
-      if (res.status === 'succeeded' && res.output.agentName) {
-        setName(res.output.agentName);
-        setSaved(res.output.agentName);
+      const res = await invoke<{ agentIdentity?: { name: string; named: boolean } }>(
+        'brand.governance.get',
+        {},
+      );
+      if (res.status !== 'succeeded') return;
+      /* `named` distinguishes a real name from the `UNNAMED_AGENT` fallback the
+         tool substitutes — putting "Your agent" in the box as if somebody had
+         typed it is the same class of lie as showing nothing. */
+      const id = res.output.agentIdentity;
+      if (id?.named && id.name) {
+        setName(id.name);
+        setSaved(id.name);
       }
     })();
   }, []);

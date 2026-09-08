@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT } from '@sparksocial/shared/agentIdentity';
 import { useState } from 'react';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
@@ -109,7 +110,7 @@ export function AgentCalendarTab({
             <SparkMark variant="shell" size={100} />
           </span>
           <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-[30px] font-semibold leading-[1.27] text-ink">
-            {agentName ?? 'Unnamed agent'}
+            {agentName ?? UNNAMED_AGENT}
           </p>
           <span className="absolute left-[152px] top-[92px] text-16 leading-none text-ink">Status</span>
           <span className="absolute left-[210px] top-[86px] inline-flex h-[31px] items-center gap-[7px] rounded-[90px] bg-white px-[13px]">
