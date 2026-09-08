@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChatDrawer } from '@/components/command-center/ChatDrawer';
 import { isSparkPinned, onAskSparkOpen, openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { useAgentIdentity } from '@/lib/useAgentIdentity';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
@@ -86,6 +87,25 @@ import { cn } from '@/lib/utils';
 export function AskSpark({ compact = false, delegate = false }: { compact?: boolean; delegate?: boolean } = {}) {
   const router = useRouter();
   const { genome } = useSelectedGenome();
+
+  /**
+   * The agent's own name on the bubble.
+   *
+   * It said "Ask Spark?" whatever the agent was called, which is the last place
+   * naming your agent did not take effect. Unnamed — or with no brand selected,
+   * which happens on the account screens — it still says Spark: that is the
+   * product's agent (PRD §1), and it is the honest label when this brand's one
+   * (§4) has no name yet.
+   *
+   * Cached per brand by the hook, because this component is mounted by the
+   * shell on every screen and the name has usually been fetched already by the
+   * banner or the rail. See `lib/useAgentIdentity.ts`.
+   */
+  const agent = useAgentIdentity(genome?.genomeId);
+  const askLabel = agent.named ? `Ask ${agent.name}?` : 'Ask Spark?';
+  const askTitle = genome
+    ? `${agent.named ? `Ask ${agent.name}` : 'Ask Spark'} about ${genome.name}`
+    : askLabel.replace(/\?$/, '');
   /**
    * A pinned drawer opens with the page.
    *
@@ -125,13 +145,37 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
     and `delegate` is kept only for a caller that wants the button without one.
   */
 
-  const S = compact
-    ? { block: 'h-[66.3px] w-[185px]', orb: 'h-[66.3px] w-[66.3px]', orbPx: 66.3,
+  const base = compact
+    ? { block: 'h-[66.3px]', blockW: 185, orb: 'h-[66.3px] w-[66.3px]', orbPx: 66.3,
         bubbleW: 118.929, bubbleH: 44.362, bubbleLeft: 66.1, bubbleTop: 11.3,
-        labelLeft: 96.3, labelTop: 24.5, labelCls: 'text-[13.21px]' }
-    : { block: 'h-[70.2px] w-[196px]', orb: 'h-[70.2px] w-[70.2px]', orbPx: 70.2,
+        labelLeft: 96.3, labelTop: 24.5, labelCls: 'text-[13.21px]', charW: 7.35 }
+    : { block: 'h-[70.2px]', blockW: 196, orb: 'h-[70.2px] w-[70.2px]', orbPx: 70.2,
         bubbleW: 126, bubbleH: 47, bubbleLeft: 70, bubbleTop: 12,
-        labelLeft: 102, labelTop: 26, labelCls: 'text-14' };
+        labelLeft: 102, labelTop: 26, labelCls: 'text-14', charW: 7.8 };
+
+  /**
+   * The bubble grows for a longer name, and not otherwise.
+   *
+   * The design's bubble is a fixed 126x47 path and "Ask Spark?" very nearly
+   * fills it, so a name of any length would have spilled out of the white
+   * shape. Truncating to "Ask Christop…?" was the alternative and it reads
+   * worse than the bug.
+   *
+   * `extra` is zero for a label no wider than the design's own, so the default
+   * renders at exactly the measured geometry — the growth is opt-in by the
+   * length of somebody's agent name. The width is estimated per character
+   * rather than measured on a canvas: an estimate that can only be too generous
+   * makes the bubble slightly wide in the worst case, which is invisible, while
+   * a canvas measure would need the font loaded and would differ between the
+   * server and the first client paint.
+   */
+  const DESIGN_LABEL = 'Ask Spark?';
+  const extra = Math.max(0, Math.ceil((askLabel.length - DESIGN_LABEL.length) * base.charW));
+  const S = {
+    ...base,
+    blockW: base.blockW + extra,
+    bubbleW: base.bubbleW + extra,
+  };
 
   return (
     <>
@@ -156,14 +200,17 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
         onClick={() => (delegate ? openAskSpark() : setOpen(true))}
         aria-haspopup="dialog"
         aria-expanded={delegate ? undefined : open}
-        aria-label={genome ? `Ask Spark about ${genome.name}` : 'Ask Spark'}
-        title={genome ? `Ask Spark about ${genome.name}` : 'Ask Spark'}
+        aria-label={askTitle}
+        title={askTitle}
+        style={{ width: S.blockW }}
         className={cn(
           'relative shrink-0 border-0 bg-transparent p-0 text-left',
           S.block,
           'transition-transform hover:scale-[1.02] active:scale-[0.99]',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-          'max-md:h-[52px] max-md:w-[52px]',
+          /* Below `md` the bubble is gone and the orb alone is the control, so
+             the grown width must not survive into that breakpoint. */
+          'max-md:!w-[52px] max-md:h-[52px]',
         )}
       >
         <span className={cn('absolute left-0 top-0 block max-md:h-[52px] max-md:w-[52px]', S.orb)}>
@@ -175,6 +222,9 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
           width={S.bubbleW}
           height={S.bubbleH}
           viewBox="0 0 126 47"
+          /* `none`, so the extra width lands on the flat middle of the shape
+             instead of scaling the tail and the corner radii with it. */
+          preserveAspectRatio="none"
           aria-hidden
           className="absolute block max-md:hidden"
           style={{ left: S.bubbleLeft, top: S.bubbleTop }}
@@ -185,10 +235,10 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
           />
         </svg>
         <span
-          className={cn('absolute font-semibold leading-[1.28] text-ink max-md:hidden', S.labelCls)}
+          className={cn('absolute whitespace-nowrap font-semibold leading-[1.28] text-ink max-md:hidden', S.labelCls)}
           style={{ left: S.labelLeft, top: S.labelTop }}
         >
-          Ask Spark?
+          {askLabel}
         </span>
       </button>
       </span>

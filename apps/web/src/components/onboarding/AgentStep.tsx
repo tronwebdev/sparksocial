@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { invalidateAgentIdentity } from '@/lib/useAgentIdentity';
 import { DropZone, SectionLabel, TextInput } from './kit';
 import { ProtoScale } from './Stage';
 
@@ -78,6 +79,11 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       return;
     }
     setSaved(next);
+    /* The "Ask Spark?" orb caches the name per brand, and this is the only
+       thing in the app that changes it — so this is the only place that has to
+       say so. Without it the orb keeps the old name until the tab reloads.
+       See `lib/useAgentIdentity.ts`. */
+    invalidateAgentIdentity(genomeId);
   }
 
   /**
