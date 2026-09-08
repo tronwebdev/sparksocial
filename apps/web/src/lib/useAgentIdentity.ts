@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import type { ToolOutput } from '@/lib/toolTypes.generated';
 
 /**
  * THE AGENT'S NAME, FETCHED ONCE PER BRAND.
@@ -49,10 +50,16 @@ const cache = new Map<string, AgentIdentity>();
 const inFlight = new Map<string, Promise<AgentIdentity>>();
 
 async function fetchIdentity(genomeId: string): Promise<AgentIdentity> {
-  const res = await invoke<{ agentIdentity?: { name: string; named: boolean } }>(
-    'brand.governance.get',
-    {},
-  );
+  /**
+   * The shape comes from the registry, not from here.
+   *
+   * This read is the reason `toolTypes.generated.ts` exists: the onboarding
+   * version of it asserted a top-level `agentName`, which `brand.governance.get`
+   * does not return, and the assertion type-checked because it *was* the type.
+   * `ToolOutput` is printed from the tool's own Zod schema, so the field names
+   * here are the field names the server sends.
+   */
+  const res = await invoke<ToolOutput<'brand.governance.get'>>('brand.governance.get', {});
 
   /**
    * A failure is not cached. The name is decoration on a chat bubble, so the

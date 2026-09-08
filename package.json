@@ -20,7 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:policy": "vitest run packages/tools/test/policy.test.ts",
-    "test:isolation": "vitest run packages/db/test/isolation.test.ts"
+    "test:isolation": "vitest run packages/db/test/isolation.test.ts",
+    "generate:tool-types": "tsx scripts/generate-tool-types.mts",
+    "check:tool-types": "tsx scripts/generate-tool-types.mts --check"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

@@ -84,6 +84,13 @@ jobs:
       - name: Genome isolation
         run: npm run test:isolation
 
+      # The frontend's tool types are generated from the registry and committed
+      # (`scripts/generate-tool-types.mts` says why). This fails when a schema
+      # changed and the regenerated file was not committed with it, so a tool's
+      # shape can never drift away from the types the app is compiled against.
+      - name: Tool types match the registry
+        run: npm run check:tool-types
+
       # CLAUDE.md invariant 3 — the policy engine is pure and fully covered.
       # The 100% branch threshold is enforced in vitest.config.ts, so an
       # unreachable-but-untested governance branch fails here.
