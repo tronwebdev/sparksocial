@@ -157,11 +157,11 @@ export default function WorkspacesPage() {
               </svg>
             </BarButton>
             {/*
-              Agency multi-tenancy is P6 and explicitly out of the Aug 29 alpha
-              (`CLAUDE.md`, "Scope"). There is no portal route to send this to,
-              so it says so rather than 404ing.
+              Was disabled, titled "not part of this release" — true when
+              written, because there was no portal route to send it to. `/agency`
+              exists now (`(cc)/agency`), so the button goes there.
             */}
-            <BarButton disabled title="The agency portal is not part of this release." label="Agency Portal">
+            <BarButton onClick={() => router.push('/agency')} label="Agency Portal">
               <svg width="16" height="15" viewBox="0 0 16 15" fill="none" aria-hidden>
                 <rect x="1" y="4" width="14" height="10" rx="2.4" stroke={MUTED} strokeWidth="1.4" />
                 <path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke={MUTED} strokeWidth="1.4" />
