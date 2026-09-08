@@ -33,10 +33,11 @@ import { majorUnits, money, parseMoney, proposalToText } from './proposalText';
  *   2. **Only a draft is editable.** Once the client has seen a price, the
  *      record of what was offered has to survive. The tool refuses it; this
  *      does not offer it.
- *   3. **Sending is honest.** `proposal.share` marks it sent and mints a real
- *      expiring credential — but nothing serves that link yet, so the primary
- *      action is the copyable text and the link comes with the truth attached.
- *      See `proposalText.ts`.
+ *   3. **Sending gives you both halves.** `proposal.share` marks it sent and
+ *      mints a real expiring credential, and `/p/[token]` now serves it — so
+ *      the panel hands over a shareable link *and* the offer as plain text,
+ *      because an agency sending a proposal by email wants the words in the
+ *      body as well as the link.
  */
 
 const STATUS_LABEL: Record<ProposalStatus, string> = {
@@ -626,6 +627,14 @@ function SentPanel({
 }) {
   const text = proposalToText(proposal, lead.businessName);
 
+  /**
+   * `origin` is read in an effect rather than at render, because this component
+   * is also type-checked as part of a server build and `window` is not there.
+   */
+  const [origin, setOrigin] = useState('');
+  useEffect(() => setOrigin(window.location.origin), []);
+  const url = `${origin}/p/${token}`;
+
   return (
     <>
       <div className="rounded-[14px] p-[18px]" style={{ background: '#D8F5E6' }}>
@@ -663,24 +672,33 @@ function SentPanel({
       </div>
 
       {/*
-        The link is real — 256 bits, expiring, revoked the moment a decision is
-        recorded — and nothing serves it yet. Saying so is the only honest
-        option: presenting it as a shareable URL would hand somebody a link
-        that 404s in front of a client.
+        The link. Real, expiring, and revoked the moment a decision is recorded
+        — `/p/[token]` serves it to a reader with no account.
+
+        Built from `window.location.origin` rather than an env var so it is
+        always the host the agency is actually using; a `NEXT_PUBLIC_` base URL
+        would be one more thing to get wrong per environment, and this component
+        only ever runs in a browser.
       */}
-      <p className="mt-[24px] text-[14px] font-semibold text-ink">The share link</p>
+      <p className="mt-[24px] text-[14px] font-semibold text-ink">Or send a link</p>
       <p className="mt-[6px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
-        A link was minted for this proposal and expires on {expiresAt.slice(0, 10)}. There is no public
-        page to open it with yet, so it is not worth sending — the client-facing view is still to be
-        built. The token is kept here for when it is.
+        Opens without an account and stops working on {expiresAt.slice(0, 10)}, or as soon as you record
+        a decision. Anyone with the link can read the offer, so treat it like the email it goes in.
       </p>
-      <code
-        className="mt-[10px] block truncate rounded-[10px] px-[12px] py-[10px] font-mono text-[12px]"
-        style={{ background: '#F4F5F7', color: 'rgb(91,91,91)' }}
-        title={token}
-      >
-        {token.slice(0, 16)}…{token.slice(-8)}
-      </code>
+
+      <div className="mt-[10px] flex flex-wrap items-center gap-[10px]">
+        <code
+          className="min-w-0 flex-1 truncate rounded-[10px] px-[12px] py-[11px] font-mono text-[12.5px]"
+          style={{ background: '#F4F5F7', color: 'rgb(91,91,91)' }}
+          title={url}
+        >
+          {url}
+        </code>
+        <CopyButton text={url} label="Copy link" />
+        <a href={url} target="_blank" rel="noreferrer noopener" className={BTN_GHOST} style={RING}>
+          Preview
+        </a>
+      </div>
     </>
   );
 }

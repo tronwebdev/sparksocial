@@ -7,6 +7,7 @@ import {
   runAgent,
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
+import { registerPublicProposal } from './public-proposal.js';
 import { createClerkClient } from '@clerk/backend';
 import { registerAlphaTools, registerAgencyTools, blobStore, localBlobStoreForRoutes } from './tools.js';
 import { registerLocalStorageRoutes } from './local-storage-routes.js';
@@ -483,6 +484,14 @@ const app = createApp({
 if (!agentConfigured) {
   console.warn('[warn] ANTHROPIC_API_KEY unset — /v1/agent/runs will answer 501. Timeline reads still work.');
 }
+
+/*
+  The client-facing proposal view — `proposal.share`'s link finally resolves.
+  Unauthenticated by design: the token is the whole credential, which is why it
+  is 256 bits, expires, and is revoked the moment a decision is recorded. Not a
+  tool, and deliberately read-only — see `public-proposal.ts`.
+*/
+registerPublicProposal(app, { db: scopedDb });
 
 if (canvaOAuthConfigured) {
   registerCanvaOAuthCallback(app, {
