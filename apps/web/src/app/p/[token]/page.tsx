@@ -31,20 +31,23 @@ import { PROPOSAL_SERVICE_LABELS, type ProposalService } from '@sparksocial/shar
  * Every string here came from the agency's own typing or a third party's
  * spreadsheet, and is rendered as text by React — never `dangerouslySetInnerHTML`.
  *
- * ── One thing about this page that is not yet right ───────────────────────
+ * ── Why this page loads no auth SDK ──────────────────────────────────────
  *
- * It inherits the root layout, so `ClerkProvider` mounts and clerk-js loads —
- * roughly 200KB of auth SDK, and a handful of requests to Clerk, on a page
- * whose reader has no account. The content is server-rendered and does not wait
- * on any of it, and `referrer: no-referrer` is verified to keep the token out of
- * those requests, so nothing leaks. But it is the same third-party-disclosure
- * objection that kept the agency's logo off this page, and it applies here too.
+ * It briefly did. The root layout wrapped every route in `ClerkProvider` and
+ * `NotificationProvider`, and the latter calls `useAuth()`, so clerk-js was
+ * fetched from Clerk's CDN here too — seven requests to a third party to show
+ * a stranger a price. Nothing leaked (`no-referrer` keeps the token out of
+ * them), but it was the same objection that kept the agency's logo off this
+ * page.
  *
- * Fixing it means giving this route its own root layout, which in the App Router
- * means removing the single top-level layout and giving every existing group one
- * — a refactor of the whole app's shell, and not something to do on the way past
- * while adding a letterhead. Written down rather than left for somebody to
- * rediscover.
+ * The providers now live in `app/AppProviders.tsx` and each branch that needs a
+ * session opts into them. This route opts into nothing, so its only ancestor is
+ * the bare `<html>`/`<body>` in `app/layout.tsx` — **measured at zero
+ * third-party requests.**
+ *
+ * That property is easy to lose: any provider added to the root layout lands
+ * here too. If this page starts contacting anything again, that is where to
+ * look.
  */
 
 const API_URL = process.env.SPARK_API_URL ?? 'http://localhost:8080';

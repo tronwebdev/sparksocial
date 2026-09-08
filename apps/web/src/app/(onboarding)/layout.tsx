@@ -1,3 +1,4 @@
+import { AppProviders } from '../AppProviders';
 import { OrgGuard } from '@/components/auth/OrgGuard';
 
 /**
@@ -14,5 +15,9 @@ import { OrgGuard } from '@/components/auth/OrgGuard';
  * of the app.
  */
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
-  return <OrgGuard>{children}</OrgGuard>;
+  return (
+    <AppProviders>
+      <OrgGuard>{children}</OrgGuard>
+    </AppProviders>
+  );
 }
