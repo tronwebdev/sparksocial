@@ -43,7 +43,12 @@ export function AgencyPortalScreen() {
   const [view, setView] = useState<View>('home');
   const [launched, setLaunched] = useState(false);
   const [rowOpen, setRowOpen] = useState(false);
-  const [cfConnected, setCfConnected] = useState(false);
+  /**
+   * True once the pipeline has anything in it. The design grows this view
+   * 760 → 1180 on connecting a lead source; the real trigger is having leads,
+   * because the source it depicts does not exist. See `AgencyClientFinder`.
+   */
+  const [cfHasLeads, setCfHasLeads] = useState(false);
   const [wizStep, setWizStep] = useState<WizStep | null>(null);
   const [draft, setDraft] = useState<WizardDraft>(emptyWizardDraft);
   /** The design's Search Workspace box, filtering the roster by brand name. */
@@ -68,7 +73,7 @@ export function AgencyPortalScreen() {
 
   let height =
     view === 'clientFinder'
-      ? cfConnected
+      ? cfHasLeads
         ? 1180
         : 760
       : view === 'jobFinder'
@@ -95,7 +100,7 @@ export function AgencyPortalScreen() {
   const visible = (roster?.brands ?? []).filter((b) => (q === '' ? true : b.name.toLowerCase().includes(q)));
 
   const toolTitle =
-    view === 'clientFinder' ? (cfConnected ? 'Saved Leads' : 'Client Finder') : view === 'jobFinder' ? 'Job Finder' : undefined;
+    view === 'clientFinder' ? (cfHasLeads ? 'Client Pipeline' : 'Client Finder') : view === 'jobFinder' ? 'Job Finder' : undefined;
 
   return (
     <AgencyStage height={height} toolTitle={toolTitle} toolIcon={view === 'clientFinder'} onBack={() => setView('home')}>
@@ -158,7 +163,14 @@ export function AgencyPortalScreen() {
         </>
       ) : null}
 
-      {view === 'clientFinder' ? <AgencyClientFinder onConnected={setCfConnected} /> : null}
+      {view === 'clientFinder' ? (
+        <AgencyClientFinder
+          onHasLeads={setCfHasLeads}
+          /* `lead.convert` attaches a won lead to a real workspace, so the
+             picker needs the org's brands — the same roster the table reads. */
+          brands={(roster?.brands ?? []).map((b) => ({ brandId: b.brandId, name: b.name }))}
+        />
+      ) : null}
       {view === 'jobFinder' ? <AgencyJobFinder /> : null}
 
       {wizStep !== null ? (
