@@ -6,6 +6,9 @@ import { LEAD_TRANSITIONS, type LeadSource, type LeadStatus } from '@sparksocial
 import { cn } from '@/lib/utils';
 import { useLeads, type Lead } from './useLeads';
 import { LeadAddModal, LeadImportModal } from './LeadModals';
+import { ProposalModal } from './ProposalModal';
+import { useProposals } from './useProposals';
+import { money } from './proposalText';
 import { leadsToCsv } from './leadCsv';
 
 /**
@@ -107,6 +110,8 @@ export function AgencyClientFinder({
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState<string | null>(null);
   const [modal, setModal] = useState<'import' | 'add' | null>(null);
+  /** The lead whose proposals are open, if any. */
+  const [proposalsFor, setProposalsFor] = useState<Lead | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
   /**
@@ -133,6 +138,13 @@ export function AgencyClientFinder({
 
   const { leads, total, counts, error, loading, busy, update, convert, create, importRows, pipelineSize } =
     useLeads(query);
+
+  /**
+   * One org-wide `proposal.list`, indexed by lead — see `useProposals`. It
+   * gives every row its badge and the header the one number an agency asks a
+   * pipeline for: what is out and undecided.
+   */
+  const proposals = useProposals();
 
   /* The stage grows once there is a pipeline to show. */
   useEffect(() => {
@@ -172,6 +184,19 @@ export function AgencyClientFinder({
         <LeadImportModal onClose={() => setModal(null)} onImport={importRows} busy={busy} />
       ) : null}
       {modal === 'add' ? <LeadAddModal onClose={() => setModal(null)} onCreate={create} busy={busy} /> : null}
+      {proposalsFor ? (
+        <ProposalModal
+          lead={proposalsFor}
+          proposals={proposals.byLead[proposalsFor.id] ?? []}
+          capped={proposals.total > 200}
+          busy={proposals.busy}
+          onClose={() => setProposalsFor(null)}
+          onDraft={proposals.draft}
+          onUpdate={proposals.update}
+          onDecide={proposals.decide}
+          onShare={proposals.share}
+        />
+      ) : null}
     </>
   );
 
@@ -310,9 +335,32 @@ export function AgencyClientFinder({
         ))}
       </div>
 
-      <span className="absolute left-ag-tool-x top-[272px] text-[17px] font-semibold" style={{ color: 'rgb(91,91,91)' }}>
-        {loading ? 'Loading…' : `${total} ${total === 1 ? 'Result' : 'Results'}`}
-      </span>
+      <div className="absolute left-ag-tool-x top-[272px] flex items-center gap-[14px]">
+        <span className="text-[17px] font-semibold" style={{ color: 'rgb(91,91,91)' }}>
+          {loading ? 'Loading…' : `${total} ${total === 1 ? 'Result' : 'Results'}`}
+        </span>
+        {/* Summed by the tool under its own filters — no client-side sum over a
+            page could produce this correctly, and a mixed-currency workspace
+            deliberately gets no figure rather than a meaningless one. */}
+        {proposals.pipeline.currency && proposals.pipeline.outstandingCents > 0 ? (
+          <span
+            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-[13.5px] font-semibold"
+            style={{ background: '#E4EEFB', color: '#2B5EA7' }}
+            title="Total of every proposal sent and not yet decided"
+          >
+            {money(proposals.pipeline.outstandingCents, proposals.pipeline.currency)} out
+          </span>
+        ) : null}
+        {proposals.pipeline.currency && proposals.pipeline.acceptedCents > 0 ? (
+          <span
+            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-[13.5px] font-semibold"
+            style={{ background: '#D8F5E6', color: '#1F7A46' }}
+            title="Total of every accepted proposal"
+          >
+            {money(proposals.pipeline.acceptedCents, proposals.pipeline.currency)} won
+          </span>
+        ) : null}
+      </div>
 
       <label
         className="absolute left-[600px] top-[190px] flex h-[56px] w-[330px] items-center rounded-[14px] bg-white px-[18px]"
@@ -427,8 +475,25 @@ export function AgencyClientFinder({
               {lead.businessName.slice(0, 1).toUpperCase()}
             </span>
 
-            <span className="absolute left-[98px] top-[20px] block max-w-[600px] truncate text-[18.5px] font-bold text-ink">
-              {lead.businessName}
+            <span className="absolute left-[98px] top-[20px] flex max-w-[600px] items-center gap-[10px]">
+              <span className="truncate text-[18.5px] font-bold text-ink">{lead.businessName}</span>
+              {/* Visible without expanding, because that is the point: it tells
+                  you whether opening the row is worth it. */}
+              {(() => {
+                const mine = proposals.byLead[lead.id] ?? [];
+                const out = mine.find((x) => x.status === 'sent');
+                const won = mine.find((x) => x.status === 'accepted');
+                const show = won ?? out;
+                if (!show) return null;
+                return (
+                  <span
+                    className="flex h-[24px] shrink-0 items-center rounded-[6px] px-[8px] text-[11.5px] font-bold"
+                    style={won ? { background: '#D8F5E6', color: '#1F7A46' } : { background: '#E4EEFB', color: '#2B5EA7' }}
+                  >
+                    {won ? 'Won' : 'Sent'} {money(show.totalContractCents, show.currency)}
+                  </span>
+                );
+              })()}
             </span>
 
             {/* The design's contact strip: email · phone · a source chip. */}
@@ -574,8 +639,28 @@ export function AgencyClientFinder({
                   </Link>
                 ) : null}
 
+                {/*
+                  Proposals open in their own modal rather than growing this
+                  row: a priced offer is a document, and the design's row is 170
+                  tall inside a table that shows eight of them.
+                */}
+                <button
+                  type="button"
+                  onClick={() => setProposalsFor(lead)}
+                  className="flex h-[46px] items-center gap-[9px] rounded-[11px] bg-white px-[18px] text-[15px] font-semibold text-ink transition-shadow hover:shadow-card"
+                  style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
+                >
+                  Proposals
+                  <span
+                    className="flex h-[22px] min-w-[22px] items-center justify-center rounded-[11px] px-[6px] text-[12px] font-bold"
+                    style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}
+                  >
+                    {(proposals.byLead[lead.id] ?? []).length}
+                  </span>
+                </button>
+
                 {lead.interest ? (
-                  <span className="max-w-[380px] truncate text-[14.5px] font-medium" style={{ color: 'rgb(91,91,91)' }} title={lead.interest}>
+                  <span className="max-w-[260px] truncate text-[14.5px] font-medium" style={{ color: 'rgb(91,91,91)' }} title={lead.interest}>
                     Wants: {lead.interest}
                   </span>
                 ) : null}
