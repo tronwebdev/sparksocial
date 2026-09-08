@@ -121,7 +121,20 @@ export function SparkRail({
       {/* ── rail header ──────────────────────────────────────────────── */}
       <div className="flex h-[58px] items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="ml-[5px] font-display text-[25.28px] leading-[1.1] text-ink">Spark:</p>
+          {/*
+            The agent's own name, when it has one.
+
+            This said "Spark:" unconditionally, so naming your agent "Lisa" got
+            you a screen showing "Lisa" in the identity card and "Spark:" as the
+            speaker two inches away — the thing that made naming look like it had
+            not worked. Unnamed it still says Spark, which is correct: SPARK is
+            the product's agent (PRD §1) until you give this brand's one a name
+            (§4), and the global "Ask Spark?" orb stays Spark for the same reason
+            — it is reachable with no brand selected at all.
+          */}
+          <p className="ml-[5px] truncate font-display text-[25.28px] leading-[1.1] text-ink">
+            {id?.named ? `${id.name}:` : 'Spark:'}
+          </p>
           <p className="mt-[7px] whitespace-nowrap text-16 font-medium leading-[1.31] text-ink-muted">
             {/* The design's "✨ Freshly Activated". True on day one and a lie
                 after that, so it says which state the agent is in. */}

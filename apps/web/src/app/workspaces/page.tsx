@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
+import { useAuth, useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
+import { invoke } from '@/lib/tools';
+import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 /**
@@ -48,7 +50,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
  * everyone else, from data already in hand. Same shape, no invented faces.
  */
 
-/** The prototype's five card fills, cycled — a workspace has no colour of its own. */
+/** The prototype's five card fills, cycled — a brand has no colour of its own. */
 const CARD_BG = ['#C9F0FA', '#D9F4DC', '#FBDCD4', '#FBF0D4', '#EDDBF8'] as const;
 /** Its five workspace glyphs, likewise cycled where an org has no image set. */
 const CARD_ICON = [
@@ -61,20 +63,53 @@ const CARD_ICON = [
 
 const MUTED = '#5B5B5B';
 
+/** One brand in this account, as `genome.list` returns it. */
+interface BrandCard {
+  genomeId: string;
+  brandId: string;
+  name: string;
+  updatedAt: string;
+}
+
 export default function WorkspacesPage() {
   const router = useRouter();
   const { user } = useUser();
+  const { orgId } = useAuth();
   const { signOut, openUserProfile } = useClerk();
-  const { isLoaded, userMemberships, setActive, createOrganization } = useOrganizationList({
+  const { isLoaded, userMemberships, setActive } = useOrganizationList({
     userMemberships: { infinite: true, pageSize: 20 },
   });
 
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  /**
+   * The brands in this account.
+   *
+   * This screen listed *organisations* and its create button called
+   * `createOrganization`, which is why naming something here and then naming a
+   * brand in onboarding read as being asked twice: they were two different
+   * records. A person creates one account — `OrgGuard`'s "Name your account" —
+   * and then as many brands inside it as they run. Workspace and brand are the
+   * same thing (PRD §4, "Brand (Workspace)"), so this lists brands, and the
+   * name is typed once, in onboarding, where the genome is actually created.
+   *
+   * PRD §8.3 `DASH-A-01` describes this level as an "Account Dashboard (brands
+   * list…)", which is what it now is.
+   */
+  const [brands, setBrands] = useState<BrandCard[] | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await invoke<{ genomes: BrandCard[] }>('genome.list', {});
+      /* Null stays null on failure so the grid shows its loading state rather
+         than an empty one — "you have no brands" is a different claim from
+         "we could not ask". */
+      if (res.status === 'succeeded') setBrands(res.output.genomes);
+    })();
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -86,42 +121,51 @@ export default function WorkspacesPage() {
 
   const cards = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return memberships
-      .map((m, i) => ({ m, i }))
-      .filter(({ m }) => !q || m.organization.name.toLowerCase().includes(q));
-  }, [memberships, query]);
+    return (brands ?? [])
+      .map((b, i) => ({ b, i }))
+      .filter(({ b }) => !q || b.name.toLowerCase().includes(q));
+  }, [brands, query]);
 
-  async function open(organizationId: string) {
+  /** Open a brand: select it, then land on its dashboard. */
+  function open(genomeId: string) {
+    if (busy || !orgId) return;
+    setBusy(true);
+    writeSelectedGenome(orgId, genomeId);
+    /*
+      A full navigation rather than `router.push`. The selection is a cookie the
+      server reads on the next request, and a client-side transition would
+      render the shell against the brand the page was loaded with — the same
+      reason the organisation switch below reloads.
+    */
+    window.location.assign('/home');
+  }
+
+  /**
+   * Switching account, kept only for somebody who belongs to more than one.
+   *
+   * A person creates exactly one, so this is normally invisible. It exists
+   * because an agency can *invite* you into theirs, and removing the only way
+   * to reach it would strand you in yours.
+   */
+  async function switchAccount(organizationId: string) {
     if (!setActive || busy) return;
     setBusy(true);
     await setActive({ organization: organizationId });
-    /*
-      A full navigation rather than `router.push`, because the session token has
-      just changed. `OrgGuard` and every tool call read `org_id` off it, and a
-      client-side transition can render the shell against the token the page was
-      loaded with — the "signed in but nothing loads" failure its own docstring
-      describes.
-    */
     window.location.assign('/');
   }
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    if (!createOrganization || !setActive || busy || !newName.trim()) return;
+  /**
+   * Adding a brand is onboarding, and nothing else.
+   *
+   * This used to `createOrganization` and then send you to onboarding, so the
+   * name typed here named an *account* and the name typed there named the
+   * brand — the same thing asked for twice, in two records. Onboarding is where
+   * `genome.create` runs, so that is the only place a brand is named.
+   */
+  function addBrand() {
+    if (busy) return;
     setBusy(true);
-    try {
-      const org = await createOrganization({ name: newName.trim() });
-      await setActive({ organization: org.id });
-      /*
-        Onboarding, not the dashboard — the prototype's own note on this button
-        says a new workspace "flows through onboarding brand setup", and a
-        workspace with no genome has nothing for the dashboard to show.
-      */
-      window.location.assign('/onboarding');
-    } catch {
-      setBusy(false);
-      setToast('That workspace could not be created.');
-    }
+    window.location.assign('/onboarding');
   }
 
   const firstName = user?.firstName ?? user?.username ?? 'Account';
@@ -234,6 +278,31 @@ export default function WorkspacesPage() {
                       <path d="M5.8 17.6c1.1-2.4 3-3.7 5.2-3.7s4.1 1.3 5.2 3.7" stroke="currentColor" strokeWidth="1.4" />
                     </svg>
                   </MenuItem>
+                  {/*
+                    Switching account, and only when there is more than one to
+                    switch to.
+
+                    A person creates exactly one account, so this is normally
+                    absent — but an agency can invite you into theirs, and
+                    without this there would be no way back out of it. Rendered
+                    as one row per membership rather than a submenu: two or three
+                    is the realistic count.
+                  */}
+                  {isLoaded && memberships.length > 1
+                    ? memberships.map((m) => (
+                        <MenuItem
+                          key={m.organization.id}
+                          label={`Account: ${m.organization.name}`}
+                          active={m.organization.id === orgId}
+                          onClick={() => void switchAccount(m.organization.id)}
+                        >
+                          <svg width="17" height="16" viewBox="0 0 16 15" fill="none" aria-hidden>
+                            <rect x="1" y="4" width="14" height="10" rx="2.4" stroke={MUTED} strokeWidth="1.3" />
+                            <path d="M5.5 4V2.8A1.8 1.8 0 0 1 7.3 1h1.4a1.8 1.8 0 0 1 1.8 1.8V4" stroke={MUTED} strokeWidth="1.3" />
+                          </svg>
+                        </MenuItem>
+                      ))
+                    : null}
                   <MenuItem label="Account Settings" onClick={() => router.push('/settings')}>
                     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
                       <circle cx="11" cy="11" r="3" stroke="currentColor" strokeWidth="1.5" />
@@ -313,9 +382,16 @@ export default function WorkspacesPage() {
           </div>
 
           <div className="relative">
-            <h1 className="text-[26px] font-bold text-white sm:text-[34px]">Workspaces</h1>
+            {/*
+              "Brands", not "Workspaces". The two were the same record all along
+              (PRD §4, "Brand (Workspace)") and calling it both is what made
+              naming one here and naming one in onboarding look like two steps.
+              M3 settled the vocabulary: the business is a brand, the
+              organisation is an account.
+            */}
+            <h1 className="text-[26px] font-bold text-white sm:text-[34px]">Brands</h1>
             <p className="mt-2 max-w-[46ch] text-[15px] font-normal sm:mt-3 sm:text-[17px] lg:max-w-none lg:whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              Organize your projects and collaborate efficiently in dedicated workspaces.
+              Every brand in this account. Open one to work in it, or add another.
             </p>
 
             <div className="mt-5 flex flex-col gap-3 sm:mt-[22px] sm:flex-row sm:items-center sm:gap-4">
@@ -325,7 +401,7 @@ export default function WorkspacesPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search"
-                  aria-label="Search workspaces"
+                  aria-label="Search brands"
                   className="h-[54px] w-full rounded-[27px] border-0 bg-transparent pl-[22px] pr-12 text-[15.5px] font-medium text-ink outline-none"
                 />
                 <svg width="19" height="19" viewBox="0 0 26 26" fill="none" aria-hidden className="pointer-events-none absolute right-5 top-[18px] block">
@@ -334,48 +410,31 @@ export default function WorkspacesPage() {
                 </svg>
               </div>
 
-              {creating ? (
-                <form onSubmit={create} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <input
-                    autoFocus
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Workspace name"
-                    aria-label="New workspace name"
-                    className="h-[54px] w-full rounded-xl border-0 bg-white px-[18px] text-[15.5px] font-medium text-ink outline-none sm:w-[260px]"
-                  />
-                  <button type="submit" disabled={busy || !newName.trim()} className={CREATE_CLS} style={CREATE_STYLE}>
-                    {busy ? 'Creating…' : 'Create'}
-                  </button>
-                </form>
-              ) : (
-                <button type="button" onClick={() => setCreating(true)} className={CREATE_CLS} style={CREATE_STYLE}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="block">
-                    <path d="M7 1v12M1 7h12" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                  Create Workspace
-                </button>
-              )}
+              {/* No name field: the brand is named in onboarding, once. */}
+              <button type="button" onClick={addBrand} disabled={busy} className={CREATE_CLS} style={CREATE_STYLE}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="block">
+                  <path d="M7 1v12M1 7h12" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+                {busy ? 'Opening…' : 'Add Brand'}
+              </button>
             </div>
           </div>
         </section>
 
         {/* ── cards ───────────────────────────────────────────────────────── */}
         <div className="mt-6 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:mt-[34px] xl:grid-cols-5">
-          {!isLoaded ? (
+          {brands === null ? (
             <span className="text-[17px]" style={{ color: MUTED }}>
-              Loading your workspaces…
+              Loading your brands…
             </span>
           ) : cards.length === 0 ? (
             <span className="col-span-full text-[17px]" style={{ color: MUTED }}>
               {query.trim()
-                ? `No workspace matches “${query.trim()}”.`
-                : 'No workspaces yet — create one to get started.'}
+                ? `No brand matches “${query.trim()}”.`
+                : 'No brands yet — add one to get started.'}
             </span>
           ) : (
-            cards.map(({ m, i }) => {
-              const org = m.organization;
-              const others = Math.max(0, (org.membersCount ?? 1) - 1);
+            cards.map(({ b, i }) => {
               return (
                 /*
                   The arrow lives in this wrapper, not the grid.
@@ -387,7 +446,7 @@ export default function WorkspacesPage() {
                   notch at (100% − 30, 30) — it stays correct at every column
                   count, which is what makes the responsive grid possible at all.
                 */
-                <div key={org.id} className="relative">
+                <div key={b.genomeId} className="relative">
                   <div
                     className="relative h-[264px] rounded-[22px]"
                     style={{
@@ -400,50 +459,48 @@ export default function WorkspacesPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => void open(org.id)}
-                      aria-label={`Open ${org.name}`}
+                      onClick={() => open(b.genomeId)}
+                      aria-label={`Open ${b.name}`}
                       className="absolute inset-x-0 top-0 bottom-16 border-0 bg-transparent"
                     />
                     <span
                       className="pointer-events-none absolute left-[22px] top-[26px] block h-[92px] w-[92px] rounded-full"
                       style={{
                         boxShadow: '0 0 0 3px rgba(255,255,255,0.9)',
-                        background: `#FFFFFF url('${org.imageUrl || CARD_ICON[i % CARD_ICON.length]}') center / cover no-repeat`,
+                        background: `#FFFFFF url('${CARD_ICON[i % CARD_ICON.length]}') center / cover no-repeat`,
                       }}
                     />
                     <span className="pointer-events-none absolute left-6 top-[138px] block max-w-[calc(100%-48px)] truncate text-[20px] font-bold text-ink">
-                      {org.name}
+                      {b.name}
                     </span>
                     <span className="pointer-events-none absolute left-6 top-[172px] text-14 font-medium" style={{ color: '#7B7B7B' }}>
-                      Created{' '}
-                      {org.createdAt
-                        ? new Date(org.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })
-                        : '—'}
+                      {/* `genome.list` returns when the genome last changed, not
+                          when the brand was made, so this says which it is. */}
+                      Updated{' '}
+                      {new Date(b.updatedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
                     </span>
 
-                    <div className="absolute bottom-5 left-6 flex items-center">
-                      <span
-                        className="inline-block h-[30px] w-[30px] rounded-full"
-                        style={{
-                          boxShadow: '0 0 0 2px #FFFFFF',
-                          background: user?.imageUrl
-                            ? `#DCEAF6 url('${user.imageUrl}') center / cover no-repeat`
-                            : '#DCEAF6',
-                        }}
-                      />
-                      {others > 0 ? (
-                        <span
-                          className="-ml-[9px] inline-flex h-[30px] w-[30px] items-center justify-center rounded-full text-[12px] font-bold text-ink"
-                          style={{ background: '#57D9F2', boxShadow: '0 0 0 2px #FFFFFF' }}
-                        >
-                          +{others}
-                        </span>
-                      ) : null}
-                    </div>
+                    {/*
+                      The prototype stacks member avatars here. Those were the
+                      *organisation's* members, which is a different set from
+                      who can reach this brand (`brand_members`), and
+                      `genome.list` carries neither — so rather than showing the
+                      signed-in user's face on every card as if it meant
+                      something, the slot holds who can reach it, in words, and
+                      the team screen is where that is actually managed.
+                    */}
+                    <button
+                      type="button"
+                      onClick={() => router.push('/settings/team')}
+                      className="absolute bottom-5 left-6 text-14 font-medium underline-offset-2 hover:underline"
+                      style={{ color: '#7B7B7B' }}
+                    >
+                      Manage access
+                    </button>
 
                     {/*
                       Rename and delete are drawn because the prototype draws
@@ -454,9 +511,12 @@ export default function WorkspacesPage() {
                       is the wrong place for that.
                     */}
                     <CardAction
-                      onClick={() => router.push('/settings/team')}
-                      title={`Rename ${org.name} in team settings`}
-                      label={`Edit ${org.name}`}
+                      onClick={() => {
+                        if (orgId) writeSelectedGenome(orgId, b.genomeId);
+                        router.push('/settings');
+                      }}
+                      title={`Open ${b.name} settings`}
+                      label={`Settings for ${b.name}`}
                       className="right-[66px]"
                     >
                       <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -465,8 +525,8 @@ export default function WorkspacesPage() {
                     </CardAction>
                     <CardAction
                       disabled
-                      title="Deleting a workspace removes all of its data — it is not done from here."
-                      label={`Delete ${org.name} (unavailable)`}
+                      title="Nothing in the product deletes a brand — it would take every campaign and asset with it."
+                      label={`Delete ${b.name} (unavailable)`}
                       className="right-[18px]"
                     >
                       <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
@@ -478,8 +538,8 @@ export default function WorkspacesPage() {
 
                   <button
                     type="button"
-                    onClick={() => void open(org.id)}
-                    aria-label={`Open ${org.name}`}
+                    onClick={() => open(b.genomeId)}
+                    aria-label={`Open ${b.name}`}
                     className="ss-ws-arrow absolute right-1 top-1 flex h-[52px] w-[52px] items-center justify-center rounded-full border-0 bg-transparent"
                     style={{ boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.25)' }}
                   >
