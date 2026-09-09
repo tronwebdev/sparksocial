@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { ContentStatus, ToolError } from '@sparksocial/shared';
 
 /**
  * `content.schedule` — places or moves a content item on the calendar.
@@ -37,7 +37,7 @@ export const ContentScheduleInput = z.object({
 
 export const ContentScheduleOutput = z.object({
   contentItemId: z.string(),
-  status: z.string(),
+  status: ContentStatus,
   scheduledAt: z.string(),
 });
 

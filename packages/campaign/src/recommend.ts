@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, Objective, Platform, ToolError } from '@sparksocial/shared';
+import { ContentStatus, Explanation, Objective, Platform, ToolError } from '@sparksocial/shared';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 
 /**
@@ -366,7 +366,7 @@ function recommendMove(args: {
     id: string;
     playbookId: string | null;
     pillar: string | null;
-    status: string;
+    status: ContentStatus;
     scheduledAt: Date | null;
     platform: Platform | null;
   }>;

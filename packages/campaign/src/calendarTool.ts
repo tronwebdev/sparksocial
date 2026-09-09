@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { CampaignStatus, ContentPillar, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
+import { CampaignStatus, ContentPillar, ContentStatus, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -528,7 +528,7 @@ export const CalendarGetOutput = z.object({
       playbookId: z.string().nullable(),
       playbookName: z.string().nullable(),
       mode: z.string().nullable(),
-      status: z.string(),
+      status: ContentStatus,
       /**
        * §8.7's platform filter. Null for a slot placed on a day rather than on
        * an account — the date-picker and drag-and-drop paths place a post

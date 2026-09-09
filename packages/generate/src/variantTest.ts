@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { ContentStatus, Explanation, ToolError } from '@sparksocial/shared';
 import { ResolvedBeat } from './draft.js';
 
 /**
@@ -193,7 +193,7 @@ export const contentVariantSplit = defineTool({
 const ArmResult = z.object({
   contentItemId: z.string(),
   label: z.string(),
-  status: z.string(),
+  status: ContentStatus,
   impressions: z.number().int(),
   /** Likes + comments + shares + saves. The interactions, not the reach. */
   engagements: z.number().int(),

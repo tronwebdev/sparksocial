@@ -4,6 +4,7 @@ import {
   type AssetMediaType,
   type AssetRightsStatus,
   type AssetRole,
+  type ContentStatus,
   type Platform,
 } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
@@ -1686,7 +1687,8 @@ export interface ContentDraftRow {
   playbookId: string | null;
   mode: string | null;
   pillar: string | null;
-  status: string;
+  /** Every writer in this file sets a literal — see `ContentStatus`. Narrowed in `asDraftRow`. */
+  status: ContentStatus;
   /**
    * `Platform`, not `string`: the column is only ever written by
    * `markContentPublished` (whose only caller is `publish.now`, input
@@ -1747,8 +1749,12 @@ const contentDraftColumns = {
  * be seven chances to forget; this is the single seam, and the reason
  * `ContentDraftRow` above is allowed to promise the union.
  */
-type RawDraftRow = Omit<ContentDraftRow, 'platform'> & { platform: string | null };
-const asDraftRow = (row: RawDraftRow): ContentDraftRow => ({ ...row, platform: row.platform as Platform | null });
+type RawDraftRow = Omit<ContentDraftRow, 'platform' | 'status'> & { platform: string | null; status: string };
+const asDraftRow = (row: RawDraftRow): ContentDraftRow => ({
+  ...row,
+  platform: row.platform as Platform | null,
+  status: row.status as ContentStatus,
+});
 
 /**
  * A brand-new draft — `content.draft`'s ad-hoc path (CC-02), where no
@@ -2115,7 +2121,7 @@ export async function campaignSlots(
     playbookId: string | null;
     mode: string | null;
     pillar: string | null;
-    status: string;
+    status: ContentStatus;
     scheduledAt: Date | null;
     /**
      * Set at placement time by `CMP-01.4`'s account selection, and null for a
@@ -2142,7 +2148,7 @@ export async function campaignSlots(
     .orderBy(asc(contentItems.scheduledAt));
   // Same narrowing as `asDraftRow`, on the same column, for a projection that
   // does not share `contentDraftColumns`.
-  return rows.map((r) => ({ ...r, platform: r.platform as Platform | null }));
+  return rows.map((r) => ({ ...r, status: r.status as ContentStatus, platform: r.platform as Platform | null }));
 }
 
 /** Read helper for {@link lookupIdempotentToolCall}-style lookups is intentionally absent here —

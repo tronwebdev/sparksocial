@@ -1,7 +1,7 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
-  CampaignStatus, Objective, Platform,
+  CampaignStatus, ContentStatus, Objective, Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -868,7 +868,8 @@ export interface ContentDraft {
   playbookId: string;
   mode: 'synthesize' | 'assemble' | 'direct_finish';
   pillar?: string;
-  status: string;
+  /** PRD §7.4's ladder. Every writer is a literal — see `ContentStatus`. */
+  status: ContentStatus;
   /**
    * Absent until the post goes live. Written by `markPublished` — whose only
    * caller is `publish.now`, with a `platform: Platform` input — and by slot
@@ -1010,7 +1011,7 @@ export interface ContentStore {
    * (CC-02) creates rows with no `campaignId` at all, so a campaign-scoped
    * read (`CampaignStore.slots`) would never surface them.
    */
-  list(genomeId: string, orgId: string, args: { status?: string; limit: number }): Promise<ContentDraft[]>;
+  list(genomeId: string, orgId: string, args: { status?: ContentStatus; limit: number }): Promise<ContentDraft[]>;
 
   /**
    * Places or moves a content item on the calendar. `CAL-04` ("create post
@@ -1855,7 +1856,7 @@ export interface CampaignStore {
       playbookId: string | null;
       mode: string | null;
       pillar: string | null;
-      status: string;
+      status: ContentStatus;
       scheduledAt: Date | null;
       /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
       platform: Platform | null;

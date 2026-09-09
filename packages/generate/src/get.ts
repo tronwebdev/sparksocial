@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, Platform, ToolError } from '@sparksocial/shared';
+import { ContentStatus, Explanation, Platform, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import { ResolvedBeat } from './draft.js';
 
@@ -26,7 +26,7 @@ export const ContentGetOutput = z.object({
   playbookMissing: z.boolean(),
   mode: z.string(),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
-  status: z.string(),
+  status: ContentStatus,
   /**
    * The campaign this post belongs to, when it belongs to one.
    *

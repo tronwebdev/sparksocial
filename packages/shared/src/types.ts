@@ -105,6 +105,31 @@ export type GenomeDimensions = z.infer<typeof GenomeDimensions>;
 export const CampaignStatus = z.enum(['draft', 'active', 'paused']);
 export type CampaignStatus = z.infer<typeof CampaignStatus>;
 
+/**
+ * A content item's state — `content_items.status`, PRD §7.4's unified ladder:
+ *
+ *   *"Draft → Needs Review → Approved → Scheduled → Published. Failed /
+ *   Blocked."*
+ *
+ * Seven values, one per literal that `scoped.ts` writes. Every write is a
+ * constant — the insert defaults to `draft`, `createContentDraft` and
+ * `scheduleContentItem` and `replaceCampaignSlots` write `scheduled`,
+ * `markContentPublished`/`RolledBack`/`Blocked`/`NeedsReview`/`Approved` write
+ * their own name, and `unapproveContentItem` writes `draft`. No function takes
+ * a status from its caller.
+ *
+ * `failed` is in §7.4's sentence and is deliberately not here: a failed publish
+ * does not change the status. `recordContentPublishFailure` increments
+ * `publishAttempts` and stores `lastPublishError`, leaving the item `scheduled`
+ * so the next tick retries it, and only when the scheduler gives up does
+ * `markContentBlocked` move it to `blocked`. Adding `failed` would name a state
+ * nothing can reach and imply the retry counter had a second home.
+ */
+export const ContentStatus = z.enum([
+  'draft', 'needs_review', 'approved', 'scheduled', 'published', 'blocked', 'rolled_back',
+]);
+export type ContentStatus = z.infer<typeof ContentStatus>;
+
 export const GenerationMode = z.enum(['synthesize', 'assemble', 'direct_finish']);
 export type GenerationMode = z.infer<typeof GenerationMode>;
 

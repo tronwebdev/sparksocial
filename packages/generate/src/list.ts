@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Platform } from '@sparksocial/shared';
+import { ContentStatus, Platform } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import { ResolvedBeat } from './draft.js';
 
@@ -15,7 +15,7 @@ import { ResolvedBeat } from './draft.js';
 
 export const ContentListInput = z.object({
   genomeId: z.string().min(1),
-  status: z.string().optional(),
+  status: ContentStatus.optional(),
   limit: z.number().int().min(1).max(100).default(50),
 });
 
@@ -34,7 +34,7 @@ const ContentListItem = z.object({
    * Command Center prototype offers and had no data behind it.
    */
   platform: Platform.optional(),
-  status: z.string(),
+  status: ContentStatus,
   /** The first written beat, truncated — enough to recognise the post in a list row. */
   summary: z.string(),
   scheduledAt: z.string().optional(),

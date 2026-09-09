@@ -24,7 +24,7 @@ function existingDraft(over: Partial<{ playbookId: string; copy: unknown }> = {}
     genomeId: 'gen_saas',
     playbookId: over.playbookId ?? 'pb_text_update',
     mode: 'synthesize' as const,
-    status: 'draft',
+    status: 'draft' as const,
     copy: over.copy ?? [{ kind: 'text', beatId: 'b1', text: 'original copy' }],
     createdAt: new Date(),
   };
