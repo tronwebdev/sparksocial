@@ -241,7 +241,7 @@ export interface ToolIO {
   };
   "calendar.get": {
     input: { campaignId: string };
-    output: { campaignId: string; name: string; objective: string; status: string; mixActual: Array<{ pillar: string; count: number }>; slots: Array<{ id: string; scheduledAt: (string) | (null); pillar: (string) | (null); playbookId: (string) | (null); playbookName: (string) | (null); mode: (string) | (null); status: string; platform: ("instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky") | (null); mediaType: (string) | (null) }> };
+    output: { campaignId: string; name: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; status: "draft" | "active" | "paused"; mixActual: Array<{ pillar: string; count: number }>; slots: Array<{ id: string; scheduledAt: (string) | (null); pillar: (string) | (null); playbookId: (string) | (null); playbookName: (string) | (null); mode: (string) | (null); status: string; platform: ("instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky") | (null); mediaType: (string) | (null) }> };
   };
   "calendar.impact_preview": {
     input: { campaignId: string; mixOverride?: Record<"educational" | "product" | "proof" | "personality" | "community", number> };
@@ -257,15 +257,15 @@ export interface ToolIO {
   };
   "campaign.duplicate": {
     input: { genomeId: string; campaignId: string; name?: string; startAt?: string };
-    output: { campaignId: string; name: string; objective: string; windowDays: number; startAt: string };
+    output: { campaignId: string; name: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; startAt: string };
   };
   "campaign.list": {
     input: { genomeId: string; limit?: number };
-    output: { campaigns: Array<{ campaignId: string; name: string; objective: string; windowDays: number; startAt: string; status: string }> };
+    output: { campaigns: Array<{ campaignId: string; name: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; startAt: string; status: "draft" | "active" | "paused" }> };
   };
   "campaign.pause": {
     input: { campaignId: string };
-    output: { campaignId: string; status: string };
+    output: { campaignId: string; status: "draft" | "active" | "paused" };
   };
   "campaign.propose_plan": {
     input: { genomeId: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays?: number };
@@ -277,11 +277,11 @@ export interface ToolIO {
   };
   "campaign.report_vs_outcome": {
     input: { campaignId: string };
-    output: { campaignId: string; objective: string; windowDays: number; daysElapsed: number; daysRemaining: number; target: ({ count: number; label: string }) | (null); targetStatus: "no_target" | "not_measurable"; volume: { planned: number; published: number; scheduledRemaining: number }; mix: Array<{ pillar: "educational" | "product" | "proof" | "personality" | "community"; planned: number; actual: number; ratio: (number) | (null) }>; engagement: { postsWithMetrics: number; likes: number; comments: number; shares: number; views: number; impressions: number }; reweightSuggestion: ({ overDelivered: (string) | (null); underDelivered: (string) | (null); detail: string }) | (null); why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { campaignId: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; daysElapsed: number; daysRemaining: number; target: ({ count: number; label: string }) | (null); targetStatus: "no_target" | "not_measurable"; volume: { planned: number; published: number; scheduledRemaining: number }; mix: Array<{ pillar: "educational" | "product" | "proof" | "personality" | "community"; planned: number; actual: number; ratio: (number) | (null) }>; engagement: { postsWithMetrics: number; likes: number; comments: number; shares: number; views: number; impressions: number }; reweightSuggestion: ({ overDelivered: (string) | (null); underDelivered: (string) | (null); detail: string }) | (null); why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "campaign.resume": {
     input: { campaignId: string };
-    output: { campaignId: string; status: string };
+    output: { campaignId: string; status: "draft" | "active" | "paused" };
   };
   "compose.fanout": {
     input: { genomeId: string; contentItemId: string; brandTemplateId: string; data: Record<string, ({ type: "text"; text: string }) | ({ type: "image"; assetId: string })>; formats?: Array<"png" | "jpg" | "pdf"> };

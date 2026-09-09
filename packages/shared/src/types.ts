@@ -87,6 +87,24 @@ export const GenomeDimensions = z.object({
 });
 export type GenomeDimensions = z.infer<typeof GenomeDimensions>;
 
+/**
+ * A campaign's lifecycle state — `campaigns.status`.
+ *
+ * Three values, because there are exactly two writers: the insert defaults to
+ * `draft`, and `CampaignStore.setStatus`'s only caller is `makeStatusTool` in
+ * `packages/campaign/src/lifecycle.ts`, which is instantiated twice — once with
+ * `paused` (`campaign.pause`) and once with `active` (`campaign.resume`).
+ *
+ * There is deliberately no `completed`: a campaign's window ending is a fact
+ * about `startAt + windowDays` that `campaign.report_vs_outcome` computes, not
+ * a state anything writes, and adding the value would invite a second source of
+ * truth for the same question. `recipes.status` does carry `completed`, which is
+ * a different table and a different vocabulary — see `RecipeRecord` in
+ * `packages/tools/src/defineTool.ts`.
+ */
+export const CampaignStatus = z.enum(['draft', 'active', 'paused']);
+export type CampaignStatus = z.infer<typeof CampaignStatus>;
+
 export const GenerationMode = z.enum(['synthesize', 'assemble', 'direct_finish']);
 export type GenerationMode = z.infer<typeof GenerationMode>;
 

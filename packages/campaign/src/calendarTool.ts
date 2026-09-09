@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { ContentPillar, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
+import { CampaignStatus, ContentPillar, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -246,10 +246,10 @@ export const CampaignListOutput = z.object({
     z.object({
       campaignId: z.string(),
       name: z.string(),
-      objective: z.string(),
+      objective: Objective,
       windowDays: z.number(),
       startAt: z.string(),
-      status: z.string(),
+      status: CampaignStatus,
     }),
   ),
 });
@@ -514,8 +514,10 @@ export const CalendarGetInput = z.object({ campaignId: z.string().min(1) });
 export const CalendarGetOutput = z.object({
   campaignId: z.string(),
   name: z.string(),
-  objective: z.string(),
-  status: z.string(),
+  objective: Objective,
+  /* The campaign's own state. The `status` on each slot below is a content
+   * item's, which is a different vocabulary on a different table. */
+  status: CampaignStatus,
   /** Counts by pillar — the level §6.8 Step 4 says the user reviews at. */
   mixActual: z.array(z.object({ pillar: z.string(), count: z.number() })),
   slots: z.array(

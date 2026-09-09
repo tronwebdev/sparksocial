@@ -1,7 +1,7 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
-  Platform,
+  CampaignStatus, Objective, Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -1687,10 +1687,12 @@ export interface CampaignRecord {
   id: string;
   genomeId: string;
   name: string;
-  objective: string;
+  /** Written once, by `create`, from `campaign.create`'s `objective: Objective` input. */
+  objective: Objective;
   windowDays: number;
   startAt: Date;
-  status: string;
+  /** Defaults to `draft` at insert; only `setStatus` changes it. See `CampaignStatus`. */
+  status: CampaignStatus;
   /**
    * The wizard's own fields (`CMP-01`, F8). All optional: a campaign created
    * before the wizard asked never answered, and reporting a default as though
@@ -1817,7 +1819,7 @@ export interface CampaignStore {
     orgId: string;
     genomeId: string;
     name: string;
-    objective: string;
+    objective: Objective;
     windowDays: number;
     startAt: Date;
     plan: unknown;
@@ -1859,7 +1861,7 @@ export interface CampaignStore {
       platform: Platform | null;
     }>
   >;
-  setStatus(campaignId: string, orgId: string, status: string): Promise<void>;
+  setStatus(campaignId: string, orgId: string, status: CampaignStatus): Promise<void>;
   /**
    * `campaign.rename` — the only field of a live campaign that is safe to edit.
    *

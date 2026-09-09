@@ -1,5 +1,5 @@
 import { and, desc, eq } from 'drizzle-orm';
-import { ToolError, type Platform } from '@sparksocial/shared';
+import { ToolError, type CampaignStatus, type Objective, type Platform } from '@sparksocial/shared';
 import type { ApprovalMode, CampaignRecord, CampaignStore } from '@sparksocial/tools/defineTool';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { Database } from './client.js';
@@ -126,10 +126,18 @@ function toRecord(row: typeof campaigns.$inferSelect): CampaignRecord {
     id: row.id,
     genomeId: row.genomeId,
     name: row.name,
-    objective: row.objective,
+    /*
+     * Both columns are `text`, so Drizzle types them `string`. `objective` is
+     * written once, by `create` above, from `campaign.create`'s `Objective`
+     * input; `status` defaults to `draft` at insert and is only ever changed by
+     * `setStatus`, whose sole caller passes `'active'` or `'paused'`. Asserted
+     * here — the one mapper both `get` and `listForGenome` go through — rather
+     * than in the four tools that read them.
+     */
+    objective: row.objective as Objective,
     windowDays: row.windowDays,
     startAt: row.startAt,
-    status: row.status,
+    status: row.status as CampaignStatus,
     plan: row.plan,
     ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
     ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),

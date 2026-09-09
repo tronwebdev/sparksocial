@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ContentPillar, Explanation, ToolError } from '@sparksocial/shared';
+import { ContentPillar, Explanation, Objective, ToolError } from '@sparksocial/shared';
 import type { CampaignPlan } from './plan.js';
 
 /**
@@ -47,7 +47,7 @@ const PillarDelta = z.object({
 
 export const ReportVsOutcomeOutput = z.object({
   campaignId: z.string(),
-  objective: z.string(),
+  objective: Objective,
   windowDays: z.number(),
   daysElapsed: z.number(),
   daysRemaining: z.number(),

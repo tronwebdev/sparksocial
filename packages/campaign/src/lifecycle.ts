@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { CampaignStatus, Objective, ToolError } from '@sparksocial/shared';
 
 /**
  * `campaign.duplicate` / `.pause` / `.resume` — the campaign lifecycle §6.8's
@@ -34,7 +34,7 @@ function makeStatusTool(name: 'campaign.pause' | 'campaign.resume', status: 'pau
           'Both mean it becomes the outcome SPARK plans against.',
 
     input: z.object({ campaignId: z.string().min(1) }),
-    output: z.object({ campaignId: z.string(), status: z.string() }),
+    output: z.object({ campaignId: z.string(), status: CampaignStatus }),
 
     effect: 'write',
     autonomy: 'auto',
@@ -126,7 +126,7 @@ export const CampaignDuplicateInput = z.object({
 export const CampaignDuplicateOutput = z.object({
   campaignId: z.string(),
   name: z.string(),
-  objective: z.string(),
+  objective: Objective,
   windowDays: z.number(),
   startAt: z.string(),
 });
