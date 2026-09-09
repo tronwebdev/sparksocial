@@ -1,5 +1,11 @@
 import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
-import { ToolError, type AssetMediaType, type AssetRightsStatus, type AssetRole } from '@sparksocial/shared/types';
+import {
+  ToolError,
+  type AssetMediaType,
+  type AssetRightsStatus,
+  type AssetRole,
+  type Platform,
+} from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
@@ -968,7 +974,15 @@ export async function listRenders(db: Database, scope: Scope, contentItemId: str
 export interface ContentMetricsRow {
   id: string;
   contentItemId: string;
-  platform: string;
+  /**
+   * `content_metrics.platform` is copied from `content_items.platform` by
+   * `analytics.sync` — it is never taken from the vendor response — and
+   * `content_items.platform` is written only by `publish.now`, whose input
+   * schema is `platform: Platform`. So the column holds a `Platform` or it
+   * holds nothing, and saying `string` here made every analytics tool hand the
+   * frontend a `string` to re-narrow.
+   */
+  platform: Platform;
   likes: number;
   comments: number;
   shares: number;
@@ -1046,7 +1060,13 @@ export async function upsertContentMetrics(
       },
     })
     .returning(contentMetricsColumns);
-  return row!;
+  /*
+   * The column is `text`, so Drizzle types it `string`. See `ContentMetricsRow`
+   * for why this layer knows it is a `Platform`: the only writer copies it from
+   * `content_items`, which only `publish.now` writes, against a `Platform`
+   * schema. Asserted here rather than in the four analytics tools that read it.
+   */
+  return { ...row!, platform: row!.platform as Platform };
 }
 
 /** Every platform's latest snapshot for one post — `analytics.post_metrics`'s future read, and `analytics.sync`'s own output. */
@@ -1055,10 +1075,11 @@ export async function getContentMetrics(
   scope: Scope,
   contentItemId: string,
 ): Promise<ContentMetricsRow[]> {
-  return db
+  const rows = await db
     .select(contentMetricsColumns)
     .from(contentMetrics)
     .where(and(scopePredicate('contentMetrics', scope), eq(contentMetrics.contentItemId, contentItemId)));
+  return rows.map((r) => ({ ...r, platform: r.platform as Platform }));
 }
 
 /**
@@ -1072,10 +1093,11 @@ export async function getContentMetricsForItems(
   contentItemIds: string[],
 ): Promise<ContentMetricsRow[]> {
   if (contentItemIds.length === 0) return [];
-  return db
+  const rows = await db
     .select(contentMetricsColumns)
     .from(contentMetrics)
     .where(and(scopePredicate('contentMetrics', scope), inArray(contentMetrics.contentItemId, contentItemIds)));
+  return rows.map((r) => ({ ...r, platform: r.platform as Platform }));
 }
 
 /**
@@ -1187,7 +1209,8 @@ export async function publishedWithMetrics(
   Array<{
     contentItemId: string;
     publishedAt: Date;
-    platform: string | null;
+    /** Nullable because `content_items.platform` is: it is set at publish. */
+    platform: Platform | null;
     impressions: number;
     likes: number;
     comments: number;
@@ -1235,7 +1258,7 @@ export async function publishedWithMetrics(
           {
             contentItemId: r.contentItemId,
             publishedAt: r.publishedAt,
-            platform: r.platform,
+            platform: r.platform as Platform | null,
             impressions: r.impressions ?? 0,
             likes: r.likes ?? 0,
             comments: r.comments ?? 0,
@@ -1664,7 +1687,14 @@ export interface ContentDraftRow {
   mode: string | null;
   pillar: string | null;
   status: string;
-  platform: string | null;
+  /**
+   * `Platform`, not `string`: the column is only ever written by
+   * `markContentPublished` (whose only caller is `publish.now`, input
+   * `platform: Platform`) and by slot placement, which intersects the
+   * campaign's accounts with the playbook's own `Platform[]`. See `asDraftRow`
+   * for where the cast is applied.
+   */
+  platform: Platform | null;
   externalId: string | null;
   publishVia: string | null;
   publishUrl: string | null;
@@ -1708,6 +1738,17 @@ const contentDraftColumns = {
   publishedAt: contentItems.publishedAt,
   createdAt: contentItems.createdAt,
 };
+
+/**
+ * The one place `content_items.platform` is narrowed to `Platform`.
+ *
+ * Drizzle types the column `string` because Postgres types it `text`. Seven
+ * projections share `contentDraftColumns`, so asserting at each of them would
+ * be seven chances to forget; this is the single seam, and the reason
+ * `ContentDraftRow` above is allowed to promise the union.
+ */
+type RawDraftRow = Omit<ContentDraftRow, 'platform'> & { platform: string | null };
+const asDraftRow = (row: RawDraftRow): ContentDraftRow => ({ ...row, platform: row.platform as Platform | null });
 
 /**
  * A brand-new draft — `content.draft`'s ad-hoc path (CC-02), where no
@@ -1757,7 +1798,7 @@ export async function createContentDraft(
       why: args.why as object,
     })
     .returning(contentDraftColumns);
-  return row!;
+  return asDraftRow(row!);
 }
 
 /**
@@ -1778,7 +1819,7 @@ export async function tagContentVariant(
     .set({ variantGroupId: args.variantGroupId, variantLabel: args.variantLabel })
     .where(and(eq(contentItems.id, args.id), scopePredicate('contentItems', scope)))
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1794,11 +1835,12 @@ export async function contentVariantGroup(
   scope: Scope,
   variantGroupId: string,
 ): Promise<ContentDraftRow[]> {
-  return db
+  const rows = await db
     .select(contentDraftColumns)
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.variantGroupId, variantGroupId)))
     .orderBy(asc(contentItems.variantLabel));
+  return rows.map(asDraftRow);
 }
 
 /** Read side of {@link createContentDraft}/{@link updateContentDraft} — one row, scoped. */
@@ -1808,7 +1850,7 @@ export async function getContentItem(db: Database, scope: Scope, id: string): Pr
     .from(contentItems)
     .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
     .limit(1);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1835,7 +1877,7 @@ export async function updateContentDraft(
       ),
     )
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1869,7 +1911,7 @@ export async function scheduleContentItem(
       ),
     )
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1885,7 +1927,7 @@ export async function listContentForGenome(
   scope: Scope,
   args: { status?: string; limit: number },
 ): Promise<ContentDraftRow[]> {
-  return db
+  const rows = await db
     .select(contentDraftColumns)
     .from(contentItems)
     .where(
@@ -1896,6 +1938,7 @@ export async function listContentForGenome(
     )
     .orderBy(desc(contentItems.createdAt))
     .limit(args.limit);
+  return rows.map(asDraftRow);
 }
 
 /**
@@ -2081,10 +2124,10 @@ export async function campaignSlots(
      * column existed and this projection never read it, so the calendar could
      * not group by the thing it schedules to.
      */
-    platform: string | null;
+    platform: Platform | null;
   }>
 > {
-  return db
+  const rows = await db
     .select({
       id: contentItems.id,
       playbookId: contentItems.playbookId,
@@ -2097,6 +2140,9 @@ export async function campaignSlots(
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.campaignId, campaignId)))
     .orderBy(asc(contentItems.scheduledAt));
+  // Same narrowing as `asDraftRow`, on the same column, for a projection that
+  // does not share `contentDraftColumns`.
+  return rows.map((r) => ({ ...r, platform: r.platform as Platform | null }));
 }
 
 /** Read helper for {@link lookupIdempotentToolCall}-style lookups is intentionally absent here —

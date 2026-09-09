@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { Explanation, Platform, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import { ResolvedBeat } from './draft.js';
 
@@ -52,7 +52,7 @@ export const ContentGetOutput = z.object({
   // where they're kept rather than cleared, so the row still shows what was
   // taken down). Reopening the Draft Panel on a live post is what
   // `publish.rollback` needs these for.
-  platform: z.string().optional(),
+  platform: Platform.optional(),
   externalId: z.string().optional(),
   via: z.string().optional(),
   url: z.string().optional(),

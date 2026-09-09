@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { Platform } from '@sparksocial/shared';
 
 /**
  * `PlatformAdapter` — the one publishing seam (plan §8).
@@ -19,56 +19,20 @@ import { z } from 'zod';
  */
 
 /**
- * Every platform the product can publish to.
+ * The platform vocabulary now lives in `@sparksocial/shared`.
  *
- * ── Why this list grew ─────────────────────────────────────────────────────
+ * It was declared here, which made it unreachable from `packages/campaign`,
+ * `engage` and `trends` — none of which depend on the publishing layer, and none
+ * of which should have to in order to name a platform. `trends` had already
+ * worked around it by declaring its own `InfluencerPlatform` subset, and
+ * `EngagementPlatform` — a *subset* of this — was in `shared` while the superset
+ * was not, which is backwards.
  *
- * It was `['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts']` — five —
- * and **Facebook was not among them**, despite being the first channel on PRD
- * §9's must-have-at-GA list and free under the very same Meta app review as
- * Instagram (Track 1: *"apply to Meta once, unlock Facebook + Instagram +
- * Threads"*). Pinterest, Threads and the whole secondary list were absent too.
- *
- * That was not a routing gap, it was a *vocabulary* gap, and it made the
- * aggregator strategy incoherent: the Ayrshare adapter exists specifically to
- * cover "the long tail (Pinterest, Snapchat, Google Business, Reddit, Bluesky,
- * Threads) without waiting on every audit", and it could not be asked to
- * publish to any of them, because no caller could name one.
- *
- * ── Naming ─────────────────────────────────────────────────────────────────
- *
- * Surface-specific where the surfaces have genuinely different rules and
- * limits (`instagram_story` is 24 hours and vertical; `youtube_long` is not
- * Shorts; `facebook_group` posts under different permissions than a Page), and
- * plain where they do not. `youtube_shorts` keeps its name rather than becoming
- * `youtube` — renaming it would silently repoint every stored
- * `content_items.platform` value.
- *
- * A platform being nameable here does not mean it is reachable: `routeAdapters`
- * picks the first adapter claiming `supports()`, and an unconfigured platform
- * falls through to whatever is last in the list. What this fixes is that the
- * aggregator can now *be* asked.
+ * Re-exported so the thirty call sites in this package, and anything importing
+ * `Platform` from `@sparksocial/publish`, keep working.
  */
-export const Platform = z.enum([
-  // ── Core five: native adapters, own the relationship (PRD Part B, Tier 2) ──
-  'instagram',
-  'instagram_story',
-  'tiktok',
-  'linkedin',
-  'x',
-  'youtube_shorts',
-  'youtube_long',
-  // ── Meta's other surfaces, same App Review as Instagram ──
-  'facebook',
-  'facebook_group',
-  'threads',
-  // ── The aggregator's long tail (PRD §9 "Secondary / Optional") ──
-  'pinterest',
-  'google_business',
-  'reddit',
-  'bluesky',
-]);
-export type Platform = z.infer<typeof Platform>;
+export { Platform };
+
 
 export interface PublishRequest {
   platform: Platform;

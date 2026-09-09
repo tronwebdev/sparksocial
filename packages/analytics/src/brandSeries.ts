@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { Platform, ToolError } from '@sparksocial/shared';
 
 /**
  * `analytics.brand_series` — the numbers behind the cockpit's KPI row and its
@@ -151,7 +151,7 @@ export const BrandSeriesOutput = z.object({
   }),
   byPlatform: z.array(
     z.object({
-      platform: z.string(),
+      platform: Platform,
       impressions: z.number().int(),
       /** Share of the window's measured impressions, 0–1 — the bar width. */
       share: z.number(),
@@ -169,7 +169,15 @@ export const BrandSeriesOutput = z.object({
 interface Row {
   contentItemId: string;
   publishedAt: Date;
-  platform?: string;
+  /**
+   * A `Platform`, not a `string` — that was the re-widening this fixes.
+   *
+   * Still optional, unlike the store's own `Platform | null`: this interface is
+   * what the helpers below accept, not a mirror of `publishedWithMetrics`, and
+   * tolerating an omitted key costs nothing while narrowing the *value* is the
+   * part that stops a screen inventing its own union.
+   */
+  platform?: Platform | null;
   impressions: number;
   likes: number;
   comments: number;
@@ -261,7 +269,9 @@ export function aggregateSeries(rows: Row[], windowDays: number, now: Date): z.i
     bucket.saves += row.saves;
   }
 
-  const byPlatformMap = new Map<string, number>();
+  /* Keyed by `Platform` now that the read promises one — a `Map<string, …>`
+     would widen it straight back on the way out. */
+  const byPlatformMap = new Map<Platform, number>();
   for (const row of inWindow) {
     if (!row.platform) continue;
     byPlatformMap.set(row.platform, (byPlatformMap.get(row.platform) ?? 0) + row.impressions);

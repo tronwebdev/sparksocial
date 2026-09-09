@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, type Platform } from '@sparksocial/shared';
 import type { CampaignRecord, CampaignStore } from '@sparksocial/tools/defineTool';
 
 /**
@@ -21,7 +21,7 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
       pillar: string | null;
       status: string;
       scheduledAt: Date | null;
-      platform: string | null;
+      platform: Platform | null;
     }>
   >();
 

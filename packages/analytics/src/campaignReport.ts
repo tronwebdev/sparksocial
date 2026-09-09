@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { Platform, ToolError } from '@sparksocial/shared';
 
 /**
  * `analytics.campaign_report` — a plain metrics rollup for a campaign, not a
@@ -18,7 +18,7 @@ export const AnalyticsCampaignReportInput = z.object({
 });
 
 const PlatformTotal = z.object({
-  platform: z.string(),
+  platform: Platform,
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),
@@ -76,7 +76,7 @@ export const analyticsCampaignReport = defineTool({
       { likes: 0, comments: 0, shares: 0, views: 0, impressions: 0 },
     );
 
-    const byPlatformMap = new Map<string, { likes: number; comments: number; shares: number; views: number; impressions: number }>();
+    const byPlatformMap = new Map<Platform, { likes: number; comments: number; shares: number; views: number; impressions: number }>();
     for (const r of rows) {
       const cur = byPlatformMap.get(r.platform) ?? { likes: 0, comments: 0, shares: 0, views: 0, impressions: 0 };
       byPlatformMap.set(r.platform, {

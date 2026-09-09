@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, Objective, ToolError } from '@sparksocial/shared';
+import { Explanation, Objective, Platform, ToolError } from '@sparksocial/shared';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 
 /**
@@ -79,7 +79,7 @@ export const CalendarRecommendSlotOutput = z.object({
        * paths it opens.
        */
       mode: z.string(),
-      platforms: z.array(z.string()),
+      platforms: z.array(Platform),
       pillar: z.string(),
       /** The campaign's objective, in its own words — what this post is chasing. */
       goal: z.string(),
@@ -105,7 +105,7 @@ export const CalendarRecommendSlotOutput = z.object({
       playbookName: z.string(),
       pillar: z.string(),
       currentlyAt: z.string(),
-      platform: z.string().optional(),
+      platform: Platform.optional(),
       alternativesLeft: z.number().int(),
       why: Explanation,
     })
@@ -368,7 +368,7 @@ function recommendMove(args: {
     pillar: string | null;
     status: string;
     scheduledAt: Date | null;
-    platform: string | null;
+    platform: Platform | null;
   }>;
   excluded: Set<string>;
 }): z.infer<typeof CalendarRecommendSlotOutput>['move'] {

@@ -1,6 +1,7 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
+  Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -868,7 +869,13 @@ export interface ContentDraft {
   mode: 'synthesize' | 'assemble' | 'direct_finish';
   pillar?: string;
   status: string;
-  platform?: string;
+  /**
+   * Absent until the post goes live. Written by `markPublished` — whose only
+   * caller is `publish.now`, with a `platform: Platform` input — and by slot
+   * placement, which intersects the campaign's accounts with the playbook's own
+   * `Platform[]`. There is no path that puts an off-vocabulary string here.
+   */
+  platform?: Platform;
   /** The platform adapter's receipt — set once, by `markPublished`. */
   externalId?: string;
   via?: string;
@@ -1027,7 +1034,7 @@ export interface ContentStore {
   markPublished(args: {
     id: string;
     orgId: string;
-    platform: string;
+    platform: Platform;
     embedding: number[];
     externalId: string;
     via: string;
@@ -1183,7 +1190,8 @@ export interface RenderRecord {
 /** One platform's performance snapshot, returned by {@link AnalyticsStore.record}. */
 export interface ContentMetricsSnapshot {
   contentItemId: string;
-  platform: string;
+  /** Copied from `content_items.platform` by `analytics.sync`, never from the vendor. */
+  platform: Platform;
   likes: number;
   comments: number;
   shares: number;
@@ -1207,7 +1215,7 @@ export interface AnalyticsStore {
     genomeId: string;
     orgId: string;
     contentItemId: string;
-    platform: string;
+    platform: Platform;
     likes: number;
     comments: number;
     shares: number;
@@ -1252,7 +1260,12 @@ export interface AnalyticsStore {
     Array<{
       contentItemId: string;
       publishedAt: Date;
-      platform?: string;
+      /**
+       * Absent, not null, when the item has not been published to a platform —
+       * the mapper omits the key rather than passing `null`. `Platform` and not
+       * `string`: see `ContentMetricsRow` in `packages/db/src/scoped.ts`.
+       */
+      platform?: Platform;
       impressions: number;
       likes: number;
       comments: number;
@@ -1705,7 +1718,7 @@ export interface CampaignRecord {
    * each chosen format is meant for" — see `campaigns.platforms` in `schema.ts`
    * on the scheduler fallback this replaces.
    */
-  platforms?: string[];
+  platforms?: Platform[];
   /**
    * PRD §7.2's per-campaign approval scope. Absent means the brand's own mode
    * applies — see `campaigns.approvalMode` in `schema.ts`.
@@ -1788,7 +1801,7 @@ export interface CampaignSlotInput {
    * `apps/api/src/scheduler.ts` carried a *"falling back to the playbook's first
    * declared platform"* branch.
    */
-  platform?: string;
+  platform?: Platform;
 }
 
 /**
@@ -1810,7 +1823,7 @@ export interface CampaignStore {
     plan: unknown;
     targetCount?: number;
     targetLabel?: string;
-    platforms?: string[];
+    platforms?: Platform[];
     approvalMode?: ApprovalMode;
     /** The wizard's own fields — see the `campaigns` table for each. */
     campaignType?: CampaignType;
@@ -1843,7 +1856,7 @@ export interface CampaignStore {
       status: string;
       scheduledAt: Date | null;
       /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
-      platform: string | null;
+      platform: Platform | null;
     }>
   >;
   setStatus(campaignId: string, orgId: string, status: string): Promise<void>;

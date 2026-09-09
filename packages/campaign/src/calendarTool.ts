@@ -1,14 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import {
-  ContentPillar,
-  Explanation,
-  GenerationMode,
-  Objective,
-  ToolError,
-  rungFromBrandAutonomy,
-  type EngagementRung,
-} from '@sparksocial/shared';
+import { ContentPillar, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -54,7 +46,7 @@ export const CampaignCreateInput = z.object({
    * here is what stops the scheduler having to guess: see `campaigns.platforms`
    * in `schema.ts` on why it was guessing.
    */
-  platforms: z.array(z.string().min(1).max(40)).max(15).default([]),
+  platforms: z.array(Platform).max(15).default([]),
   /**
    * PRD §7.2's per-campaign approval scope — the fourth of the four scopes it
    * lists, and the one that had no representation.
@@ -541,7 +533,7 @@ export const CalendarGetOutput = z.object({
        * without choosing where it goes, and a fabricated default here would
        * make the filter lie about them.
        */
-      platform: z.string().nullable(),
+      platform: Platform.nullable(),
       /**
        * §8.7's content-type filter, resolved from the playbook rather than
        * stored: `content.draft` computes it the same way for the same reason —

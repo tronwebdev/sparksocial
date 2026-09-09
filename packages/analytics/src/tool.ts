@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { Platform, ToolError } from '@sparksocial/shared';
 import type { AnalyticsSource } from './source.js';
 
 /**
@@ -27,7 +27,7 @@ export const AnalyticsSyncInput = z.object({
 
 export const AnalyticsSyncOutput = z.object({
   contentItemId: z.string(),
-  platform: z.string(),
+  platform: Platform,
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),

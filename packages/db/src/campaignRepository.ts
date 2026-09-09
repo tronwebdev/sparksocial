@@ -1,5 +1,5 @@
 import { and, desc, eq } from 'drizzle-orm';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, type Platform } from '@sparksocial/shared';
 import type { ApprovalMode, CampaignRecord, CampaignStore } from '@sparksocial/tools/defineTool';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { Database } from './client.js';
@@ -133,7 +133,10 @@ function toRecord(row: typeof campaigns.$inferSelect): CampaignRecord {
     plan: row.plan,
     ...(row.targetCount !== null ? { targetCount: row.targetCount } : {}),
     ...(row.targetLabel !== null ? { targetLabel: row.targetLabel } : {}),
-    ...(row.platforms ? { platforms: row.platforms } : {}),
+    // `campaign.create` validates these against `Platform`, and slot placement
+    // discards anything the chosen playbook does not declare — so the column
+    // holds the union even though Drizzle types the array `string[]`.
+    ...(row.platforms ? { platforms: row.platforms as Platform[] } : {}),
     ...(row.approvalMode ? { approvalMode: row.approvalMode as ApprovalMode } : {}),
     ...(row.campaignType ? { campaignType: row.campaignType as CampaignType } : {}),
     ...(row.primaryCta ? { primaryCta: row.primaryCta } : {}),

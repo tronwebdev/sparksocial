@@ -1,4 +1,4 @@
-import { postingSlotAt, type ContentPillar, type GenerationMode } from '@sparksocial/shared';
+import { postingSlotAt, type ContentPillar, type GenerationMode, type Platform } from '@sparksocial/shared';
 import { PROMOTIONAL_CEILING, type Playbook } from '@sparksocial/playbooks';
 import type { PlannedSlot } from './plan.js';
 
@@ -42,7 +42,7 @@ export interface CalendarSlot {
    * Undefined when the campaign named no accounts, which keeps the previous
    * behaviour for every campaign created before `CMP-01.4` existed.
    */
-  platform?: string;
+  platform?: Platform;
 }
 
 export interface PlaceCalendarArgs {
@@ -71,7 +71,7 @@ export interface PlaceCalendarArgs {
    * than sending everything to the first. Empty leaves `slot.platform` unset and
    * the scheduler's playbook fallback in charge.
    */
-  platforms?: string[];
+  platforms?: Platform[];
   /**
    * Nothing is placed before this instant — the day-0 fix.
    *
@@ -156,7 +156,7 @@ export function placeCalendar(args: PlaceCalendarArgs): PlacedCalendar {
     // platform support each rotate through their own eligible set rather than
     // sharing one counter and skewing the spread.
     const eligible = (args.platforms ?? []).filter((p) => chosen.output.platforms.includes(p));
-    let platform: string | undefined;
+    let platform: Platform | undefined;
     if (eligible.length) {
       const cursor = perPlatformCursor.get(chosen.playbook_id) ?? 0;
       platform = eligible[cursor % eligible.length];

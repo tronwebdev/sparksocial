@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
+import { Platform } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import { ResolvedBeat } from './draft.js';
 
@@ -32,7 +33,7 @@ const ContentListItem = z.object({
    * missing value. Added so the Plan queue can filter by channel, which the
    * Command Center prototype offers and had no data behind it.
    */
-  platform: z.string().optional(),
+  platform: Platform.optional(),
   status: z.string(),
   /** The first written beat, truncated — enough to recognise the post in a list row. */
   summary: z.string(),
