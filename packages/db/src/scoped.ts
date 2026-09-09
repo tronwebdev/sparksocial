@@ -1,5 +1,5 @@
 import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
-import { ToolError, type AssetMediaType, type AssetRole } from '@sparksocial/shared/types';
+import { ToolError, type AssetMediaType, type AssetRightsStatus, type AssetRole } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
@@ -218,9 +218,9 @@ export async function retrieveAssets(
     score: number;
     usageCount: number;
     lastUsedAt: Date | null;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     url: string;
-    mediaType: string;
+    mediaType: AssetMediaType;
     folderId: string | null;
     /** `LIB-02`'s `Assets` column and grid labels. Null on a row uploaded before the column existed. */
     filename: string | null;
@@ -261,7 +261,21 @@ export async function retrieveAssets(
      */
     .offset(q.offset);
 
-  return rows.map((r) => ({ ...r, role: r.role as AssetRole }));
+  /*
+   * The three columns are `text` in Postgres, so Drizzle types them `string`.
+   * This is the layer that knows better: `asset.rights.set` validates
+   * `rightsStatus` against exactly these values, ingest validates `assetRole`
+   * and `mediaType`, and no other writer exists. Asserting here rather than in
+   * the tool means the vocabulary is declared once, at the only place that reads
+   * the table — and the tool schemas above it can promise the union instead of
+   * handing the frontend a `string` for every screen to re-narrow by hand.
+   */
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+    mediaType: r.mediaType as AssetMediaType,
+  }));
 }
 
 export interface CreateAssetArgs {
@@ -363,7 +377,7 @@ export async function assetInfo(
   db: Database,
   scope: Scope,
   ids: string[],
-): Promise<Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }>> {
+): Promise<Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }>> {
   if (ids.length === 0) return {};
   const now = Date.now();
   const rows = await db
@@ -377,10 +391,10 @@ export async function assetInfo(
     .from(assets)
     .where(and(scopePredicate('assets', scope), inArray(assets.id, ids)));
 
-  const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
+  const out: Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
   for (const r of rows) {
     out[r.id] = {
-      rightsStatus: r.rightsStatus,
+      rightsStatus: r.rightsStatus as AssetRightsStatus,
       lastUsedDaysAgo: r.lastUsedAt ? (now - r.lastUsedAt.getTime()) / 86_400_000 : undefined,
       url: r.url,
       mediaType: r.mediaType,
@@ -407,7 +421,7 @@ export async function setAssetRights(
     .set({ rightsStatus: args.rightsStatus })
     .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
     .returning({ id: assets.id, rightsStatus: assets.rightsStatus });
-  return row;
+  return row ? { ...row, rightsStatus: row.rightsStatus as AssetRightsStatus } : undefined;
 }
 
 /**
@@ -428,7 +442,7 @@ export async function listAssetsAwaitingRights(
   Array<{
     assetId: string;
     role: AssetRole;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     caption: string | null;
     url: string;
     mediaType: AssetMediaType;
@@ -467,12 +481,13 @@ export async function listAssetsAwaitingRights(
     ...r,
     role: r.role as AssetRole,
     mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
   }));
 }
 
 export interface AssetRightsRow {
   id: string;
-  rightsStatus: string;
+  rightsStatus: AssetRightsStatus;
 }
 
 /**
@@ -568,7 +583,7 @@ export async function listUnfiledAssets(
   Array<{
     assetId: string;
     role: AssetRole;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     caption: string | null;
     url: string;
     mediaType: AssetMediaType;
@@ -603,7 +618,12 @@ export async function listUnfiledAssets(
     .orderBy(sql`${assets.createdAt} DESC`)
     .limit(200);
 
-  return rows.map((r) => ({ ...r, role: r.role as AssetRole, mediaType: r.mediaType as AssetMediaType }));
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+  }));
 }
 
 /** `asset.folder.rename`. Undefined when the id is out of scope — same "one outcome for both" rule as the rest of this file. */

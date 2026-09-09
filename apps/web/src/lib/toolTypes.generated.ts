@@ -157,7 +157,7 @@ export interface ToolIO {
   };
   "asset.retrieve": {
     input: { genomeId: string; intent: string; requiredRoles?: Array<"talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit">; constraints?: { minResolution?: string; pairable?: boolean }; k?: number; offset?: number };
-    output: { results: Array<{ assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; caption: (string) | (null); embeddingScore: number; usageCount: number; lastUsedAt: (string) | (null); rightsStatus: string; folderId: (string) | (null); url: string; mediaType: string; filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }>; why: { summary: string; factors: Array<{ label: string; detail?: string }>; evidence: Array<{ kind: "asset"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { results: Array<{ assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; caption: (string) | (null); embeddingScore: number; usageCount: number; lastUsedAt: (string) | (null); rightsStatus: "cleared" | "pending" | "restricted"; folderId: (string) | (null); url: string; mediaType: "image" | "video" | "audio" | "document"; filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }>; why: { summary: string; factors: Array<{ label: string; detail?: string }>; evidence: Array<{ kind: "asset"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "asset.reuse": {
     input: { genomeId: string; assetId: string };
@@ -165,15 +165,15 @@ export interface ToolIO {
   };
   "asset.rights.pending": {
     input: { genomeId: string };
-    output: { assets: Array<{ assetId: string; role: string; rightsStatus: string; caption: (string) | (null); url: string; mediaType: string; folderId: (string) | (null); filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }> };
+    output: { assets: Array<{ assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; rightsStatus: "cleared" | "pending" | "restricted"; caption: (string) | (null); url: string; mediaType: "image" | "video" | "audio" | "document"; folderId: (string) | (null); filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }> };
   };
   "asset.rights.set": {
     input: { genomeId: string; assetId: string; rightsStatus: "cleared" | "pending" | "restricted" };
-    output: { assetId: string; rightsStatus: string };
+    output: { assetId: string; rightsStatus: "cleared" | "pending" | "restricted" };
   };
   "asset.unfiled": {
     input: { genomeId: string };
-    output: { assets: Array<{ assetId: string; role: string; rightsStatus: string; caption: (string) | (null); url: string; mediaType: string; folderId: (string) | (null); filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }> };
+    output: { assets: Array<{ assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; rightsStatus: "cleared" | "pending" | "restricted"; caption: (string) | (null); url: string; mediaType: "image" | "video" | "audio" | "document"; folderId: (string) | (null); filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }> };
   };
   "asset.upload_url": {
     input: { genomeId: string; filename: string; contentType: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "video/mp4" | "video/quicktime" | "video/webm" | "audio/mpeg" | "audio/mp4" | "audio/wav" | "application/pdf"; sizeBytes: number };

@@ -97,6 +97,21 @@ export const AssetRole = z.enum([
 export type AssetRole = z.infer<typeof AssetRole>;
 
 /**
+ * Whether an asset may be used in generated output.
+ *
+ * `asset.rights.set` has validated this as exactly these three values since it
+ * was written, and `scoped.ts` types the column the same way — but the tool
+ * *output* schemas said `z.string()`, so the frontend received `string` and
+ * every screen narrowed it back to a union by hand. One of them narrowed it to
+ * a set the schema never promised.
+ *
+ * Named here rather than inline so the input, the repository and the outputs
+ * cannot drift apart again.
+ */
+export const AssetRightsStatus = z.enum(['cleared', 'pending', 'restricted']);
+export type AssetRightsStatus = z.infer<typeof AssetRightsStatus>;
+
+/**
  * What kind of file an asset is — the captioner's dispatch and the library's
  * chip.
  *

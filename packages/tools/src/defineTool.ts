@@ -1,6 +1,6 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
-  Role, Effect, Autonomy, AssetRole, AssetMediaType, RunStatus, RunTrigger, StepType, Explanation,
+  Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -184,9 +184,9 @@ export interface ScopedDb {
         score: number;
         usageCount: number;
         lastUsedAt: Date | null;
-        rightsStatus: string;
+        rightsStatus: AssetRightsStatus;
         url: string;
-        mediaType: string;
+        mediaType: AssetMediaType;
         folderId: string | null;
         /** Null on any row uploaded before `assets.filename` existed. */
         filename: string | null;
@@ -216,7 +216,7 @@ export interface ScopedDb {
       ids: string[],
       genomeId: string,
       orgId: string,
-    ): Promise<Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }>>;
+    ): Promise<Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }>>;
     /**
      * `asset.rights.set` — the only writer of `rightsStatus` after ingest.
      * Returns undefined when the id is out of scope or doesn't exist, same
@@ -227,7 +227,7 @@ export interface ScopedDb {
       genomeId: string;
       orgId: string;
       rightsStatus: 'cleared' | 'pending' | 'restricted';
-    }): Promise<{ id: string; rightsStatus: string } | undefined>;
+    }): Promise<{ id: string; rightsStatus: AssetRightsStatus } | undefined>;
     /**
      * `asset.rights.pending`'s read — the assets retrieval is holding back
      * because their rights are not cleared. See `listAssetsAwaitingRights` in
@@ -238,7 +238,7 @@ export interface ScopedDb {
     unfiled(genomeId: string, orgId: string): Promise<Array<{
       assetId: string;
       role: AssetRole;
-      rightsStatus: string;
+      rightsStatus: AssetRightsStatus;
       caption: string | null;
       url: string;
       mediaType: AssetMediaType;
@@ -250,7 +250,7 @@ export interface ScopedDb {
     awaitingRights(genomeId: string, orgId: string): Promise<Array<{
       assetId: string;
       role: AssetRole;
-      rightsStatus: string;
+      rightsStatus: AssetRightsStatus;
       caption: string | null;
       url: string;
       mediaType: AssetMediaType;

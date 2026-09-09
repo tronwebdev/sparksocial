@@ -349,9 +349,9 @@ describe('asset.retrieve', () => {
         score: 0.8,
         usageCount: 0,
         lastUsedAt: null,
-        rightsStatus: 'cleared',
+        rightsStatus: 'cleared' as const,
         url: 'https://example.com/a1.jpg',
-        mediaType: 'image',
+        mediaType: 'image' as const,
         folderId: null,
         filename: 'kitchen-before.jpg',
         sizeBytes: 482_311,
@@ -529,8 +529,8 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'https://example.com/fade.jpg',
         assetRole: 'physical_capture',
-        mediaType: 'image',
-        rightsStatus: 'cleared',
+        mediaType: 'image' as const,
+        rightsStatus: 'cleared' as const,
       },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, create } } }),
     );
@@ -562,14 +562,14 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'https://example.com/menu.pdf',
         assetRole: 'knowledge',
-        mediaType: 'document',
-        rightsStatus: 'cleared',
+        mediaType: 'document' as const,
+        rightsStatus: 'cleared' as const,
       },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, create } } }),
     );
 
     expect(seen).toEqual([['https://example.com/menu.pdf', 'document']]);
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'document' }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'document' as const }));
   });
 
   it('refuses a PDF in a role the composer renders — a document is not footage', async () => {
@@ -580,8 +580,8 @@ describe('asset.ingest_url', () => {
           genomeId: 'gen_1',
           url: 'https://example.com/menu.pdf',
           assetRole: 'product_shot',
-          mediaType: 'document',
-          rightsStatus: 'cleared',
+          mediaType: 'document' as const,
+          rightsStatus: 'cleared' as const,
         },
         ctx(),
       ),
@@ -603,7 +603,7 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'http://localhost:8080/v1/local-storage/org_1/gen_1/2026/08/x.jpg',
         assetRole: 'physical_capture',
-        mediaType: 'image',
+        mediaType: 'image' as const,
       });
       expect(result.success).toBe(false);
     });
@@ -618,7 +618,7 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'http://localhost:8080/v1/local-storage/org_1/gen_1/2026/08/x.jpg',
         assetRole: 'physical_capture',
-        mediaType: 'image',
+        mediaType: 'image' as const,
       });
       expect(result.success).toBe(true);
     });
@@ -633,7 +633,7 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'https://example.com/product.jpg',
         assetRole: 'physical_capture',
-        mediaType: 'image',
+        mediaType: 'image' as const,
       });
       expect(result.success).toBe(true);
     });
@@ -651,7 +651,7 @@ describe('asset.ingest_url', () => {
         genomeId: 'gen_1',
         url: 'http://169.254.169.254/latest/meta-data/',
         assetRole: 'physical_capture',
-        mediaType: 'image',
+        mediaType: 'image' as const,
       });
       expect(result.success).toBe(false);
     });
@@ -660,19 +660,19 @@ describe('asset.ingest_url', () => {
 
 describe('asset.rights.set', () => {
   it('sets the rights status and returns the update', async () => {
-    const setRights = vi.fn(async () => ({ id: 'asset_1', rightsStatus: 'cleared' }));
+    const setRights = vi.fn(async () => ({ id: 'asset_1', rightsStatus: 'cleared' as const }));
     const out = await assetRightsSet.handler(
-      { genomeId: 'gen_1', assetId: 'asset_1', rightsStatus: 'cleared' },
+      { genomeId: 'gen_1', assetId: 'asset_1', rightsStatus: 'cleared' as const },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, setRights } } }),
     );
-    expect(setRights).toHaveBeenCalledWith({ id: 'asset_1', genomeId: 'gen_1', orgId: 'org_1', rightsStatus: 'cleared' });
-    expect(out).toEqual({ assetId: 'asset_1', rightsStatus: 'cleared' });
+    expect(setRights).toHaveBeenCalledWith({ id: 'asset_1', genomeId: 'gen_1', orgId: 'org_1', rightsStatus: 'cleared' as const });
+    expect(out).toEqual({ assetId: 'asset_1', rightsStatus: 'cleared' as const });
   });
 
   it('throws NOT_FOUND rather than silently succeeding on an asset out of scope', async () => {
     await expect(
       assetRightsSet.handler(
-        { genomeId: 'gen_1', assetId: 'asset_missing', rightsStatus: 'cleared' },
+        { genomeId: 'gen_1', assetId: 'asset_missing', rightsStatus: 'cleared' as const },
         ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, setRights: async () => undefined } } }),
       ),
     ).rejects.toThrow(ToolError);
@@ -745,7 +745,7 @@ describe('asset.rights.pending', () => {
   const row = {
     assetId: 'asset_1',
     role: 'product_shot' as const,
-    rightsStatus: 'pending',
+    rightsStatus: 'pending' as const,
     caption: 'a mug',
     url: 'https://cdn.example.com/mug.jpg',
     mediaType: 'image' as const,
@@ -799,7 +799,7 @@ describe('asset.reuse', () => {
 
 describe('asset.cooldown.check', () => {
   it('flags an asset used inside the cooldown window', async () => {
-    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 2, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared' as const, lastUsedDaysAgo: 2, url: 'https://x/1.jpg', mediaType: 'image' as const } });
     const out = await assetCooldownCheck.handler(
       { genomeId: 'gen_1', assetIds: ['asset_1'] },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
@@ -809,7 +809,7 @@ describe('asset.cooldown.check', () => {
   });
 
   it('clears an asset used outside the window', async () => {
-    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 10, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared' as const, lastUsedDaysAgo: 10, url: 'https://x/1.jpg', mediaType: 'image' as const } });
     const out = await assetCooldownCheck.handler(
       { genomeId: 'gen_1', assetIds: ['asset_1'] },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
@@ -818,7 +818,7 @@ describe('asset.cooldown.check', () => {
   });
 
   it('clears an asset that has never been used', async () => {
-    const info = async () => ({ asset_1: { rightsStatus: 'cleared', url: 'https://x/1.jpg', mediaType: 'image' } });
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared' as const, url: 'https://x/1.jpg', mediaType: 'image' as const } });
     const out = await assetCooldownCheck.handler(
       { genomeId: 'gen_1', assetIds: ['asset_1'] },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),
@@ -835,7 +835,7 @@ describe('asset.cooldown.check', () => {
   });
 
   it('respects a caller-supplied cooldown window over the default', async () => {
-    const info = async () => ({ asset_1: { rightsStatus: 'cleared', lastUsedDaysAgo: 5, url: 'https://x/1.jpg', mediaType: 'image' } });
+    const info = async () => ({ asset_1: { rightsStatus: 'cleared' as const, lastUsedDaysAgo: 5, url: 'https://x/1.jpg', mediaType: 'image' as const } });
     const out = await assetCooldownCheck.handler(
       { genomeId: 'gen_1', assetIds: ['asset_1'], cooldownDays: 3 },
       ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, info } } }),

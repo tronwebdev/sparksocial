@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { AssetMediaType, AssetRightsStatus, AssetRole, ToolError } from '@sparksocial/shared';
 
 /**
  * `asset.rights.set` — the retroactive half of rights clearance.
@@ -32,7 +32,7 @@ export const assetRightsSet = defineTool({
     'pull a cleared one out of rotation if a rights concern comes up later.',
 
   input: AssetRightsSetInput,
-  output: z.object({ assetId: z.string(), rightsStatus: z.string() }),
+  output: z.object({ assetId: z.string(), rightsStatus: AssetRightsStatus }),
 
   effect: 'write',
   autonomy: 'human_only',
@@ -80,11 +80,11 @@ export const assetRightsPending = defineTool({
     assets: z.array(
       z.object({
         assetId: z.string(),
-        role: z.string(),
-        rightsStatus: z.string(),
+        role: AssetRole,
+        rightsStatus: AssetRightsStatus,
         caption: z.string().nullable(),
         url: z.string(),
-        mediaType: z.string(),
+        mediaType: AssetMediaType,
         folderId: z.string().nullable(),
         filename: z.string().nullable(),
         sizeBytes: z.number().nullable(),
@@ -103,11 +103,11 @@ export const assetRightsPending = defineTool({
     return {
       assets: rows.map((r) => ({
         assetId: r.assetId,
-        role: r.role as string,
+        role: r.role,
         rightsStatus: r.rightsStatus,
         caption: r.caption,
         url: r.url,
-        mediaType: r.mediaType as string,
+        mediaType: r.mediaType,
         folderId: r.folderId,
         filename: r.filename,
         sizeBytes: r.sizeBytes,

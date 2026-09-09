@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ScopedDb } from '@sparksocial/tools';
-import type { AssetMediaType, AssetRole, Genome, Role } from '@sparksocial/shared';
+import type { AssetMediaType, AssetRightsStatus, AssetRole, Genome, Role } from '@sparksocial/shared';
 import { EMBEDDING_DIM, deterministicEmbedding } from '@sparksocial/shared/embedding';
 import { createDevRunStore, type DevRunStore } from './dev-runs.js';
 import { createDevCampaignStore } from './dev-campaigns.js';
@@ -445,7 +445,7 @@ export function createDevStore(
             lastUsedAt: a.lastUsedAt,
             rightsStatus: a.rightsStatus,
             url: a.url,
-            mediaType: a.mediaType,
+            mediaType: a.mediaType as AssetMediaType,
             folderId: a.folderId,
             filename: a.filename ?? null,
             sizeBytes: a.sizeBytes ?? null,
@@ -487,12 +487,12 @@ export function createDevStore(
 
       async info(ids, genomeId, org) {
         const now = Date.now();
-        const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
+        const out: Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: AssetMediaType }> = {};
         for (const id of ids) {
           const a = assets.get(id);
           if (!a || a.genomeId !== genomeId || a.orgId !== org) continue;
           out[id] = {
-            rightsStatus: a.rightsStatus,
+            rightsStatus: a.rightsStatus as AssetRightsStatus,
             lastUsedDaysAgo: a.lastUsedAt ? (now - a.lastUsedAt.getTime()) / 86_400_000 : undefined,
             url: a.url,
             mediaType: a.mediaType,
