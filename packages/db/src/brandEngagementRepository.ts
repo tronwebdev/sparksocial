@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import type { BrandEngagementStore } from '@sparksocial/tools/defineTool';
+import type { EngagementPlatform } from '@sparksocial/shared';
 import type { Database } from './client.js';
 import { brandEngagementSettings } from './schema.js';
 
@@ -31,7 +32,17 @@ export function createBrandEngagementRepository(db: Database): BrandEngagementSt
         })
         .from(brandEngagementSettings)
         .where(and(eq(brandEngagementSettings.orgId, orgId), eq(brandEngagementSettings.brandId, brandId)));
-      return rows.map((r) => ({ ...r, engagementTypes: r.engagementTypes ?? null }));
+      /*
+       * The column is `text`, so Drizzle types it `string`. The only writer is
+       * `set` below, reached only through `brand.engagement.platforms.set`,
+       * whose input is `platform: EngagementPlatform` — so the row holds one of
+       * the five or the row does not exist.
+       */
+      return rows.map((r) => ({
+        ...r,
+        platform: r.platform as EngagementPlatform,
+        engagementTypes: r.engagementTypes ?? null,
+      }));
     },
 
     async set({ brandId, orgId, platform, autonomy, engagementTypes, enabled }) {
@@ -71,7 +82,7 @@ export function createBrandEngagementRepository(db: Database): BrandEngagementSt
           engagementTypes: brandEngagementSettings.engagementTypes,
           enabled: brandEngagementSettings.enabled,
         });
-      return { ...row!, engagementTypes: row!.engagementTypes ?? null };
+      return { ...row!, platform: row!.platform as EngagementPlatform, engagementTypes: row!.engagementTypes ?? null };
     },
 
     async clear(brandId, orgId, platform) {

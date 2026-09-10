@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { EngagementKind, EngagementPlatform, ToolError } from '@sparksocial/shared';
 import { deriveThreadKey } from './thread.js';
 
 /**
@@ -22,10 +22,10 @@ import { deriveThreadKey } from './thread.js';
 
 export const EngageIngestInput = z.object({
   genomeId: z.string().min(1),
-  platform: z.enum(['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts']),
+  platform: EngagementPlatform,
   /** The platform's own message/comment id — the upsert key that makes a webhook retry safe. */
   externalId: z.string().min(1),
-  kind: z.enum(['comment', 'dm', 'story_reply']),
+  kind: EngagementKind,
   authorHandle: z.string().min(1),
   authorName: z.string().optional(),
   text: z.string().min(1).max(5_000),

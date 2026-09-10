@@ -397,7 +397,7 @@ export interface ToolIO {
   };
   "engage.audit.query": {
     input: { genomeId: string; since?: string; until?: string; limit?: number };
-    output: { items: Array<{ id: string; platform: string; kind: string; authorHandle: string; authorName?: string; text: string; receivedAt: string; status: string; category?: string; intentScore?: number; suggestedReply?: string; why?: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } }> };
+    output: { items: Array<{ id: string; platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; kind: "comment" | "dm" | "story_reply"; authorHandle: string; authorName?: string; text: string; receivedAt: string; status: string; category?: string; intentScore?: number; suggestedReply?: string; why?: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } }> };
   };
   "engage.autohandle": {
     input: { genomeId: string; messageId: string };
@@ -421,7 +421,7 @@ export interface ToolIO {
   };
   "engage.list": {
     input: { genomeId: string; status?: string; category?: "needs_review" | "suggested_reply" | "auto_handled" | "sales_opportunity"; limit?: number };
-    output: { items: Array<{ id: string; platform: string; kind: string; authorHandle: string; authorName?: string; text: string; receivedAt: string; status: string; category?: string; intentScore?: number; suggestedReply?: string; why?: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } }> };
+    output: { items: Array<{ id: string; platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; kind: "comment" | "dm" | "story_reply"; authorHandle: string; authorName?: string; text: string; receivedAt: string; status: string; category?: string; intentScore?: number; suggestedReply?: string; why?: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } }> };
   };
   "engage.opportunity.create": {
     input: { genomeId: string; messageId: string; temperature: "hot" | "warm" | "cold"; recommendedAction: string };
@@ -429,7 +429,7 @@ export interface ToolIO {
   };
   "engage.opportunity.list": {
     input: { genomeId: string; limit?: number; temperature?: "hot" | "warm" | "cold" };
-    output: { items: Array<{ opportunityId: string; messageId: string; temperature: "hot" | "warm" | "cold"; recommendedAction: string; routedTo?: string; raisedAt: string; platform?: string; authorHandle?: string; authorName?: string; messageText?: string; intentScore?: number; receivedAt?: string }>; counts: { hot: number; warm: number; cold: number } };
+    output: { items: Array<{ opportunityId: string; messageId: string; temperature: "hot" | "warm" | "cold"; recommendedAction: string; routedTo?: string; raisedAt: string; platform?: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; authorHandle?: string; authorName?: string; messageText?: string; intentScore?: number; receivedAt?: string }>; counts: { hot: number; warm: number; cold: number } };
   };
   "engage.opportunity.route": {
     input: { genomeId: string; opportunityId: string; routedTo: string };
@@ -449,7 +449,7 @@ export interface ToolIO {
   };
   "engage.thread": {
     input: { genomeId: string; messageId: string; limit?: number };
-    output: { threadKey: string; platform: string; kind: string; authorHandle: string; authorName?: string; turns: Array<{ direction: "inbound" | "outbound"; at: string; text: string; authorHandle?: string; authorName?: string; messageId: string; category?: string; intentScore?: number; status?: string }>; messageCount: number; truncated: boolean; single: boolean; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { threadKey: string; platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; kind: "comment" | "dm" | "story_reply"; authorHandle: string; authorName?: string; turns: Array<{ direction: "inbound" | "outbound"; at: string; text: string; authorHandle?: string; authorName?: string; messageId: string; category?: string; intentScore?: number; status?: string }>; messageCount: number; truncated: boolean; single: boolean; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "genome.avatar_config.set": {
     input: { genomeId: string; heygenAvatarId?: string; elevenlabsVoiceId?: string };

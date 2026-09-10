@@ -4,6 +4,7 @@ import type {
   CampaignStatus, ContentPillar, ContentStatus, GenerationMode, Objective, Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
+import type { EngagementKind, EngagementPlatform } from '@sparksocial/shared/engagementConfig';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import type {
   EmojiLevel,
@@ -661,7 +662,8 @@ export interface BrandGovernanceStore {
  * following the brand.
  */
 export interface PlatformEngagementRow {
-  platform: string;
+  /** The only writer is `set` below, and `brand.engagement.platforms.set`'s input is `EngagementPlatform`. */
+  platform: EngagementPlatform;
   /** Null means no override: this platform follows `BrandGovernance.engagementAutonomy`. */
   autonomy: string | null;
   /** Null means no override; an empty array is a real value and means every type. */
@@ -682,13 +684,13 @@ export interface BrandEngagementStore {
   set(args: {
     brandId: string;
     orgId: string;
-    platform: string;
+    platform: EngagementPlatform;
     autonomy?: string | null;
     engagementTypes?: string[] | null;
     enabled?: boolean;
   }): Promise<PlatformEngagementRow>;
   /** Remove the override entirely, so the platform inherits again. */
-  clear(brandId: string, orgId: string, platform: string): Promise<void>;
+  clear(brandId: string, orgId: string, platform: EngagementPlatform): Promise<void>;
 }
 
 /**
@@ -1310,9 +1312,15 @@ export interface CtaLinkStore {
 export interface EngagementMessage {
   id: string;
   genomeId: string;
-  platform: string;
+  /**
+   * The one writer is `ingest` below, and `engage.ingest`'s input has always
+   * validated against exactly `EngagementPlatform`'s five values — it just
+   * spelled them out inline instead of naming the enum, so the vocabulary
+   * stopped at the tool boundary and every reader got a `string` back.
+   */
+  platform: EngagementPlatform;
   externalId: string;
-  kind: string;
+  kind: EngagementKind;
   authorHandle: string;
   authorName?: string;
   text: string;
@@ -1357,9 +1365,9 @@ export interface EngagementStore {
   ingest(args: {
     genomeId: string;
     orgId: string;
-    platform: string;
+    platform: EngagementPlatform;
     externalId: string;
-    kind: string;
+    kind: EngagementKind;
     authorHandle: string;
     authorName?: string;
     text: string;
@@ -1490,7 +1498,7 @@ export interface Opportunity {
  * *countable* rather than silently dropped from a total the owner is reading.
  */
 export interface OpportunityWithMessage extends Opportunity {
-  platform?: string;
+  platform?: EngagementPlatform;
   authorHandle?: string;
   authorName?: string;
   messageText?: string;

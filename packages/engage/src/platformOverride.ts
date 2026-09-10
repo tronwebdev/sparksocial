@@ -1,5 +1,5 @@
 import type { PlatformEngagementRow, ToolCtx } from '@sparksocial/tools/defineTool';
-import type { PlatformEngagementSetting } from '@sparksocial/shared/engagementConfig';
+import type { EngagementPlatform, PlatformEngagementSetting } from '@sparksocial/shared/engagementConfig';
 
 /**
  * A brand's per-platform engagement overrides, for the reply path —
@@ -27,13 +27,13 @@ export async function listPlatformOverrides(ctx: ToolCtx): Promise<PlatformEngag
  */
 export function pickPlatformOverride(
   rows: readonly PlatformEngagementRow[],
-  platform: string | undefined,
+  platform: EngagementPlatform | undefined,
 ): PlatformEngagementSetting | undefined {
   if (!platform) return undefined;
   const row = rows.find((r) => r.platform === platform);
   if (!row) return undefined;
   return {
-    platform: row.platform as PlatformEngagementSetting['platform'],
+    platform: row.platform,
     /**
      * `null` in the column and `undefined` in the vocabulary both mean "no
      * override on this field", and the distinction matters downstream:

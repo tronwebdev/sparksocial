@@ -1,6 +1,7 @@
 ﻿import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import {
+  EngagementPlatform,
   ToolError,
   Explanation,
   resolveSalesHandoff,
@@ -227,7 +228,7 @@ const OpportunityListItem = z.object({
   routedTo: z.string().optional(),
   raisedAt: z.string(),
   /** From the message behind it. Absent only if that message is unreadable. */
-  platform: z.string().optional(),
+  platform: EngagementPlatform.optional(),
   authorHandle: z.string().optional(),
   authorName: z.string().optional(),
   messageText: z.string().optional(),

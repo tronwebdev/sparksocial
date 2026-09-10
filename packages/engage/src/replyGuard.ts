@@ -1,4 +1,4 @@
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, type EngagementPlatform } from '@sparksocial/shared';
 import type { ToolCtx } from '@sparksocial/tools/defineTool';
 
 /**
@@ -46,7 +46,7 @@ export interface ReplyGuard {
    * `flag` is reported but does not, because the human sending it has already
    * seen the words — see {@link enforceReplyGuard}.
    */
-  check(args: { genomeId: string; platform: string; text: string }, ctx: ToolCtx): Promise<ReplyGuardVerdict>;
+  check(args: { genomeId: string; platform: EngagementPlatform; text: string }, ctx: ToolCtx): Promise<ReplyGuardVerdict>;
 }
 
 /**
@@ -67,7 +67,7 @@ export interface ReplyGuard {
  */
 export async function enforceReplyGuard(
   guard: ReplyGuard | undefined,
-  args: { genomeId: string; platform: string; text: string; unattended: boolean },
+  args: { genomeId: string; platform: EngagementPlatform; text: string; unattended: boolean },
   ctx: ToolCtx,
 ): Promise<ReplyGuardVerdict> {
   if (!guard) return { verdict: 'pass' };

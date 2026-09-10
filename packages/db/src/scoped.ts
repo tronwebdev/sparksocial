@@ -9,6 +9,7 @@ import {
   type GenerationMode,
   type Platform,
 } from '@sparksocial/shared/types';
+import type { EngagementKind, EngagementPlatform } from '@sparksocial/shared/engagementConfig';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
@@ -1279,9 +1280,14 @@ export interface EngagementMessageRow {
   resolvedAt: Date | null;
   id: string;
   genomeId: string;
-  platform: string;
+  /**
+   * `engage.ingest` is the only writer of either column, and its input has
+   * always validated both against exactly these vocabularies. Narrowed in
+   * `asEngagementRow` — ten projections share `engagementMessageColumns`.
+   */
+  platform: EngagementPlatform;
   externalId: string;
-  kind: string;
+  kind: EngagementKind;
   authorHandle: string;
   authorName: string | null;
   text: string;
@@ -1322,6 +1328,13 @@ const engagementMessageColumns = {
   sentAt: engagementMessages.sentAt,
   createdAt: engagementMessages.createdAt,
 };
+
+type RawEngagementRow = Omit<EngagementMessageRow, 'platform' | 'kind'> & { platform: string; kind: string };
+const asEngagementRow = (row: RawEngagementRow): EngagementMessageRow => ({
+  ...row,
+  platform: row.platform as EngagementPlatform,
+  kind: row.kind as EngagementKind,
+});
 
 /**
  * `engage.ingest`'s one write — an upsert keyed on
@@ -1374,7 +1387,7 @@ export async function ingestEngagementMessage(
       set: { text: values.text, authorName: values.authorName, threadKey: values.threadKey },
     })
     .returning(engagementMessageColumns);
-  return row!;
+  return asEngagementRow(row!);
 }
 
 /** Read side of {@link ingestEngagementMessage} — one row, scoped. */
@@ -1388,7 +1401,7 @@ export async function getEngagementMessage(
     .from(engagementMessages)
     .where(and(eq(engagementMessages.id, id), scopePredicate('engagementMessages', scope)))
     .limit(1);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.classify`'s write — the triage decision that sorts a message into the feed's tabs. */
@@ -1415,7 +1428,7 @@ export async function classifyEngagementMessage(
     })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.reply.send`'s write — flips `status` to `replied` once delivery succeeds. */
@@ -1437,7 +1450,7 @@ export async function markEngagementMessageReplied(
     .set({ status: 'replied', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.autohandle`'s write — flips `status` to `auto_handled` once the unattended send succeeds. */
@@ -1455,7 +1468,7 @@ export async function markEngagementMessageAutoHandled(
     .set({ status: 'auto_handled', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /**
@@ -1475,12 +1488,13 @@ export async function threadEngagementMessages(
   scope: Scope,
   args: { threadKey: string; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(and(scopePredicate('engagementMessages', scope), eq(engagementMessages.threadKey, args.threadKey)))
     .orderBy(asc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 /**
@@ -1501,7 +1515,7 @@ export async function markEngagementMessageEscalated(
     .set({ status: 'escalated', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /**
@@ -1517,7 +1531,7 @@ export async function listEngagementMessages(
   scope: Scope,
   args: { status?: string; category?: string; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(
@@ -1529,6 +1543,7 @@ export async function listEngagementMessages(
     )
     .orderBy(desc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 /**
@@ -1543,7 +1558,7 @@ export async function auditEngagementMessages(
   scope: Scope,
   args: { statuses: string[]; since?: Date; until?: Date; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(
@@ -1556,6 +1571,7 @@ export async function auditEngagementMessages(
     )
     .orderBy(desc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 export interface OpportunityRow {
@@ -1632,7 +1648,8 @@ export async function listOpportunities(
 ): Promise<
   Array<
     OpportunityRow & {
-      platform: string | null;
+      /** Nullable because the join is a `leftJoin`, not because the column is. */
+      platform: EngagementPlatform | null;
       authorHandle: string | null;
       authorName: string | null;
       messageText: string | null;
@@ -1641,7 +1658,7 @@ export async function listOpportunities(
     }
   >
 > {
-  return db
+  const rows = await db
     .select({
       ...opportunityColumns,
       platform: engagementMessages.platform,
@@ -1663,6 +1680,9 @@ export async function listOpportunities(
     .where(scopePredicate('opportunities', scope))
     .orderBy(desc(opportunities.createdAt))
     .limit(args.limit);
+  // Same narrowing as `asEngagementRow`, on the same column, for a projection
+  // that joins the table rather than selecting it whole.
+  return rows.map((r) => ({ ...r, platform: r.platform as EngagementPlatform | null }));
 }
 
 /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { EngagementKind, EngagementPlatform, Explanation, ToolError } from '@sparksocial/shared';
 
 /**
  * `engage.audit.query` — a compliance/oversight sweep: every engagement
@@ -36,8 +36,8 @@ export const EngageAuditQueryInput = z.object({
 
 const EngageAuditItem = z.object({
   id: z.string(),
-  platform: z.string(),
-  kind: z.string(),
+  platform: EngagementPlatform,
+  kind: EngagementKind,
   authorHandle: z.string(),
   authorName: z.string().optional(),
   text: z.string(),

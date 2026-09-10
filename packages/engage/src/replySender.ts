@@ -20,9 +20,12 @@
  * against this interface, so wiring a real client in later is a swap behind
  * it, not a rewrite of `engage.reply.send`.
  */
+
+import type { EngagementKind, EngagementPlatform } from '@sparksocial/shared';
+
 export interface ReplySendRequest {
-  platform: string;
-  kind: string;
+  platform: EngagementPlatform;
+  kind: EngagementKind;
   /** The platform's own id of the message being replied to. */
   externalId: string;
   authorHandle: string;
