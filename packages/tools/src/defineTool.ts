@@ -1,7 +1,7 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
   Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
-  CampaignStatus, ContentStatus, Objective, Platform,
+  CampaignStatus, ContentPillar, ContentStatus, GenerationMode, Objective, Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
@@ -866,8 +866,13 @@ export interface ContentDraft {
   genomeId: string;
   campaignId?: string;
   playbookId: string;
-  mode: 'synthesize' | 'assemble' | 'direct_finish';
-  pillar?: string;
+  mode: GenerationMode;
+  /**
+   * The playbook's own `content_pillar`, copied at creation. Absent only on a
+   * calendar slot placed before the mix engine assigned one; nothing writes a
+   * pillar that did not come from a playbook record.
+   */
+  pillar?: ContentPillar;
   /** PRD §7.4's ladder. Every writer is a literal — see `ContentStatus`. */
   status: ContentStatus;
   /**
@@ -935,8 +940,8 @@ export interface ContentStore {
     genomeId: string;
     orgId: string;
     playbookId: string;
-    mode: 'synthesize' | 'assemble' | 'direct_finish';
-    pillar?: string;
+    mode: GenerationMode;
+    pillar?: ContentPillar;
     copy: unknown;
     why: Explanation;
     campaignId?: string;
@@ -1792,8 +1797,9 @@ export interface MetricsStore {
 
 export interface CampaignSlotInput {
   playbookId: string;
-  mode: string;
-  pillar: string;
+  /** Both copied from the playbook the mix engine chose — see `placeCalendar`. */
+  mode: GenerationMode;
+  pillar: ContentPillar;
   scheduledAt: Date;
   /**
    * Which account this slot posts to.
@@ -1854,8 +1860,8 @@ export interface CampaignStore {
     Array<{
       id: string;
       playbookId: string | null;
-      mode: string | null;
-      pillar: string | null;
+      mode: GenerationMode | null;
+      pillar: ContentPillar | null;
       status: ContentStatus;
       scheduledAt: Date | null;
       /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
@@ -1975,7 +1981,12 @@ export interface TrendObservationStore {
 
 /** One (genome, pillar) Thompson-sampling arm — `learning.*`'s storage (plan §6.7). */
 export interface LearningArm {
-  pillar: string;
+  /**
+   * `learning_arms.pillar`. Written only by `recordOutcome`, whose only caller
+   * (`learning.record_outcome`) passes a content item's own pillar — so an arm
+   * exists for a pillar a playbook declared, or it does not exist.
+   */
+  pillar: ContentPillar;
   alpha: number;
   beta: number;
   observations: number;
@@ -1994,7 +2005,7 @@ export interface LearningStore {
     genomeId: string;
     orgId: string;
     contentItemId: string;
-    pillar: string;
+    pillar: ContentPillar;
     reward: number;
   }): Promise<{ recorded: boolean; arm: LearningArm }>;
   /**

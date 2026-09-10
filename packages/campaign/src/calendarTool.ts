@@ -417,7 +417,7 @@ export const CalendarImpactPreviewInput = z.object({
   mixOverride: z.record(ContentPillar, z.number().min(0).max(MIX_OVERRIDE_MAX)).optional(),
 });
 
-const PillarCount = z.object({ pillar: z.string(), count: z.number() });
+const PillarCount = z.object({ pillar: ContentPillar, count: z.number() });
 
 export const CalendarImpactPreviewOutput = z.object({
   campaignId: z.string(),
@@ -430,8 +430,10 @@ export const CalendarImpactPreviewOutput = z.object({
   why: Explanation,
 });
 
-function countByPillar(slots: Array<{ pillar: string | null }>): Array<{ pillar: string; count: number }> {
-  const counts = new Map<string, number>();
+function countByPillar(
+  slots: Array<{ pillar: ContentPillar | null }>,
+): Array<{ pillar: ContentPillar; count: number }> {
+  const counts = new Map<ContentPillar, number>();
   for (const s of slots) {
     if (!s.pillar) continue;
     counts.set(s.pillar, (counts.get(s.pillar) ?? 0) + 1);
@@ -519,15 +521,15 @@ export const CalendarGetOutput = z.object({
    * item's, which is a different vocabulary on a different table. */
   status: CampaignStatus,
   /** Counts by pillar — the level §6.8 Step 4 says the user reviews at. */
-  mixActual: z.array(z.object({ pillar: z.string(), count: z.number() })),
+  mixActual: z.array(PillarCount),
   slots: z.array(
     z.object({
       id: z.string(),
       scheduledAt: z.string().nullable(),
-      pillar: z.string().nullable(),
+      pillar: ContentPillar.nullable(),
       playbookId: z.string().nullable(),
       playbookName: z.string().nullable(),
-      mode: z.string().nullable(),
+      mode: GenerationMode.nullable(),
       status: ContentStatus,
       /**
        * §8.7's platform filter. Null for a slot placed on a day rather than on
@@ -571,7 +573,7 @@ export const calendarGet = defineTool({
 
     const slots = await ctx.db.campaigns.slots(campaign.id, ctx.orgId, campaign.genomeId);
 
-    const counts = new Map<string, number>();
+    const counts = new Map<ContentPillar, number>();
     for (const s of slots) {
       if (!s.pillar) continue;
       counts.set(s.pillar, (counts.get(s.pillar) ?? 0) + 1);

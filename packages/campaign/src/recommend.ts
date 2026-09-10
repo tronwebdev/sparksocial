@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ContentStatus, Explanation, Objective, Platform, ToolError } from '@sparksocial/shared';
+import { ContentPillar, ContentStatus, Explanation, GenerationMode, Objective, Platform, ToolError } from '@sparksocial/shared';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 
 /**
@@ -78,9 +78,9 @@ export const CalendarRecommendSlotOutput = z.object({
        * The recommendation is still right; the caller needed to know which of two
        * paths it opens.
        */
-      mode: z.string(),
+      mode: GenerationMode,
       platforms: z.array(Platform),
-      pillar: z.string(),
+      pillar: ContentPillar,
       /** The campaign's objective, in its own words — what this post is chasing. */
       goal: z.string(),
       /** Where it will point people, when the campaign or the brand has said. */
@@ -103,7 +103,14 @@ export const CalendarRecommendSlotOutput = z.object({
     .object({
       contentItemId: z.string(),
       playbookName: z.string(),
-      pillar: z.string(),
+      /*
+       * Null on a slot the mix engine never assigned a pillar to — the date
+       * picker and drag-and-drop paths place a post without one. This said
+       * `z.string()` and the handler filled `'unknown'`, which is not a pillar
+       * the mix engine has ever heard of and would have been counted as one by
+       * anything grouping this output.
+       */
+      pillar: ContentPillar.nullable(),
       currentlyAt: z.string(),
       platform: Platform.optional(),
       alternativesLeft: z.number().int(),
@@ -365,7 +372,7 @@ function recommendMove(args: {
   slots: Array<{
     id: string;
     playbookId: string | null;
-    pillar: string | null;
+    pillar: ContentPillar | null;
     status: ContentStatus;
     scheduledAt: Date | null;
     platform: Platform | null;
@@ -411,7 +418,7 @@ function recommendMove(args: {
   return {
     contentItemId: candidate.id,
     playbookName: candidate.playbookId ?? 'Untitled post',
-    pillar: candidate.pillar ?? 'unknown',
+    pillar: candidate.pillar ?? null,
     currentlyAt: candidate.scheduledAt!.toISOString(),
     ...(candidate.platform ? { platform: candidate.platform } : {}),
     alternativesLeft: Math.max(0, movable.length - 1),

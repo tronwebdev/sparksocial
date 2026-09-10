@@ -4,7 +4,9 @@ import {
   type AssetMediaType,
   type AssetRightsStatus,
   type AssetRole,
+  type ContentPillar,
   type ContentStatus,
+  type GenerationMode,
   type Platform,
 } from '@sparksocial/shared/types';
 import { byId } from '@sparksocial/playbooks';
@@ -1685,8 +1687,14 @@ export interface ContentDraftRow {
   genomeId: string;
   campaignId: string | null;
   playbookId: string | null;
-  mode: string | null;
-  pillar: string | null;
+  /**
+   * Both come from the playbook a draft was created against — `createContentDraft`
+   * takes them from its caller, whose only sources are a `Playbook` record's
+   * `mode`/`content_pillar` or another draft's. Nullable because a calendar slot
+   * can exist before either is decided. Narrowed in `asDraftRow`.
+   */
+  mode: GenerationMode | null;
+  pillar: ContentPillar | null;
   /** Every writer in this file sets a literal — see `ContentStatus`. Narrowed in `asDraftRow`. */
   status: ContentStatus;
   /**
@@ -1749,11 +1757,18 @@ const contentDraftColumns = {
  * be seven chances to forget; this is the single seam, and the reason
  * `ContentDraftRow` above is allowed to promise the union.
  */
-type RawDraftRow = Omit<ContentDraftRow, 'platform' | 'status'> & { platform: string | null; status: string };
+type RawDraftRow = Omit<ContentDraftRow, 'platform' | 'status' | 'mode' | 'pillar'> & {
+  platform: string | null;
+  status: string;
+  mode: string | null;
+  pillar: string | null;
+};
 const asDraftRow = (row: RawDraftRow): ContentDraftRow => ({
   ...row,
   platform: row.platform as Platform | null,
   status: row.status as ContentStatus,
+  mode: row.mode as GenerationMode | null,
+  pillar: row.pillar as ContentPillar | null,
 });
 
 /**
@@ -1768,7 +1783,7 @@ export async function createContentDraft(
   scope: Scope,
   args: {
     playbookId: string;
-    mode: string;
+    mode: GenerationMode;
     pillar?: string;
     copy: unknown;
     why: unknown;
@@ -2055,8 +2070,8 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
 export interface CalendarSlotRow {
   campaignId: string;
   playbookId: string;
-  mode: string;
-  pillar: string;
+  mode: GenerationMode;
+  pillar: ContentPillar;
   scheduledAt: Date;
   /** `CMP-01.4`'s chosen account for this slot. Null keeps the playbook fallback. */
   platform?: string;
@@ -2119,8 +2134,8 @@ export async function campaignSlots(
   Array<{
     id: string;
     playbookId: string | null;
-    mode: string | null;
-    pillar: string | null;
+    mode: GenerationMode | null;
+    pillar: ContentPillar | null;
     status: ContentStatus;
     scheduledAt: Date | null;
     /**
@@ -2148,7 +2163,13 @@ export async function campaignSlots(
     .orderBy(asc(contentItems.scheduledAt));
   // Same narrowing as `asDraftRow`, on the same column, for a projection that
   // does not share `contentDraftColumns`.
-  return rows.map((r) => ({ ...r, status: r.status as ContentStatus, platform: r.platform as Platform | null }));
+  return rows.map((r) => ({
+    ...r,
+    mode: r.mode as GenerationMode | null,
+    pillar: r.pillar as ContentPillar | null,
+    status: r.status as ContentStatus,
+    platform: r.platform as Platform | null,
+  }));
 }
 
 /** Read helper for {@link lookupIdempotentToolCall}-style lookups is intentionally absent here —
@@ -2392,7 +2413,8 @@ export async function listMutedTrendSources(db: Database, scope: Scope): Promise
 export interface LearningArmRow {
   id: string;
   genomeId: string;
-  pillar: string;
+  /** The only writer is `recordLearningOutcome` below, from a content item's own pillar. */
+  pillar: ContentPillar;
   alpha: number;
   beta: number;
   observations: number;
@@ -2410,8 +2432,15 @@ const learningArmColumns = {
 };
 
 export async function listLearningArms(db: Database, scope: Scope): Promise<LearningArmRow[]> {
-  return db.select(learningArmColumns).from(learningArms).where(scopePredicate('learningArms', scope));
+  const rows = await db.select(learningArmColumns).from(learningArms).where(scopePredicate('learningArms', scope));
+  return rows.map(asArmRow);
 }
+
+/** `learning_arms.pillar` is `text`; this is the one place it is narrowed. */
+const asArmRow = (row: Omit<LearningArmRow, 'pillar'> & { pillar: string }): LearningArmRow => ({
+  ...row,
+  pillar: row.pillar as ContentPillar,
+});
 
 /**
  * `learning.reset` — deletes every arm AND every outcome for this genome, not
@@ -2439,7 +2468,7 @@ export async function resetLearning(db: Database, scope: Scope): Promise<void> {
 export async function recordLearningOutcome(
   db: Database,
   scope: Scope,
-  args: { contentItemId: string; pillar: string; reward: number },
+  args: { contentItemId: string; pillar: ContentPillar; reward: number },
 ): Promise<{ recorded: boolean; arm: LearningArmRow }> {
   assertScope(scope);
   return db.transaction(async (tx) => {
@@ -2486,7 +2515,7 @@ export async function recordLearningOutcome(
       .limit(1);
     if (!arm) throw new ToolError('UPSTREAM_FAILED', 'Failed to update the learning arm.', { pillar: args.pillar });
 
-    return { recorded, arm };
+    return { recorded, arm: asArmRow(arm) };
   });
 }
 

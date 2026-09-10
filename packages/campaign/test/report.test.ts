@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ToolError, type ContentStatus } from '@sparksocial/shared';
+import { ToolError, type ContentPillar, type ContentStatus } from '@sparksocial/shared';
 import type { AnalyticsStore, CampaignStore, ToolCtx } from '@sparksocial/tools';
 import type { CampaignPlan } from '../src/plan.js';
 import { campaignReportVsOutcome } from '../src/report.js';
@@ -29,8 +29,8 @@ const PLAN: CampaignPlan = {
   answers: null,
 };
 
-function slot(pillar: string, status: ContentStatus) {
-  return { id: `slot_${Math.random()}`, playbookId: 'pb_x', mode: 'assemble', pillar, status, scheduledAt: null, platform: null };
+function slot(pillar: ContentPillar, status: ContentStatus) {
+  return { id: `slot_${Math.random()}`, playbookId: 'pb_x', mode: 'assemble' as const, pillar, status, scheduledAt: null, platform: null };
 }
 
 function campaignStore(over: {

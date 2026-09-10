@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { defineTool, register, __resetRegistry, type ScopedDb } from '@sparksocial/tools';
+import type { ContentPillar } from '@sparksocial/shared';
 import { runOnce, resetOutcomeObserverWarnings } from '../src/outcome-observer.js';
 import { createDevStore } from '../src/dev-store.js';
 import { memoryInvokeDeps } from '../src/app.js';
@@ -77,7 +78,7 @@ function fakeRecord(opts: { throwsFor?: string } = {}) {
 /* ── a seeded dev store ──────────────────────────────────────────────────── */
 
 interface SeedPost {
-  pillar?: string;
+  pillar?: ContentPillar;
   publishedAt: Date;
   /** When its metrics were last synced. Omit for a post never synced. */
   syncedAt?: Date;

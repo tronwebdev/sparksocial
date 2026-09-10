@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ContentStatus, Explanation, Platform, ToolError } from '@sparksocial/shared';
+import { ContentStatus, Explanation, GenerationMode, Platform, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import { ResolvedBeat } from './draft.js';
 
@@ -24,7 +24,7 @@ export const ContentGetOutput = z.object({
   playbookId: z.string(),
   /** False when the library no longer has that playbook — see the handler. */
   playbookMissing: z.boolean(),
-  mode: z.string(),
+  mode: GenerationMode,
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   status: ContentStatus,
   /**
