@@ -518,9 +518,18 @@ export function CampaignWizard({
    * coming back from the provider updates the grid without a reload.
    */
   async function connectPlatform(platform: string) {
+    if (!genomeId) {
+      setError('Select a brand before connecting an account.');
+      return;
+    }
     setConnecting(platform);
     setError(null);
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { platform });
+    // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
+    // which matches neither field; see `AccountsSection.connect`.
+    const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
+      genomeId,
+      provider: platform,
+    });
     setConnecting(null);
     if (res.status !== 'succeeded') {
       setError(

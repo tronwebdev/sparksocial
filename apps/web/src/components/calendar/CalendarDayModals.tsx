@@ -107,9 +107,15 @@ export function AskAgentModal({
 
   const load = useCallback(async () => {
     if (!actions) return;
+    /*
+     * `date`, not `day`. The prop is named `day` and was passed through under
+     * that name, so the input failed validation and the modal rendered 'none'
+     * — a failed read and a day with genuinely nothing to suggest looked
+     * identical, which is why this went unnoticed.
+     */
     const res = await invoke<Recommendation>('calendar.recommend_slot', {
       campaignId: actions.campaignId,
-      day,
+      date: day,
     });
     setRec(res.status === 'succeeded' ? res.output : 'none');
   }, [actions, day]);

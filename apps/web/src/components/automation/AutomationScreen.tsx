@@ -100,8 +100,11 @@ export function AutomationScreen() {
     let cancelled = false;
     setValidation(null);
     void (async () => {
+      // `recipe.validate` takes `{ kind, config }`; the brand comes from the
+      // `x-genome-id` header the proxy forwards, read as `ctx.genomeId`. Zod
+      // strips a key that is not in the schema, so passing `genomeId` here was
+      // silently discarded rather than doing anything.
       const res = await invoke<Validation>('recipe.validate', {
-        genomeId,
         kind: draft.kind,
         config: configFor(draft),
       });

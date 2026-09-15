@@ -96,7 +96,8 @@ export function ReshareModal({
   const [published, setPublished] = useState<{ campaignId: string; contentItemId?: string } | null>(null);
 
   const load = useCallback(async () => {
-    const res = await invoke<{ platforms: PlatformRow[] }>('integration.health', { genomeId });
+    // `integration.health`'s input is `z.object({})` — it reads `ctx.genomeId`.
+    const res = await invoke<{ platforms: PlatformRow[] }>('integration.health', {});
     if (res.status !== 'succeeded') {
       setAccounts([]);
       return;

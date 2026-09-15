@@ -111,8 +111,9 @@ export function PerformanceCards({
         return;
       }
 
+      // Takes `{ campaignId }` only — the campaign already names its genome,
+      // and the request carries it. See `AutomationScreen`'s note on stripping.
       const report = await invoke<{ topPosts: TopPostRow[] }>('analytics.campaign_report', {
-        genomeId,
         campaignId: campaign.campaignId,
       });
       if (cancelled) return;

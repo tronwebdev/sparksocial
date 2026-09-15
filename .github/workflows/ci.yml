@@ -91,6 +91,14 @@ jobs:
       - name: Tool types match the registry
         run: npm run check:tool-types
 
+      # The other half of the same seam. `check:tool-types` proves the generated
+      # types match the registry; this proves the app's calls match the types.
+      # `invoke`'s input parameter is `unknown`, so nothing else checks that the
+      # object a component sends is the object the tool will parse — which is how
+      # Settings shipped a Connect button that could not connect.
+      - name: Tool call inputs match the registry
+        run: npm run check:tool-inputs
+
       # CLAUDE.md invariant 3 — the policy engine is pure and fully covered.
       # The 100% branch threshold is enforced in vitest.config.ts, so an
       # unreachable-but-untested governance branch fails here.

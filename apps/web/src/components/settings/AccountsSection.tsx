@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { platformLabel } from '@/lib/platforms';
 import { PublishHealthPanel } from './PublishHealthPanel';
 
@@ -66,6 +67,15 @@ function Mark({ platform, size = 45 }: { platform: string; size?: number }) {
 }
 
 export function AccountsSection() {
+  /*
+   * `integration.connect` takes the brand in its *input*, not off the request:
+   * `ctx.genomeId` comes from the `x-genome-id` header the proxy forwards, and
+   * the tool's schema is `{ genomeId, provider }`. This screen used to send
+   * `{ platform }` — neither field — so every Connect click failed Zod
+   * validation in `invoke.ts` before reaching the handler, and the button
+   * reported an error instead of opening the consent screen.
+   */
+  const { genome } = useSelectedGenome();
   const [platforms, setPlatforms] = useState<Platform[] | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +102,16 @@ export function AccountsSection() {
   }, [load]);
 
   async function connect(platform: string) {
+    if (!genome) {
+      setError('Select a brand before connecting an account.');
+      return;
+    }
     setConnecting(platform);
     setError(null);
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { platform });
+    const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
+      genomeId: genome.genomeId,
+      provider: platform,
+    });
     setConnecting(null);
     if (res.status !== 'succeeded') {
       setError(
