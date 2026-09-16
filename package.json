@@ -23,7 +23,8 @@
     "test:isolation": "vitest run packages/db/test/isolation.test.ts",
     "generate:tool-types": "tsx scripts/generate-tool-types.mts",
     "check:tool-types": "tsx scripts/generate-tool-types.mts --check",
-    "check:tool-inputs": "node scripts/check-tool-inputs.mjs"
+    "check:tool-inputs": "node scripts/check-tool-inputs.mjs",
+    "docs:pdf": "node scripts/doc-pdf/build.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
