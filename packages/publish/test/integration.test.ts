@@ -63,6 +63,38 @@ describe('integration.connect', () => {
   });
 });
 
+describe('a platform that connects with a credential, not a redirect', () => {
+  const tool = makeIntegrationConnect({
+    clientIds: { x: 'x' },
+    redirectUri: 'https://api.example/oauth/social/callback',
+    stateSecret: 'secret',
+  });
+
+  it('points Bluesky at the credential tool instead of claiming it is unconfigured', async () => {
+    /*
+     * The refusal this replaces was "bluesky isn't configured for native
+     * publishing yet", which is wrong in the way that costs time: it sent people
+     * looking for a developer console Bluesky does not have. Bluesky has no
+     * client id by design, so it failed the generic client-id check for a reason
+     * that was not its actual one.
+     */
+    await expect(tool.handler({ genomeId: 'gen_1', provider: 'bluesky' }, ctx())).rejects.toThrow(
+      /handle and an app password/,
+    );
+    await expect(tool.handler({ genomeId: 'gen_1', provider: 'bluesky' }, ctx())).rejects.not.toThrow(
+      /isn’t configured/,
+    );
+  });
+
+  it('still says "not configured" for a platform that genuinely has a console', async () => {
+    // Pinterest has a developer app; an operator who has not set one up should
+    // be told exactly that, and not sent to a credential form that cannot help.
+    await expect(tool.handler({ genomeId: 'gen_1', provider: 'pinterest' }, ctx())).rejects.toThrow(
+      /isn’t configured/,
+    );
+  });
+});
+
 describe('account selection at the authorize step', () => {
   const tool = makeIntegrationConnect({
     clientIds: { youtube_shorts: 'yt', google_business: 'gb', x: 'x', instagram: 'ig', tiktok: 'tt', linkedin: 'li' },

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
+import { CredentialConnectModal } from './CredentialConnectModal';
 import { expiresInWords } from '@sparksocial/shared';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -37,6 +38,14 @@ interface PlatformStatus {
   hoursUntilExpiry: number | null;
   supported: boolean;
   via: string | null;
+  /**
+   * How this platform connects. `credentials` takes a handle and an app
+   * password rather than a browser redirect, so its Connect button opens a form
+   * instead of a popup — sending it to `integration.connect` is what produced
+   * "bluesky isn't configured for native publishing yet". Served by the tool so
+   * this component does not hardcode which platforms are which.
+   */
+  connectMethod: 'oauth' | 'credentials' | 'derived';
   /**
    * Set when this platform posts through another's connection — Instagram
    * Stories through Instagram, YouTube long-form through YouTube Shorts. There
@@ -88,6 +97,7 @@ export function PublishHealthPanel() {
   const [loading, setLoading] = useState(false);
   const [busyPlatform, setBusyPlatform] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,6 +165,11 @@ export function PublishHealthPanel() {
 
   async function connect(platform: string) {
     if (!genome) return;
+    // A credential platform has no authorize URL to open — see the modal.
+    if (platforms?.find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setCredentialFor(platform);
+      return;
+    }
     setBusyPlatform(platform);
     setMessage(null);
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId: genome.genomeId, provider: platform });
@@ -298,6 +313,21 @@ export function PublishHealthPanel() {
           </ul>
         )}
       </div>
+
+      {credentialFor && genome ? (
+        <CredentialConnectModal
+          platform={credentialFor}
+          genomeId={genome.genomeId}
+          onClose={() => setCredentialFor(null)}
+          onConnected={(accountLabel) => {
+            setCredentialFor(null);
+            // Named, like every other connect confirmation — see the `?social=`
+            // handler above for why the account and not just the platform.
+            setMessage({ kind: 'ok', text: `${platformLabel(credentialFor)} connected as ${accountLabel}.` });
+            void load();
+          }}
+        />
+      ) : null}
     </section>
   );
 }

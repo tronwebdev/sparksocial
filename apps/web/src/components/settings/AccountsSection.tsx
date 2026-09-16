@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { platformLabel } from '@/lib/platforms';
+import { CredentialConnectModal } from './CredentialConnectModal';
 import { PublishHealthPanel } from './PublishHealthPanel';
 
 /**
@@ -41,6 +42,8 @@ interface Platform {
    * names its source instead of offering a button that always errored.
    */
   connectedVia?: string;
+  /** See `PublishHealthPanel`'s copy of this — `credentials` opens a form, not a popup. */
+  connectMethod: 'oauth' | 'credentials' | 'derived';
 }
 
 const TINT: Record<string, string> = {
@@ -85,6 +88,7 @@ export function AccountsSection() {
   const { genome } = useSelectedGenome();
   const [platforms, setPlatforms] = useState<Platform[] | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -111,6 +115,17 @@ export function AccountsSection() {
   async function connect(platform: string) {
     if (!genome) {
       setError('Select a brand before connecting an account.');
+      return;
+    }
+    /*
+     * Bluesky and anything else that authenticates with a handle and an app
+     * password. `integration.connect` has no authorize URL to give for these and
+     * refuses — which is what "bluesky isn't configured for native publishing
+     * yet" was.
+     */
+    if ((platforms ?? []).find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setError(null);
+      setCredentialFor(platform);
       return;
     }
     setConnecting(platform);
@@ -212,6 +227,18 @@ export function AccountsSection() {
         </ul>
 
         {error ? <p className="mt-[16px] text-16 text-destructive">{error}</p> : null}
+
+        {credentialFor && genome ? (
+          <CredentialConnectModal
+            platform={credentialFor}
+            genomeId={genome.genomeId}
+            onClose={() => setCredentialFor(null)}
+            onConnected={() => {
+              setCredentialFor(null);
+              void load();
+            }}
+          />
+        ) : null}
       </section>
 
       {/* Publishing health is the other half of "is this account working". */}

@@ -911,6 +911,25 @@ export function makeIntegrationConnect(deps: IntegrationConnectDeps) {
           { provider: input.provider, connectVia: owner },
         );
       }
+      /*
+       * A credential platform has no client id and never will, so the
+       * "isn't configured yet" refusal below would be exactly wrong about it:
+       * there is nothing for an operator to configure, and the person reading it
+       * would go looking for a developer console that does not exist.
+       *
+       * This has to run BEFORE the client-id check for that reason — Bluesky
+       * fails that check for a reason that is not its actual one. The same
+       * refusal exists in `buildAuthorizeUrl`, which is unreachable from here
+       * precisely because the client-id check gets there first.
+       */
+      if (CREDENTIAL_PLATFORMS.includes(input.provider)) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `${input.provider} connects with a handle and an app password, not a browser redirect — use integration.connect_credentials.`,
+          { provider: input.provider, connectMethod: 'credentials' },
+        );
+      }
+
       const clientId = deps.clientIds[input.provider];
       if (!clientId) {
         throw new ToolError('INVALID_INPUT', `${input.provider} isn’t configured for native publishing yet.`, { provider: input.provider });
@@ -1121,6 +1140,14 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
            * cannot lead anywhere. See `PARENT_PLATFORM`.
            */
           connectedVia: Platform.optional(),
+          /**
+           * How this platform is connected, so the UI does not have to hardcode
+           * which ones are which. `credentials` means a handle and an app
+           * password (`integration.connect_credentials`) rather than a browser
+           * redirect — Bluesky today. `derived` platforms carry `connectedVia`
+           * above and offer no connect action at all.
+           */
+          connectMethod: z.enum(['oauth', 'credentials', 'derived']),
           via: z.string().nullable(),
         }),
       ),
@@ -1158,6 +1185,11 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
             connected: Boolean(conn),
             status,
             ...(owner !== platform ? { connectedVia: owner } : {}),
+            connectMethod: (owner !== platform
+              ? 'derived'
+              : CREDENTIAL_PLATFORMS.includes(platform)
+                ? 'credentials'
+                : 'oauth') as 'oauth' | 'credentials' | 'derived',
             ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
             ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
             hoursUntilExpiry: conn?.expiresAt
