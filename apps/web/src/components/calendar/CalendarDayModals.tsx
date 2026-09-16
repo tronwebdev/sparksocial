@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import type { ToolOutput } from '@/lib/toolTypes.generated';
 import { cn } from '@/lib/utils';
 import { CalendarModal } from './CalendarModal';
 import type { BoardActions } from './CalendarBoard';
@@ -30,12 +31,18 @@ import type { BoardActions } from './CalendarBoard';
  * have produced a second "accept a recommendation" that drifts from the first.
  */
 
-interface Recommendation {
-  playbookId: string;
-  playbookName?: string;
-  mode?: string;
-  why?: { summary?: string };
-}
+/*
+ * Printed from the tool's own schema rather than described by hand.
+ *
+ * The hand-written version declared `playbookId`/`playbookName`/`why` at the top
+ * level. `calendar.recommend_slot` returns `{ date, create?, move? }` and puts
+ * all three under `create`, so every read here was `undefined`: the panel showed
+ * an empty recommendation, the Preview fell back to its placeholder, and
+ * "Accept & Draft" stayed enabled while passing `undefined` as the playbook id.
+ * `DayActionSheet` — the other reader of this same tool — had the shape right
+ * all along, which is what two hand-written types for one schema buys you.
+ */
+type Recommendation = ToolOutput<'calendar.recommend_slot'>;
 
 const PANEL = 'rounded-2xl bg-white px-[26px] py-[22px]';
 const PANEL_RING = { boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.08)' } as const;
@@ -124,7 +131,10 @@ export function AskAgentModal({
     void load();
   }, [load]);
 
-  const ready = rec !== null && rec !== 'none' ? rec : null;
+  // `create` is what this modal drafts. The tool may instead answer with a
+  // `move` (a post better placed here), which the day action sheet handles and
+  // this panel has no affordance for — so no `create` reads as nothing to draft.
+  const ready = rec !== null && rec !== 'none' ? (rec.create ?? null) : null;
 
   return (
     <CalendarModal kind="ask" label={`Ask the agent to plan ${prettyDay(day)}`} onClose={onClose}>
@@ -142,7 +152,7 @@ export function AskAgentModal({
           </p>
         ) : (
           <p className="text-[19px] font-medium text-ink">
-            {ready?.playbookName ?? ready?.playbookId}
+            {ready ? (ready.playbookName ?? ready.playbookId) : 'Nothing in this campaign fits this day yet.'}
           </p>
         )}
       </Section>
