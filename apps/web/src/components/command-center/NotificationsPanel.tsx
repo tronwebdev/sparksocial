@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { useAuth } from '@clerk/nextjs';
+import { readSelectedGenome } from '@/lib/selectedGenome';
 import { relativeTime } from '@/lib/relativeTime';
 
 /**
@@ -53,12 +55,36 @@ const URGENCY_TONE: Record<Notification['urgency'], 'neutral' | 'warn'> = {
 };
 
 export function NotificationsPanel() {
+  /*
+   * The cookie, not `useSelectedGenome`.
+   *
+   * They are not the same question. `useSelectedGenome` falls back to the first
+   * brand in the account when no cookie is set, which is right for a panel that
+   * needs *a* brand to talk about — but `human.notifications` reads
+   * `ctx.brandId`, and that comes from the `spark_genome` cookie the proxy
+   * forwards. With brands in the account and none opened, the hook answers "yes"
+   * and the request still arrives brand-less, so the 400 would come back.
+   */
+  const { orgId } = useAuth();
+  const selectedGenomeId = readSelectedGenome(orgId);
   const [items, setItems] = useState<Notification[] | null>(null);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
 
   async function load() {
+    /*
+     * Brand-scoped, like the bell in `lib/notifications.tsx`: without a selected
+     * brand `human.notifications` refuses with INVALID_INPUT — a 400 — and this
+     * panel would render that refusal as an error the reader cannot act on. An
+     * account with no brands yet is not in an error state; it has nothing to
+     * show.
+     */
+    if (!selectedGenomeId) {
+      setItems([]);
+      setError(null);
+      return;
+    }
     const res = await invoke<{ notifications: Notification[]; unreadCount: number }>('human.notifications', {
       limit: 20,
     });
@@ -72,9 +98,12 @@ export function NotificationsPanel() {
     setUnread(res.output.unreadCount);
   }
 
+  // Re-runs once the brand resolves: the first render has no genome yet, and
+  // without this the panel would stay empty even after one arrives.
   useEffect(() => {
     void load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGenomeId]);
 
   async function markAllRead() {
     if (marking || unread === 0) return;
