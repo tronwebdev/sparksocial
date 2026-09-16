@@ -338,7 +338,7 @@ discovers trends; the rest widen the pool.
 | **Product Hunt** | live | `PRODUCTHUNT_CLIENT_ID` / `_SECRET` |
 | **Reddit** | not configured | `REDDIT_CLIENT_ID` / `_SECRET` |
 | **X** | not configured | `X_BEARER_TOKEN` |
-| **TikTok** | not configured | `TIKTOK_CREATIVE_TOKEN` |
+| **TikTok** | not configured | `TIKTOK_CREATIVE_TOKEN` — needs a Marketing API approval |
 | **Pinterest** | not configured | `PINTEREST_ACCESS_TOKEN` |
 
 An unset source is not an error. It is skipped, and the ones that are set carry
@@ -346,28 +346,73 @@ the ranking — which is why four being live already means Discovery works today
 
 ### Setting up the four that are not
 
-**Reddit** — the same app as Reddit publishing. One registration serves both, so
-if you complete [Reddit](#reddit) above, this comes with it. Nothing extra.
+Numbered the same way as the publishing platforms above, because these are
+ordinary vendor consoles too — the only difference is that a trend key belongs to
+the *deployment* rather than to a brand, so there is no Connect button and no
+consent screen. You set the key, restart the API, and the source joins the pool.
 
-**X** — a *bearer token*, not the OAuth client used for publishing. In
-**developer.x.com** → your Project → Keys and tokens → **Bearer Token**. It
-belongs to the app, not to a user, and needs no consent screen. Note X's free
-tier does not include the search endpoints this reads, so this source realistically
-needs a paid tier — which is why it is the one most reasonable to leave off.
+#### Reddit (trends)
 
-**TikTok** — a Creative Center token, which is **not** the Login Kit client you
-use for publishing. It comes from TikTok's Marketing API, a separate application
-with its own approval. Genuinely optional.
+Nothing separate to do. The trend source reads the **same**
+`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` as Reddit publishing, so completing
+[Reddit](#reddit) above turns both on at once. One app, one registration, two
+uses.
 
-> ⚠️ Your `.env` currently has a key named `TIKTOK_CREATIVE_CENTER_TOKEN`.
-> The code reads **`TIKTOK_CREATIVE_TOKEN`**. If that value is a real token,
-> renaming the key turns this source on; as it stands the value is being ignored
-> and the source is silently off.
+#### X (trends)
 
-**Pinterest** — an access token from the same Pinterest app as publishing
-(**developers.pinterest.com** → your app → generate a token). Distinct from the
-per-brand OAuth connection: this one reads public trends and belongs to the
-deployment, not to a brand.
+A **bearer token**, which is a different credential from the OAuth client used
+for publishing — app-level, no user, no consent screen.
+
+1. **developer.x.com** → your Project → your App → **Keys and tokens**.
+2. Under *Authentication Tokens*, find **Bearer Token** and **Generate**.
+3. Copy it immediately — X shows it once, and regenerating invalidates the old
+   one.
+4. → `X_BEARER_TOKEN`.
+
+Optional tuning: `X_TREND_WOEID` sets the "where on earth" region for trends
+(1 is worldwide, the default).
+
+> **X's free tier does not include the search endpoints this source reads.**
+> A free bearer token authenticates and then gets 403s, which look like a broken
+> integration and are not. This is the one source it is most reasonable to leave
+> off unless you already pay for a tier that includes recent search.
+
+#### TikTok (trends)
+
+A **Creative Center** token from TikTok's Marketing API — **not** the Login Kit
+client key used for publishing. It is a separate application with its own
+approval, and the two are not interchangeable.
+
+1. **business-api.tiktok.com** → register a developer account.
+2. Create an app and request **Creative Center / Trends** access.
+3. Generate a long-lived access token once approved.
+4. → `TIKTOK_CREATIVE_TOKEN`.
+
+Optional tuning: `TIKTOK_TREND_REGION` (an ISO country code) and
+`TIKTOK_TREND_PERIOD_DAYS` (the lookback window).
+
+> Approval here is a real wait and the source is genuinely optional — Google
+> Trends and Hacker News cover general discovery without it.
+
+#### Pinterest (trends)
+
+An access token from the **same Pinterest app** as publishing, but a different
+kind of credential: this one belongs to the deployment and reads public trends,
+where the publishing connection belongs to a brand and posts on its behalf.
+
+1. **developers.pinterest.com** → your app (the one from [Pinterest](#pinterest)
+   above, or a new one).
+2. Generate an access token with a read scope.
+3. → `PINTEREST_ACCESS_TOKEN`.
+
+#### The two that are already live, for reference
+
+**YouTube** — `YOUTUBE_API_KEY` is a plain API key, not the OAuth client used for
+publishing: **console.cloud.google.com** → Credentials → Create credentials →
+**API key**, with the *YouTube Data API v3* enabled on the project. Already set.
+
+**Product Hunt** — **api.producthunt.com/v2/oauth/applications** → create an
+application → `PRODUCTHUNT_CLIENT_ID` / `PRODUCTHUNT_CLIENT_SECRET`. Already set.
 
 ### Turning a source off on purpose
 
