@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
+import { expiresInWords } from '@sparksocial/shared';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 
@@ -61,12 +62,14 @@ const STATUS_BADGE: Record<ConnectionStatus, { variant: 'success' | 'warn' | 'de
 function expiryNote(p: PlatformStatus): string | null {
   if (p.status === 'expired') return 'Access expired — posts to this account will fail until you reconnect.';
   if (p.status !== 'expiring' || p.hoursUntilExpiry === null) return null;
-  const days = Math.round(p.hoursUntilExpiry / 24);
-  // Under a day is stated in hours: "expires in 0 days" is the kind of rounding
-  // that makes a warning easy to dismiss on the one day it matters most.
-  return days >= 1
-    ? `Expires in ${days} day${days === 1 ? '' : 's'} — reconnect before it does.`
-    : `Expires in under ${Math.max(1, Math.round(p.hoursUntilExpiry))} hours — reconnect now.`;
+  // `expiresInWords` is shared with `integration.health`'s banner and the
+  // connection watcher's notification. This panel had the only correct version
+  // of this rounding and rendered the tool's incorrect one directly above it.
+  const left = expiresInWords(p.hoursUntilExpiry * 3_600_000);
+  if (!left) return null;
+  return left.startsWith('under')
+    ? `Expires in ${left} — reconnect now.`
+    : `Expires in ${left} — reconnect before it does.`;
 }
 
 

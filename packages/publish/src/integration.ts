@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, expiresInWords } from '@sparksocial/shared';
 import { generatePkce, signOAuthState, verifyOAuthState, type OAuthStatePayload } from '@sparksocial/shared/oauthState';
 import { Platform, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, DEFAULT_BUDGETS, type RateLimiter } from './retry.js';
@@ -562,7 +562,9 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
             detail:
               p.status === 'expired'
                 ? `${p.accountLabel ?? p.platform} needs reconnecting — its access expired and posts to it will fail.`
-                : `${p.accountLabel ?? p.platform} expires in ${Math.max(0, Math.round((p.hoursUntilExpiry ?? 0) / 24))} days. Reconnect before it does.`,
+                : `${p.accountLabel ?? p.platform} expires in ${
+                    expiresInWords((p.hoursUntilExpiry ?? 0) * 3_600_000) ?? 'under 1 hour'
+                  }. Reconnect before it does.`,
           })),
       };
     },

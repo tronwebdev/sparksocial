@@ -187,3 +187,40 @@ function normaliseWindows(raw?: number[]): number[] {
   );
   return cleaned.length ? cleaned : [...DEFAULT_POSTING_WINDOWS];
 }
+
+/**
+ * How long until a stored OAuth token expires, in words a person can act on.
+ *
+ * Three places said this, three different ways, about the same connection:
+ *
+ *   `integration.health`'s `needsAttention`   Math.max(0, round(h / 24))  → "0 days"
+ *   `connection-watcher`'s notification       Math.max(1, round(ms / day)) → "1 day"
+ *   `PublishHealthPanel`'s per-tile note      hours under a day            → "under 2 hours"
+ *
+ * Only the third is right, and `PublishHealthPanel`'s own comment says why:
+ * *"expires in 0 days is the kind of rounding that makes a warning easy to
+ * dismiss on the one day it matters most."* The panel then rendered the banner
+ * directly above it from the tool's string, which said exactly that.
+ *
+ * It matters more than rounding usually does because the tokens are short.
+ * Google issues an access token good for an hour and X for two, so a connection
+ * is inside this branch from the moment it is made — "0 days" is what a brand
+ * sees immediately after a successful connect.
+ *
+ * Returns the phrase alone ("under 2 hours", "6 days") so each caller keeps its
+ * own sentence. Null when the token has no stated expiry or has already gone —
+ * both are a different message, not a shorter interval.
+ */
+export function expiresInWords(msUntilExpiry: number): string | null {
+  if (!Number.isFinite(msUntilExpiry) || msUntilExpiry <= 0) return null;
+  const HOUR = 3_600_000;
+  const DAY = 86_400_000;
+  if (msUntilExpiry >= DAY) {
+    const days = Math.round(msUntilExpiry / DAY);
+    return `${days} day${days === 1 ? '' : 's'}`;
+  }
+  // Rounded up, never down: an hour that has partly gone is still the hour a
+  // person has left, and rounding it to zero is the failure this exists to stop.
+  const hours = Math.max(1, Math.ceil(msUntilExpiry / HOUR));
+  return `under ${hours} hour${hours === 1 ? '' : 's'}`;
+}
