@@ -48,7 +48,7 @@ describe('GET /oauth/social/callback', () => {
     const { app } = harness();
     const res = await app.request('/oauth/social/callback?error=access_denied', { redirect: 'manual' });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?social=denied');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=denied');
   });
 
   it('400s when code or state is missing', async () => {
@@ -76,7 +76,7 @@ describe('GET /oauth/social/callback', () => {
     const { app, saved } = harness();
     const res = await app.request(`/oauth/social/callback?code=abc&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?social=failed');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed');
     expect(saved).toEqual([]);
   });
 
@@ -100,7 +100,7 @@ describe('GET /oauth/social/callback', () => {
     const res = await app.request(`/oauth/social/callback?code=code123&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?social=connected&provider=tiktok');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=connected&provider=tiktok');
     expect(saved[0]).toMatchObject({
       genomeId: 'gen_1',
       orgId: 'org_1',
@@ -122,7 +122,7 @@ describe('GET /oauth/social/callback', () => {
     const res = await app.request(`/oauth/social/callback?code=code123&state=${encodeURIComponent(state)}`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('https://app.example.com/settings?social=failed');
+    expect(res.headers.get('location')).toBe('https://app.example.com/settings/accounts?social=failed');
     expect(saved).toEqual([]);
   });
 });
