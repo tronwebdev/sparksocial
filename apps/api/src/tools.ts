@@ -164,6 +164,7 @@ import {
   makeIntegrationHealth,
   makeIntegrationRateBudget,
   integrationScopesVerify,
+  integrationConnectCredentials,
   type Platform,
 } from '@sparksocial/publish';
 import { socialAdapterClients, socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
@@ -520,17 +521,45 @@ export function registerAlphaTools(): void {
   // developer app (`socialAdapterClients`'s own comment); an unconfigured
   // platform falls through to the stub, so the whole calendar → guardrails →
   // policy → publish path still runs end to end without any vendor account.
-  // The Ayrshare aggregator adapter is deliberately NOT included here even
-  // when `AYRSHARE_API_KEY` is set — its code is kept intact
-  // (`ayrshareAdapter.ts`, `ayrshare-adapter-client.ts`) for the long-tail
-  // platforms (Pinterest, GBP, Reddit, Bluesky, Threads) post-GA, but is not
-  // wired into routing until `PUBLISH_USE_AGGREGATOR=true` opts back in.
   const nativeAdapters = socialAdapterClients();
-  const useAggregator = envSet('PUBLISH_USE_AGGREGATOR') && envStr('PUBLISH_USE_AGGREGATOR', '').toLowerCase() === 'true';
-  const ayrshareAdapter = useAggregator ? ayrshareAdapterClient() : undefined;
+
+  /*
+   * ── The aggregator switch ──────────────────────────────────────────────
+   *
+   * `routeAdapters` picks the FIRST adapter whose `supports()` answers true, so
+   * order is the whole switch.
+   *
+   * `PUBLISH_USE_AGGREGATOR=true` puts Ayrshare in the table at all. It used to
+   * be enough on its own, because it was the only thing that could reach the
+   * long tail — Threads, Pinterest, Google Business, Reddit, Bluesky. All five
+   * are native now, so appending it would mean it never gets asked: every
+   * platform would match a native adapter first and the flag would look broken.
+   *
+   * `PUBLISH_PREFER_AGGREGATOR=true` is therefore the real lever. It puts
+   * Ayrshare *ahead* of the native adapters, so one env var moves every platform
+   * it supports onto the aggregator without touching a connection, a token or a
+   * line of code — and removing it moves them all back. That is the on/off this
+   * needs to be: a way to fall back to one vendor when a native app is
+   * rate-limited, awaiting re-approval, or simply misbehaving, without a deploy.
+   */
+  const useAggregator = envStr('PUBLISH_USE_AGGREGATOR', '').toLowerCase() === 'true';
+  const preferAggregator = envStr('PUBLISH_PREFER_AGGREGATOR', '').toLowerCase() === 'true';
+  const ayrshareAdapter = useAggregator || preferAggregator ? ayrshareAdapterClient() : undefined;
+
+  if (preferAggregator && !ayrshareAdapter) {
+    console.warn(
+      '[warn] PUBLISH_PREFER_AGGREGATOR is set but no aggregator is configured (AYRSHARE_API_KEY) — ' +
+        'publishing stays on the native adapters.',
+    );
+  }
+  if (ayrshareAdapter) {
+    console.log(`  publishing: aggregator ${preferAggregator ? 'FIRST — native adapters are bypassed' : 'as fallback behind native adapters'}`);
+  }
+
   const adapters = [
+    ...(preferAggregator && ayrshareAdapter ? [ayrshareAdapter] : []),
     ...nativeAdapters,
-    ...(ayrshareAdapter ? [ayrshareAdapter] : []),
+    ...(!preferAggregator && ayrshareAdapter ? [ayrshareAdapter] : []),
     // Last-resort fallback: whatever platform nothing above claims still
     // round-trips end to end in dev — `routeAdapters` picks the first
     // adapter whose `supports()` returns true, so this only ever serves a
@@ -559,6 +588,14 @@ export function registerAlphaTools(): void {
   register(makeIntegrationHealth({ adapters }));
   register(makeIntegrationRateBudget({ limiter }));
   register(integrationScopesVerify);
+  /*
+   * Registered unconditionally, unlike `integration.connect`. That one is
+   * gated on OAUTH_STATE_SECRET because it signs a state envelope; this one
+   * signs nothing and needs no app registration — Bluesky authenticates with
+   * the brand's own app password, so there is nothing for an operator to set
+   * up and no reason to hide the tool when they have not.
+   */
+  register(integrationConnectCredentials);
 
   // Link attribution (§8, P4). Same "unset → not registered" rule as the
   // image/avatar/voice generation tools.

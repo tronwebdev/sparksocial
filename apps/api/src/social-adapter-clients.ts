@@ -1,6 +1,11 @@
 import {
   createInstagramAdapter,
   createFacebookAdapter,
+  createThreadsAdapter,
+  createPinterestAdapter,
+  createRedditAdapter,
+  createGoogleBusinessAdapter,
+  createBlueskyAdapter,
   createTikTokAdapter,
   createLinkedInAdapter,
   createXAdapter,
@@ -49,6 +54,27 @@ export function socialAdapterClients(): PlatformAdapter[] {
   if (envSet('YOUTUBE_CLIENT_ID') && envSet('YOUTUBE_CLIENT_SECRET')) adapters.push(createYouTubeAdapter());
   else warnUnconfigured('youtube_shorts', 'YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET');
 
+  if (envSet('THREADS_APP_ID') && envSet('THREADS_APP_SECRET')) adapters.push(createThreadsAdapter());
+  else warnUnconfigured('threads', 'THREADS_APP_ID / THREADS_APP_SECRET');
+
+  if (envSet('PINTEREST_APP_ID') && envSet('PINTEREST_APP_SECRET')) adapters.push(createPinterestAdapter());
+  else warnUnconfigured('pinterest', 'PINTEREST_APP_ID / PINTEREST_APP_SECRET');
+
+  if (envSet('REDDIT_CLIENT_ID') && envSet('REDDIT_CLIENT_SECRET')) adapters.push(createRedditAdapter());
+  else warnUnconfigured('reddit', 'REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET');
+
+  if (envSet('GOOGLE_BUSINESS_CLIENT_ID') && envSet('GOOGLE_BUSINESS_CLIENT_SECRET')) adapters.push(createGoogleBusinessAdapter());
+  else warnUnconfigured('google_business', 'GOOGLE_BUSINESS_CLIENT_ID / GOOGLE_BUSINESS_CLIENT_SECRET');
+
+  /*
+   * Bluesky needs no app registration at all — it authenticates with the
+   * brand's own handle and app password, so there is nothing for an operator
+   * to configure and the adapter is always available. The per-brand
+   * credential is what gates it, and `integration.connect_credentials`
+   * collects that.
+   */
+  adapters.push(createBlueskyAdapter());
+
   return adapters;
 }
 
@@ -64,6 +90,11 @@ export function socialClientIds(): Partial<Record<Platform, string>> {
   if (envSet('LINKEDIN_CLIENT_ID')) ids.linkedin = process.env.LINKEDIN_CLIENT_ID!.trim();
   if (envSet('X_API_KEY')) ids.x = process.env.X_API_KEY!.trim();
   if (envSet('YOUTUBE_CLIENT_ID')) ids.youtube_shorts = process.env.YOUTUBE_CLIENT_ID!.trim();
+  if (envSet('THREADS_APP_ID')) ids.threads = process.env.THREADS_APP_ID!.trim();
+  if (envSet('PINTEREST_APP_ID')) ids.pinterest = process.env.PINTEREST_APP_ID!.trim();
+  if (envSet('REDDIT_CLIENT_ID')) ids.reddit = process.env.REDDIT_CLIENT_ID!.trim();
+  if (envSet('GOOGLE_BUSINESS_CLIENT_ID')) ids.google_business = process.env.GOOGLE_BUSINESS_CLIENT_ID!.trim();
+  // No `bluesky`: it has no app-level client id. See `socialAdapterClients`.
   return ids;
 }
 
@@ -75,5 +106,9 @@ export function socialClientSecrets(): Partial<Record<Platform, string>> {
   if (envSet('LINKEDIN_CLIENT_SECRET')) secrets.linkedin = process.env.LINKEDIN_CLIENT_SECRET!.trim();
   if (envSet('X_API_SECRET')) secrets.x = process.env.X_API_SECRET!.trim();
   if (envSet('YOUTUBE_CLIENT_SECRET')) secrets.youtube_shorts = process.env.YOUTUBE_CLIENT_SECRET!.trim();
+  if (envSet('THREADS_APP_SECRET')) secrets.threads = process.env.THREADS_APP_SECRET!.trim();
+  if (envSet('PINTEREST_APP_SECRET')) secrets.pinterest = process.env.PINTEREST_APP_SECRET!.trim();
+  if (envSet('REDDIT_CLIENT_SECRET')) secrets.reddit = process.env.REDDIT_CLIENT_SECRET!.trim();
+  if (envSet('GOOGLE_BUSINESS_CLIENT_SECRET')) secrets.google_business = process.env.GOOGLE_BUSINESS_CLIENT_SECRET!.trim();
   return secrets;
 }

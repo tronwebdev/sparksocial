@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 206 tools.
+ * 207 tools.
  */
 
 export interface ToolIO {
@@ -534,6 +534,10 @@ export interface ToolIO {
   "integration.connect": {
     input: { genomeId: string; provider: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky" };
     output: { authorizeUrl: string };
+  };
+  "integration.connect_credentials": {
+    input: { genomeId: string; provider: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky"; handle: string; appPassword: string };
+    output: { connected: boolean; accountLabel: string };
   };
   "integration.health": {
     input: Record<string, never>;
