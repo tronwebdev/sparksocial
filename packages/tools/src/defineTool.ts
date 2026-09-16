@@ -2176,6 +2176,14 @@ export interface OAuthConnectionRecord {
    * as an inbound webhook's route back to a genome.
    */
   accountId?: string;
+  /**
+   * The account's profile picture, when the provider returns one.
+   *
+   * Absent at several providers and sometimes a signed URL that stops resolving,
+   * so every reader falls back to the platform mark — a stale avatar is cosmetic,
+   * never a broken screen.
+   */
+  accountAvatarUrl?: string;
   /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
   expiryNotifiedAt?: Date;
 }
@@ -2197,6 +2205,8 @@ export interface OAuthConnectionStore {
      * route from an inbound event back to a genome. See `oauth_connections`.
      */
     accountId?: string;
+    /** The account's profile picture, when the provider returns one. */
+    accountAvatarUrl?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
 

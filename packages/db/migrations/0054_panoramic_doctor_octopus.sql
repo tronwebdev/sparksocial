@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_connections" ADD COLUMN "account_avatar_url" text;

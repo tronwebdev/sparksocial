@@ -1953,6 +1953,20 @@ export const oauthConnections = pgTable(
      */
     accountId: text('account_id'),
     /**
+     * The connected account's profile picture, when the provider gives one.
+     *
+     * Stored rather than fetched on demand: a brand's Settings screen lists
+     * fourteen platforms, and resolving each avatar per render would be fourteen
+     * vendor calls on a page load, against tokens that may be expired and rate
+     * limits that are not ours.
+     *
+     * Nullable, and often null: several providers return no avatar at all, and
+     * the ones that do sometimes sign the URL so it stops resolving later. Every
+     * reader falls back to the platform mark, which is why a stale one is a
+     * cosmetic problem rather than a broken screen.
+     */
+    accountAvatarUrl: text('account_avatar_url'),
+    /**
      * ── PRD §10's connection alerts ────────────────────────────────────────
      *
      * §10 pairs "connection health indicators" with "alerts + retry flows"

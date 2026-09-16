@@ -465,7 +465,14 @@ const connectionWatcher = startConnectionWatcher(
  */
 const tokenRefresher = startTokenRefresher(
   { db: scopedDb, clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
-  envNum('TOKEN_REFRESHER_INTERVAL_MS', 900_000),
+  /*
+   * Five minutes, not fifteen. The refresh lead is three ticks (see `leadFor`),
+   * so this is what buys the margin: a token is eligible for renewal across four
+   * attempts before it dies rather than on the last one only. The query is one
+   * indexed read capped at 25 rows, so the cost of asking more often is close to
+   * nothing, and the cost of asking too rarely is a brand that cannot publish.
+   */
+  envNum('TOKEN_REFRESHER_INTERVAL_MS', 300_000),
 );
 
 /**

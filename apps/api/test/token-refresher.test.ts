@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
-import { runOnce, REFRESH_LEAD_MS, type TokenRefresherDeps } from '../src/token-refresher.js';
+import { runOnce, leadFor, MIN_REFRESH_LEAD_MS, MAX_REFRESH_LEAD_MS, type TokenRefresherDeps } from '../src/token-refresher.js';
 
 /**
  * The token refresher — `apps/api/src/token-refresher.ts`.
@@ -165,11 +165,29 @@ describe('token refresher', () => {
     expect(saved[0]!.genomeId).toBe('gen_b');
   });
 
+  it('gives the refresh lead at least three ticks of margin', () => {
+    /*
+     * The bug this replaces: a flat 15-minute lead against a 15-minute tick is a
+     * margin of zero — a token became eligible on the last attempt before it
+     * died, so one slow tick and it expired anyway. Three ticks means two
+     * consecutive failures are survivable.
+     */
+    expect(leadFor(5 * 60_000)).toBeGreaterThanOrEqual(3 * 5 * 60_000);
+    expect(leadFor(60_000)).toBe(MIN_REFRESH_LEAD_MS);
+    // Capped, or a one-hour token would sit permanently inside its own window
+    // and be renewed on every single tick.
+    expect(leadFor(60 * 60_000)).toBe(MAX_REFRESH_LEAD_MS);
+    // Never shorter than the gap between attempts, at any interval.
+    for (const interval of [60_000, 300_000, 900_000, 3_600_000]) {
+      expect(leadFor(interval)).toBeGreaterThanOrEqual(interval);
+    }
+  });
+
   it('refreshes ahead of expiry by its stated lead, not the seven-day warning window', async () => {
     // The threshold that matters: sharing `EXPIRY_WARNING_MS` would put a
     // one-hour token permanently inside the window and refresh it every tick.
-    const justInside = row({ expiresAt: new Date(NOW.getTime() + REFRESH_LEAD_MS - 1000) });
-    const justOutside = row({ id: 'b', expiresAt: new Date(NOW.getTime() + REFRESH_LEAD_MS + 60_000) });
+    const justInside = row({ expiresAt: new Date(NOW.getTime() + MIN_REFRESH_LEAD_MS - 1000) });
+    const justOutside = row({ id: 'b', expiresAt: new Date(NOW.getTime() + MIN_REFRESH_LEAD_MS + 60_000) });
     const { deps, saved } = harness([justInside, justOutside]);
 
     expect((await runOnce(deps)).refreshed).toBe(1);

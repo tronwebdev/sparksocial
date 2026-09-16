@@ -2963,6 +2963,7 @@ export interface OAuthConnectionRow {
   accountLabel: string | null;
   /** The platform's stable account id — the engagement webhook's join key. */
   accountId: string | null;
+  accountAvatarUrl: string | null;
   expiryNotifiedAt: Date | null;
 }
 
@@ -2983,6 +2984,7 @@ const oauthConnectionColumns = {
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
   accountId: oauthConnections.accountId,
+  accountAvatarUrl: oauthConnections.accountAvatarUrl,
   expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
@@ -3000,6 +3002,7 @@ export async function saveOAuthConnection(
     accountLabel?: string;
     /** The platform's stable account id — the engagement webhook's route back to this genome. */
     accountId?: string;
+    accountAvatarUrl?: string;
   },
 ): Promise<OAuthConnectionRow> {
   assertScope(scope);
@@ -3016,6 +3019,7 @@ export async function saveOAuthConnection(
       ...(args.scopes ? { scopes: args.scopes } : {}),
       ...(args.accountLabel ? { accountLabel: args.accountLabel } : {}),
       ...(args.accountId ? { accountId: args.accountId } : {}),
+      ...(args.accountAvatarUrl ? { accountAvatarUrl: args.accountAvatarUrl } : {}),
     })
     .onConflictDoUpdate({
       target: [oauthConnections.genomeId, oauthConnections.provider],
@@ -3027,6 +3031,13 @@ export async function saveOAuthConnection(
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
         accountId: args.accountId ?? null,
+        /*
+         * Cleared when absent, like every other field here. A reconnection is a
+         * fresh statement of the account, and keeping a previous avatar would
+         * leave the wrong face on a connection that now points somewhere else —
+         * which is exactly the confusion the avatar exists to prevent.
+         */
+        accountAvatarUrl: args.accountAvatarUrl ?? null,
         // Reconnecting re-arms the §10 expiry alert. The new token has a new
         // expiry, so the next warning is a new fact, not a repeat of the one
         // that prompted this reconnection.

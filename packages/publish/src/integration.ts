@@ -50,6 +50,15 @@ export interface SocialTokenResult {
    * engagement inbox has a write tool and nothing that can call it.
    */
   accountId?: string;
+  /**
+   * The connected account's profile picture, when the provider returns one.
+   *
+   * Best-effort at every provider and absent at several, so a reader must always
+   * fall back to the platform mark. It exists because "Google Business" on a chip
+   * answers none of the question the chip is there to answer — *which* account is
+   * this?
+   */
+  accountAvatarUrl?: string;
 }
 
 interface ExchangeArgs {
@@ -93,7 +102,14 @@ export const REQUIRED_SCOPES: Partial<Record<Platform, string[]>> = {
   tiktok: ['video.publish', 'user.info.basic'],
   linkedin: ['w_member_social', 'openid', 'profile'],
   x: ['tweet.write', 'tweet.read', 'users.read', 'offline.access'],
-  youtube_shorts: ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'],
+  // `openid`/`profile` are what guarantee a name and a picture for the connected
+  // account even when it has no YouTube channel. Neither needs Google review.
+  youtube_shorts: [
+    'https://www.googleapis.com/auth/youtube.upload',
+    'https://www.googleapis.com/auth/youtube.readonly',
+    'openid',
+    'profile',
+  ],
   /*
    * Threads is a Meta product with its own developer app, its own OAuth host
    * (`threads.net`, not `facebook.com`) and its own graph (`graph.threads.net`).
@@ -106,7 +122,10 @@ export const REQUIRED_SCOPES: Partial<Record<Platform, string[]>> = {
   pinterest: ['pins:write', 'boards:read'],
   // `identity` is what makes the account label possible; `submit` is the post.
   reddit: ['identity', 'submit'],
-  google_business: ['https://www.googleapis.com/auth/business.manage'],
+  // Same reasoning as `youtube_shorts`: the Business account name is unavailable
+  // until Google approves the project, so without these a connected profile has
+  // no name to show at all.
+  google_business: ['https://www.googleapis.com/auth/business.manage', 'openid', 'profile'],
 };
 
 function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirectUri: string; codeChallenge: string; state: string }): string {
@@ -364,12 +383,14 @@ async function exchangeLinkedIn(args: ExchangeArgs): Promise<SocialTokenResult> 
 
   let authorUrn = '';
   let accountLabel: string | undefined;
+  let accountAvatarUrl: string | undefined;
   try {
     const userinfo = (await (
       await args.fetchImpl('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${body.access_token}` } })
-    ).json()) as { sub?: string; name?: string };
+    ).json()) as { sub?: string; name?: string; picture?: string };
     if (userinfo.sub) authorUrn = `urn:li:person:${userinfo.sub}`;
     accountLabel = userinfo.name;
+    accountAvatarUrl = userinfo.picture;
   } catch {
     // Best-effort — connection still succeeds; publish will correctly refuse without an author id.
   }
@@ -378,10 +399,12 @@ async function exchangeLinkedIn(args: ExchangeArgs): Promise<SocialTokenResult> 
     accessToken: joinScopedToken(authorUrn, body.access_token),
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
 }
 
 async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
+  let accountAvatarUrl: string | undefined;
   const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
   const res = await args.fetchImpl('https://api.x.com/2/oauth2/token', {
     method: 'POST',
@@ -401,9 +424,17 @@ async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
   let accountLabel: string | undefined;
   try {
     const me = (await (
-      await args.fetchImpl('https://api.x.com/2/users/me', { headers: { Authorization: `Bearer ${body.access_token}` } })
-    ).json()) as { data?: { username?: string } };
+      await args.fetchImpl('https://api.x.com/2/users/me?user.fields=profile_image_url', {
+        headers: { Authorization: `Bearer ${body.access_token}` },
+      })
+    ).json()) as { data?: { username?: string; profile_image_url?: string } };
     accountLabel = me.data?.username ? `@${me.data.username}` : undefined;
+    /*
+     * `_normal` is X's 48px crop and the only size the API hands back.
+     * `_400x400` is the same asset at a usable size — a documented rename, not
+     * a guess, and the 48px one is visibly soft on a 47px chip at 2x.
+     */
+    accountAvatarUrl = me.data?.profile_image_url?.replace('_normal.', '_400x400.');
   } catch {
     // Best-effort.
   }
@@ -414,7 +445,41 @@ async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(body.scope ? { scopes: body.scope.split(' ') } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
+}
+
+/**
+ * Who a Google token belongs to.
+ *
+ * The YouTube exchange reads the *channel*, which is the right name when there
+ * is one — and null when there is not. A Google account without a YouTube
+ * channel is ordinary, and a Business Profile account has no channel at all, so
+ * both were storing no `accountLabel` and the UI fell back to rendering the
+ * platform's own name: a chip saying "YouTube Shorts" and another saying "Google
+ * Business", telling a person nothing about which account they had connected.
+ *
+ * `openid` and `profile` are requested for exactly this. Neither needs Google's
+ * review, and between them they guarantee a name and a picture for any Google
+ * account — so the channel remains the preferred label and this is the floor
+ * beneath it rather than a replacement.
+ */
+async function googleIdentity(
+  accessToken: string,
+  fetchImpl: typeof fetch,
+): Promise<{ name?: string; picture?: string }> {
+  try {
+    const me = (await (
+      await fetchImpl('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    ).json()) as { name?: string; email?: string; picture?: string };
+    // The email is a better label than nothing when a Google account has no
+    // display name set — which happens on accounts made for a business.
+    return { ...(me.name ?? me.email ? { name: me.name ?? me.email } : {}), ...(me.picture ? { picture: me.picture } : {}) };
+  } catch {
+    return {};
+  }
 }
 
 async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
@@ -434,15 +499,30 @@ async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
   if (!body.access_token) throw new Error('YouTube token exchange returned no access_token.');
 
   let accountLabel: string | undefined;
+  let accountAvatarUrl: string | undefined;
   try {
     const channels = (await (
       await args.fetchImpl('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
         headers: { Authorization: `Bearer ${body.access_token}` },
       })
-    ).json()) as { items?: { snippet?: { title?: string } }[] };
+    ).json()) as { items?: { snippet?: { title?: string; thumbnails?: { default?: { url?: string } } } }[] };
     accountLabel = channels.items?.[0]?.snippet?.title;
+    accountAvatarUrl = channels.items?.[0]?.snippet?.thumbnails?.default?.url;
   } catch {
     // Best-effort.
+  }
+
+  /*
+   * A Google account with no YouTube channel is ordinary, and the channel read
+   * above then yields nothing — which is how a connection ended up labelled
+   * "YouTube Shorts" instead of naming an account. The Google identity is the
+   * floor under that, never the preference: a channel name is what a person
+   * recognises.
+   */
+  if (!accountLabel || !accountAvatarUrl) {
+    const identity = await googleIdentity(body.access_token, args.fetchImpl);
+    accountLabel ??= identity.name;
+    accountAvatarUrl ??= identity.picture;
   }
 
   return {
@@ -451,6 +531,7 @@ async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(body.scope ? { scopes: body.scope.split(' ') } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
 }
 
@@ -626,6 +707,16 @@ async function exchangeGoogleBusiness(args: ExchangeArgs): Promise<SocialTokenRe
     // Best-effort — publish will refuse clearly if the location cannot be found.
   }
 
+  /*
+   * The account read above 403s until Google approves the project, which is the
+   * normal state for a long time — so without this every Business connection
+   * showed as "Google Business" with no account named. The signed-in identity is
+   * available immediately and says whose profile this is.
+   */
+  const identity = await googleIdentity(body.access_token, args.fetchImpl);
+  accountLabel ??= identity.name;
+  const accountAvatarUrl = identity.picture;
+
   return {
     // The account resource name (`accounts/123`) is needed on every publish, so
     // it rides with the token like Instagram's ig-user-id does.
@@ -635,6 +726,7 @@ async function exchangeGoogleBusiness(args: ExchangeArgs): Promise<SocialTokenRe
     ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
     ...(accountLabel ? { accountLabel } : {}),
     ...(accountId ? { accountId } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
 }
 
@@ -1129,6 +1221,8 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
           /** §10's health indicator. See {@link connectionStatus}. */
           status: ConnectionStatus,
           accountLabel: z.string().optional(),
+          /** The account's profile picture, when the provider gave one. */
+          accountAvatarUrl: z.string().optional(),
           expiresAt: z.string().optional(),
           /** Negative once expired, so a caller can say "3 days ago" without re-parsing the date. */
           hoursUntilExpiry: z.number().nullable(),
@@ -1191,6 +1285,7 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
                 ? 'credentials'
                 : 'oauth') as 'oauth' | 'credentials' | 'derived',
             ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
+            ...(conn?.accountAvatarUrl ? { accountAvatarUrl: conn.accountAvatarUrl } : {}),
             ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
             hoursUntilExpiry: conn?.expiresAt
               ? Math.round(((conn.expiresAt.getTime() - now.getTime()) / 3_600_000) * 10) / 10

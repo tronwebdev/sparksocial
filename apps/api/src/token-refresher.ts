@@ -65,13 +65,29 @@ const BATCH_SIZE = 25;
  * minted, so sharing that threshold would refresh every connection on every
  * tick and spend a provider's rate limit on work with nothing to do.
  *
- * Fifteen minutes is longer than any plausible tick interval, so a token is
- * renewed at least one full tick before it dies, and short enough that a
- * one-hour token is refreshed roughly once per hour rather than continuously.
+ * ── Why this is derived from the interval and not a flat number ───────────
+ *
+ * It was fifteen minutes, flat, against a fifteen-minute tick — a lead exactly
+ * equal to the gap between attempts, which is a margin of zero. A token became
+ * eligible on the last tick before it died, so one slow tick, one restart at the
+ * wrong moment, or one provider timeout and it expired anyway. That is what
+ * "tokens are still expiring" looked like: the refresher was running and doing
+ * nothing wrong, with no room to be unlucky in.
+ *
+ * `leadFor` gives at least three ticks of margin, so two consecutive failures
+ * are survivable, with a twenty-minute floor for the case where somebody sets a
+ * very short interval. Bounded above by an hour: beyond that a one-hour token
+ * would be permanently inside its own refresh window and renewed on every tick.
  */
-export const REFRESH_LEAD_MS = 15 * 60 * 1000;
+export const MIN_REFRESH_LEAD_MS = 20 * 60 * 1000;
+export const MAX_REFRESH_LEAD_MS = 60 * 60 * 1000;
+
+export function leadFor(intervalMs: number): number {
+  return Math.min(MAX_REFRESH_LEAD_MS, Math.max(MIN_REFRESH_LEAD_MS, intervalMs * 3));
+}
 
 export function startTokenRefresher(deps: TokenRefresherDeps, intervalMs: number): { stop: () => void } {
+  const leadMs = leadFor(intervalMs);
   let running = false;
 
   const tick = async () => {
@@ -81,7 +97,7 @@ export function startTokenRefresher(deps: TokenRefresherDeps, intervalMs: number
     if (running) return;
     running = true;
     try {
-      await runOnce(deps);
+      await runOnce(deps, leadMs);
     } catch (e) {
       console.error('[error] token-refresher: tick failed', { error: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -94,9 +110,12 @@ export function startTokenRefresher(deps: TokenRefresherDeps, intervalMs: number
   return { stop: () => clearInterval(timer) };
 }
 
-export async function runOnce(deps: TokenRefresherDeps): Promise<{ refreshed: number; failed: number }> {
+export async function runOnce(
+  deps: TokenRefresherDeps,
+  leadMs: number = MIN_REFRESH_LEAD_MS,
+): Promise<{ refreshed: number; failed: number }> {
   const now = (deps.now ?? (() => new Date()))();
-  const before = new Date(now.getTime() + REFRESH_LEAD_MS);
+  const before = new Date(now.getTime() + leadMs);
 
   // Only platforms this deployment has credentials for. An operator who has not
   // configured X cannot refresh an X token, and asking the database for rows

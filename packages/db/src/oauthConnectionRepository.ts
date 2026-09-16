@@ -67,6 +67,7 @@ function toConnection(row: scoped.OAuthConnectionRow) {
     ...(row.scopes ? { scopes: row.scopes } : {}),
     ...(row.accountLabel ? { accountLabel: row.accountLabel } : {}),
     ...(row.accountId ? { accountId: row.accountId } : {}),
+    ...(row.accountAvatarUrl ? { accountAvatarUrl: row.accountAvatarUrl } : {}),
     ...(row.expiryNotifiedAt ? { expiryNotifiedAt: row.expiryNotifiedAt } : {}),
   };
 }

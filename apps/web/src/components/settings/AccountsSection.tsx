@@ -34,6 +34,7 @@ interface Platform {
   platform: string;
   connected: boolean;
   accountLabel?: string;
+  accountAvatarUrl?: string;
   supported: boolean;
   /**
    * Set when this tile posts through another platform's connection — Instagram
@@ -62,6 +63,32 @@ const TINT: Record<string, string> = {
   reddit: '#FF4500',
   bluesky: '#0085FF',
 };
+
+/**
+ * The connected account's own picture, falling back to the platform mark.
+ *
+ * A fallback and not a preference: several providers return no avatar, and the
+ * ones that do sometimes hand back a signed URL that stops resolving weeks
+ * later. `onError` swaps back to the mark rather than leaving a broken image,
+ * which is the difference between a cosmetic gap and a screen that looks broken.
+ */
+function Avatar({ platform, src, size = 45 }: { platform: string; src?: string; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Mark platform={platform} size={size} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="shrink-0 rounded-[12px] object-cover"
+      style={{ width: size, height: size }}
+    />
+  );
+}
 
 function Mark({ platform, size = 45 }: { platform: string; size?: number }) {
   const letter = platformLabel(platform).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase() || '?';
@@ -169,7 +196,7 @@ export function AccountsSection() {
                 className="flex h-[68px] w-[221px] items-center gap-[12px] rounded-[10px] bg-white px-[11px]"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
               >
-                <Mark platform={p.platform} size={47} />
+                <Avatar platform={p.platform} src={p.accountAvatarUrl} size={47} />
                 <span className="min-w-0">
                   <span className="block truncate text-16 font-semibold text-black">
                     {p.accountLabel ?? platformLabel(p.platform)}
