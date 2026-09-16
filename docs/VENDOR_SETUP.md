@@ -211,12 +211,27 @@ authenticate against it.
 
 1. **reddit.com/prefs/apps** → *create another app* → type **web app**.
 2. **redirect uri** must equal `SOCIAL_REDIRECT_URI` exactly.
-3. The **client id is the unlabelled string directly under the app name**; the
+3. **Tick the reCAPTCHA.** The form will not submit without it, and Reddit does
+   not say so — the button simply does nothing.
+4. The **client id is the unlabelled string directly under the app name**; the
    secret is the field marked *secret*. Mixing these up is the usual first
    failure.
-4. → `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`.
+5. → `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`.
 
-> These two are also read by the trend sources. One app, two uses, one pair.
+> **If "create app" refuses**, the line about the *Responsible Builder Policy* is
+> Reddit's standing footer, not an error — it is on the page before you touch
+> anything. Two things actually block the button:
+>
+> 1. the unticked reCAPTCHA, which is the usual one; and
+> 2. the *"you must also **register to use the API**"* link in the same sentence.
+>    Since 2023 Reddit requires a separate API registration, and an account that
+>    has not completed it cannot create an app. Follow that link, complete it,
+>    then come back to this form.
+>
+> Neither is something this product can do for you, and neither is a code
+> problem — the adapter and OAuth flow are built and waiting for the two keys.
+>
+> These two keys are also read by the trend sources. One app, two uses, one pair.
 >
 > Every post needs a subreddit set on the campaign's accounts. Reddit is the
 > platform where posting to the wrong community costs the most, so there is no
@@ -301,6 +316,68 @@ Bluesky never expires — the app password is valid until revoked in Bluesky.
 
 **Settings → Account Connection** shows each platform's adapter (`native:x` vs
 `aggregator:stub`) and connection health, and warns before a token dies.
+
+---
+
+## Trend sources
+
+Separate from publishing, and separate keys. Publishing is *where posts go out*;
+trend sources are *where ideas come in* — what `trend.rank` and the Discovery
+screen read to suggest what to post about.
+
+**Two are keyless and already live.** With no keys at all the product still
+discovers trends; the rest widen the pool.
+
+### Where they stand
+
+| Source | State | Key |
+|---|---|---|
+| **Google Trends** | live | none — keyless |
+| **Hacker News** | live | none — keyless |
+| **YouTube** | live | `YOUTUBE_API_KEY` |
+| **Product Hunt** | live | `PRODUCTHUNT_CLIENT_ID` / `_SECRET` |
+| **Reddit** | not configured | `REDDIT_CLIENT_ID` / `_SECRET` |
+| **X** | not configured | `X_BEARER_TOKEN` |
+| **TikTok** | not configured | `TIKTOK_CREATIVE_TOKEN` |
+| **Pinterest** | not configured | `PINTEREST_ACCESS_TOKEN` |
+
+An unset source is not an error. It is skipped, and the ones that are set carry
+the ranking — which is why four being live already means Discovery works today.
+
+### Setting up the four that are not
+
+**Reddit** — the same app as Reddit publishing. One registration serves both, so
+if you complete [Reddit](#reddit) above, this comes with it. Nothing extra.
+
+**X** — a *bearer token*, not the OAuth client used for publishing. In
+**developer.x.com** → your Project → Keys and tokens → **Bearer Token**. It
+belongs to the app, not to a user, and needs no consent screen. Note X's free
+tier does not include the search endpoints this reads, so this source realistically
+needs a paid tier — which is why it is the one most reasonable to leave off.
+
+**TikTok** — a Creative Center token, which is **not** the Login Kit client you
+use for publishing. It comes from TikTok's Marketing API, a separate application
+with its own approval. Genuinely optional.
+
+> ⚠️ Your `.env` currently has a key named `TIKTOK_CREATIVE_CENTER_TOKEN`.
+> The code reads **`TIKTOK_CREATIVE_TOKEN`**. If that value is a real token,
+> renaming the key turns this source on; as it stands the value is being ignored
+> and the source is silently off.
+
+**Pinterest** — an access token from the same Pinterest app as publishing
+(**developers.pinterest.com** → your app → generate a token). Distinct from the
+per-brand OAuth connection: this one reads public trends and belongs to the
+deployment, not to a brand.
+
+### Turning a source off on purpose
+
+Two sources have an explicit switch, because both can cost money and both are
+worth disabling independently of whether a key is present:
+
+```bash
+TREND_SOURCE_X_ENABLED=false
+TREND_SOURCE_TIKTOK_ENABLED=false
+```
 
 ---
 
