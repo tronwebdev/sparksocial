@@ -166,7 +166,7 @@ import {
   integrationScopesVerify,
   type Platform,
 } from '@sparksocial/publish';
-import { socialAdapterClients } from './social-adapter-clients.js';
+import { socialAdapterClients, socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import {
   makeTrendRank,
   makeTrendFetch,
@@ -541,7 +541,19 @@ export function registerAlphaTools(): void {
   // would let a health panel report a budget `publish.now` does not
   // actually enforce, worse than no health panel at all.
   const limiter = buildRateLimiter();
-  register(makePublishNow({ adapters, limiter, embed }));
+  /*
+   * `oauthApps` is what lets `publish.now` renew an expiring token in place.
+   * Only `publish.now` takes it: `publish.status` and `publish.rollback` read
+   * or undo an existing post and are not worth a token write on the way.
+   */
+  register(
+    makePublishNow({
+      adapters,
+      limiter,
+      embed,
+      oauthApps: { clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
+    }),
+  );
   register(makePublishStatus({ adapters, limiter, embed }));
   register(makePublishRollback({ adapters, limiter, embed }));
   register(makeIntegrationHealth({ adapters }));

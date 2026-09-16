@@ -384,6 +384,149 @@ export function exchangeSocialCode(provider: Platform, args: ExchangeArgs): Prom
   return exchange(args);
 }
 
+/* ── Refreshing a token that has not yet died ────────────────────────────── */
+
+/**
+ * REFRESHING, and why only three platforms are here.
+ *
+ * `exchangeSocialCode` has always stored the `refresh_token` a provider hands
+ * back, and nothing ever spent it. The consequence was not subtle: Google issues
+ * an access token good for one hour and X for two, so a brand that connected
+ * YouTube on Monday could not publish on Monday afternoon, and the only repair
+ * offered anywhere was a human pressing Reconnect.
+ *
+ * The three below are exactly the providers that issue a short token *and*
+ * implement the `refresh_token` grant. The other two are absent on purpose,
+ * not by omission:
+ *
+ *   instagram  Meta returns no refresh token. `exchangeInstagram` already
+ *              trades the short-lived code for a ~60-day long-lived token, so
+ *              there is nothing hourly to repair; renewing it before day 60 is
+ *              a different call (`fb_exchange_token`) against a different
+ *              lifetime, and pretending it is this one would hide that.
+ *   linkedin   Refresh tokens are gated on LinkedIn's partner programme. A
+ *              standard app gets a 60-day token and no way to renew it, so
+ *              claiming refresh support here would produce a confident failure
+ *              two months after connecting.
+ *
+ * `canRefreshToken` is exported so callers can tell "this connection cannot be
+ * refreshed" from "refreshing it failed" — the first is normal, the second is
+ * worth a warning.
+ */
+export interface RefreshArgs {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  fetchImpl: typeof fetch;
+}
+
+async function refreshTikTok(args: RefreshArgs): Promise<SocialTokenResult> {
+  const res = await args.fetchImpl('https://open.tiktokapis.com/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'cache-control': 'no-cache' },
+    body: new URLSearchParams({
+      client_key: args.clientId,
+      client_secret: args.clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`TikTok token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('TikTok token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshX(args: RefreshArgs): Promise<SocialTokenResult> {
+  // Same Basic-auth confidential-client form as `exchangeX`: X rejects a
+  // refresh that authenticates with `client_id` in the body alone.
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://api.x.com/2/oauth2/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basic}` },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+      client_id: args.clientId,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`X token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('X token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshYouTube(args: RefreshArgs): Promise<SocialTokenResult> {
+  const res = await args.fetchImpl('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: args.clientId,
+      client_secret: args.clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`YouTube token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('YouTube token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    /*
+     * Google does not return a refresh token on a refresh — the original one
+     * stays valid. Spreading `body.refresh_token` here would write `undefined`
+     * over a token the brand still needs, turning the first successful refresh
+     * into the last one.
+     */
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+const REFRESHERS: Partial<Record<Platform, (args: RefreshArgs) => Promise<SocialTokenResult>>> = {
+  tiktok: refreshTikTok,
+  x: refreshX,
+  youtube_shorts: refreshYouTube,
+};
+
+/** Whether this platform implements the `refresh_token` grant in this build. */
+export function canRefreshToken(provider: Platform): boolean {
+  return provider in REFRESHERS;
+}
+
+/** The platforms a stored refresh token can actually be spent on. */
+export const REFRESHABLE_PLATFORMS = Object.keys(REFRESHERS) as Platform[];
+
+/**
+ * Trades a stored refresh token for a fresh access token.
+ *
+ * Throws rather than returning undefined on an unsupported provider, matching
+ * `exchangeSocialCode`: a caller that reaches here for Instagram has a bug, and
+ * `canRefreshToken` is the check that belongs before the call.
+ */
+export function refreshSocialToken(provider: Platform, args: RefreshArgs): Promise<SocialTokenResult> {
+  const refresh = REFRESHERS[provider];
+  if (!refresh) {
+    throw new ToolError(
+      'INVALID_INPUT',
+      `${provider} does not support refreshing a token in this build — reconnecting is the only renewal it has.`,
+      { platform: provider, refreshablePlatforms: REFRESHABLE_PLATFORMS },
+    );
+  }
+  return refresh(args);
+}
+
 export { generatePkce, signOAuthState, verifyOAuthState };
 export type { OAuthStatePayload };
 

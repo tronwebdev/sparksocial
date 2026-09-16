@@ -1539,6 +1539,22 @@ export function createDevStore(
           .slice(0, limit);
       },
 
+      // No `expiryNotifiedAt` filter, unlike `findExpiring` directly above:
+      // a refresher has to keep seeing a connection until it is renewed.
+      async findRefreshable({ before, providers, limit }) {
+        const wanted = new Set(providers);
+        return [...oauthConnectionsMap.values()]
+          .filter(
+            (c) =>
+              c.expiresAt !== undefined &&
+              c.expiresAt <= before &&
+              c.refreshToken !== undefined &&
+              wanted.has(c.provider),
+          )
+          .sort((a, b) => a.expiresAt!.getTime() - b.expiresAt!.getTime())
+          .slice(0, limit);
+      },
+
       async markExpiryNotified({ id, orgId: org, at }) {
         for (const row of oauthConnectionsMap.values()) {
           if (row.id === id && row.orgId === org) row.expiryNotifiedAt = at;

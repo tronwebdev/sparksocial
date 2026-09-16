@@ -3085,6 +3085,45 @@ export async function findExpiringOAuthConnections(
 }
 
 /**
+ * Connections due a token refresh — the refresher's one read.
+ *
+ * Deliberately NOT `findExpiringOAuthConnections` with a different window.
+ * That one exists to *notify a human once*, so it filters on
+ * `expiryNotifiedAt IS NULL` and goes quiet after the first warning. A
+ * refresher must keep seeing a connection on every tick until it is actually
+ * renewed, and it must see the ones a human has already been warned about —
+ * those are precisely the ones most in need of repair.
+ *
+ * `refresh_token IS NOT NULL` is the other half: a connection with no refresh
+ * token cannot be renewed by anything but a person, and selecting it would make
+ * every tick retry a failure that is not going to change.
+ *
+ * Cross-tenant for the same reason as `findExpiringOAuthConnections` and
+ * `findDueContentItems`: the caller is a clock, and a clock has no session.
+ * Every row carries its own `orgId`/`genomeId` so the write that follows goes
+ * back through the scoped layer.
+ */
+export async function findRefreshableOAuthConnections(
+  db: Database,
+  args: { before: Date; providers: string[]; limit: number },
+): Promise<OAuthConnectionRow[]> {
+  if (args.providers.length === 0) return [];
+  return db
+    .select(oauthConnectionColumns)
+    .from(oauthConnections)
+    .where(
+      and(
+        isNotNull(oauthConnections.expiresAt),
+        lte(oauthConnections.expiresAt, args.before),
+        isNotNull(oauthConnections.refreshToken),
+        inArray(oauthConnections.provider, args.providers),
+      ),
+    )
+    .orderBy(asc(oauthConnections.expiresAt))
+    .limit(args.limit);
+}
+
+/**
  * Which genome owns a platform account — the engagement webhook's one read.
  *
  * **The fourth deliberate cross-tenant read in this file**, and the one with the

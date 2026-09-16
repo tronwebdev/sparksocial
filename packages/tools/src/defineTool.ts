@@ -2217,6 +2217,21 @@ export interface OAuthConnectionStore {
    * which is what makes a reconnection re-arm the warning.
    */
   markExpiryNotified(args: { id: string; orgId: string; at: Date }): Promise<void>;
+
+  /**
+   * Connections whose token is near expiry and that hold a refresh token —
+   * the token refresher's read.
+   *
+   * Separate from `findExpiring` on purpose. That one notifies a human once and
+   * then latches quiet; this one must keep returning a connection every tick
+   * until it is actually renewed, including the ones already warned about,
+   * which are the ones most in need of repair. `providers` is the set the build
+   * can actually refresh (see `REFRESHABLE_PLATFORMS`) — selecting a row nothing
+   * can renew would retry a failure that is never going to change.
+   *
+   * Cross-tenant for the same reason as `findExpiring`: the caller is a clock.
+   */
+  findRefreshable(args: { before: Date; providers: string[]; limit: number }): Promise<(OAuthConnectionRecord & { orgId: string })[]>;
 }
 
 /** One ingested chunk of claim-grounding source text — `brand.knowledge.attach`'s storage. */

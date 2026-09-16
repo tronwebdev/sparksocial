@@ -42,6 +42,11 @@ export function createOAuthConnectionRepository(db: Database): OAuthConnectionSt
       return rows.map((row) => ({ ...toConnection(row), orgId: row.orgId }));
     },
 
+    async findRefreshable({ before, providers, limit }) {
+      const rows = await scoped.findRefreshableOAuthConnections(db, { before, providers, limit });
+      return rows.map((row) => ({ ...toConnection(row), orgId: row.orgId }));
+    },
+
     async markExpiryNotified({ id, orgId, at }) {
       await scoped.markOAuthExpiryNotified(db, { orgId }, { id, at });
     },

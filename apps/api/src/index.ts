@@ -13,6 +13,7 @@ import { registerAlphaTools, registerAgencyTools, blobStore, localBlobStoreForRo
 import { registerLocalStorageRoutes } from './local-storage-routes.js';
 import { registerCanvaOAuthCallback } from './canva-oauth.js';
 import { registerSocialOAuthCallback } from './social-oauth.js';
+import { startTokenRefresher } from './token-refresher.js';
 import { socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
 import { makeSystemCtx } from './system-ctx.js';
@@ -451,6 +452,23 @@ const connectionWatcher = startConnectionWatcher(
 );
 
 /**
+ * The token refresher — the repair the watcher above could only report.
+ *
+ * Every fifteen minutes, not every six hours. The watcher's interval is tuned to
+ * a seven-day human warning window; this one is bounded by the shortest token
+ * life in the system, and Google's is one hour. A six-hour tick would let a
+ * connection die five times between attempts to save it.
+ *
+ * Registered unconditionally: `runOnce` selects only platforms this deployment
+ * has credentials for and returns immediately when that set is empty, so an
+ * operator with no native apps configured pays one no-op function call per tick.
+ */
+const tokenRefresher = startTokenRefresher(
+  { db: scopedDb, clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
+  envNum('TOKEN_REFRESHER_INTERVAL_MS', 900_000),
+);
+
+/**
  * The outcome observer (§6.7) — the clock the learning loop never had.
  *
  * `analytics.sync` and `learning.record_outcome` were both built and registered
@@ -615,6 +633,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     recipeScheduler.stop();
     trendObserver.stop();
     connectionWatcher.stop();
+    tokenRefresher.stop();
     outcomeObserver.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a

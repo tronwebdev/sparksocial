@@ -4,6 +4,8 @@ import { ToolError } from '@sparksocial/shared';
 import { byId as playbookById } from '@sparksocial/playbooks';
 import { Platform, PublishError, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, publishWithRetry, type RateLimiter } from './retry.js';
+import { canRefreshToken, refreshSocialToken } from './integration.js';
+import { joinScopedToken, splitScopedToken } from './native/scopedToken.js';
 
 /**
  * The publish context `policy.ts` rule 7 evaluates — see `PolicySubject` in
@@ -169,6 +171,101 @@ export interface PublishDeps {
    * same instance rather than standing up a second embedding client.
    */
   embed: EmbedClient;
+  /**
+   * App credentials for renewing a brand's expired token in place.
+   *
+   * Optional, and absent is not a degraded mode for most deployments: only
+   * TikTok, X and YouTube issue tokens short enough to die between being
+   * scheduled and being published (one to two hours), and only those three
+   * implement the `refresh_token` grant. Without these the tool behaves exactly
+   * as it did before — it publishes with whatever token is stored and lets the
+   * platform reject it — which is the honest outcome when the operator has not
+   * configured the app the token belongs to.
+   */
+  oauthApps?: {
+    clientIds: Partial<Record<Platform, string>>;
+    clientSecrets: Partial<Record<Platform, string>>;
+    fetchImpl?: typeof fetch;
+    now?: () => Date;
+  };
+}
+
+/**
+ * How close to expiry a token has to be for a publish to renew it first.
+ *
+ * A publish is not instant — media upload, the platform's own processing, a
+ * retry or two — so renewing only once the token is already dead would lose the
+ * race often enough to matter. Two minutes is comfortably longer than that
+ * window and far shorter than the shortest token life (one hour), so an ordinary
+ * publish never triggers a refresh it does not need.
+ */
+const PUBLISH_REFRESH_LEAD_MS = 2 * 60 * 1000;
+
+/**
+ * Returns the access token to publish with, renewing it first if it is about to
+ * expire — the lazy half of the refresh story.
+ *
+ * `token-refresher.ts` handles the scheduled half, and this one is what actually
+ * guarantees a post goes out: a clock that ticks every fifteen minutes cannot
+ * promise anything about a token that dies ninety seconds from now.
+ *
+ * Every failure here returns the existing token rather than throwing. A refresh
+ * that fails is not itself a reason to abandon the publish — the stored token may
+ * still work, and if it does not, the platform's own rejection is a better error
+ * than one invented here.
+ */
+async function freshAccessToken(
+  conn: { accessToken: string; refreshToken?: string; genomeId: string; provider: string; expiresAt?: Date; connectedBy: string; scopes?: string[]; accountLabel?: string; accountId?: string } | undefined,
+  platform: Platform,
+  ctx: ToolCtx,
+  apps: PublishDeps['oauthApps'],
+): Promise<string | undefined> {
+  if (!conn) return undefined;
+  if (!apps || !conn.refreshToken || !canRefreshToken(platform)) return conn.accessToken;
+
+  const now = (apps.now ?? (() => new Date()))();
+  if (!conn.expiresAt || conn.expiresAt.getTime() - now.getTime() > PUBLISH_REFRESH_LEAD_MS) {
+    return conn.accessToken;
+  }
+
+  const clientId = apps.clientIds[platform];
+  const clientSecret = apps.clientSecrets[platform];
+  if (!clientId || !clientSecret) return conn.accessToken;
+
+  try {
+    const fresh = await refreshSocialToken(platform, {
+      clientId,
+      clientSecret,
+      refreshToken: conn.refreshToken,
+      fetchImpl: apps.fetchImpl ?? fetch,
+    });
+    // Carry any `{id}:{token}` prefix across — see `scopedToken.ts`.
+    const [scopeId] = splitScopedToken(conn.accessToken);
+    const accessToken = scopeId ? joinScopedToken(scopeId, fresh.accessToken) : fresh.accessToken;
+
+    await ctx.db.oauthConnections.save({
+      genomeId: conn.genomeId,
+      orgId: ctx.orgId,
+      provider: conn.provider,
+      accessToken,
+      // Never blank an existing refresh token: Google returns none on refresh.
+      refreshToken: fresh.refreshToken ?? conn.refreshToken,
+      ...(fresh.expiresAt ? { expiresAt: fresh.expiresAt } : {}),
+      connectedBy: conn.connectedBy,
+      ...(fresh.scopes?.length ? { scopes: fresh.scopes } : conn.scopes ? { scopes: conn.scopes } : {}),
+      ...(conn.accountLabel ? { accountLabel: conn.accountLabel } : {}),
+      ...(conn.accountId ? { accountId: conn.accountId } : {}),
+    });
+    ctx.logger.info('publish refreshed an expiring token', { platform, genomeId: conn.genomeId });
+    return accessToken;
+  } catch (e) {
+    ctx.logger.warn('publish could not refresh an expiring token — trying the stored one', {
+      platform,
+      genomeId: conn.genomeId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return conn.accessToken;
+  }
 }
 
 export function makePublishNow(deps: PublishDeps) {
@@ -286,7 +383,10 @@ export function makePublishNow(deps: PublishDeps) {
       // (or for the aggregator/stub, which need no per-brand token at all)
       // — the adapter itself decides whether that's fatal.
       const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, input.platform);
-      const accessToken = connection?.accessToken;
+      // Renewed in place when it is about to expire — a token good for an hour
+      // is routinely dead by the time the scheduler reaches the post it was
+      // minted for. See `freshAccessToken`.
+      const accessToken = await freshAccessToken(connection, input.platform, ctx, deps.oauthApps);
 
       try {
         const receipt = await publishWithRetry(

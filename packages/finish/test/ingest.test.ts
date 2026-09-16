@@ -155,6 +155,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
         remove: async () => {},
         findExpiring: async () => [],
+        findRefreshable: async () => [],
         markExpiryNotified: async () => {},
       },
       knowledge: {
