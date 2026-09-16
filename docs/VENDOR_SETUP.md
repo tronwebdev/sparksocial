@@ -304,6 +304,33 @@ Bluesky never expires — the app password is valid until revoked in Bluesky.
 
 ---
 
+## Choosing which account gets connected
+
+**Only Google asks.** Connecting YouTube or Google Business shows an account
+chooser every time — SparkSocial sends `prompt=select_account`, so it asks even
+when one account is signed in.
+
+**Every other platform connects whichever account the browser is already signed
+in to, and never asks.** X, TikTok, LinkedIn, Meta, Threads, Pinterest and Reddit
+publish no documented way to request an account chooser on an OAuth 2.0 authorize
+URL. The browser session decides.
+
+That matters most for agencies: connecting a client's account from your own
+laptop, while signed in to your own, silently connects yours.
+
+Two things guard against it:
+
+1. **Check what it says.** The confirmation names the account —
+   *"X connected as @clienthandle."* — not just the platform. If that is the
+   wrong handle, Disconnect and reconnect.
+2. **Connect from the right session.** Before connecting, either sign out of that
+   platform in this browser, or use a private/incognito window and sign in as the
+   account you want.
+
+Bluesky has no ambiguity: you type the handle yourself.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause |

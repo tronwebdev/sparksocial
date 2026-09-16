@@ -167,7 +167,21 @@ function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirec
         response_type: 'code',
         scope,
         access_type: 'offline',
-        prompt: 'consent',
+        /*
+         * `select_account` as well as `consent`.
+         *
+         * Google shows an account chooser on its own when several accounts are
+         * signed in, and silently uses the only one when there is one — so
+         * whether a person is asked depends on their browser rather than on
+         * anything we decide. Asking always is the behaviour worth having: a
+         * brand connecting a client's channel from their own laptop has no
+         * signal, otherwise, that they just connected the wrong one.
+         *
+         * `consent` stays because dropping it costs the refresh token — Google
+         * returns one only on a fresh consent, and `token-refresher.ts` has
+         * nothing to spend without it.
+         */
+        prompt: 'select_account consent',
         state: args.state,
       })}`;
     case 'threads':
@@ -208,7 +222,8 @@ function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirec
         response_type: 'code',
         scope,
         access_type: 'offline',
-        prompt: 'consent',
+        // Same reasoning as `youtube_shorts` above.
+        prompt: 'select_account consent',
         state: args.state,
       })}`;
     case 'bluesky':

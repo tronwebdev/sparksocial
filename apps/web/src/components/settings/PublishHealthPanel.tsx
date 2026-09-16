@@ -97,9 +97,13 @@ export function PublishHealthPanel() {
       setPlatforms(res.output.platforms);
       setAttention(res.output.needsAttention);
       setError(null);
-    } else {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      // Returned, not just stored: the connect confirmation below needs to name
+      // the account that was actually connected, and `platforms` state is not
+      // readable yet in the same tick.
+      return res.output.platforms;
     }
+    setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+    return null;
   }, []);
 
   useEffect(() => {
@@ -112,11 +116,41 @@ export function PublishHealthPanel() {
     if (!social) return;
     const provider = params.get('provider');
     const label = provider ? platformLabel(provider) : 'Platform';
-    if (social === 'connected') setMessage({ kind: 'ok', text: `${label} connected.` });
-    else if (social === 'denied') setMessage({ kind: 'err', text: 'Connection was cancelled.' });
-    else if (social === 'failed') setMessage({ kind: 'err', text: 'Connection failed — check apps/api logs for the vendor error.' });
     window.history.replaceState(null, '', window.location.pathname);
-    void load();
+
+    if (social === 'denied') {
+      setMessage({ kind: 'err', text: 'Connection was cancelled.' });
+      void load();
+      return;
+    }
+    if (social === 'failed') {
+      setMessage({ kind: 'err', text: 'Connection failed — check apps/api logs for the vendor error.' });
+      void load();
+      return;
+    }
+
+    /*
+     * Name the account, not just the platform.
+     *
+     * Only Google offers an account chooser — X, TikTok, LinkedIn, Reddit and
+     * the rest connect whichever account the browser is already signed in to,
+     * with no prompt and no documented way to ask for one. So "X connected." is
+     * the one message that cannot tell you the thing most worth knowing: an
+     * agency connecting a client's account from their own laptop gets their own
+     * account, silently, and the confirmation reads as success.
+     *
+     * The handle is already fetched at connect time and stored as
+     * `accountLabel`; this reads it back off the health call that follows and
+     * puts it in front of the person while they can still undo it.
+     */
+    void (async () => {
+      const fresh = await load();
+      const account = fresh?.find((p) => p.platform === provider)?.accountLabel;
+      setMessage({
+        kind: 'ok',
+        text: account ? `${label} connected as ${account}.` : `${label} connected.`,
+      });
+    })();
   }, [load]);
 
   async function connect(platform: string) {
@@ -154,6 +188,18 @@ export function PublishHealthPanel() {
           <p className="mt-1 text-[13px] text-ink-muted">
             Connect this brand&rsquo;s own account per platform, and see which adapter (native once connected, the
             stub otherwise) and how much posting budget is left today.
+          </p>
+          {/*
+            Only Google offers an account chooser. Every other platform connects
+            whichever account this browser is already signed in to and never
+            asks — so an agency connecting a client's account from their own
+            laptop gets their own, with nothing on screen to say so. Naming the
+            connected account in the confirmation catches it after the fact;
+            this is what stops it happening in the first place.
+          */}
+          <p className="mt-1 text-[12px] text-ink-muted">
+            Except for Google, platforms connect whichever account this browser is signed in to, without asking.
+            To use a different one, sign out of that platform first or connect from a private window.
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}>

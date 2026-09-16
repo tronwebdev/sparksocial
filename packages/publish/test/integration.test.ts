@@ -63,6 +63,42 @@ describe('integration.connect', () => {
   });
 });
 
+describe('account selection at the authorize step', () => {
+  const tool = makeIntegrationConnect({
+    clientIds: { youtube_shorts: 'yt', google_business: 'gb', x: 'x', instagram: 'ig', tiktok: 'tt', linkedin: 'li' },
+    redirectUri: 'https://api.example/oauth/social/callback',
+    stateSecret: 'secret',
+  });
+
+  it('asks Google which account, every time', async () => {
+    // Without `select_account`, whether a person is asked depends on how many
+    // Google accounts happen to be signed in — so connecting a client's channel
+    // from your own laptop can silently take yours.
+    for (const provider of ['youtube_shorts', 'google_business'] as const) {
+      const out = await tool.handler({ genomeId: 'gen_1', provider }, ctx());
+      const prompt = new URL(out.authorizeUrl).searchParams.get('prompt');
+      expect(prompt).toContain('select_account');
+      // `consent` must survive alongside it: Google returns a refresh token only
+      // on a fresh consent, and the refresher has nothing to spend without one.
+      expect(prompt).toContain('consent');
+    }
+  });
+
+  it('documents that the others have no such parameter', async () => {
+    /*
+     * Not an aspiration — a record of the platforms' own limits. X, Meta,
+     * TikTok and LinkedIn publish no documented way to request an account
+     * chooser on an OAuth 2.0 authorize URL, so the browser session decides and
+     * the UI has to say so. If one of them ever ships one, this test failing is
+     * the prompt to use it.
+     */
+    for (const provider of ['x', 'instagram', 'tiktok', 'linkedin'] as const) {
+      const out = await tool.handler({ genomeId: 'gen_1', provider }, ctx());
+      expect(new URL(out.authorizeUrl).searchParams.get('prompt')).toBeNull();
+    }
+  });
+});
+
 describe('integration.health', () => {
   it('reports connected: true with the stored accountLabel for a real connection', async () => {
     const tool = makeIntegrationHealth({ adapters: [createStubAdapter({ supports: ['instagram'] })] });
