@@ -152,12 +152,41 @@ export interface OpenAIMessagesOptions {
  * check is a truthiness test and an unconfigured fallback is indistinguishable
  * from not having asked for one.
  */
+/**
+ * An environment value, treating present-but-empty as absent.
+ *
+ * The same rule as `envStr` in `apps/api/src/env.ts`, which this package cannot
+ * import — `packages/shared` sits below the apps in the build order. Kept to one
+ * tiny function rather than duplicating that file.
+ */
+function env(name: string): string | undefined {
+  const raw = process.env[name];
+  return raw !== undefined && raw.trim() !== '' ? raw.trim() : undefined;
+}
+
 export function openAIMessages(opts: OpenAIMessagesOptions = {}): MessagesClient | null {
-  const apiKey = opts.apiKey ?? process.env.OPENAI_FALLBACK_API_KEY ?? process.env.OPENAI_API_KEY ?? '';
+  /*
+   * `env()`, not `??`, and this is the bug `apps/api/src/env.ts` was written to
+   * end — it just never reached this file, which is in `packages/shared` and
+   * cannot import from an app.
+   *
+   * `??` falls through only on *unset*. `.env.example` ships every optional key
+   * as `KEY=`, and `--env-file` turns that into `''` — which is neither null nor
+   * undefined, so `??` stops there. The result was silent and total: an operator
+   * with a working `OPENAI_API_KEY` and an empty `OPENAI_FALLBACK_API_KEY` line
+   * got **no fallback at all**, and the only sign was one word in the boot
+   * banner. It surfaced the day the primary vendor's account was disabled, which
+   * is exactly when a fallback is the thing you are relying on.
+   *
+   * `OPENAI_FALLBACK_BASE_URL` was worse than silent: an empty line there would
+   * have overridden the default with `''` and sent every request to a relative
+   * URL.
+   */
+  const apiKey = opts.apiKey ?? env('OPENAI_FALLBACK_API_KEY') ?? env('OPENAI_API_KEY') ?? '';
   if (!apiKey) return null;
 
-  const baseUrl = opts.baseUrl ?? process.env.OPENAI_FALLBACK_BASE_URL ?? 'https://api.openai.com/v1';
-  const modelOverride = opts.model ?? process.env.OPENAI_FALLBACK_MODEL ?? '';
+  const baseUrl = opts.baseUrl ?? env('OPENAI_FALLBACK_BASE_URL') ?? 'https://api.openai.com/v1';
+  const modelOverride = opts.model ?? env('OPENAI_FALLBACK_MODEL') ?? '';
   const doFetch = opts.fetchImpl ?? fetch;
   const warn = opts.warn ?? ((m, meta) => console.warn(m, meta));
 
