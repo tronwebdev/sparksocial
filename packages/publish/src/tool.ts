@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { defineTool, type PolicySubject, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
 import { byId as playbookById } from '@sparksocial/playbooks';
-import { Platform, PublishError, routeAdapters, type PlatformAdapter } from './adapter.js';
+import { Platform, PublishError, connectionPlatform, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, publishWithRetry, type RateLimiter } from './retry.js';
 import { canRefreshToken, refreshSocialToken } from './integration.js';
 import { joinScopedToken, splitScopedToken } from './native/scopedToken.js';
@@ -126,6 +126,13 @@ export const PublishNowInput = z.object({
   text: z.string().min(1).max(5_000),
   referencedAssetIds: z.array(z.string()).default([]),
   mediaUrls: z.array(z.string().url()).max(10).default([]),
+  /**
+   * The destination inside the connected account — a Pinterest board, a
+   * subreddit, a Google Business location, a Facebook Group. See
+   * `PublishRequest.target`. Absent for platforms where the account is the
+   * destination, which is ten of the fourteen.
+   */
+  target: z.string().min(1).max(200).optional(),
 });
 
 export const PublishNowOutput = z.object({
@@ -382,11 +389,21 @@ export function makePublishNow(deps: PublishDeps) {
       // `undefined` for a platform whose connection this brand never made
       // (or for the aggregator/stub, which need no per-brand token at all)
       // — the adapter itself decides whether that's fatal.
-      const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, input.platform);
+      /*
+       * The account this platform actually posts through — itself for most, the
+       * parent for the four that borrow one (`instagram_story` publishes with
+       * Instagram's token). Reading `input.platform` directly would find no
+       * connection and publish an Instagram Story with no credential at all.
+       */
+      const connection = await ctx.db.oauthConnections.get(
+        input.genomeId,
+        ctx.orgId,
+        connectionPlatform(input.platform),
+      );
       // Renewed in place when it is about to expire — a token good for an hour
       // is routinely dead by the time the scheduler reaches the post it was
       // minted for. See `freshAccessToken`.
-      const accessToken = await freshAccessToken(connection, input.platform, ctx, deps.oauthApps);
+      const accessToken = await freshAccessToken(connection, connectionPlatform(input.platform), ctx, deps.oauthApps);
 
       try {
         const receipt = await publishWithRetry(
@@ -398,6 +415,7 @@ export function makePublishNow(deps: PublishDeps) {
             // resolve to the same publish, whoever retried it and however.
             idempotencyKey: `${input.contentItemId}:${input.platform}`,
             ...(accessToken ? { accessToken } : {}),
+            ...(input.target ? { target: input.target } : {}),
           },
           {
             publish: (r) => adapter.publish(r),
@@ -548,7 +566,8 @@ export function makePublishRollback(deps: PublishDeps) {
         );
       }
 
-      const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, platform);
+      // Same owning-platform resolution as `publish.now` above.
+      const connection = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, connectionPlatform(platform));
 
       try {
         await adapter.delete(item.externalId, platform, connection?.accessToken);

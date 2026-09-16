@@ -7,6 +7,7 @@ export * from './dub.js';
 export * from './linkTool.js';
 export * from './integration.js';
 export * from './native/instagramAdapter.js';
+export * from './native/facebookAdapter.js';
 export * from './native/tiktokAdapter.js';
 export * from './native/linkedinAdapter.js';
 export * from './native/xAdapter.js';

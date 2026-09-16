@@ -37,6 +37,13 @@ interface PlatformStatus {
   hoursUntilExpiry: number | null;
   supported: boolean;
   via: string | null;
+  /**
+   * Set when this platform posts through another's connection — Instagram
+   * Stories through Instagram, YouTube long-form through YouTube Shorts. There
+   * is nothing to connect here and no developer app to register, so the row
+   * says where it comes from instead of offering a button that cannot work.
+   */
+  connectedVia?: string;
 }
 
 interface Attention {
@@ -196,6 +203,13 @@ export function PublishHealthPanel() {
                     {p.connected ? `Connected${p.accountLabel ? ` — ${p.accountLabel}` : ''}` : 'Not connected'}
                     {p.supported ? ` · via ${p.via}` : ' · no adapter configured'}
                   </p>
+                  {p.connectedVia ? (
+                    <p className="mt-0.5 text-[12px] text-ink-muted">
+                      {p.connected
+                        ? `Comes with your ${platformLabel(p.connectedVia)} connection.`
+                        : `Connect ${platformLabel(p.connectedVia)} and this comes with it.`}
+                    </p>
+                  ) : null}
                   {expiryNote(p) ? (
                     <p className={`mt-0.5 text-[12px] ${p.status === 'expired' ? 'text-destructive' : 'text-warn'}`}>{expiryNote(p)}</p>
                   ) : null}
@@ -213,16 +227,21 @@ export function PublishHealthPanel() {
                           size="sm"
                           variant="outline"
                           disabled={busyPlatform === p.platform || !genome}
-                          onClick={() => void connect(p.platform)}
+                          onClick={() => void connect(p.connectedVia ?? p.platform)}
                         >
                           {busyPlatform === p.platform ? 'Redirecting…' : 'Reconnect'}
                         </Button>
                       ) : null}
-                      <Button size="sm" variant="ghost" disabled={busyPlatform === p.platform} onClick={() => void disconnect(p.platform)}>
-                        Disconnect
-                      </Button>
+                      {/* No Disconnect on a derived row: it would revoke the
+                          parent's connection and silently take the parent down
+                          with it. Disconnect Instagram to drop Instagram Stories. */}
+                      {p.connectedVia ? null : (
+                        <Button size="sm" variant="ghost" disabled={busyPlatform === p.platform} onClick={() => void disconnect(p.platform)}>
+                          Disconnect
+                        </Button>
+                      )}
                     </>
-                  ) : (
+                  ) : p.connectedVia ? null : (
                     <Button size="sm" variant="outline" disabled={busyPlatform === p.platform || !genome} onClick={() => void connect(p.platform)}>
                       {busyPlatform === p.platform ? 'Redirecting…' : 'Connect'}
                     </Button>

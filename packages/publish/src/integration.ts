@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError, expiresInWords } from '@sparksocial/shared';
 import { generatePkce, signOAuthState, verifyOAuthState, type OAuthStatePayload } from '@sparksocial/shared/oauthState';
-import { Platform, routeAdapters, type PlatformAdapter } from './adapter.js';
+import { Platform, connectionPlatform, isDerivedPlatform, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, DEFAULT_BUDGETS, type RateLimiter } from './retry.js';
 import { joinScopedToken } from './native/scopedToken.js';
 
@@ -79,7 +79,10 @@ interface ExchangeArgs {
  * of this codebase's vendor seams follow.
  */
 export const REQUIRED_SCOPES: Partial<Record<Platform, string[]>> = {
-  instagram: ['instagram_content_publish', 'pages_show_list', 'pages_read_engagement'],
+  // `pages_manage_posts` is what the Facebook adapter spends: one Meta login
+  // serves Instagram, Stories, the Page and its Groups, so the Page scope is
+  // requested here rather than at a second connection that does not exist.
+  instagram: ['instagram_content_publish', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts'],
   tiktok: ['video.publish', 'user.info.basic'],
   linkedin: ['w_member_social', 'openid', 'profile'],
   x: ['tweet.write', 'tweet.read', 'users.read', 'offline.access'],
@@ -566,6 +569,20 @@ export function makeIntegrationConnect(deps: IntegrationConnectDeps) {
     idempotent: true,
 
     async handler(input, ctx) {
+      /*
+       * A derived platform cannot be connected on its own, and saying it "isn't
+       * configured" would send someone looking for a developer app that does not
+       * exist. There is no `instagram_story` app to register; there is an
+       * Instagram account, and connecting it is what lights this up.
+       */
+      const owner = connectionPlatform(input.provider);
+      if (owner !== input.provider) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `${input.provider} publishes through your ${owner} connection — connect ${owner} and this comes with it.`,
+          { provider: input.provider, connectVia: owner },
+        );
+      }
       const clientId = deps.clientIds[input.provider];
       if (!clientId) {
         throw new ToolError('INVALID_INPUT', `${input.provider} isn’t configured for native publishing yet.`, { provider: input.provider });
@@ -650,6 +667,13 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
           /** Negative once expired, so a caller can say "3 days ago" without re-parsing the date. */
           hoursUntilExpiry: z.number().nullable(),
           supported: z.boolean(),
+          /**
+           * Set when this platform publishes with another's connection —
+           * `instagram_story` with Instagram's, `youtube_long` with YouTube's.
+           * The UI shows "via Instagram" instead of a Connect button that
+           * cannot lead anywhere. See `PARENT_PLATFORM`.
+           */
+          connectedVia: Platform.optional(),
           via: z.string().nullable(),
         }),
       ),
@@ -674,13 +698,19 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
 
       const platforms = await Promise.all(
         Platform.options.map(async (platform) => {
-          const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, platform);
+          // A derived platform has no connection of its own and never will —
+          // it borrows the account it posts through. Reading its own provider
+          // row would report "not connected" for an Instagram Story on a brand
+          // whose Instagram is connected and working.
+          const owner = connectionPlatform(platform);
+          const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, owner);
           const isSupported = supported.has(platform);
           const status = connectionStatus(conn?.expiresAt, Boolean(conn), now);
           return {
             platform,
             connected: Boolean(conn),
             status,
+            ...(owner !== platform ? { connectedVia: owner } : {}),
             ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
             ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
             hoursUntilExpiry: conn?.expiresAt
@@ -698,6 +728,20 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
         // is not broken, and listing eleven platforms as problems would bury the
         // one that genuinely is.
         needsAttention: platforms
+          /*
+           * One alert per *connection*, not per platform.
+           *
+           * Four platforms share the Meta connection, so an expiring Instagram
+           * token would otherwise raise four identical warnings — Instagram,
+           * Stories, Facebook and Groups all reporting the one account. That is
+           * the burial this list exists to prevent: the comment above says
+           * listing eleven platforms as problems hides the one that is real, and
+           * saying the same problem four times does it just as effectively.
+           *
+           * The derived rows still carry their own `status`, so their tiles show
+           * amber; only the alert is deduplicated to the account that owns it.
+           */
+          .filter((p) => !isDerivedPlatform(p.platform))
           .filter((p) => p.status === 'expiring' || p.status === 'expired')
           .map((p) => ({
             platform: p.platform,

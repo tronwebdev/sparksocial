@@ -1,5 +1,6 @@
 import {
   createInstagramAdapter,
+  createFacebookAdapter,
   createTikTokAdapter,
   createLinkedInAdapter,
   createXAdapter,
@@ -28,8 +29,13 @@ import { envSet } from './env.js';
 export function socialAdapterClients(): PlatformAdapter[] {
   const adapters: PlatformAdapter[] = [];
 
-  if (envSet('META_APP_ID') && envSet('META_APP_SECRET')) adapters.push(createInstagramAdapter());
-  else warnUnconfigured('instagram', 'META_APP_ID / META_APP_SECRET');
+  // One Meta app, four platforms. The Instagram adapter serves feed posts and
+  // Stories; the Facebook adapter serves the Page and its Groups off the same
+  // connection — see `PARENT_PLATFORM`.
+  if (envSet('META_APP_ID') && envSet('META_APP_SECRET')) {
+    adapters.push(createInstagramAdapter());
+    adapters.push(createFacebookAdapter());
+  } else warnUnconfigured('instagram', 'META_APP_ID / META_APP_SECRET');
 
   if (envSet('TIKTOK_CLIENT_KEY') && envSet('TIKTOK_CLIENT_SECRET')) adapters.push(createTikTokAdapter());
   else warnUnconfigured('tiktok', 'TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET');

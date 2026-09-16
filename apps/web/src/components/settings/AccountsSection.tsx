@@ -34,6 +34,13 @@ interface Platform {
   connected: boolean;
   accountLabel?: string;
   supported: boolean;
+  /**
+   * Set when this tile posts through another platform's connection — Instagram
+   * Stories through Instagram, Facebook through the Page behind it. There is no
+   * separate account to connect and no developer app to register, so the tile
+   * names its source instead of offering a button that always errored.
+   */
+  connectedVia?: string;
 }
 
 const TINT: Record<string, string> = {
@@ -171,9 +178,15 @@ export function AccountsSection() {
             <li key={p.platform}>
               <button
                 type="button"
-                onClick={() => (p.connected ? undefined : void connect(p.platform))}
-                disabled={p.connected}
-                aria-label={p.connected ? `${platformLabel(p.platform)} is connected` : `Connect ${platformLabel(p.platform)}`}
+                onClick={() => (p.connected || p.connectedVia ? undefined : void connect(p.platform))}
+                disabled={p.connected || Boolean(p.connectedVia)}
+                aria-label={
+                  p.connected
+                    ? `${platformLabel(p.platform)} is connected`
+                    : p.connectedVia
+                      ? `${platformLabel(p.platform)} posts through ${platformLabel(p.connectedVia)}`
+                      : `Connect ${platformLabel(p.platform)}`
+                }
                 className="flex h-[103px] w-[130px] flex-col items-center justify-center gap-[9px] rounded-[10.529px] bg-white transition-shadow disabled:cursor-default"
                 style={{
                   boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)',
@@ -184,11 +197,15 @@ export function AccountsSection() {
                 <span className="max-w-full truncate px-[6px] text-center text-[14.741px] font-semibold text-black">
                   {platformLabel(p.platform)}
                 </span>
-                {!p.connected ? (
-                  <span className="text-[11.5px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
-                    {connecting === p.platform ? 'Opening…' : 'Connect'}
+                {p.connected ? null : (
+                  <span className="max-w-full truncate px-[4px] text-[11.5px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
+                    {p.connectedVia
+                      ? `via ${platformLabel(p.connectedVia)}`
+                      : connecting === p.platform
+                        ? 'Opening…'
+                        : 'Connect'}
                   </span>
-                ) : null}
+                )}
               </button>
             </li>
           ))}

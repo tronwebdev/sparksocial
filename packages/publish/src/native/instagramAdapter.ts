@@ -82,11 +82,18 @@ export function createInstagramAdapter(opts: InstagramAdapterOptions = {}): Plat
 
   return {
     name,
-    supports: (platform) => platform === 'instagram',
+    /*
+     * Both, because they are one account. A story is not a second destination —
+     * it is the same ig-user-id and the same token with `media_type=STORIES` on
+     * the container. `PARENT_PLATFORM` says the same thing at the connection
+     * layer; this is where it lands at publish time.
+     */
+    supports: (platform) => platform === 'instagram' || platform === 'instagram_story',
 
     async publish(req: PublishRequest): Promise<PublishReceipt> {
+      const platform = req.platform === 'instagram_story' ? 'instagram_story' : 'instagram';
       if (!req.accessToken) {
-        throw new PublishError('instagram', 'No connected Instagram account for this brand — connect one in Settings first.', false);
+        throw new PublishError(platform, 'No connected Instagram account for this brand — connect one in Settings first.', false);
       }
       // The connected account id travels on the token record as its own
       // `accountLabel`/id is not modeled per-request here — the access
@@ -98,18 +105,41 @@ export function createInstagramAdapter(opts: InstagramAdapterOptions = {}): Plat
       // to `PublishRequest` only Instagram needs.
       const [igUserId, accessToken] = splitScopedToken(req.accessToken);
       if (!igUserId) {
-        throw new PublishError('instagram', 'This brand’s Instagram connection is missing its account id — reconnect in Settings.', false);
+        throw new PublishError(platform, 'This brand’s Instagram connection is missing its account id — reconnect in Settings.', false);
       }
 
       const isVideo = req.mediaUrls[0] ? /\.(mp4|mov)(\?|$)/i.test(req.mediaUrls[0]) : false;
+      const isStory = platform === 'instagram_story';
+
+      /*
+       * A story needs media. A feed post can in principle be text-only for other
+       * platforms, but Instagram has no such thing and a story least of all —
+       * refusing here names the problem, where the alternative is Meta rejecting
+       * an empty container with a code nobody can read.
+       */
+      if (isStory && !req.mediaUrls[0]) {
+        throw new PublishError(platform, 'An Instagram Story needs an image or a video — there is no text-only story.', false);
+      }
+
       const container = await graphPost(igUserId, 'media', accessToken, {
-        caption: req.text,
-        ...(req.mediaUrls[0] ? (isVideo ? { video_url: req.mediaUrls[0], media_type: 'REELS' } : { image_url: req.mediaUrls[0] }) : {}),
+        /*
+         * Stories carry no caption. Meta ignores the field rather than failing,
+         * which is worse: the copy would silently vanish and nobody would know
+         * where it went. Omitted deliberately so the absence is in the code.
+         */
+        ...(isStory ? {} : { caption: req.text }),
+        ...(req.mediaUrls[0]
+          ? isStory
+            ? { media_type: 'STORIES', ...(isVideo ? { video_url: req.mediaUrls[0] } : { image_url: req.mediaUrls[0] }) }
+            : isVideo
+              ? { video_url: req.mediaUrls[0], media_type: 'REELS' }
+              : { image_url: req.mediaUrls[0] }
+          : {}),
       });
       const published = await graphPost(igUserId, 'media_publish', accessToken, { creation_id: container.id });
 
       return {
-        platform: 'instagram',
+        platform,
         externalId: published.id,
         via: name,
         publishedAt: new Date(),

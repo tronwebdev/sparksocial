@@ -33,6 +33,53 @@ import { Platform } from '@sparksocial/shared';
  */
 export { Platform };
 
+/**
+ * Which platform's OAuth connection a platform actually publishes with.
+ *
+ * Four of the fourteen are not separate accounts. They are a different way of
+ * posting to an account the brand has already connected, and asking for a second
+ * connection would be asking the same question twice:
+ *
+ *   instagram_story  the Instagram account, posted as a story rather than a feed
+ *                    post. One account, one token, a different media container.
+ *   youtube_long     the same YouTube channel and the same Google token as
+ *                    `youtube_shorts`. "Shorts" is a duration and an aspect
+ *                    ratio, not a destination.
+ *   facebook         the Page behind the Instagram Business account. Meta issues
+ *                    both from one login, and `exchangeInstagram` already reads
+ *                    `/me/accounts` to find it.
+ *   facebook_group   a Group administered by that same Page identity.
+ *
+ * Before this map, each of those four rendered its own Connect button, and every
+ * one of them was a dead end: `integration.connect` refused with
+ * "isn't configured for native publishing yet" because there is no such thing as
+ * an `instagram_story` developer app to configure.
+ *
+ * Resolution is one level deep by design. A chain would let a typo make a cycle,
+ * and nothing here needs one — `connectionPlatform` asserts that by never
+ * looping.
+ */
+export const PARENT_PLATFORM: Partial<Record<Platform, Platform>> = {
+  instagram_story: 'instagram',
+  youtube_long: 'youtube_shorts',
+  facebook: 'instagram',
+  facebook_group: 'instagram',
+};
+
+/**
+ * The platform whose `oauth_connections` row serves this one — itself for the
+ * ten that own their connection, the parent for the four that borrow it.
+ */
+export function connectionPlatform(platform: Platform): Platform {
+  return PARENT_PLATFORM[platform] ?? platform;
+}
+
+/** Whether this platform borrows another's connection rather than owning one. */
+export function isDerivedPlatform(platform: Platform): boolean {
+  return platform in PARENT_PLATFORM;
+}
+
+
 
 export interface PublishRequest {
   platform: Platform;
@@ -59,6 +106,22 @@ export interface PublishRequest {
    * missing connection rather than guessing.
    */
   accessToken?: string;
+
+  /**
+   * Which destination *inside* the connected account this post goes to.
+   *
+   * Four platforms have one, and it is not the account: a Pinterest pin needs a
+   * board, a Reddit post needs a subreddit, a Google Business post needs a
+   * location, and a Facebook Group post needs the group. All four authenticate
+   * as the connected account and then publish somewhere that account can reach,
+   * which is a second identifier and not a second connection.
+   *
+   * Absent for the ten platforms where the account *is* the destination. An
+   * adapter that needs one and does not get it refuses by name rather than
+   * picking a default — publishing to the wrong board is worse than not
+   * publishing.
+   */
+  target?: string;
 }
 
 export interface PublishReceipt {
