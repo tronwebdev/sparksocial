@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 207 tools.
+ * 208 tools.
  */
 
 export interface ToolIO {
@@ -270,6 +270,10 @@ export interface ToolIO {
   "campaign.propose_plan": {
     input: { genomeId: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays?: number };
     output: { objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; buildableNow: number; potentialWithCapture: number; mix: Array<{ pillar: "educational" | "product" | "proof" | "personality" | "community"; count: number }>; mixSource: "cold_start" | "learned"; capture: ({ playbookIds: Array<string>; missingRoles: Array<string>; sittings: number; minutesPerSitting: number }) | (null); readyPlaybookIds: Array<string>; answers: ({ missingPaths: Array<string>; missing: Array<{ path: string; label: string; hint: string; fixWith: string }>; unlocksPosts: number; blockedPlaybooks: number }) | (null); why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
+  "campaign.readiness": {
+    input: { genomeId: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays?: number };
+    output: { ready: boolean; buildableNow: number; potentialTotal: number; items: Array<{ id: string; severity: "blocker" | "warning"; label: string; hint: string; fixWith: string; unlocksPosts: number }>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "campaign.rename": {
     input: { campaignId: string; name: string };

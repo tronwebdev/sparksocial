@@ -30,6 +30,7 @@ import { OfferStep, type BrandCard } from './CampaignOfferStep';
 import { AccountsStep, type PlatformStatus } from './CampaignAccountsStep';
 import { AutonomyStep } from './CampaignAutonomyStep';
 import { ReviewStep } from './CampaignReviewStep';
+import { ReadinessModal } from './ReadinessModal';
 import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
 
 /**
@@ -222,6 +223,13 @@ export function CampaignWizard({
   const [timezone, setTimezone] = useState('UTC');
 
   const [busy, setBusy] = useState(false);
+  /*
+   * The readiness check sits between Activate and `campaign.create`, not on an
+   * earlier step: the objective and window are what it is computed against, and
+   * both can still change up to the last screen. Asking sooner would answer a
+   * question about a campaign the person had not finished describing.
+   */
+  const [showReadiness, setShowReadiness] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
    * Set when somebody chooses "Continue without it".
@@ -639,7 +647,10 @@ export function CampaignWizard({
       return;
     }
     if (step === 6) {
-      void activate();
+      // Shown once. Dismissing it and pressing Activate again proceeds — a
+      // checklist that reappears after you have read it and decided is a
+      // dialog people learn to fight rather than read.
+      setShowReadiness(true);
       return;
     }
     setStep((step + 1) as Step);
@@ -654,8 +665,23 @@ export function CampaignWizard({
     setStep((step - 1) as Step);
   }
 
+  const readinessModal =
+    showReadiness && genomeId ? (
+      <ReadinessModal
+        genomeId={genomeId}
+        objective={objective}
+        windowDays={windowDays}
+        onClose={() => setShowReadiness(false)}
+        onProceed={() => {
+          setShowReadiness(false);
+          void activate();
+        }}
+      />
+    ) : null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
+      {readinessModal}
       <div className="relative w-full overflow-hidden" style={{ height: Math.round(geom.frame * scale) }}>
         <div className="absolute left-0 top-0 w-[1728px] origin-top-left" style={{ transform: `scale(${scale})`, height: geom.frame }}>
           {/* The scrim. Clicking it leaves, the way a modal backdrop should. */}

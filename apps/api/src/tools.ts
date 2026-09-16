@@ -76,6 +76,7 @@ import {
 } from '@sparksocial/generate';
 import {
   campaignProposePlan,
+  makeCampaignReadiness,
   campaignCreate,
   campaignList,
   campaignReportVsOutcome,
@@ -163,6 +164,7 @@ import {
   makeIntegrationConnect,
   makeIntegrationHealth,
   makeIntegrationRateBudget,
+  routeAdapters,
   integrationScopesVerify,
   integrationConnectCredentials,
   type Platform,
@@ -586,6 +588,15 @@ export function registerAlphaTools(): void {
   register(makePublishStatus({ adapters, limiter, embed }));
   register(makePublishRollback({ adapters, limiter, embed }));
   register(makeIntegrationHealth({ adapters }));
+  /*
+   * Registered here rather than with the other campaign tools above, because
+   * it needs the routing table: 'nowhere to publish' is one of the two things
+   * that make a campaign produce nothing, and only `routeAdapters` knows which
+   * platforms this deployment can actually reach. Asking the campaign block to
+   * build adapters early, or this to guess, would both be worse than the
+   * ordering.
+   */
+  register(makeCampaignReadiness({ supportedPlatforms: () => routeAdapters(adapters).supported() }));
   register(makeIntegrationRateBudget({ limiter }));
   register(integrationScopesVerify);
   /*
