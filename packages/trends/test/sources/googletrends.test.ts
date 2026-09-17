@@ -99,3 +99,22 @@ describe('createGoogleTrendsSource', () => {
     await expect(source.fetch({ limit: 5 })).rejects.toThrow(/rate-limited/i);
   });
 });
+
+describe('one region, not a list', () => {
+  it('names the variable when a region list is passed as the geo', async () => {
+    /*
+     * The live misconfiguration this is here to stop repeating: a copy of the
+     * `TREND_REGIONS` line landed in `GOOGLE_TREND_REGION`, Google answered
+     * `geo=US,GB,NZ,FR,IN,ES` with a bare 400, and the composite swallowed it —
+     * so the feed ran without Google and nothing said so. A 400 does not tell
+     * anyone which variable is wrong or which one they meant.
+     */
+    const source = createGoogleTrendsSource({
+      regionCode: 'US,GB,NZ',
+      fetchImpl: (async () => {
+        throw new Error('must not reach the network');
+      }) as unknown as typeof fetch,
+    });
+    await expect(source.fetch({ limit: 5 })).rejects.toThrow(/GOOGLE_TREND_REGION.*TREND_REGIONS/s);
+  });
+});
