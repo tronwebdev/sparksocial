@@ -208,6 +208,28 @@ export function devTextWriter(): TextWriter {
       const line = LINE_TEMPLATES[category] ?? FALLBACK_LINE;
       return line(genome.identity.business_name);
     },
+
+    /*
+     * Tags from what the genome already states, rather than from a model.
+     *
+     * The brand name and its category are facts on the record, so the dev
+     * writer can produce something *true* here even though it cannot produce
+     * something interesting. Same bargain as `write`: uniform, not varied, and
+     * enough to exercise the whole draft path with no key present.
+     *
+     * Returned unhashed and unbounded — `tidyHashtags` in `content.draft` cleans,
+     * de-duplicates and caps whatever a writer hands back, so neither
+     * implementation has to be trusted to do it.
+     */
+    async hashtags({ genome, playbook }) {
+      const { business_name, category } = genome.identity;
+      return [
+        business_name,
+        category,
+        playbook.content_pillar ?? '',
+        ...(genome.audience?.segments ?? []).map((s) => s.label),
+      ].filter(Boolean);
+    },
   };
 }
 

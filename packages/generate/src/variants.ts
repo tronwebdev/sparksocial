@@ -3,7 +3,7 @@ import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
 import type { EmbedClient } from '@sparksocial/assemble';
-import { resolvePlan, resolveBeat, buildOutline, ResolvedBeat, type ContentDraftDeps } from './draft.js';
+import { resolvePlan, resolveBeat, buildOutline, writeHashtags, ResolvedBeat, type ContentDraftDeps } from './draft.js';
 import type { TextWriter } from './types.js';
 
 /**
@@ -178,6 +178,23 @@ export function makeDraftRepurpose(deps: DraftRepurposeDeps) {
         alternatives: [],
       };
 
+      /*
+       * Its own hashtags, not the source post's.
+       *
+       * A repurpose targets a *different* playbook, which can publish to a
+       * different platform with a different budget — an Instagram post carried
+       * over to X would arrive with six tags where two are allowed, and
+       * `platformPolicy` would block the result.
+       */
+      const { storedHashtags } = await writeHashtags({
+        genome,
+        playbook: targetPlaybook,
+        beats,
+        ...(derivedIntent ? { intent: derivedIntent } : {}),
+        text: deps.text,
+        ctx,
+      });
+
       const draft = await ctx.db.content.createDraft({
         genomeId: input.genomeId,
         orgId: ctx.orgId,
@@ -185,6 +202,7 @@ export function makeDraftRepurpose(deps: DraftRepurposeDeps) {
         mode: targetPlaybook.mode,
         ...(targetPlaybook.content_pillar ? { pillar: targetPlaybook.content_pillar } : {}),
         copy: beats,
+        ...(storedHashtags.length > 0 ? { hashtags: storedHashtags } : {}),
         why,
       });
 

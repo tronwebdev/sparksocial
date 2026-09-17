@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { AssetRole, Explanation, ToolError } from '@sparksocial/shared';
+import { AssetRole, Explanation, ToolError, hashtagBudget, tidyHashtags } from '@sparksocial/shared';
 import { MAX_LOWER_THIRD } from '@sparksocial/shared/brandKit';
 import type { Genome } from '@sparksocial/shared/genome';
 import { byId, type Playbook } from '@sparksocial/playbooks';
@@ -265,6 +265,14 @@ export const ContentDraftOutput = z.object({
   mode: z.enum(['synthesize', 'assemble']),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   beats: z.array(ResolvedBeat),
+  /**
+   * The post's hashtags, ready to append to the caption, each with its `#`.
+   *
+   * Empty is a real answer and not a failure: a Google Business post gets none
+   * because they do nothing there, and a Reddit post gets none because they read
+   * as somebody who has mistaken it for Instagram. See `hashtagBudget`.
+   */
+  hashtags: z.array(z.string()),
   why: Explanation,
 });
 
@@ -326,12 +334,20 @@ export function makeContentDraft(deps: ContentDraftDeps) {
     idempotent: false,
     surfaces: ['CC-02', 'CC-03'],
 
-    /** One LLM call per copy beat — the only spend this tool incurs. */
+    /**
+     * One LLM call per copy beat, plus one for the post's hashtags — the only
+     * spend this tool incurs.
+     *
+     * The hashtag call is counted only where the platform actually takes them.
+     * A Reddit playbook has a budget of zero and never makes the call, and
+     * charging for it would be billing for a request nothing sends.
+     */
     estimateCents: (raw) => {
       const parsed = ContentDraftInput.safeParse(raw);
       const playbook = parsed.success ? byId(parsed.data.playbookId) : undefined;
       if (!playbook) return 1;
-      return Math.max(1, playbook.structure.beats.filter((b) => !b.source).length);
+      const tags = hashtagBudget(playbook.output.platforms) > 0 ? 1 : 0;
+      return Math.max(1, playbook.structure.beats.filter((b) => !b.source).length + tags);
     },
 
     async handler(input, ctx) {
@@ -408,12 +424,22 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const why = explain(plan, playbook.name, beats);
 
+      const { hashtags, storedHashtags } = await writeHashtags({
+        genome,
+        playbook,
+        beats,
+        ...(input.intent ? { intent: input.intent } : {}),
+        text: deps.text,
+        ctx,
+      });
+
       const draft = input.contentItemId
         ? await ctx.db.content.updateDraft({
             id: input.contentItemId,
             genomeId: input.genomeId,
             orgId: ctx.orgId,
             copy: beats,
+            ...(storedHashtags.length > 0 ? { hashtags: storedHashtags } : {}),
             why,
           })
         : await ctx.db.content.createDraft({
@@ -423,6 +449,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
             mode: playbook.mode,
             ...(playbook.content_pillar ? { pillar: playbook.content_pillar } : {}),
             copy: beats,
+            ...(storedHashtags.length > 0 ? { hashtags: storedHashtags } : {}),
             why,
             ...(input.intent ? { intent: input.intent } : {}),
             ...(input.fromTrendId ? { sourceTrendId: input.fromTrendId } : {}),
@@ -449,10 +476,16 @@ export function makeContentDraft(deps: ContentDraftDeps) {
        * check that reads it.
        */
       const guardPlatform = playbook.output.platforms[0] ?? 'instagram';
-      const draftText = beats
-        .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
-        .map((b) => b.text)
-        .join('\n\n');
+      /*
+       * The hashtags are part of the text being checked.
+       *
+       * `platformPolicy` counts hashtags and measures length against the
+       * platform's cap, and both are about the caption that actually goes out.
+       * Checking the beats alone would be checking something nobody ever
+       * publishes — and would let a draft pass here and fail at `publish.now`,
+       * which re-runs the same check against the assembled caption.
+       */
+      const draftText = [textOf(beats), hashtags.join(' ')].filter(Boolean).join('\n\n');
 
       if (deps.guard && draftText) {
         const verdict = await deps.guard
@@ -492,6 +525,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         playbookId: playbook.playbook_id,
         contentItemId: draft.id,
         beats: beats.length,
+        hashtags: hashtags.length,
       });
 
       return {
@@ -500,10 +534,90 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         mode: playbook.mode as 'synthesize' | 'assemble',
         mediaType: plan.mediaType,
         beats,
+        hashtags,
         why,
       };
     },
   });
+}
+
+/**
+ * The post's hashtags.
+ *
+ * ── Written from the copy, not from the brand ─────────────────────────────
+ *
+ * Tags derived from the genome alone describe the *business*, so every post for
+ * that brand gets the same ones — the `#coffee #smallbusiness` tail that makes a
+ * caption look machine-written. The beats that were just written are the only
+ * thing that knows what this particular post is about.
+ *
+ * ── The budget is not this function's opinion ─────────────────────────────
+ *
+ * It comes from `@sparksocial/shared`, which is also where `platformPolicy`
+ * reads the ceiling it blocks on. A writer holding its own idea of "X allows 2"
+ * could produce a draft SPARK wrote and then refuses to publish, which is the
+ * worst outcome available — worse than no hashtags, because the post is stuck
+ * rather than merely plainer.
+ *
+ * ── Failure is silent, deliberately ──────────────────────────────────────
+ *
+ * A hashtag call that does not come back leaves a post without hashtags, which
+ * is exactly what every draft was before this existed. Throwing would discard
+ * beats that cost a model call each and are the actual content.
+ *
+ * Shared with `draft.repurpose`, which writes a draft for a *different*
+ * playbook: a repurposed post can target a platform with a different budget, so
+ * it needs its own tags rather than the source's.
+ */
+export async function writeHashtags(args: {
+  genome: Genome;
+  playbook: Playbook;
+  beats: readonly ResolvedBeat[];
+  intent?: string;
+  text: TextWriter;
+  ctx: ToolCtx;
+}): Promise<{ hashtags: string[]; storedHashtags: string[] }> {
+  const budget = hashtagBudget(args.playbook.output.platforms);
+  const draftText = textOf(args.beats);
+  if (budget <= 0 || !args.text.hashtags || !draftText) return { hashtags: [], storedHashtags: [] };
+
+  const hashtags = await args.text
+    .hashtags({
+      genome: args.genome,
+      playbook: args.playbook,
+      ...(args.intent ? { intent: args.intent } : {}),
+      draftText,
+      budget,
+    })
+    .then((raw) => tidyHashtags(raw, budget))
+    .catch((err: unknown) => {
+      args.ctx.logger.warn('hashtags not written', {
+        playbookId: args.playbook.playbook_id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return [] as string[];
+    });
+
+  // Stored without the `#`, the way the column is documented; returned with it,
+  // because every caller is about to put them in a caption.
+  return { hashtags, storedHashtags: hashtags.map((t) => t.replace(/^#/, '')) };
+}
+
+/**
+ * The written words of a draft, in running order — the caption, before
+ * hashtags and before any short link.
+ *
+ * One function because three places were doing it by hand and were free to
+ * disagree: the draft-time guardrail pass, the hashtag writer's grounding, and
+ * the Draft Panel's publish. A guardrail checking a different string than the
+ * one that goes out is a check of nothing.
+ */
+export function textOf(beats: readonly ResolvedBeat[]): string {
+  return beats
+    .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
+    .map((b) => b.text)
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /** Exported for `draft.variants`/`draft.repurpose` (variants.ts) — the same plan-then-write pipeline `content.draft` itself uses. */

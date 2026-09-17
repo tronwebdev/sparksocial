@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
-import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -896,15 +896,17 @@ export function DraftPanel({
     if (!draft || !genomeId || busy) return;
     setBusy(true);
     setError(null);
-    const text = [
-      draft.beats
-        .map((b) => (b.kind === 'text' ? b.text : ''))
-        .filter(Boolean)
-        .join('\n\n'),
-      shortUrl,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    /*
+     * Caption, then hashtags, then the tracked link.
+     *
+     * Hashtags go before the link and not after: a trailing URL is what the
+     * platform turns into a preview card, and burying it under a row of tags
+     * is how a link stops being clicked. They are appended here rather than
+     * living in the storyboard because they are not beats — a text beat is
+     * rendered as a full-screen card by `packages/compose`, which would burn
+     * them into the video.
+     */
+    const text = caption(draft, shortUrl);
     const referencedAssetIds = draft.beats.filter((b) => b.kind === 'asset').map((b) => b.assetId);
     // A real `compose.render` output — one composed file per aspect ratio —
     // is what should actually publish for anything with pixels. Falling back
@@ -1543,15 +1545,7 @@ export function DraftPanel({
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-lg border border-border p-4">
                 <p className="whitespace-pre-wrap text-[14px] text-ink">
-                  {[
-                    draft.beats
-                      .map((b) => (b.kind === 'text' ? b.text : ''))
-                      .filter(Boolean)
-                      .join('\n\n'),
-                    shortUrl,
-                  ]
-                    .filter(Boolean)
-                    .join('\n\n') || '(no written copy)'}
+                  {caption(draft, shortUrl) || '(no written copy)'}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2">
                   {draft.beats

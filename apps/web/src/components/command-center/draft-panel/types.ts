@@ -66,6 +66,18 @@ export interface DraftView {
   mode: string;
   mediaType: 'video' | 'image' | 'carousel' | 'text';
   beats: ResolvedBeat[];
+  /**
+   * The post's hashtags, each with its `#`.
+   *
+   * Not beats, and deliberately so: `packages/compose` renders a text beat as a
+   * full-screen type card, so hashtags in the storyboard would be burned into
+   * the middle of the video. They are caption furniture, appended once by
+   * `caption()`.
+   *
+   * Optional here because `DraftView` is also built from `content.draft`'s
+   * output and from older rows drafted before the column existed.
+   */
+  hashtags?: string[];
   status?: string;
   /**
    * The campaign this post belongs to, when it belongs to one.
@@ -138,3 +150,28 @@ export const KIT_TEMPLATE_LABEL: Record<KitTemplate['category'], string> = {
   caption: 'Caption',
   lower_third: 'Lower-third',
 };
+
+/**
+ * The caption that actually goes out: copy, then hashtags, then the tracked link.
+ *
+ * One function because the Draft Panel was assembling this twice — once to show
+ * a preview and once to publish — and two copies of "what the post says" are
+ * free to drift. Showing a person one string and sending another is the kind of
+ * bug nobody reports, because whoever sees it assumes they misread the preview.
+ *
+ * Hashtags sit above the link rather than below it: a trailing URL is what the
+ * platform turns into a preview card, and a link buried under a row of tags
+ * stops being clicked.
+ */
+export function caption(draft: Pick<DraftView, 'beats' | 'hashtags'>, shortUrl?: string | null): string {
+  return [
+    draft.beats
+      .map((b) => (b.kind === 'text' ? b.text : ''))
+      .filter(Boolean)
+      .join('\n\n'),
+    (draft.hashtags ?? []).join(' '),
+    shortUrl,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}

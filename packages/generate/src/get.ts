@@ -38,6 +38,14 @@ export const ContentGetOutput = z.object({
   campaignId: z.string().optional(),
   beats: z.array(ResolvedBeat),
   /**
+   * The post's hashtags, each with its `#`, ready to append to the caption.
+   *
+   * Always an array — the column is null on every row drafted before hashtags
+   * existed, and a panel should render "no hashtags" for those rather than
+   * having to distinguish null from empty to do it.
+   */
+  hashtags: z.array(z.string()),
+  /**
    * The format's declared duration band, when it has one.
    *
    * `M5`'s storyboard shows a running total ("0:24 total") and the scene tools
@@ -136,6 +144,8 @@ export const contentGet = defineTool({
       status: draft.status,
       ...(draft.campaignId ? { campaignId: draft.campaignId } : {}),
       beats: parsed.success ? parsed.data : [],
+      // Stored bare; the `#` is added at the one place that renders them.
+      hashtags: (draft.hashtags ?? []).map((t) => `#${t}`),
       ...(band ? { durationBand: [band[0], band[1]] as [number, number] } : {}),
       ...(draft.why ? { why: draft.why } : {}),
       ...(draft.platform ? { platform: draft.platform } : {}),

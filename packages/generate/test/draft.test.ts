@@ -76,9 +76,10 @@ describe('content.draft — the registry contract', () => {
     expect(tool.effect).toBe('write');
   });
 
-  it('estimates cost from the number of copy beats the chosen playbook needs', () => {
-    // pb_text_update: one beat, no source.
-    expect(tool.estimateCents?.({ genomeId: 'g', playbookId: 'pb_text_update', intent: '' })).toBe(1);
+  it('estimates cost from the copy beats the playbook needs, plus the hashtag call', () => {
+    // pb_text_update: one beat, no source — plus one call for the post's
+    // hashtags, which LinkedIn and X both take.
+    expect(tool.estimateCents?.({ genomeId: 'g', playbookId: 'pb_text_update', intent: '' })).toBe(2);
     // pb_offer_announcement: one prompt_ref beat + one genome: beat + one asset: beat.
     expect(
       tool.estimateCents?.({ genomeId: 'g', playbookId: 'pb_offer_announcement', intent: '' }),
@@ -249,5 +250,141 @@ describe('content.draft — hand-edited storyboards', () => {
     // A calendar slot from `calendar.generate` has no copy at all; filling it is
     // the first draft, not a regeneration over somebody's work.
     await expect(redraft(existing([]))).resolves.toMatchObject({ contentItemId: 'ci_existing' });
+  });
+});
+
+/**
+ * Hashtags on a drafted post.
+ *
+ * They did not exist. `platformPolicy` had always counted them and blocked a
+ * caption carrying too many, no playbook declared a hashtag beat, no
+ * `prompt_ref` asked for one, and the copy writer's system prompt said to
+ * return the beat text and nothing else. The ceiling was enforced against a
+ * feature that was never built, and every draft came out bare.
+ */
+describe('content.draft — hashtags', () => {
+  /** A writer that returns more than any budget allows, and messily. */
+  function taggingWriter(tags: string[] = ['Cold Brew', '#huila', 'huila', 'PinkBourbon', 'roastday']): TextWriter {
+    return { ...echoWriter(), hashtags: async () => tags };
+  }
+
+  it('writes them, hashed, on a post whose platform takes them', async () => {
+    const tool = makeContentDraft({ text: taggingWriter(), embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(res.hashtags.length).toBeGreaterThan(0);
+    for (const tag of res.hashtags) expect(tag).toMatch(/^#[A-Za-z0-9_]+$/);
+  });
+
+  it('never writes more than the platform the guardrail will check', async () => {
+    /*
+     * The failure this is here to prevent: a draft SPARK wrote that
+     * `publish.now` then refuses. `pb_text_update` goes to LinkedIn and X, and
+     * X's cap is 2 — the narrowest wins, because one caption is published to
+     * both.
+     */
+    const tool = makeContentDraft({ text: taggingWriter(), embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(res.hashtags).toEqual(['#ColdBrew', '#huila']);
+  });
+
+  it('stores them without the # and returns them with it', async () => {
+    // The column holds the tag, not its punctuation; the caption needs the
+    // punctuation. One place adds it, and this is the seam.
+    const createDraft = vi.fn(async (args: Parameters<ScopedDb['content']['createDraft']>[0]) => ({
+      id: 'ci_1', genomeId: args.genomeId, playbookId: args.playbookId, mode: args.mode,
+      status: 'draft' as const, copy: args.copy, why: args.why, createdAt: new Date(),
+    }));
+    const tool = makeContentDraft({ text: taggingWriter(), embed });
+    await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx({ createDraft }));
+
+    expect(createDraft.mock.calls[0]![0].hashtags).toEqual(['ColdBrew', 'huila']);
+  });
+
+  it('grounds them in the copy that was just written, not the brand alone', async () => {
+    /*
+     * Tags derived from the genome describe the *business*, so every post for a
+     * brand gets the same ones — the generic tail that makes a caption look
+     * machine-written. The beats are the only thing that knows what this
+     * particular post is about.
+     */
+    const seen: string[] = [];
+    const writer: TextWriter = {
+      ...echoWriter(),
+      hashtags: async ({ draftText }) => {
+        seen.push(draftText);
+        return ['one', 'two'];
+      },
+    };
+    const tool = makeContentDraft({ text: writer, embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(seen).toHaveLength(1);
+    const beatText = res.beats.filter((b) => b.kind === 'text').map((b) => b.text);
+    for (const t of beatText) expect(seen[0]).toContain(t);
+  });
+
+  it('is never a beat — the storyboard must not gain a scene of hashtags', async () => {
+    /*
+     * `packages/compose` renders a `kind: 'text'` beat as a full-screen type
+     * card. A hashtags beat would be burned into the middle of every video,
+     * which is why they live on the item and not in `copy`.
+     */
+    const tool = makeContentDraft({ text: taggingWriter(), embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    for (const beat of res.beats) {
+      if (beat.kind === 'text') expect(beat.text).not.toMatch(/#/);
+    }
+  });
+
+  it('still produces a draft when the writer has no hashtag support at all', async () => {
+    // The behaviour every draft had before this existed. A writer that cannot
+    // write tags is a plainer post, not a failed one.
+    const tool = makeContentDraft({ text: echoWriter(), embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(res.hashtags).toEqual([]);
+    expect(res.beats.length).toBeGreaterThan(0);
+  });
+
+  it('keeps the beats when the hashtag call throws', async () => {
+    /*
+     * Beats cost a model call each and are the actual content. Losing them to a
+     * failure in the decoration would be the tool destroying the expensive part
+     * of its own work over the cheap part.
+     */
+    const writer: TextWriter = {
+      ...echoWriter(),
+      hashtags: async () => {
+        throw new Error('vendor down');
+      },
+    };
+    const tool = makeContentDraft({ text: writer, embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(res.hashtags).toEqual([]);
+    expect(res.beats.length).toBeGreaterThan(0);
+  });
+
+  it('shows the guardrail the caption that actually goes out', async () => {
+    /*
+     * `platformPolicy` counts hashtags and measures length. Checking the beats
+     * alone would be checking a string nobody publishes — and would let a draft
+     * pass here and fail at `publish.now`, which checks the assembled caption.
+     */
+    const seen: string[] = [];
+    const guard = {
+      check: async (args: { text: string }) => {
+        seen.push(args.text);
+        return { verdict: 'pass' as const };
+      },
+    };
+    const tool = makeContentDraft({ text: taggingWriter(), embed, guard });
+    await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx());
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain('#ColdBrew');
   });
 });

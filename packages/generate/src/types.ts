@@ -63,6 +63,42 @@ export interface TextWriter {
     /** Every beat in the post, in order. See `BeatOutlineEntry`. */
     outline: BeatOutlineEntry[];
   }): Promise<string>;
+
+  /**
+   * The post's hashtags, without the leading `#`.
+   *
+   * ── Why this is its own call and not part of a beat ───────────────────────
+   *
+   * Hashtags belong to the *post*, and beats are written one at a time by
+   * design (so "rewrite just the hook" is possible). Folding them into a beat
+   * would mean either every beat carrying its own tags, or one arbitrary beat
+   * owning them and losing them the moment somebody regenerated that beat.
+   *
+   * They are also not a beat in the stored draft, for a blunter reason:
+   * `packages/compose` renders a `kind: 'text'` beat as a full-screen type card,
+   * so hashtags-as-a-beat would burn "#coldbrew #huila" into the middle of every
+   * video. They live in a column on the content item and never reach the pixels.
+   *
+   * ── Optional on the interface ─────────────────────────────────────────────
+   *
+   * A writer that cannot produce them is a post with no hashtags, which is
+   * exactly the behaviour that existed before this — a strictly better failure
+   * than a draft that cannot be written at all. Test doubles and the dev
+   * template writer are also spared having to implement it.
+   */
+  hashtags?(args: {
+    genome: Genome;
+    playbook: Playbook;
+    /** What this specific post is about, when the caller knows. */
+    intent?: string;
+    /** The copy that was just written, so the tags describe this post and not the brand in general. */
+    draftText: string;
+    /**
+     * How many to write — `hashtagBudget` for the playbook's platforms, already
+     * clamped by the cap `platformPolicy` will enforce. Never called with 0.
+     */
+    budget: number;
+  }): Promise<string[]>;
 }
 
 /**

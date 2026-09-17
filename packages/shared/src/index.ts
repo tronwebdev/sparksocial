@@ -34,3 +34,4 @@ export * from './voices.js';
 export * from './engagementConfig.js';
 export * from './agentIdentity.js';
 
+export * from './hashtags.js';

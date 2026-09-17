@@ -339,6 +339,25 @@ export const contentItems = pgTable(
     variantLabel: text('variant_label'),
     copy: jsonb('copy'),
     /**
+     * The post's hashtags, without the leading `#`.
+     *
+     * A column rather than another beat, and the distinction is not
+     * bookkeeping: a `kind: 'text'` beat is rendered by
+     * `packages/compose/src/composition.ts` as a full-screen type card, so
+     * hashtags-as-a-beat would burn "#coldbrew #huila" into the middle of every
+     * video. Hashtags are caption furniture — they belong to the post, not to
+     * its structure, and they never appear in the pixels.
+     *
+     * Stored without the `#` so the column holds the tag and not its
+     * punctuation; the single place that renders them adds it back. A tag is
+     * also then greppable and groupable without every query stripping a prefix.
+     *
+     * Null on every row written before this existed, and on posts for platforms
+     * where hashtags do nothing (Google Business) or read as a mistake (Reddit)
+     * — see `hashtagBudget`.
+     */
+    hashtags: text('hashtags').array(),
+    /**
      * The copy's embedding at publish time — the guardrail layer's `duplicate`
      * check (§10) compares a new draft against the trailing 90 days of these.
      * Computed once, here, rather than re-embedding historical copy on every

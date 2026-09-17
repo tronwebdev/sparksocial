@@ -1736,6 +1736,11 @@ export interface ContentDraftRow {
   variantGroupId: string | null;
   variantLabel: string | null;
   copy: unknown;
+  /**
+   * The post's hashtags, without the leading `#`. Null on every row written
+   * before the column existed, and on a platform whose budget is zero.
+   */
+  hashtags: string[] | null;
   why: unknown;
   scheduledAt: Date | null;
   createdAt: Date;
@@ -1761,6 +1766,7 @@ const contentDraftColumns = {
   variantGroupId: contentItems.variantGroupId,
   variantLabel: contentItems.variantLabel,
   copy: contentItems.copy,
+  hashtags: contentItems.hashtags,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
   // PRD §5's "time to first post" measures from campaign start to here, so the
@@ -1806,6 +1812,8 @@ export async function createContentDraft(
     mode: GenerationMode;
     pillar?: string;
     copy: unknown;
+    /** Written whole or not at all — `undefined` leaves the column null. */
+    hashtags?: string[];
     why: unknown;
     campaignId?: string;
     recipeId?: string;
@@ -1836,6 +1844,7 @@ export async function createContentDraft(
       // (`draft`) is right for everything else.
       ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
       copy: args.copy as object,
+      ...(args.hashtags ? { hashtags: args.hashtags } : {}),
       why: args.why as object,
     })
     .returning(contentDraftColumns);
@@ -1904,12 +1913,18 @@ export async function getContentItem(db: Database, scope: Scope, id: string): Pr
 export async function updateContentDraft(
   db: Database,
   scope: Scope,
-  args: { id: string; copy: unknown; why: unknown },
+  args: { id: string; copy: unknown; hashtags?: string[]; why: unknown },
 ): Promise<ContentDraftRow | undefined> {
   assertScope(scope);
   const [row] = await db
     .update(contentItems)
-    .set({ copy: args.copy as object, why: args.why as object })
+    /*
+     * `hashtags` is omitted rather than nulled when absent. A redraft that
+     * could not write them — a budget of zero, or a writer with no hashtag
+     * support — must not silently erase tags a person edited by hand on the
+     * previous pass.
+     */
+    .set({ copy: args.copy as object, ...(args.hashtags ? { hashtags: args.hashtags } : {}), why: args.why as object })
     .where(
       and(
         eq(contentItems.id, args.id),

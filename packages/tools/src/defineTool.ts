@@ -905,6 +905,16 @@ export interface ContentDraft {
    * it to persist it.
    */
   copy?: unknown;
+  /**
+   * The post's hashtags, without the leading `#`.
+   *
+   * Typed here, unlike `copy`, because this shape belongs to nobody in
+   * particular — it is a list of words, and every consumer from the Draft Panel
+   * to `publish.now` wants exactly that. Absent means none were ever written;
+   * an empty array means the platform's budget is zero, which is a real answer
+   * for Reddit and Google Business rather than a missing one.
+   */
+  hashtags?: string[];
   why?: Explanation;
   scheduledAt?: Date;
   /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
@@ -945,6 +955,8 @@ export interface ContentStore {
     mode: GenerationMode;
     pillar?: ContentPillar;
     copy: unknown;
+    /** See `ContentDraft.hashtags`. Omitted leaves the column null. */
+    hashtags?: string[];
     why: Explanation;
     campaignId?: string;
     /**
@@ -1009,6 +1021,11 @@ export interface ContentStore {
     genomeId: string;
     orgId: string;
     copy: unknown;
+    /**
+     * Omitted leaves whatever is stored alone. A redraft that could not write
+     * tags must not erase ones a person edited by hand on the previous pass.
+     */
+    hashtags?: string[];
     why: Explanation;
   }): Promise<ContentDraft | undefined>;
 
