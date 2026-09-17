@@ -414,6 +414,44 @@ publishing: **console.cloud.google.com** → Credentials → Create credentials 
 **Product Hunt** — **api.producthunt.com/v2/oauth/applications** → create an
 application → `PRODUCTHUNT_CLIENT_ID` / `PRODUCTHUNT_CLIENT_SECRET`. Already set.
 
+### Checking that a source actually works
+
+A trend key is not like a Connect button: there is no consent screen to succeed
+or fail, so nothing tells you whether the value you pasted is right. Worse, the
+composite catches every per-source failure deliberately — one vendor going down
+degrades the feed to "everyone else" instead of taking it down — so a wrong,
+expired or under-scoped token produces exactly the same feed as one that was
+never pasted. The boot banner lists which sources are *configured*, not which
+ones work.
+
+After setting any key, restart the API and run:
+
+```bash
+npx tsx --env-file-if-exists=apps/api/.env scripts/check-trend-sources.mts
+```
+
+It fetches from every configured source and prints one line each:
+
+| Result | What it means |
+|---|---|
+| `ok` | Real trends came back, with a sample so you can see they are real |
+| `EMPTY` | Reachable, returned nothing — usually a token without the right scope |
+| `FAILED` | The vendor rejected the call; the message is the vendor's own |
+| `not configured` | No credential set, and the exact variable names that would set it |
+| `disabled` | Credential present, switch deliberately off |
+
+`EMPTY` is reported separately from `ok` on purpose. A wrong token, a missing
+scope and a genuinely quiet day are indistinguishable from an empty result, and
+treating them as success is how a dead source stays unnoticed. That matters most
+for TikTok and Pinterest, which both fail this way rather than erroring.
+
+This is not hypothetical. Google Trends was configured, enabled, listed in the
+boot banner and returning nothing for an unknown length of time, because
+`GOOGLE_TREND_REGION` had been given a copy of the `TREND_REGIONS` line. The two
+variables are different — the first is a single fallback geo, the second is the
+multi-region breakdown, which is asked one region at a time — and the vendor's
+400 named neither. The check found it on its first run.
+
 ### Turning a source off on purpose
 
 Two sources have an explicit switch, because both can cost money and both are
