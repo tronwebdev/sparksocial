@@ -69,6 +69,19 @@
   --ss-border-strong: rgba(12, 12, 12, 0.35);
 
   --ss-field: var(--ss-field-bg);
+  /**
+   * The soft panel a settings section sits in — measured off
+   * `Settings WS Brand Kits.dc.html`, where every section card is an SVG
+   * rounded rect with `fill: rgb(243,244,248)`, radius 22.888, and **no border
+   * at all**.
+   *
+   * Same value as `--ss-field-bg` in light, and deliberately a separate token:
+   * a field and a panel are different roles that happen to share a colour
+   * today. In dark they must not share one — an input has to read as recessed
+   * against its panel, so a panel painted with the field colour would make
+   * every input inside it invisible.
+   */
+  --ss-panel: var(--ss-field-bg);
   --ss-ring: var(--ss-purple);
 
   --ss-primary: var(--ss-ink-900);
@@ -745,6 +758,10 @@
   --ss-border-strong: rgba(255, 255, 255, 0.32);
 
   --ss-field: rgba(255, 255, 255, 0.06);
+  /* Lifted, not recessed: in dark the page is #0C0C0C, so a panel reads as a
+     step *towards* the light rather than away from it, and the 0.06 field
+     above still sits visibly inside it. */
+  --ss-panel: rgba(255, 255, 255, 0.03);
   --ss-primary: var(--ss-white);
   --ss-primary-hover: var(--ss-surface-200);
 }

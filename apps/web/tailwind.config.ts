@@ -40,6 +40,9 @@ const config: Config = {
         foreground: alpha('--ss-fg'),
         border: alpha('--ss-border'),
         input: alpha('--ss-field'),
+        /* The settings section card — see `KitSection`. A filled soft panel, not
+           a bordered one; the prototype draws no stroke on these at all. */
+        panel: alpha('--ss-panel'),
         ring: alpha('--ss-ring'),
         primary: {
           DEFAULT: alpha('--ss-primary'),

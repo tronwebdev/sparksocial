@@ -9,6 +9,7 @@ import { uploadToStorage } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { BrandFontPicker } from './BrandFontPicker';
+import { KitSection, KitRow } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
 
 /**
@@ -323,467 +324,513 @@ export function GovernancePanel() {
   const zoneOptions = COMMON_ZONES.includes(timezone) ? COMMON_ZONES : [timezone, ...COMMON_ZONES];
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Brand rules</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
-        What SPARK may say on your behalf, and when it says it. These are checked on every post before it
-        goes out.
-      </p>
-
+    <div className="grid grid-cols-1 gap-[27px]">
       {loading ? (
-        <PanelSkeleton rows={3} />
+        <KitSection title="Brand kit">
+          <PanelSkeleton rows={3} />
+        </KitSection>
       ) : (
-        <div className="mt-5 grid grid-cols-1 gap-6">
-          {/* ── Who it is (`F4`) ────────────────────────────────────────────
-              First, because everything below describes this thing and the
-              Command Center, onboarding and campaign summaries all address it by
-              name. Only the name is stored: the voice adjectives come from the
-              sliders below and the risk tolerance from the approval mode, so
-              neither can drift from the setting that is actually enforced. */}
-          <div className="max-w-md">
-            <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-agent-name">
-              What do you call your agent?
-            </label>
-            <p className="mt-1 text-[12px] text-ink-muted">
-              Used wherever SPARK refers to itself — the Command Center, and campaign summaries that say
-              what it will do. Optional; leave it blank and it says &ldquo;your agent&rdquo;.
-            </p>
-            <Input
-              id="gov-agent-name"
-              value={agentName}
-              onChange={(e) => setAgentName(e.target.value)}
-              placeholder="Ada, Studio Bot, The Intern…"
-              maxLength={60}
-              className="mt-1.5"
-            />
-          </div>
+        <>
+          {/*
+            ── Row 1 of the design: Workspace logo · Color Theme ─────────────
 
-          {/* ── What SPARK may not say ─────────────────────────────────── */}
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-topics">
-                Restricted topics
+            Four cards two-up, which is what the prototype draws and what this
+            screen was flattening into a single stack. They share this
+            component's one draft rather than being four components: every
+            field below is written by a single `brand.governance.set` call, and
+            splitting them would leave four panels racing to save one row.
+          */}
+          <KitRow>
+            <KitSection
+              title="Workspace logo"
+              hint="Used bottom-left on anything SPARK renders, and as the mark on your posts."
+            >
+              <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="gov-logo">
+                Logo
               </label>
-              <p className="mt-0.5 text-[12px] text-ink-muted">
-                Subjects to stay off entirely. Comma separated.
-              </p>
-              <Input
-                id="gov-topics"
-                value={topicsText}
-                onChange={(e) => setTopicsText(e.target.value)}
-                placeholder="politics, competitor names, staff turnover"
-                className="mt-1.5"
-              />
-            </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <Input
+                  id="gov-logo"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://… or upload"
+                  className="min-w-[200px] flex-1"
+                />
+                <input
+                  ref={logoInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadLogo(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </Button>
+                {/*
+                  `SET-WS-BRAND-KITS`' "Generate logo". Labelled as a placeholder
+                  rather than as identity work, because that is what it is — see
+                  `brand.logo.generate`'s own comment on why the prompt forbids
+                  lettering and keeps to a flat single-colour shape.
+                */}
+                <Button variant="outline" size="sm" disabled={uploading || generatingLogo} onClick={() => void generateLogo()}>
+                  {generatingLogo ? 'Generating…' : 'Generate a placeholder'}
+                </Button>
+              </div>
+              {logoUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={logoUrl}
+                  alt="Brand logo"
+                  className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
+                />
+              ) : null}
+            </KitSection>
 
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-claims">
-                Claims to avoid
-              </label>
-              <p className="mt-0.5 text-[12px] text-ink-muted">
-                Promises this brand does not make, even about things it will happily discuss.
-              </p>
-              <Input
-                id="gov-claims"
-                value={claimsText}
-                onChange={(e) => setClaimsText(e.target.value)}
-                placeholder="guaranteed, cheapest, clinically proven"
-                className="mt-1.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-phrases">
-                Never use these words
-              </label>
-              <Input
-                id="gov-phrases"
-                value={phrasesText}
-                onChange={(e) => setPhrasesText(e.target.value)}
-                placeholder="synergy, game-changer, revolutionary"
-                className="mt-1.5"
-              />
-            </div>
-
-            <label className="flex items-start gap-3 rounded-lg border border-border p-3">
-              <input
-                type="checkbox"
-                checked={strictMode}
-                onChange={(e) => setStrictMode(e.target.checked)}
-                className="mt-1 size-4 accent-[--ss-primary]"
-              />
-              <span>
-                <span className="text-[14px] font-medium text-ink">Strict mode</span>
-                <span className="mt-0.5 block text-[13px] text-ink-muted">
-                  {strictMode
-                    ? 'A post naming a restricted topic or claim is blocked outright.'
-                    : 'A post naming a restricted topic or claim is held for your review.'}
-                </span>
-              </span>
-            </label>
-          </div>
-
-          {/* ── Voice ──────────────────────────────────────────────────── */}
-          <div>
-            <h3 className="text-[14px] font-medium text-ink">Voice</h3>
-            <p className="mt-0.5 text-[12px] text-ink-muted">
-              Overrides whatever SPARK inferred from your website.
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {TONE_AXES.map((axis) => (
-                <div key={axis.key}>
-                  <div className="flex items-baseline justify-between">
-                    <label className="text-[13px] text-ink" htmlFor={`tone-${axis.key}`}>
-                      {axis.label}
-                    </label>
-                    <span className="text-[12px] tabular-nums text-ink-muted">
-                      {Math.round(tone[axis.key] * 100)}%
+            <KitSection
+              title="Color Theme"
+              hint="First is the background, second the text on it, third an accent. Photos are never tinted."
+            >
+              {/*
+                Colour presets — `3.3`'s "colour and voice presets".
+                Applied rather than suggested: clicking one *sets* the palette,
+                because a colour you cannot see is not a suggestion. The ordering is
+                the renderers' own convention, documented in `resolveKit`: first is
+                the ground, second the type on it, third the accent.
+              */}
+              <label className="mt-4 block text-[12px] text-ink-muted">Palette presets</label>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {COLOUR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => setBrandColors(preset.colors)}
+                    title={`${preset.name} — ${preset.colors.join(', ')}`}
+                    className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px] text-ink-muted hover:text-ink"
+                  >
+                    <span className="flex overflow-hidden rounded">
+                      {preset.colors.map((c) => (
+                        <span key={c} className="h-4 w-4" style={{ background: c }} />
+                      ))}
                     </span>
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+              <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {brandColors.map((c, i) => (
+                  <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
+                    <input
+                      type="color"
+                      value={normaliseHex(c)}
+                      onChange={(e) => setBrandColors(brandColors.map((x, j) => (j === i ? e.target.value : x)))}
+                      className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+                      aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
+                    />
+                    <span className="font-mono text-[11px] text-ink-muted">
+                      {COLOR_ROLE[i] ?? 'extra'}
+                      {/* A stored value the colour input cannot show (`red`, an
+                          `rgb()`) is named here rather than silently displayed as
+                          the fallback swatch — otherwise the panel would claim the
+                          brand's colour is grey. */}
+                      {normaliseHex(c) !== c.trim().toLowerCase() ? (
+                        <span className="ml-1 text-warn">{c}</span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
+                      className="text-[13px] text-ink-muted hover:text-ink"
+                      aria-label={`Remove ${c}`}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <input
-                    id={`tone-${axis.key}`}
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round(tone[axis.key] * 100)}
-                    onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
-                    className="mt-1 w-full accent-[--ss-primary]"
-                  />
-                  <div className="flex justify-between text-[11px] text-ink-muted">
-                    <span>{axis.low}</span>
-                    <span>{axis.high}</span>
-                  </div>
+                ))}
+                {brandColors.length < 3 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBrandColors([...brandColors, DEFAULT_NEW_COLOR])}
+                  >
+                    Add {COLOR_ROLE[brandColors.length] ?? 'colour'}
+                  </Button>
+                ) : null}
+              </div>
+              {brandColors.length > 0 ? (
+                /* A swatch row is not a preview. Showing the two colours against
+                   each other is the one check that catches the mistake that
+                   matters — a type colour nobody can read on its own ground. */
+                <div
+                  className="mt-2 flex h-16 items-center justify-center rounded-lg border border-border"
+                  style={{ backgroundColor: brandColors[0] ?? '#0C0C0C' }}
+                >
+                  <span className="text-[15px] font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
+                    This is how text will read
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
+              ) : null}
+            </KitSection>
+          </KitRow>
 
-          {/* ── When it posts ──────────────────────────────────────────── */}
-          <div>
-            <h3 className="text-[14px] font-medium text-ink">When it posts</h3>
-            <p className="mt-0.5 text-[12px] text-ink-muted">
-              Your timezone decides what &ldquo;Tuesday&rdquo; means, and the hours below are the times of day
-              posts land in.
-            </p>
-
-            <div className="mt-3 max-w-xs">
-              <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-tz">
-                Timezone
+          {/* ── Row 2: Brand Voice · Typography Style ───────────────────── */}
+          <KitRow>
+            <KitSection title="Brand Voice" hint="Overrides whatever SPARK inferred from your website.">
+              {/* ── Voice ──────────────────────────────────────────────────── */}
+              <div>
+                <h3 className="text-[14px] font-medium text-ink">Voice</h3>
+                <p className="mt-0.5 text-[12px] text-ink-muted">
+                  Overrides whatever SPARK inferred from your website.
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {TONE_AXES.map((axis) => (
+                    <div key={axis.key}>
+                      <div className="flex items-baseline justify-between">
+                        <label className="text-[13px] text-ink" htmlFor={`tone-${axis.key}`}>
+                          {axis.label}
+                        </label>
+                        <span className="text-[12px] tabular-nums text-ink-muted">
+                          {Math.round(tone[axis.key] * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        id={`tone-${axis.key}`}
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(tone[axis.key] * 100)}
+                        onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
+                        className="mt-1 w-full accent-[--ss-primary]"
+                      />
+                      <div className="flex justify-between text-[11px] text-ink-muted">
+                        <span>{axis.low}</span>
+                        <span>{axis.high}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/*
+                `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
+                `packages/shared/src/voices.ts` for why a curated list of real ids
+                beats a text field asking somebody to paste one, and why the brand's
+                own cloned voice is deliberately not an option here.
+              */}
+              <label className="mt-4 block text-[12px] text-ink-muted" htmlFor="gov-voice">
+                Narration voice
               </label>
               <select
-                id="gov-tz"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
+                id="gov-voice"
+                value={stockVoiceId}
+                onChange={(e) => {
+                  setUsingDefaultVoice(false);
+                  setStockVoiceId(e.target.value);
+                }}
+                className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-[14px] text-ink"
               >
-                {zoneOptions.map((z) => (
-                  <option key={z} value={z}>
-                    {z}
+                {STOCK_VOICES.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} — {v.character}
                   </option>
                 ))}
               </select>
-            </div>
+              <p className="mt-1 text-[12px] text-ink-muted">
+                Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
+                separate setting that needs a consent record.
+              </p>
+            </KitSection>
 
-            <div className="mt-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[12px] font-medium text-ink-muted">Posting hours</p>
-                {usingDefaultWindows ? (
-                  <p className="text-[12px] text-ink-muted">
-                    Using the default spread — pick any hour to set your own.
-                  </p>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsingDefaultWindows(true);
-                      setWindows([9, 13, 18]);
-                    }}
-                    className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
-                  >
-                    Back to the default
-                  </button>
-                )}
+            <KitSection
+              title="Typography Style"
+              hint="Shown against your palette, because type and colour are two halves of one decision."
+            >
+              {/* M4 — the prototype's "Choose Fonts", with something behind it.
+                  Placed under the colours because its sample is shown on them,
+                  and because type and colour are the two halves of the same
+                  decision. */}
+              <label className="mt-5 block text-[12px] text-ink-muted">Type</label>
+              <div className="mt-1.5">
+                <BrandFontPicker
+                  value={brandFonts}
+                  onChange={setBrandFonts}
+                  {...(brandColors[0] ? { ground: brandColors[0] } : {})}
+                  {...(brandColors[1] ? { type: brandColors[1] } : {})}
+                />
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {Array.from({ length: 24 }, (_, hour) => {
-                  const on = windows.includes(hour);
-                  return (
-                    <button
-                      key={hour}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => toggleHour(hour)}
-                      className={cn(
-                        'w-11 rounded border px-1 py-1 text-[12px] tabular-nums transition-colors',
-                        on
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border text-ink-muted hover:bg-surface-muted',
-                        usingDefaultWindows && on && 'opacity-60',
-                      )}
-                    >
-                      {String(hour).padStart(2, '0')}:00
-                    </button>
-                  );
-                })}
+            </KitSection>
+          </KitRow>
+
+          {/*
+            ── Enable Strict Compliance ──────────────────────────────────────
+
+            The design's own name for this card. The fields already existed, as
+            "What SPARK may not say" buried in the stack; the prototype gives
+            them a section of their own directly under the four, named after
+            the toggle that decides whether a violation blocks or merely holds.
+          */}
+          <KitSection title="Enable Strict Compliance" hint="Checked on every post before it goes out.">
+            {/* ── What SPARK may not say ─────────────────────────────────── */}
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-topics">
+                  Restricted topics
+                </label>
+                <p className="mt-0.5 text-[12px] text-ink-muted">
+                  Subjects to stay off entirely. Comma separated.
+                </p>
+                <Input
+                  id="gov-topics"
+                  value={topicsText}
+                  onChange={(e) => setTopicsText(e.target.value)}
+                  placeholder="politics, competitor names, staff turnover"
+                  className="mt-1.5"
+                />
               </div>
+
+              <div>
+                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-claims">
+                  Claims to avoid
+                </label>
+                <p className="mt-0.5 text-[12px] text-ink-muted">
+                  Promises this brand does not make, even about things it will happily discuss.
+                </p>
+                <Input
+                  id="gov-claims"
+                  value={claimsText}
+                  onChange={(e) => setClaimsText(e.target.value)}
+                  placeholder="guaranteed, cheapest, clinically proven"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-phrases">
+                  Never use these words
+                </label>
+                <Input
+                  id="gov-phrases"
+                  value={phrasesText}
+                  onChange={(e) => setPhrasesText(e.target.value)}
+                  placeholder="synergy, game-changer, revolutionary"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+                <input
+                  type="checkbox"
+                  checked={strictMode}
+                  onChange={(e) => setStrictMode(e.target.checked)}
+                  className="mt-1 size-4 accent-[--ss-primary]"
+                />
+                <span>
+                  <span className="text-[14px] font-medium text-ink">Strict mode</span>
+                  <span className="mt-0.5 block text-[13px] text-ink-muted">
+                    {strictMode
+                      ? 'A post naming a restricted topic or claim is blocked outright.'
+                      : 'A post naming a restricted topic or claim is held for your review.'}
+                  </span>
+                </span>
+              </label>
             </div>
-          </div>
+          </KitSection>
 
+          {/*
+            ── Watermark ─────────────────────────────────────────────────────
 
-          {/* ── Brand kit ──────────────────────────────────────────────────
-              §8.6's "Apply Brand Kit". Both fields have existed on the row and
-              been writable for a while, and until now nothing rendered with
-              either: `compose.static` and `compose.render` read them now, so
-              what is set here reaches actual pixels. */}
-          <div className="max-w-xl">
-            <p className="text-[12px] font-medium text-ink-muted">Brand kit</p>
-            <p className="mt-1 text-[12px] text-ink-muted">
-              Used when SPARK renders an image or video: the first colour is the background, the second is the
-              text on it, the third is an accent. The logo goes bottom-left. Photos and video are never tinted —
-              a brand colour over somebody&rsquo;s product shot ruins the shot.
-            </p>
-
-            <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="gov-logo">
-              Logo
-            </label>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <Input
-                id="gov-logo"
-                value={logoUrl}
-                onChange={(e) => setLogoUrl(e.target.value)}
-                placeholder="https://… or upload"
-                className="min-w-[200px] flex-1"
-              />
-              <input
-                ref={logoInput}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void uploadLogo(file);
-                  e.target.value = '';
-                }}
-              />
-              <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
-                {uploading ? 'Uploading…' : 'Upload'}
-              </Button>
+            Its own card, as the design has it. It had been nested inside the
+            logo field group — a control deciding what appears on every rendered
+            frame, three levels deep inside a text input's helper text. Still
+            conditional on a logo existing: a watermark switch above an empty
+            logo field is wired to nothing.
+          */}
+          {logoUrl ? (
+            <KitSection title="Watermark" hint="What gets stamped onto rendered images and video.">
               {/*
-                `SET-WS-BRAND-KITS`' "Generate logo". Labelled as a placeholder
-                rather than as identity work, because that is what it is — see
-                `brand.logo.generate`'s own comment on why the prompt forbids
-                lettering and keeps to a flat single-colour shape.
+                `Activate Watermark`, next to the logo because that is what it acts
+                on. Until 25 August this toggle existed only in the design: both
+                renderers stamped the logo onto every frame whenever one was set,
+                so there was no way to have a brand logo — which onboarding asks
+                for — without watermarking every post.
+
+                Only shown when there is a logo. A watermark control above an empty
+                logo field is a switch wired to nothing.
               */}
-              <Button variant="outline" size="sm" disabled={uploading || generatingLogo} onClick={() => void generateLogo()}>
-                {generatingLogo ? 'Generating…' : 'Generate a placeholder'}
-              </Button>
-            </div>
-            {logoUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={logoUrl}
-                alt="Brand logo"
-                className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
-              />
-            ) : null}
+              {logoUrl ? (
+                <div className="mt-3 rounded-lg border border-border p-3">
+                  <label className="flex items-center gap-2 text-[13px] text-ink">
+                    <input
+                      type="checkbox"
+                      checked={watermark.enabled}
+                      onChange={(e) => {
+                        setUsingDefaultWatermark(false);
+                        setWatermark({ ...watermark, enabled: e.target.checked });
+                      }}
+                      className="h-4 w-4"
+                    />
+                    Stamp the logo on rendered posts
+                  </label>
+                  <p className="mt-1 text-[12px] text-ink-muted">
+                    Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
+                    everything else &mdash; it only stops the mark appearing on images and video.
+                  </p>
 
-            {/*
-              `Activate Watermark`, next to the logo because that is what it acts
-              on. Until 25 August this toggle existed only in the design: both
-              renderers stamped the logo onto every frame whenever one was set,
-              so there was no way to have a brand logo — which onboarding asks
-              for — without watermarking every post.
+                  {watermark.enabled ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-opacity">
+                          Opacity &mdash; {Math.round(watermark.opacity * 100)}%
+                        </label>
+                        <input
+                          id="gov-wm-opacity"
+                          type="range"
+                          min={15}
+                          max={100}
+                          step={5}
+                          value={Math.round(watermark.opacity * 100)}
+                          onChange={(e) => {
+                            setUsingDefaultWatermark(false);
+                            setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
+                          }}
+                          className="mt-1.5 w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-scale">
+                          Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
+                        </label>
+                        <input
+                          id="gov-wm-scale"
+                          type="range"
+                          min={4}
+                          max={30}
+                          step={1}
+                          value={Math.round(watermark.scale * 100)}
+                          onChange={(e) => {
+                            setUsingDefaultWatermark(false);
+                            setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
+                          }}
+                          className="mt-1.5 w-full"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </KitSection>
+          ) : null}
 
-              Only shown when there is a logo. A watermark control above an empty
-              logo field is a switch wired to nothing.
-            */}
-            {logoUrl ? (
-              <div className="mt-3 rounded-lg border border-border p-3">
-                <label className="flex items-center gap-2 text-[13px] text-ink">
-                  <input
-                    type="checkbox"
-                    checked={watermark.enabled}
-                    onChange={(e) => {
-                      setUsingDefaultWatermark(false);
-                      setWatermark({ ...watermark, enabled: e.target.checked });
-                    }}
-                    className="h-4 w-4"
-                  />
-                  Stamp the logo on rendered posts
+          {/*
+            ── Not on this prototype screen, and kept regardless ─────────────
+
+            The brand's name and its posting schedule are real, saved controls
+            that `Settings WS Brand Kits` simply does not draw. Deleting a
+            working control to make a screenshot match would trade behaviour
+            for fidelity, so they get an honestly labelled card at the end
+            rather than being hidden, or smuggled into a section the design
+            does draw and does not mean.
+          */}
+          <KitSection title="Name and schedule" hint="Who this brand is, and when its posts land.">
+            <div className="grid grid-cols-1 gap-6">
+              {/* ── Who it is (`F4`) ────────────────────────────────────────────
+                  First, because everything below describes this thing and the
+                  Command Center, onboarding and campaign summaries all address it by
+                  name. Only the name is stored: the voice adjectives come from the
+                  sliders below and the risk tolerance from the approval mode, so
+                  neither can drift from the setting that is actually enforced. */}
+              <div className="max-w-md">
+                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-agent-name">
+                  What do you call your agent?
                 </label>
                 <p className="mt-1 text-[12px] text-ink-muted">
-                  Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
-                  everything else &mdash; it only stops the mark appearing on images and video.
+                  Used wherever SPARK refers to itself — the Command Center, and campaign summaries that say
+                  what it will do. Optional; leave it blank and it says &ldquo;your agent&rdquo;.
+                </p>
+                <Input
+                  id="gov-agent-name"
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                  placeholder="Ada, Studio Bot, The Intern…"
+                  maxLength={60}
+                  className="mt-1.5"
+                />
+              </div>
+              {/* ── When it posts ──────────────────────────────────────────── */}
+              <div>
+                <h3 className="text-[14px] font-medium text-ink">When it posts</h3>
+                <p className="mt-0.5 text-[12px] text-ink-muted">
+                  Your timezone decides what &ldquo;Tuesday&rdquo; means, and the hours below are the times of day
+                  posts land in.
                 </p>
 
-                {watermark.enabled ? (
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-opacity">
-                        Opacity &mdash; {Math.round(watermark.opacity * 100)}%
-                      </label>
-                      <input
-                        id="gov-wm-opacity"
-                        type="range"
-                        min={15}
-                        max={100}
-                        step={5}
-                        value={Math.round(watermark.opacity * 100)}
-                        onChange={(e) => {
-                          setUsingDefaultWatermark(false);
-                          setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
-                        }}
-                        className="mt-1.5 w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-scale">
-                        Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
-                      </label>
-                      <input
-                        id="gov-wm-scale"
-                        type="range"
-                        min={4}
-                        max={30}
-                        step={1}
-                        value={Math.round(watermark.scale * 100)}
-                        onChange={(e) => {
-                          setUsingDefaultWatermark(false);
-                          setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
-                        }}
-                        className="mt-1.5 w-full"
-                      />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/*
-              Colour presets — `3.3`'s "colour and voice presets".
-              Applied rather than suggested: clicking one *sets* the palette,
-              because a colour you cannot see is not a suggestion. The ordering is
-              the renderers' own convention, documented in `resolveKit`: first is
-              the ground, second the type on it, third the accent.
-            */}
-            <label className="mt-4 block text-[12px] text-ink-muted">Palette presets</label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {COLOUR_PRESETS.map((preset) => (
-                <button
-                  key={preset.name}
-                  type="button"
-                  onClick={() => setBrandColors(preset.colors)}
-                  title={`${preset.name} — ${preset.colors.join(', ')}`}
-                  className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px] text-ink-muted hover:text-ink"
-                >
-                  <span className="flex overflow-hidden rounded">
-                    {preset.colors.map((c) => (
-                      <span key={c} className="h-4 w-4" style={{ background: c }} />
-                    ))}
-                  </span>
-                  {preset.name}
-                </button>
-              ))}
-            </div>
-
-            {/*
-              `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
-              `packages/shared/src/voices.ts` for why a curated list of real ids
-              beats a text field asking somebody to paste one, and why the brand's
-              own cloned voice is deliberately not an option here.
-            */}
-            <label className="mt-4 block text-[12px] text-ink-muted" htmlFor="gov-voice">
-              Narration voice
-            </label>
-            <select
-              id="gov-voice"
-              value={stockVoiceId}
-              onChange={(e) => {
-                setUsingDefaultVoice(false);
-                setStockVoiceId(e.target.value);
-              }}
-              className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-[14px] text-ink"
-            >
-              {STOCK_VOICES.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name} — {v.character}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-[12px] text-ink-muted">
-              Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
-              separate setting that needs a consent record.
-            </p>
-
-            <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              {brandColors.map((c, i) => (
-                <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
-                  <input
-                    type="color"
-                    value={normaliseHex(c)}
-                    onChange={(e) => setBrandColors(brandColors.map((x, j) => (j === i ? e.target.value : x)))}
-                    className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
-                    aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
-                  />
-                  <span className="font-mono text-[11px] text-ink-muted">
-                    {COLOR_ROLE[i] ?? 'extra'}
-                    {/* A stored value the colour input cannot show (`red`, an
-                        `rgb()`) is named here rather than silently displayed as
-                        the fallback swatch — otherwise the panel would claim the
-                        brand's colour is grey. */}
-                    {normaliseHex(c) !== c.trim().toLowerCase() ? (
-                      <span className="ml-1 text-warn">{c}</span>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                    className="text-[13px] text-ink-muted hover:text-ink"
-                    aria-label={`Remove ${c}`}
+                <div className="mt-3 max-w-xs">
+                  <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-tz">
+                    Timezone
+                  </label>
+                  <select
+                    id="gov-tz"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
                   >
-                    ×
-                  </button>
+                    {zoneOptions.map((z) => (
+                      <option key={z} value={z}>
+                        {z}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-              {brandColors.length < 3 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBrandColors([...brandColors, DEFAULT_NEW_COLOR])}
-                >
-                  Add {COLOR_ROLE[brandColors.length] ?? 'colour'}
-                </Button>
-              ) : null}
-            </div>
-            {brandColors.length > 0 ? (
-              /* A swatch row is not a preview. Showing the two colours against
-                 each other is the one check that catches the mistake that
-                 matters — a type colour nobody can read on its own ground. */
-              <div
-                className="mt-2 flex h-16 items-center justify-center rounded-lg border border-border"
-                style={{ backgroundColor: brandColors[0] ?? '#0C0C0C' }}
-              >
-                <span className="text-[15px] font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
-                  This is how text will read
-                </span>
-              </div>
-            ) : null}
 
-            {/* M4 — the prototype's "Choose Fonts", with something behind it.
-                Placed under the colours because its sample is shown on them,
-                and because type and colour are the two halves of the same
-                decision. */}
-            <label className="mt-5 block text-[12px] text-ink-muted">Type</label>
-            <div className="mt-1.5">
-              <BrandFontPicker
-                value={brandFonts}
-                onChange={setBrandFonts}
-                {...(brandColors[0] ? { ground: brandColors[0] } : {})}
-                {...(brandColors[1] ? { type: brandColors[1] } : {})}
-              />
+                <div className="mt-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="text-[12px] font-medium text-ink-muted">Posting hours</p>
+                    {usingDefaultWindows ? (
+                      <p className="text-[12px] text-ink-muted">
+                        Using the default spread — pick any hour to set your own.
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUsingDefaultWindows(true);
+                          setWindows([9, 13, 18]);
+                        }}
+                        className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                      >
+                        Back to the default
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {Array.from({ length: 24 }, (_, hour) => {
+                      const on = windows.includes(hour);
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleHour(hour)}
+                          className={cn(
+                            'w-11 rounded border px-1 py-1 text-[12px] tabular-nums transition-colors',
+                            on
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border text-ink-muted hover:bg-surface-muted',
+                            usingDefaultWindows && on && 'opacity-60',
+                          )}
+                        >
+                          {String(hour).padStart(2, '0')}:00
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </KitSection>
 
           <div className="flex flex-wrap items-center gap-3">
             <Button disabled={busy} onClick={() => void save()}>
@@ -795,9 +842,9 @@ export function GovernancePanel() {
               </p>
             ) : null}
           </div>
-        </div>
+        </>
       )}
-    </section>
+    </div>
   );
 }
 
