@@ -78,14 +78,14 @@ export function CampaignFocusCard({
   if (campaign === null) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6 text-center">
-        <p className="text-[16px] font-medium text-ink">No campaign running yet</p>
-        <p className="mx-auto mt-1 max-w-md text-[14px] text-ink-muted">
+        <p className="text-16 font-medium text-ink">No campaign running yet</p>
+        <p className="mx-auto mt-1 max-w-md text-14 text-ink-muted">
           {genomeName ?? 'This brand'} doesn&rsquo;t have an active campaign — plan one from the calendar to give
           the agent something to work toward.
         </p>
         <Link
           href="/calendar"
-          className="mt-4 inline-flex h-11 items-center rounded bg-primary px-4 text-[14px] font-medium text-primary-foreground"
+          className="mt-4 inline-flex h-11 items-center rounded bg-primary px-4 text-14 font-medium text-primary-foreground"
         >
           Plan a campaign
         </Link>
@@ -180,7 +180,7 @@ export function CampaignFocusCard({
     >
       <div className="flex flex-wrap items-start gap-x-[11px] gap-y-3">
         <span
-          className="flex h-[37px] w-[124px] items-center justify-center rounded-lg text-[14.01px] font-medium text-ink"
+          className="flex h-[37px] w-[124px] items-center justify-center rounded-lg text-14 font-medium text-ink"
           style={{ background: '#6CE8FF' }}
         >
           Current Focus
@@ -212,7 +212,7 @@ export function CampaignFocusCard({
         </a>
       </div>
 
-      <h2 className="mt-[20px] text-[34px] font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
+      <h2 className="mt-[20px] text-36 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
 
       <div className="mt-[16px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16 leading-[1.3]">
         <span className="text-ink-muted">
@@ -242,7 +242,7 @@ export function CampaignFocusCard({
                 <span
                   key={pillar}
                   title={style.label}
-                  className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-[13px] font-semibold ${style.chip}`}
+                  className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-13 font-semibold ${style.chip}`}
                   style={{ boxShadow: '0 0 0 2px #FFFFFF', marginLeft: i === 0 ? 0 : -12 }}
                 >
                   {style.label.slice(0, 2)}
@@ -303,10 +303,10 @@ export function CampaignFocusCard({
               className="flex h-[233.8px] w-[131.5px] flex-col justify-end rounded-xl p-3"
               style={{ background: 'rgba(255,255,255,0.55)', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.06)' }}
             >
-              <span className="text-[12px] font-semibold text-ink">
+              <span className="text-12 font-semibold text-ink">
                 {slot.playbookName ?? slot.playbookId}
               </span>
-              <span className="mt-1 text-[11.5px] text-ink-muted">
+              <span className="mt-1 text-12 text-ink-muted">
                 {slot.scheduledAt
                   ? new Date(slot.scheduledAt).toLocaleDateString('en', {
                       weekday: 'short',
@@ -316,7 +316,7 @@ export function CampaignFocusCard({
                   : 'unscheduled'}
               </span>
               {slot.mode === 'direct_finish' ? (
-                <span className="mt-1 text-[11px] text-warn">needs filming</span>
+                <span className="mt-1 text-11 text-warn">needs filming</span>
               ) : null}
             </div>
           ))}
@@ -345,7 +345,7 @@ export function CampaignFocusCard({
             type="button"
             disabled
             title="Filtering by campaign type needs a playbook-family filter on content.list."
-            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-[13.13px] font-semibold"
+            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-13 font-semibold"
             style={
               i === 0
                 ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }

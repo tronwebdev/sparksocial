@@ -89,7 +89,7 @@ export function DiscoveryScreenChrome({
             `leading-[1.2]` gives.
           */}
           <div className="flex flex-wrap items-start gap-[18px]">
-            <h1 className="text-[28px] font-bold leading-[1.286] text-ink">{title}</h1>
+            <h1 className="text-28 font-bold leading-[1.286] text-ink">{title}</h1>
 
             <Link
               href="/home"
@@ -142,7 +142,7 @@ export function DiscoveryScreenChrome({
 
           {/* 96 on the stage — 78 inside the card. The row above is 38 tall
               (Back, not the 36px title), so 26+38+14 lands it. */}
-          <p className="mt-[14px] text-[17px] font-normal leading-[21px] text-ink-muted">{subtitle}</p>
+          <p className="mt-[14px] text-17 font-normal leading-[21px] text-ink-muted">{subtitle}</p>
         </div>
 
         {/* The card is at 48,140 — 33 in, and 23 under the subtitle's 21px line. */}

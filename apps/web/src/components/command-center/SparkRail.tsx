@@ -132,7 +132,7 @@ export function SparkRail({
             (§4), and the global "Ask Spark?" orb stays Spark for the same reason
             — it is reachable with no brand selected at all.
           */}
-          <p className="ml-[5px] truncate font-display text-[25.28px] leading-[1.1] text-ink">
+          <p className="ml-[5px] truncate font-display text-26 leading-[1.1] text-ink">
             {id?.named ? `${id.name}:` : 'Spark:'}
           </p>
           <p className="mt-[7px] whitespace-nowrap text-16 font-medium leading-[1.31] text-ink-muted">
@@ -246,20 +246,20 @@ export function SparkRail({
             <SparkMark variant="shell" size={92} />
           </span>
 
-          <p className="absolute left-[123px] right-[12px] top-[28px] truncate text-[22.58px] font-semibold leading-[1.28] text-ink">
+          <p className="absolute left-[123px] right-[12px] top-[28px] truncate text-22 font-semibold leading-[1.28] text-ink">
             {id?.named ? id.name : UNNAMED_AGENT}
           </p>
 
           {/* 180x28.9 at 125,67.6: the word, then a white pill holding the dot
               and the state. */}
           <div className="absolute left-[125px] top-[67.6px] h-[28.9px] w-[180px]">
-            <span className="absolute left-0 top-[6.3px] text-[12.65px] leading-none text-ink">Status</span>
+            <span className="absolute left-0 top-[6.3px] text-13 leading-none text-ink">Status</span>
             <span className="absolute left-[47px] top-0 h-[28.9px] w-[69.5px] rounded-[90.3px] bg-white" />
             <span
               className="absolute left-[55.5px] top-[9.5px] block h-[10.74px] w-[10.74px] rounded-full"
               style={{ background: paused ? '#F35525' : '#13D711' }}
             />
-            <span className="absolute left-[70px] top-[6.3px] text-[12.65px] leading-none text-ink">
+            <span className="absolute left-[70px] top-[6.3px] text-13 leading-none text-ink">
               {paused ? 'Paused' : 'Active'}
             </span>
           </div>
@@ -345,7 +345,7 @@ export function SparkRail({
           type="button"
           onClick={onTogglePause}
           disabled={busy}
-          className="absolute left-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center gap-[9px] rounded-[8.37px] text-[15px] font-medium text-ink disabled:opacity-50"
+          className="absolute left-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center gap-[9px] rounded-[8.37px] text-15 font-medium text-ink disabled:opacity-50"
           style={{
             background: 'rgba(131,131,131,0.1)',
             backdropFilter: 'blur(10px)',
@@ -369,7 +369,7 @@ export function SparkRail({
         <button
           type="button"
           onClick={() => setIdentityOpen(true)}
-          className="absolute right-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center rounded-[8.37px] text-[15px] font-medium text-ink"
+          className="absolute right-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center rounded-[8.37px] text-15 font-medium text-ink"
           style={{
             background: 'rgba(131,131,131,0.1)',
             backdropFilter: 'blur(10px)',

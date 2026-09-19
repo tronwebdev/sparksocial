@@ -453,7 +453,7 @@ export function DiscoveryFeed() {
               aria-pressed={tab === i}
               onClick={() => setTab(i)}
               className={cn(
-                'flex h-[42px] items-center gap-[9px] rounded-[9px] px-[15px] text-[15.5px] font-semibold text-ink transition-colors',
+                'flex h-[42px] items-center gap-[9px] rounded-[9px] px-[15px] text-16 font-semibold text-ink transition-colors',
                 tab === i ? 'bg-disc-tab' : 'bg-white hover:bg-[rgba(131,131,131,0.07)]',
               )}
               style={tab === i ? undefined : { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
@@ -475,7 +475,7 @@ export function DiscoveryFeed() {
               type="button"
               aria-expanded={sortOpen}
               onClick={() => setSortOpen((v) => !v)}
-              className="flex h-[38px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-[14.5px] font-medium transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383]"
+              className="flex h-[38px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383]"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#5B5B5B' }}
             >
               Sort: {SORTS.find((s) => s.key === sort)?.label}
@@ -497,7 +497,7 @@ export function DiscoveryFeed() {
                       setSortOpen(false);
                     }}
                     className={cn(
-                      'flex h-[36px] w-full items-center rounded-lg px-[10px] text-left text-[14.5px] font-medium',
+                      'flex h-[36px] w-full items-center rounded-lg px-[10px] text-left text-15 font-medium',
                       s.key === sort ? 'bg-[rgba(131,131,131,0.1)] text-ink' : 'text-ink-muted hover:bg-[rgba(131,131,131,0.07)]',
                     )}
                   >
@@ -505,7 +505,7 @@ export function DiscoveryFeed() {
                   </button>
                 ))}
                 {tab === 1 ? (
-                  <p className="px-[10px] pb-[4px] pt-[6px] text-[13px] text-ink-muted">
+                  <p className="px-[10px] pb-[4px] pt-[6px] text-13 text-ink-muted">
                     Global orders by volume, so the sort is ignored on this tab.
                   </p>
                 ) : null}
@@ -519,7 +519,7 @@ export function DiscoveryFeed() {
               type="button"
               disabled
               title={d.why}
-              className="flex h-[38px] cursor-not-allowed items-center gap-[9px] rounded-lg bg-white px-[13px] text-[14.5px] font-medium opacity-50"
+              className="flex h-[38px] cursor-not-allowed items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium opacity-50"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#5B5B5B' }}
             >
               {d.label}
@@ -560,7 +560,7 @@ export function DiscoveryFeed() {
                 />
                 <path d="M8.6 20.3c-.5 2 .6 4.1 2.5 4.8 2 .7 4.2-.2 5-2.1.7-1.6.2-3.4-.9-4.8-.8-1-1.9-1.9-2.3-3.1-.9 1.9-3.7 3-4.3 5.2Z" fill="#F56BFF" />
               </svg>
-              <h2 className="whitespace-nowrap text-[21px] font-bold text-ink">
+              <h2 className="whitespace-nowrap text-22 font-bold text-ink">
                 {tab === 2 ? 'Accounts you watch' : 'Trending Now'}
               </h2>
             </div>
@@ -592,7 +592,7 @@ export function DiscoveryFeed() {
                   type="button"
                   aria-expanded={insightsOpen}
                   onClick={() => setInsightsOpen((v) => !v)}
-                  className="flex items-center gap-[9px] whitespace-nowrap text-[17px] font-semibold text-ink transition-opacity hover:opacity-70"
+                  className="flex items-center gap-[9px] whitespace-nowrap text-17 font-semibold text-ink transition-opacity hover:opacity-70"
                 >
                   <svg width="21" height="19" viewBox="0 0 21 19" fill="none" aria-hidden>
                     <path d="M1 12.5 6 7l4 3.6L15.5 4" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -607,11 +607,11 @@ export function DiscoveryFeed() {
 
           {insightsOpen && tab !== 2 ? (
             <div className="mt-[18px] rounded-2xl p-[18px]" style={{ background: 'var(--ss-disc-sec)' }}>
-              <p className="text-[15px] font-semibold text-ink">
+              <p className="text-15 font-semibold text-ink">
                 Showing {visible.length} of {(trends?.length ?? 0) + excluded.length} —{' '}
                 {trends?.length ?? 0} ranked, {excluded.length} skipped.
               </p>
-              {whySummary ? <p className="mt-2 text-[14.5px] text-ink-muted">{whySummary}</p> : null}
+              {whySummary ? <p className="mt-2 text-15 text-ink-muted">{whySummary}</p> : null}
             </div>
           ) : null}
 
@@ -626,9 +626,9 @@ export function DiscoveryFeed() {
               ))}
             </div>
           ) : error ? (
-            <p className="mt-[82px] text-center text-[17px] font-medium text-ink-muted">{error}</p>
+            <p className="mt-[82px] text-center text-17 font-medium text-ink-muted">{error}</p>
           ) : visible.length === 0 ? (
-            <p className="mt-[82px] text-center text-[17px] font-medium text-ink-muted">
+            <p className="mt-[82px] text-center text-17 font-medium text-ink-muted">
               {tab === 5
                 ? 'No source classifies a trend as a hook, so there is nothing to show here. The Hooks a playbook uses live on the draft itself.'
                 : trends.length === 0 && excluded.length === 0
@@ -670,10 +670,10 @@ export function DiscoveryFeed() {
               than a second copy of the reasons, which each card carries. */}
           {tab !== 2 && excluded.length > 0 ? (
             <div className="mt-[18px] rounded-2xl p-[18px]" style={{ background: 'var(--ss-disc-sec)' }}>
-              <p className="text-[15px] font-semibold text-ink">
+              <p className="text-15 font-semibold text-ink">
                 {excluded.length} skipped, shown after the ranked ones
               </p>
-              <p className="mt-2 text-[14.5px] text-ink-muted">
+              <p className="mt-2 text-15 text-ink-muted">
                 SPARK would not have picked these — each card carries the reason. They are still
                 yours to act on: the ranker&rsquo;s verdict is a default, not a lock.
                 {excluded.some((e) => !e.because.startsWith('nothing this brand'))

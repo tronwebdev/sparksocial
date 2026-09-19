@@ -76,7 +76,7 @@ export function AddPostModal({
         those at 56 / 50 / 40 of padding.
       */}
       <div className="px-[151px] pt-[56px]">
-        <p className="text-center text-[28px] font-bold leading-[1.2] text-ink">{pretty}</p>
+        <p className="text-center text-28 font-bold leading-[1.2] text-ink">{pretty}</p>
         <p className="mt-[50px] text-center text-18 font-normal text-ink-muted">
           Choose how you want to create content for this date
         </p>
@@ -123,8 +123,8 @@ export function AddPostModal({
               </span>
 
               <span className="block">
-                <span className="block text-[22px] font-bold leading-none text-ink">{o.title}</span>
-                <span className="mt-[15px] block text-[17px] font-normal text-ink-muted">{o.body}</span>
+                <span className="block text-22 font-bold leading-none text-ink">{o.title}</span>
+                <span className="mt-[15px] block text-17 font-normal text-ink-muted">{o.body}</span>
               </span>
             </button>
           ))}

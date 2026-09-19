@@ -153,20 +153,20 @@ export function AssetDetailPanel({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Asset detail">
       <div className="flex max-h-[85vh] w-[520px] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
         <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-[16px] font-semibold text-ink">{ASSET_ROLES.find((r) => r.value === asset.role)?.label ?? asset.role}</h2>
-          <button type="button" onClick={onClose} className="text-[14px] text-ink-muted hover:text-ink">
+          <h2 className="text-16 font-semibold text-ink">{ASSET_ROLES.find((r) => r.value === asset.role)?.label ?? asset.role}</h2>
+          <button type="button" onClick={onClose} className="text-14 text-ink-muted hover:text-ink">
             Close
           </button>
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <p className="text-[14px] text-ink">{asset.caption ?? '(no caption)'}</p>
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="text-14 text-ink">{asset.caption ?? '(no caption)'}</p>
+          <p className="mt-1 text-12 text-ink-muted">
             used {asset.usageCount}× {asset.lastUsedAt ? `· last used ${new Date(asset.lastUsedAt).toLocaleDateString()}` : ''}
           </p>
 
           <div className="mt-5 rounded-lg border border-border p-4">
-            <p className="text-[13px] font-medium text-ink">Rights status</p>
+            <p className="text-13 font-medium text-ink">Rights status</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {RIGHTS_OPTIONS.map((r) => (
                 <button
@@ -174,7 +174,7 @@ export function AssetDetailPanel({
                   type="button"
                   disabled={rightsBusy}
                   onClick={() => void setRights(r)}
-                  className={`rounded-full border px-3 py-1.5 text-[13px] capitalize disabled:opacity-50 ${
+                  className={`rounded-full border px-3 py-1.5 text-13 capitalize disabled:opacity-50 ${
                     rightsStatus === r ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
                   }`}
                 >
@@ -186,13 +186,13 @@ export function AssetDetailPanel({
 
           <div className="mt-3 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[13px] font-medium text-ink">Reuse cooldown</p>
+              <p className="text-13 font-medium text-ink">Reuse cooldown</p>
               <Button size="sm" variant="outline" disabled={cooldownBusy} onClick={() => void checkCooldown()}>
                 {cooldownBusy ? 'Checking…' : 'Check cooldown'}
               </Button>
             </div>
             {cooldown ? (
-              <p className="mt-2 text-[13px] text-ink-muted">
+              <p className="mt-2 text-13 text-ink-muted">
                 <Badge variant={cooldown.inCooldown ? 'warn' : 'success'} className="mr-2">
                   {cooldown.inCooldown ? 'in cooldown' : 'clear to reuse'}
                 </Badge>
@@ -202,13 +202,13 @@ export function AssetDetailPanel({
           </div>
 
           <div className="mt-3 rounded-lg border border-border p-4">
-            <p className="text-[13px] font-medium text-ink">Folder</p>
+            <p className="text-13 font-medium text-ink">Folder</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <select
                 value={folderId}
                 disabled={folderBusy || folders === null}
                 onChange={(e) => void moveToFolder(e.target.value)}
-                className="h-9 rounded border border-border bg-surface px-2 text-[13px] text-ink disabled:opacity-50"
+                className="h-9 rounded border border-border bg-surface px-2 text-13 text-ink disabled:opacity-50"
               >
                 <option value="">No folder</option>
                 {(folders ?? []).map((f) => (
@@ -227,7 +227,7 @@ export function AssetDetailPanel({
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="e.g. B-roll"
-                  className="h-9 flex-1 rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder"
+                  className="h-9 flex-1 rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder"
                 />
                 <Button size="sm" disabled={folderBusy || !newFolderName.trim()} onClick={() => void createFolder()}>
                   Create
@@ -239,8 +239,8 @@ export function AssetDetailPanel({
           <div className="mt-3 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-[13px] font-medium text-ink">Mark as used</p>
-                <p className="text-[12px] text-ink-muted">
+                <p className="text-13 font-medium text-ink">Mark as used</p>
+                <p className="text-12 text-ink-muted">
                   For assets referenced outside a tracked publish — Assemble captures, Direct+Finish. A real
                   publish already records this automatically.
                 </p>
@@ -252,7 +252,7 @@ export function AssetDetailPanel({
           </div>
 
           {message ? (
-            <p className={`mt-3 text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
+            <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
           ) : null}
         </div>
       </div>

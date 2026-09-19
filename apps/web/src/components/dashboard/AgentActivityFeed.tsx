@@ -248,7 +248,7 @@ function SectionHeading() {
       <h2 className="text-18 font-semibold leading-[1.28] text-ink-muted">Agent Activity</h2>
       <span
         title="Every piece of work your agent does, newest first. Each row can be replayed step by step from the Timeline."
-        className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+        className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
         style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
       >
         i

@@ -112,10 +112,10 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
     <div className="flex flex-col gap-7">
       {/* ── 1. The CTA. First because it is the one that unblocks formats. ── */}
       <section className="flex flex-col gap-2">
-        <label className="text-[15px] font-medium text-ink" htmlFor="onb-cta">
+        <label className="text-15 font-medium text-ink" htmlFor="onb-cta">
           What should someone do after they see a post?
         </label>
-        <p className="max-w-prose text-[13px] text-ink-muted">
+        <p className="max-w-prose text-13 text-ink-muted">
           Your own words, as you would say them — &ldquo;Book a chair&rdquo;, &ldquo;Message us for a
           quote&rdquo;, &ldquo;Start a free trial&rdquo;. SPARK never invents this one, so most formats
           cannot finish a post without it.
@@ -133,7 +133,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
           </Button>
         </div>
         {ctaMsg ? (
-          <p className={`text-[13px] ${ctaMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
+          <p className={`text-13 ${ctaMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
             {ctaMsg.text}
           </p>
         ) : null}
@@ -141,10 +141,10 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
 
       {/* ── 2. Point of view. The biggest lever on whether copy sounds like you. ── */}
       <section className="flex flex-col gap-2 border-t border-border pt-6">
-        <label className="text-[15px] font-medium text-ink" htmlFor="onb-pov">
+        <label className="text-15 font-medium text-ink" htmlFor="onb-pov">
           What do you believe that a competitor might not say?
         </label>
-        <p className="max-w-prose text-[13px] text-ink-muted">
+        <p className="max-w-prose text-13 text-ink-muted">
           One per line, two or three is plenty. Opinions, not features —{' '}
           <span className="text-ink">&ldquo;a fade should last three weeks, not three days&rdquo;</span> is
           worth more than &ldquo;we do great fades&rdquo;. This is the difference between copy that sounds
@@ -156,7 +156,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
           onChange={(e) => setPovText(e.target.value)}
           rows={3}
           placeholder={'A fade should last three weeks, not three days\nWe would rather turn you away than rush a line-up'}
-          className="w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+          className="w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
         />
         <div>
           <Button variant="outline" disabled={savingPov || !povText.trim()} onClick={() => void savePov()}>
@@ -164,7 +164,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
           </Button>
         </div>
         {povMsg ? (
-          <p className={`text-[13px] ${povMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
+          <p className={`text-13 ${povMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
             {povMsg.text}
           </p>
         ) : null}
@@ -173,8 +173,8 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
       {/* ── 3. Something to build from. ── */}
       <section className="flex flex-col gap-3 border-t border-border pt-6">
         <div>
-          <p className="text-[15px] font-medium text-ink">Anything you already have?</p>
-          <p className="mt-1 max-w-prose text-[13px] text-ink-muted">
+          <p className="text-15 font-medium text-ink">Anything you already have?</p>
+          <p className="mt-1 max-w-prose text-13 text-ink-muted">
             {gaps
               ? `A ${gaps.role} is the one that pays off most — it unlocks ${gaps.count} ${gaps.count === 1 ? 'format' : 'formats'} on its own, with no filming.`
               : 'A logo, a photo of finished work, a screenshot of a good review. No filming needed.'}{' '}
@@ -183,7 +183,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
         </div>
         <AssetUploadForm genomeId={genomeId} onIngested={() => { setUploadKey((k) => k + 1); void loadGaps(); }} />
         {uploadKey > 0 ? (
-          <p className="text-[13px] text-success">
+          <p className="text-13 text-success">
             Added. {uploadKey === 1 ? 'That is' : `${uploadKey} files are`} in the library — SPARK can build
             from {uploadKey === 1 ? 'it' : 'them'} now.
           </p>

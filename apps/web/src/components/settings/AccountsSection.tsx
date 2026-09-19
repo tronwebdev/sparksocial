@@ -201,7 +201,7 @@ export function AccountsSection() {
                   <span className="block truncate text-16 font-semibold text-black">
                     {p.accountLabel ?? platformLabel(p.platform)}
                   </span>
-                  <span className="mt-[3px] flex items-center gap-[6px] text-[13px]" style={{ color: 'var(--ss-green-700)' }}>
+                  <span className="mt-[3px] flex items-center gap-[6px] text-13" style={{ color: 'var(--ss-green-700)' }}>
                     <span aria-hidden className="block h-[7px] w-[7px] rounded-full" style={{ background: 'var(--ss-set-online)' }} />
                     Connected
                   </span>
@@ -236,11 +236,11 @@ export function AccountsSection() {
                 }}
               >
                 <Mark platform={p.platform} />
-                <span className="max-w-full truncate px-[6px] text-center text-[14.741px] font-semibold text-black">
+                <span className="max-w-full truncate px-[6px] text-center text-15 font-semibold text-black">
                   {platformLabel(p.platform)}
                 </span>
                 {p.connected ? null : (
-                  <span className="max-w-full truncate px-[4px] text-[11.5px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
+                  <span className="max-w-full truncate px-[4px] text-12 font-medium" style={{ color: 'rgb(131,131,131)' }}>
                     {p.connectedVia
                       ? `via ${platformLabel(p.connectedVia)}`
                       : connecting === p.platform

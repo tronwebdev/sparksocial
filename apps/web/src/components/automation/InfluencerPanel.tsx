@@ -78,7 +78,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           value={platform}
           onChange={(e) => setPlatform(e.target.value)}
           aria-label="Platform"
-          className="h-[60px] w-[170px] appearance-none rounded-[13px] bg-white px-[18px] text-[16.5px] font-medium text-ink outline-none"
+          className="h-[60px] w-[170px] appearance-none rounded-[13px] bg-white px-[18px] text-17 font-medium text-ink outline-none"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
         >
           {PLATFORMS.map((p) => (
@@ -99,7 +99,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           }}
           placeholder="@handle"
           aria-label="Account handle"
-          className="h-[60px] min-w-[200px] flex-1 rounded-[13px] bg-white px-[22px] text-[16.5px] font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
+          className="h-[60px] min-w-[200px] flex-1 rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
         />
 
@@ -125,18 +125,18 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           {list.map((w) => (
             <span
               key={`${w.platform}:${w.handle}`}
-              className="inline-flex h-[44px] items-center gap-[12px] rounded-[10px] px-[15px] text-[15.5px] font-semibold text-ink"
+              className="inline-flex h-[44px] items-center gap-[12px] rounded-[10px] px-[15px] text-16 font-semibold text-ink"
               style={{ background: 'var(--ss-auto-kw-chip)' }}
             >
               @{w.handle}
-              <span className="text-[12.5px] font-medium" style={{ color: '#5B5B5B' }}>
+              <span className="text-13 font-medium" style={{ color: '#5B5B5B' }}>
                 {w.platform === 'x' ? 'X' : w.platform === 'youtube_shorts' ? 'Shorts' : w.platform}
               </span>
               <button
                 type="button"
                 onClick={() => void change('remove', w.platform, w.handle)}
                 aria-label={`Stop watching ${w.handle}`}
-                className="text-[15px] leading-none transition-opacity hover:opacity-60"
+                className="text-15 leading-none transition-opacity hover:opacity-60"
                 style={{ color: '#5B5B5B' }}
               >
                 ✕

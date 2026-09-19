@@ -77,7 +77,7 @@ export function DiscoveryFilterRail({
     /* `overflow-hidden` as the backstop: even with every label truncating, no
        control in this column may paint over the trend grid beside it. */
     <div className="w-full shrink-0 overflow-hidden xl:w-disc-rail">
-      <p className="pl-[8px] text-[19px] font-bold text-ink">Filters</p>
+      <p className="pl-[8px] text-19 font-bold text-ink">Filters</p>
 
       <div className="mt-[16px] flex flex-col gap-[8px]">
         {sections.map((sec) => {
@@ -94,7 +94,7 @@ export function DiscoveryFilterRail({
                 <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center text-ink">
                   {sec.icon}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[17px] font-semibold text-ink">
+                <span className="min-w-0 flex-1 truncate text-17 font-semibold text-ink">
                   {sec.label}
                 </span>
                 <svg

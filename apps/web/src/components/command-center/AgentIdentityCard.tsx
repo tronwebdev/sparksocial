@@ -96,7 +96,7 @@ export function AgentIdentityCard({
         <div className="min-w-0">
           <Badge className="bg-brand-cyan/20 text-ink">Your agent</Badge>
 
-          <h2 className="mt-3 text-[24px] font-semibold text-ink">
+          <h2 className="mt-3 text-24 font-semibold text-ink">
             {id?.named ? (
               id.name
             ) : (
@@ -118,12 +118,12 @@ export function AgentIdentityCard({
             here, on the screen where the name is set.
           */}
           {id?.named ? (
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-13 text-ink-muted">
               {id.name} is this brand&rsquo;s agent. SPARK is the engine behind it &mdash; where you see
               &ldquo;SPARK&rdquo; elsewhere in the product, this is what is doing the work.
             </p>
           ) : (
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-13 text-ink-muted">
               Give it a name and the product will use it. Until then it is referred to as SPARK, which is the
               engine&rsquo;s own name.
             </p>
@@ -132,18 +132,18 @@ export function AgentIdentityCard({
           {/* Stacked, not inline. In the two-column band the parenthetical is
               long enough that a flex row broke "Risk tolerance —" across three
               lines with the value stranded below it. */}
-          <div className="mt-2 flex flex-col gap-1 text-[14px] text-ink-muted">
+          <div className="mt-2 flex flex-col gap-1 text-14 text-ink-muted">
             <span>{id?.voice.length ? <span className="text-ink">{id.voice.join(', ')}</span> : 'No voice set'}</span>
             <span>
               Risk tolerance — <b className="font-medium text-ink">{id?.riskTolerance ?? 'Moderate'}</b>
-              <span className="ml-1 text-[12.5px]">
+              <span className="ml-1 text-13">
                 ({id?.riskBecause ?? 'reviewed for the first week'})
               </span>
             </span>
           </div>
 
           {/* Assembled from what is true. See the header. */}
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="mt-3 text-13 text-ink-muted">
             {paused ? (
               <span className="text-warn">Paused — it will not act until you resume it.</span>
             ) : !campaign ? (
@@ -168,7 +168,7 @@ export function AgentIdentityCard({
 
         <Link
           href="/settings/brand-kit"
-          className="shrink-0 text-[14px] font-medium text-brand-purple underline underline-offset-2"
+          className="shrink-0 text-14 font-medium text-brand-purple underline underline-offset-2"
         >
           {id?.named ? 'View agent identity' : 'Give it a name'}
         </Link>

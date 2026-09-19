@@ -96,14 +96,14 @@ export function RecipeWizard({
           <svg width="8" height="15" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="M7 1 1 8l6 7" stroke="#5B5B5B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="text-[17px] font-medium" style={{ color: '#5B5B5B' }}>
+          <span className="text-17 font-medium" style={{ color: '#5B5B5B' }}>
             Back
           </span>
         </button>
 
         <div className="ml-[281px] min-w-0 max-xl:ml-[30px]">
           <div className="flex flex-wrap items-center gap-x-[30px] gap-y-[6px]">
-            <p className="whitespace-nowrap text-[20px] leading-[1.3] text-ink">
+            <p className="whitespace-nowrap text-20 leading-[1.3] text-ink">
               <b className="font-bold">Step {step + 1}</b> of {steps.length}
             </p>
             <span className="flex items-center gap-[9px]">
@@ -130,7 +130,7 @@ export function RecipeWizard({
           disabled={busy}
           className="ml-auto flex h-[44px] items-center gap-[16px] rounded-[10px] px-[8px] transition-colors hover:bg-white/70 disabled:opacity-60"
         >
-          <span className="whitespace-nowrap text-[19px] font-semibold text-ink">
+          <span className="whitespace-nowrap text-19 font-semibold text-ink">
             {busy ? 'Launching…' : last ? 'Launch Automation' : 'Continue'}
           </span>
           <svg width="9" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
@@ -152,7 +152,7 @@ export function RecipeWizard({
               <span aria-hidden className="mt-[16px] block h-[11px] w-[11px] shrink-0 rounded-full bg-white" style={{ boxShadow: '0 2px 8px rgba(12,12,12,0.15)' }} />
               <span aria-hidden className="mt-[16px] block h-[11px] w-[11px] shrink-0 rounded-full bg-white" style={{ boxShadow: '0 2px 8px rgba(12,12,12,0.15)' }} />
               <div className="ml-[14px] max-w-[470px] rounded-[18px] bg-white px-[24px] py-[16px]" style={{ boxShadow: '0 12px 30px -18px rgba(12,12,12,0.3)' }}>
-                <p className="text-[16.5px] font-medium leading-[1.4]" style={{ color: '#3B3B3B' }}>
+                <p className="text-17 font-medium leading-[1.4]" style={{ color: '#3B3B3B' }}>
                   {STEP_BUBBLE[kind]}
                 </p>
               </div>
@@ -259,7 +259,7 @@ function SummaryRail({ draft, step }: { draft: WizardDraft; step: StepKind }) {
 
   return (
     <aside className="w-auto-rail shrink-0 rounded-[20px] bg-white pb-[24px] max-lg:w-full" style={{ boxShadow: '0 24px 60px -40px rgba(12,12,12,0.25)' }}>
-      <p className="px-[26px] pt-[24px] text-[19px] font-bold text-ink">Posts Summary</p>
+      <p className="px-[26px] pt-[24px] text-19 font-bold text-ink">Posts Summary</p>
       <div className="mt-[20px] h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
       <div className="relative mt-[22px] px-[26px]">
@@ -274,10 +274,10 @@ function SummaryRail({ draft, step }: { draft: WizardDraft; step: StepKind }) {
                 </svg>
               </span>
               <span className="min-w-0 flex-1 rounded-[16px] px-[18px] py-[12px]" style={{ background: 'rgba(131,131,131,0.07)' }}>
-                <span className="block text-[14px] font-medium" style={{ color: '#838383' }}>
+                <span className="block text-14 font-medium" style={{ color: '#838383' }}>
                   {k}
                 </span>
-                <span className="mt-[3px] block break-words text-[16px] font-bold text-ink">{v}</span>
+                <span className="mt-[3px] block break-words text-16 font-bold text-ink">{v}</span>
               </span>
             </li>
           ))}

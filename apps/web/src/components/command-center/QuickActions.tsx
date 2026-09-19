@@ -47,8 +47,8 @@ const ACTIONS: Action[] = [
 export function QuickActions({ onOpenChat }: { onOpenChat: () => void }) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Quick actions</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">The five things people come here to do.</p>
+      <h2 className="text-18 font-semibold text-ink">Quick actions</h2>
+      <p className="mt-1 text-13 text-ink-muted">The five things people come here to do.</p>
 
       <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {ACTIONS.map((a) => {
@@ -83,8 +83,8 @@ export function QuickActions({ onOpenChat }: { onOpenChat: () => void }) {
 function ActionLabel({ label, hint }: Action) {
   return (
     <>
-      <span className="block text-[13.5px] font-medium text-ink">{label}</span>
-      <span className="mt-0.5 block text-[11.5px] text-ink-muted">{hint}</span>
+      <span className="block text-14 font-medium text-ink">{label}</span>
+      <span className="mt-0.5 block text-12 text-ink-muted">{hint}</span>
     </>
   );
 }

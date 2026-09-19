@@ -169,7 +169,7 @@ export function FolderCard({
       <button
         type="button"
         onClick={onOpen}
-        className="absolute left-0 top-[158px] w-full truncate px-3 text-center text-[16.5px] font-bold text-ink"
+        className="absolute left-0 top-[158px] w-full truncate px-3 text-center text-17 font-bold text-ink"
         title={folder.name}
       >
         {folder.name}
@@ -215,11 +215,11 @@ export function UnfiledCard({ count, onOpen }: { count: number; onOpen: () => vo
           <span className="absolute left-0 top-[20px] block h-[56px] w-[96px] rounded-lg" style={{ background: '#EFF1F3' }} />
         </span>
       </span>
-      <span className="absolute left-0 top-[158px] block w-full truncate px-3 text-center text-[16.5px] font-bold text-ink">Unfiled</span>
-      <span className="absolute left-0 top-[190px] block w-full text-center text-[14.5px] font-medium" style={{ color: '#5B5B5B' }}>
+      <span className="absolute left-0 top-[158px] block w-full truncate px-3 text-center text-17 font-bold text-ink">Unfiled</span>
+      <span className="absolute left-0 top-[190px] block w-full text-center text-15 font-medium" style={{ color: '#5B5B5B' }}>
         {count} {count === 1 ? 'File' : 'Files'}
       </span>
-      <span className="absolute left-0 top-[220px] block w-full text-center text-[13.5px]" style={{ color: '#838383' }}>
+      <span className="absolute left-0 top-[220px] block w-full text-center text-14" style={{ color: '#838383' }}>
         In no folder
       </span>
     </button>
@@ -297,7 +297,7 @@ export function FoldersEmptyState({ onCreate }: { onCreate: () => void }) {
             aria-hidden
             className="absolute left-1/2 top-[-11px] block h-[22px] w-[22px] -translate-x-1/2 rotate-45 rounded-[4px] bg-white"
           />
-          <p className="absolute left-0 top-[40px] w-full text-center text-[24px] font-bold leading-[1.35] text-ink">
+          <p className="absolute left-0 top-[40px] w-full text-center text-24 font-bold leading-[1.35] text-ink">
             Opps!, You don&rsquo;t have
             <br />
             any folder currently.

@@ -207,11 +207,11 @@ export function AgencyClientFinder({
           {/* eslint-disable-next-line @next/next/no-img-element -- a decorative full-bleed backdrop off the prototype */}
           <img src="/agency/jobfinder-hero.png" alt="" aria-hidden className="absolute left-0 top-0 h-full w-full object-cover" />
 
-          <h2 className="absolute left-[82px] top-[74px] w-[760px] text-[44px] font-semibold leading-[1.1] text-white">
+          <h2 className="absolute left-[82px] top-[74px] w-[760px] text-48 font-semibold leading-[1.1] text-white">
             Bring your client list in
           </h2>
 
-          <p className="absolute left-[82px] top-[196px] w-[700px] text-[23px] font-normal leading-[1.35]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+          <p className="absolute left-[82px] top-[196px] w-[700px] text-24 font-normal leading-[1.35]" style={{ color: 'rgba(255,255,255,0.55)' }}>
             Import a CSV from your CRM, or add prospects one at a time. Nothing is imported twice, so
             re-running the same sheet is safe.
           </p>
@@ -220,7 +220,7 @@ export function AgencyClientFinder({
             <button
               type="button"
               onClick={() => setModal('import')}
-              className="flex h-[58px] items-center rounded-[10px] px-[24px] text-[18px] font-bold text-white transition-[background-color,transform] hover:bg-[#1FBE41] active:scale-[0.985]"
+              className="flex h-[58px] items-center rounded-[10px] px-[24px] text-18 font-bold text-white transition-[background-color,transform] hover:bg-[#1FBE41] active:scale-[0.985]"
               style={{ background: 'var(--ss-ag-clienforce)' }}
             >
               Import a CSV
@@ -228,7 +228,7 @@ export function AgencyClientFinder({
             <button
               type="button"
               onClick={() => setModal('add')}
-              className="flex h-[58px] items-center rounded-[10px] px-[24px] text-[18px] font-semibold text-white transition-colors hover:bg-white/10"
+              className="flex h-[58px] items-center rounded-[10px] px-[24px] text-18 font-semibold text-white transition-colors hover:bg-white/10"
               style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.4)' }}
             >
               + Add a lead
@@ -241,8 +241,8 @@ export function AgencyClientFinder({
             style={{ background: '#FCFDFE', boxShadow: '0 30px 70px -40px rgba(0,0,0,0.8)' }}
           >
             <div className="absolute left-0 top-0 flex h-[44px] w-full items-center gap-[16px] px-[18px]" style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}>
-              <span className="text-[12px] font-semibold" style={{ color: 'rgb(91,91,91)' }}>Business Name</span>
-              <span className="ml-auto text-[12px] font-medium" style={{ color: '#9B9B9B' }}>Status</span>
+              <span className="text-12 font-semibold" style={{ color: 'rgb(91,91,91)' }}>Business Name</span>
+              <span className="ml-auto text-12 font-medium" style={{ color: '#9B9B9B' }}>Status</span>
             </div>
             {[
               { name: 'Sunnyvale Innovations', where: 'Sunnyvale, CA', s: 'Contacted' as const },
@@ -251,15 +251,15 @@ export function AgencyClientFinder({
             ].map((r, i) => (
               <div key={r.name} className="absolute left-0 w-full px-[18px]" style={{ top: 60 + i * 74 }}>
                 <div className="flex items-center gap-[12px]">
-                  <span aria-hidden className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-[13px] font-bold" style={{ background: '#DCEFE2', color: '#26A344' }}>
+                  <span aria-hidden className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-13 font-bold" style={{ background: '#DCEFE2', color: '#26A344' }}>
                     {r.name.slice(0, 1)}
                   </span>
                   <span className="flex-1">
-                    <span className="block text-[12.5px] font-bold text-ink">{r.name}</span>
-                    <span className="block text-[10.5px]" style={{ color: '#9B9B9B' }}>{r.where}</span>
+                    <span className="block text-13 font-bold text-ink">{r.name}</span>
+                    <span className="block text-11" style={{ color: '#9B9B9B' }}>{r.where}</span>
                   </span>
                   <span
-                    className="flex h-[24px] items-center rounded-[12px] px-[9px] text-[10px] font-semibold"
+                    className="flex h-[24px] items-center rounded-[12px] px-[9px] text-10 font-semibold"
                     style={STATUS_TINT[r.s.toLowerCase() as LeadStatus]}
                   >
                     {r.s}
@@ -276,10 +276,10 @@ export function AgencyClientFinder({
           className="absolute left-[1206px] top-[170px] z-[3] flex h-[64px] w-[236px] items-center justify-center gap-[12px] rounded-[16px] bg-white"
           style={{ boxShadow: '0 14px 34px -20px rgba(12,12,12,0.45)' }}
         >
-          <span aria-hidden className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[15px] font-extrabold text-white" style={{ background: 'var(--ss-ag-clienforce)' }}>
+          <span aria-hidden className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-15 font-extrabold text-white" style={{ background: 'var(--ss-ag-clienforce)' }}>
             0
           </span>
-          <span className="text-[17px] font-bold text-ink">No leads yet</span>
+          <span className="text-17 font-bold text-ink">No leads yet</span>
         </div>
 
         <button
@@ -288,14 +288,14 @@ export function AgencyClientFinder({
           className="absolute left-[1462px] top-[170px] z-[3] flex h-[64px] w-[220px] items-center justify-center gap-[12px] rounded-[16px] bg-white transition-shadow hover:shadow-card"
           style={{ boxShadow: '0 14px 34px -20px rgba(12,12,12,0.45)' }}
         >
-          <span aria-hidden className="flex h-[30px] items-center rounded-[6px] px-[7px] text-[11px] font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
+          <span aria-hidden className="flex h-[30px] items-center rounded-[6px] px-[7px] text-11 font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
             CSV
           </span>
-          <span className="text-[17px] font-bold text-ink">Import CSV</span>
+          <span className="text-17 font-bold text-ink">Import CSV</span>
         </button>
 
         {error ? (
-          <p className="absolute left-ag-tool-x top-[640px] text-[15px] text-destructive">{error}</p>
+          <p className="absolute left-ag-tool-x top-[640px] text-15 text-destructive">{error}</p>
         ) : null}
       </>
   );
@@ -325,18 +325,18 @@ export function AgencyClientFinder({
               setStage('');
             }}
             className={cn(
-              'flex h-[46px] w-[252px] items-center justify-center gap-[8px] rounded-[10px] text-[16px] font-semibold text-ink transition-colors',
+              'flex h-[46px] w-[252px] items-center justify-center gap-[8px] rounded-[10px] text-16 font-semibold text-ink transition-colors',
               tab === id ? 'bg-cyan-200' : 'bg-white',
             )}
           >
             {label}
-            <span className="text-[14px] font-medium" style={{ color: 'rgb(91,91,91)' }}>{n}</span>
+            <span className="text-14 font-medium" style={{ color: 'rgb(91,91,91)' }}>{n}</span>
           </button>
         ))}
       </div>
 
       <div className="absolute left-ag-tool-x top-[272px] flex items-center gap-[14px]">
-        <span className="text-[17px] font-semibold" style={{ color: 'rgb(91,91,91)' }}>
+        <span className="text-17 font-semibold" style={{ color: 'rgb(91,91,91)' }}>
           {loading ? 'Loading…' : `${total} ${total === 1 ? 'Result' : 'Results'}`}
         </span>
         {/* Summed by the tool under its own filters — no client-side sum over a
@@ -344,7 +344,7 @@ export function AgencyClientFinder({
             deliberately gets no figure rather than a meaningless one. */}
         {proposals.pipeline.currency && proposals.pipeline.outstandingCents > 0 ? (
           <span
-            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-[13.5px] font-semibold"
+            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-14 font-semibold"
             style={{ background: '#E4EEFB', color: '#2B5EA7' }}
             title="Total of every proposal sent and not yet decided"
           >
@@ -353,7 +353,7 @@ export function AgencyClientFinder({
         ) : null}
         {proposals.pipeline.currency && proposals.pipeline.acceptedCents > 0 ? (
           <span
-            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-[13.5px] font-semibold"
+            className="flex h-[28px] items-center rounded-[8px] px-[10px] text-14 font-semibold"
             style={{ background: '#D8F5E6', color: '#1F7A46' }}
             title="Total of every accepted proposal"
           >
@@ -371,7 +371,7 @@ export function AgencyClientFinder({
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search clients"
           aria-label="Search clients"
-          className="w-full bg-transparent text-[15.5px] font-medium text-ink outline-none"
+          className="w-full bg-transparent text-16 font-medium text-ink outline-none"
         />
         <svg width="18" height="18" viewBox="0 0 26 26" fill="none" aria-hidden className="ml-[10px] block shrink-0">
           <circle cx="11" cy="11" r="8" stroke="#838383" strokeWidth="2" />
@@ -406,10 +406,10 @@ export function AgencyClientFinder({
       <button
         type="button"
         onClick={() => setModal('import')}
-        className="absolute left-[1330px] top-[190px] flex h-[56px] items-center gap-[10px] rounded-[14px] bg-white px-[20px] text-[15.5px] font-semibold text-ink transition-shadow hover:shadow-card"
+        className="absolute left-[1330px] top-[190px] flex h-[56px] items-center gap-[10px] rounded-[14px] bg-white px-[20px] text-16 font-semibold text-ink transition-shadow hover:shadow-card"
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
       >
-        <span aria-hidden className="flex h-[26px] items-center rounded-[6px] px-[6px] text-[10.5px] font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
+        <span aria-hidden className="flex h-[26px] items-center rounded-[6px] px-[6px] text-11 font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
           CSV
         </span>
         Import
@@ -423,7 +423,7 @@ export function AgencyClientFinder({
       <button
         type="button"
         onClick={() => setModal('add')}
-        className="absolute left-[1508px] top-[190px] flex h-[56px] items-center rounded-[14px] px-[22px] text-[15.5px] font-bold text-white transition-[background-color,transform] hover:bg-[#1FBE41] active:scale-[0.985]"
+        className="absolute left-[1508px] top-[190px] flex h-[56px] items-center rounded-[14px] px-[22px] text-16 font-bold text-white transition-[background-color,transform] hover:bg-[#1FBE41] active:scale-[0.985]"
         style={{ background: 'var(--ss-ag-clienforce)' }}
       >
         + Add Lead
@@ -442,7 +442,7 @@ export function AgencyClientFinder({
         ].map((h) => (
           <span
             key={h.label}
-            className="absolute top-[26px] whitespace-nowrap text-[16px] font-semibold"
+            className="absolute top-[26px] whitespace-nowrap text-16 font-semibold"
             style={{ left: h.x, color: 'rgb(91,91,91)' }}
           >
             {h.label}
@@ -452,8 +452,8 @@ export function AgencyClientFinder({
 
         {!loading && leads.length === 0 ? (
           <div className="absolute left-[30px] right-[30px] top-[130px] text-center">
-            <p className="text-[19px] font-bold text-ink">Nothing matches</p>
-            <p className="mx-auto mt-[12px] max-w-[560px] text-[15.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="text-19 font-bold text-ink">Nothing matches</p>
+            <p className="mx-auto mt-[12px] max-w-[560px] text-16 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
               {search.trim()
                 ? `No lead in ${tab === 'open' ? 'play' : 'won or lost'} matches “${search.trim()}”.`
                 : `No leads are ${tab === 'open' ? 'in play' : 'won or lost'} under these filters.`}
@@ -469,14 +469,14 @@ export function AgencyClientFinder({
           >
             <span
               aria-hidden
-              className="absolute left-[30px] top-[20px] flex h-[52px] w-[52px] items-center justify-center rounded-full text-[20px] font-bold"
+              className="absolute left-[30px] top-[20px] flex h-[52px] w-[52px] items-center justify-center rounded-full text-20 font-bold"
               style={{ background: '#DCEFE2', color: '#26A344' }}
             >
               {lead.businessName.slice(0, 1).toUpperCase()}
             </span>
 
             <span className="absolute left-[98px] top-[20px] flex max-w-[600px] items-center gap-[10px]">
-              <span className="truncate text-[18.5px] font-bold text-ink">{lead.businessName}</span>
+              <span className="truncate text-19 font-bold text-ink">{lead.businessName}</span>
               {/* Visible without expanding, because that is the point: it tells
                   you whether opening the row is worth it. */}
               {(() => {
@@ -487,7 +487,7 @@ export function AgencyClientFinder({
                 if (!show) return null;
                 return (
                   <span
-                    className="flex h-[24px] shrink-0 items-center rounded-[6px] px-[8px] text-[11.5px] font-bold"
+                    className="flex h-[24px] shrink-0 items-center rounded-[6px] px-[8px] text-12 font-bold"
                     style={won ? { background: '#D8F5E6', color: '#1F7A46' } : { background: '#E4EEFB', color: '#2B5EA7' }}
                   >
                     {won ? 'Won' : 'Sent'} {money(show.totalContractCents, show.currency)}
@@ -499,25 +499,25 @@ export function AgencyClientFinder({
             {/* The design's contact strip: email · phone · a source chip. */}
             <div className="absolute left-[98px] top-[52px] flex items-center gap-[14px]">
               {lead.email ? (
-                <a href={`mailto:${lead.email}`} className="max-w-[260px] truncate text-[14.5px] font-medium underline-offset-2 hover:underline" style={{ color: 'rgb(131,131,131)' }}>
+                <a href={`mailto:${lead.email}`} className="max-w-[260px] truncate text-15 font-medium underline-offset-2 hover:underline" style={{ color: 'rgb(131,131,131)' }}>
                   {lead.email}
                 </a>
               ) : null}
               {lead.email && lead.phone ? <span aria-hidden className="block h-[4px] w-[4px] rounded-full" style={{ background: '#B0B0B0' }} /> : null}
               {lead.phone ? (
-                <a href={`tel:${lead.phone.replace(/[^\d+]/g, '')}`} className="text-[14.5px] font-medium underline-offset-2 hover:underline" style={{ color: 'rgb(131,131,131)' }}>
+                <a href={`tel:${lead.phone.replace(/[^\d+]/g, '')}`} className="text-15 font-medium underline-offset-2 hover:underline" style={{ color: 'rgb(131,131,131)' }}>
                   {lead.phone}
                 </a>
               ) : null}
               {!lead.email && !lead.phone ? (
-                <span className="text-[14.5px] font-medium" style={{ color: '#B0B0B0' }}>No contact details</span>
+                <span className="text-15 font-medium" style={{ color: '#B0B0B0' }}>No contact details</span>
               ) : null}
-              <span className="flex h-[24px] items-center rounded-[6px] px-[8px] text-[11.5px] font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
+              <span className="flex h-[24px] items-center rounded-[6px] px-[8px] text-12 font-bold" style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}>
                 {SOURCE_LABEL[lead.source]}
               </span>
             </div>
 
-            <span className="absolute left-[760px] top-[36px] block max-w-[220px] truncate text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+            <span className="absolute left-[760px] top-[36px] block max-w-[220px] truncate text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
               {lead.location ?? '—'}
             </span>
 
@@ -529,19 +529,19 @@ export function AgencyClientFinder({
             */}
             <span className="absolute left-[1010px] top-[30px] flex items-center gap-[8px]">
               {lead.rating === undefined ? (
-                <span className="text-[16px] font-medium" style={{ color: '#B0B0B0' }} title="Not scored">—</span>
+                <span className="text-16 font-medium" style={{ color: '#B0B0B0' }} title="Not scored">—</span>
               ) : (
                 <>
                   <svg width="18" height="17" viewBox="0 0 18 17" fill="none" aria-hidden className="block">
                     <path d="m9 1 2.3 5 5.2.5-4 3.5 1.2 5.2L9 12.4 4.3 15.2 5.5 10 1.5 6.5 6.7 6 9 1Z" fill="#F8B84A" />
                   </svg>
-                  <span className="text-[16.5px] font-bold text-ink">{lead.rating.toFixed(1)}</span>
+                  <span className="text-17 font-bold text-ink">{lead.rating.toFixed(1)}</span>
                 </>
               )}
             </span>
 
             <span
-              className="absolute left-[1230px] top-[26px] flex h-[38px] items-center rounded-[19px] px-[14px] text-[14.5px] font-semibold"
+              className="absolute left-[1230px] top-[26px] flex h-[38px] items-center rounded-[19px] px-[14px] text-15 font-semibold"
               style={STATUS_TINT[lead.status]}
             >
               {STATUS_LABEL[lead.status]}
@@ -555,7 +555,7 @@ export function AgencyClientFinder({
               }}
               aria-expanded={isOpen}
               aria-label={isOpen ? `Collapse ${lead.businessName}` : `View ${lead.businessName}`}
-              className="absolute left-[1488px] top-[26px] flex h-[40px] items-center rounded-[10px] px-[18px] text-[15px] font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.06)]"
+              className="absolute left-[1488px] top-[26px] flex h-[40px] items-center rounded-[10px] px-[18px] text-15 font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.06)]"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
             >
               {isOpen ? 'Close' : 'View'}
@@ -567,13 +567,13 @@ export function AgencyClientFinder({
                 {lead.email ? (
                   <a
                     href={`mailto:${lead.email}?subject=${encodeURIComponent(`${lead.businessName} — social media`)}`}
-                    className="flex h-[46px] items-center rounded-[11px] bg-ink px-[20px] text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+                    className="flex h-[46px] items-center rounded-[11px] bg-ink px-[20px] text-15 font-semibold text-white transition-opacity hover:opacity-90"
                   >
                     Contact Lead
                   </a>
                 ) : (
                   <span
-                    className="flex h-[46px] items-center rounded-[11px] bg-ink px-[20px] text-[15px] font-semibold text-white"
+                    className="flex h-[46px] items-center rounded-[11px] bg-ink px-[20px] text-15 font-semibold text-white"
                     style={{ opacity: 0.45 }}
                     title="No email on this lead"
                   >
@@ -597,7 +597,7 @@ export function AgencyClientFinder({
                       type="button"
                       onClick={() => void move(lead, to)}
                       disabled={busy}
-                      className="flex h-[46px] items-center rounded-[11px] bg-white px-[18px] text-[15px] font-medium text-ink transition-shadow hover:shadow-card disabled:opacity-45"
+                      className="flex h-[46px] items-center rounded-[11px] bg-white px-[18px] text-15 font-medium text-ink transition-shadow hover:shadow-card disabled:opacity-45"
                       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                     >
                       Mark {STATUS_LABEL[to].toLowerCase()}
@@ -611,7 +611,7 @@ export function AgencyClientFinder({
                 */}
                 {lead.status !== 'won' && brands.length > 0 ? (
                   <label className="flex h-[46px] items-center gap-[10px] rounded-[11px] bg-white px-[16px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}>
-                    <span className="text-[14.5px] font-medium" style={{ color: 'rgb(91,91,91)' }}>Won — client works in</span>
+                    <span className="text-15 font-medium" style={{ color: 'rgb(91,91,91)' }}>Won — client works in</span>
                     <select
                       defaultValue=""
                       onChange={async (e) => {
@@ -619,7 +619,7 @@ export function AgencyClientFinder({
                         setRowError(await convert(lead.id, e.target.value));
                       }}
                       aria-label={`Convert ${lead.businessName} to a client`}
-                      className="cursor-pointer appearance-none bg-transparent text-[14.5px] font-semibold text-ink outline-none"
+                      className="cursor-pointer appearance-none bg-transparent text-15 font-semibold text-ink outline-none"
                     >
                       <option value="">Choose…</option>
                       {brands.map((b) => (
@@ -632,7 +632,7 @@ export function AgencyClientFinder({
                 {lead.status === 'won' && lead.convertedBrandId ? (
                   <Link
                     href="/agency"
-                    className="flex h-[46px] items-center rounded-[11px] px-[18px] text-[15px] font-semibold"
+                    className="flex h-[46px] items-center rounded-[11px] px-[18px] text-15 font-semibold"
                     style={{ background: '#D8F5E6', color: '#1F7A46' }}
                   >
                     {brands.find((b) => b.brandId === lead.convertedBrandId)?.name ?? 'Client workspace'}
@@ -647,12 +647,12 @@ export function AgencyClientFinder({
                 <button
                   type="button"
                   onClick={() => setProposalsFor(lead)}
-                  className="flex h-[46px] items-center gap-[9px] rounded-[11px] bg-white px-[18px] text-[15px] font-semibold text-ink transition-shadow hover:shadow-card"
+                  className="flex h-[46px] items-center gap-[9px] rounded-[11px] bg-white px-[18px] text-15 font-semibold text-ink transition-shadow hover:shadow-card"
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                 >
                   Proposals
                   <span
-                    className="flex h-[22px] min-w-[22px] items-center justify-center rounded-[11px] px-[6px] text-[12px] font-bold"
+                    className="flex h-[22px] min-w-[22px] items-center justify-center rounded-[11px] px-[6px] text-12 font-bold"
                     style={{ background: '#EFEFEF', color: 'rgb(91,91,91)' }}
                   >
                     {(proposals.byLead[lead.id] ?? []).length}
@@ -660,7 +660,7 @@ export function AgencyClientFinder({
                 </button>
 
                 {lead.interest ? (
-                  <span className="max-w-[260px] truncate text-[14.5px] font-medium" style={{ color: 'rgb(91,91,91)' }} title={lead.interest}>
+                  <span className="max-w-[260px] truncate text-15 font-medium" style={{ color: 'rgb(91,91,91)' }} title={lead.interest}>
                     Wants: {lead.interest}
                   </span>
                 ) : null}
@@ -672,18 +672,18 @@ export function AgencyClientFinder({
         ))}
 
         {rowError ? (
-          <p className="absolute bottom-[62px] left-[30px] text-[14.5px] text-destructive">{rowError}</p>
+          <p className="absolute bottom-[62px] left-[30px] text-15 text-destructive">{rowError}</p>
         ) : null}
 
         <div className="absolute bottom-[20px] left-[30px] flex items-center gap-[16px]">
-          <span className="text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+          <span className="text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
             Page {page + 1} of {pages}
           </span>
           <button
             type="button"
             onClick={exportCsv}
             disabled={leads.length === 0}
-            className="flex h-[34px] items-center rounded-[9px] bg-white px-[14px] text-[14px] font-semibold text-ink transition-shadow hover:shadow-card disabled:opacity-50"
+            className="flex h-[34px] items-center rounded-[9px] bg-white px-[14px] text-14 font-semibold text-ink transition-shadow hover:shadow-card disabled:opacity-50"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
             title={leads.length === 0 ? 'Nothing on this page to export' : 'Download the rows shown as CSV'}
           >
@@ -718,7 +718,7 @@ export function AgencyClientFinder({
       </section>
 
       {error ? (
-        <p className="absolute left-ag-tool-x top-[1130px] text-[15px] text-destructive">{error}</p>
+        <p className="absolute left-ag-tool-x top-[1130px] text-15 text-destructive">{error}</p>
       ) : null}
     </>
   );
@@ -785,7 +785,7 @@ function Drop({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className="w-full cursor-pointer appearance-none bg-transparent text-[15.5px] font-semibold text-ink outline-none"
+        className="w-full cursor-pointer appearance-none bg-transparent text-16 font-semibold text-ink outline-none"
       >
         <option value="">{label}</option>
         {options.map((o) => (

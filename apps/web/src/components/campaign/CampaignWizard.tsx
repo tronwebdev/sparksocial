@@ -589,11 +589,11 @@ export function CampaignWizard({
   if (emptyResult) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">Created</p>
-        <h2 className="mt-1 text-[20px] font-medium text-ink">
+        <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Created</p>
+        <h2 className="mt-1 text-20 font-medium text-ink">
           {name.trim() || 'Your campaign'} is set up
         </h2>
-        <p className="mt-1.5 max-w-prose text-[13px] text-ink-muted">
+        <p className="mt-1.5 max-w-prose text-13 text-ink-muted">
           The campaign, its window and its oversight are all saved. It has no posts in it yet though, and
           that is worth reading before you go looking for a step you missed.
         </p>
@@ -604,7 +604,7 @@ export function CampaignWizard({
 
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <Button onClick={() => onActivated(emptyResult.campaignId)}>Go to the calendar</Button>
-          <span className="text-[13px] text-ink-muted">
+          <span className="text-13 text-ink-muted">
             You can regenerate the calendar there once you have added something.
           </span>
         </div>
@@ -707,7 +707,7 @@ export function CampaignWizard({
               style={{ top: hdrTop, backdropFilter: 'blur(26.946px)', boxShadow: '0 0 0 0.846px rgb(131,131,131)' }}
             >
               <Chevron className="absolute left-[13.532px] top-[14.125px]" style={{ transform: 'scaleX(-1)' }} />
-              <span className="absolute left-[55px] top-[10.996px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
+              <span className="absolute left-[55px] top-[10.996px] whitespace-nowrap text-17 font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
                 Back
               </span>
             </button>
@@ -719,13 +719,13 @@ export function CampaignWizard({
               className="absolute left-[857.023px] h-[43px] w-[132px] cursor-pointer rounded-[8.457px] transition-colors hover:bg-white/60 active:scale-[0.98] disabled:opacity-60"
               style={{ top: hdrTop, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(26.946px)' }}
             >
-              <span className="absolute top-[10.768px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
+              <span className="absolute top-[10.768px] whitespace-nowrap text-17 font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
                 {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
               </span>
               <Chevron className="absolute left-[109.135px] top-[13.864px]" color="rgb(12,12,12)" />
             </button>
 
-            <span className="absolute left-[265px] top-[47px] whitespace-nowrap text-[18px] font-semibold leading-none text-ink">
+            <span className="absolute left-[265px] top-[47px] whitespace-nowrap text-18 font-semibold leading-none text-ink">
               Step {step}
               <span className="font-normal"> of 6</span>
             </span>
@@ -747,7 +747,7 @@ export function CampaignWizard({
 
             <div className="absolute left-[514px] top-[49px] h-[18px] w-[258px]">
               <Spinner className="absolute left-0 top-[2px]" />
-              <span className="absolute right-0 top-0 whitespace-nowrap text-right text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+              <span className="absolute right-0 top-0 whitespace-nowrap text-right text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
                 {/* Mid-sentence, so the unnamed form is the lowercase one — and
                     unstyled, because it is a placeholder rather than a name. */}
                 Assigning this campaign to{' '}
@@ -871,7 +871,7 @@ export function CampaignWizard({
             ) : null}
 
             {error ? (
-              <p className="absolute left-[265px] w-[720px] text-[15px] text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
+              <p className="absolute left-[265px] w-[720px] text-15 text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
                 {error}
               </p>
             ) : null}

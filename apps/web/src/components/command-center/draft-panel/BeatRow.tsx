@@ -102,20 +102,20 @@ export function BeatRow({
       */}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink">
+          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-11 font-medium text-ink">
             {beat.label ?? beat.beatId}
           </span>
-          <span className="text-[11px] uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+          <span className="text-11 uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
         </div>
         {timed && beat.durationSec !== undefined ? (
-          <span className="text-[11px] tabular-nums text-ink-muted">
+          <span className="text-11 tabular-nums text-ink-muted">
             {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
           </span>
         ) : null}
       </div>
 
       {beat.kind === 'asset' ? (
-        <p className="mt-2 text-[14px] text-ink-muted">
+        <p className="mt-2 text-14 text-ink-muted">
           Your own {beat.role.replace(/_/g, ' ')} asset{beat.caption ? ` — ${beat.caption}` : ''}.
         </p>
       ) : beat.kind === 'generated_image' ? (
@@ -133,7 +133,7 @@ export function BeatRow({
         )
       ) : null}
       {beat.kind === 'dubbed_media' ? (
-        <p className="mt-1 text-[12px] text-ink-muted">Dubbed into {beat.targetLanguage}.</p>
+        <p className="mt-1 text-12 text-ink-muted">Dubbed into {beat.targetLanguage}.</p>
       ) : null}
 
       {beat.kind === 'text' ||
@@ -146,7 +146,7 @@ export function BeatRow({
           onChange={(e) => setText(e.target.value)}
           disabled={busy}
           rows={2}
-          className="mt-2 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+          className="mt-2 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
         />
       ) : null}
 
@@ -205,7 +205,7 @@ export function BeatRow({
             onChange={(e) => setDubLanguage(e.target.value)}
             disabled={busy}
             placeholder="Language code, e.g. es"
-            className="h-8 w-40 rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="h-8 w-40 rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button
             size="sm"
@@ -234,7 +234,7 @@ export function BeatRow({
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {timed ? (
           <>
-            <label className="text-[11px] text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
+            <label className="text-11 text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
               Seconds
             </label>
             <input
@@ -243,7 +243,7 @@ export function BeatRow({
               onChange={(e) => setDuration(e.target.value)}
               disabled={busy}
               inputMode="decimal"
-              className="h-8 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
+              className="h-8 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
             />
             <Button
               size="sm"
@@ -269,7 +269,7 @@ export function BeatRow({
             value={beat.voice ?? 'default'}
             disabled={busy}
             onChange={(e) => onSetVoice(beat.beatId, e.target.value as 'brand' | 'stock' | 'default')}
-            className="h-8 rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-8 rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Voice for this scene"
           >
             <option value="default">Default voice</option>
@@ -299,7 +299,7 @@ export function BeatRow({
               // Reset to the placeholder so the same preset can be applied twice.
               e.target.value = '';
             }}
-            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Apply a brand preset to this scene"
           >
             <option value="">Use a brand preset…</option>
@@ -322,7 +322,7 @@ export function BeatRow({
         </Button>
       </div>
 
-      {error ? <p className="mt-2 text-[12px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-12 text-destructive">{error}</p> : null}
     </li>
   );
 }

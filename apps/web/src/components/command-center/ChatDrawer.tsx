@@ -311,7 +311,7 @@ export function ChatDrawer({
             <path d="M9.5 4.6v5.2M6.9 7.2h5.2" stroke={tab === 'chat' ? '#0C0C0C' : '#838383'} strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <span
-            className="whitespace-nowrap text-[15.68px] font-medium leading-none"
+            className="whitespace-nowrap text-16 font-medium leading-none"
             style={{ color: tab === 'chat' ? '#0C0C0C' : '#838383' }}
           >
             New Chat
@@ -333,7 +333,7 @@ export function ChatDrawer({
             <path d="M6.6 7.4h8.8M6.6 11h5.6" stroke={tab === 'convos' ? '#0C0C0C' : '#838383'} strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <span
-            className="whitespace-nowrap text-[15.68px] font-medium leading-none"
+            className="whitespace-nowrap text-16 font-medium leading-none"
             style={{ color: tab === 'convos' ? '#0C0C0C' : '#838383' }}
           >
             My conversations
@@ -395,7 +395,7 @@ export function ChatDrawer({
               <button
                 type="button"
                 onClick={() => setOpenRun(null)}
-                className="flex w-fit items-center gap-[8px] text-[14.5px] font-semibold text-ink"
+                className="flex w-fit items-center gap-[8px] text-15 font-semibold text-ink"
               >
                 <svg width="8" height="15" viewBox="0 0 8 16" fill="none" aria-hidden>
                   <path d="M7 1 1 8l6 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -431,7 +431,7 @@ export function ChatDrawer({
                   setOpenRun(null);
                   setTab('chat');
                 }}
-                className="flex h-[44px] w-fit items-center rounded-xl bg-ink px-[18px] text-[15px] font-semibold text-white transition-colors hover:bg-[#242424]"
+                className="flex h-[44px] w-fit items-center rounded-xl bg-ink px-[18px] text-15 font-semibold text-white transition-colors hover:bg-[#242424]"
               >
                 Ask this again in a new chat
               </button>
@@ -503,13 +503,13 @@ export function ChatDrawer({
                         className="absolute left-[10px] top-[12px] flex h-[142px] w-[142px] items-center justify-center rounded-[13.37px] bg-ink"
                         style={{ boxShadow: '0 0 0 0.878px rgba(131,131,131,0.2)' }}
                       >
-                        <span className="text-[44px] font-bold text-white/90">{m.draft.title.slice(0, 1)}</span>
+                        <span className="text-48 font-bold text-white/90">{m.draft.title.slice(0, 1)}</span>
                       </div>
                       <p className="absolute left-[167px] top-[12px] w-[265px] text-16 font-medium leading-[1.25] text-ink">
                         {m.draft.title}
                       </p>
                       <p
-                        className="absolute left-[167px] top-[62px] line-clamp-3 w-[293px] text-[13.69px] font-normal leading-[1.25]"
+                        className="absolute left-[167px] top-[62px] line-clamp-3 w-[293px] text-14 font-normal leading-[1.25]"
                         style={{ color: '#838383' }}
                       >
                         {m.draft.body}
@@ -531,7 +531,7 @@ export function ChatDrawer({
                             />
                             <path d="M6 11.3h4.9" stroke="#0C0C0C" strokeWidth="0.95" strokeLinecap="round" />
                           </svg>
-                          <span className="text-[11.85px] font-medium text-ink">Edit draft</span>
+                          <span className="text-12 font-medium text-ink">Edit draft</span>
                         </button>
                       ) : null}
                     </div>
@@ -608,7 +608,7 @@ export function ChatDrawer({
           {playbooks !== null ? (
             <div className="mx-[16px] mb-[13px]">
               {playbooks.length === 0 ? (
-                <p className="text-[14px] font-medium text-ink-muted">
+                <p className="text-14 font-medium text-ink-muted">
                   No playbook can run for this brand yet — the Asset Graph is missing what they need.
                 </p>
               ) : (
@@ -619,7 +619,7 @@ export function ChatDrawer({
                       type="button"
                       disabled={busy}
                       onClick={() => void draftOne(pb)}
-                      className="flex h-[36px] items-center rounded-full bg-white px-[14px] text-[14px] font-medium text-ink transition-colors hover:bg-[#FAFAFA] disabled:opacity-50"
+                      className="flex h-[36px] items-center rounded-full bg-white px-[14px] text-14 font-medium text-ink transition-colors hover:bg-[#FAFAFA] disabled:opacity-50"
                       style={{ boxShadow: '0 0 0 0.958px rgba(131,131,131,0.2)' }}
                     >
                       {pb.name}

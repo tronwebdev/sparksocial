@@ -42,7 +42,7 @@ export function SettingsTabs<T extends string>({
             aria-selected={on}
             onClick={() => onChange(t.id)}
             className={cn(
-              'flex h-[42px] items-center justify-center rounded-[9.425px] px-[22px] text-[17.643px] font-medium leading-[1.25] transition-colors',
+              'flex h-[42px] items-center justify-center rounded-[9.425px] px-[22px] text-18 font-medium leading-[1.25] transition-colors',
               /* The design's active tab is CYAN with dark text, not a black
                  pill — the same `#6CE8FF` the nav's active row fades to. */
               on ? 'bg-[var(--ss-cyan)] text-ink' : 'text-ink-muted hover:text-ink',

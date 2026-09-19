@@ -57,9 +57,9 @@ function Modal({
         className="relative max-w-full rounded-[20px] bg-white px-[40px] pb-[30px] pt-[28px]"
         style={{ width, boxShadow: '0 40px 90px -40px rgba(12,12,12,0.5)' }}
       >
-        <h2 className="text-[24px] font-bold leading-[1.25] text-ink">{title}</h2>
+        <h2 className="text-24 font-bold leading-[1.25] text-ink">{title}</h2>
         {subtitle ? (
-          <p className="mt-[8px] text-[15px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+          <p className="mt-[8px] text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
             {subtitle}
           </p>
         ) : null}
@@ -71,18 +71,18 @@ function Modal({
 }
 
 const BTN_GHOST =
-  'h-[44px] rounded-[10px] px-[20px] text-[15.5px] font-semibold transition-colors hover:bg-[rgba(131,131,131,0.08)]';
+  'h-[44px] rounded-[10px] px-[20px] text-16 font-semibold transition-colors hover:bg-[rgba(131,131,131,0.08)]';
 const BTN_SOLID =
-  'h-[44px] rounded-[10px] bg-ink px-[22px] text-[15.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50';
+  'h-[44px] rounded-[10px] bg-ink px-[22px] text-16 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50';
 
 const FIELD =
-  'h-[52px] w-full rounded-[11px] bg-white px-[16px] text-[15px] font-medium text-ink outline-none';
+  'h-[52px] w-full rounded-[11px] bg-white px-[16px] text-15 font-medium text-ink outline-none';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' } as const;
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[14.5px] font-semibold text-ink">{label}</span>
+      <span className="block text-15 font-semibold text-ink">{label}</span>
       <span className="mt-[8px] block">{children}</span>
     </label>
   );
@@ -139,7 +139,7 @@ export function LeadImportModal({
           </button>
         }
       >
-        <p className="text-[16px] font-medium text-ink">{done.why.summary}</p>
+        <p className="text-16 font-medium text-ink">{done.why.summary}</p>
         <ul className="mt-[18px] space-y-[10px]">
           <Stat label="Added to the pipeline" value={done.imported} />
           {done.duplicatesSkipped > 0 ? (
@@ -150,7 +150,7 @@ export function LeadImportModal({
           ) : null}
         </ul>
         {done.imported === 0 ? (
-          <p className="mt-[18px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+          <p className="mt-[18px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
             Nothing was added, which usually means this file has been imported before. Re-importing is
             safe — it never overwrites a lead somebody has since worked on.
           </p>
@@ -194,7 +194,7 @@ export function LeadImportModal({
         >
           Choose a file
         </button>
-        <span className="text-[14.5px]" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="text-15" style={{ color: 'rgb(131,131,131)' }}>
           {fileName ?? 'or paste below'}
         </span>
         <input
@@ -220,19 +220,19 @@ export function LeadImportModal({
         aria-label="CSV text"
         placeholder={'Business Name,Email,Phone,Location\nSunnyvale Innovations,hi@sunnyvale.test,+1 555 010 2030,"Sunnyvale, CA"'}
         spellCheck={false}
-        className="mt-[16px] h-[150px] w-full resize-none rounded-[11px] bg-white p-[14px] font-mono text-[13px] leading-[1.5] text-ink outline-none"
+        className="mt-[16px] h-[150px] w-full resize-none rounded-[11px] bg-white p-[14px] font-mono text-13 leading-[1.5] text-ink outline-none"
         style={RING}
       />
 
       {preview ? (
         <div className="mt-[20px]">
           {preview.looksUnmapped ? (
-            <p className="text-[14.5px] font-medium" style={{ color: '#B4530A' }}>
+            <p className="text-15 font-medium" style={{ color: '#B4530A' }}>
               No column looked like a business name or an email. The first column will be used as the
               name — check the rows below before importing.
             </p>
           ) : (
-            <p className="text-[14.5px]" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="text-15" style={{ color: 'rgb(131,131,131)' }}>
               Matched columns: <b className="font-semibold text-ink">{preview.mapped.join(', ')}</b>
             </p>
           )}
@@ -249,7 +249,7 @@ export function LeadImportModal({
 
           {/* Deliberately capped: this is a check, not the pipeline itself. */}
           <div className="mt-[14px] max-h-[210px] overflow-y-auto rounded-[11px]" style={RING}>
-            <table className="w-full border-collapse text-[13.5px]">
+            <table className="w-full border-collapse text-14">
               <thead>
                 <tr style={{ background: '#F4F5F7' }}>
                   {['Row', 'Business', 'Email', 'Phone', 'Location', ''].map((h) => (
@@ -271,7 +271,7 @@ export function LeadImportModal({
                       <td className="max-w-[180px] truncate px-[12px] py-[9px]" style={{ color: 'rgb(91,91,91)' }}>{r.row.email ?? '—'}</td>
                       <td className="px-[12px] py-[9px]" style={{ color: 'rgb(91,91,91)' }}>{r.row.phone ?? '—'}</td>
                       <td className="max-w-[140px] truncate px-[12px] py-[9px]" style={{ color: 'rgb(91,91,91)' }}>{r.row.location ?? '—'}</td>
-                      <td className="whitespace-nowrap px-[12px] py-[9px] text-[12.5px]" style={{ color: 'rgb(131,131,131)' }}>
+                      <td className="whitespace-nowrap px-[12px] py-[9px] text-13" style={{ color: 'rgb(131,131,131)' }}>
                         {r.problem ?? (r.duplicateOfLine !== undefined ? `same as row ${r.duplicateOfLine}` : '')}
                       </td>
                     </tr>
@@ -281,7 +281,7 @@ export function LeadImportModal({
             </table>
           </div>
           {preview.rows.length > 60 ? (
-            <p className="mt-[10px] text-[13px]" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="mt-[10px] text-13" style={{ color: 'rgb(131,131,131)' }}>
               Showing the first 60 of {preview.rows.length} rows. All {preview.counts.importable} importable
               rows will be sent.
             </p>
@@ -289,7 +289,7 @@ export function LeadImportModal({
         </div>
       ) : null}
 
-      {error ? <p className="mt-[16px] text-[15px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
     </Modal>
   );
 }
@@ -297,10 +297,10 @@ export function LeadImportModal({
 function Stat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
   return (
     <li className="flex items-baseline gap-[10px]">
-      <span className={cn('text-[22px] font-bold leading-none', muted ? '' : 'text-ink')} style={muted ? { color: 'rgb(91,91,91)' } : undefined}>
+      <span className={cn('text-22 font-bold leading-none', muted ? '' : 'text-ink')} style={muted ? { color: 'rgb(91,91,91)' } : undefined}>
         {value}
       </span>
-      <span className="text-[15px]" style={{ color: 'rgb(91,91,91)' }}>{label}</span>
+      <span className="text-15" style={{ color: 'rgb(91,91,91)' }}>{label}</span>
     </li>
   );
 }
@@ -313,7 +313,7 @@ function Pill({ tone, children }: { tone: 'good' | 'warn' | 'bad'; children: Rea
         ? { background: '#FBE4C2', color: '#8A5A12' }
         : { background: '#FBD9D9', color: '#A32626' };
   return (
-    <span className="flex h-[30px] items-center rounded-[8px] px-[11px] text-[13.5px] font-semibold" style={style}>
+    <span className="flex h-[30px] items-center rounded-[8px] px-[11px] text-14 font-semibold" style={style}>
       {children}
     </span>
   );
@@ -437,14 +437,14 @@ export function LeadAddModal({
             <textarea
               value={row.notes ?? ''}
               onChange={(e) => set({ notes: e.target.value })}
-              className="h-[90px] w-full resize-none rounded-[11px] bg-white p-[14px] text-[15px] font-medium text-ink outline-none"
+              className="h-[90px] w-full resize-none rounded-[11px] bg-white p-[14px] text-15 font-medium text-ink outline-none"
               style={RING}
             />
           </Field>
         </div>
       </div>
 
-      {error ? <p className="mt-[16px] text-[15px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
     </Modal>
   );
 }

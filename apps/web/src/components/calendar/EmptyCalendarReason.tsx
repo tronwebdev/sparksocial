@@ -107,7 +107,7 @@ export function EmptyCalendarReason({
 
   return (
     <div className="rounded-xl border border-warn/40 bg-warn/5 p-5">
-      <h3 className="text-[15px] font-medium text-ink">
+      <h3 className="text-15 font-medium text-ink">
         {plannedCount > 0
           ? `${plannedCount} posts are planned, and none of them can be built yet`
           : 'Nothing can be built for this campaign yet'}
@@ -119,13 +119,13 @@ export function EmptyCalendarReason({
         it — which is the difference between a screen that looks broken and one
         that is waiting on something nameable.
       */}
-      <p className="mt-1.5 max-w-prose text-[13px] text-ink-muted">
+      <p className="mt-1.5 max-w-prose text-13 text-ink-muted">
         SPARK laid the calendar out when the campaign was created. Every format it could have used needs a
         file or a clip it does not have, so there was nothing to place. Add one of the things below and
         regenerate — nothing about the campaign needs redoing.
       </p>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       {data === null && !error ? <Skeleton className="mt-4 h-14 w-full rounded-lg" /> : null}
 
       {data ? (
@@ -138,12 +138,12 @@ export function EmptyCalendarReason({
           */}
           {uploads.length > 0 ? (
             <div className="mt-4">
-              <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
+              <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
                 Files you probably already have
               </p>
               <ul className="mt-1.5 space-y-1">
                 {uploads.map((g) => (
-                  <li key={g.missingRole} className="text-[13px] text-ink">
+                  <li key={g.missingRole} className="text-13 text-ink">
                     <span className="font-medium">{label(g.missingRole)}</span>{' '}
                     <span className="text-ink-muted">&mdash; {g.impact}</span>
                   </li>
@@ -154,12 +154,12 @@ export function EmptyCalendarReason({
 
           {shoots.length > 0 ? (
             <div className="mt-4">
-              <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
+              <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
                 Needs filming
               </p>
               <ul className="mt-1.5 space-y-1">
                 {shoots.map((g) => (
-                  <li key={g.missingRole} className="text-[13px] text-ink">
+                  <li key={g.missingRole} className="text-13 text-ink">
                     <span className="font-medium">{label(g.missingRole)}</span>{' '}
                     <span className="text-ink-muted">&mdash; {g.impact}</span>
                   </li>
@@ -176,7 +176,7 @@ export function EmptyCalendarReason({
             will not help.
           */}
           {data.gaps.length === 0 ? (
-            <p className="mt-4 text-[13px] text-ink-muted">
+            <p className="mt-4 text-13 text-ink-muted">
               No missing files were found either, which means the formats were ruled out by what SPARK
               knows about the brand rather than by what it has. Check the brand&rsquo;s answers in Settings
               &mdash; objective, proof and capture capability are what decide which formats apply.
@@ -193,7 +193,7 @@ export function EmptyCalendarReason({
               </Button>
             ) : null}
             {data.producibleIfFilmed > data.producibleNow ? (
-              <span className="text-[12px] text-ink-muted">
+              <span className="text-12 text-ink-muted">
                 {data.producibleNow} formats now, {data.producibleIfFilmed} once these are closed.
               </span>
             ) : null}

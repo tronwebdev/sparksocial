@@ -10,7 +10,7 @@ export function Toaster() {
       offset={34}
       toastOptions={{
         classNames: {
-          toast: 'rounded-md bg-[--ss-ink-900] text-white shadow-overlay text-[15px] font-medium',
+          toast: 'rounded-md bg-[--ss-ink-900] text-white shadow-overlay text-15 font-medium',
           description: 'text-white/70',
         },
       }}

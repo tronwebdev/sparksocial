@@ -98,7 +98,7 @@ export function CockpitTabs({
           >
             {t.label}
             {t.id === 'sales' && openLeads > 0 ? (
-              <span className="rounded-full bg-warn/15 px-1.5 text-[12px] font-semibold tabular-nums text-warn">
+              <span className="rounded-full bg-warn/15 px-1.5 text-12 font-semibold tabular-nums text-warn">
                 {openLeads}
               </span>
             ) : null}
@@ -112,7 +112,7 @@ export function CockpitTabs({
         */}
         <span
           title="What your agent has lined up, how the last week performed, and who is showing buying intent."
-          className="relative z-10 ml-auto flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          className="relative z-10 ml-auto flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
           style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
         >
           i
@@ -253,7 +253,7 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 (`mediaUrl` on `ContentListItem`) would close both.
               */}
               <div
-                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-[12px] text-ink-muted xl:w-[127px]"
+                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-12 text-ink-muted xl:w-[127px]"
                 style={{ background: 'rgba(131,131,131,0.1)' }}
               >
                 {p.mediaType ?? 'text'}
@@ -297,7 +297,7 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
             label is 14.92px/500, which at `px-4` made the button 118px. */}
         <Link
           href="/calendar"
-          className="flex h-[39px] w-[134.3px] items-center justify-center rounded-lg text-[14.92px] font-medium"
+          className="flex h-[39px] w-[134.3px] items-center justify-center rounded-lg text-15 font-medium"
           style={{ background: 'rgba(163,65,255,0.1)', boxShadow: 'inset 0 0 0 1.06px #A341FF', color: '#A341FF' }}
         >
           Open Calendar
@@ -326,7 +326,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
           Impressions &middot; last {series.windowDays} days
         </p>
         <div className="mt-[10px] flex flex-wrap items-center gap-3">
-          <p className="text-[32px] font-semibold tabular-nums leading-none text-ink">
+          <p className="text-32 font-semibold tabular-nums leading-none text-ink">
             {compactNumber(series.totals.impressions)}
           </p>
           <DeltaChip changePct={series.changePct.impressions} />
@@ -350,7 +350,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
         </ul>
         <ul className="mt-1.5 flex gap-1.5">
           {series.days.map((d) => (
-            <li key={d.date} className="flex-1 text-center text-[13px] text-ink-muted">
+            <li key={d.date} className="flex-1 text-center text-13 text-ink-muted">
               {/* Weekday initial only — seven `YYYY-MM-DD` labels do not fit and
                   a truncated date is worse than a day letter. */}
               {new Date(`${d.date}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -364,14 +364,14 @@ function Insights({ series }: { series: BrandSeries | null }) {
         {/* The caveat travels with the chart, because the last bar is always the
             shortest for a reason that has nothing to do with performance. */}
         {series.maturing > 0 ? (
-          <p className="mt-4 text-[12px] text-ink-muted">
+          <p className="mt-4 text-12 text-ink-muted">
             {series.maturing} of these {series.maturing === 1 ? 'was' : 'were'} published in the last two
             days and {series.maturing === 1 ? 'is' : 'are'} still gaining, so the most recent days read
             low.
           </p>
         ) : null}
         {series.unmeasured > 0 ? (
-          <p className="mt-1.5 text-[12px] text-ink-muted">
+          <p className="mt-1.5 text-12 text-ink-muted">
             {series.unmeasured} post{series.unmeasured === 1 ? '' : 's'} {series.unmeasured === 1 ? 'has' : 'have'}{' '}
             no numbers back from the platform yet, and {series.unmeasured === 1 ? 'counts' : 'count'} as zero
             here.
@@ -386,7 +386,7 @@ function Insights({ series }: { series: BrandSeries | null }) {
             the cyan-to-purple sweep rather than flat cyan. */}
         <p className="text-16 font-semibold text-ink">By platform</p>
         {series.byPlatform.length === 0 ? (
-          <p className="mt-3 text-[15px] text-ink-muted">
+          <p className="mt-3 text-15 text-ink-muted">
             No platform has reported numbers for this window yet.
           </p>
         ) : (
@@ -394,8 +394,8 @@ function Insights({ series }: { series: BrandSeries | null }) {
             {series.byPlatform.map((p) => (
               <li key={p.platform}>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-[15px] font-medium text-ink">{platformLabel(p.platform)}</span>
-                  <span className="text-[15px] font-semibold tabular-nums text-ink">
+                  <span className="text-15 font-medium text-ink">{platformLabel(p.platform)}</span>
+                  <span className="text-15 font-semibold tabular-nums text-ink">
                     {compactNumber(p.impressions)}
                   </span>
                 </div>
@@ -481,7 +481,7 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
       <p className="text-20 font-semibold text-ink">
         {total} sales {total === 1 ? 'opportunity' : 'opportunities'}
       </p>
-      <p className="mt-[10px] text-[15px] text-ink-muted">
+      <p className="mt-[10px] text-15 text-ink-muted">
         Leads showing buying intent, flagged by your agent this week.
       </p>
 
@@ -500,14 +500,14 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
               <div className="flex flex-wrap items-start gap-x-4 gap-y-3 py-[14px]">
                 <span className="relative block h-[46px] w-[46px] shrink-0">
                   <span
-                    className="flex h-full w-full items-center justify-center rounded-full text-[15px] font-semibold"
+                    className="flex h-full w-full items-center justify-center rounded-full text-15 font-semibold"
                     style={{ background: tint.bg, color: tint.fg }}
                   >
                     {initials(who)}
                   </span>
                   {lead.platform ? (
                     <span
-                      className="absolute -bottom-[4px] -right-[4px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white text-[9px] font-semibold uppercase text-ink"
+                      className="absolute -bottom-[4px] -right-[4px] flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white text-9 font-semibold uppercase text-ink"
                       style={{ boxShadow: '0 0 0 2px #FFFFFF' }}
                     >
                       {platformLabel(lead.platform).slice(0, 2)}
@@ -517,13 +517,13 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-[17px] font-semibold text-ink">{who}</span>
+                    <span className="text-17 font-semibold text-ink">{who}</span>
                     {lead.authorHandle && lead.authorName ? (
                       <span className="text-14 text-ink-muted">{lead.authorHandle}</span>
                     ) : null}
                   </p>
                   {lead.messageText ? (
-                    <p className="mt-[6px] truncate text-[15px] text-ink-muted">
+                    <p className="mt-[6px] truncate text-15 text-ink-muted">
                       &ldquo;{lead.messageText}&rdquo;
                     </p>
                   ) : null}
@@ -536,18 +536,18 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
                       card. It is on the button now, which is the control that
                       carries it out. */}
                   {lead.routedTo ? (
-                    <p className="mt-[4px] text-[13px] text-ink-muted">Sent to {lead.routedTo}</p>
+                    <p className="mt-[4px] text-13 text-ink-muted">Sent to {lead.routedTo}</p>
                   ) : null}
                 </div>
 
                 <div className="flex shrink-0 flex-col items-start gap-[8px]">
                   <span
-                    className="flex h-6 items-center rounded-xl px-2.5 text-[13px] font-semibold"
+                    className="flex h-6 items-center rounded-xl px-2.5 text-13 font-semibold"
                     style={{ background: chip.bg, color: chip.fg }}
                   >
                     {temp.label}
                   </span>
-                  <span className="text-[13px] tabular-nums text-ink-muted">
+                  <span className="text-13 tabular-nums text-ink-muted">
                     {relativeTime(lead.raisedAt)}
                   </span>
                 </div>
@@ -567,14 +567,14 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
       {/* 15px/600 `#A341FF` with a chevron, at the card's bottom left. */}
       <div className="mt-4 flex items-center gap-[7px]">
-        <Link href="/engagement" className="text-[15px] font-semibold" style={{ color: '#A341FF' }}>
+        <Link href="/engagement" className="text-15 font-semibold" style={{ color: '#A341FF' }}>
           View all opportunities
         </Link>
         <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden>
           <path d="m1 1 5 5-5 5" stroke="#A341FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {total > leads.length ? (
-          <span className="ml-1 text-[13px] text-ink-muted">
+          <span className="ml-1 text-13 text-ink-muted">
             showing {leads.length} of {total}
           </span>
         ) : null}

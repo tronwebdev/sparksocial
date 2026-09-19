@@ -93,24 +93,24 @@ export function ConsentPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Likeness &amp; voice consent</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Likeness &amp; voice consent</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         Required before any avatar or voice-clone format can pass the rights guardrail. Recording consent here is an
         attestation by a person on this account — SPARK cannot grant or revoke it.
       </p>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       <div className="mt-4 flex min-w-0 flex-wrap items-end gap-3">
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="consent-kind">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-kind">
             Type
           </label>
           <select
             id="consent-kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink"
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
@@ -120,7 +120,7 @@ export function ConsentPanel() {
           </select>
         </div>
         <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="consent-subject">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-subject">
             Whose likeness/voice (name)
           </label>
           <input
@@ -128,11 +128,11 @@ export function ConsentPanel() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="e.g. Emeka Okafor"
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="consent-evidence">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="consent-evidence">
             Evidence URL (optional)
           </label>
           <input
@@ -140,7 +140,7 @@ export function ConsentPanel() {
             value={evidenceUrl}
             onChange={(e) => setEvidenceUrl(e.target.value)}
             placeholder="https://…"
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <Button size="sm" disabled={busy || !subject.trim()} onClick={() => void grant()}>
@@ -152,7 +152,7 @@ export function ConsentPanel() {
         {records === null ? (
           <Skeleton className="h-16 w-full rounded-xl" />
         ) : records.length === 0 ? (
-          <p className="text-[13px] text-ink-muted">No consent records yet.</p>
+          <p className="text-13 text-ink-muted">No consent records yet.</p>
         ) : (
           <ul className="grid grid-cols-1 gap-2">
             {records.map((r) => {
@@ -163,11 +163,11 @@ export function ConsentPanel() {
                   className="flex flex-wrap items-center justify-between gap-3 rounded border border-border p-3"
                 >
                   <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-ink">
+                    <p className="text-14 font-medium text-ink">
                       {r.subject}{' '}
                       <span className="text-ink-muted">— {KINDS.find((k) => k.value === r.kind)?.label ?? r.kind}</span>
                     </p>
-                    <p className="mt-0.5 text-[12px] text-ink-muted">
+                    <p className="mt-0.5 text-12 text-ink-muted">
                       Granted {new Date(r.grantedAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {r.revokedAt
                         ? ` · Revoked ${new Date(r.revokedAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}`

@@ -58,8 +58,8 @@ export function KitSection({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[20px] font-medium leading-[1.3] text-ink">{title}</h3>
-          {hint ? <p className="mt-[6px] text-[13px] text-ink-muted">{hint}</p> : null}
+          <h3 className="text-20 font-medium leading-[1.3] text-ink">{title}</h3>
+          {hint ? <p className="mt-[6px] text-13 text-ink-muted">{hint}</p> : null}
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </div>

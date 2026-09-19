@@ -187,14 +187,67 @@ const config: Config = {
        * `text-sm`/`text-base` still exist; prefer these for anything the design
        * governs.
        */
+      /**
+       * THE TYPE SCALE - rem, with real leading.
+       *
+       * -- The two bugs this replaces ------------------------------------
+       *
+       * **1. `lineHeight: '100%'` on every step.** Seven sizes were declared
+       * with no leading at all, and they are used 481 times: any one of them
+       * that wraps to a second line has its lines touching. Meanwhile 1,535
+       * arbitrary `text-[13px]`-style classes set a size and *no* line-height,
+       * so they inherited whatever an ancestor happened to have. Two texts at
+       * the same nominal size rendered at different spacings depending on
+       * which of the two systems the component was written against - which is
+       * what "the text spacing is inconsistent" actually was, rather than one
+       * screen being sloppy.
+       *
+       * **2. px, so the app ignored the reader.** Nothing sets a root
+       * font-size, so 1rem is the browser's own setting. In px, somebody who
+       * had set their browser to large type still got the same 11px caption as
+       * everyone else - the setting did nothing, anywhere in the product. In
+       * rem the whole scale moves with them.
+       *
+       * -- The ramp ------------------------------------------------------
+       *
+       * Leading tightens as size grows, which is how type works: a caption
+       * needs air between lines to stay readable, and a 32px heading looks
+       * gappy at the same ratio. The values follow the design's own clustering
+       * (its explicit leadings sit at 1.45 / 1.4 / 1.3 / 1.28 / 1.25 / 1.2).
+       *
+       * Keys stay numeric - `text-13`, `text-16` - because 481 call sites
+       * already use that convention, and renaming them to t-shirt sizes would
+       * be churn with nothing visible at the end of it. The number is the px
+       * size at a default root, so the name still says what it renders at.
+       *
+       * Half-steps are deliberately absent. `14.5`, `15.5`, `16.5` and friends
+       * are Figma export artefacts rather than decisions - 78 distinct sizes
+       * were in use, including `13.53px` and `16.915px`. They snap to the
+       * nearest step.
+       */
       fontSize: {
-        13: ['13px', { lineHeight: '100%', letterSpacing: '0' }],
-        14: ['14px', { lineHeight: '100%', letterSpacing: '0' }],
-        16: ['16px', { lineHeight: '100%', letterSpacing: '0' }],
-        18: ['18px', { lineHeight: '100%', letterSpacing: '0' }],
-        20: ['20px', { lineHeight: '100%', letterSpacing: '0' }],
-        22: ['22px', { lineHeight: '100%', letterSpacing: '0' }],
-        26: ['26px', { lineHeight: '100%', letterSpacing: '0' }],
+        8: ['0.5rem', { lineHeight: '1.45' }], // 8px at a 16px root
+        9: ['0.5625rem', { lineHeight: '1.45' }], // 9px at a 16px root
+        10: ['0.625rem', { lineHeight: '1.45' }], // 10px at a 16px root
+        11: ['0.6875rem', { lineHeight: '1.45' }], // 11px at a 16px root
+        12: ['0.75rem', { lineHeight: '1.45' }], // 12px at a 16px root
+        13: ['0.8125rem', { lineHeight: '1.45' }], // 13px at a 16px root
+        14: ['0.875rem', { lineHeight: '1.45' }], // 14px at a 16px root
+        15: ['0.9375rem', { lineHeight: '1.45' }], // 15px at a 16px root
+        16: ['1rem', { lineHeight: '1.4' }], // 16px at a 16px root
+        17: ['1.0625rem', { lineHeight: '1.4' }], // 17px at a 16px root
+        18: ['1.125rem', { lineHeight: '1.4' }], // 18px at a 16px root
+        19: ['1.1875rem', { lineHeight: '1.35' }], // 19px at a 16px root
+        20: ['1.25rem', { lineHeight: '1.3' }], // 20px at a 16px root
+        22: ['1.375rem', { lineHeight: '1.3' }], // 22px at a 16px root
+        24: ['1.5rem', { lineHeight: '1.25' }], // 24px at a 16px root
+        26: ['1.625rem', { lineHeight: '1.2' }], // 26px at a 16px root
+        28: ['1.75rem', { lineHeight: '1.2' }], // 28px at a 16px root
+        32: ['2rem', { lineHeight: '1.15' }], // 32px at a 16px root
+        36: ['2.25rem', { lineHeight: '1.1' }], // 36px at a 16px root
+        40: ['2.5rem', { lineHeight: '1.1' }], // 40px at a 16px root
+        48: ['3rem', { lineHeight: '1.05' }], // 48px at a 16px root
+        64: ['4rem', { lineHeight: '1.05' }], // 64px at a 16px root
       },
 
       // Measured across the prototype: 10px is the default by a wide margin

@@ -62,7 +62,7 @@ export function AutonomyStep({
                 onTypes(next.length === ENGAGEMENT_TYPES.length ? [] : next);
               }}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                'rounded-full border px-3 py-1.5 text-13 transition-colors',
                 on
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -74,7 +74,7 @@ export function AutonomyStep({
         })}
       </div>
       {types.length === 0 && (
-        <p className="mt-2 text-[12px] text-ink-muted">
+        <p className="mt-2 text-12 text-ink-muted">
           All three. Unchecking one stops the automation for it &mdash; SPARK still drafts, you still send.
         </p>
       )}

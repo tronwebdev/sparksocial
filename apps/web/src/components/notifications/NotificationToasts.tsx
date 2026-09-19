@@ -59,9 +59,9 @@ export function NotificationToasts() {
             <div className="flex items-start gap-[13px] pr-[22px]">
               <TopicTile topic={t.topic} />
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold leading-[1.3] text-ink">{t.title}</p>
+                <p className="text-15 font-semibold leading-[1.3] text-ink">{t.title}</p>
                 {t.body ? (
-                  <p className="mt-[3px] line-clamp-2 text-[13px] leading-[1.4] text-ink-muted">{t.body}</p>
+                  <p className="mt-[3px] line-clamp-2 text-13 leading-[1.4] text-ink-muted">{t.body}</p>
                 ) : null}
               </div>
             </div>
@@ -79,7 +79,7 @@ export function NotificationToasts() {
                        See `app/(cc)/agents/page.tsx`. */
                     router.push(`/agents?draft=${encodeURIComponent(t.target!.id)}`);
                   }}
-                  className="h-[34px] rounded-[9px] px-[16px] text-[13.5px] font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.08)]"
+                  className="h-[34px] rounded-[9px] px-[16px] text-14 font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.08)]"
                   style={{ boxShadow: 'inset 0 0 0 1.2px rgba(12,12,12,0.5)' }}
                 >
                   Review
@@ -88,7 +88,7 @@ export function NotificationToasts() {
               <button
                 type="button"
                 onClick={() => dismissToast(t.id)}
-                className="h-[34px] rounded-[9px] px-[16px] text-[13.5px] font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]"
+                className="h-[34px] rounded-[9px] px-[16px] text-14 font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]"
                 style={{ color: '#5B5B5B', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
               >
                 Dismiss

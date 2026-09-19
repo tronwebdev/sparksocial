@@ -80,7 +80,7 @@ export function SettingsShell({
           {/* 26,30 on the stage is 11,12 inside a card that starts at 15,18. */}
           <Link
             href="/home"
-            className="mt-[12px] flex h-[36.392px] w-[92px] shrink-0 items-center justify-center gap-[10px] rounded-[7.072px] text-[16.915px] font-medium leading-[1.269] transition-colors hover:bg-white"
+            className="mt-[12px] flex h-[36.392px] w-[92px] shrink-0 items-center justify-center gap-[10px] rounded-[7.072px] text-17 font-medium leading-[1.269] transition-colors hover:bg-white"
             style={{ boxShadow: '0 0 0 0.707px rgb(131,131,131)', color: 'rgb(131,131,131)' }}
           >
             <svg width="7.468" height="14.936" viewBox="0 0 8 16" fill="none" aria-hidden>
@@ -90,7 +90,7 @@ export function SettingsShell({
           </Link>
 
           {/* 138,34 → 123,16 in the card; the 31px box sits 4px below Back. */}
-          <h1 className="mt-[16px] text-[27.493px] font-normal leading-[1.13] text-ink">Settings</h1>
+          <h1 className="mt-[16px] text-28 font-normal leading-[1.13] text-ink">Settings</h1>
 
           <div className="ml-auto flex min-w-0 items-start gap-[13px] pr-[15px]">
             <span className="mt-[26px] hidden xl:block">
@@ -125,7 +125,7 @@ export function SettingsShell({
                 onClick={() => setChatOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={chatOpen}
-                className="flex h-[47px] w-[126px] items-center justify-center rounded-[12.507px] bg-white text-[14px] font-semibold text-ink transition-shadow"
+                className="flex h-[47px] w-[126px] items-center justify-center rounded-[12.507px] bg-white text-14 font-semibold text-ink transition-shadow"
                 style={{ boxShadow: '0 10px 26px -14px rgba(12,12,12,0.3)' }}
               >
                 Ask Spark?
@@ -202,7 +202,7 @@ function SettingsTreeSwitch({ tree }: { tree: 'brand' | 'personal' }) {
             role="tab"
             aria-selected={on}
             className={cn(
-              'flex h-set-seg-h flex-1 items-center justify-center gap-[7px] rounded-[76.383px] text-[16.634px] font-medium leading-[1.26] transition-colors',
+              'flex h-set-seg-h flex-1 items-center justify-center gap-[7px] rounded-[76.383px] text-17 font-medium leading-[1.26] transition-colors',
               on ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink',
             )}
           >

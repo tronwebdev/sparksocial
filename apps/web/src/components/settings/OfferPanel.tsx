@@ -42,14 +42,14 @@ export function OfferPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Offer</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Offer</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         What you're actually asking someone to do — "Book now", "Try it free", "Call today". Most video and
         carousel posts end on this, in your own words, not a generated one.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-1 sm:max-w-sm">
-        <label className="text-[12px] font-medium text-ink-muted" htmlFor="primary-cta">
+        <label className="text-12 font-medium text-ink-muted" htmlFor="primary-cta">
           Primary call-to-action
         </label>
         <input
@@ -57,7 +57,7 @@ export function OfferPanel() {
           value={primaryCta}
           onChange={(e) => setPrimaryCta(e.target.value)}
           placeholder="e.g. Book your appointment today"
-          className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+          className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
         />
       </div>
 
@@ -66,7 +66,7 @@ export function OfferPanel() {
           {busy ? 'Saving…' : 'Save'}
         </Button>
         {message ? (
-          <span className={`text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+          <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
             {message.text}
           </span>
         ) : null}

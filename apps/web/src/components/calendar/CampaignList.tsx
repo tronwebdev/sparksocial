@@ -144,8 +144,8 @@ export function CampaignList({
     <section className="rounded-xl border border-border bg-surface p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-[16px] font-medium text-ink">Campaigns</h2>
-          <p className="mt-0.5 text-[13px] text-ink-muted">
+          <h2 className="text-16 font-medium text-ink">Campaigns</h2>
+          <p className="mt-0.5 text-13 text-ink-muted">
             {campaigns.length === 1 ? 'One campaign.' : `${campaigns.length} campaigns.`} Each is an outcome
             over a window &mdash; you can run more than one at a time.
           </p>
@@ -158,13 +158,13 @@ export function CampaignList({
       {/* `campaign.list` caps at 50. Saying so beats a list that silently ends —
           the heading above states a count, and a truncated count is a wrong one. */}
       {campaigns.length >= 50 ? (
-        <p className="mt-2 text-[12px] text-ink-muted">
+        <p className="mt-2 text-12 text-ink-muted">
           Showing the 50 most recent. Older campaigns are still there; this screen cannot page through them
           yet.
         </p>
       ) : null}
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       <ul className="mt-4 grid grid-cols-1 gap-2">
         {campaigns.map((c) => {
@@ -207,18 +207,18 @@ export function CampaignList({
                     <button
                       type="button"
                       onClick={() => onSelect(c.campaignId)}
-                      className="block max-w-full truncate text-left text-[14px] font-medium text-ink hover:underline"
+                      className="block max-w-full truncate text-left text-14 font-medium text-ink hover:underline"
                     >
                       {c.name}
                     </button>
                   )}
 
-                  <p className="mt-0.5 text-[12px] text-ink-muted">
+                  <p className="mt-0.5 text-12 text-ink-muted">
                     for {c.objective} &middot; {c.windowDays} days from{' '}
                     {new Date(c.startAt).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
                   </p>
                   {/* What the status means for behaviour, not just its name. */}
-                  <p className="mt-1 text-[12px] text-ink-muted">
+                  <p className="mt-1 text-12 text-ink-muted">
                     {STATUS_NOTE[c.status] ?? c.status}
                   </p>
                 </div>

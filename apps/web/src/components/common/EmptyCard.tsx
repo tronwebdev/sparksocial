@@ -61,8 +61,8 @@ export function EmptyCard({
       <p
         className={
           narrow
-            ? 'max-w-[15ch] text-[19px] font-semibold leading-[1.3] text-ink'
-            : 'text-[19px] font-semibold leading-[1.3] text-ink'
+            ? 'max-w-[15ch] text-19 font-semibold leading-[1.3] text-ink'
+            : 'text-19 font-semibold leading-[1.3] text-ink'
         }
       >
         {title}

@@ -179,7 +179,7 @@ export default function WorkspacesPage() {
         {/* ── top bar ─────────────────────────────────────────────────────── */}
         <header className="flex flex-wrap items-center gap-3 pt-6 xl:flex-nowrap xl:pt-[38px]">
           <span
-            className="mr-auto whitespace-nowrap text-[20px] font-extrabold tracking-[-0.02em] text-ink sm:text-[26px]"
+            className="mr-auto whitespace-nowrap text-20 font-extrabold tracking-[-0.02em] text-ink sm:text-26"
           >
             Sparksocial
           </span>
@@ -241,7 +241,7 @@ export default function WorkspacesPage() {
                   style={{ background: '#13D711', boxShadow: '0 0 0 2px #FFFFFF' }}
                 />
               </span>
-              <span className="hidden min-w-0 flex-1 truncate text-[16.5px] font-bold text-ink sm:block">
+              <span className="hidden min-w-0 flex-1 truncate text-17 font-bold text-ink sm:block">
                 {firstName}
               </span>
               <button
@@ -389,8 +389,8 @@ export default function WorkspacesPage() {
               M3 settled the vocabulary: the business is a brand, the
               organisation is an account.
             */}
-            <h1 className="text-[26px] font-bold text-white sm:text-[34px]">Brands</h1>
-            <p className="mt-2 max-w-[46ch] text-[15px] font-normal sm:mt-3 sm:text-[17px] lg:max-w-none lg:whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.65)' }}>
+            <h1 className="text-26 font-bold text-white sm:text-36">Brands</h1>
+            <p className="mt-2 max-w-[46ch] text-15 font-normal sm:mt-3 sm:text-17 lg:max-w-none lg:whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.65)' }}>
               Every brand in this account. Open one to work in it, or add another.
             </p>
 
@@ -402,7 +402,7 @@ export default function WorkspacesPage() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search"
                   aria-label="Search brands"
-                  className="h-[54px] w-full rounded-[27px] border-0 bg-transparent pl-[22px] pr-12 text-[15.5px] font-medium text-ink outline-none"
+                  className="h-[54px] w-full rounded-[27px] border-0 bg-transparent pl-[22px] pr-12 text-16 font-medium text-ink outline-none"
                 />
                 <svg width="19" height="19" viewBox="0 0 26 26" fill="none" aria-hidden className="pointer-events-none absolute right-5 top-[18px] block">
                   <circle cx="11" cy="11" r="8" stroke={MUTED} strokeWidth="2" />
@@ -424,11 +424,11 @@ export default function WorkspacesPage() {
         {/* ── cards ───────────────────────────────────────────────────────── */}
         <div className="mt-6 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:mt-[34px] xl:grid-cols-5">
           {brands === null ? (
-            <span className="text-[17px]" style={{ color: MUTED }}>
+            <span className="text-17" style={{ color: MUTED }}>
               Loading your brands…
             </span>
           ) : cards.length === 0 ? (
-            <span className="col-span-full text-[17px]" style={{ color: MUTED }}>
+            <span className="col-span-full text-17" style={{ color: MUTED }}>
               {query.trim()
                 ? `No brand matches “${query.trim()}”.`
                 : 'No brands yet — add one to get started.'}
@@ -470,7 +470,7 @@ export default function WorkspacesPage() {
                         background: `#FFFFFF url('${CARD_ICON[i % CARD_ICON.length]}') center / cover no-repeat`,
                       }}
                     />
-                    <span className="pointer-events-none absolute left-6 top-[138px] block max-w-[calc(100%-48px)] truncate text-[20px] font-bold text-ink">
+                    <span className="pointer-events-none absolute left-6 top-[138px] block max-w-[calc(100%-48px)] truncate text-20 font-bold text-ink">
                       {b.name}
                     </span>
                     <span className="pointer-events-none absolute left-6 top-[172px] text-14 font-medium" style={{ color: '#7B7B7B' }}>
@@ -557,7 +557,7 @@ export default function WorkspacesPage() {
       {toast ? (
         <div
           role="status"
-          className="fixed bottom-[34px] left-1/2 z-[100] -translate-x-1/2 whitespace-nowrap rounded-xl px-[22px] py-[13px] text-[15px] font-medium text-white"
+          className="fixed bottom-[34px] left-1/2 z-[100] -translate-x-1/2 whitespace-nowrap rounded-xl px-[22px] py-[13px] text-15 font-medium text-white"
           style={{ background: '#0C0C0C', boxShadow: '0 12px 32px -8px rgba(0,0,0,0.4)' }}
         >
           {toast}
@@ -568,7 +568,7 @@ export default function WorkspacesPage() {
 }
 
 const CREATE_CLS =
-  'flex h-[54px] shrink-0 items-center justify-center gap-2.5 rounded-xl border-0 px-[22px] text-[15.5px] font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-60';
+  'flex h-[54px] shrink-0 items-center justify-center gap-2.5 rounded-xl border-0 px-[22px] text-16 font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-60';
 const CREATE_STYLE: React.CSSProperties = {
   background: 'linear-gradient(90deg, #8B3DFF 0%, #37C7F4 100%)',
   boxShadow: '0 14px 30px -14px rgba(120,70,240,0.7)',
@@ -600,7 +600,7 @@ function BarButton({
       {/* `xl`, not `md`. "Account Settings" and "Agency Portal" together are
           ~300px of text, and with the 254px account chip beside them the header
           overflowed at 768 - a horizontal scrollbar on the whole page. */}
-      <span className="hidden whitespace-nowrap text-[15.5px] font-medium xl:inline" style={{ color: MUTED }}>
+      <span className="hidden whitespace-nowrap text-16 font-medium xl:inline" style={{ color: MUTED }}>
         {label}
       </span>
     </button>
@@ -638,7 +638,7 @@ function MenuItem({
       <span className="inline-flex h-5 w-5 items-center justify-center" style={{ color: '#3B3B3B' }}>
         {children}
       </span>
-      <span className="whitespace-nowrap text-[15.5px] font-semibold text-ink">{label}</span>
+      <span className="whitespace-nowrap text-16 font-semibold text-ink">{label}</span>
     </button>
   );
 }

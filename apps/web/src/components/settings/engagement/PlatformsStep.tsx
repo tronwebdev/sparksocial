@@ -87,22 +87,22 @@ export function PlatformsStep({
           return (
             <li key={p.value} className="rounded-xl border border-border p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-[14px] font-medium text-ink">{p.label}</h3>
+                <h3 className="text-14 font-medium text-ink">{p.label}</h3>
                 {inheriting ? (
-                  <span className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-ink-muted">
+                  <span className="rounded-full border border-border px-2.5 py-0.5 text-11 text-ink-muted">
                     Following my default &middot; {AUTONOMY_WORD[brandAutonomy]}
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onChange(p.value, { choice: 'inherit', types: null })}
-                    className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-ink-muted transition-colors hover:bg-surface-muted"
+                    className="rounded-full border border-border px-2.5 py-0.5 text-11 text-ink-muted transition-colors hover:bg-surface-muted"
                   >
                     Reset to my default
                   </button>
                 )}
               </div>
-              <p className="mt-0.5 text-[12px] text-ink-muted">
+              <p className="mt-0.5 text-12 text-ink-muted">
                 Respond to activity from your connected {p.label} account.
               </p>
 
@@ -117,7 +117,7 @@ export function PlatformsStep({
                       title={c.hint}
                       onClick={() => onChange(p.value, { choice: c.value })}
                       className={cn(
-                        'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                        'rounded-full border px-3 py-1.5 text-13 transition-colors',
                         on
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -129,7 +129,7 @@ export function PlatformsStep({
                 })}
               </div>
               {!inheriting && (
-                <p className="mt-2 text-[12px] text-ink-muted">
+                <p className="mt-2 text-12 text-ink-muted">
                   {CHOICES.find((c) => c.value === draft.choice)?.hint}
                 </p>
               )}
@@ -139,7 +139,7 @@ export function PlatformsStep({
                   is silent, because there is nothing for it to qualify. */}
               {draft.choice !== 'off' && (
                 <div className="mt-3">
-                  <p className="text-[12px] font-medium text-ink-muted">
+                  <p className="text-12 font-medium text-ink-muted">
                     Message types{draft.types === null ? ' · following my default' : ''}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -174,7 +174,7 @@ export function PlatformsStep({
                             });
                           }}
                           className={cn(
-                            'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                            'rounded-full border px-3 py-1.5 text-13 transition-colors',
                             on
                               ? 'border-primary bg-primary text-primary-foreground'
                               : 'border-border text-ink-muted hover:bg-surface-muted',

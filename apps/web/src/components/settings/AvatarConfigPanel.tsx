@@ -82,15 +82,15 @@ export function AvatarConfigPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Avatar &amp; voice</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Avatar &amp; voice</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         Which trained HeyGen avatar and ElevenLabs voice this brand generates from. Set this after training
         completes on the vendor's side — training itself happens outside SparkSocial.
       </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="heygen-id">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="heygen-id">
             HeyGen avatar id
           </label>
           <input
@@ -98,11 +98,11 @@ export function AvatarConfigPanel() {
             value={heygenAvatarId}
             onChange={(e) => setHeygenAvatarId(e.target.value)}
             placeholder="e.g. abc123"
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="elevenlabs-id">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="elevenlabs-id">
             ElevenLabs voice id
           </label>
           <input
@@ -110,7 +110,7 @@ export function AvatarConfigPanel() {
             value={elevenlabsVoiceId}
             onChange={(e) => setElevenlabsVoiceId(e.target.value)}
             placeholder="e.g. xyz789"
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
       </div>
@@ -120,15 +120,15 @@ export function AvatarConfigPanel() {
           {busy ? 'Saving…' : 'Save'}
         </Button>
         {message ? (
-          <span className={`text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+          <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
             {message.text}
           </span>
         ) : null}
       </div>
 
       <div className="mt-6 border-t border-border pt-6">
-        <h3 className="text-[15px] font-semibold text-ink">Founder-POV avatar override</h3>
-        <p className="mt-1 text-[13px] text-ink-muted">
+        <h3 className="text-15 font-semibold text-ink">Founder-POV avatar override</h3>
+        <p className="mt-1 text-13 text-ink-muted">
           Avatar is off by default for any genome whose proof asset isn't a person — correct for most SaaS and
           agency brands. If you specifically want a founder-POV avatar anyway, turn it on here explicitly.
           Requires a licensed person available (set in onboarding) and an active likeness-consent record on file
@@ -136,7 +136,7 @@ export function AvatarConfigPanel() {
         </p>
 
         <div className="mt-3 grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="avatar-override-reason">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="avatar-override-reason">
             Why (recorded against the genome)
           </label>
           <input
@@ -144,7 +144,7 @@ export function AvatarConfigPanel() {
             value={overrideReason}
             onChange={(e) => setOverrideReason(e.target.value)}
             placeholder="e.g. Founder wants to appear on camera for LinkedIn thought leadership"
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -156,7 +156,7 @@ export function AvatarConfigPanel() {
             {overrideBusy ? 'Saving…' : 'Clear override'}
           </Button>
           {overrideMessage ? (
-            <span className={`text-[13px] ${overrideMessage.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+            <span className={`text-13 ${overrideMessage.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
               {overrideMessage.text}
             </span>
           ) : null}

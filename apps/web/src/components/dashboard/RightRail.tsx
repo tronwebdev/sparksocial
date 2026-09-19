@@ -215,7 +215,7 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
                 Both fields are already on the row; this is the one the design
                 shows.
               */}
-              <span className="min-w-0 flex-1 truncate text-[16.28px] font-medium leading-[1.28] text-ink-muted">
+              <span className="min-w-0 flex-1 truncate text-16 font-medium leading-[1.28] text-ink-muted">
                 {postKindLabel(p.platform, p.mediaType)}
               </span>
               <Link
@@ -236,7 +236,7 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
               </Link>
             </div>
 
-            <div className="flex items-center gap-2 px-[25.3px] pt-[10px] text-[12.72px] text-ink-muted">
+            <div className="flex items-center gap-2 px-[25.3px] pt-[10px] text-13 text-ink-muted">
               <span>{p.scheduledAt ? relativeTime(p.scheduledAt) : 'Published'}</span>
               {p.mediaType ? (
                 <>
@@ -282,7 +282,7 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
                 truncating the summary and then repeating it underneath would
                 fill the space without adding anything to read.
               */}
-              <p className="line-clamp-2 max-w-[299.5px] text-[16.28px] font-medium leading-[1.28] text-black">
+              <p className="line-clamp-2 max-w-[299.5px] text-16 font-medium leading-[1.28] text-black">
                 {p.summary}
               </p>
             </div>
@@ -314,7 +314,7 @@ function Trending({ trends }: { trends: RankedTrend[] | null }) {
       that, so offering it here would be the wrong instruction.
     */
     return (
-      <p className="px-1 py-6 text-[15px] leading-[1.5] text-ink-muted">
+      <p className="px-1 py-6 text-15 leading-[1.5] text-ink-muted">
         Nothing worth joining right now. SPARK skips trends this brand cannot credibly speak to, and
         says why on each one in Discovery.
       </p>
@@ -340,7 +340,7 @@ function Trending({ trends }: { trends: RankedTrend[] | null }) {
               <img src="/dashboard/fire.png" alt="" width={22} height={22} className="block object-cover" />
             </span>
 
-            <p className="ml-[52px] text-[19px] font-semibold leading-tight text-ink">{t.topic}</p>
+            <p className="ml-[52px] text-19 font-semibold leading-tight text-ink">{t.topic}</p>
 
             {/*
               Where the prototype puts "+240% / vs last week". `opportunity` is
@@ -352,7 +352,7 @@ function Trending({ trends }: { trends: RankedTrend[] | null }) {
               <span className="text-16 font-semibold" style={{ color: '#0E9E0C' }}>
                 {Math.round(t.opportunity * 100)}%
               </span>
-              <p className="mt-[9px] text-[12px] text-ink-muted">left to join</p>
+              <p className="mt-[9px] text-12 text-ink-muted">left to join</p>
             </div>
 
             {/* Where "48.2k posts" goes. Relevance, which is the real gate. */}

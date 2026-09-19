@@ -99,10 +99,10 @@ export function BrandSwitcher() {
      */
     return (
       <div>
-        <p className="text-[26px] font-semibold text-ink">No brands yet</p>
+        <p className="text-26 font-semibold text-ink">No brands yet</p>
         <Link
           href="/onboarding"
-          className="mt-1 inline-block text-[18px] text-[var(--ss-accent-purple)] underline-offset-4 hover:underline"
+          className="mt-1 inline-block text-18 text-[var(--ss-accent-purple)] underline-offset-4 hover:underline"
         >
           Set up your first brand
         </Link>
@@ -124,7 +124,7 @@ export function BrandSwitcher() {
         away, and it was the least useful of the three.
       */}
       <DropdownMenuTrigger className="group -ml-2.5 flex h-11 items-center gap-[13px] rounded-md pl-2.5 pr-4 text-left outline-none transition-colors hover:bg-[rgba(131,131,131,0.08)]">
-        <span className="text-[26px] font-semibold leading-[1.27] text-black">{active.name}</span>
+        <span className="text-26 font-semibold leading-[1.27] text-black">{active.name}</span>
         <ChevronDown className="h-[14px] w-[14px] shrink-0 text-ink transition-transform group-data-[state=open]:rotate-180" />
       </DropdownMenuTrigger>
 
@@ -141,7 +141,7 @@ export function BrandSwitcher() {
           `DASH-A-01` — the word the build already used for that level). The
           component was `WorkspaceSwitcher` until the same pass renamed it.
         */}
-        <DropdownMenuLabel className="px-3 pb-1.5 pt-2 text-[12.5px] font-semibold uppercase tracking-[0.6px] text-ink-muted">
+        <DropdownMenuLabel className="px-3 pb-1.5 pt-2 text-13 font-semibold uppercase tracking-[0.6px] text-ink-muted">
           Brands
         </DropdownMenuLabel>
         {genomes.map((g, i) => (
@@ -155,7 +155,7 @@ export function BrandSwitcher() {
                 same cycle the workspace cards use. */}
             <span
               aria-hidden
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold text-ink"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-12 font-bold text-ink"
               style={{ background: TILES[i % TILES.length] }}
             >
               {g.name.slice(0, 1).toUpperCase()}

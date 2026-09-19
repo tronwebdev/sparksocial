@@ -512,7 +512,7 @@ export default function OnboardingPage() {
           selected={selected}
           onChange={(values) => setAnswers((prev) => ({ ...prev, [question.id]: values }))}
         />
-        {error ? <p className="mt-4 text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+        {error ? <p className="mt-4 text-14 text-[var(--ss-danger)]">{error}</p> : null}
       </StepShell>
     );
   }

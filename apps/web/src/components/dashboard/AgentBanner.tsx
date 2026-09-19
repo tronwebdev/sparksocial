@@ -182,7 +182,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               same 30px type and the same box. Nothing moves, and the state the
               design does not draw costs the layout nothing.
             */}
-            <span className="mt-[6.4px] whitespace-nowrap text-[30px] font-semibold leading-[1.27] text-white">
+            <span className="mt-[6.4px] whitespace-nowrap text-32 font-semibold leading-[1.27] text-white">
               {name ?? (
                 <Link
                   href="/settings/brand-kit"
@@ -200,7 +200,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                 className="flex h-[35px] w-[113px] items-center rounded-[7.38px] pl-[10.6px]"
                 style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(23.78px)' }}
               >
-                <span className="text-[14.63px] font-normal leading-[1.36]" style={{ color: WHITE_60 }}>
+                <span className="text-15 font-normal leading-[1.36]" style={{ color: WHITE_60 }}>
                   Agent Status
                 </span>
               </span>
@@ -272,7 +272,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               disabled={busy}
               className={cn(
                 'flex h-[36.6px] w-[150px] items-center justify-center gap-2 rounded-[7.43px]',
-                'text-[13.53px] font-medium text-white transition-colors',
+                'text-14 font-medium text-white transition-colors',
                 'hover:bg-white/[0.08] disabled:opacity-50',
               )}
             >
@@ -293,7 +293,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                 type="button"
                 onClick={() => setFreqOpen((v) => !v)}
                 aria-expanded={freqOpen}
-                className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-[13.53px] font-medium text-white"
+                className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-white"
                 style={{
                   background: 'rgba(255,255,255,0.15)',
                   boxShadow: 'inset 0 0 0 0.57px rgba(255,255,255,0.4)',
@@ -335,7 +335,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
 
             <Link
               href="/agents"
-              className="flex h-[37px] w-[159px] items-center justify-center gap-2 rounded-[7.43px] text-[13.53px] font-semibold"
+              className="flex h-[37px] w-[159px] items-center justify-center gap-2 rounded-[7.43px] text-14 font-semibold"
               style={{
                 background: 'rgba(255,255,255,0.15)',
                 boxShadow: '0 0 24.79px 0 rgba(108,232,255,0.32)',

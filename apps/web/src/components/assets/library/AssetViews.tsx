@@ -96,7 +96,7 @@ function KindChip({ mediaType, small = false }: { mediaType: string; small?: boo
       className={
         small
           ? 'flex h-[36px] w-fit items-center gap-[8px] rounded-[9px] px-[12px] text-14 font-semibold'
-          : 'flex h-[36px] w-fit items-center gap-[8px] rounded-[9px] px-[13px] text-[14.5px] font-semibold'
+          : 'flex h-[36px] w-fit items-center gap-[8px] rounded-[9px] px-[13px] text-15 font-semibold'
       }
       style={{ background: c.bg, color: c.fg }}
     >
@@ -123,7 +123,7 @@ export function Thumb({ asset, rounded }: { asset: Asset; rounded: string }) {
           <path d="M2.5 2.6A1.6 1.6 0 0 1 4.1 1h5l4 4v8.4a1.6 1.6 0 0 1-1.6 1.6h-7.4a1.6 1.6 0 0 1-1.6-1.6V2.6Z" stroke="#F35525" strokeWidth="1.3" strokeLinejoin="round" />
           <path d="M9.1 1v4h4" stroke="#F35525" strokeWidth="1.3" strokeLinejoin="round" />
         </svg>
-        <span className="max-w-full truncate text-[12px] font-medium text-ink-muted">PDF document</span>
+        <span className="max-w-full truncate text-12 font-medium text-ink-muted">PDF document</span>
       </span>
     );
   }
@@ -140,7 +140,7 @@ export function Thumb({ asset, rounded }: { asset: Asset; rounded: string }) {
           referrerPolicy="no-referrer"
         />
       ) : (
-        <span className="flex h-full w-full items-center justify-center text-[12px] font-medium text-ink-muted">
+        <span className="flex h-full w-full items-center justify-center text-12 font-medium text-ink-muted">
           {asset.mediaType}
         </span>
       )}

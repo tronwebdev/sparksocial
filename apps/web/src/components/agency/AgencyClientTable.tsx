@@ -98,7 +98,7 @@ export function AgencyClientTable({
       ].map((h) => (
         <span
           key={h.label}
-          className="absolute top-[28px] whitespace-nowrap text-[16px] font-semibold"
+          className="absolute top-[28px] whitespace-nowrap text-16 font-semibold"
           style={{ left: h.x, color: 'rgb(91,91,91)' }}
         >
           {h.label}
@@ -107,7 +107,7 @@ export function AgencyClientTable({
       <div aria-hidden className="absolute left-0 top-[66px] h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
       {brands.length === 0 ? (
-        <p className="absolute left-[26px] top-[92px] text-[16px]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-[26px] top-[92px] text-16" style={{ color: 'rgb(131,131,131)' }}>
           No brands in this organisation yet.
         </p>
       ) : null}
@@ -120,32 +120,32 @@ export function AgencyClientTable({
         >
           <span
             aria-hidden
-            className="absolute left-[26px] top-[28px] flex h-[56px] w-[56px] items-center justify-center rounded-[14px] text-[24px] font-bold text-white"
+            className="absolute left-[26px] top-[28px] flex h-[56px] w-[56px] items-center justify-center rounded-[14px] text-24 font-bold text-white"
             style={{ background: MARKS[i % MARKS.length] }}
           >
             {b.name.slice(0, 1).toUpperCase()}
           </span>
 
-          <span className="absolute left-[96px] top-[44px] max-w-[270px] truncate text-[19px] font-bold text-ink">
+          <span className="absolute left-[96px] top-[44px] max-w-[270px] truncate text-19 font-bold text-ink">
             {b.name}
           </span>
 
-          <span className="absolute left-[388px] top-[46px] text-[17px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+          <span className="absolute left-[388px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
             {new Date(b.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
 
-          <span className="absolute left-[742px] top-[46px] text-[17px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+          <span className="absolute left-[742px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
             {b.publishedCount} {b.publishedCount === 1 ? 'post' : 'posts'}
           </span>
 
-          <span className="absolute left-[1046px] top-[46px] text-[17px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+          <span className="absolute left-[1046px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
             {b.impressions.toLocaleString()}
           </span>
 
           {/* The design's industry chip, carrying the fact the roster exists to
               surface: a paying client whose account has gone silent. */}
           <span
-            className="absolute left-[1318px] flex h-[40px] items-center rounded-[9px] px-[15px] text-[15px] font-semibold"
+            className="absolute left-[1318px] flex h-[40px] items-center rounded-[9px] px-[15px] text-15 font-semibold"
             style={{
               top: 38,
               background: b.quiet ? '#FBD9FA' : '#D8F5E6',
@@ -224,17 +224,17 @@ export function AgencyClientTable({
           {isOpen ? (
             <div className="absolute left-[26px] top-[108px] flex flex-wrap items-center gap-[18px]">
               <span className="flex h-[52px] items-center gap-[8px] rounded-[11px] bg-ag-peach px-[14px]">
-                <span className="text-[22px] font-bold leading-none text-ink">{b.engagements.toLocaleString()}</span>
-                <span className="text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+                <span className="text-22 font-bold leading-none text-ink">{b.engagements.toLocaleString()}</span>
+                <span className="text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
                   engagements / {windowDays}d
                 </span>
               </span>
 
               <span className="flex h-[60px] items-center gap-[12px] rounded-[12px] bg-ag-pay px-[16px]">
-                <span className="text-[16px] font-semibold text-ink">Payment Information</span>
+                <span className="text-16 font-semibold text-ink">Payment Information</span>
                 <span
                   aria-hidden
-                  className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] text-[19px] font-bold text-white"
+                  className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] text-19 font-bold text-white"
                   style={{ background: 'var(--ss-ag-stripe)' }}
                 >
                   S
@@ -245,7 +245,7 @@ export function AgencyClientTable({
                   organisation-level — so this points at where it lives instead
                   of printing a card that is not this client's.
                 */}
-                <Link href="/settings/credits" className="text-[15.5px] font-medium underline underline-offset-2" style={{ color: 'rgb(91,91,91)' }}>
+                <Link href="/settings/credits" className="text-16 font-medium underline underline-offset-2" style={{ color: 'rgb(91,91,91)' }}>
                   Billing is org-wide
                 </Link>
               </span>
@@ -256,7 +256,7 @@ export function AgencyClientTable({
 
       {/* ── footer ─────────────────────────────────────────────────────── */}
       <div aria-hidden className="absolute left-0 h-px w-full" style={{ top: height - 66, background: 'rgba(131,131,131,0.1)' }} />
-      <span className="absolute bottom-[24px] left-[26px] text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+      <span className="absolute bottom-[24px] left-[26px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
         {brands.length} {brands.length === 1 ? 'workspace' : 'workspaces'}
       </span>
 

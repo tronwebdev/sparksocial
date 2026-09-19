@@ -147,8 +147,8 @@ export function BrandTemplatesPanel() {
 
   return (
     <section className="rounded-lg border border-border p-4">
-      <h2 className="text-[15px] font-medium text-ink">Templates</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-15 font-medium text-ink">Templates</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         Lines you reuse &mdash; how a post opens, how it signs off, what goes on screen. Saved here, applied from
         a draft&rsquo;s storyboard.
       </p>
@@ -159,7 +159,7 @@ export function BrandTemplatesPanel() {
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`rounded-full px-3 py-1 text-[13px] ${
+            className={`rounded-full px-3 py-1 text-13 ${
               tab === t.key ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted'
             }`}
           >
@@ -172,7 +172,7 @@ export function BrandTemplatesPanel() {
         <button
           type="button"
           onClick={() => setTab('versioning')}
-          className={`rounded-full px-3 py-1 text-[13px] ${
+          className={`rounded-full px-3 py-1 text-13 ${
             tab === 'versioning' ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted'
           }`}
         >
@@ -182,30 +182,30 @@ export function BrandTemplatesPanel() {
 
       {tab === 'versioning' ? (
         <div className="mt-4 rounded-lg border border-dashed border-border p-4">
-          <p className="text-[13px] font-medium text-ink">Not built</p>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="text-13 font-medium text-ink">Not built</p>
+          <p className="mt-1 text-13 text-ink-muted">
             The design draws this as a tab but never draws a version number, a version history, or an
             approval state anywhere on the brand kit &mdash; and nothing in the product records one. An empty
             list here would look like a brand with no versions yet, which would be a different and untrue
             thing. It needs a decision about what a brand-kit version <em>is</em> before it can be built.
           </p>
-          <p className="mt-2 text-[12px] text-ink-muted">
+          <p className="mt-2 text-12 text-ink-muted">
             Approvals for <em>posts</em> do exist &mdash; see Review queue and Approval rules under Team Roles.
           </p>
         </div>
       ) : (
         <>
-          <p className="mt-4 text-[12px] text-ink-muted">{activeTab?.hint}</p>
+          <p className="mt-4 text-12 text-ink-muted">{activeTab?.hint}</p>
 
           {active.length === 0 ? (
-            <p className="mt-3 text-[13px] text-ink-muted">Nothing saved here yet.</p>
+            <p className="mt-3 text-13 text-ink-muted">Nothing saved here yet.</p>
           ) : (
             <ul className="mt-3 grid grid-cols-1 gap-2">
               {active.map((t) => (
                 <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border p-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] uppercase tracking-wide text-ink-muted">{t.name}</p>
-                    <p className="mt-0.5 text-[13px] text-ink">{t.text}</p>
+                    <p className="text-11 uppercase tracking-wide text-ink-muted">{t.name}</p>
+                    <p className="mt-0.5 text-13 text-ink">{t.text}</p>
                   </div>
                   <Button
                     size="sm"
@@ -224,7 +224,7 @@ export function BrandTemplatesPanel() {
           <div className="mt-4 rounded-lg border border-dashed border-border p-3">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-[8rem]">
-                <label className="block text-[12px] text-ink-muted" htmlFor="tpl-name">
+                <label className="block text-12 text-ink-muted" htmlFor="tpl-name">
                   Name
                 </label>
                 <Input
@@ -236,7 +236,7 @@ export function BrandTemplatesPanel() {
                 />
               </div>
               <div className="min-w-[16rem] flex-1">
-                <label className="block text-[12px] text-ink-muted" htmlFor="tpl-text">
+                <label className="block text-12 text-ink-muted" htmlFor="tpl-text">
                   The line
                 </label>
                 <Input
@@ -265,7 +265,7 @@ export function BrandTemplatesPanel() {
             */}
             {SUGGESTIONS[tab].length > 0 ? (
               <div className="mt-3">
-                <p className="text-[11px] uppercase tracking-wide text-ink-muted">Suggestions</p>
+                <p className="text-11 uppercase tracking-wide text-ink-muted">Suggestions</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {SUGGESTIONS[tab].map((sug) => (
                     <button
@@ -273,7 +273,7 @@ export function BrandTemplatesPanel() {
                       type="button"
                       disabled={busy}
                       onClick={() => void add(tab, sug)}
-                      className="rounded-full bg-surface-muted px-3 py-1 text-left text-[12px] text-ink-muted hover:text-ink disabled:opacity-50"
+                      className="rounded-full bg-surface-muted px-3 py-1 text-left text-12 text-ink-muted hover:text-ink disabled:opacity-50"
                     >
                       {sug}
                     </button>
@@ -286,7 +286,7 @@ export function BrandTemplatesPanel() {
       )}
 
       {message ? (
-        <p className={`mt-3 text-[12px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
+        <p className={`mt-3 text-12 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
           {message.text}
         </p>
       ) : null}

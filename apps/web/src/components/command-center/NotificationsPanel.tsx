@@ -140,7 +140,7 @@ export function NotificationsPanel() {
     <section className="rounded-lg border border-border">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-[13px] font-medium text-ink">What SPARK told you</h2>
+          <h2 className="text-13 font-medium text-ink">What SPARK told you</h2>
           {unread > 0 ? <Badge variant="warn">{unread} new</Badge> : null}
         </div>
         {unread > 0 ? (
@@ -150,10 +150,10 @@ export function NotificationsPanel() {
         ) : null}
       </header>
 
-      {error ? <p className="px-4 py-3 text-[12px] text-destructive">{error}</p> : null}
+      {error ? <p className="px-4 py-3 text-12 text-destructive">{error}</p> : null}
 
       {items.length === 0 ? (
-        <p className="px-4 py-6 text-[13px] text-ink-muted">
+        <p className="px-4 py-6 text-13 text-ink-muted">
           Nothing yet. SPARK posts here when something needs your attention but not your answer — a post that
           stopped retrying, a platform login about to expire, a conversation it handed to you.
         </p>
@@ -165,8 +165,8 @@ export function NotificationsPanel() {
               className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3 last:border-b-0"
             >
               <div className="min-w-0 flex-1">
-                <p className={`text-[13px] ${n.read ? 'text-ink-muted' : 'text-ink'}`}>{n.message}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-muted">
+                <p className={`text-13 ${n.read ? 'text-ink-muted' : 'text-ink'}`}>{n.message}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-11 text-ink-muted">
                   <span>{relativeTime(n.at)}</span>
                   {n.urgency === 'high' ? <Badge variant={URGENCY_TONE[n.urgency]}>Urgent</Badge> : null}
                   {/*

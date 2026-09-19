@@ -88,12 +88,12 @@ export function BrandFontPicker({
         style={{ backgroundColor: ground ?? '#0C0C0C' }}
       >
         <p
-          className="text-[22px] leading-tight"
+          className="text-22 leading-tight"
           style={{ color: type ?? '#FFFFFF', fontFamily: displayStack }}
         >
           Open late on Thursdays
         </p>
-        <p className="mt-2 text-[14px]" style={{ color: type ?? '#FFFFFF', fontFamily: bodyStack }}>
+        <p className="mt-2 text-14" style={{ color: type ?? '#FFFFFF', fontFamily: bodyStack }}>
           Book a chair before Friday and the first cut is on us — walk-ins welcome after six.
         </p>
       </div>
@@ -122,14 +122,14 @@ function Select({
 
   return (
     <div>
-      <label className="block text-[12px] text-ink-muted" htmlFor={id}>
+      <label className="block text-12 text-ink-muted" htmlFor={id}>
         {label}
       </label>
       <select
         id={id}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
+        className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
         // Set in the chosen face, so the closed select shows the type rather
         // than only naming it.
         style={value ? { fontFamily: fontStack(value) } : undefined}
@@ -146,7 +146,7 @@ function Select({
       {/* The chosen face's own note replaces the generic hint — "Headlines only,
           it thins out at small sizes" is the thing worth reading once a choice
           is made. */}
-      <p className="mt-1 text-[12px] text-ink-muted">{chosen?.note ?? hint}</p>
+      <p className="mt-1 text-12 text-ink-muted">{chosen?.note ?? hint}</p>
     </div>
   );
 }

@@ -97,7 +97,7 @@ function TeamModal({
         className="relative w-[760px] max-w-full rounded-[20px] bg-set-card px-[48px] pb-[34px] pt-[30px]"
         style={{ boxShadow: '0 40px 90px -40px rgba(12,12,12,0.5)' }}
       >
-        <h2 className="text-[24px] font-semibold leading-[1.25] text-ink">{title}</h2>
+        <h2 className="text-24 font-semibold leading-[1.25] text-ink">{title}</h2>
 
         <div className="mt-[24px]">{children}</div>
 
@@ -107,7 +107,7 @@ function TeamModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-[44px] w-[168px] rounded-[8.457px] text-[16.915px] font-medium transition-colors hover:bg-white/60"
+            className="h-[44px] w-[168px] rounded-[8.457px] text-17 font-medium transition-colors hover:bg-white/60"
             style={{ color: 'rgb(131,131,131)' }}
           >
             Cancel
@@ -116,7 +116,7 @@ function TeamModal({
             type="button"
             onClick={onSubmit}
             disabled={busy}
-            className="h-[43px] w-[167px] rounded-[8.457px] bg-white text-[16.915px] font-medium text-ink transition-shadow disabled:opacity-60"
+            className="h-[43px] w-[167px] rounded-[8.457px] bg-white text-17 font-medium text-ink transition-shadow disabled:opacity-60"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
           >
             {busy ? 'Working…' : submitLabel}
@@ -146,7 +146,7 @@ function ModalField({
         {children}
       </div>
       {hint ? (
-        <p className="mt-[7px] text-[15px] leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="mt-[7px] text-15 leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
           {hint}
         </p>
       ) : null}
@@ -527,7 +527,7 @@ export function EditGroupModal({
                 type="button"
                 onClick={() => setMembers((s) => s.filter((x) => x !== id))}
                 aria-label={`Remove ${label(id)}`}
-                className="text-[15px] leading-none transition-colors hover:text-ink"
+                className="text-15 leading-none transition-colors hover:text-ink"
                 style={{ color: 'rgb(131,131,131)' }}
               >
                 ✕

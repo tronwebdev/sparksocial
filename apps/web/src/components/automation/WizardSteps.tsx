@@ -17,7 +17,7 @@ import { folderIdFrom, type WizardDraft } from './wizardDraft';
  */
 
 export const FIELD =
-  'h-[62px] w-full rounded-[13px] bg-white px-[22px] text-[17px] font-medium text-ink outline-none placeholder:text-[#B0B0B0]';
+  'h-[62px] w-full rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]';
 export const FIELD_RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' } as const;
 export const CARD = 'w-full max-w-auto-form rounded-[24px] bg-white px-[40px] pb-[44px] pt-[34px]';
 export const CARD_SHADOW = { boxShadow: '0 24px 60px -40px rgba(12,12,12,0.25)' } as const;
@@ -40,7 +40,7 @@ function Dropdown({
 }) {
   return (
     <div>
-      <div className="text-[16.5px] font-semibold text-ink">{label}</div>
+      <div className="text-17 font-semibold text-ink">{label}</div>
       <div
         className="mt-[9px] flex h-[58px] items-center rounded-[12px] bg-white pl-[20px] pr-[14px] transition-shadow focus-within:shadow-[inset_0_0_0_1.4px_#838383]"
         style={FIELD_RING}
@@ -49,7 +49,7 @@ function Dropdown({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
-          className="w-full cursor-pointer appearance-none bg-transparent text-[16.5px] font-medium text-ink outline-none"
+          className="w-full cursor-pointer appearance-none bg-transparent text-17 font-medium text-ink outline-none"
         >
           {options.map((o) => (
             <option key={o.value} value={o.value}>
@@ -62,7 +62,7 @@ function Dropdown({
         </svg>
       </div>
       {hint ? (
-        <p className="mt-[6px] text-[13px]" style={{ color: '#838383' }}>
+        <p className="mt-[6px] text-13" style={{ color: '#838383' }}>
           {hint}
         </p>
       ) : null}
@@ -116,7 +116,7 @@ function PillToggle({
           type="button"
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className="relative z-[1] flex h-[44px] items-center justify-center text-[15.5px] font-semibold text-ink"
+          className="relative z-[1] flex h-[44px] items-center justify-center text-16 font-semibold text-ink"
           style={{ width }}
         >
           {o.label}
@@ -150,7 +150,7 @@ function ChipInput({
   };
   return (
     <>
-      {label ? <p className="mt-[30px] text-[16.5px] font-semibold text-ink">{label}</p> : null}
+      {label ? <p className="mt-[30px] text-17 font-semibold text-ink">{label}</p> : null}
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -163,7 +163,7 @@ function ChipInput({
         onBlur={commit}
         placeholder={placeholder}
         aria-label={label ?? 'Keywords'}
-        className={cn(FIELD, label ? 'mt-[10px]' : 'mt-[16px]', 'text-[16.5px]')}
+        className={cn(FIELD, label ? 'mt-[10px]' : 'mt-[16px]', 'text-17')}
         style={FIELD_RING}
       />
       {chips.length > 0 ? (
@@ -171,7 +171,7 @@ function ChipInput({
           {chips.map((c) => (
             <span
               key={c}
-              className="inline-flex h-[44px] items-center gap-[12px] rounded-[10px] px-[15px] text-[15.5px] font-semibold"
+              className="inline-flex h-[44px] items-center gap-[12px] rounded-[10px] px-[15px] text-16 font-semibold"
               style={
                 tone === 'keyword'
                   ? { background: 'var(--ss-auto-kw-chip)', color: '#0C0C0C' }
@@ -183,7 +183,7 @@ function ChipInput({
                 type="button"
                 onClick={() => onRemove(c)}
                 aria-label={`Remove ${c}`}
-                className="text-[15px] leading-none transition-opacity hover:opacity-60"
+                className="text-15 leading-none transition-opacity hover:opacity-60"
                 style={{ color: tone === 'keyword' ? '#5B5B5B' : 'var(--ss-auto-ex-ink)' }}
               >
                 ✕
@@ -214,14 +214,14 @@ const RECIPE_TYPES = [
 export function NameStep({ genomeId, draft, set }: { genomeId: string; draft: WizardDraft; set: Set }) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
-      <h2 className="text-[24px] font-bold text-ink">Name &amp; accounts</h2>
+      <h2 className="text-24 font-bold text-ink">Name &amp; accounts</h2>
 
-      <label htmlFor="auto-name" className="mt-[26px] block text-[16.5px] font-medium" style={{ color: '#5B5B5B' }}>
+      <label htmlFor="auto-name" className="mt-[26px] block text-17 font-medium" style={{ color: '#5B5B5B' }}>
         Recipe name
       </label>
       <input id="auto-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} className={cn(FIELD, 'mt-[10px]')} style={FIELD_RING} />
 
-      <p className="mt-[24px] text-[16.5px] font-medium" style={{ color: '#5B5B5B' }}>
+      <p className="mt-[24px] text-17 font-medium" style={{ color: '#5B5B5B' }}>
         Target account(s)
       </p>
       <AccountPicker genomeId={genomeId} selected={draft.targetPlatforms} onSelected={(targetPlatforms) => set({ targetPlatforms })} />
@@ -230,7 +230,7 @@ export function NameStep({ genomeId, draft, set }: { genomeId: string; draft: Wi
           with the tick at right 16 / top 16. */}
       {draft.kind === 'auto_trend' ? (
         <>
-          <p className="mt-[30px] text-[19px] font-bold text-ink">Choose Recipe Type</p>
+          <p className="mt-[30px] text-19 font-bold text-ink">Choose Recipe Type</p>
           <div className="mt-[14px] flex gap-[18px] max-md:flex-col">
             {RECIPE_TYPES.map((t) => {
               const on = draft.recipeType === t.value;
@@ -311,7 +311,7 @@ const OUTPUTS = [1, 2, 3, 5, 8, 10].map((n) => ({ value: String(n), label: `${n}
 export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: WizardDraft; set: Set }) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
-      <h2 className="text-[24px] font-bold text-ink">Set your starting query</h2>
+      <h2 className="text-24 font-bold text-ink">Set your starting query</h2>
 
       <div className="mt-[22px]">
         <PillToggle
@@ -337,7 +337,7 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
             tone="keyword"
           />
           {draft.keywords.length >= 10 ? (
-            <p className="mt-[8px] text-[13px]" style={{ color: '#838383' }}>
+            <p className="mt-[8px] text-13" style={{ color: '#838383' }}>
               Ten is the cap — keywords are OR&rsquo;d, so a recipe watching twenty topics is watching
               everything.
             </p>
@@ -345,7 +345,7 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
         </>
       )}
 
-      <h3 className="mt-[34px] text-[22px] font-bold text-ink">Refine your query</h3>
+      <h3 className="mt-[34px] text-22 font-bold text-ink">Refine your query</h3>
       {/* Four dropdowns, not the design's six. Region and Language are passed
           to `TrendSource.fetch`; Signal is `minScore` and Posts per run is
           `maxOutputs`. The design's other two — Max post age and Saved
@@ -384,15 +384,15 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
           <path d="M10 6.8v4.4M10 14v.6" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" />
         </svg>
         <div className="flex-1">
-          <p className="text-[16.5px] font-bold text-ink">Enable Brand safety filter</p>
-          <p className="mt-[3px] text-[14.5px] font-normal" style={{ color: '#5B5B5B' }}>
+          <p className="text-17 font-bold text-ink">Enable Brand safety filter</p>
+          <p className="mt-[3px] text-15 font-normal" style={{ color: '#5B5B5B' }}>
             Flagged posts route to Needs Review
           </p>
         </div>
         <Toggle on={draft.brandSafety} onToggle={() => set({ brandSafety: !draft.brandSafety })} label="Brand safety filter" />
       </div>
       {draft.brandSafety ? (
-        <p className="mt-[8px] text-[13px]" style={{ color: '#838383' }}>
+        <p className="mt-[8px] text-13" style={{ color: '#838383' }}>
           Guardrails already route anything they flag to Needs Review; this keeps the review gate on for
           everything this recipe produces.
         </p>
@@ -428,7 +428,7 @@ export function SourceStep({
   return (
     <>
       <section className={CARD} style={CARD_SHADOW}>
-        <h2 className="text-[24px] font-bold text-ink">Choose a Source type</h2>
+        <h2 className="text-24 font-bold text-ink">Choose a Source type</h2>
 
         <div className="mt-[24px] grid grid-cols-2 gap-[20px] max-md:grid-cols-1">
           {SOURCES.map((s) => {
@@ -447,8 +447,8 @@ export function SourceStep({
                     <RecipeGlyph kind="bulk_connector" size={34} />
                   </span>
                 </span>
-                <span className="absolute left-[124px] top-[52px] whitespace-nowrap text-[19px] font-bold text-ink">{s.name}</span>
-                <span className="absolute left-[124px] top-[82px] text-[14.5px]" style={{ color: '#838383' }}>
+                <span className="absolute left-[124px] top-[52px] whitespace-nowrap text-19 font-bold text-ink">{s.name}</span>
+                <span className="absolute left-[124px] top-[82px] text-15" style={{ color: '#838383' }}>
                   {s.hint}
                 </span>
                 <span
@@ -470,7 +470,7 @@ export function SourceStep({
         {/* ── what each source needs, if anything ────────────────────────── */}
         {draft.bulkSource === 'csv' ? (
           <div className="mt-[26px]">
-            <p className="text-[16.5px] font-semibold text-ink">Upload your sheet</p>
+            <p className="text-17 font-semibold text-ink">Upload your sheet</p>
             <label
               className="mt-[10px] flex h-[96px] cursor-pointer items-center justify-center gap-[12px] rounded-[18px]"
               style={{ background: 'rgba(255,255,255,0.85)', border: '1.6px dashed rgba(131,131,131,0.45)' }}
@@ -496,7 +496,7 @@ export function SourceStep({
                 {draft.csvName ? `${draft.csvName} — pick another` : 'Choose a CSV file'}
               </span>
             </label>
-            <p className="mt-[9px] text-[13.5px]" style={{ color: '#838383' }}>
+            <p className="mt-[9px] text-14" style={{ color: '#838383' }}>
               Read in your browser and stored on the recipe, so nothing has to be publicly downloadable.
               Its rows are listed on the next step.
             </p>
@@ -505,7 +505,7 @@ export function SourceStep({
 
         {draft.bulkSource === 'canva' ? (
           <div className="mt-[26px]">
-            <p className="text-[16.5px] font-semibold text-ink">Which Canva folder</p>
+            <p className="text-17 font-semibold text-ink">Which Canva folder</p>
             <input
               value={draft.canvaUrl}
               onChange={(e) => set({ canvaUrl: e.target.value })}
@@ -514,7 +514,7 @@ export function SourceStep({
               style={FIELD_RING}
               aria-label="Canva folder link"
             />
-            <p className="mt-[9px] text-[13.5px]" style={{ color: '#838383' }}>
+            <p className="mt-[9px] text-14" style={{ color: '#838383' }}>
               {draft.canvaUrl
                 ? `Folder ${folderIdFrom(draft.canvaUrl)} — read through your connected Canva account each run.`
                 : 'Open the folder in Canva and copy its link. Nothing in the API lists your folders, so this is how the recipe knows which one.'}
@@ -524,7 +524,7 @@ export function SourceStep({
 
         {draft.bulkSource === 'drive' ? (
           <div className="mt-[26px]">
-            <p className="text-[16.5px] font-semibold text-ink">Which Drive folder</p>
+            <p className="text-17 font-semibold text-ink">Which Drive folder</p>
             <input
               value={draft.driveUrl}
               onChange={(e) => set({ driveUrl: e.target.value })}
@@ -537,7 +537,7 @@ export function SourceStep({
                 one shared API key, so it can only ever see a link-shared folder.
                 Drawing a "Connect Google Drive" button would promise an account
                 link that does not exist. */}
-            <p className="mt-[9px] text-[13.5px]" style={{ color: '#838383' }}>
+            <p className="mt-[9px] text-14" style={{ color: '#838383' }}>
               Set the folder to <b className="font-semibold">Anyone with the link can view</b>. Drive is read
               through a shared key rather than your Google account, so it only ever sees what is
               link-shared.
@@ -563,9 +563,9 @@ export function SourceStep({
           style={{ background: 'rgba(255,255,255,0.85)', border: '1.6px dashed rgba(131,131,131,0.45)' }}
         >
           <div className="min-w-0 flex-1">
-            <p className="text-[19px] font-bold text-ink">Canva — not connected</p>
+            <p className="text-19 font-bold text-ink">Canva — not connected</p>
             {connectNote ? (
-              <p className="mt-[4px] text-[13.5px]" style={{ color: '#5B5B5B' }}>
+              <p className="mt-[4px] text-14" style={{ color: '#5B5B5B' }}>
                 {connectNote}
               </p>
             ) : null}
@@ -598,26 +598,26 @@ export function ValidateStep({
 
   return (
     <section className="w-full max-w-[1256px] rounded-[24px] bg-white px-[30px] pb-[30px] pt-[36px] lg:ml-[55px]" style={CARD_SHADOW}>
-      <h2 className="pl-[4px] text-[24px] font-bold text-ink">
+      <h2 className="pl-[4px] text-24 font-bold text-ink">
         Preview &amp; validate your files on:&nbsp; {draft.csvName || draft.name}
       </h2>
 
       <div className="mt-[28px] flex items-center gap-[14px] rounded-[16px] px-[20px] py-[16px]" style={{ background: validation?.valid === false ? 'var(--ss-auto-failed-bg)' : 'var(--ss-auto-note)' }}>
         {validation === null ? (
-          <p className="text-[16.5px] font-medium text-ink">Checking this recipe…</p>
+          <p className="text-17 font-medium text-ink">Checking this recipe…</p>
         ) : !validation.valid ? (
-          <p className="text-[16.5px] font-medium" style={{ color: 'var(--ss-auto-failed)' }}>
+          <p className="text-17 font-medium" style={{ color: 'var(--ss-auto-failed)' }}>
             {validation.error ?? 'This recipe is not valid yet.'}
           </p>
         ) : rows ? (
-          <p className="text-[16.5px] font-medium text-ink">
+          <p className="text-17 font-medium text-ink">
             🎉 <b className="font-bold">Your file was read:</b>&nbsp; {rows.rows.length} row
             {rows.rows.length === 1 ? '' : 's'} detected&nbsp;&nbsp;·&nbsp;&nbsp;{rows.valid} valid
             &nbsp;&nbsp;·&nbsp;&nbsp;{rows.rows.length - rows.valid} warning
             {rows.rows.length - rows.valid === 1 ? '' : 's'}
           </p>
         ) : (
-          <p className="text-[16.5px] font-medium text-ink">
+          <p className="text-17 font-medium text-ink">
             🎉 <b className="font-bold">This recipe is valid.</b>&nbsp; Its items are read on the first run.
           </p>
         )}
@@ -625,7 +625,7 @@ export function ValidateStep({
 
       {validation?.notApplied.length ? (
         <div className="mt-[20px] rounded-[16px] px-[20px] py-[16px]" style={{ background: 'rgba(131,131,131,0.07)' }}>
-          <p className="text-[16.5px] font-bold text-ink">Saved, but not applied yet</p>
+          <p className="text-17 font-bold text-ink">Saved, but not applied yet</p>
           <ul className="mt-[8px] flex flex-col gap-[8px]">
             {validation.notApplied.map((n) => (
               <li key={n.field} className="text-15 leading-[1.45]" style={{ color: '#5B5B5B' }}>
@@ -644,7 +644,7 @@ export function ValidateStep({
         ) : (
           <div className="mt-[28px] overflow-x-auto">
             <div className="min-w-[820px]">
-              <div className="flex h-[44px] items-center text-[16.5px] font-medium" style={{ color: '#5B5B5B', boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.2)' }}>
+              <div className="flex h-[44px] items-center text-17 font-medium" style={{ color: '#5B5B5B', boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.2)' }}>
                 <span className="w-[60px] shrink-0" />
                 <span className="flex-1">Caption</span>
                 <span className="w-[220px]">Media</span>
@@ -692,10 +692,10 @@ export function ValidateStep({
             ['Folder', folderIdFrom(draft.bulkSource === 'canva' ? draft.canvaUrl : draft.driveUrl) || 'Not set'],
           ].map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-[12px] border-b pb-[10px]" style={{ borderColor: 'rgba(131,131,131,0.15)' }}>
-              <dt className="text-[16.5px]" style={{ color: '#5B5B5B' }}>
+              <dt className="text-17" style={{ color: '#5B5B5B' }}>
                 {k}
               </dt>
-              <dd className="truncate text-[16.5px] font-semibold text-ink" title={v}>
+              <dd className="truncate text-17 font-semibold text-ink" title={v}>
                 {v}
               </dd>
             </div>
@@ -715,9 +715,9 @@ export function ValidateStep({
 export function FeedStep({ draft, set }: { draft: WizardDraft; set: Set }) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
-      <h2 className="text-[24px] font-bold text-ink">RSS feed URL</h2>
+      <h2 className="text-24 font-bold text-ink">RSS feed URL</h2>
 
-      <label htmlFor="auto-feed" className="mt-[26px] block text-[16.5px] font-semibold text-ink">
+      <label htmlFor="auto-feed" className="mt-[26px] block text-17 font-semibold text-ink">
         Connect your RSS Feed URL:
       </label>
       <input
@@ -729,7 +729,7 @@ export function FeedStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         style={FIELD_RING}
       />
 
-      <p className="mt-[24px] text-[16.5px] font-semibold text-ink">Feed type</p>
+      <p className="mt-[24px] text-17 font-semibold text-ink">Feed type</p>
       <div className="mt-[10px] flex gap-[12px]">
         {(['News/Blogs', 'Podcast Stations'] as const).map((t) => {
           const on = draft.feedType === t;
@@ -782,9 +782,9 @@ const FREQUENCIES = [
 export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
-      <h2 className="text-[24px] font-bold text-ink">Set Frequency, CTA &amp; schedule</h2>
+      <h2 className="text-24 font-bold text-ink">Set Frequency, CTA &amp; schedule</h2>
 
-      <label htmlFor="auto-goal" className="mt-[24px] block text-[16.5px] font-semibold text-ink">
+      <label htmlFor="auto-goal" className="mt-[24px] block text-17 font-semibold text-ink">
         Goal
       </label>
       <input
@@ -792,10 +792,10 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         value={draft.goal}
         onChange={(e) => set({ goal: e.target.value })}
         placeholder="Book more demos"
-        className={cn(FIELD, 'mt-[10px] text-[16.5px]')}
+        className={cn(FIELD, 'mt-[10px] text-17')}
         style={FIELD_RING}
       />
-      <p className="mt-[9px] text-[14.5px] font-medium" style={{ color: '#2AA02A' }}>
+      <p className="mt-[9px] text-15 font-medium" style={{ color: '#2AA02A' }}>
         Folded into every post this recipe writes.
       </p>
 
@@ -803,7 +803,7 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
           copy through the output's intent — and `ctaUrl` is stored and not,
           because a URL in prose becomes spoken copy. Sharing one box would hide
           that difference. */}
-      <label htmlFor="auto-cta" className="mt-[20px] block text-[16.5px] font-semibold text-ink">
+      <label htmlFor="auto-cta" className="mt-[20px] block text-17 font-semibold text-ink">
         CTA URL
       </label>
       <input
@@ -811,10 +811,10 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         value={draft.ctaUrl}
         onChange={(e) => set({ ctaUrl: e.target.value })}
         placeholder="https://brand.com/offer"
-        className={cn(FIELD, 'mt-[10px] text-[16.5px]')}
+        className={cn(FIELD, 'mt-[10px] text-17')}
         style={FIELD_RING}
       />
-      <p className="mt-[9px] text-[14.5px]" style={{ color: '#838383' }}>
+      <p className="mt-[9px] text-15" style={{ color: '#838383' }}>
         Saved on the recipe. A recipe output has no link field yet, so SPARK does not paste it into the
         copy — putting a URL in prose is how posts end up reciting one out loud.
       </p>
@@ -859,19 +859,19 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               : {})}
           />
           <div>
-            <div className="text-[16.5px] font-semibold text-ink">Posting window</div>
+            <div className="text-17 font-semibold text-ink">Posting window</div>
             <div
               className="mt-[9px] flex h-[58px] cursor-not-allowed items-center rounded-[12px] bg-white px-[20px] opacity-70"
               style={FIELD_RING}
               title="A recipe has no posting-window field. When a run produces posts, the scheduler staggers them by 11 minutes and the brand's own posting windows apply."
             >
-              <span className="truncate text-[16.5px] font-medium" style={{ color: '#5B5B5B' }}>
+              <span className="truncate text-17 font-medium" style={{ color: '#5B5B5B' }}>
                 Your brand&rsquo;s posting windows
               </span>
             </div>
           </div>
           <div>
-            <label htmlFor="auto-start" className="block text-[16.5px] font-semibold text-ink">
+            <label htmlFor="auto-start" className="block text-17 font-semibold text-ink">
               Start date
             </label>
             <input
@@ -880,12 +880,12 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               value={draft.startDate}
               disabled={draft.startToday}
               onChange={(e) => set({ startDate: e.target.value })}
-              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-[16.5px] font-medium text-ink outline-none disabled:opacity-60"
+              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-17 font-medium text-ink outline-none disabled:opacity-60"
               style={FIELD_RING}
             />
           </div>
           <div>
-            <label htmlFor="auto-end" className="block text-[16.5px] font-semibold text-ink">
+            <label htmlFor="auto-end" className="block text-17 font-semibold text-ink">
               End date
             </label>
             <input
@@ -893,14 +893,14 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               type="date"
               value={draft.endDate}
               onChange={(e) => set({ endDate: e.target.value })}
-              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-[16.5px] font-medium text-ink outline-none"
+              className="mt-[9px] h-[58px] w-full rounded-[12px] bg-white px-[20px] text-17 font-medium text-ink outline-none"
               style={FIELD_RING}
             />
           </div>
         </div>
       ) : (
         <>
-          <p className="mt-[26px] text-[16.5px] font-semibold text-ink">Post Every</p>
+          <p className="mt-[26px] text-17 font-semibold text-ink">Post Every</p>
           <div className="mt-[9px] flex flex-wrap gap-[16px]">
             <input
               type="number"
@@ -909,7 +909,7 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               value={draft.everyN}
               onChange={(e) => set({ everyN: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })}
               aria-label="How many"
-              className="h-[58px] w-[150px] rounded-[12px] bg-white px-[18px] text-[16.5px] font-semibold text-ink outline-none"
+              className="h-[58px] w-[150px] rounded-[12px] bg-white px-[18px] text-17 font-semibold text-ink outline-none"
               style={FIELD_RING}
             />
             <div className="flex h-[58px] w-[190px] items-center rounded-[12px] bg-white pl-[18px] pr-[14px]" style={FIELD_RING}>
@@ -917,7 +917,7 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
                 value={draft.everyUnit}
                 onChange={(e) => set({ everyUnit: e.target.value as WizardDraft['everyUnit'] })}
                 aria-label="Unit"
-                className="w-full cursor-pointer appearance-none bg-transparent text-[16.5px] font-semibold text-ink outline-none"
+                className="w-full cursor-pointer appearance-none bg-transparent text-17 font-semibold text-ink outline-none"
               >
                 <option value="hours">Hour(s)</option>
                 <option value="days">Day(s)</option>
@@ -927,7 +927,7 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
               </svg>
             </div>
           </div>
-          <p className="mt-[9px] text-[13.5px]" style={{ color: '#838383' }}>
+          <p className="mt-[9px] text-14" style={{ color: '#838383' }}>
             Minimum 15 minutes, maximum a week — the scheduler polls the recipe on this cycle.
           </p>
         </>
@@ -936,8 +936,8 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
       <div className="mt-[28px] flex items-center gap-[14px] rounded-[14px] px-[22px] py-[18px]" style={{ background: 'rgba(131,131,131,0.07)' }}>
         <div className="flex-1">
           <div className="flex items-center gap-[12px]">
-            <p className="text-[17px] font-bold text-ink">Review before publish</p>
-            <span className="inline-flex h-[24px] items-center rounded-[6px] px-[9px] text-[12.5px] font-semibold" style={{ background: 'rgba(131,131,131,0.14)', color: '#5B5B5B' }}>
+            <p className="text-17 font-bold text-ink">Review before publish</p>
+            <span className="inline-flex h-[24px] items-center rounded-[6px] px-[9px] text-13 font-semibold" style={{ background: 'rgba(131,131,131,0.14)', color: '#5B5B5B' }}>
               Optional
             </span>
           </div>

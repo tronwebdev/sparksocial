@@ -120,11 +120,11 @@ export function ConversationDrawer({
       <aside className="flex h-full w-[520px] max-w-full flex-col bg-surface shadow-2xl">
         <header className="flex items-start justify-between gap-3 border-b border-border px-6 py-4">
           <div className="min-w-0">
-            <p className="truncate text-[16px] font-semibold text-ink">
+            <p className="truncate text-16 font-semibold text-ink">
               {thread?.authorName ?? thread?.authorHandle ?? 'Conversation'}
             </p>
             {thread ? (
-              <p className="mt-0.5 text-[13px] text-ink-muted">
+              <p className="mt-0.5 text-13 text-ink-muted">
                 {thread.messageCount} {KIND_LABEL[thread.kind] ?? thread.kind} on{' '}
                 <span className="capitalize">{thread.platform}</span>
                 {thread.authorName ? ` · ${thread.authorHandle}` : ''}
@@ -134,7 +134,7 @@ export function ConversationDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 text-[14px] text-ink-muted hover:text-ink"
+            className="shrink-0 text-14 text-ink-muted hover:text-ink"
             aria-label="Close conversation"
           >
             Close
@@ -142,7 +142,7 @@ export function ConversationDrawer({
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+          {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
           {thread === null && !error ? (
             <div className="grid grid-cols-1 gap-3">
@@ -153,14 +153,14 @@ export function ConversationDrawer({
           ) : null}
 
           {thread?.single ? (
-            <p className="mb-3 rounded-lg border border-border bg-surface-muted px-3 py-2 text-[13px] text-ink-muted">
+            <p className="mb-3 rounded-lg border border-border bg-surface-muted px-3 py-2 text-13 text-ink-muted">
               This message arrived before SPARK tracked conversations, so there is nothing to thread it to. The
               next message from this person will be.
             </p>
           ) : null}
 
           {thread?.truncated ? (
-            <p className="mb-3 text-[12px] text-ink-muted">
+            <p className="mb-3 text-12 text-ink-muted">
               Showing the most recent 50 messages — older ones are not loaded.
             </p>
           ) : null}
@@ -180,10 +180,10 @@ export function ConversationDrawer({
                         : 'border border-border bg-surface-muted text-ink',
                     )}
                   >
-                    <p className="whitespace-pre-wrap text-[14px]">{turn.text}</p>
+                    <p className="whitespace-pre-wrap text-14">{turn.text}</p>
 
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] tabular-nums text-ink-muted">
+                      <span className="text-11 tabular-nums text-ink-muted">
                         {new Date(turn.at).toLocaleString('en', {
                           day: 'numeric',
                           month: 'short',
@@ -193,7 +193,7 @@ export function ConversationDrawer({
                       </span>
 
                       {turn.direction === 'outbound' ? (
-                        <span className="text-[11px] text-ink-muted">
+                        <span className="text-11 text-ink-muted">
                           {/* The distinction the status enum keeps and a
                               transcript would otherwise flatten: nobody read an
                               auto-handled reply before it went out. */}

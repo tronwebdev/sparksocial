@@ -160,32 +160,32 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
                   `from` above for why no remote logo is loaded. */}
               <span
                 aria-hidden
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[9px] text-[16px] font-bold text-ink"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[9px] text-16 font-bold text-ink"
                 style={{ background: '#F4F5F7' }}
               >
                 {proposal.from.name.slice(0, 1).toUpperCase()}
               </span>
               <span className="min-w-0">
-                <span className="block text-[11.5px] font-bold uppercase tracking-[0.07em]" style={{ color: 'rgb(131,131,131)' }}>
+                <span className="block text-12 font-bold uppercase tracking-[0.07em]" style={{ color: 'rgb(131,131,131)' }}>
                   From
                 </span>
-                <span className="mt-[2px] block truncate text-[16px] font-bold text-ink">{proposal.from.name}</span>
+                <span className="mt-[2px] block truncate text-16 font-bold text-ink">{proposal.from.name}</span>
               </span>
             </div>
           ) : null}
 
-          <h1 className="text-[30px] font-bold leading-[1.2] text-ink">{proposal.title}</h1>
-          <p className="mt-[10px] text-[16px]" style={{ color: 'rgb(91,91,91)' }}>
+          <h1 className="text-32 font-bold leading-[1.2] text-ink">{proposal.title}</h1>
+          <p className="mt-[10px] text-16" style={{ color: 'rgb(91,91,91)' }}>
             Prepared for <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>{proposal.preparedFor}</b>
           </p>
-          <p className="mt-[4px] text-[15px]" style={{ color: 'rgb(131,131,131)' }}>
+          <p className="mt-[4px] text-15" style={{ color: 'rgb(131,131,131)' }}>
             {months(proposal.termMonths)} term
             {proposal.sentAt ? ` · sent ${new Date(proposal.sentAt).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
           </p>
         </header>
 
         <section className="px-[40px] py-[30px]">
-          <h2 className="text-[13px] font-bold uppercase tracking-[0.06em]" style={{ color: 'rgb(131,131,131)' }}>
+          <h2 className="text-13 font-bold uppercase tracking-[0.06em]" style={{ color: 'rgb(131,131,131)' }}>
             What is included
           </h2>
 
@@ -197,22 +197,22 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
                 style={i > 0 ? { boxShadow: 'inset 0 1px 0 rgba(131,131,131,0.14)' } : undefined}
               >
                 <span className="min-w-0">
-                  <span className="block text-[16.5px] font-semibold text-ink">
+                  <span className="block text-17 font-semibold text-ink">
                     {/* The description carries the meaning where the service is
                         "other"; the label carries it everywhere else. */}
                     {li.description?.trim() || PROPOSAL_SERVICE_LABELS[li.service] || li.service}
                   </span>
                   {li.quantity > 1 ? (
-                    <span className="mt-[3px] block text-[14px]" style={{ color: 'rgb(131,131,131)' }}>
+                    <span className="mt-[3px] block text-14" style={{ color: 'rgb(131,131,131)' }}>
                       {li.quantity} × {money(li.unitCents, cur)}
                     </span>
                   ) : null}
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-[16.5px] font-semibold text-ink">
+                  <span className="block text-17 font-semibold text-ink">
                     {money(li.unitCents * li.quantity, cur)}
                   </span>
-                  <span className="mt-[3px] block text-[13.5px]" style={{ color: 'rgb(131,131,131)' }}>
+                  <span className="mt-[3px] block text-14" style={{ color: 'rgb(131,131,131)' }}>
                     {li.recurrence === 'monthly' ? 'per month' : 'one-off'}
                   </span>
                 </span>
@@ -239,7 +239,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
             </div>
           </dl>
           {proposal.monthlyCents > 0 && proposal.oneOffCents > 0 ? (
-            <p className="mt-[14px] text-[13.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="mt-[14px] text-14 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
               The monthly amount recurs for each of the {months(proposal.termMonths)}. The one-off is charged once.
             </p>
           ) : null}
@@ -247,30 +247,30 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
 
         {proposal.notes?.trim() ? (
           <section className="px-[40px] pb-[30px]">
-            <h2 className="text-[13px] font-bold uppercase tracking-[0.06em]" style={{ color: 'rgb(131,131,131)' }}>
+            <h2 className="text-13 font-bold uppercase tracking-[0.06em]" style={{ color: 'rgb(131,131,131)' }}>
               Notes
             </h2>
             {/* Pre-wrapped rather than parsed: the agency typed line breaks and
                 meant them, and no markup from a text field is rendered as HTML. */}
-            <p className="mt-[12px] whitespace-pre-wrap text-[15.5px] leading-[1.6] text-ink">{proposal.notes}</p>
+            <p className="mt-[12px] whitespace-pre-wrap text-16 leading-[1.6] text-ink">{proposal.notes}</p>
           </section>
         ) : null}
 
         <footer className="px-[40px] pb-[36px]">
           <div className="rounded-[14px] p-[20px]" style={{ background: '#E4EEFB' }}>
-            <p className="text-[15.5px] font-semibold" style={{ color: '#2B5EA7' }}>
+            <p className="text-16 font-semibold" style={{ color: '#2B5EA7' }}>
               {proposal.from
                 ? `To accept, reply to ${proposal.from.name}.`
                 : 'To accept, reply to the email this link came from.'}
             </p>
-            <p className="mt-[6px] text-[14.5px] leading-[1.5]" style={{ color: '#3A6295' }}>
+            <p className="mt-[6px] text-15 leading-[1.5]" style={{ color: '#3A6295' }}>
               This page is a copy of the offer to read and share internally. Nothing on it commits you to
               anything.
             </p>
           </div>
 
           {proposal.expiresAt ? (
-            <p className="mt-[18px] text-[13.5px]" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="mt-[18px] text-14" style={{ color: 'rgb(131,131,131)' }}>
               This link stops working on{' '}
               {new Date(proposal.expiresAt).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })}.
             </p>
@@ -278,7 +278,7 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
         </footer>
       </article>
 
-      <p className="mx-auto mt-[22px] max-w-[720px] text-center text-[13px]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="mx-auto mt-[22px] max-w-[720px] text-center text-13" style={{ color: 'rgb(131,131,131)' }}>
         Sent with SparkSocial
       </p>
     </main>
@@ -288,10 +288,10 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-[16px]">
-      <dt className={strong ? 'text-[16px] font-semibold text-ink' : 'text-[15.5px]'} style={strong ? undefined : { color: 'rgb(91,91,91)' }}>
+      <dt className={strong ? 'text-16 font-semibold text-ink' : 'text-16'} style={strong ? undefined : { color: 'rgb(91,91,91)' }}>
         {label}
       </dt>
-      <dd className={strong ? 'text-[26px] font-bold leading-none text-ink' : 'text-[16px] font-semibold text-ink'}>
+      <dd className={strong ? 'text-26 font-bold leading-none text-ink' : 'text-16 font-semibold text-ink'}>
         {value}
       </dd>
     </div>
@@ -311,8 +311,8 @@ function NotValid() {
         className="w-full max-w-[520px] rounded-[20px] bg-white px-[40px] py-[44px] text-center"
         style={{ boxShadow: '0 30px 70px -50px rgba(12,12,12,0.45)' }}
       >
-        <h1 className="text-[24px] font-bold leading-[1.25] text-ink">This proposal link is not available</h1>
-        <p className="mt-[14px] text-[15.5px] leading-[1.55]" style={{ color: 'rgb(91,91,91)' }}>
+        <h1 className="text-24 font-bold leading-[1.25] text-ink">This proposal link is not available</h1>
+        <p className="mt-[14px] text-16 leading-[1.55]" style={{ color: 'rgb(91,91,91)' }}>
           Links expire after a short window, and stop working once the proposal has been decided. Ask
           whoever sent it for a fresh one.
         </p>

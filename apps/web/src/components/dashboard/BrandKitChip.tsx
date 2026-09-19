@@ -72,12 +72,12 @@ export function BrandKitChip({ kit }: { kit: BrandKit }) {
         style={{ background: `conic-gradient(${sweep})` }}
         aria-hidden
       >
-        <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white text-[11.5px] font-semibold tabular-nums text-ink">
+        <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white text-12 font-semibold tabular-nums text-ink">
           {kit.pct}%
         </span>
       </span>
 
-      <span className="absolute left-[70px] top-3 block whitespace-nowrap text-[15px] font-semibold text-ink">
+      <span className="absolute left-[70px] top-3 block whitespace-nowrap text-15 font-semibold text-ink">
         {/* The design's copy is "Brand Kit Setup loading...", which describes
             nothing loading. The count is the same length and is a fact. */}
         Brand kit — {kit.completed} of {kit.total} done

@@ -34,7 +34,7 @@ export function SalesStep({
 }) {
   return (
     <div>
-      <p className="text-[13px] text-ink-muted">
+      <p className="text-13 text-ink-muted">
         When someone sounds like a customer rather than a commenter, this decides what SPARK may do about
         it and where the lead goes.
       </p>
@@ -60,15 +60,15 @@ export function SalesStep({
                   on ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
                 )}
               >
-                <span className="block text-[13px] font-medium text-ink">{o.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{o.hint}</span>
+                <span className="block text-13 font-medium text-ink">{o.label}</span>
+                <span className="mt-0.5 block text-12 text-ink-muted">{o.hint}</span>
               </button>
             </li>
           );
         })}
       </ul>
       {qualification.length === 0 && (
-        <p className="mt-2 text-[12px] text-ink-muted">
+        <p className="mt-2 text-12 text-ink-muted">
           Nothing selected: SPARK will flag the lead and let you take it from there.
         </p>
       )}
@@ -81,13 +81,13 @@ export function SalesStep({
           <div key={t.value} className="flex flex-wrap items-center gap-2">
             <span className="flex w-[132px] shrink-0 items-baseline gap-1.5">
               <span aria-hidden>{t.emoji}</span>
-              <span className="text-[13px] font-medium text-ink">{t.label}</span>
-              <span className="text-[11px] text-ink-muted">{t.hint}</span>
+              <span className="text-13 font-medium text-ink">{t.label}</span>
+              <span className="text-11 text-ink-muted">{t.hint}</span>
             </span>
             {/* The prototype's arrow, kept. It reads its rules as a sentence and
                 the arrow is what makes the row scan as one rule rather than a
                 label beside three unrelated chips. */}
-            <span aria-hidden className="shrink-0 text-[13px] text-ink-muted">
+            <span aria-hidden className="shrink-0 text-13 text-ink-muted">
               &rarr;
             </span>
             <div className="flex flex-wrap gap-1.5">
@@ -106,7 +106,7 @@ export function SalesStep({
                       onUsingDefaultHandoff(false);
                     }}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                      'rounded-full border px-3 py-1.5 text-13 transition-colors',
                       on
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -122,15 +122,15 @@ export function SalesStep({
         ))}
       </div>
       {usingDefaultHandoff && (
-        <p className="mt-2 text-[12px] text-ink-muted">
+        <p className="mt-2 text-12 text-ink-muted">
           These are the defaults. Change any row to make them yours.
         </p>
       )}
 
-      <label className="mt-5 block text-[12px] font-medium text-ink-muted" htmlFor="ei-sales-destination">
+      <label className="mt-5 block text-12 font-medium text-ink-muted" htmlFor="ei-sales-destination">
         Send leads on to
       </label>
-      <p className="mt-1 text-[12px] text-ink-muted">
+      <p className="mt-1 text-12 text-ink-muted">
         An email address or a CRM inbox. Only used for the rows set to &ldquo;send on&rdquo; &mdash; without
         it, those leads wait in Sales Opportunities instead.
       </p>

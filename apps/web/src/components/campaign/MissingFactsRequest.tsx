@@ -104,10 +104,10 @@ export function MissingFactsRequest({
 
   return (
     <div className="rounded-lg border border-warn/40 bg-warn/5 p-4">
-      <h3 className="text-[14px] font-medium text-ink">
+      <h3 className="text-14 font-medium text-ink">
         {blockedPlaybooks} of these formats need something from you first
       </h3>
-      <p className="mt-1 max-w-[62ch] text-[13px] text-ink-muted">
+      <p className="mt-1 max-w-[62ch] text-13 text-ink-muted">
         {/* The number is what makes this worth stopping for. "Please fill in a
             field" is bureaucracy; "this adds N posts" is a reason. */}
         {unlocksPosts > 0
@@ -120,8 +120,8 @@ export function MissingFactsRequest({
       <div className="mt-3 grid grid-cols-1 gap-3">
         {writable.map((fact) => (
           <label key={fact.path} className="grid gap-1">
-            <span className="text-[13px] font-medium text-ink capitalize">{fact.label}</span>
-            <span className="text-[12px] text-ink-muted">{fact.hint}</span>
+            <span className="text-13 font-medium text-ink capitalize">{fact.label}</span>
+            <span className="text-12 text-ink-muted">{fact.hint}</span>
             <Input
               value={values[fact.path] ?? ''}
               onChange={(e) => setValues((prev) => ({ ...prev, [fact.path]: e.target.value }))}
@@ -133,14 +133,14 @@ export function MissingFactsRequest({
         ))}
 
         {readOnly.map((fact) => (
-          <p key={fact.path} className="text-[13px] text-ink">
+          <p key={fact.path} className="text-13 text-ink">
             <span className="font-medium capitalize">{fact.label}</span> — {fact.hint} Set it in{' '}
             {fact.fixWith}.
           </p>
         ))}
       </div>
 
-      {error && <p className="mt-3 text-[12px] text-destructive">{error}</p>}
+      {error && <p className="mt-3 text-12 text-destructive">{error}</p>}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => void save()} disabled={busy || !filledAll}>

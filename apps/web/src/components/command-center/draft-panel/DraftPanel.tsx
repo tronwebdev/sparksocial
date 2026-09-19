@@ -1010,10 +1010,10 @@ export function DraftPanel({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Draft">
       <div className="flex max-h-[85vh] w-[640px] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
         <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-[16px] font-semibold text-ink">
+          <h2 className="text-16 font-semibold text-ink">
             {phase === 'trigger' ? 'New post' : phase === 'preview' ? 'Review your post' : draft?.playbookId ?? 'Draft'}
           </h2>
-          <button type="button" onClick={onClose} className="text-[14px] text-ink-muted hover:text-ink">
+          <button type="button" onClick={onClose} className="text-14 text-ink-muted hover:text-ink">
             Close
           </button>
         </header>
@@ -1032,8 +1032,8 @@ export function DraftPanel({
           */}
           {phase === 'failed' ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-[14px] font-medium text-ink">This post could not be opened</p>
-              <p className="mt-1 text-[13px] text-ink-muted">{error ?? 'Something went wrong loading it.'}</p>
+              <p className="text-14 font-medium text-ink">This post could not be opened</p>
+              <p className="mt-1 text-13 text-ink-muted">{error ?? 'Something went wrong loading it.'}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {initialContentItemId ? (
                   <Button
@@ -1057,7 +1057,7 @@ export function DraftPanel({
           {phase === 'trigger' ? (
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-[13px] font-medium text-ink-muted" htmlFor="dp-intent">
+                <label className="text-13 font-medium text-ink-muted" htmlFor="dp-intent">
                   What is this post about?
                 </label>
                 <textarea
@@ -1065,17 +1065,17 @@ export function DraftPanel({
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
                   rows={2}
-                  className="mt-1 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+                  className="mt-1 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
                 />
               </div>
 
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Post type</p>
+                <p className="text-13 font-medium text-ink-muted">Post type</p>
                 {playbooks === null ? (
                   <Skeleton className="mt-2 h-10 w-full rounded" />
                 ) : playbooks.length === 0 ? (
                   <div className="mt-2 rounded-lg border border-border bg-surface-muted p-3">
-                    <p className="text-[13px] text-ink">
+                    <p className="text-13 text-ink">
                       {playbooksWhy ?? "Nothing is ready to post yet — this brand's Asset Graph is empty."}
                     </p>
                     {/* Uploads first, because they are the cheap route and the
@@ -1094,7 +1094,7 @@ export function DraftPanel({
                             scored highest, which buried the one file that
                             unlocks the most. Leading with the best single
                             upload turns the block into one action. */}
-                        <p className="mt-1 text-[12.5px] text-ink-muted">
+                        <p className="mt-1 text-13 text-ink-muted">
                           Nothing needs filming to get started.{' '}
                           {bestUpload
                             ? `Uploading ${aOrAn(roleWords([bestUpload.role]))} unlocks ${bestUpload.count} of these ${uploadUnlockable.length} formats — more than any other single file.`
@@ -1108,7 +1108,7 @@ export function DraftPanel({
                           )
                             .slice(0, 6)
                             .map((pb) => (
-                              <li key={pb.playbook_id} className="text-[12.5px] text-ink-muted">
+                              <li key={pb.playbook_id} className="text-13 text-ink-muted">
                                 <span className="font-medium text-ink">{pb.name}</span>
                                 {pb.missing_roles.length > 1
                                   ? ` — also needs ${roleWords(pb.missing_roles.filter((r) => r !== bestUpload?.role))}`
@@ -1117,14 +1117,14 @@ export function DraftPanel({
                             ))}
                         </ul>
                         {captureOnly ? (
-                          <p className="mt-2 text-[12.5px] text-ink-muted">
+                          <p className="mt-2 text-13 text-ink-muted">
                             Filming unlocks more on top of that — ask SPARK to start this week&rsquo;s capture
                             session (Ask Spark, top right).
                           </p>
                         ) : null}
                       </>
                     ) : (
-                      <p className="mt-1 text-[12.5px] text-ink-muted">
+                      <p className="mt-1 text-13 text-ink-muted">
                         {captureOnly
                           ? "Those formats need filming first — ask SPARK to start this week's capture session " +
                             '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
@@ -1141,7 +1141,7 @@ export function DraftPanel({
                         key={pb.playbook_id}
                         type="button"
                         onClick={() => setSelectedPlaybookId(pb.playbook_id)}
-                        className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                        className={`rounded-full border px-3 py-1.5 text-13 ${
                           selectedPlaybookId === pb.playbook_id
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-border text-ink hover:bg-surface-muted'
@@ -1154,7 +1154,7 @@ export function DraftPanel({
                 )}
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
               <Button disabled={!selectedPlaybookId || busy} onClick={() => void createDraft()}>
                 {busy ? 'Generating…' : 'Generate post'}
@@ -1179,8 +1179,8 @@ export function DraftPanel({
               its own banner is the more specific thing to read. */}
           {phase === 'editor' && draft && !draft.campaignId && draft.status !== 'published' ? (
             <div className="rounded-lg border border-warn/40 bg-warn/10 p-3.5">
-              <p className="text-[13px] font-medium text-ink">This post is not part of a campaign</p>
-              <p className="mt-1 text-[12.5px] text-ink-muted">
+              <p className="text-13 font-medium text-ink">This post is not part of a campaign</p>
+              <p className="mt-1 text-13 text-ink-muted">
                 It will wait for your approval rather than going out on its own — autonomy is set per
                 campaign, and this post has none. Add it to a campaign from the{' '}
                 <Link
@@ -1216,8 +1216,8 @@ export function DraftPanel({
               in `tools.ts`. */}
           {phase === 'editor' && draft && draft.status === 'published' && draft.via === 'aggregator:stub' ? (
             <div className="mb-1 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
-              <p className="text-[13px] font-medium text-ink">Recorded, but not published anywhere</p>
-              <p className="mt-1 text-[12.5px] text-ink-muted">
+              <p className="text-13 font-medium text-ink">Recorded, but not published anywhere</p>
+              <p className="mt-1 text-13 text-ink-muted">
                 No publishing account is configured, so this went to the built-in stub. Everything up to
                 the moment of sending ran for real — guardrails, approval, scheduling, the receipt — and
                 nothing reached{' '}
@@ -1229,7 +1229,7 @@ export function DraftPanel({
 
           {phase === 'editor' && draft && draft.status === 'published' && draft.via !== 'aggregator:stub' ? (
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
-              <p className="text-[13px] text-ink">
+              <p className="text-13 text-ink">
                 Live on <span className="font-medium capitalize">{draft.platform?.replace('_', ' ')}</span>
                 {draft.via ? <span className="text-ink-muted"> via {draft.via}</span> : null}
                 {draft.url ? (
@@ -1242,7 +1242,7 @@ export function DraftPanel({
                 ) : null}
               </p>
               <div className="flex items-center gap-2">
-                {rollbackError ? <p className="text-[12px] text-destructive">{rollbackError}</p> : null}
+                {rollbackError ? <p className="text-12 text-destructive">{rollbackError}</p> : null}
                 <Button size="sm" variant="outline" disabled={rollingBack} onClick={() => void rollbackPost()}>
                   {rollingBack ? 'Rolling back…' : 'Roll back'}
                 </Button>
@@ -1252,7 +1252,7 @@ export function DraftPanel({
 
           {phase === 'editor' && draft && draft.status === 'rolled_back' ? (
             <div className="mb-1 rounded-lg border border-border bg-surface-muted px-4 py-3">
-              <p className="text-[13px] text-ink-muted">
+              <p className="text-13 text-ink-muted">
                 Rolled back — no longer live on <span className="capitalize">{draft.platform?.replace('_', ' ')}</span>.
               </p>
             </div>
@@ -1269,12 +1269,12 @@ export function DraftPanel({
               {draft.mediaType === 'video' ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
                   <div className="flex flex-wrap items-baseline gap-3">
-                    <p className="text-[13px] font-medium text-ink">Storyboard</p>
-                    <span className="text-[12px] tabular-nums text-ink-muted">
+                    <p className="text-13 font-medium text-ink">Storyboard</p>
+                    <span className="text-12 tabular-nums text-ink-muted">
                       {clock(sceneTotal ?? localTotal)} total
                     </span>
                     {draft.durationBand ? (
-                      <span className="text-[12px] text-ink-muted">
+                      <span className="text-12 text-ink-muted">
                         {outsideBand ? (
                           <span className="text-destructive">
                             outside this format&rsquo;s {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
@@ -1304,7 +1304,7 @@ export function DraftPanel({
                         if (chosen) void applyTemplate(chosen);
                         e.target.value = '';
                       }}
-                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
                       aria-label="Add a scene from a brand preset"
                     >
                       <option value="">Add from a brand preset…</option>
@@ -1371,8 +1371,8 @@ export function DraftPanel({
               */}
               {draft.mediaType === 'video' ? (
                 <div className="rounded-lg border border-dashed border-border p-4">
-                  <p className="text-[13px] font-medium text-ink">Add a scene</p>
-                  <p className="mt-1 text-[12px] text-ink-muted">
+                  <p className="text-13 font-medium text-ink">Add a scene</p>
+                  <p className="mt-1 text-12 text-ink-muted">
                     Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a
                     written slot you can film, generate, or leave as an overlay.
                   </p>
@@ -1383,10 +1383,10 @@ export function DraftPanel({
                       disabled={busyBeatId !== null}
                       rows={2}
                       placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
-                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="text-[11px] text-ink-muted" htmlFor="new-scene-seconds">
+                      <label className="text-11 text-ink-muted" htmlFor="new-scene-seconds">
                         Seconds
                       </label>
                       <input
@@ -1395,7 +1395,7 @@ export function DraftPanel({
                         onChange={(e) => setSceneDuration(e.target.value)}
                         disabled={busyBeatId !== null}
                         inputMode="decimal"
-                        className="h-9 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
+                        className="h-9 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
                       />
                       <Button
                         size="sm"
@@ -1407,7 +1407,7 @@ export function DraftPanel({
                     </div>
                   </div>
                   {beatErrors[SCENE_ADD_KEY] ? (
-                    <p className="mt-2 text-[12px] text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
+                    <p className="mt-2 text-12 text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -1420,7 +1420,7 @@ export function DraftPanel({
               {stage ? (
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
-                  <p className="text-[13px] text-ink">
+                  <p className="text-13 text-ink">
                     {stage.label}{' '}
                     <span className="text-ink-muted">
                       &mdash; {draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}
@@ -1440,8 +1440,8 @@ export function DraftPanel({
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[13px] font-medium text-ink">Not sure this is the best take?</p>
-                    <p className="text-[12px] text-ink-muted">
+                    <p className="text-13 font-medium text-ink">Not sure this is the best take?</p>
+                    <p className="text-12 text-ink-muted">
                       Preview alternative takes on the written copy. Use one, or keep both and let them compete —
                       nothing is saved until you choose.
                     </p>
@@ -1450,13 +1450,13 @@ export function DraftPanel({
                     {variantsLoading ? 'Generating…' : 'See variants'}
                   </Button>
                 </div>
-                {variantsError ? <p className="mt-2 text-[12px] text-destructive">{variantsError}</p> : null}
-                {splitNote ? <p className="mt-2 text-[12px] text-ink-muted">{splitNote}</p> : null}
+                {variantsError ? <p className="mt-2 text-12 text-destructive">{variantsError}</p> : null}
+                {splitNote ? <p className="mt-2 text-12 text-ink-muted">{splitNote}</p> : null}
                 {variants && variants.length > 0 ? (
                   <ul className="mt-3 grid grid-cols-1 gap-2">
                     {variants.map((v, i) => (
                       <li key={i} className="rounded border border-border p-3">
-                        <p className="whitespace-pre-wrap text-[13px] text-ink">
+                        <p className="whitespace-pre-wrap text-13 text-ink">
                           {v.beats
                             .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
                             .map((b) => b.text)
@@ -1491,8 +1491,8 @@ export function DraftPanel({
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[13px] font-medium text-ink">Want this as a different format?</p>
-                    <p className="text-[12px] text-ink-muted">Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
+                    <p className="text-13 font-medium text-ink">Want this as a different format?</p>
+                    <p className="text-12 text-ink-muted">Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setRepurposeOpen((v) => !v)}>
                     {repurposeOpen ? 'Cancel' : 'Repurpose'}
@@ -1511,7 +1511,7 @@ export function DraftPanel({
                               type="button"
                               disabled={repurposing}
                               onClick={() => void repurposeAs(p.playbookId)}
-                              className="rounded-full px-3 py-1.5 text-[13px] text-ink hover:bg-surface-muted disabled:opacity-50"
+                              className="rounded-full px-3 py-1.5 text-13 text-ink hover:bg-surface-muted disabled:opacity-50"
                             >
                               {repurposing ? 'Working…' : p.name}
                             </button>
@@ -1519,7 +1519,7 @@ export function DraftPanel({
                               type="button"
                               title="Why — is this producible for this brand right now?"
                               onClick={() => void explainPlaybook(p.playbookId)}
-                              className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] text-ink-muted hover:bg-surface-muted hover:text-ink"
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-11 text-ink-muted hover:bg-surface-muted hover:text-ink"
                             >
                               ⓘ
                             </button>
@@ -1529,22 +1529,22 @@ export function DraftPanel({
                   )
                 ) : null}
                 {explainOpenId ? (
-                  <p className="mt-2 text-[12px] text-ink-muted">
+                  <p className="mt-2 text-12 text-ink-muted">
                     {explainLoading === explainOpenId ? 'Working it out…' : explainSummary[explainOpenId]}
                   </p>
                 ) : null}
-                {repurposeError ? <p className="mt-2 text-[12px] text-destructive">{repurposeError}</p> : null}
-                {repurposeResult ? <p className="mt-2 text-[12px] text-success">{repurposeResult}</p> : null}
+                {repurposeError ? <p className="mt-2 text-12 text-destructive">{repurposeError}</p> : null}
+                {repurposeResult ? <p className="mt-2 text-12 text-success">{repurposeResult}</p> : null}
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
             </div>
           ) : null}
 
           {phase === 'preview' && draft ? (
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-lg border border-border p-4">
-                <p className="whitespace-pre-wrap text-[14px] text-ink">
+                <p className="whitespace-pre-wrap text-14 text-ink">
                   {caption(draft, shortUrl) || '(no written copy)'}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2">
@@ -1579,7 +1579,7 @@ export function DraftPanel({
               {draft.mediaType !== 'text' ? (
                 <div>
                   <div className="flex items-center justify-between">
-                    <p className="text-[13px] font-medium text-ink-muted">
+                    <p className="text-13 font-medium text-ink-muted">
                       {draft.mediaType === 'video' ? 'Composed video' : draft.mediaType === 'carousel' ? 'Carousel slides' : 'Composed image'}
                     </p>
                     <div className="flex gap-2">
@@ -1612,11 +1612,11 @@ export function DraftPanel({
                       ) : null}
                     </div>
                   </div>
-                  {staticRenderError ? <p className="mt-1 text-[12px] text-destructive">{staticRenderError}</p> : null}
+                  {staticRenderError ? <p className="mt-1 text-12 text-destructive">{staticRenderError}</p> : null}
 
                   {fanoutOpen ? (
                     <div className="mt-2 rounded-lg border border-border p-3">
-                      <label className="text-[12px] font-medium text-ink-muted" htmlFor="dp-brand-template-id">
+                      <label className="text-12 font-medium text-ink-muted" htmlFor="dp-brand-template-id">
                         Canva Brand Template ID
                       </label>
                       <input
@@ -1624,9 +1624,9 @@ export function DraftPanel({
                         value={brandTemplateId}
                         onChange={(e) => setBrandTemplateId(e.target.value)}
                         placeholder="from the template's Canva URL"
-                        className="mt-1 h-9 w-full rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder"
+                        className="mt-1 h-9 w-full rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder"
                       />
-                      <label className="mt-2 block text-[12px] font-medium text-ink-muted" htmlFor="dp-fanout-data">
+                      <label className="mt-2 block text-12 font-medium text-ink-muted" htmlFor="dp-fanout-data">
                         Field data (JSON — edit the keys to match the template's own field names)
                       </label>
                       <textarea
@@ -1634,16 +1634,16 @@ export function DraftPanel({
                         value={fanoutData}
                         onChange={(e) => setFanoutData(e.target.value)}
                         rows={5}
-                        className="mt-1 w-full resize-y rounded border border-border bg-input px-2 py-1.5 font-mono text-[12px] text-ink"
+                        className="mt-1 w-full resize-y rounded border border-border bg-input px-2 py-1.5 font-mono text-12 text-ink"
                       />
                       <Button size="sm" className="mt-2" disabled={fanoutBusy || !brandTemplateId.trim()} onClick={() => void fanout()}>
                         {fanoutBusy ? 'Fanning out…' : 'Fan out'}
                       </Button>
-                      {fanoutError ? <p className="mt-1 text-[12px] text-destructive">{fanoutError}</p> : null}
+                      {fanoutError ? <p className="mt-1 text-12 text-destructive">{fanoutError}</p> : null}
                       {fanoutResult ? (
                         <div className="mt-2">
                           {fanoutResult.editUrl ? (
-                            <a href={fanoutResult.editUrl} target="_blank" rel="noreferrer" className="text-[12px] text-brand-purple underline">
+                            <a href={fanoutResult.editUrl} target="_blank" rel="noreferrer" className="text-12 text-brand-purple underline">
                               Edit in Canva
                             </a>
                           ) : null}
@@ -1669,23 +1669,23 @@ export function DraftPanel({
                       )}
                     </div>
                   ) : (
-                    <p className="mt-1 text-[12px] text-ink-muted">
+                    <p className="mt-1 text-12 text-ink-muted">
                       Not rendered yet — publishing before rendering sends the raw generated clips, not one assembled {draft.mediaType}.
                     </p>
                   )}
-                  {renderError ? <p className="mt-1 text-[12px] text-destructive">{renderError}</p> : null}
+                  {renderError ? <p className="mt-1 text-12 text-destructive">{renderError}</p> : null}
                 </div>
               ) : null}
 
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Add a tracked link</p>
+                <p className="text-13 font-medium text-ink-muted">Add a tracked link</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <input
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://your-site.com/offer"
                     disabled={shortening || !!shortUrl}
-                    className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                    className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                   />
                   {shortUrl ? (
                     <Button size="sm" variant="outline" onClick={() => { setShortUrl(null); setLinkUrl(''); }}>
@@ -1697,19 +1697,19 @@ export function DraftPanel({
                     </Button>
                   )}
                 </div>
-                {shortUrl ? <p className="mt-1 text-[12px] text-success">Added {shortUrl} to the caption above.</p> : null}
-                {linkError ? <p className="mt-1 text-[12px] text-destructive">{linkError}</p> : null}
+                {shortUrl ? <p className="mt-1 text-12 text-success">Added {shortUrl} to the caption above.</p> : null}
+                {linkError ? <p className="mt-1 text-12 text-destructive">{linkError}</p> : null}
               </div>
 
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Publish to</p>
+                <p className="text-13 font-medium text-ink-muted">Publish to</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {PLATFORMS.map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPlatform(p)}
-                      className={`rounded-full border px-3 py-1.5 text-[13px] capitalize ${
+                      className={`rounded-full border px-3 py-1.5 text-13 capitalize ${
                         platform === p ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
                       }`}
                     >
@@ -1719,7 +1719,7 @@ export function DraftPanel({
                 </div>
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
             </div>
           ) : null}
         </div>
@@ -1784,20 +1784,20 @@ function StallNotice({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-ink">
+          <p className="text-13 font-medium text-ink">
             {blocked ? 'This post stopped and will not retry' : 'Waiting for approval'}
           </p>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="mt-1 text-13 text-ink-muted">
             {draft.blockedReason ?? (blocked ? 'No reason was recorded.' : 'Someone has to approve it in the Review queue.')}
           </p>
 
           {attempts > 0 ? (
-            <p className="mt-1.5 text-[12px] text-ink-muted">
+            <p className="mt-1.5 text-12 text-ink-muted">
               Tried {attempts} {attempts === 1 ? 'time' : 'times'}
               {draft.lastPublishError ? (
                 <>
                   {' \u00b7 last error: '}
-                  <span className="font-mono text-[11px] text-ink">{draft.lastPublishError}</span>
+                  <span className="font-mono text-11 text-ink">{draft.lastPublishError}</span>
                 </>
               ) : null}
             </p>
@@ -1806,7 +1806,7 @@ function StallNotice({
 
         {blocked ? (
           <div className="flex shrink-0 items-center gap-2">
-            {error ? <p className="text-[12px] text-destructive">{error}</p> : null}
+            {error ? <p className="text-12 text-destructive">{error}</p> : null}
             <Button size="sm" variant="outline" disabled={rescheduling} onClick={onReschedule}>
               {rescheduling ? 'Rescheduling\u2026' : 'Try again tomorrow'}
             </Button>

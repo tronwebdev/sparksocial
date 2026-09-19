@@ -60,11 +60,11 @@ const STATUS_TINT: Record<ProposalStatus, { background: string; color: string }>
 const SERVICES = Object.keys(PROPOSAL_SERVICE_LABELS) as ProposalService[];
 
 const BTN_GHOST =
-  'flex h-[40px] items-center rounded-[9px] bg-white px-[16px] text-[14.5px] font-semibold transition-shadow hover:shadow-card disabled:opacity-45';
+  'flex h-[40px] items-center rounded-[9px] bg-white px-[16px] text-15 font-semibold transition-shadow hover:shadow-card disabled:opacity-45';
 const BTN_SOLID =
-  'flex h-[40px] items-center rounded-[9px] bg-ink px-[18px] text-[14.5px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-45';
+  'flex h-[40px] items-center rounded-[9px] bg-ink px-[18px] text-15 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-45';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' } as const;
-const FIELD = 'h-[46px] w-full rounded-[10px] bg-white px-[14px] text-[15px] font-medium text-ink outline-none';
+const FIELD = 'h-[46px] w-full rounded-[10px] bg-white px-[14px] text-15 font-medium text-ink outline-none';
 
 /* ── the line the editor works on ──────────────────────────────────── */
 
@@ -170,10 +170,10 @@ export function ProposalModal({
       >
         <div className="flex items-start justify-between gap-[16px]">
           <div className="min-w-0">
-            <h2 className="truncate text-[23px] font-bold leading-[1.25] text-ink">
+            <h2 className="truncate text-24 font-bold leading-[1.25] text-ink">
               {view.kind === 'edit' ? (view.proposal ? 'Revise proposal' : 'New proposal') : 'Proposals'}
             </h2>
-            <p className="mt-[6px] truncate text-[15px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="mt-[6px] truncate text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
               {lead.businessName}
             </p>
           </div>
@@ -234,7 +234,7 @@ export function ProposalModal({
           ) : null}
         </div>
 
-        {error ? <p className="mt-[16px] text-[15px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
       </div>
     </div>
   );
@@ -264,8 +264,8 @@ function ProposalList({
   if (proposals.length === 0) {
     return (
       <div className="rounded-[14px] py-[42px] text-center" style={RING}>
-        <p className="text-[17px] font-bold text-ink">No proposals yet</p>
-        <p className="mx-auto mt-[10px] max-w-[440px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="text-17 font-bold text-ink">No proposals yet</p>
+        <p className="mx-auto mt-[10px] max-w-[440px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
           Build one from the services you sell. Prices are yours — nothing here suggests a rate.
         </p>
       </div>
@@ -280,15 +280,15 @@ function ProposalList({
             <div className="flex items-start justify-between gap-[14px]">
               <div className="min-w-0">
                 <div className="flex items-center gap-[10px]">
-                  <span className="truncate text-[17px] font-bold text-ink">{p.title}</span>
+                  <span className="truncate text-17 font-bold text-ink">{p.title}</span>
                   <span
-                    className="flex h-[26px] shrink-0 items-center rounded-[13px] px-[10px] text-[12.5px] font-semibold"
+                    className="flex h-[26px] shrink-0 items-center rounded-[13px] px-[10px] text-13 font-semibold"
                     style={STATUS_TINT[p.status]}
                   >
                     {STATUS_LABEL[p.status]}
                   </span>
                 </div>
-                <p className="mt-[8px] text-[14.5px]" style={{ color: 'rgb(91,91,91)' }}>
+                <p className="mt-[8px] text-15" style={{ color: 'rgb(91,91,91)' }}>
                   {p.lineItems.length} {p.lineItems.length === 1 ? 'line' : 'lines'} · {p.termMonths}{' '}
                   {p.termMonths === 1 ? 'month' : 'months'}
                   {p.sentAt ? ` · sent ${p.sentAt.slice(0, 10)}` : ''}
@@ -296,8 +296,8 @@ function ProposalList({
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="text-[20px] font-bold leading-none text-ink">{money(p.totalContractCents, p.currency)}</p>
-                <p className="mt-[6px] text-[13px]" style={{ color: 'rgb(131,131,131)' }}>
+                <p className="text-20 font-bold leading-none text-ink">{money(p.totalContractCents, p.currency)}</p>
+                <p className="mt-[6px] text-13" style={{ color: 'rgb(131,131,131)' }}>
                   {p.monthlyCents > 0 ? `${money(p.monthlyCents, p.currency)}/mo` : 'one-off'}
                   {p.monthlyCents > 0 && p.oneOffCents > 0 ? ` + ${money(p.oneOffCents, p.currency)}` : ''}
                 </p>
@@ -340,7 +340,7 @@ function ProposalList({
                 ))}
 
               {p.status === 'accepted' ? (
-                <span className="text-[14px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+                <span className="text-14 font-medium" style={{ color: 'rgb(91,91,91)' }}>
                   Win the lead on its row to create the client workspace.
                 </span>
               ) : null}
@@ -350,7 +350,7 @@ function ProposalList({
       </ul>
 
       {capped ? (
-        <p className="mt-[16px] text-[13.5px]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="mt-[16px] text-14" style={{ color: 'rgb(131,131,131)' }}>
           This workspace has more than 200 proposals, so a lead&apos;s oldest ones may not be listed here yet.
         </p>
       ) : null}
@@ -451,11 +451,11 @@ function ProposalEditor({
     <>
       <div className="grid grid-cols-[1fr_120px_140px] gap-[16px]">
         <label className="block">
-          <span className="block text-[14px] font-semibold text-ink">Title</span>
+          <span className="block text-14 font-semibold text-ink">Title</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={`${FIELD} mt-[8px]`} style={RING} />
         </label>
         <label className="block">
-          <span className="block text-[14px] font-semibold text-ink">Currency</span>
+          <span className="block text-14 font-semibold text-ink">Currency</span>
           <input
             value={currency}
             onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
@@ -465,7 +465,7 @@ function ProposalEditor({
           />
         </label>
         <label className="block">
-          <span className="block text-[14px] font-semibold text-ink">Term (months)</span>
+          <span className="block text-14 font-semibold text-ink">Term (months)</span>
           <input
             type="number"
             min={1}
@@ -479,7 +479,7 @@ function ProposalEditor({
         </label>
       </div>
 
-      <p className="mt-[22px] text-[14px] font-semibold text-ink">Lines</p>
+      <p className="mt-[22px] text-14 font-semibold text-ink">Lines</p>
 
       <div className="mt-[10px] space-y-[10px]">
         {lines.map((l, i) => (
@@ -574,11 +574,11 @@ function ProposalEditor({
       </button>
 
       <label className="mt-[20px] block">
-        <span className="block text-[14px] font-semibold text-ink">Notes</span>
+        <span className="block text-14 font-semibold text-ink">Notes</span>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="mt-[8px] h-[74px] w-full resize-none rounded-[10px] bg-white p-[12px] text-[15px] font-medium text-ink outline-none"
+          className="mt-[8px] h-[74px] w-full resize-none rounded-[10px] bg-white p-[12px] text-15 font-medium text-ink outline-none"
           style={RING}
         />
       </label>
@@ -594,12 +594,12 @@ function ProposalEditor({
             strong
           />
         </div>
-        <p className="mt-[10px] text-[13px]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="mt-[10px] text-13" style={{ color: 'rgb(131,131,131)' }}>
           Monthly × {termMonths} plus one-offs. One-off lines are not multiplied by the term.
         </p>
       </div>
 
-      {problem ? <p className="mt-[16px] text-[15px] text-destructive">{problem}</p> : null}
+      {problem ? <p className="mt-[16px] text-15 text-destructive">{problem}</p> : null}
 
       <div className="mt-[22px] flex justify-end gap-[12px]">
         <button type="button" onClick={onCancel} className={BTN_GHOST} style={{ color: 'rgb(131,131,131)' }}>
@@ -616,8 +616,8 @@ function ProposalEditor({
 function Total({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <span>
-      <span className="block text-[12.5px] font-medium" style={{ color: 'rgb(131,131,131)' }}>{label}</span>
-      <span className={cn('block leading-none text-ink', strong ? 'text-[24px] font-bold' : 'text-[18px] font-semibold')}>
+      <span className="block text-13 font-medium" style={{ color: 'rgb(131,131,131)' }}>{label}</span>
+      <span className={cn('block leading-none text-ink', strong ? 'text-24 font-bold' : 'text-18 font-semibold')}>
         {value}
       </span>
     </span>
@@ -652,23 +652,23 @@ function SentPanel({
   return (
     <>
       <div className="rounded-[14px] p-[18px]" style={{ background: '#D8F5E6' }}>
-        <p className="text-[16px] font-bold" style={{ color: '#1F7A46' }}>
+        <p className="text-16 font-bold" style={{ color: '#1F7A46' }}>
           Marked as sent — {money(proposal.totalContractCents, proposal.currency)} over {proposal.termMonths}{' '}
           {proposal.termMonths === 1 ? 'month' : 'months'}
         </p>
-        <p className="mt-[6px] text-[14.5px]" style={{ color: '#2C6B47' }}>
+        <p className="mt-[6px] text-15" style={{ color: '#2C6B47' }}>
           It now counts as outstanding in the pipeline.
         </p>
       </div>
 
-      <p className="mt-[22px] text-[14px] font-semibold text-ink">Send it</p>
-      <p className="mt-[6px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="mt-[22px] text-14 font-semibold text-ink">Send it</p>
+      <p className="mt-[6px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
         Copy the offer and paste it into your own email — that is the way to get it in front of{' '}
         {lead.businessName} today.
       </p>
 
       <pre
-        className="mt-[12px] max-h-[220px] overflow-y-auto whitespace-pre-wrap rounded-[12px] p-[14px] font-mono text-[12.5px] leading-[1.55] text-ink"
+        className="mt-[12px] max-h-[220px] overflow-y-auto whitespace-pre-wrap rounded-[12px] p-[14px] font-mono text-13 leading-[1.55] text-ink"
         style={{ background: '#F4F5F7' }}
       >
         {text}
@@ -694,15 +694,15 @@ function SentPanel({
         would be one more thing to get wrong per environment, and this component
         only ever runs in a browser.
       */}
-      <p className="mt-[24px] text-[14px] font-semibold text-ink">Or send a link</p>
-      <p className="mt-[6px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="mt-[24px] text-14 font-semibold text-ink">Or send a link</p>
+      <p className="mt-[6px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
         Opens without an account and stops working on {expiresAt.slice(0, 10)}, or as soon as you record
         a decision. Anyone with the link can read the offer, so treat it like the email it goes in.
       </p>
 
       <div className="mt-[10px] flex flex-wrap items-center gap-[10px]">
         <code
-          className="min-w-0 flex-1 truncate rounded-[10px] px-[12px] py-[11px] font-mono text-[12.5px]"
+          className="min-w-0 flex-1 truncate rounded-[10px] px-[12px] py-[11px] font-mono text-13"
           style={{ background: '#F4F5F7', color: 'rgb(91,91,91)' }}
           title={url}
         >

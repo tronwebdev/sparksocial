@@ -84,9 +84,9 @@ export function AccountHome() {
     <div className="grid grid-cols-1 gap-6">
       <section className="rounded-xl border border-border bg-surface p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[18px] font-semibold text-ink">Brands</h2>
+          <h2 className="text-18 font-semibold text-ink">Brands</h2>
           {brands ? (
-            <p className="text-[13px] text-ink-muted">
+            <p className="text-13 text-ink-muted">
               {brands.length} brand{brands.length === 1 ? '' : 's'}
             </p>
           ) : null}
@@ -95,7 +95,7 @@ export function AccountHome() {
         {brands === null ? (
           <Skeleton className="mt-4 h-24 w-full rounded-lg" />
         ) : brands.length === 0 ? (
-          <p className="mt-4 text-[14px] text-ink-muted">
+          <p className="mt-4 text-14 text-ink-muted">
             No brands yet. Finish onboarding to create the first one.
           </p>
         ) : (
@@ -109,8 +109,8 @@ export function AccountHome() {
                   href="/agents"
                   className="block rounded-lg border border-border p-4 transition-colors hover:bg-surface-muted"
                 >
-                  <span className="block text-[14px] font-medium text-ink">{b.name || 'Untitled brand'}</span>
-                  <span className="mt-0.5 block text-[12px] text-ink-muted">
+                  <span className="block text-14 font-medium text-ink">{b.name || 'Untitled brand'}</span>
+                  <span className="mt-0.5 block text-12 text-ink-muted">
                     Updated{' '}
                     {new Date(b.updatedAt).toLocaleDateString('en', {
                       day: 'numeric',
@@ -127,20 +127,20 @@ export function AccountHome() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <section className="rounded-xl border border-border bg-surface p-5">
-          <p className="text-[11px] uppercase tracking-wide text-ink-muted">Plan</p>
+          <p className="text-11 uppercase tracking-wide text-ink-muted">Plan</p>
           {org ? (
             <>
-              <p className="mt-1 text-[22px] font-medium capitalize text-ink">{org.plan}</p>
-              <p className="mt-0.5 text-[12px] tabular-nums text-ink-muted">
+              <p className="mt-1 text-22 font-medium capitalize text-ink">{org.plan}</p>
+              <p className="mt-0.5 text-12 tabular-nums text-ink-muted">
                 {money(org.monthlyCapCents)} a month
               </p>
             </>
           ) : (
-            <p className="mt-2 text-[13px] text-ink-muted">Plan and credits are in settings.</p>
+            <p className="mt-2 text-13 text-ink-muted">Plan and credits are in settings.</p>
           )}
           <Link
             href="/settings"
-            className="mt-3 inline-block text-[13px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+            className="mt-3 inline-block text-13 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
           >
             Billing and plan
           </Link>
@@ -168,11 +168,11 @@ function PortalTile({ title, note }: { title: string; note: string }) {
   return (
     <section className="rounded-xl border border-dashed border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[14px] font-medium text-ink">{title}</p>
+        <p className="text-14 font-medium text-ink">{title}</p>
         <Badge variant="neutral">Not built</Badge>
       </div>
-      <p className="mt-1 text-[12px] text-ink-muted">{note}</p>
-      <p className="mt-2 text-[11px] text-ink-muted">
+      <p className="mt-1 text-12 text-ink-muted">{note}</p>
+      <p className="mt-2 text-11 text-ink-muted">
         Named in the PRD §8.13, which leaves its behaviour to a separate spec.
       </p>
     </section>

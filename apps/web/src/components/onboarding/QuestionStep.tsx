@@ -52,8 +52,8 @@ export function QuestionStep({
             />
 
             <span className="flex flex-col gap-0.5">
-              <span className="text-[16px] font-medium text-ink">{choice.label}</span>
-              {choice.hint ? <span className="text-[14px] text-ink-muted">{choice.hint}</span> : null}
+              <span className="text-16 font-medium text-ink">{choice.label}</span>
+              {choice.hint ? <span className="text-14 text-ink-muted">{choice.hint}</span> : null}
             </span>
           </label>
         );

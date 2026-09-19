@@ -127,7 +127,7 @@ export function TeamRolesSection() {
           <button
             type="button"
             onClick={() => setModal({ kind: 'client' })}
-            className="h-[50px] rounded-[10.828px] px-[22px] text-[17.643px] font-medium text-ink transition-colors hover:bg-[rgba(131,131,131,0.3)]"
+            className="h-[50px] rounded-[10.828px] px-[22px] text-18 font-medium text-ink transition-colors hover:bg-[rgba(131,131,131,0.3)]"
             style={{ background: 'rgba(131,131,131,0.2)' }}
           >
             + Add Client
@@ -135,7 +135,7 @@ export function TeamRolesSection() {
           <button
             type="button"
             onClick={() => (tab === 'groups' ? setModal({ kind: 'group', group: null }) : setModal({ kind: 'member' }))}
-            className="h-[50px] rounded-[10.828px] px-[22px] text-[17.643px] font-medium text-ink transition-colors hover:bg-[rgba(131,131,131,0.3)]"
+            className="h-[50px] rounded-[10.828px] px-[22px] text-18 font-medium text-ink transition-colors hover:bg-[rgba(131,131,131,0.3)]"
             style={{ background: 'rgba(131,131,131,0.2)' }}
           >
             {tab === 'groups' ? 'Create Group' : 'Add New User'}
@@ -311,7 +311,7 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
                     brand or only some — rather than inventing a green dot.
                   */}
                   <span
-                    className="flex h-[34px] w-[89px] items-center justify-center rounded-[7.087px] text-[15.553px] font-medium"
+                    className="flex h-[34px] w-[89px] items-center justify-center rounded-[7.087px] text-16 font-medium"
                     style={{ background: 'rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
                     title={m.allBrands ? 'Administers every brand in this organisation' : `${m.brands.length} brand(s)`}
                   >

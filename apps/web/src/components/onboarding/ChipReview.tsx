@@ -42,7 +42,7 @@ export function ChipReview({
 
   if (chips.length === 0) {
     return (
-      <p className="text-[16px] text-ink-muted">
+      <p className="text-16 text-ink-muted">
         Nothing could be read from that page with enough confidence to show you. The next questions
         cover what matters most.
       </p>
@@ -59,7 +59,7 @@ export function ChipReview({
             key={chip.field}
             className="flex items-center gap-3 rounded-[15px] border border-border bg-[var(--ss-field)] px-4 py-3"
           >
-            <span className="min-w-[160px] text-[14px] text-ink-muted">{label(chip.field)}</span>
+            <span className="min-w-[160px] text-14 text-ink-muted">{label(chip.field)}</span>
 
             {editing === chip.field ? (
               <input
@@ -70,13 +70,13 @@ export function ChipReview({
                   setEditing(null);
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-                className="flex-1 rounded-[10px] bg-background px-3 py-1.5 text-[16px] text-ink outline-none ring-[1.5px] ring-ring"
+                className="flex-1 rounded-[10px] bg-background px-3 py-1.5 text-16 text-ink outline-none ring-[1.5px] ring-ring"
               />
             ) : (
               <button
                 type="button"
                 onClick={() => setEditing(chip.field)}
-                className="flex-1 rounded-[10px] px-3 py-1.5 text-left text-[16px] text-ink transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
+                className="flex-1 rounded-[10px] px-3 py-1.5 text-left text-16 text-ink transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
               >
                 {chip.value}
               </button>
@@ -88,7 +88,7 @@ export function ChipReview({
               says the only thing the reader can act on.
             */}
             <span
-              className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] ${
+              className={`shrink-0 rounded-full px-2.5 py-1 text-12 ${
                 low
                   ? 'bg-[var(--ss-warn)]/15 text-[var(--ss-warn)]'
                   : 'bg-[var(--ss-success)]/15 text-[var(--ss-success)]'

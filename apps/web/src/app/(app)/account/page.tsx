@@ -41,8 +41,8 @@ export default function AccountHomePage() {
       <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="grid grid-cols-1 gap-6 p-8">
         <header>
-          <h1 className="text-[20px] font-medium text-ink">Account</h1>
-          <p className="mt-1 text-[14px] text-ink-muted">
+          <h1 className="text-20 font-medium text-ink">Account</h1>
+          <p className="mt-1 text-14 text-ink-muted">
             Your organisation: brands, billing, people, and the record of what happened.
           </p>
         </header>

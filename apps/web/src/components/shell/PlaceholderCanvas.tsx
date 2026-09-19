@@ -15,9 +15,9 @@ export function PlaceholderCanvas({ title, subtitle, phase }: { title: string; s
     <>
       <TopBar title={<BrandSwitcher />} actions={<UserMenu />} />
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8">
-        <p className="text-[20px] font-medium text-ink">{title}</p>
-        {subtitle ? <p className="text-[16px] text-ink-muted">{subtitle}</p> : null}
-        <p className="mt-2 text-[14px] text-ink-muted">Lands in {phase}.</p>
+        <p className="text-20 font-medium text-ink">{title}</p>
+        {subtitle ? <p className="text-16 text-ink-muted">{subtitle}</p> : null}
+        <p className="mt-2 text-14 text-ink-muted">Lands in {phase}.</p>
       </div>
     </>
   );

@@ -58,7 +58,7 @@ function PlatformMark({ platform }: { platform: string }) {
   return (
     <span
       aria-hidden
-      className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] text-[20px] font-bold text-white"
+      className="flex h-[44px] w-[44px] items-center justify-center rounded-[12px] text-20 font-bold text-white"
       style={{ background: tint[platform] ?? '#838383' }}
     >
       {letter}
@@ -84,20 +84,20 @@ export function AccountsStep({
 
   return (
     <StepPanel x={218} y={237} w={592} h={756} clip={PANEL_CLIP.s4}>
-      <h2 className="absolute left-[24px] top-[42px] whitespace-nowrap text-[25px] font-semibold leading-[1.43] text-black">
+      <h2 className="absolute left-[24px] top-[42px] whitespace-nowrap text-26 font-semibold leading-[1.43] text-black">
         Add Social Account
       </h2>
-      <p className="absolute left-[24px] top-[79px] w-[431px] text-[18px] font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="absolute left-[24px] top-[79px] w-[431px] text-18 font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
         Connect your social media accounts to enhance your online presence.
       </p>
 
-      <span className="absolute left-[25px] top-[155px] whitespace-nowrap text-[18px] font-medium leading-none text-ink">
+      <span className="absolute left-[25px] top-[155px] whitespace-nowrap text-18 font-medium leading-none text-ink">
         Preselected Accounts
       </span>
       <InfoIcon className="absolute left-[218px] top-[156px]" title="Everything you have connected is selected to start. Untick any this campaign should skip." />
 
       {connected.length === 0 ? (
-        <p className="absolute left-[24px] top-[196px] w-[440px] text-[16px] font-normal leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-[24px] top-[196px] w-[440px] text-16 font-normal leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
           Nothing is connected yet. Pick a platform below and connect it — a campaign with no account
           has nowhere to publish.
         </p>
@@ -111,14 +111,14 @@ export function AccountsStep({
             <span className="absolute left-[11px] top-[9px] block">
               <PlatformMark platform={p.platform} />
             </span>
-            <span className="absolute left-[73px] top-[25px] block max-w-[120px] truncate text-[16px] font-semibold leading-none text-black">
+            <span className="absolute left-[73px] top-[25px] block max-w-[120px] truncate text-16 font-semibold leading-none text-black">
               {p.accountLabel ?? platformLabel(p.platform)}
             </span>
             <button
               type="button"
               onClick={() => onToggle(p.platform)}
               aria-label={`${selected.includes(p.platform) ? 'Remove' : 'Add'} ${platformLabel(p.platform)}`}
-              className="absolute left-[195px] top-[9px] flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-[13px] leading-none transition-colors hover:bg-surface-200"
+              className="absolute left-[195px] top-[9px] flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded-full text-13 leading-none transition-colors hover:bg-surface-200"
               style={{ color: 'rgb(131,131,131)' }}
             >
               {selected.includes(p.platform) ? '✕' : '+'}
@@ -127,12 +127,12 @@ export function AccountsStep({
         ))
       )}
 
-      <span className="absolute left-[25px] top-[292px] whitespace-nowrap text-[18px] font-medium leading-none text-ink">
+      <span className="absolute left-[25px] top-[292px] whitespace-nowrap text-18 font-medium leading-none text-ink">
         + Add Accounts
       </span>
 
       {platforms === null ? (
-        <p className="absolute left-[25px] top-[330px] text-[16px]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-[25px] top-[330px] text-16" style={{ color: 'rgb(131,131,131)' }}>
           Reading your connections…
         </p>
       ) : (
@@ -161,13 +161,13 @@ export function AccountsStep({
               <span className="absolute left-1/2 top-[14px] block -translate-x-1/2">
                 <PlatformMark platform={p.platform} />
               </span>
-              <span className="absolute inset-x-0 top-[65px] block truncate px-[6px] text-center text-[14px] font-semibold leading-none text-black">
+              <span className="absolute inset-x-0 top-[65px] block truncate px-[6px] text-center text-14 font-semibold leading-none text-black">
                 {platformLabel(p.platform)}
               </span>
               {/* The one fact the design's tile has no room for, and the one
                   that decides whether choosing it means anything. */}
               {!p.connected ? (
-                <span className="absolute inset-x-0 top-[81px] block text-center text-[11px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
+                <span className="absolute inset-x-0 top-[81px] block text-center text-11 font-medium" style={{ color: 'rgb(131,131,131)' }}>
                   {connecting === p.platform ? 'Opening…' : 'Connect'}
                 </span>
               ) : null}

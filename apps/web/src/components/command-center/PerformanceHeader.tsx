@@ -36,7 +36,7 @@ export function PerformanceHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0 shrink-0">
-        <h2 className="text-[24px] font-semibold leading-[1.27] text-ink">
+        <h2 className="text-24 font-semibold leading-[1.27] text-ink">
           Agent Command Center &mdash; Performance &amp; Learning
         </h2>
         <p className="mt-[9px] text-16 text-ink-muted">

@@ -85,7 +85,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
         {unreadCount > 0 ? (
           <span
             aria-hidden
-            className="absolute right-[9px] top-[9px] flex min-w-[17px] items-center justify-center rounded-full px-[4px] text-[10.5px] font-bold text-white"
+            className="absolute right-[9px] top-[9px] flex min-w-[17px] items-center justify-center rounded-full px-[4px] text-11 font-bold text-white"
             style={{ height: 17, background: '#F35525' }}
           >
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -101,12 +101,12 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
           style={{ boxShadow: '0 26px 64px -26px rgba(12,12,12,0.45), inset 0 0 0 1px rgba(131,131,131,0.14)' }}
         >
           <div className="flex items-center justify-between px-[16px] pb-[10px] pt-[14px]">
-            <p className="text-[15px] font-bold text-ink">Notifications</p>
+            <p className="text-15 font-bold text-ink">Notifications</p>
             {unreadCount > 0 ? (
               <button
                 type="button"
                 onClick={() => void markAllRead()}
-                className="text-[12.5px] font-semibold transition-opacity hover:opacity-70"
+                className="text-13 font-semibold transition-opacity hover:opacity-70"
                 style={{ color: '#2F8291' }}
               >
                 Mark all read
@@ -116,9 +116,9 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
 
           <div className="max-h-[420px] overflow-y-auto pb-[8px]">
             {items === null && loading ? (
-              <p className="px-[16px] py-[26px] text-center text-[13px] text-ink-muted">Loading…</p>
+              <p className="px-[16px] py-[26px] text-center text-13 text-ink-muted">Loading…</p>
             ) : (items?.length ?? 0) === 0 ? (
-              <p className="px-[22px] py-[26px] text-center text-[13px] leading-[1.5] text-ink-muted">
+              <p className="px-[22px] py-[26px] text-center text-13 leading-[1.5] text-ink-muted">
                 Nothing yet. SPARK tells you here when a post is ready to review, when something
                 publishes, and when something needs you.
               </p>
@@ -136,11 +136,11 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
                       >
                         <TopicTile topic={topic} size={40} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-semibold text-ink" title={title}>
+                          <p className="truncate text-14 font-semibold text-ink" title={title}>
                             {title}
                           </p>
                           {body ? (
-                            <p className="mt-[2px] line-clamp-2 text-[12.5px] leading-[1.4] text-ink-muted">{body}</p>
+                            <p className="mt-[2px] line-clamp-2 text-13 leading-[1.4] text-ink-muted">{body}</p>
                           ) : null}
                           {canReview ? (
                             <button
@@ -152,14 +152,14 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
                                    `NotificationToasts`. */
                                 router.push(`/agents?draft=${encodeURIComponent(n.target!.id)}`);
                               }}
-                              className="mt-[6px] h-[26px] rounded-[7px] px-[10px] text-[12px] font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.1)]"
+                              className="mt-[6px] h-[26px] rounded-[7px] px-[10px] text-12 font-semibold text-ink transition-colors hover:bg-[rgba(131,131,131,0.1)]"
                               style={{ boxShadow: 'inset 0 0 0 1.1px rgba(12,12,12,0.4)' }}
                             >
                               Review
                             </button>
                           ) : null}
                         </div>
-                        <span className="shrink-0 pt-[2px] text-[11.5px]" style={{ color: '#9A9A9A' }}>
+                        <span className="shrink-0 pt-[2px] text-12" style={{ color: '#9A9A9A' }}>
                           {relativeTime(n.at)}
                         </span>
                       </div>
@@ -173,7 +173,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
           {/* Only when the browser has actually refused. Saying "turn on
               notifications" to somebody who already has is noise. */}
           {osPermission === 'denied' ? (
-            <p className="border-t px-[16px] py-[9px] text-[11.5px] leading-[1.4] text-ink-muted" style={{ borderColor: 'rgba(131,131,131,0.16)' }}>
+            <p className="border-t px-[16px] py-[9px] text-12 leading-[1.4] text-ink-muted" style={{ borderColor: 'rgba(131,131,131,0.16)' }}>
               Your browser is blocking desktop notifications, so these only appear here while
               SparkSocial is open.
             </p>

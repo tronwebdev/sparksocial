@@ -98,23 +98,23 @@ export function PendingQuestionsPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">SPARK is waiting on you</h2>
+      <h2 className="text-18 font-semibold text-ink">SPARK is waiting on you</h2>
 
       {questions === null ? (
         <Skeleton className="mt-4 h-20 w-full rounded" />
       ) : error ? (
-        <p className="mt-2 text-[14px] text-ink-muted">{error}</p>
+        <p className="mt-2 text-14 text-ink-muted">{error}</p>
       ) : (
         <ul className="mt-4 grid grid-cols-1 gap-3">
           {questions.map((q) => (
             <li key={q.messageId} className="rounded-lg border border-border p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="text-[14px] text-ink">{q.question}</p>
+                <p className="text-14 text-ink">{q.question}</p>
                 <Badge variant={URGENCY_TONE[q.urgency]} className="shrink-0 capitalize">
                   {q.urgency}
                 </Badge>
               </div>
-              <p className="mt-1 text-[12px] text-ink-muted">
+              <p className="mt-1 text-12 text-ink-muted">
                 {formatWait(q.waitingHours)} ·{' '}
                 {new Date(q.askedAt).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </p>
@@ -126,7 +126,7 @@ export function PendingQuestionsPanel() {
                       key={opt}
                       type="button"
                       onClick={() => setDrafts((d) => ({ ...d, [q.messageId]: opt }))}
-                      className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                      className={`rounded-full border px-3 py-1.5 text-13 ${
                         drafts[q.messageId] === opt
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border text-ink hover:bg-surface-muted'
@@ -144,7 +144,7 @@ export function PendingQuestionsPanel() {
                   onChange={(e) => setDrafts((d) => ({ ...d, [q.messageId]: e.target.value }))}
                   disabled={answering === q.messageId}
                   placeholder="Type an answer, or pick an option above"
-                  className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                  className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                 />
                 <Button
                   size="sm"
@@ -155,7 +155,7 @@ export function PendingQuestionsPanel() {
                 </Button>
               </div>
               {answerErrors[q.messageId] ? (
-                <p className="mt-1 text-[12px] text-destructive">{answerErrors[q.messageId]}</p>
+                <p className="mt-1 text-12 text-destructive">{answerErrors[q.messageId]}</p>
               ) : null}
             </li>
           ))}

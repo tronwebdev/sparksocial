@@ -185,35 +185,35 @@ export function BrandTransferPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Move a brand</h2>
-      <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Move a brand</h2>
+      <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Export a brand&rsquo;s answers as a file, or create a new brand from one. Identity, the five questions,
         voice, offer and constraints travel. Assets, published posts, performance history and the audit trail
         stay where they are.
       </p>
 
       {note ? (
-        <p className={cn('mt-3 text-[13px]', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
+        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
       ) : null}
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* ── Out ──────────────────────────────────────────────────────── */}
         <div className="rounded-lg border border-border p-4">
-          <p className="text-[13px] font-medium text-ink">Export</p>
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="text-13 font-medium text-ink">Export</p>
+          <p className="mt-1 text-12 text-ink-muted">
             Downloads a JSON file. Safe to hand to the client it belongs to — it carries their answers, not your
             results.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="min-w-[180px] flex-1">
-              <label className="block text-[12px] text-ink-muted" htmlFor="export-brand">
+              <label className="block text-12 text-ink-muted" htmlFor="export-brand">
                 Brand
               </label>
               <select
                 id="export-brand"
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-ink"
+                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
               >
                 {brands.length === 0 ? <option value="">No brands yet</option> : null}
                 {brands.map((b) => (
@@ -231,13 +231,13 @@ export function BrandTransferPanel() {
 
         {/* ── In ───────────────────────────────────────────────────────── */}
         <div className="rounded-lg border border-border p-4">
-          <p className="text-[13px] font-medium text-ink">Import</p>
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="text-13 font-medium text-ink">Import</p>
+          <p className="mt-1 text-12 text-ink-muted">
             Creates a <span className="font-medium text-ink">new</span> brand. It does not overwrite an existing
             one, and there is no undo — the only way back is deleting what this makes.
           </p>
 
-          <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="import-name">
+          <label className="mt-3 block text-12 text-ink-muted" htmlFor="import-name">
             Call it (optional — otherwise the name in the file)
           </label>
           <Input
@@ -248,7 +248,7 @@ export function BrandTransferPanel() {
             className="mt-1"
           />
 
-          <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="import-json">
+          <label className="mt-3 block text-12 text-ink-muted" htmlFor="import-json">
             The exported file
           </label>
           <textarea
@@ -257,7 +257,7 @@ export function BrandTransferPanel() {
             onChange={(e) => setJson(e.target.value)}
             rows={5}
             spellCheck={false}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[12px] text-ink"
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-12 text-ink"
             placeholder='{ "name": "…", "identity": { … }, "dimensions": { … }, … }'
           />
 

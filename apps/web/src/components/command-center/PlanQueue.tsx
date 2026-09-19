@@ -249,7 +249,7 @@ export function PlanQueue({
                   ? `${items.length} post${items.length === 1 ? '' : 's'} queued, soonest first.`
                   : `${filtered.length} of ${items.length} queued match the filters.`
           }
-          className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
           style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
         >
           i
@@ -287,7 +287,7 @@ export function PlanQueue({
         {undrafted > 0 && layout === 'rows' ? (
           <span
             title="SPARK writes each post the morning it goes out, so the wording reflects the day rather than the day it was planned."
-            className="ml-auto flex h-[26px] shrink-0 cursor-help items-center gap-[6px] rounded-full px-[11px] text-[13px] font-medium"
+            className="ml-auto flex h-[26px] shrink-0 cursor-help items-center gap-[6px] rounded-full px-[11px] text-13 font-medium"
             style={{ background: 'var(--ss-cc-attn-bg)', boxShadow: 'inset 0 0 0 1px var(--ss-cc-attn-ring)', color: 'var(--ss-warn)' }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
@@ -310,7 +310,7 @@ export function PlanQueue({
         <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
       ) : null}
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 
@@ -406,7 +406,7 @@ export function PlanQueue({
                 <span className="text-18 font-medium text-ink-muted">{item.mediaType ?? 'text'}</span>
 
                 <div
-                  className="flex h-[110px] w-[127px] items-center justify-center rounded-md text-[12px] text-ink-muted"
+                  className="flex h-[110px] w-[127px] items-center justify-center rounded-md text-12 text-ink-muted"
                   style={{ background: 'rgba(131,131,131,0.1)' }}
                 >
                   {/* No `mediaUrl` on a content item — the fourth card on this
@@ -426,7 +426,7 @@ export function PlanQueue({
                 </span>
 
                 <span
-                  className="flex h-[41px] w-fit items-center rounded-lg px-[18px] text-[15px] font-medium"
+                  className="flex h-[41px] w-fit items-center rounded-lg px-[18px] text-15 font-medium"
                   style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
                 >
                   {chip.label}
@@ -512,7 +512,7 @@ export function PlanQueue({
                   three.
                 */}
                 <div
-                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-[12px] text-ink-muted"
+                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-12 text-ink-muted"
                   style={{ background: 'rgba(131,131,131,0.1)' }}
                 >
                   {item.mediaType ?? 'text'}
@@ -534,7 +534,7 @@ export function PlanQueue({
                 </p>
 
                 <span
-                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-[15px] font-medium"
+                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-15 font-medium"
                   style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
                 >
                   {chip.label}

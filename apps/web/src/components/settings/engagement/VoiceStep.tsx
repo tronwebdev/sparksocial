@@ -57,8 +57,8 @@ export function VoiceStep({
                   o.on ? 'border-primary bg-primary/5' : 'border-border hover:bg-surface-muted',
                 )}
               >
-                <span className="block text-[13px] font-medium text-ink">{o.label}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">{o.hint}</span>
+                <span className="block text-13 font-medium text-ink">{o.label}</span>
+                <span className="mt-0.5 block text-12 text-ink-muted">{o.hint}</span>
               </button>
             </li>
           ))}
@@ -69,10 +69,10 @@ export function VoiceStep({
             {TONE_AXES.map((axis) => (
               <div key={axis.key}>
                 <div className="flex items-baseline justify-between">
-                  <label className="text-[13px] text-ink" htmlFor={`ei-tone-${axis.key}`}>
+                  <label className="text-13 text-ink" htmlFor={`ei-tone-${axis.key}`}>
                     {axis.low} &ndash; {axis.high}
                   </label>
-                  <span className="text-[12px] tabular-nums text-ink-muted">
+                  <span className="text-12 tabular-nums text-ink-muted">
                     {Math.round(values[axis.key] * 100)}%
                   </span>
                 </div>
@@ -85,7 +85,7 @@ export function VoiceStep({
                   onChange={(e) => onTone({ ...values, [axis.key]: Number(e.target.value) / 100 })}
                   className="mt-1 w-full accent-[--ss-primary]"
                 />
-                <div className="flex justify-between text-[11px] text-ink-muted">
+                <div className="flex justify-between text-11 text-ink-muted">
                   <span>{axis.low}</span>
                   <span>{axis.high}</span>
                 </div>
@@ -93,7 +93,7 @@ export function VoiceStep({
             ))}
             {/* An axis left in the middle says nothing to the writer, and the
                 screen should not imply otherwise. */}
-            <p className="text-[12px] text-ink-muted sm:col-span-2">
+            <p className="text-12 text-ink-muted sm:col-span-2">
               A slider left in the middle is not an instruction &mdash; only the ends change how replies
               read.
             </p>
@@ -103,7 +103,7 @@ export function VoiceStep({
 
       <div>
         <EiSectionChip>Emoji</EiSectionChip>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
+        <p className="mt-0.5 text-12 text-ink-muted">
           Stated either way. Left unsaid, a model reaches for them about half the time.
         </p>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -114,7 +114,7 @@ export function VoiceStep({
               aria-pressed={emoji === l.value}
               onClick={() => onEmoji(l.value)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                'rounded-full border px-3 py-1.5 text-13 transition-colors',
                 emoji === l.value
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border text-ink-muted hover:bg-surface-muted',

@@ -128,7 +128,7 @@ export function AgencyWizard({
         <button
           type="button"
           onClick={onBack}
-          className="absolute left-[30px] top-[30px] z-[5] flex h-[46px] items-center gap-[10px] rounded-[12px] pl-[15px] pr-[22px] text-[16.5px] font-semibold transition-colors hover:bg-white"
+          className="absolute left-[30px] top-[30px] z-[5] flex h-[46px] items-center gap-[10px] rounded-[12px] pl-[15px] pr-[22px] text-17 font-semibold transition-colors hover:bg-white"
           style={{ background: 'rgba(255,255,255,0.55)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)', color: 'rgb(59,59,59)' }}
         >
           <svg width="9" height="15" viewBox="0 0 8 16" fill="none" aria-hidden className="block">
@@ -137,7 +137,7 @@ export function AgencyWizard({
           Back
         </button>
 
-        <p className="absolute left-0 right-0 top-[37px] text-center text-[18.5px] font-bold leading-none text-ink">
+        <p className="absolute left-0 right-0 top-[37px] text-center text-19 font-bold leading-none text-ink">
           {step === 3 ? '100% Completed' : `Step ${step + 1} of 4`}
         </p>
 
@@ -147,7 +147,7 @@ export function AgencyWizard({
             <path d="M13 7.5A5.5 5.5 0 1 1 11.4 3.6" stroke="#9B9B9B" strokeWidth="1.4" strokeLinecap="round" />
             <path d="M13.2 1.6v3.2H10" stroke="#9B9B9B" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="whitespace-nowrap text-[14.5px] font-normal" style={{ color: '#9B9B9B' }}>
+          <span className="whitespace-nowrap text-15 font-normal" style={{ color: '#9B9B9B' }}>
             {step === 3 ? 'Created your Social Media Agency' : 'Creating your Social Media Agency'}
           </span>
         </div>
@@ -156,7 +156,7 @@ export function AgencyWizard({
           type="button"
           onClick={onNext}
           disabled={busy}
-          className="absolute right-[28px] top-[30px] z-[5] flex h-[46px] items-center gap-[9px] rounded-[10px] px-[16px] text-[17.5px] font-semibold text-ink transition-colors hover:bg-white disabled:opacity-60"
+          className="absolute right-[28px] top-[30px] z-[5] flex h-[46px] items-center gap-[9px] rounded-[10px] px-[16px] text-18 font-semibold text-ink transition-colors hover:bg-white disabled:opacity-60"
           style={{ background: 'rgba(255,255,255,0.45)' }}
         >
           <span className="whitespace-nowrap">{busy ? 'Working…' : step === 3 ? 'Launch' : 'Continue'}</span>
@@ -291,8 +291,8 @@ export function AgencyWizard({
 function StepModel({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
   return (
     <div className="relative h-full">
-      <h3 className="absolute left-[44px] top-[58px] text-[22px] font-bold leading-none text-ink">Choose Agency Model</h3>
-      <p className="absolute left-[44px] top-[94px] text-[15.5px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+      <h3 className="absolute left-[44px] top-[58px] text-22 font-bold leading-none text-ink">Choose Agency Model</h3>
+      <p className="absolute left-[44px] top-[94px] text-16 font-normal" style={{ color: 'rgb(131,131,131)' }}>
         Select your preferred agency model
       </p>
 
@@ -335,8 +335,8 @@ function StepModel({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wizard
               )}
             </span>
 
-            <span className="absolute left-[20px] right-[20px] top-[106px] text-center text-[19px] font-bold text-ink">{m.name}</span>
-            <span className="absolute left-[34px] right-[34px] top-[137px] block text-center text-[15px] font-medium leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
+            <span className="absolute left-[20px] right-[20px] top-[106px] text-center text-19 font-bold text-ink">{m.name}</span>
+            <span className="absolute left-[34px] right-[34px] top-[137px] block text-center text-15 font-medium leading-[1.35]" style={{ color: 'rgb(131,131,131)' }}>
               {m.desc}
             </span>
 
@@ -366,7 +366,7 @@ function StepModel({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wizard
 
 /* ── step 2 · identity ───────────────────────────────────────────────── */
 
-const FIELD = 'h-[56px] w-full rounded-[12px] bg-white px-[18px] text-[15px] font-medium text-ink outline-none';
+const FIELD = 'h-[56px] w-full rounded-[12px] bg-white px-[18px] text-15 font-medium text-ink outline-none';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' } as const;
 
 function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
@@ -374,8 +374,8 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
     <div className="px-[44px] pb-[40px] pt-[56px]">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-[21px] font-bold leading-none text-ink">Agency Identity</h3>
-          <p className="mt-[14px] text-[15px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+          <h3 className="text-22 font-bold leading-none text-ink">Agency Identity</h3>
+          <p className="mt-[14px] text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
             Create the business identity
           </p>
         </div>
@@ -401,7 +401,7 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
             onChange={(e) => set({ tagline: e.target.value })}
             placeholder="Enter tagline"
             aria-label="Tagline"
-            className="h-[150px] w-full resize-none rounded-[12px] bg-white px-[18px] py-[14px] text-[15px] font-medium text-ink outline-none"
+            className="h-[150px] w-full resize-none rounded-[12px] bg-white px-[18px] py-[14px] text-15 font-medium text-ink outline-none"
             style={RING}
           />
         </Field>
@@ -411,12 +411,12 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
           <div className="h-[150px] rounded-[12px] p-[20px]" style={RING}>
             <div className="flex gap-[28px]">
               <div className="w-[180px]">
-                <span className="block text-[14px] font-normal" style={{ color: 'rgb(131,131,131)' }}>Country</span>
+                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Country</span>
                 <select
                   value={draft.country}
                   onChange={(e) => set({ country: e.target.value, timezone: '' })}
                   aria-label="Country"
-                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-[15px] font-medium outline-none"
+                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none"
                   style={{ background: '#F2F3F5', color: draft.country ? 'rgb(59,59,59)' : '#9B9B9B' }}
                 >
                   <option value="">Select</option>
@@ -426,13 +426,13 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
                 </select>
               </div>
               <div className="w-[180px]">
-                <span className="block text-[14px] font-normal" style={{ color: 'rgb(131,131,131)' }}>Timezone</span>
+                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Timezone</span>
                 <select
                   value={draft.timezone}
                   onChange={(e) => set({ timezone: e.target.value })}
                   aria-label="Timezone"
                   disabled={!draft.country}
-                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-[15px] font-medium outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none disabled:cursor-not-allowed disabled:opacity-60"
                   style={{ background: '#F2F3F5', color: draft.timezone ? 'rgb(59,59,59)' : '#9B9B9B' }}
                 >
                   <option value="">Select</option>
@@ -450,8 +450,8 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
 
       <div className="mt-[28px] flex items-start justify-between">
         <div>
-          <h3 className="text-[21px] font-bold leading-none text-ink">Brand Generator</h3>
-          <p className="mt-[14px] text-[15px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+          <h3 className="text-22 font-bold leading-none text-ink">Brand Generator</h3>
+          <p className="mt-[14px] text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
             Choose unique brand theme tailored to your vision.
           </p>
         </div>
@@ -474,7 +474,7 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
         </Field>
       </div>
 
-      <p className="mt-[24px] max-w-[720px] text-[14.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="mt-[24px] max-w-[720px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
         The design puts a logo upload and a colour theme here too. Both belong to a brand rather than
         an agency, and the Brand Kit already owns them — a second place to set a palette is a second
         place for it to be wrong. brand.logo.generate is the tool that fills one, per brand.
@@ -493,7 +493,7 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
 function GenerateWithAi() {
   return (
     <span
-      className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-[10px] px-[15px] text-[14px] font-semibold text-ink"
+      className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-[10px] px-[15px] text-14 font-semibold text-ink"
       style={{ background: '#93E1F2', opacity: 0.55 }}
       title="No tool generates an agency identity yet"
     >
@@ -528,7 +528,7 @@ const ZONES: Record<string, string[]> = {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[15.5px] font-semibold text-ink">{label}</label>
+      <label className="block text-16 font-semibold text-ink">{label}</label>
       <div className="mt-[10px]">{children}</div>
     </div>
   );
@@ -539,14 +539,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
   return (
     <div className="px-[44px] pb-[40px] pt-[56px]">
-      <h3 className="text-[21px] font-bold leading-none text-ink">Agency Website</h3>
-      <p className="mt-[14px] text-[15px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+      <h3 className="text-22 font-bold leading-none text-ink">Agency Website</h3>
+      <p className="mt-[14px] text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
         A cutting-edge AI-driven agency website
       </p>
 
-      <p className="mt-[28px] text-[15.5px] font-semibold text-ink">Layout Style</p>
+      <p className="mt-[28px] text-16 font-semibold text-ink">Layout Style</p>
       <div className="mt-[14px] rounded-[16px] p-[22px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
-        <p className="text-[14.5px] font-normal" style={{ color: '#9B9B9B' }}>Select Layout Style</p>
+        <p className="text-15 font-normal" style={{ color: '#9B9B9B' }}>Select Layout Style</p>
         <ul className="mt-[16px] grid grid-cols-3 gap-[8px]">
           {[0, 1, 2, 3, 4, 5].map((i) => {
             const on = draft.layout === i;
@@ -559,7 +559,7 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
                   className="relative h-[158px] w-[264px] rounded-[12px] bg-white text-left"
                   style={{ boxShadow: on ? 'inset 0 0 0 1.6px #0C0C0C' : 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
                 >
-                  <span className="block px-[16px] pt-[13px] text-[14px] font-semibold text-ink">
+                  <span className="block px-[16px] pt-[13px] text-14 font-semibold text-ink">
                     Style {(i % 3) + 1}
                   </span>
                   <span
@@ -602,7 +602,7 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
             value={draft.titleFont}
             onChange={(e) => set({ titleFont: e.target.value })}
             aria-label="Title fonts style"
-            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-[18px] font-bold text-ink outline-none"
+            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-18 font-bold text-ink outline-none"
             style={RING}
           >
             {['Asgard', 'Inter', 'Playfair Display', 'Space Grotesk', 'DM Serif'].map((f) => (
@@ -615,7 +615,7 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
             value={draft.service}
             onChange={(e) => set({ service: e.target.value })}
             aria-label="Select services"
-            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-[15.5px] font-medium outline-none"
+            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-16 font-medium outline-none"
             style={{ ...RING, color: 'rgb(59,59,59)' }}
           >
             {['Content creation', 'Social media management', 'Paid ads', 'Strategy & consulting', 'Community management'].map((v) => (
@@ -625,9 +625,9 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
         </Field>
       </div>
 
-      <p className="mt-[28px] text-[15.5px] font-semibold text-ink">Templates</p>
+      <p className="mt-[28px] text-16 font-semibold text-ink">Templates</p>
       <div className="mt-[14px] rounded-[16px] p-[22px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
-        <p className="text-[14.5px] font-normal" style={{ color: '#9B9B9B' }}>Select Template Design</p>
+        <p className="text-15 font-normal" style={{ color: '#9B9B9B' }}>Select Template Design</p>
         <ul className="mt-[16px] grid grid-cols-3 gap-[8px]">
           {[0, 1, 2].map((i) => {
             const on = draft.template === i;
@@ -640,7 +640,7 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
                   className="relative h-[196px] w-[264px] rounded-[12px] bg-white text-left"
                   style={{ boxShadow: 'inset 0 0 0 1.5px rgba(131,131,131,0.18)' }}
                 >
-                  <span className="block px-[16px] pt-[13px] text-[14px] font-semibold text-ink">Style {i + 1}</span>
+                  <span className="block px-[16px] pt-[13px] text-14 font-semibold text-ink">Style {i + 1}</span>
 
                   {/* The design's preview eye. Nothing renders a template yet. */}
                   <span
@@ -719,7 +719,7 @@ function StepDone({
         </svg>
       </div>
 
-      <h3 className="mx-auto max-w-[700px] text-center text-[28px] font-bold leading-[1.26] text-ink">
+      <h3 className="mx-auto max-w-[700px] text-center text-28 font-bold leading-[1.26] text-ink">
         Congratulations On Successfully Creating Your Ai Social Media Agency
       </h3>
 
@@ -748,7 +748,7 @@ function StepDone({
           </svg>
         </span>
 
-        <p className="absolute left-[96px] top-[46px] max-w-[420px] truncate text-[23px] font-bold text-ink">
+        <p className="absolute left-[96px] top-[46px] max-w-[420px] truncate text-24 font-bold text-ink">
           {draft.name.trim() || 'Your agency'}
         </p>
 
@@ -757,23 +757,23 @@ function StepDone({
           this names the field and says it is unset rather than showing an
           address that would 404.
         */}
-        <p className="absolute left-[24px] top-[114px] text-[15px] font-normal" style={{ color: 'rgb(91,91,91)' }}>
+        <p className="absolute left-[24px] top-[114px] text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Website URL:{' '}
           <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>Not connected yet</b>
         </p>
-        <p className="absolute left-[24px] top-[150px] text-[15px] font-normal" style={{ color: 'rgb(91,91,91)' }}>
+        <p className="absolute left-[24px] top-[150px] text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Agency Email:{' '}
           <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>{draft.email.trim() || 'Not set'}</b>
         </p>
-        <p className="absolute left-[24px] top-[186px] max-w-[420px] truncate text-[15px] font-normal" style={{ color: 'rgb(91,91,91)' }}>
+        <p className="absolute left-[24px] top-[186px] max-w-[420px] truncate text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Tagline:{' '}
           <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>{draft.tagline.trim() || 'Not set'}</b>
         </p>
 
-        <span className="absolute left-[24px] top-[230px] text-[15px] font-semibold text-ink">Accounts:</span>
+        <span className="absolute left-[24px] top-[230px] text-15 font-semibold text-ink">Accounts:</span>
         <div className="absolute left-[120px] top-[222px] flex items-center gap-[9px]">
           {accounts.length === 0 ? (
-            <span className="text-[13.5px]" style={{ color: 'rgb(131,131,131)' }}>None connected yet</span>
+            <span className="text-14" style={{ color: 'rgb(131,131,131)' }}>None connected yet</span>
           ) : (
             accounts.slice(0, 7).map((a) => (
               <span
@@ -786,9 +786,9 @@ function StepDone({
           )}
         </div>
 
-        <span className="absolute left-[24px] top-[272px] text-[15px] font-semibold text-ink">Tone:</span>
+        <span className="absolute left-[24px] top-[272px] text-15 font-semibold text-ink">Tone:</span>
         <span
-          className="absolute left-[82px] top-[264px] flex h-[32px] items-center rounded-[9px] px-[14px] text-[14px] font-semibold"
+          className="absolute left-[82px] top-[264px] flex h-[32px] items-center rounded-[9px] px-[14px] text-14 font-semibold"
           style={{ background: '#EDEEF1', color: 'rgb(91,91,91)' }}
         >
           {draft.tone}
@@ -799,7 +799,7 @@ function StepDone({
           that is real: the publishing accounts the portal can actually post to.
         */}
         <span
-          className="absolute left-[214px] top-[264px] flex h-[32px] items-center rounded-[9px] px-[14px] text-[14px] font-semibold"
+          className="absolute left-[214px] top-[264px] flex h-[32px] items-center rounded-[9px] px-[14px] text-14 font-semibold"
           style={{ background: '#EAF1FF', boxShadow: 'inset 0 0 0 1px rgba(59,111,255,0.4)', color: '#3B6FFF' }}
         >
           {accounts.length} Connected {accounts.length === 1 ? 'Account' : 'Accounts'}
@@ -808,13 +808,13 @@ function StepDone({
 
       {/* ── domain ───────────────────────────────────────────────────── */}
       <div className="mt-[38px] flex items-start justify-between">
-        <p className="text-[19px] font-bold text-ink">Connect your own domain</p>
+        <p className="text-19 font-bold text-ink">Connect your own domain</p>
         {/*
           The design's "Skip for now" advances the same way Launch does — it is
           the wizard's own escape from a step that cannot complete.
         */}
         <span
-          className="flex h-[40px] items-center gap-[9px] rounded-[10px] bg-white px-[16px] text-[14.5px] font-semibold"
+          className="flex h-[40px] items-center gap-[9px] rounded-[10px] bg-white px-[16px] text-15 font-semibold"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)', opacity: 0.55 }}
           title="Nothing to skip — no domain can be linked yet"
         >
@@ -826,7 +826,7 @@ function StepDone({
       </div>
 
       <div className="mt-[14px] rounded-[16px] p-[24px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
-        <p className="text-[15px] font-normal" style={{ color: 'rgb(91,91,91)' }}>
+        <p className="text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Enter the domain you want to connect to your website
         </p>
         <div className="mt-[14px] flex h-[56px] items-center justify-between rounded-[11px] px-[20px]" style={{ background: '#F2F3F5' }}>
@@ -835,15 +835,15 @@ function StepDone({
             onChange={(e) => set({ domain: e.target.value })}
             placeholder="youragency.com"
             aria-label="Domain"
-            className="h-full w-full bg-transparent text-[16px] font-semibold text-ink outline-none"
+            className="h-full w-full bg-transparent text-16 font-semibold text-ink outline-none"
           />
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden className="block shrink-0">
             <path d="m12.4 4.2 3.4 3.4M2.6 17.4l.7-3.3a2 2 0 0 1 .54-1L11.4 5.8a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.6 7.6a2 2 0 0 1-1 .54l-3.3.7-.7-1.2Z" stroke="#5B5B5B" strokeWidth="1.5" strokeLinejoin="round" />
           </svg>
         </div>
 
-        <p className="mt-[26px] text-[15.5px] font-bold text-ink">DNS Records</p>
-        <p className="mt-[8px] text-[14px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="mt-[26px] text-16 font-bold text-ink">DNS Records</p>
+        <p className="mt-[8px] text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>
           Next, add the following records to your domain&apos;s DNS settings.
         </p>
 
@@ -855,9 +855,9 @@ function StepDone({
         */}
         <div className="mt-[16px] overflow-hidden rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}>
           <div className="grid h-[48px] grid-cols-[148px_210px_1fr] items-center px-[22px]" style={{ background: '#ECEDF0' }}>
-            <span className="text-[14.5px] font-semibold" style={{ color: 'rgb(59,59,59)' }}>Type</span>
-            <span className="text-[14.5px] font-semibold" style={{ color: 'rgb(59,59,59)' }}>Hostname</span>
-            <span className="text-[14.5px] font-semibold" style={{ color: 'rgb(59,59,59)' }}>Records</span>
+            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Type</span>
+            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Hostname</span>
+            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Records</span>
           </div>
           {(['A', 'TXT'] as const).map((t) => (
             <div
@@ -865,9 +865,9 @@ function StepDone({
               className="grid h-[60px] grid-cols-[148px_210px_1fr] items-center px-[22px]"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}
             >
-              <span className="text-[15px] font-medium" style={{ color: 'rgb(59,59,59)' }}>{t}</span>
-              <span className="text-[15px] font-medium" style={{ color: 'rgb(59,59,59)' }}>@</span>
-              <span className="text-[15px] font-medium" style={{ color: 'rgb(155,155,155)' }}>
+              <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>{t}</span>
+              <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>@</span>
+              <span className="text-15 font-medium" style={{ color: 'rgb(155,155,155)' }}>
                 Issued when a host is provisioned
               </span>
             </div>
@@ -881,14 +881,14 @@ function StepDone({
       */}
       <div className="mt-[28px] flex justify-center gap-[12px]">
         <span
-          className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-[15.5px] font-semibold"
+          className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-16 font-semibold"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)', opacity: 0.55 }}
           title="Use Back, or close the wizard"
         >
           Cancel
         </span>
         <span
-          className="flex h-[52px] w-[180px] items-center justify-center gap-[9px] rounded-[11px] bg-ink text-[15.5px] font-semibold text-white"
+          className="flex h-[52px] w-[180px] items-center justify-center gap-[9px] rounded-[11px] bg-ink text-16 font-semibold text-white"
           style={{ opacity: 0.55 }}
           title="No domain can be linked yet — use Launch to finish"
         >
@@ -903,12 +903,12 @@ function StepDone({
         The one honest statement this step owes. Everything above is a draft;
         Launch records that the portal has been set up.
       */}
-      <p className="mt-[26px] max-w-[820px] text-[14.5px] leading-[1.55]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="mt-[26px] max-w-[820px] text-15 leading-[1.55]" style={{ color: 'rgb(131,131,131)' }}>
         Launch marks the portal as set up and takes you to it. No website, collateral or DNS is
         generated — none of that exists in the product yet, and the fields above are kept as a draft
         rather than sent somewhere that would discard them.
       </p>
-      {note ? <p className="mt-[14px] text-[15px] text-destructive">{note}</p> : null}
+      {note ? <p className="mt-[14px] text-15 text-destructive">{note}</p> : null}
     </div>
   );
 }

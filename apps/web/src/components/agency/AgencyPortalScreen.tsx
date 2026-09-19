@@ -135,7 +135,7 @@ export function AgencyPortalScreen() {
           */}
           {launched ? null : (
             <>
-              <h2 className="absolute left-[56px] top-[688px] text-[24px] font-bold leading-none text-ink">My Clients</h2>
+              <h2 className="absolute left-[56px] top-[688px] text-24 font-bold leading-none text-ink">My Clients</h2>
               <label
                 className="absolute left-[1226px] top-[674px] flex h-[58px] w-[460px] items-center rounded-[13px] bg-white pl-[20px] pr-[18px]"
                 style={{ boxShadow: '0 10px 26px -20px rgba(12,12,12,0.35)' }}
@@ -145,7 +145,7 @@ export function AgencyPortalScreen() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search Workspace"
                   aria-label="Search Workspace"
-                  className="h-full w-[390px] bg-transparent text-[15.5px] font-medium text-ink outline-none"
+                  className="h-full w-[390px] bg-transparent text-16 font-medium text-ink outline-none"
                 />
                 <svg width="19" height="19" viewBox="0 0 26 26" fill="none" aria-hidden className="ml-auto block">
                   <circle cx="11" cy="11" r="8" stroke="rgb(91,91,91)" strokeWidth="2" />
@@ -156,7 +156,7 @@ export function AgencyPortalScreen() {
           )}
 
           {error ? (
-            <p className="absolute left-[56px] text-[15px] text-destructive" style={{ top: launched ? 494 : 721 }}>
+            <p className="absolute left-[56px] text-15 text-destructive" style={{ top: launched ? 494 : 721 }}>
               {error}
             </p>
           ) : null}

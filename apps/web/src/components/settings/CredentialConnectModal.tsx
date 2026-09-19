@@ -77,18 +77,18 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
         className="w-full max-w-[440px] rounded-xl border border-border bg-surface p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-[18px] font-semibold text-ink">Connect {label}</h2>
-        <p className="mt-1 text-[13px] text-ink-muted">
+        <h2 className="text-18 font-semibold text-ink">Connect {label}</h2>
+        <p className="mt-1 text-13 text-ink-muted">
           {label} has no sign-in redirect. It authenticates with your handle and an app password you create in your own{' '}
           {label} settings.
         </p>
 
-        <label className="mt-4 block text-[13px] font-medium text-ink" htmlFor="cc-handle">
+        <label className="mt-4 block text-13 font-medium text-ink" htmlFor="cc-handle">
           Handle
         </label>
         <input
           id="cc-handle"
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] text-ink"
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-14 text-ink"
           placeholder="name.bsky.social"
           value={handle}
           autoComplete="off"
@@ -96,13 +96,13 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />
 
-        <label className="mt-3 block text-[13px] font-medium text-ink" htmlFor="cc-password">
+        <label className="mt-3 block text-13 font-medium text-ink" htmlFor="cc-password">
           App password
         </label>
         <input
           id="cc-password"
           type="password"
-          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] text-ink"
+          className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-14 text-ink"
           placeholder="xxxx-xxxx-xxxx-xxxx"
           value={appPassword}
           /*
@@ -115,12 +115,12 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
           onChange={(e) => setAppPassword(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />
-        <p className="mt-1.5 text-[12px] text-ink-muted">
+        <p className="mt-1.5 text-12 text-ink-muted">
           Not your account password. In {label}: Settings → Privacy and Security → App Passwords → Add App Password.
           You can revoke it there at any time without changing your real password.
         </p>
 
-        {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
         <div className="mt-5 flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={onClose} disabled={busy}>

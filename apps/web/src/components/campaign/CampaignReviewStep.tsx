@@ -82,10 +82,10 @@ export function ReviewStep({
   return (
     <>
       <StepPanel x={226} y={156} w={596} h={633} clip={PANEL_CLIP.s6} wash="bg-cmp-review">
-        <h2 className="absolute left-[31px] top-[19px] whitespace-nowrap text-[25px] font-semibold leading-[1.43] text-black">
+        <h2 className="absolute left-[31px] top-[19px] whitespace-nowrap text-26 font-semibold leading-[1.43] text-black">
           Review &amp; Activate
         </h2>
-        <p className="absolute left-[31px] top-[57px] whitespace-nowrap text-[18px] font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-[31px] top-[57px] whitespace-nowrap text-18 font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
           {/* Mid-sentence: the lowercase form when there is no name, and no
               name styling on a placeholder. */}
           Here&rsquo;s what{' '}
@@ -108,7 +108,7 @@ export function ReviewStep({
           {/* A standalone caption, so this one takes the capitalised form —
               and drops the semibold when it is a placeholder. */}
           <span
-            className={`absolute left-0 top-[129.279px] block w-[146px] text-center text-[16px] leading-[0.9986] ${agent.named ? 'font-semibold' : 'font-normal italic'}`}
+            className={`absolute left-0 top-[129.279px] block w-[146px] text-center text-16 leading-[0.9986] ${agent.named ? 'font-semibold' : 'font-normal italic'}`}
             style={{ color: 'rgb(131,131,131)' }}
           >
             {agent.name}
@@ -116,27 +116,27 @@ export function ReviewStep({
 
           {rows.map(([label, value], i) => (
             <div key={label}>
-              <span className="absolute left-[180px] whitespace-nowrap text-[16px] font-normal leading-[0.9986]" style={{ top: 18.279 + i * 28, color: 'rgb(131,131,131)' }}>
+              <span className="absolute left-[180px] whitespace-nowrap text-16 font-normal leading-[0.9986]" style={{ top: 18.279 + i * 28, color: 'rgb(131,131,131)' }}>
                 {label}
               </span>
-              <span className="absolute right-0 whitespace-nowrap text-right text-[14px] font-semibold leading-[1.273] text-ink" style={{ top: 18.279 + i * 28 }}>
+              <span className="absolute right-0 whitespace-nowrap text-right text-14 font-semibold leading-[1.273] text-ink" style={{ top: 18.279 + i * 28 }}>
                 {value}
               </span>
             </div>
           ))}
         </div>
 
-        <span className="absolute left-[32px] top-[292px] whitespace-nowrap text-[18px] font-semibold leading-none text-ink">
+        <span className="absolute left-[32px] top-[292px] whitespace-nowrap text-18 font-semibold leading-none text-ink">
           Here&rsquo;s what I&rsquo;ll do
         </span>
 
         <div className="absolute left-[399px] top-[290px] h-[27.532px] w-[155px]">
           <span className="absolute left-0 top-0 block h-[27.532px] w-[89px] rounded-[5.809px]" style={{ background: 'rgba(0,0,0,0.07)', backdropFilter: 'blur(18.731px)' }} />
-          <span className="absolute left-[8.258px] top-[6.045px] whitespace-nowrap text-[11.525px] font-normal leading-none" style={{ color: 'rgba(0,0,0,0.6)' }}>
+          <span className="absolute left-[8.258px] top-[6.045px] whitespace-nowrap text-12 font-normal leading-none" style={{ color: 'rgba(0,0,0,0.6)' }}>
             Agent Status
           </span>
           <span className="absolute left-[98px] top-[7.771px] inline-block h-[11.894px] w-[11.894px] rounded-full" style={{ background: 'rgb(19,215,17)' }} />
-          <span className="absolute left-[114px] top-[4.287px] whitespace-nowrap text-[14px] font-normal leading-none" style={{ color: 'rgba(0,0,0,0.6)' }}>
+          <span className="absolute left-[114px] top-[4.287px] whitespace-nowrap text-14 font-normal leading-none" style={{ color: 'rgba(0,0,0,0.6)' }}>
             Active
           </span>
         </div>
@@ -148,7 +148,7 @@ export function ReviewStep({
             style={{ top: ROW_Y[i], boxShadow: 'inset 0 0 0 1.276px rgba(12,12,12,0.1)' }}
           >
             <Spinner className="absolute left-[12px] top-[13px]" spin={false} />
-            <span className="absolute left-[34px] top-[11px] whitespace-nowrap text-[16px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+            <span className="absolute left-[34px] top-[11px] whitespace-nowrap text-16 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
               {t}
             </span>
           </div>
@@ -168,7 +168,7 @@ export function ReviewStep({
         >
           {requireApproval ? <TickPath className="absolute left-[5px] top-[5px] block" /> : null}
         </button>
-        <span className="absolute left-[57px] top-[547px] block w-[390px] text-[16px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[57px] top-[547px] block w-[390px] text-16 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
           Require approval for campaign posts. Baseline posts will continue automatically.
         </span>
       </StepPanel>
@@ -180,7 +180,7 @@ export function ReviewStep({
         className="absolute left-[381px] top-[805px] h-[52px] w-[273.302px] cursor-pointer rounded-[10.228px] bg-ink text-left transition-colors hover:bg-ink-800 active:scale-[0.99] disabled:opacity-60"
         style={{ backdropFilter: 'blur(32.586px)' }}
       >
-        <span className="absolute left-[21.558px] top-[13.021px] whitespace-nowrap text-[19.349px] font-medium leading-[1.269] text-white">
+        <span className="absolute left-[21.558px] top-[13.021px] whitespace-nowrap text-19 font-medium leading-[1.269] text-white">
           {busy ? 'Activating…' : 'Activate Campaign'}
         </span>
         <svg width="7.256" height="14.512" viewBox="0 0 9 17" fill="none" className="absolute left-[245.488px] top-[19.348px]" aria-hidden>

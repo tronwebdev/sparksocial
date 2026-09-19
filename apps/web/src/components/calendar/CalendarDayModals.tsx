@@ -59,7 +59,7 @@ function prettyDay(day: string): string {
 function Head({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="px-[50px] pt-[44px]">
-      <p className="text-center text-[28px] font-bold leading-[1.2] text-ink">{title}</p>
+      <p className="text-center text-28 font-bold leading-[1.2] text-ink">{title}</p>
       <p className="mt-[14px] text-center text-18 font-normal text-ink-muted">{subtitle}</p>
     </div>
   );
@@ -68,7 +68,7 @@ function Head({ title, subtitle }: { title: string; subtitle: string }) {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-[40px] pt-[28px]">
-      <p className="text-[19px] font-semibold text-ink">{label}</p>
+      <p className="text-19 font-semibold text-ink">{label}</p>
       <div className={cn('mt-[14px]', PANEL)} style={PANEL_RING}>
         {children}
       </div>
@@ -91,7 +91,7 @@ function Primary({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="ml-auto flex h-[52px] items-center justify-center rounded-xl bg-ink px-[26px] text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="ml-auto flex h-[52px] items-center justify-center rounded-xl bg-ink px-[26px] text-17 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {children}
       </button>
@@ -142,16 +142,16 @@ export function AskAgentModal({
 
       <Section label="Agent Recommendation">
         {rec === null ? (
-          <p className="text-[19px] font-medium text-ink-muted">Working out what fits this day…</p>
+          <p className="text-19 font-medium text-ink-muted">Working out what fits this day…</p>
         ) : rec === 'none' ? (
-          <p className="text-[19px] font-medium text-ink-muted">
+          <p className="text-19 font-medium text-ink-muted">
             {/* A recommendation nobody can produce is a real state — the campaign
                 may have nothing left that fits this day — so it says that
                 rather than showing an empty panel. */}
             Nothing in this campaign fits this day yet.
           </p>
         ) : (
-          <p className="text-[19px] font-medium text-ink">
+          <p className="text-19 font-medium text-ink">
             {ready ? (ready.playbookName ?? ready.playbookId) : 'Nothing in this campaign fits this day yet.'}
           </p>
         )}
@@ -165,7 +165,7 @@ export function AskAgentModal({
         reasoning it does have, and the four invented lines are left out.
       */}
       <Section label="Preview">
-        <p className="text-[19px] font-medium leading-[1.45] text-ink-muted">
+        <p className="text-19 font-medium leading-[1.45] text-ink-muted">
           {ready?.why?.summary ??
             'The hook, CTA and caption are written when this is accepted — the agent picks the format first.'}
         </p>
@@ -337,7 +337,7 @@ export function MoveExistingModal({
       <Head title="Move existing post" subtitle={`Reschedule another post to ${prettyDay(day)}`} />
 
       <Section label="Agent recommendation">
-        <p className="text-[19px] font-medium leading-[1.45] text-ink-muted">
+        <p className="text-19 font-medium leading-[1.45] text-ink-muted">
           {/* The design asserts the agent suggests which post to move. Nothing
               ranks a move — `calendar.recommend_slot` recommends a *playbook*
               for an empty day — so this says what the list below is instead of
@@ -370,13 +370,13 @@ export function MoveExistingModal({
                   {/* 74x74 well at 24,22 in the design. */}
                   <span
                     aria-hidden
-                    className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-xl text-[11px] text-ink-muted"
+                    className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-xl text-11 text-ink-muted"
                     style={{ background: 'rgba(131,131,131,0.1)' }}
                   >
                     no preview
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[19px] font-medium text-ink">{it.summary}</span>
+                    <span className="block truncate text-19 font-medium text-ink">{it.summary}</span>
                     {it.scheduledAt ? (
                       <span className="mt-[6px] block text-16 text-ink-muted">
                         Currently {new Date(it.scheduledAt).toLocaleDateString('en', {

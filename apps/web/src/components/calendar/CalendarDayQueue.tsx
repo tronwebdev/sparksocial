@@ -144,7 +144,7 @@ export function CalendarDayQueue({
         <h2 className="text-20 font-semibold leading-[1.28] text-ink">Upcoming action queue</h2>
         <span
           title="Everything scheduled for this day, in the order it will happen. Empty slots are open — add a post to one."
-          className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
           style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
         >
           i
@@ -194,7 +194,7 @@ export function CalendarDayQueue({
 
           return (
             <div key={m} className="relative flex min-h-[76px] border-b" style={{ borderColor: 'rgba(131,131,131,0.12)' }}>
-              <div className="w-[110px] shrink-0 px-[16px] py-[14px] text-[14px] font-medium leading-[1.3]" style={{ color: '#5B5B5B' }}>
+              <div className="w-[110px] shrink-0 px-[16px] py-[14px] text-14 font-medium leading-[1.3]" style={{ color: '#5B5B5B' }}>
                 {clockLabel(m)}
               </div>
 
@@ -203,7 +203,7 @@ export function CalendarDayQueue({
                   <button
                     type="button"
                     onClick={() => onAddPost(dayKey(day))}
-                    className="flex h-[58px] w-full items-center justify-center gap-[8px] rounded-[10px] text-[13.5px] font-medium text-ink-muted transition-colors hover:bg-[rgba(131,131,131,0.06)]"
+                    className="flex h-[58px] w-full items-center justify-center gap-[8px] rounded-[10px] text-14 font-medium text-ink-muted transition-colors hover:bg-[rgba(131,131,131,0.06)]"
                     style={{ background: 'rgba(131,131,131,0.05)' }}
                   >
                     <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden>
@@ -259,12 +259,12 @@ function Entry({
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14.5px] font-medium text-ink">
+        <span className="block truncate text-15 font-medium text-ink">
           {slot.summary || slot.playbookName}
         </span>
         <span className="mt-[6px] flex items-center gap-[8px]">
           <span aria-hidden className="block h-[15px] w-[15px] shrink-0 rounded-full" style={{ background: 'linear-gradient(140deg,#6B4A2F,#2F2119)' }} />
-          <span className="text-[11.5px]" style={{ color: '#5B5B5B' }}>
+          <span className="text-12" style={{ color: '#5B5B5B' }}>
             Planned by Agent
           </span>
           {slot.platform ? <PlatformIcon platform={slot.platform} size={15} /> : null}
@@ -272,7 +272,7 @@ function Entry({
       </span>
 
       <span
-        className="shrink-0 rounded-[6px] bg-white/80 px-[9px] py-[4px] text-[11.5px] font-medium text-ink"
+        className="shrink-0 rounded-[6px] bg-white/80 px-[9px] py-[4px] text-12 font-medium text-ink"
         style={{ boxShadow: `inset 0 0 0 1.1px ${tint.chipRing}` }}
       >
         {MEDIA_WORD[slot.mediaType ?? 'text'] ?? 'Post'}

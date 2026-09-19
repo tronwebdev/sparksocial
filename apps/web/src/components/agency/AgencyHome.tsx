@@ -126,13 +126,13 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       </span>
 
       <h2
-        className="absolute left-[104px] top-[96px] whitespace-nowrap text-[42px] font-bold leading-none text-ink"
+        className="absolute left-[104px] top-[96px] whitespace-nowrap text-40 font-bold leading-none text-ink"
         style={{ letterSpacing: '-0.01em' }}
       >
         Launch Your AI Social Media Agency
       </h2>
 
-      <p className="absolute left-[104px] top-[164px] w-[880px] text-[20.5px] font-normal leading-[1.55]" style={{ color: 'rgb(91,91,91)' }}>
+      <p className="absolute left-[104px] top-[164px] w-[880px] text-20 font-normal leading-[1.55]" style={{ color: 'rgb(91,91,91)' }}>
         Create a fully branded AI-powered social media agency complete with:
         <br />
         <b className="font-bold" style={{ color: 'rgb(59,59,59)' }}>
@@ -148,7 +148,7 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       <button
         type="button"
         onClick={onLaunch}
-        className="absolute left-[104px] top-[296px] flex h-[56px] items-center gap-[12px] rounded-[12px] bg-ink px-[26px] text-[17px] font-semibold text-white transition-[background-color,transform] hover:bg-ink-800 active:scale-[0.985]"
+        className="absolute left-[104px] top-[296px] flex h-[56px] items-center gap-[12px] rounded-[12px] bg-ink px-[26px] text-17 font-semibold text-white transition-[background-color,transform] hover:bg-ink-800 active:scale-[0.985]"
       >
         <span className="whitespace-nowrap">Launch Your Ai Agency</span>
         <svg width="13" height="13" viewBox="0 0 10 10" fill="none" aria-hidden className="block">
@@ -176,10 +176,10 @@ export function AgencyHomeSummary({
       className="absolute left-ag-gutter top-[118px] h-[372px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-card"
       style={{ boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
     >
-      <h2 className="absolute left-[66px] top-[150px] whitespace-nowrap text-[29px] font-bold leading-none text-ink">
+      <h2 className="absolute left-[66px] top-[150px] whitespace-nowrap text-28 font-bold leading-none text-ink">
         Welcome to your Agency Portal
       </h2>
-      <p className="absolute left-[66px] top-[196px] text-[16px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="absolute left-[66px] top-[196px] text-16 font-normal" style={{ color: 'rgb(131,131,131)' }}>
         Your central hub for managing agency tasks and resources.
       </p>
 
@@ -188,24 +188,24 @@ export function AgencyHomeSummary({
         className="absolute left-[66px] top-[240px] h-[112px] w-[246px] rounded-[14px] bg-white"
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
       >
-        <span className="absolute left-[17px] top-[14px] text-[14.5px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+        <span className="absolute left-[17px] top-[14px] text-15 font-medium" style={{ color: 'rgb(91,91,91)' }}>
           Agency setup
         </span>
         <span className="absolute left-[17px] top-[40px] flex items-center gap-[7px]">
           <span aria-hidden className="block h-[17px] w-[17px] rounded-full" style={{ background: '#22B14C' }} />
-          <span className="text-[15.5px] font-semibold text-ink">Completed</span>
+          <span className="text-16 font-semibold text-ink">Completed</span>
         </span>
         <button
           type="button"
           onClick={onEditWizard}
-          className="absolute left-[17px] top-[70px] h-[30px] rounded-[8px] bg-white px-[11px] text-[13.5px] font-medium transition-colors hover:bg-surface-200"
+          className="absolute left-[17px] top-[70px] h-[30px] rounded-[8px] bg-white px-[11px] text-14 font-medium transition-colors hover:bg-surface-200"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)' }}
         >
           Edit Wizard
         </button>
         <span
           aria-hidden
-          className="absolute right-[18px] top-[22px] flex h-[68px] w-[68px] items-center justify-center rounded-full text-[17px] font-bold text-white"
+          className="absolute right-[18px] top-[22px] flex h-[68px] w-[68px] items-center justify-center rounded-full text-17 font-bold text-white"
           style={{ background: 'radial-gradient(circle at 32% 32%, #F56BFF 0%, #A341FF 65%, #7B2BE0 100%)' }}
         >
           100%
@@ -222,7 +222,7 @@ export function AgencyHomeSummary({
         note={totals.quiet > 0 ? `${totals.quiet} quiet` : undefined}
       />
 
-      <p className="absolute left-[66px] top-[374px] text-[16px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+      <p className="absolute left-[66px] top-[374px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
         Website URL:{' '}
         <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>
           Not connected yet
@@ -232,14 +232,14 @@ export function AgencyHomeSummary({
       {/* ── the account chips ──────────────────────────────────────────── */}
       <div className="absolute left-[66px] top-[406px] flex w-[740px] flex-wrap gap-[10px]">
         {accounts.length === 0 ? (
-          <span className="text-[13.5px]" style={{ color: 'rgb(131,131,131)' }}>
+          <span className="text-14" style={{ color: 'rgb(131,131,131)' }}>
             No publishing accounts connected yet.
           </span>
         ) : (
           accounts.slice(0, 7).map((a) => (
             <span
               key={a.platform}
-              className="flex h-[36px] items-center gap-[8px] rounded-[9px] bg-white px-[12px] text-[13.5px] font-semibold text-ink"
+              className="flex h-[36px] items-center gap-[8px] rounded-[9px] bg-white px-[12px] text-14 font-semibold text-ink"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
             >
               <PlatformDot platform={a.platform} />
@@ -259,14 +259,14 @@ export function AgencyHomeSummary({
           className="absolute left-[16px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px]"
           style={{ background: 'linear-gradient(160deg, #CBECF6 0%, #EAF7FB 100%)', boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
         >
-          <span className="absolute left-[16px] top-[14px] text-[15px] font-bold text-ink">Agency Website</span>
+          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">Agency Website</span>
           <AssetEye filled />
           <span
             aria-hidden
             className="absolute left-[70px] top-[76px] block h-[250px] w-[160px] rounded-t-[10px] bg-white"
             style={{ boxShadow: '0 -6px 24px -12px rgba(12,12,12,0.2)' }}
           />
-          <span className="absolute bottom-[14px] left-0 right-0 text-center text-[12.5px]" style={{ color: 'rgb(91,91,91)' }}>
+          <span className="absolute bottom-[14px] left-0 right-0 text-center text-13" style={{ color: 'rgb(91,91,91)' }}>
             Generated in the launch wizard.
           </span>
         </div>
@@ -276,9 +276,9 @@ export function AgencyHomeSummary({
           className="absolute left-[332px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px] bg-white"
           style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
         >
-          <span className="absolute left-[16px] top-[14px] text-[15px] font-bold text-ink">Facebook cover</span>
+          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">Facebook cover</span>
           <AssetEye />
-          <span className="absolute left-[16px] right-[16px] top-[150px] text-center text-[12.5px] leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
+          <span className="absolute left-[16px] right-[16px] top-[150px] text-center text-13 leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
             Generated in the launch wizard.
           </span>
         </div>
@@ -288,13 +288,13 @@ export function AgencyHomeSummary({
           className="absolute left-[648px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px] bg-white"
           style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
         >
-          <span className="absolute left-[16px] top-[14px] text-[15px] font-bold text-ink">LinkedIn banners</span>
+          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">LinkedIn banners</span>
           <span
             aria-hidden
             className="absolute left-[16px] top-[150px] block h-[96px] w-[200px] rounded-[8px]"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
           />
-          <span className="absolute left-[16px] right-[16px] top-[258px] text-[12.5px]" style={{ color: 'rgb(131,131,131)' }}>
+          <span className="absolute left-[16px] right-[16px] top-[258px] text-13" style={{ color: 'rgb(131,131,131)' }}>
             Generated in the launch wizard.
           </span>
         </div>
@@ -359,12 +359,12 @@ function Stat({
 }) {
   return (
     <div className={`absolute top-[240px] h-[112px] w-[224px] rounded-[14px] ${tint}`} style={{ left: x }}>
-      <span className="absolute left-[18px] top-[16px] text-[15.5px] font-medium" style={{ color: 'rgb(59,59,59)' }}>
+      <span className="absolute left-[18px] top-[16px] text-16 font-medium" style={{ color: 'rgb(59,59,59)' }}>
         {label}
       </span>
-      <span className="absolute left-[18px] top-[52px] text-[30px] font-bold leading-none text-ink">{value}</span>
+      <span className="absolute left-[18px] top-[52px] text-32 font-bold leading-none text-ink">{value}</span>
       {note ? (
-        <span className="absolute bottom-[12px] left-[18px] text-[13px] font-medium" style={{ color: 'rgb(91,91,91)' }}>
+        <span className="absolute bottom-[12px] left-[18px] text-13 font-medium" style={{ color: 'rgb(91,91,91)' }}>
           {note}
         </span>
       ) : null}
@@ -412,13 +412,13 @@ export function AgencyGrowthTools({
 }) {
   return (
     <section className="absolute left-ag-gutter top-[514px] h-[136px] w-ag-wide rounded-[20px] bg-ag-growth">
-      <h3 className="absolute left-[32px] top-[28px] flex items-center gap-[11px] whitespace-nowrap text-[22px] font-bold leading-none text-ink">
+      <h3 className="absolute left-[32px] top-[28px] flex items-center gap-[11px] whitespace-nowrap text-22 font-bold leading-none text-ink">
         <svg width="18" height="24" viewBox="0 0 16 20" fill="none" aria-hidden className="block">
           <path d="M9.5 1 2 11.5h5L6.5 19 14 8.5H9L9.5 1Z" fill="#0C0C0C" />
         </svg>
         Growth Tools:
       </h3>
-      <p className="absolute left-[32px] top-[66px] w-[430px] text-[15.5px] font-medium leading-[1.35]" style={{ color: 'rgb(91,91,91)' }}>
+      <p className="absolute left-[32px] top-[66px] w-[430px] text-16 font-medium leading-[1.35]" style={{ color: 'rgb(91,91,91)' }}>
         Discover new clients and job opportunities with our powerful Growth Tools.
       </p>
 
@@ -485,8 +485,8 @@ function ToolCard({
       >
         {icon}
       </span>
-      <span className="absolute left-[92px] top-[18px] text-[18.5px] font-bold text-ink">{title}</span>
-      <span className="absolute left-[92px] top-[48px] block w-[330px] text-[13.5px] font-normal leading-[1.3]" style={{ color: 'rgb(91,91,91)' }}>
+      <span className="absolute left-[92px] top-[18px] text-19 font-bold text-ink">{title}</span>
+      <span className="absolute left-[92px] top-[48px] block w-[330px] text-14 font-normal leading-[1.3]" style={{ color: 'rgb(91,91,91)' }}>
         {body}
       </span>
     </button>

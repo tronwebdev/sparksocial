@@ -157,7 +157,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="asset-intent">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="asset-intent">
             What are you looking for
           </label>
           <input
@@ -166,18 +166,18 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
             onChange={(e) => setIntent(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void search()}
             placeholder={genome ? `e.g. ${genome.name} storefront` : 'e.g. storefront photo'}
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="asset-role-filter">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="asset-role-filter">
             Role
           </label>
           <select
             id="asset-role-filter"
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink"
           >
             <option value="">Any role</option>
             {ASSET_ROLES.map((r) => (
@@ -189,20 +189,20 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
         </div>
         <button
           onClick={() => void search()}
-          className="h-10 rounded border border-border px-4 text-[14px] font-medium text-ink hover:bg-surface-muted"
+          className="h-10 rounded border border-border px-4 text-14 font-medium text-ink hover:bg-surface-muted"
         >
           Search
         </button>
 
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="asset-sort">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="asset-sort">
             Sort this page
           </label>
           <select
             id="asset-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink"
+            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink"
           >
             <option value="relevance">Relevance</option>
             <option value="newest">Newest</option>
@@ -221,7 +221,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
               key={v}
               type="button"
               onClick={() => setView(v)}
-              className={`rounded px-3 py-1.5 text-[13px] capitalize ${
+              className={`rounded px-3 py-1.5 text-13 capitalize ${
                 view === v ? 'bg-ink text-surface' : 'text-ink-muted'
               }`}
             >
@@ -231,7 +231,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
         </div>
       </div>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       <div className="mt-5">
         {results === null ? (
@@ -249,10 +249,10 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
             version of this message.
           */
           <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
-            <p className="text-[15px] font-medium text-ink">
+            <p className="text-15 font-medium text-ink">
               {intent.trim() || role ? 'Nothing matched that' : 'Nothing in the library yet'}
             </p>
-            <p className="mx-auto mt-1 max-w-[46ch] text-[13px] text-ink-muted">
+            <p className="mx-auto mt-1 max-w-[46ch] text-13 text-ink-muted">
               {intent.trim() || role
                 ? 'Retrieval scores meaning rather than matching words, so a broader phrase usually finds more than a more precise one. Clearing the role filter helps most.'
                 : 'Assets are what SPARK builds posts from — a product shot, a piece of finished work, a clip of the space. Add one above and it becomes searchable once it has been captioned.'}
@@ -261,7 +261,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
               <button
                 type="button"
                 onClick={() => setPage(0)}
-                className="mt-3 text-[13px] font-medium text-primary underline decoration-dotted underline-offset-2"
+                className="mt-3 text-13 font-medium text-primary underline decoration-dotted underline-offset-2"
               >
                 Back to the first page
               </button>
@@ -283,27 +283,27 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                   ) : a.mediaType === 'video' ? (
                     <video src={a.url} className="h-32 w-full object-cover" muted preload="metadata" />
                   ) : (
-                    <div className="flex h-32 w-full items-center justify-center text-[12px] text-ink-muted">
+                    <div className="flex h-32 w-full items-center justify-center text-12 text-ink-muted">
                       Audio
                     </div>
                   )}
                 </button>
                 <div className="p-3">
-                  <p className="truncate text-[13px] text-ink" title={label(a)}>
+                  <p className="truncate text-13 text-ink" title={label(a)}>
                     {label(a)}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Badge variant="neutral">{ASSET_ROLES.find((r) => r.value === a.role)?.label ?? a.role}</Badge>
                     <Badge variant={a.rightsStatus === 'cleared' ? 'success' : 'warn'}>{a.rightsStatus}</Badge>
                   </div>
-                  <p className="mt-2 text-[11px] text-ink-muted">
+                  <p className="mt-2 text-11 text-ink-muted">
                     {[bytes(a.sizeBytes), `used ${a.usageCount}\u00D7`].filter(Boolean).join(' \u00B7 ')}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       onClick={() => setSelected(a)}
-                      className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2"
+                      className="text-12 font-medium text-primary underline decoration-dotted underline-offset-2"
                     >
                       Details
                     </button>
@@ -311,7 +311,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                       type="button"
                       disabled={busy === a.assetId}
                       onClick={() => void archive(a.assetId)}
-                      className="ml-auto text-[12px] font-medium text-destructive disabled:opacity-50"
+                      className="ml-auto text-12 font-medium text-destructive disabled:opacity-50"
                     >
                       {busy === a.assetId ? '\u2026' : 'Archive'}
                     </button>
@@ -330,9 +330,9 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
             comes to believe there are two of them.
           */
           <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full min-w-[46rem] text-[13px]">
+            <table className="w-full min-w-[46rem] text-13">
               <thead>
-                <tr className="border-b border-border bg-surface-muted text-left text-[11px] uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-border bg-surface-muted text-left text-11 uppercase tracking-wide text-ink-muted">
                   <th className="px-3 py-2 font-medium">Asset</th>
                   <th className="px-3 py-2 font-medium">Caption</th>
                   <th className="px-3 py-2 font-medium">Type</th>
@@ -353,14 +353,14 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                         {a.mediaType === 'image' ? (
                           <img src={a.url} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
                         ) : (
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-surface-muted text-[10px] text-ink-muted">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-surface-muted text-10 text-ink-muted">
                             {a.mediaType === 'video' ? 'Vid' : 'Aud'}
                           </span>
                         )}
                         <span className="min-w-0">
                           <span className="block max-w-[16rem] truncate text-ink">{label(a)}</span>
                           {bytes(a.sizeBytes) ? (
-                            <span className="block text-[11px] text-ink-muted">{bytes(a.sizeBytes)}</span>
+                            <span className="block text-11 text-ink-muted">{bytes(a.sizeBytes)}</span>
                           ) : null}
                         </span>
                       </button>
@@ -372,7 +372,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                             value={editing.text}
                             onChange={(e) => setEditing({ id: a.assetId, text: e.target.value })}
                             maxLength={400}
-                            className="h-8 min-w-[14rem] flex-1 rounded border border-border bg-input px-2 text-[13px] text-ink"
+                            className="h-8 min-w-[14rem] flex-1 rounded border border-border bg-input px-2 text-13 text-ink"
                           />
                           <Button
                             size="sm"
@@ -403,7 +403,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                         <button
                           type="button"
                           onClick={() => setSelected(a)}
-                          className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2"
+                          className="text-12 font-medium text-primary underline decoration-dotted underline-offset-2"
                         >
                           Details
                         </button>
@@ -411,7 +411,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                           type="button"
                           disabled={busy === a.assetId}
                           onClick={() => void archive(a.assetId)}
-                          className="text-[12px] font-medium text-destructive disabled:opacity-50"
+                          className="text-12 font-medium text-destructive disabled:opacity-50"
                         >
                           Archive
                         </button>
@@ -435,7 +435,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
             <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
               Previous
             </Button>
-            <span className="text-[12px] tabular-nums text-ink-muted">Page {page + 1}</span>
+            <span className="text-12 tabular-nums text-ink-muted">Page {page + 1}</span>
             <Button
               size="sm"
               variant="outline"
@@ -462,8 +462,8 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-[14px] font-medium text-ink">{label(preview)}</p>
-              <p className="text-[12px] text-ink-muted">
+              <p className="text-14 font-medium text-ink">{label(preview)}</p>
+              <p className="text-12 text-ink-muted">
                 {[bytes(preview.sizeBytes), preview.mediaType].filter(Boolean).join(' \u00B7 ')}
               </p>
             </div>
@@ -478,7 +478,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
               )}
             </div>
             {preview.caption ? (
-              <p className="mt-3 text-[13px] text-ink-muted">{preview.caption}</p>
+              <p className="mt-3 text-13 text-ink-muted">{preview.caption}</p>
             ) : null}
             <div className="mt-3 flex justify-end">
               <Button size="sm" variant="outline" onClick={() => setPreview(null)}>

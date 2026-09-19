@@ -69,8 +69,8 @@ export function LearningPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Learning</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Learning</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         The mix engine learns which content pillars actually perform for this brand and reweights toward them once
         confident. Freeze to lock it where it is; reset to wipe it back to cold start.
       </p>
@@ -80,7 +80,7 @@ export function LearningPanel() {
           <Badge variant={confidence.active ? 'success' : 'neutral'}>
             {confidence.active ? 'Using learned mix' : 'Cold start'}
           </Badge>
-          <span className="text-[13px] text-ink-muted">
+          <span className="text-13 text-ink-muted">
             confidence {Math.round(confidence.confidence * 100)}% · {confidence.arms.length} pillar
             {confidence.arms.length === 1 ? '' : 's'} tracked
           </span>
@@ -99,7 +99,7 @@ export function LearningPanel() {
       <div className="mt-4 border-t border-border pt-4">
         {resetArmed ? (
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-[13px] text-destructive">Not reversible — every arm and outcome is wiped. Sure?</p>
+            <p className="text-13 text-destructive">Not reversible — every arm and outcome is wiped. Sure?</p>
             <Button size="sm" variant="danger" disabled={resetBusy} onClick={() => void reset()}>
               {resetBusy ? 'Resetting…' : 'Yes, reset'}
             </Button>
@@ -115,7 +115,7 @@ export function LearningPanel() {
       </div>
 
       {message ? (
-        <p className={`mt-3 text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
+        <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
       ) : null}
     </section>
   );

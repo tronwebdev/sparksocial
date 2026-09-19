@@ -107,8 +107,8 @@ export function UsagePanel() {
   if (error) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="text-[18px] font-semibold text-ink">This month&rsquo;s spend</h2>
-        <p className="mt-2 text-[14px] text-ink-muted">{error}</p>
+        <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
+        <p className="mt-2 text-14 text-ink-muted">{error}</p>
       </section>
     );
   }
@@ -116,7 +116,7 @@ export function UsagePanel() {
   if (!usage) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="text-[18px] font-semibold text-ink">This month&rsquo;s spend</h2>
+        <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
         <Skeleton className="mt-4 h-32 w-full rounded-lg" />
       </section>
     );
@@ -128,8 +128,8 @@ export function UsagePanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">This month&rsquo;s spend</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
+          <p className="mt-1 text-13 text-ink-muted">
             Since{' '}
             {new Date(usage.periodStart).toLocaleDateString('en', { day: 'numeric', month: 'long' })}. Paid
             tools stop working when the limit is reached.
@@ -140,11 +140,11 @@ export function UsagePanel() {
 
       <div className="mt-4">
         <div className="flex items-baseline justify-between">
-          <p className="text-[22px] font-medium tabular-nums text-ink">
+          <p className="text-22 font-medium tabular-nums text-ink">
             {credits(usage.spentCredits)}{' '}
-            <span className="text-[15px] text-ink-muted">/ {credits(usage.monthlyCapCredits)} credits</span>
+            <span className="text-15 text-ink-muted">/ {credits(usage.monthlyCapCredits)} credits</span>
           </p>
-          <p className="text-[13px] tabular-nums text-ink-muted">
+          <p className="text-13 tabular-nums text-ink-muted">
             {credits(usage.remainingCredits)} left &middot; {money(usage.spentCents)} of{' '}
             {money(usage.monthlyCapCents)}
           </p>
@@ -166,7 +166,7 @@ export function UsagePanel() {
           /* Straight-line, and it says so. A brand ten days into a month has ten
              days of history, and a confident curve drawn through it would be a
              guess wearing a model's clothes. */
-          <p className={cn('mt-2 text-[12px]', usage.forecastOverCap ? 'text-warn' : 'text-ink-muted')}>
+          <p className={cn('mt-2 text-12', usage.forecastOverCap ? 'text-warn' : 'text-ink-muted')}>
             {usage.forecastOverCap
               ? `At this rate you will pass the limit by ${credits(
                   (usage.forecastCredits ?? 0) - usage.monthlyCapCredits,
@@ -178,7 +178,7 @@ export function UsagePanel() {
 
       <div className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-[13px] font-medium text-ink">By kind of work</h3>
+          <h3 className="text-13 font-medium text-ink">By kind of work</h3>
           <Button variant="ghost" size="sm" onClick={() => setEditing((v) => !v)}>
             {editing ? 'Cancel' : 'Adjust limits'}
           </Button>
@@ -202,9 +202,9 @@ export function UsagePanel() {
       </div>
 
       <div className="mt-6">
-        <h3 className="text-[13px] font-medium text-ink">Where it went</h3>
+        <h3 className="text-13 font-medium text-ink">Where it went</h3>
         {usage.byTool.length === 0 ? (
-          <p className="mt-1.5 text-[13px] text-ink-muted">Nothing charged yet this month.</p>
+          <p className="mt-1.5 text-13 text-ink-muted">Nothing charged yet this month.</p>
         ) : (
           <ul className="mt-2 grid grid-cols-1 gap-2">
             {usage.byTool.map((t) => (
@@ -212,7 +212,7 @@ export function UsagePanel() {
                 {/* What the credits went on, in words. `content.generate_avatar_video`
                     is the most expensive tool in the product and the least legible
                     line on a bill. */}
-                <span className="w-52 shrink-0 truncate text-[12px] text-ink" title={t.tool}>
+                <span className="w-52 shrink-0 truncate text-12 text-ink" title={t.tool}>
                   {toolLabel(t.tool)}
                 </span>
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
@@ -221,10 +221,10 @@ export function UsagePanel() {
                     style={{ width: `${Math.round(t.share * 100)}%` }}
                   />
                 </span>
-                <span className="w-20 shrink-0 text-right text-[12px] tabular-nums text-ink">
+                <span className="w-20 shrink-0 text-right text-12 tabular-nums text-ink">
                   {money(t.costCents)}
                 </span>
-                <span className="w-16 shrink-0 text-right text-[12px] tabular-nums text-ink-muted">
+                <span className="w-16 shrink-0 text-right text-12 tabular-nums text-ink-muted">
                   {t.calls} {t.calls === 1 ? 'call' : 'calls'}
                 </span>
               </li>
@@ -255,11 +255,11 @@ function CategoryRow({ category: c, spentCents }: { category: CategorySpend; spe
   return (
     <li>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[13px] text-ink">
+        <span className="text-13 text-ink">
           {c.label}
-          {c.unavailable && <span className="ml-2 text-[11px] text-ink-muted">not available yet</span>}
+          {c.unavailable && <span className="ml-2 text-11 text-ink-muted">not available yet</span>}
         </span>
-        <span className="text-[12px] tabular-nums text-ink-muted">
+        <span className="text-12 tabular-nums text-ink-muted">
           {bounded ? `${credits(c.credits)} / ${credits(c.allocationCredits ?? 0)} cr` : `${credits(c.credits)} cr`}
         </span>
       </div>
@@ -270,11 +270,11 @@ function CategoryRow({ category: c, spentCents }: { category: CategorySpend; spe
         />
       </div>
       {c.paused ? (
-        <p className="mt-1 text-[11px] text-destructive">
+        <p className="mt-1 text-11 text-destructive">
           Limit reached — {c.label.toLowerCase()} work is being refused until you raise it.
         </p>
       ) : (
-        <p className="mt-1 text-[11px] text-ink-muted">{CREDIT_CATEGORY_HINT[c.category]}</p>
+        <p className="mt-1 text-11 text-ink-muted">{CREDIT_CATEGORY_HINT[c.category]}</p>
       )}
     </li>
   );
@@ -337,8 +337,8 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
   return (
     <div className="mt-3 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4">
       <label className="grid gap-1">
-        <span className="text-[12px] font-medium text-ink">Monthly limit</span>
-        <span className="text-[11px] text-ink-muted">
+        <span className="text-12 font-medium text-ink">Monthly limit</span>
+        <span className="text-11 text-ink-muted">
           Your plan&rsquo;s ceiling is {credits(usage.monthlyCapCredits)} credits. You can hold the workspace
           below it, not above.
         </span>
@@ -353,12 +353,12 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
       </label>
 
       <div className="grid gap-3">
-        <span className="text-[12px] font-medium text-ink">Limit per kind of work</span>
+        <span className="text-12 font-medium text-ink">Limit per kind of work</span>
         {usage.byCategory.map((c) => (
           <label key={c.category} className="flex items-center justify-between gap-3">
-            <span className="text-[12px] text-ink">
+            <span className="text-12 text-ink">
               {c.label}
-              <span className="ml-2 text-[11px] text-ink-muted">{credits(c.credits)} cr used</span>
+              <span className="ml-2 text-11 text-ink-muted">{credits(c.credits)} cr used</span>
             </span>
             <Input
               type="number"
@@ -377,18 +377,18 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
           it has to, since it is the only place that can — but finding out by
           pressing Save is a worse way to learn it. */}
       {over && (
-        <p className="text-[12px] text-warn">
+        <p className="text-12 text-warn">
           Those add up to {credits(allocatedCredits)} credits, more than the {credits(capCredits)} monthly
           limit. Lower one, or raise the limit.
         </p>
       )}
       {!over && capCredits > allocatedCredits && (
-        <p className="text-[12px] text-ink-muted">
+        <p className="text-12 text-ink-muted">
           {credits(capCredits - allocatedCredits)} credits left over, available to anything without a limit of
           its own.
         </p>
       )}
-      {failure && <p className="text-[12px] text-destructive">{failure}</p>}
+      {failure && <p className="text-12 text-destructive">{failure}</p>}
 
       <div className="flex gap-2">
         <Button size="sm" onClick={() => void save()} disabled={saving || over}>

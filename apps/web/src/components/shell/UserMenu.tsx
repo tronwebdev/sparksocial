@@ -60,16 +60,16 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${label}`}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--ss-accent-purple)] text-[13px] font-semibold text-white outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--ss-accent-purple)] text-13 font-semibold text-white outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
       >
         {initials}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-[240px]">
         <DropdownMenuLabel className="normal-case tracking-normal">
-          <span className="block truncate text-[14px] font-medium text-ink">{label}</span>
+          <span className="block truncate text-14 font-medium text-ink">{label}</span>
           {user.primaryEmailAddress ? (
-            <span className="mt-0.5 block truncate text-[12px] font-normal text-ink-muted">
+            <span className="mt-0.5 block truncate text-12 font-normal text-ink-muted">
               {user.primaryEmailAddress.emailAddress}
             </span>
           ) : null}

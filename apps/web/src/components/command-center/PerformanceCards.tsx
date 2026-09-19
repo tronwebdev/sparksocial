@@ -206,7 +206,7 @@ export function PerformanceCards({
                 {/* 110x110 at radius 14. `ContentListItem` still has no
                     `mediaUrl`, so it names the medium. */}
                 <div
-                  className="flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-[14px] bg-white text-[12px] text-ink-muted"
+                  className="flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-[14px] bg-white text-12 text-ink-muted"
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.15)' }}
                 >
                   {topPost.mediaType ?? 'text'}
@@ -214,13 +214,13 @@ export function PerformanceCards({
 
                 <div className="min-w-0 flex-1">
                   <p className="text-20 font-semibold leading-[1.28] text-ink">{topPost.playbookName}</p>
-                  <p className="mt-2 line-clamp-2 max-w-[400px] text-[14.5px] leading-[1.35] text-ink-muted">
+                  <p className="mt-2 line-clamp-2 max-w-[400px] text-15 leading-[1.35] text-ink-muted">
                     {topPost.summary}
                   </p>
 
                   <div className="mt-[18px] flex flex-wrap items-center gap-[9px]">
                     {topPost.scheduledAt ? (
-                      <span className="flex items-center gap-2 text-[15px] font-medium text-ink">
+                      <span className="flex items-center gap-2 text-15 font-medium text-ink">
                         <svg width="15" height="15" viewBox="0 0 18 18" fill="none" aria-hidden>
                           <rect x="2" y="3.2" width="14" height="12.6" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
                           <path d="M2 7h14M6 1.8v2.6M12 1.8v2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -235,13 +235,13 @@ export function PerformanceCards({
                       </span>
                     ) : null}
                     {topPost.platform ? (
-                      <span className="text-[15px] font-medium text-ink">{platformLabel(topPost.platform)}</span>
+                      <span className="text-15 font-medium text-ink">{platformLabel(topPost.platform)}</span>
                     ) : null}
 
                     {/* Clicks, where one `cta_traffic` call answers honestly. */}
                     {topClicks !== null ? (
                       <span
-                        className="inline-flex h-[33px] items-center gap-2 rounded-lg bg-white px-3 text-[13.5px] font-medium text-ink"
+                        className="inline-flex h-[33px] items-center gap-2 rounded-lg bg-white px-3 text-14 font-medium text-ink"
                         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
                         title="Clicks on this post's CTA links, from Dub. There is no brand-wide click total — see PerformanceCards."
                       >
@@ -253,7 +253,7 @@ export function PerformanceCards({
                       <button
                         type="button"
                         onClick={() => onOpenPost(top!.contentItemId)}
-                        className="inline-flex h-[33px] items-center gap-2 rounded-lg bg-white px-3 text-[13.5px] font-medium text-ink"
+                        className="inline-flex h-[33px] items-center gap-2 rounded-lg bg-white px-3 text-14 font-medium text-ink"
                         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
                       >
                         View insights
@@ -341,7 +341,7 @@ export function PerformanceCards({
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[24px] font-semibold leading-[1.27] text-ink">What the agent has learned</p>
+              <p className="text-24 font-semibold leading-[1.27] text-ink">What the agent has learned</p>
               <p className="mt-3 max-w-[900px] text-16 leading-[1.4]" style={{ color: 'rgba(12,12,12,0.75)' }}>
                 {insight.summary}
               </p>
@@ -361,7 +361,7 @@ export function PerformanceCards({
                 type="button"
                 disabled
                 title="This is what the mix engine is already doing — there is no pending change to apply."
-                className="inline-flex h-[34px] cursor-not-allowed items-center gap-[7px] rounded-lg bg-white px-[13px] text-[14.5px] font-semibold text-ink opacity-55"
+                className="inline-flex h-[34px] cursor-not-allowed items-center gap-[7px] rounded-lg bg-white px-[13px] text-15 font-semibold text-ink opacity-55"
               >
                 <svg width="13" height="11" viewBox="0 0 14 12" fill="none" aria-hidden>
                   <path d="m1 6 4 4L13 1.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -371,7 +371,7 @@ export function PerformanceCards({
               <button
                 type="button"
                 onClick={() => setDismissed(true)}
-                className="inline-flex h-[34px] items-center rounded-lg bg-white px-[13px] text-[14.5px] font-medium"
+                className="inline-flex h-[34px] items-center rounded-lg bg-white px-[13px] text-15 font-medium"
                 style={{ boxShadow: 'inset 0 0 0 1px #F35525', color: '#F35525' }}
               >
                 Dismiss
@@ -403,7 +403,7 @@ export function PerformanceCards({
             <h3 className="text-20 font-semibold leading-none text-ink">What the Agent learned</h3>
             <span
               title="What SPARK has concluded from how this brand's posts have performed, and why the mix is weighted the way it is."
-              className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+              className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
               style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
             >
               i
@@ -449,7 +449,7 @@ export function PerformanceCards({
             <h3 className="text-20 font-semibold text-ink">Top Trending Post</h3>
             <span
               title="Your published posts, ordered by measured engagement."
-              className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+              className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
               style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
             >
               i
@@ -508,7 +508,7 @@ export function PerformanceCards({
                   {SHOW_TOP_POST_DETAILS ? (
                     <>
                     <div
-                      className="flex h-[94px] w-[94px] shrink-0 items-center justify-center rounded-xl text-[11px] text-ink-muted"
+                      className="flex h-[94px] w-[94px] shrink-0 items-center justify-center rounded-xl text-11 text-ink-muted"
                       style={{ background: 'rgba(131,131,131,0.08)' }}
                     >
                       {post?.mediaType ?? 'text'}
@@ -535,7 +535,7 @@ export function PerformanceCards({
                     <button
                       type="button"
                       onClick={() => onOpenPost(row.contentItemId)}
-                      className="flex h-[42px] w-[92px] shrink-0 items-center justify-center gap-2 rounded-lg bg-white text-[15px] font-medium text-ink"
+                      className="flex h-[42px] w-[92px] shrink-0 items-center justify-center gap-2 rounded-lg bg-white text-15 font-medium text-ink"
                       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                     >
                       <svg width="15" height="11" viewBox="0 0 18 12" fill="none" aria-hidden>
@@ -601,7 +601,7 @@ function Tile({
       )}
     >
       <p className="text-16 font-medium text-ink">{label}</p>
-      <p className="mt-2 text-[32px] font-semibold leading-none" style={{ color: colour }}>
+      <p className="mt-2 text-32 font-semibold leading-none" style={{ color: colour }}>
         {value === undefined ? '—' : compactNumber(value)}
       </p>
 
@@ -617,7 +617,7 @@ function Tile({
         <span className="text-14 font-medium" style={{ color: up ? '#13D711' : '#F35525' }}>
           {up ? '+' : '−'}
         </span>
-        <span className="text-[14.5px] font-medium text-ink">{Math.abs(change ?? 0)}%</span>
+        <span className="text-15 font-medium text-ink">{Math.abs(change ?? 0)}%</span>
       </span>
 
       {/* The sparkline. Bars where the design draws bars, a polyline where it

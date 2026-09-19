@@ -279,15 +279,15 @@ export function KnowledgePanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">What this brand knows</h2>
-      <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">What this brand knows</h2>
+      <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Policies, FAQs, spec sheets, pages from your site. SPARK checks every specific claim it writes against
         this material before publishing — so anything you cannot back up here gets flagged rather than posted.
       </p>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       {note ? (
-        <p className={cn('mt-3 text-[13px]', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
+        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
       ) : null}
 
       {/* ── What is attached. First, because it is the answer to "did that work?" ── */}
@@ -296,8 +296,8 @@ export function KnowledgePanel() {
           <Skeleton className="h-24 w-full rounded-lg" />
         ) : list && list.docs.length === 0 ? (
           <div className="rounded-lg border border-warn/40 bg-warn/10 p-3">
-            <p className="text-[13px] font-medium text-ink">Nothing attached yet</p>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="text-13 font-medium text-ink">Nothing attached yet</p>
+            <p className="mt-1 text-13 text-ink-muted">
               Until something is, every specific claim SPARK writes — a price, a turnaround time, a guarantee —
               will be held rather than published. The fastest fix is to point it at your own site below.
             </p>
@@ -305,10 +305,10 @@ export function KnowledgePanel() {
         ) : list ? (
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-[13px] font-medium text-ink-muted">
+              <p className="text-13 font-medium text-ink-muted">
                 {list.docs.length} document{list.docs.length === 1 ? '' : 's'}
               </p>
-              <p className="text-[12px] tabular-nums text-ink-muted">
+              <p className="text-12 tabular-nums text-ink-muted">
                 {list.totalChars.toLocaleString()} characters · {list.totalChunks} embedded chunk
                 {list.totalChunks === 1 ? '' : 's'}
               </p>
@@ -317,21 +317,21 @@ export function KnowledgePanel() {
               {list.docs.map((d) => (
                 <li key={d.docId} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-mono text-[12px] text-ink">{d.docId}</p>
+                    <p className="font-mono text-12 text-ink">{d.docId}</p>
                     <div className="flex shrink-0 items-center gap-2">
                       {d.chunks > 1 ? <Badge variant="neutral">{d.chunks} chunks</Badge> : null}
-                      <span className="text-[12px] tabular-nums text-ink-muted">
+                      <span className="text-12 tabular-nums text-ink-muted">
                         {d.chars.toLocaleString()} chars
                       </span>
-                      <span className="text-[12px] text-ink-muted">
+                      <span className="text-12 text-ink-muted">
                         {new Date(d.attachedAt).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
                       </span>
                     </div>
                   </div>
                   {d.citationLabel && d.citationLabel !== d.docId ? (
-                    <p className="mt-0.5 text-[12px] text-ink-muted">{d.citationLabel}</p>
+                    <p className="mt-0.5 text-12 text-ink-muted">{d.citationLabel}</p>
                   ) : null}
-                  <p className="mt-1 line-clamp-2 text-[12px] text-ink-muted">{d.preview}</p>
+                  <p className="mt-1 line-clamp-2 text-12 text-ink-muted">{d.preview}</p>
                 </li>
               ))}
             </ul>
@@ -342,14 +342,14 @@ export function KnowledgePanel() {
       {/* ── The two ways in ─────────────────────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border p-4">
-          <p className="text-[13px] font-medium text-ink">Read my website</p>
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="text-13 font-medium text-ink">Read my website</p>
+          <p className="mt-1 text-12 text-ink-muted">
             SPARK opens each page and reads it. Roughly a cent a page, and it takes a few seconds per page —
             leave this open while it runs.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <div className="min-w-[200px] flex-1">
-              <label className="block text-[12px] text-ink-muted" htmlFor="kn-url">
+              <label className="block text-12 text-ink-muted" htmlFor="kn-url">
                 Address
               </label>
               <Input
@@ -361,7 +361,7 @@ export function KnowledgePanel() {
               />
             </div>
             <div className="w-24">
-              <label className="block text-[12px] text-ink-muted" htmlFor="kn-pages">
+              <label className="block text-12 text-ink-muted" htmlFor="kn-pages">
                 Pages
               </label>
               <Input
@@ -381,7 +381,7 @@ export function KnowledgePanel() {
         </div>
 
         <div className="rounded-lg border border-border p-4">
-          <p className="text-[13px] font-medium text-ink">Add a document</p>
+          <p className="text-13 font-medium text-ink">Add a document</p>
           {/*
             This said "PDFs and Word documents need a parser SPARK does not
             have — open them and paste instead", directly above an "Upload a
@@ -389,12 +389,12 @@ export function KnowledgePanel() {
             `brand.knowledge.attach_document` has parsed PDFs since it landed,
             and the button beside this text calls it. Word is still true.
           */}
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="mt-1 text-12 text-ink-muted">
             Paste the text, or load a plain-text, Markdown, CSV or JSON file. PDFs upload and are read for
             you. Word documents need a parser SPARK does not have — export to PDF, or paste the text.
           </p>
 
-          <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="kn-docid">
+          <label className="mt-3 block text-12 text-ink-muted" htmlFor="kn-docid">
             What is it called
           </label>
           <Input
@@ -405,7 +405,7 @@ export function KnowledgePanel() {
             className="mt-1"
           />
 
-          <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="kn-text">
+          <label className="mt-3 block text-12 text-ink-muted" htmlFor="kn-text">
             The text
           </label>
           <textarea
@@ -413,10 +413,10 @@ export function KnowledgePanel() {
             value={docText}
             onChange={(e) => setDocText(e.target.value)}
             rows={5}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-ink"
+            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
             placeholder="Paste the policy, FAQ or spec sheet here."
           />
-          <p className="mt-1 text-[11px] tabular-nums text-ink-muted">
+          <p className="mt-1 text-11 tabular-nums text-ink-muted">
             {docText.length.toLocaleString()} / {MAX_DOC_CHARS.toLocaleString()} characters
           </p>
 
@@ -475,8 +475,8 @@ export function KnowledgePanel() {
 
       {/* ── The feedback loop ───────────────────────────────────────────── */}
       <div className="mt-4 rounded-lg border border-border p-4">
-        <p className="text-[13px] font-medium text-ink">Will this claim pass?</p>
-        <p className="mt-1 text-[12px] text-ink-muted">
+        <p className="text-13 font-medium text-ink">Will this claim pass?</p>
+        <p className="mt-1 text-12 text-ink-muted">
           The same check SPARK runs before publishing. Try a sentence you want it to be able to write.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -503,10 +503,10 @@ export function KnowledgePanel() {
               claimResult.grounded ? 'border-success/30 bg-success/10' : 'border-warn/40 bg-warn/10',
             )}
           >
-            <p className="text-[13px] font-medium text-ink">
+            <p className="text-13 font-medium text-ink">
               {claimResult.grounded ? 'Grounded — SPARK can write this.' : 'Not grounded — this would be held.'}
             </p>
-            {claimResult.fixAction ? <p className="mt-1 text-[13px] text-ink-muted">{claimResult.fixAction}</p> : null}
+            {claimResult.fixAction ? <p className="mt-1 text-13 text-ink-muted">{claimResult.fixAction}</p> : null}
           </div>
         ) : null}
       </div>

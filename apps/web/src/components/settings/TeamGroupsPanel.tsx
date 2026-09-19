@@ -158,8 +158,8 @@ export function TeamGroupsPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Team groups</h2>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">Team groups</h2>
+          <p className="mt-1 max-w-2xl text-13 text-ink-muted">
             A group gives its members abilities their role does not include — nothing more. It cannot take
             anything away, so to restrict somebody, change their role instead.
           </p>
@@ -173,7 +173,7 @@ export function TeamGroupsPanel() {
 
       {creating && (
         <div className="mt-4 rounded-lg border border-border p-4">
-          <label className="block text-[12px] font-medium text-ink-muted" htmlFor="group-name">
+          <label className="block text-12 font-medium text-ink-muted" htmlFor="group-name">
             Group name
           </label>
           <Input
@@ -184,7 +184,7 @@ export function TeamGroupsPanel() {
             className="mt-1.5 max-w-sm"
           />
 
-          <p className="mt-3 text-[12px] font-medium text-ink-muted">What it adds</p>
+          <p className="mt-3 text-12 font-medium text-ink-muted">What it adds</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {CAPABILITIES.map((c) => {
               const on = newCapabilities.includes(c.value);
@@ -200,7 +200,7 @@ export function TeamGroupsPanel() {
                     )
                   }
                   className={cn(
-                    'rounded-full border px-3 py-1.5 text-[13px] transition-colors',
+                    'rounded-full border px-3 py-1.5 text-13 transition-colors',
                     on
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -228,15 +228,15 @@ export function TeamGroupsPanel() {
             >
               Cancel
             </Button>
-            <span className="text-[12px] text-ink-muted">Add people once it exists.</span>
+            <span className="text-12 text-ink-muted">Add people once it exists.</span>
           </div>
         </div>
       )}
 
       {groups === null ? (
-        <p className="mt-4 text-[13px] text-ink-muted">Loading…</p>
+        <p className="mt-4 text-13 text-ink-muted">Loading…</p>
       ) : groups.length === 0 ? (
-        <p className="mt-4 text-[13px] text-ink-muted">
+        <p className="mt-4 text-13 text-ink-muted">
           No groups yet. Everyone has exactly what their role gives them.
         </p>
       ) : (
@@ -244,8 +244,8 @@ export function TeamGroupsPanel() {
           {groups.map((group) => (
             <li key={group.id} className="rounded-lg border border-border p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-[14px] font-medium text-ink">{group.name}</span>
-                <span className="text-[12px] text-ink-muted">
+                <span className="text-14 font-medium text-ink">{group.name}</span>
+                <span className="text-12 text-ink-muted">
                   {group.memberCount} member{group.memberCount === 1 ? '' : 's'}
                 </span>
               </div>
@@ -262,7 +262,7 @@ export function TeamGroupsPanel() {
                       disabled={busy === group.id}
                       onClick={() => void toggleCapability(group, c.value)}
                       className={cn(
-                        'rounded-full border px-3 py-1.5 text-[13px] transition-colors disabled:opacity-50',
+                        'rounded-full border px-3 py-1.5 text-13 transition-colors disabled:opacity-50',
                         on
                           ? 'border-primary bg-primary text-primary-foreground'
                           : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -274,7 +274,7 @@ export function TeamGroupsPanel() {
                 })}
               </div>
               {group.capabilities.length === 0 && (
-                <p className="mt-2 text-[12px] text-ink-muted">
+                <p className="mt-2 text-12 text-ink-muted">
                   Adds nothing yet — this is just a list of people.
                 </p>
               )}
@@ -290,7 +290,7 @@ export function TeamGroupsPanel() {
                           {/* A name when we have one, and the id in monospace when
                               we do not — an id is still the truth, it is just not
                               a person's name. */}
-                          <span className={person ? 'text-[12px]' : 'font-mono text-[11px]'}>{label}</span>
+                          <span className={person ? 'text-12' : 'font-mono text-11'}>{label}</span>
                           <button
                             type="button"
                             aria-label={`Remove ${label}`}
@@ -305,7 +305,7 @@ export function TeamGroupsPanel() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-[12px] text-ink-muted">Nobody in this group.</p>
+                  <p className="text-12 text-ink-muted">Nobody in this group.</p>
                 )}
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -318,7 +318,7 @@ export function TeamGroupsPanel() {
                       onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
                       aria-label={`Add somebody to ${group.name}`}
                       disabled={busy === group.id || addable(group).length === 0}
-                      className="max-w-[260px] rounded-md border border-border bg-surface px-2.5 py-1.5 text-[13px] text-ink disabled:opacity-50"
+                      className="max-w-[260px] rounded-md border border-border bg-surface px-2.5 py-1.5 text-13 text-ink disabled:opacity-50"
                     >
                       <option value="">
                         {addable(group).length === 0 ? 'Everyone is already in this group' : 'Add somebody…'}
@@ -364,14 +364,14 @@ export function TeamGroupsPanel() {
       )}
 
       {roster === null && groups !== null && (
-        <p className="mt-4 text-[13px] text-ink-muted">
+        <p className="mt-4 text-13 text-ink-muted">
           The account roster could not be read, so members are added by user id. That read needs an owner
           or admin role and a configured identity provider.
         </p>
       )}
 
       {message && (
-        <p className={cn('mt-4 text-[13px]', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
+        <p className={cn('mt-4 text-13', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
           {message.text}
         </p>
       )}

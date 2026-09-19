@@ -105,7 +105,7 @@ export function RunTimeline() {
 
   if (error) {
     return (
-      <p className="rounded border border-border bg-surface p-4 text-[14px] text-ink-muted">
+      <p className="rounded border border-border bg-surface p-4 text-14 text-ink-muted">
         Could not load runs: {error}
       </p>
     );
@@ -124,8 +124,8 @@ export function RunTimeline() {
   if (runs.length === 0) {
     return (
       <div className="rounded border border-border bg-surface p-8 text-center">
-        <p className="text-[16px] font-medium text-ink">No runs yet</p>
-        <p className="mt-1 text-[14px] text-ink-muted">
+        <p className="text-16 font-medium text-ink">No runs yet</p>
+        <p className="mt-1 text-14 text-ink-muted">
           When SPARK does something, every step it takes will show up here.
         </p>
       </div>
@@ -149,10 +149,10 @@ export function RunTimeline() {
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[14px] font-medium text-ink">{run.goal}</span>
+                <span className="truncate text-14 font-medium text-ink">{run.goal}</span>
                 <StatusBadge status={run.status} />
               </div>
-              <p className="mt-1 text-[12px] text-ink-muted">
+              <p className="mt-1 text-12 text-ink-muted">
                 {run.agent} · {formatDuration(run.durationMs)} · {formatCost(run.costCents)}
               </p>
             </button>
@@ -227,7 +227,7 @@ function RunDetailPanel({
 
   if (error) {
     return (
-      <div className="rounded border border-border bg-surface p-4 text-[14px] text-ink-muted">
+      <div className="rounded border border-border bg-surface p-4 text-14 text-ink-muted">
         Could not load this run: {error}
       </div>
     );
@@ -239,8 +239,8 @@ function RunDetailPanel({
     <div className="rounded border border-border bg-surface p-5">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="min-w-0">
-          <p className="text-[16px] font-medium text-ink">{detail.goal}</p>
-          <p className="mt-1 text-[12px] text-ink-muted">
+          <p className="text-16 font-medium text-ink">{detail.goal}</p>
+          <p className="mt-1 text-12 text-ink-muted">
             {detail.agent} · triggered by {detail.trigger} · {formatDuration(detail.durationMs)} ·{' '}
             {formatCost(detail.costCents)} · {detail.tokens.input + detail.tokens.output} tokens
           </p>
@@ -249,7 +249,7 @@ function RunDetailPanel({
       </header>
 
       {detail.error ? (
-        <p className="mt-4 rounded bg-destructive/10 p-3 text-[13px] text-destructive">
+        <p className="mt-4 rounded bg-destructive/10 p-3 text-13 text-destructive">
           {detail.error.code}: {detail.error.message}
         </p>
       ) : null}
@@ -262,7 +262,7 @@ function RunDetailPanel({
               {i < detail.steps.length - 1 ? <span className="mt-1 w-px flex-1 bg-border" /> : null}
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-medium text-ink">
+              <p className="text-13 font-medium text-ink">
                 {STEP_LABEL[step.type]}
                 <span className="ml-2 font-normal text-ink-muted">{step.ms}ms</span>
               </p>
@@ -273,7 +273,7 @@ function RunDetailPanel({
         {detail.status === 'running' ? (
           <li className="grid grid-cols-[16px_1fr] gap-3">
             <span className="mt-1.5 h-2 w-2 animate-pulse rounded-full bg-brand-purple" />
-            <p className="text-[13px] text-ink-muted">Working…</p>
+            <p className="text-13 text-ink-muted">Working…</p>
           </li>
         ) : null}
       </ol>
@@ -298,12 +298,12 @@ function StepPayload({ payload }: { payload: unknown }) {
 
   if (typeof p.tool === 'string') {
     return (
-      <p className="mt-0.5 truncate text-[13px] text-ink-muted">
+      <p className="mt-0.5 truncate text-13 text-ink-muted">
         {/* The timeline is the one place the identifier is arguably the point —
             it is a trace of what the agent called. So both, with the readable half
             leading, matching the audit log rather than diverging from it. */}
         <span className="text-ink">{toolLabel(p.tool)}</span>{' '}
-        <code className="rounded bg-surface-muted px-1 py-0.5 text-[11px] text-ink-muted">{p.tool}</code>
+        <code className="rounded bg-surface-muted px-1 py-0.5 text-11 text-ink-muted">{p.tool}</code>
         {typeof p.refused === 'string' ? (
           <span className="ml-2 text-destructive">refused — {p.refused}</span>
         ) : typeof p.status === 'string' ? (
@@ -314,11 +314,11 @@ function StepPayload({ payload }: { payload: unknown }) {
   }
 
   if (typeof p.text === 'string' && p.text.trim()) {
-    return <p className="mt-0.5 line-clamp-3 text-[13px] text-ink-muted">{p.text}</p>;
+    return <p className="mt-0.5 line-clamp-3 text-13 text-ink-muted">{p.text}</p>;
   }
 
   return (
-    <pre className="mt-0.5 overflow-x-auto rounded bg-surface-muted p-2 text-[12px] text-ink-muted">
+    <pre className="mt-0.5 overflow-x-auto rounded bg-surface-muted p-2 text-12 text-ink-muted">
       {JSON.stringify(payload)}
     </pre>
   );

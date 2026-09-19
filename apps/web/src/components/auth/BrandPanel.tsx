@@ -52,8 +52,8 @@ export function BrandPanel() {
 
         {/* CS Mollwish, the display face — not the body type scale. */}
         <div className="mt-[52px] text-center">
-          <p className="font-display text-[48.5px] leading-[1.269] text-white">Agent-first Social</p>
-          <p className="font-display text-[39.2px] leading-[1.269] text-white">Operating System</p>
+          <p className="font-display text-48 leading-[1.269] text-white">Agent-first Social</p>
+          <p className="font-display text-40 leading-[1.269] text-white">Operating System</p>
         </div>
 
         <div className="mt-[22px] flex items-center gap-[10px]">

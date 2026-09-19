@@ -81,16 +81,16 @@ export function ConnectionsPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Connections</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Connections</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         Third-party accounts this brand reads from — currently just Canva, for the Bulk Connector automation
         recipe's canva source.
       </p>
 
       <div className="mt-4 flex items-center gap-3">
         <div className="flex-1">
-          <p className="text-[14px] font-medium text-ink">Canva</p>
-          <p className="text-[13px] text-ink-muted">
+          <p className="text-14 font-medium text-ink">Canva</p>
+          <p className="text-13 text-ink-muted">
             {connected === null
               ? 'Checking…'
               : connected
@@ -110,7 +110,7 @@ export function ConnectionsPanel() {
       </div>
 
       {message ? (
-        <p className={`mt-3 text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
+        <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
       ) : null}
     </section>
   );

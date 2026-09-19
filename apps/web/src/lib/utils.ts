@@ -23,12 +23,16 @@ import { extendTailwindMerge } from 'tailwind-merge';
  * looking completely correct in source. Same failure mode as the `alpha()` bug
  * documented in `tailwind.config.ts`: it fails open.
  *
- * Keep this list in sync with `theme.extend.fontSize`.
+ * Keep this list in sync with `theme.extend.fontSize`. It is not decorative:
+ * when the scale grew from seven steps to twenty-two, every step missing from
+ * here would have been classified as a colour and dropped from any `cn()` call
+ * that also set one — which is most of them. The build would have passed and
+ * roughly a thousand elements would have silently lost their size.
  */
 const twMerge = extendTailwindMerge({
   extend: {
     classGroups: {
-      'font-size': [{ text: ['13', '14', '16', '18', '20', '22', '26'] }],
+      'font-size': [{ text: ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '22', '24', '26', '28', '32', '36', '40', '48', '64'] }],
     },
   },
 });

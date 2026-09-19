@@ -84,8 +84,8 @@ export function AgencyRosterPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Every brand</h2>
-          <p className="mt-1 max-w-2xl text-[13px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">Every brand</h2>
+          <p className="mt-1 max-w-2xl text-13 text-ink-muted">
             How much went out for each one, and how much came back. Quiet brands first.
           </p>
         </div>
@@ -97,7 +97,7 @@ export function AgencyRosterPanel() {
               aria-pressed={windowDays === w}
               onClick={() => setWindowDays(w)}
               className={cn(
-                'rounded-full border px-3 py-1 text-[12px] transition-colors',
+                'rounded-full border px-3 py-1 text-12 transition-colors',
                 windowDays === w
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -109,12 +109,12 @@ export function AgencyRosterPanel() {
         </div>
       </div>
 
-      {error ? <p className="mt-4 text-[13px] text-ink-muted">{error}</p> : null}
+      {error ? <p className="mt-4 text-13 text-ink-muted">{error}</p> : null}
       {data === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 
       {data ? (
         <>
-          <p className="mt-4 text-[14px] text-ink">{data.why.summary}</p>
+          <p className="mt-4 text-14 text-ink">{data.why.summary}</p>
           <WhyPopover why={data.why} label="How this is counted" />
 
           {/* The org totals, so the header does not make the reader sum a column.
@@ -128,14 +128,14 @@ export function AgencyRosterPanel() {
           </dl>
 
           {data.brands.length === 0 ? (
-            <p className="mt-5 text-[13px] text-ink-muted">
+            <p className="mt-5 text-13 text-ink-muted">
               No brands yet. Add one from the roster below and it appears here.
             </p>
           ) : (
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-[13px]">
+              <table className="w-full min-w-[560px] text-left text-13">
                 <thead>
-                  <tr className="border-b border-border text-[11px] uppercase tracking-wide text-ink-muted">
+                  <tr className="border-b border-border text-11 uppercase tracking-wide text-ink-muted">
                     <th className="py-2 pr-3 font-medium">Brand</th>
                     <th className="py-2 pr-3 font-medium">Posts out</th>
                     <th className="py-2 pr-3 font-medium">Reach</th>
@@ -176,7 +176,7 @@ export function AgencyRosterPanel() {
             reader to work out that they have to switch brands first.
           */}
           {data.totals.quiet > 0 ? (
-            <p className="mt-4 text-[12px] text-ink-muted">
+            <p className="mt-4 text-12 text-ink-muted">
               A quiet brand usually needs either a campaign or a connected account. Switch to it with the
               brand picker, then open its <Link href="/calendar" className="underline underline-offset-2">calendar</Link>.
             </p>
@@ -190,8 +190,8 @@ export function AgencyRosterPanel() {
 function Total({ label, value, tone }: { label: string; value: string; tone?: 'warn' }) {
   return (
     <div className={cn('rounded-lg border p-3', tone === 'warn' ? 'border-warn/40 bg-warn/5' : 'border-border')}>
-      <dt className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-1 text-[18px] font-semibold tabular-nums text-ink">{value}</dd>
+      <dt className="text-11 uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="mt-1 text-18 font-semibold tabular-nums text-ink">{value}</dd>
     </div>
   );
 }

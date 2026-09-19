@@ -58,8 +58,8 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
   return (
     <ModalShell top={60} height={760} label={`Media for ${trend.topic}`} gradientTo="#F4F7FD" onClose={onClose}>
       <div className="px-[38px] pt-[34px]">
-        <p className="pr-[60px] text-[22px] font-bold leading-[1.25] text-ink">{trend.topic}</p>
-        <p className="mt-[8px] text-[15px] font-medium text-ink-muted">
+        <p className="pr-[60px] text-22 font-bold leading-[1.25] text-ink">{trend.topic}</p>
+        <p className="mt-[8px] text-15 font-medium text-ink-muted">
           {sourceName}
           {trend.media ? ` · ${trend.media.kind === 'video' ? 'Video' : 'Image'}` : ' · no media'}
         </p>
@@ -95,7 +95,7 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
             className="flex h-[220px] w-full items-center justify-center rounded-[14px] bg-white px-8 text-center"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
           >
-            <p className="text-[16px] font-medium text-ink-muted">
+            <p className="text-16 font-medium text-ink-muted">
               {trend.source === 'hackernews'
                 ? 'Hacker News trends are text — there is no image or video to show. The link below is the thread.'
                 : 'This source returned no media for the trend.'}
@@ -110,7 +110,7 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
             href={link}
             target="_blank"
             rel="noreferrer noopener"
-            className="flex h-[46px] items-center gap-[9px] rounded-xl bg-ink px-[20px] text-[15px] font-semibold text-white transition-colors hover:bg-[#242424]"
+            className="flex h-[46px] items-center gap-[9px] rounded-xl bg-ink px-[20px] text-15 font-semibold text-white transition-colors hover:bg-[#242424]"
           >
             Open on {sourceName}
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -118,10 +118,10 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
             </svg>
           </a>
         ) : (
-          <p className="text-[15px] font-medium text-ink-muted">This trend carries no example post to link to.</p>
+          <p className="text-15 font-medium text-ink-muted">This trend carries no example post to link to.</p>
         )}
         {embedFailed ? (
-          <p className="text-[14.5px] font-medium text-ink-muted">
+          <p className="text-15 font-medium text-ink-muted">
             The uploader has disabled embedding — the link opens it on {sourceName}.
           </p>
         ) : null}
@@ -129,7 +129,7 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
 
       {trend.samples.length > 1 ? (
         <div className="px-[38px] pb-[34px] pt-[24px]">
-          <p className="text-[15px] font-semibold text-ink">Other examples</p>
+          <p className="text-15 font-semibold text-ink">Other examples</p>
           <ul className="mt-[10px] flex flex-col gap-[8px]">
             {trend.samples.slice(1, 5).map((sm) => (
               <li key={sm.url}>
@@ -137,7 +137,7 @@ export function TrendMediaViewer({ trend, onClose }: { trend: RankedTrendItem; o
                   href={sm.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-[14.5px] font-medium text-ink underline decoration-ink-muted underline-offset-2"
+                  className="text-15 font-medium text-ink underline decoration-ink-muted underline-offset-2"
                 >
                   {sm.caption ?? sm.url}
                 </a>

@@ -148,7 +148,7 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
   const base = compact
     ? { block: 'h-[66.3px]', blockW: 185, orb: 'h-[66.3px] w-[66.3px]', orbPx: 66.3,
         bubbleW: 118.929, bubbleH: 44.362, bubbleLeft: 66.1, bubbleTop: 11.3,
-        labelLeft: 96.3, labelTop: 24.5, labelCls: 'text-[13.21px]', charW: 7.35 }
+        labelLeft: 96.3, labelTop: 24.5, labelCls: 'text-13', charW: 7.35 }
     : { block: 'h-[70.2px]', blockW: 196, orb: 'h-[70.2px] w-[70.2px]', orbPx: 70.2,
         bubbleW: 126, bubbleH: 47, bubbleLeft: 70, bubbleTop: 12,
         labelLeft: 102, labelTop: 26, labelCls: 'text-14', charW: 7.8 };

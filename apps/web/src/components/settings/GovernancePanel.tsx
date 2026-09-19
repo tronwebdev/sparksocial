@@ -345,7 +345,7 @@ export function GovernancePanel() {
               title="Workspace logo"
               hint="Used bottom-left on anything SPARK renders, and as the mark on your posts."
             >
-              <label className="mt-3 block text-[12px] text-ink-muted" htmlFor="gov-logo">
+              <label className="mt-3 block text-12 text-ink-muted" htmlFor="gov-logo">
                 Logo
               </label>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -401,7 +401,7 @@ export function GovernancePanel() {
                 the renderers' own convention, documented in `resolveKit`: first is
                 the ground, second the type on it, third the accent.
               */}
-              <label className="mt-4 block text-[12px] text-ink-muted">Palette presets</label>
+              <label className="mt-4 block text-12 text-ink-muted">Palette presets</label>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {COLOUR_PRESETS.map((preset) => (
                   <button
@@ -409,7 +409,7 @@ export function GovernancePanel() {
                     type="button"
                     onClick={() => setBrandColors(preset.colors)}
                     title={`${preset.name} — ${preset.colors.join(', ')}`}
-                    className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px] text-ink-muted hover:text-ink"
+                    className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-12 text-ink-muted hover:text-ink"
                   >
                     <span className="flex overflow-hidden rounded">
                       {preset.colors.map((c) => (
@@ -420,7 +420,7 @@ export function GovernancePanel() {
                   </button>
                 ))}
               </div>
-              <label className="mt-4 block text-[12px] text-ink-muted">Colours</label>
+              <label className="mt-4 block text-12 text-ink-muted">Colours</label>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 {brandColors.map((c, i) => (
                   <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
@@ -431,7 +431,7 @@ export function GovernancePanel() {
                       className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
                       aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
                     />
-                    <span className="font-mono text-[11px] text-ink-muted">
+                    <span className="font-mono text-11 text-ink-muted">
                       {COLOR_ROLE[i] ?? 'extra'}
                       {/* A stored value the colour input cannot show (`red`, an
                           `rgb()`) is named here rather than silently displayed as
@@ -444,7 +444,7 @@ export function GovernancePanel() {
                     <button
                       type="button"
                       onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                      className="text-[13px] text-ink-muted hover:text-ink"
+                      className="text-13 text-ink-muted hover:text-ink"
                       aria-label={`Remove ${c}`}
                     >
                       ×
@@ -469,7 +469,7 @@ export function GovernancePanel() {
                   className="mt-2 flex h-16 items-center justify-center rounded-lg border border-border"
                   style={{ backgroundColor: brandColors[0] ?? '#0C0C0C' }}
                 >
-                  <span className="text-[15px] font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
+                  <span className="text-15 font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
                     This is how text will read
                   </span>
                 </div>
@@ -482,18 +482,18 @@ export function GovernancePanel() {
             <KitSection title="Brand Voice" hint="Overrides whatever SPARK inferred from your website.">
               {/* ── Voice ──────────────────────────────────────────────────── */}
               <div>
-                <h3 className="text-[14px] font-medium text-ink">Voice</h3>
-                <p className="mt-0.5 text-[12px] text-ink-muted">
+                <h3 className="text-14 font-medium text-ink">Voice</h3>
+                <p className="mt-0.5 text-12 text-ink-muted">
                   Overrides whatever SPARK inferred from your website.
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {TONE_AXES.map((axis) => (
                     <div key={axis.key}>
                       <div className="flex items-baseline justify-between">
-                        <label className="text-[13px] text-ink" htmlFor={`tone-${axis.key}`}>
+                        <label className="text-13 text-ink" htmlFor={`tone-${axis.key}`}>
                           {axis.label}
                         </label>
-                        <span className="text-[12px] tabular-nums text-ink-muted">
+                        <span className="text-12 tabular-nums text-ink-muted">
                           {Math.round(tone[axis.key] * 100)}%
                         </span>
                       </div>
@@ -506,7 +506,7 @@ export function GovernancePanel() {
                         onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
                         className="mt-1 w-full accent-[--ss-primary]"
                       />
-                      <div className="flex justify-between text-[11px] text-ink-muted">
+                      <div className="flex justify-between text-11 text-ink-muted">
                         <span>{axis.low}</span>
                         <span>{axis.high}</span>
                       </div>
@@ -520,7 +520,7 @@ export function GovernancePanel() {
                 beats a text field asking somebody to paste one, and why the brand's
                 own cloned voice is deliberately not an option here.
               */}
-              <label className="mt-4 block text-[12px] text-ink-muted" htmlFor="gov-voice">
+              <label className="mt-4 block text-12 text-ink-muted" htmlFor="gov-voice">
                 Narration voice
               </label>
               <select
@@ -530,7 +530,7 @@ export function GovernancePanel() {
                   setUsingDefaultVoice(false);
                   setStockVoiceId(e.target.value);
                 }}
-                className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-[14px] text-ink"
+                className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-14 text-ink"
               >
                 {STOCK_VOICES.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -538,7 +538,7 @@ export function GovernancePanel() {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-[12px] text-ink-muted">
+              <p className="mt-1 text-12 text-ink-muted">
                 Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
                 separate setting that needs a consent record.
               </p>
@@ -552,7 +552,7 @@ export function GovernancePanel() {
                   Placed under the colours because its sample is shown on them,
                   and because type and colour are the two halves of the same
                   decision. */}
-              <label className="mt-5 block text-[12px] text-ink-muted">Type</label>
+              <label className="mt-5 block text-12 text-ink-muted">Type</label>
               <div className="mt-1.5">
                 <BrandFontPicker
                   value={brandFonts}
@@ -576,10 +576,10 @@ export function GovernancePanel() {
             {/* ── What SPARK may not say ─────────────────────────────────── */}
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-topics">
+                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-topics">
                   Restricted topics
                 </label>
-                <p className="mt-0.5 text-[12px] text-ink-muted">
+                <p className="mt-0.5 text-12 text-ink-muted">
                   Subjects to stay off entirely. Comma separated.
                 </p>
                 <Input
@@ -592,10 +592,10 @@ export function GovernancePanel() {
               </div>
 
               <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-claims">
+                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-claims">
                   Claims to avoid
                 </label>
-                <p className="mt-0.5 text-[12px] text-ink-muted">
+                <p className="mt-0.5 text-12 text-ink-muted">
                   Promises this brand does not make, even about things it will happily discuss.
                 </p>
                 <Input
@@ -608,7 +608,7 @@ export function GovernancePanel() {
               </div>
 
               <div>
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-phrases">
+                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-phrases">
                   Never use these words
                 </label>
                 <Input
@@ -628,8 +628,8 @@ export function GovernancePanel() {
                   className="mt-1 size-4 accent-[--ss-primary]"
                 />
                 <span>
-                  <span className="text-[14px] font-medium text-ink">Strict mode</span>
-                  <span className="mt-0.5 block text-[13px] text-ink-muted">
+                  <span className="text-14 font-medium text-ink">Strict mode</span>
+                  <span className="mt-0.5 block text-13 text-ink-muted">
                     {strictMode
                       ? 'A post naming a restricted topic or claim is blocked outright.'
                       : 'A post naming a restricted topic or claim is held for your review.'}
@@ -662,7 +662,7 @@ export function GovernancePanel() {
               */}
               {logoUrl ? (
                 <div className="mt-3 rounded-lg border border-border p-3">
-                  <label className="flex items-center gap-2 text-[13px] text-ink">
+                  <label className="flex items-center gap-2 text-13 text-ink">
                     <input
                       type="checkbox"
                       checked={watermark.enabled}
@@ -674,7 +674,7 @@ export function GovernancePanel() {
                     />
                     Stamp the logo on rendered posts
                   </label>
-                  <p className="mt-1 text-[12px] text-ink-muted">
+                  <p className="mt-1 text-12 text-ink-muted">
                     Bottom-left, where no platform draws its own controls. Turning this off keeps your logo for
                     everything else &mdash; it only stops the mark appearing on images and video.
                   </p>
@@ -682,7 +682,7 @@ export function GovernancePanel() {
                   {watermark.enabled ? (
                     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-opacity">
+                        <label className="block text-12 text-ink-muted" htmlFor="gov-wm-opacity">
                           Opacity &mdash; {Math.round(watermark.opacity * 100)}%
                         </label>
                         <input
@@ -700,7 +700,7 @@ export function GovernancePanel() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[12px] text-ink-muted" htmlFor="gov-wm-scale">
+                        <label className="block text-12 text-ink-muted" htmlFor="gov-wm-scale">
                           Size &mdash; {Math.round(watermark.scale * 100)}% of frame width
                         </label>
                         <input
@@ -743,10 +743,10 @@ export function GovernancePanel() {
                   sliders below and the risk tolerance from the approval mode, so
                   neither can drift from the setting that is actually enforced. */}
               <div className="max-w-md">
-                <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-agent-name">
+                <label className="text-12 font-medium text-ink-muted" htmlFor="gov-agent-name">
                   What do you call your agent?
                 </label>
-                <p className="mt-1 text-[12px] text-ink-muted">
+                <p className="mt-1 text-12 text-ink-muted">
                   Used wherever SPARK refers to itself — the Command Center, and campaign summaries that say
                   what it will do. Optional; leave it blank and it says &ldquo;your agent&rdquo;.
                 </p>
@@ -761,21 +761,21 @@ export function GovernancePanel() {
               </div>
               {/* ── When it posts ──────────────────────────────────────────── */}
               <div>
-                <h3 className="text-[14px] font-medium text-ink">When it posts</h3>
-                <p className="mt-0.5 text-[12px] text-ink-muted">
+                <h3 className="text-14 font-medium text-ink">When it posts</h3>
+                <p className="mt-0.5 text-12 text-ink-muted">
                   Your timezone decides what &ldquo;Tuesday&rdquo; means, and the hours below are the times of day
                   posts land in.
                 </p>
 
                 <div className="mt-3 max-w-xs">
-                  <label className="text-[12px] font-medium text-ink-muted" htmlFor="gov-tz">
+                  <label className="text-12 font-medium text-ink-muted" htmlFor="gov-tz">
                     Timezone
                   </label>
                   <select
                     id="gov-tz"
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-[14px] text-ink"
+                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
                   >
                     {zoneOptions.map((z) => (
                       <option key={z} value={z}>
@@ -787,9 +787,9 @@ export function GovernancePanel() {
 
                 <div className="mt-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-[12px] font-medium text-ink-muted">Posting hours</p>
+                    <p className="text-12 font-medium text-ink-muted">Posting hours</p>
                     {usingDefaultWindows ? (
-                      <p className="text-[12px] text-ink-muted">
+                      <p className="text-12 text-ink-muted">
                         Using the default spread — pick any hour to set your own.
                       </p>
                     ) : (
@@ -799,7 +799,7 @@ export function GovernancePanel() {
                           setUsingDefaultWindows(true);
                           setWindows([9, 13, 18]);
                         }}
-                        className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                        className="text-12 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
                       >
                         Back to the default
                       </button>
@@ -815,7 +815,7 @@ export function GovernancePanel() {
                           aria-pressed={on}
                           onClick={() => toggleHour(hour)}
                           className={cn(
-                            'w-11 rounded border px-1 py-1 text-[12px] tabular-nums transition-colors',
+                            'w-11 rounded border px-1 py-1 text-12 tabular-nums transition-colors',
                             on
                               ? 'border-primary bg-primary text-primary-foreground'
                               : 'border-border text-ink-muted hover:bg-surface-muted',
@@ -837,7 +837,7 @@ export function GovernancePanel() {
               {busy ? 'Saving…' : 'Save brand rules'}
             </Button>
             {message ? (
-              <p className={cn('text-[13px]', message.kind === 'ok' ? 'text-success' : 'text-ink-muted')}>
+              <p className={cn('text-13', message.kind === 'ok' ? 'text-success' : 'text-ink-muted')}>
                 {message.text}
               </p>
             ) : null}

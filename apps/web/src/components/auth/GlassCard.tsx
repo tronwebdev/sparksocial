@@ -96,7 +96,7 @@ function AuthFloaters() {
       {/* Overall Performance gauge — lower left. Hand-built: no export exists. */}
       <figure className="absolute left-[calc(50%-495px)] top-[calc(50%+208px)] w-[104px] animate-float-b rounded-[16px] bg-white/60 p-2.5 text-center shadow-card backdrop-blur-md">
         <span className="mx-auto block h-6 w-6 rounded-full bg-brand-wash" />
-        <figcaption className="mt-1.5 text-[8px] font-medium text-ink">Overall Performance</figcaption>
+        <figcaption className="mt-1.5 text-8 font-medium text-ink">Overall Performance</figcaption>
         <svg viewBox="0 0 100 62" className="mx-auto mt-1 w-[70px]">
           <path d="M8 56 A42 42 0 0 1 92 56" fill="none" stroke="rgba(12,12,12,0.10)" strokeWidth="9" strokeLinecap="round" />
           <path d="M8 56 A42 42 0 0 1 78 26" fill="none" stroke="url(#gauge)" strokeWidth="9" strokeLinecap="round" />

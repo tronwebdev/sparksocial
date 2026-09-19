@@ -104,11 +104,11 @@ export function CalendarScreenChrome({
           card's left edge is 15. Every inset here is an x minus 15.
         */}
         <header className="flex h-[99px] flex-wrap items-start gap-4 px-[17px] pt-[16px] sm:px-[17px]">
-          <span className="font-display text-[27.49px] leading-[1.13] text-ink">Sparksocial</span>
+          <span className="font-display text-28 leading-[1.13] text-ink">Sparksocial</span>
 
           <Link
             href="/home"
-            className="-mt-[4px] flex h-[36.4px] w-[92px] items-center justify-center gap-3 rounded-[7.07px] text-[16.9px] font-medium text-ink-muted transition-colors hover:bg-white hover:text-ink"
+            className="-mt-[4px] flex h-[36.4px] w-[92px] items-center justify-center gap-3 rounded-[7.07px] text-17 font-medium text-ink-muted transition-colors hover:bg-white hover:text-ink"
             style={{ boxShadow: '0 0 0 0.71px #838383' }}
           >
             <svg width="8" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
@@ -160,7 +160,7 @@ export function CalendarScreenChrome({
         {/* Title on 150: 33 under the divider. 64 on the stage is 49 in. */}
         <div className="flex flex-wrap items-start gap-4 px-[17px] pt-[33px] sm:pl-[49px] sm:pr-[37px]">
           <div className="min-w-0">
-            <h1 className="text-[30px] font-semibold leading-[1.27] text-ink">Calendar</h1>
+            <h1 className="text-32 font-semibold leading-[1.27] text-ink">Calendar</h1>
             <p className="mt-[8px] text-16 text-ink-muted">
               A sleek and intuitive calendar interface for easy scheduling and management.
             </p>
