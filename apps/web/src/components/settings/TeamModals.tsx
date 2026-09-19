@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
  *               `rgba(23,219,131,0.1)` for Client
  *   footer      Cancel 168x44 transparent at x671, the primary 167x43 r8.457
  *               white at x851 — 45px apart
- *   Add Client  adds a dashed r10 711x290 box holding an Offer amount (189x63)
+ *   Add Client  adds a filled r10 711x290 box holding an Offer amount (189x63)
  *               and a payment link (656x63)
  *   Edit Group  capability chips 33 tall r6.208 on `rgba(131,131,131,0.1)` at
  *               14/500; an "Add Team Members" 535x63 picker; member pills 49
@@ -314,14 +314,17 @@ export function AddClientModal({ onClose, onDone }: { onClose: () => void; onDon
       </div>
 
       {/*
-        The design's dashed 711x290 billing box. Neither field has anywhere to
-        go — no tool stores an offer amount or a payment link against a brand —
-        so it says so rather than collecting a Stripe URL that vanishes.
+        The design's 711x290 billing box. Neither field has anywhere to go — no
+        tool stores an offer amount or a payment link against a brand — so it
+        says so rather than collecting a Stripe URL that vanishes.
+
+        Filled, not outlined. This was built as a 1px dashed hairline; the box in
+        `Settings WS Add Client.dc.html` is an SVG rounded rect filled
+        `rgba(131,131,131,0.1)` at radius 10 with no stroke at all. The whole
+        design separates surfaces by fill and never draws a dashed border
+        anywhere, so the outline read as a drop target in a form that has none.
       */}
-      <div
-        className="mt-[22px] rounded-[10px] p-[24px]"
-        style={{ border: '1px dashed rgba(131,131,131,0.45)' }}
-      >
+      <div className="mt-[22px] rounded-[10px] bg-panel-note p-[24px]">
         <p className="text-18 font-medium text-ink">Offer and payment link</p>
         <p className="mt-[8px] max-w-[600px] text-16 leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
           The design collects an amount and a checkout link here. Nothing in the registry stores either

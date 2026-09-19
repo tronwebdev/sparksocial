@@ -180,8 +180,18 @@ export function BrandTemplatesPanel() {
         </button>
       </div>
 
+      {/*
+        The "deliberately absent" surface, matching the one box in the designs
+        that means the same thing — Add Client's billing box, filled
+        `rgba(131,131,131,0.1)` at radius 10 with no stroke.
+
+        This tab has no design reference of its own: the prototype draws it and
+        never draws its contents. So the treatment is borrowed from the nearest
+        thing the design does state, rather than from the dashed border that was
+        here, which the settings designs never use anywhere.
+      */}
       {tab === 'versioning' ? (
-        <div className="mt-4 rounded-lg border border-dashed border-border p-4">
+        <div className="mt-4 rounded-[10px] bg-panel-note p-4">
           <p className="text-13 font-medium text-ink">Not built</p>
           <p className="mt-1 text-13 text-ink-muted">
             The design draws this as a tab but never draws a version number, a version history, or an
@@ -221,7 +231,13 @@ export function BrandTemplatesPanel() {
             </ul>
           )}
 
-          <div className="mt-4 rounded-lg border border-dashed border-border p-3">
+          {/*
+            A working card on a panel, which the design draws as white at radius
+            10 with no border — the same treatment as its dropzones and file
+            rows. It was a dashed outline, which is the design's vocabulary for
+            nothing at all; this is a form that does something.
+          */}
+          <div className="mt-4 rounded-[10px] bg-panel-card p-3">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-[8rem]">
                 <label className="block text-12 text-ink-muted" htmlFor="tpl-name">

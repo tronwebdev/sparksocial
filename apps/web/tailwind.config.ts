@@ -43,6 +43,10 @@ const config: Config = {
         /* The settings section card — see `KitSection`. A filled soft panel, not
            a bordered one; the prototype draws no stroke on these at all. */
         panel: alpha('--ss-panel'),
+        /* A working card on a panel (dropzone, add form) and the quiet box for
+           something deliberately absent. Neither takes a border — see tokens. */
+        'panel-card': alpha('--ss-panel-card'),
+        'panel-note': alpha('--ss-panel-note'),
         ring: alpha('--ss-ring'),
         primary: {
           DEFAULT: alpha('--ss-primary'),
