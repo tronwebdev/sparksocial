@@ -1,21 +1,26 @@
 # SparkSocial — Feature Guide
 
-Every feature that is built, what it is for, and how to try it.
+Every feature that is built, what it is for, **the steps to test it**, and how to
+tell it worked.
 
-Each entry follows the same shape:
+Each entry is the same shape:
 
-> **What it is** — in one line.
-> **The story** — whose job it does.
+> **What it is** — one line.
+> *Story* — whose job it does.
 > **Where** — the screen.
-> **Try it** — the steps.
-> **Working looks like** — what you should see.
+> **Steps** — numbered, do these.
+> **Pass when** — what you should see.
 
-Work through it in order and it doubles as a first run of the product: section 1
-sets a brand up, and everything after it has something to act on.
+Work through it in order and it doubles as a first run of the product: §1 creates a
+brand, and everything after it has something to act on.
 
-**Before anything:** the API answers at `http://localhost:8080/health` and the web
-app at `http://localhost:3000`. Three ready-made businesses with all their answers
-are in `docs/TEST_BUSINESSES.md`.
+**Before you start**
+
+1. API answers at `http://localhost:8080/health` with `status: ok`.
+2. Web app loads at `http://localhost:3000`.
+3. Migrations are applied: `npm run migrate -w @sparksocial/db`.
+4. Have `docs/TEST_BUSINESSES.md` open — three businesses with every answer ready
+   to paste.
 
 ---
 
@@ -23,170 +28,216 @@ are in `docs/TEST_BUSINESSES.md`.
 
 ## 1.1 Brands and workspaces
 
-**What it is** — one account holds many brands; each brand has its own content,
-assets, connections and rules, and they never see each other's.
-**The story** *(agency operator)* — "Keep my clients properly separated."
+**What it is** — one account holds many brands; each has its own content, assets,
+connections and rules, and they never see each other's.
+*Story (agency operator)* — "Keep my clients properly separated."
 **Where** — `/workspaces`, and the brand switcher at the top of the sidebar.
 
-**Try it**
-1. Sign in. If the account has no brand you are sent to onboarding.
-2. After onboarding, open `/workspaces` and add a second brand.
-3. Switch between them with the sidebar switcher.
+**Steps**
+1. Sign in and complete onboarding once (§1.2) so one brand exists.
+2. Open `/workspaces` → **Add Brand** → create a second, using a different test
+   business.
+3. Upload an asset to brand B (`/assets`).
+4. Switch to brand A with the sidebar switcher and open `/assets`.
 
-**Working looks like** — each brand shows its own calendar, assets and settings.
-Nothing from brand A appears in brand B. This is enforced in the database layer,
-not by a filter on the screen.
+**Pass when** — brand A does not show brand B's asset. Calendar, settings and
+connections are likewise separate.
 
 ## 1.2 Onboarding — the five questions
 
-**What it is** — five questions that produce a brand "genome": what you can show,
-what you can film, what you are trying to achieve, and whether someone will appear
-on camera.
-**The story** *(solo owner)* — "Set me up without a two-hour form."
+**What it is** — five questions producing a brand "genome": what you can show,
+what you can film, what you are trying to achieve, whether anyone appears on camera.
+*Story (solo owner)* — "Set me up without a two-hour form."
 **Where** — `/onboarding`
 
-**Try it**
-1. Answer the five questions using one of the test businesses.
-2. Note the answers you give — they decide which content formats you get later.
+**Steps**
+1. Sign in with an account that has no brand — you are sent here automatically.
+2. Answer all five using **Fernhill Roastery** from `TEST_BUSINESSES.md`.
+3. Write down the answers you gave.
+4. Finish and let it drop you into the app.
 
-**Working looks like** — you land in the app with a brand. The answers drive
-everything downstream: give "physical craft" and you will be offered filming
-formats; give "product UI" and you will be offered screen-recording ones.
+**Pass when** — you land in the app, not back at onboarding, and `/workspaces`
+lists the brand.
 
 ## 1.3 Build a brand from a website
 
-**What it is** — point SPARK at a URL and it fills in the brand from the page.
-**The story** *(solo owner)* — "You already know what my business does. Read it."
+**What it is** — point SPARK at a URL and it fills the brand in from the page.
+*Story (solo owner)* — "You can read what my business does."
 **Where** — onboarding, the "read my website" option.
 
-**Try it** — supply a real business URL instead of answering manually.
+**Steps**
+1. Start onboarding for a **new** brand.
+2. Choose to supply a website instead of answering.
+3. Paste a real small-business URL.
+4. Read what comes back.
 
-**Working looks like** — identity, category and one-liner come back filled in, each
-marked as inferred rather than confirmed, so you can correct them.
+**Pass when** — name, category and one-liner are filled in and marked as
+*inferred* rather than confirmed, so you can correct them before continuing.
 
 ---
 
 # 2. Brand setup — Settings → Brand Kits
 
-Everything here is applied to every post automatically. It is the highest-leverage
-screen in the product.
+Everything here applies to every post automatically.
 
 ## 2.1 Workspace logo
 
 **What it is** — the logo used on rendered images and video.
 **Where** — Settings → Brand kits → *Workspace logo*
 
-**Try it**
-1. Upload a PNG or JPEG, or paste a URL.
-2. Or press **Generate a placeholder** if you have no logo yet.
+**Steps**
+1. Press **Upload** and choose `docs/test-assets/fernhill-logo.png`.
+2. Save.
+3. Now clear it and press **Generate a placeholder** instead.
 
-**Working looks like** — the logo previews immediately and appears bottom-left on
-anything SPARK renders. The generated one is deliberately a plain flat shape with
-no lettering — a placeholder, not a brand identity.
+**Pass when** — the logo previews immediately after each action, and the generated
+one is a plain flat shape with no lettering.
 
 ## 2.2 Colour theme
 
-**What it is** — three colours, in order: background, text on it, accent.
+**What it is** — three colours in order: background, text on it, accent.
 **Where** — Settings → Brand kits → *Color Theme*
 
-**Try it**
-1. Click a palette preset, or set each colour individually.
-2. Watch the contrast strip underneath.
+**Steps**
+1. Click a palette preset.
+2. Now set the first two colours to something deliberately unreadable — e.g. mid
+   grey text on light grey.
+3. Look at the contrast strip underneath.
+4. Fix it, and save.
 
-**Working looks like** — the strip shows your text colour on your background
-colour, so an unreadable pair is obvious before it reaches a post. Photos and
-video are never tinted with these.
+**Pass when** — the strip shows your text colour on your background colour, so the
+unreadable pair is obvious on screen before it ever reaches a post.
 
 ## 2.3 Brand voice
 
-**What it is** — four tone sliders (formal, playful, technical, bold) plus the
-narration voice for video.
+**What it is** — four tone sliders plus the narration voice for video.
+*Story (creator)* — "It should sound like me."
 **Where** — Settings → Brand kits → *Brand Voice*
 
-**Try it** — move the sliders, save, then generate a draft (§3.2) and read it.
+**Steps**
+1. Set **formal 0.9 / playful 0.1** and save.
+2. Generate a draft (§3.2) and keep the text.
+3. Come back, set **formal 0.1 / playful 0.9**, save.
+4. Generate another draft on the same playbook.
+5. Compare the two.
 
-**Working looks like** — the writing changes. High "formal" and low "playful"
-produces visibly different copy from the reverse.
+**Pass when** — the writing is visibly different between them.
 
 ## 2.4 Typography
 
 **What it is** — display and body typefaces for rendered posts.
 **Where** — Settings → Brand kits → *Typography Style*
 
-**Working looks like** — the sample renders in your chosen faces, on your chosen
-colours, so type and colour are judged together.
+**Steps**
+1. Pick a display face and a different body face.
+2. Watch the sample block.
+3. Save, then render an image post (§3.7).
+
+**Pass when** — the sample renders in the chosen faces on your brand colours, and
+the rendered image uses them too.
 
 ## 2.5 Strict compliance
 
-**What it is** — restricted topics, claims to avoid, and banned words, plus a
-switch deciding whether a violation **blocks** a post or **holds** it for review.
-**The story** *(agency operator)* — "Some things this client must never say."
+**What it is** — restricted topics, claims to avoid and banned words, plus a switch
+deciding whether a violation **blocks** a post or **holds** it.
+*Story (agency operator)* — "This client must never say that."
 **Where** — Settings → Brand kits → *Enable Strict Compliance*
 
-**Try it**
-1. Add a word the brand would never use — e.g. `guaranteed`.
-2. Turn strict mode on.
-3. Generate several drafts.
+**Steps**
+1. Add `guaranteed` to **Claims to avoid** and `artisanal` to banned words.
+2. Turn strict mode **on**. Save.
+3. Generate five drafts (§3.2).
+4. Read each one for those words.
 
-**Working looks like** — the word does not appear. If it ever does, the post is
-marked blocked with the reason on it, rather than quietly going out.
+**Pass when** — neither word appears. If one ever does, the post is marked
+**blocked** with the reason on the item — it is not silently published.
 
 ## 2.6 Watermark
 
-**What it is** — whether the logo is stamped onto rendered images and video, and
-at what size and opacity.
+**What it is** — whether the logo is stamped on rendered media, and at what size
+and opacity.
 **Where** — Settings → Brand kits → *Watermark* (appears once a logo is set)
 
-**Working looks like** — turning it off keeps your logo for everything else and
-only stops the stamp. Bottom-left, where no platform draws its own controls.
+**Steps**
+1. With a logo set, confirm the Watermark card is visible.
+2. Leave it on, render an image post (§3.7), look at the output.
+3. Turn the watermark **off**, save, render again.
+
+**Pass when** — the first render has the logo bottom-left, the second has none, and
+the logo is still set in §2.1 either way.
 
 ## 2.7 Brand knowledge
 
-**What it is** — documents and site pages SPARK is allowed to cite. Without them,
-guardrails hold any specific factual claim.
-**The story** *(any)* — "Only say things that are actually true about us."
+**What it is** — documents and pages SPARK may cite. Without them, guardrails hold
+any specific factual claim.
+*Story (any)* — "Only say what's actually true about us."
 **Where** — Settings → Brand kits → *Brand Knowledge*
 
-**Try it**
-1. Upload `docs/test-assets/fernhill-knowledge-base.pdf`, or ingest a site.
-2. Generate a draft and look for a specific number or claim.
+**Steps**
+1. **Before attaching anything**, generate a draft and note how general it is.
+2. Upload `docs/test-assets/fernhill-knowledge-base.pdf`.
+3. Wait for it to finish processing.
+4. Generate another draft on the same playbook.
 
-**Working looks like** — before attaching anything, drafts stay general. After,
-they cite real specifics from the document.
+**Pass when** — the second draft cites real specifics from the document (a farm
+name, a roast day, a real price) where the first stayed vague.
 
 ## 2.8 Offer
 
-**What it is** — what you sell and your primary call to action.
-**Working looks like** — the CTA appears in posts that should sell, and is
-deliberately withheld from educational, proof and personality posts.
+**What it is** — what you sell, and your primary call to action.
+**Where** — Settings → Brand kits → *Brand Knowledge* → Offer
+
+**Steps**
+1. Set the primary CTA to `Start a subscription`. Save.
+2. Generate a draft on a **product** playbook.
+3. Generate one on an **educational** playbook.
+
+**Pass when** — the product post carries the CTA; the educational one does not.
+Educational, proof and personality posts deliberately never pitch.
 
 ## 2.9 Templates
 
-**What it is** — the layouts a post is built into: intros/outros, bumpers,
-caption presets, lower-thirds.
+**What it is** — the layouts a post is built into: intros/outros, bumpers, caption
+presets, lower-thirds.
 **Where** — Settings → Brand kits → *Templates*
 
-**Note** — the **Versioning & approvals** tab says "Not built", which is correct:
-nothing in the product records a brand-kit version yet.
+**Steps**
+1. Open each of the four tabs.
+2. Add a template: give it a name and save it.
+3. Open the **Versioning & approvals** tab.
+
+**Pass when** — the template you added persists after a refresh, and the Versioning
+tab says **"Not built"** with an explanation. That is correct, not a defect.
 
 ## 2.10 Consent and avatar
 
-**What it is** — whose face and voice SPARK may use, with a consent record behind
-it, plus AI avatar and voice-clone configuration.
-**The story** *(creator)* — "Use my likeness, but only with a record of me saying so."
+**What it is** — whose face and voice SPARK may use, with a consent record, plus
+avatar and voice-clone configuration.
+*Story (creator)* — "Use my likeness, but only on the record."
 **Where** — Settings → Brand kits → *People and likeness*
 
-**Working looks like** — avatar formats stay unavailable until a consent record
-exists. Revoking consent withdraws them again.
+**Steps**
+1. With **no** consent record, look at the available playbooks (§3.1).
+2. Grant a consent record for a named person.
+3. Look at the playbook list again.
+4. Revoke the consent and look once more.
+
+**Pass when** — avatar formats are unavailable at step 1, available at step 3, and
+unavailable again at step 4.
 
 ## 2.11 What this brand has learned
 
-**What it is** — SPARK adjusts the content mix from measured results. This shows
+**What it is** — SPARK adapts the content mix from measured results; this shows
 what it has learned and lets you freeze it.
 **Where** — Settings → Brand kits → *What this brand has learned*
 
-**Working looks like** — freezing stops further adaptation without discarding what
-is already known.
+**Steps**
+1. Read the current confidence and what it is based on.
+2. Press **Freeze**.
+3. Refresh the page.
+
+**Pass when** — it reports itself frozen and keeps what it already knew, rather
+than resetting to nothing.
 
 ---
 
@@ -194,63 +245,99 @@ is already known.
 
 ## 3.1 Playbooks
 
-**What it is** — around fifteen content formats. Which ones you are offered is
-decided by your genome, never by your industry.
-**The story** *(creator)* — "Show me formats I can actually make."
-**Where** — Command Center (`/home`), when creating a post.
+**What it is** — around fifteen content formats; which you are offered is decided
+by your genome, never by your industry.
+*Story (creator)* — "Show me formats I can actually make."
+**Where** — Command Center (`/home`) → new post.
 
-**Try it** — compare the offered formats for two different test businesses.
+**Steps**
+1. On **Fernhill Roastery** (physical craft), open the playbook list and note it.
+2. Switch to **Northgate Actuarial** (data outcomes) and open the list again.
+3. Open the **why** on any single playbook.
 
-**Working looks like** — a brand with physical craft gets filming formats; a SaaS
-brand gets screen-recording ones. Each carries a **why** explaining the choice.
+**Pass when** — the two lists differ meaningfully, and the why explains the choice
+in terms of what the brand can show or film — never "because you're a coffee shop".
 
 ## 3.2 Drafting a post
 
 **What it is** — turns a chosen format into real copy, beat by beat, in your voice.
 **Where** — Command Center → new post → pick a playbook → draft.
 
-**Try it**
-1. Draft a post. Optionally give an intent ("this week's Ethiopian arrival").
-2. Open the Preview tab.
+**Steps**
+1. Pick a playbook and press draft.
+2. Optionally give an intent: `this week's Ethiopian arrival`.
+3. Wait for every beat to fill.
+4. Open the **Preview** tab and read the assembled post.
 
-**Working looks like** — every written beat is filled at a sensible length for its
-slot, the post does not ask for the booking twice, and it ends with **hashtags**
-that are specific to the post. An X post gets at most two hashtags; LinkedIn gets
-about four.
+**Pass when** — every beat is filled at a sensible length, the post does not ask
+for the booking twice, and it ends with **hashtags specific to this post** — not
+`#smallbusiness` filler.
 
 ## 3.3 Regenerating one beat
 
 **What it is** — rewrite just the hook, or just the CTA, leaving the rest alone.
-**Working looks like** — only the beat you asked for changes.
+
+**Steps**
+1. In a drafted post, copy the text of two beats.
+2. Regenerate **one** of them.
+3. Compare both against what you copied.
+
+**Pass when** — only the beat you asked for changed.
 
 ## 3.4 Variants and repurposing
 
-**What it is** — several takes on the same idea, or the same idea rebuilt as a
-different format for a different platform.
-**The story** *(creator)* — "Turn one idea into a week of content."
-**Working looks like** — a repurposed post gets **its own** hashtags sized for the
-new platform, not the original's.
+**What it is** — several takes on one idea, or the same idea rebuilt as a different
+format for a different platform.
+*Story (creator)* — "Turn one idea into a week of content."
+
+**Steps**
+1. On a drafted post, generate **variants**.
+2. Separately, **repurpose** a LinkedIn post into an X format.
+3. Open the repurposed post's preview and count the hashtags.
+
+**Pass when** — variants are genuinely different takes, and the repurposed X post
+carries **at most two** hashtags — its own, sized for X, not the LinkedIn original's.
 
 ## 3.5 Generated media
 
-**What it is** — images, AI b-roll, avatar video, voiceover, and dubbing into
-another language, generated into individual beats.
+**What it is** — images, AI b-roll, avatar video, voiceover and dubbing, generated
+into individual beats.
 **Where** — Draft Panel → a beat → the generate actions.
 
-**Working looks like** — generated media replaces that beat and keeps its timing
-and label. Dubbing replaces the beat in place rather than adding a second one.
+**Steps**
+1. On an image playbook, generate an image into a beat.
+2. On a video playbook, generate b-roll into one beat and a voiceover into another.
+3. Note a beat's label and length, then dub that beat into another language.
+
+**Pass when** — generated media replaces the beat and **keeps its timing and
+label**. The dub replaces the beat in place rather than adding a second one.
 
 ## 3.6 Storyboard editing
 
-**What it is** — add, remove, retime and relabel scenes; add a lower-third name
-plate; override the voice for one scene.
-**Working looks like** — the running total updates, and an edit that would push
-the video outside the format's allowed length is refused with the reason.
+**What it is** — add, remove, retime and relabel scenes; add a lower-third; override
+the voice for one scene.
+**Where** — Draft Panel → Storyboard.
+
+**Steps**
+1. Note the running total at the top.
+2. Insert a scene, then retime an existing one.
+3. Add a lower-third name plate to one scene.
+4. Now try to retime a scene so the video is far longer than the format allows.
+
+**Pass when** — the running total updates each time, and step 4 is **refused with
+the reason**, not silently accepted.
 
 ## 3.7 Rendering
 
 **What it is** — composes the beats into finished files, one per aspect ratio.
-**Working looks like** — your brand colours, type and logo appear in the output.
+
+**Steps**
+1. With colours, type and logo set (§2.1–2.4), open a finished post.
+2. Render it.
+3. Open the output.
+
+**Pass when** — output uses your brand colours (first colour as ground, second as
+the text on it), your typefaces, and your logo bottom-left.
 
 ---
 
@@ -259,31 +346,53 @@ the video outside the format's allowed length is refused with the reason.
 ## 4.1 Uploading and auto-captioning
 
 **What it is** — your photos, video and documents, captioned automatically so they
-can be retrieved by meaning.
+can be found by meaning.
 **Where** — `/assets`
 
-**Try it** — upload a handful of images, then search for what is *in* them rather
-than their filenames.
+**Steps**
+1. Upload four or five images with meaningless filenames (`IMG_4821.jpg`).
+2. Wait for captions to appear.
+3. Search for something **in** one of the pictures, not its filename.
 
-**Working looks like** — search finds an image by its contents.
+**Pass when** — search finds the image by its contents.
 
 ## 4.2 Folders and organisation
 
 **What it is** — folders, moving, renaming, membership.
-**The story** *(agency operator)* — "Keep a client's material in order."
+*Story (agency operator)* — "Keep a client's material in order."
+
+**Steps**
+1. Create a folder.
+2. Move two assets into it.
+3. Rename the folder, then refresh.
+
+**Pass when** — the folder, its name and its contents all survive the refresh.
 
 ## 4.3 Roles and gaps
 
 **What it is** — assets carry roles (social proof, product shot, work artifact…),
-and SPARK can tell you which missing role is blocking the most formats.
-**Working looks like** — the gap list is ordered by how many formats each missing
-role would unlock, so you know what to shoot first.
+and SPARK can say which missing role blocks the most formats.
+
+**Steps**
+1. Set a role on one uploaded asset.
+2. Open the gaps view for the brand.
+3. Read the order of the list.
+
+**Pass when** — gaps are ordered by how many formats each missing role would
+unlock, so the top of the list is what to shoot first.
 
 ## 4.4 Rights and reuse cooldown
 
-**What it is** — rights status per asset, and a cooldown so the same photo is not
+**What it is** — a rights status per asset, and a cooldown so the same photo is not
 used every week.
-**Working looks like** — an asset used recently is passed over for a fresh one.
+
+**Steps**
+1. Set one asset's rights status to restricted.
+2. Draft several posts in a row on the same playbook.
+3. Watch which assets get picked.
+
+**Pass when** — a restricted asset is not used, and an asset used in one draft is
+passed over for a fresh one in the next.
 
 ---
 
@@ -293,50 +402,81 @@ used every week.
 
 **What it is** — before a campaign is created, a checklist of what would stop it
 producing anything, split into **blockers** and **warnings**.
-**The story** *(solo owner)* — "Tell me what's missing before I commit, not after."
+*Story (solo owner)* — "Tell me what's missing before I commit."
 **Where** — `/campaign/new`, on confirm.
 
-**Try it** — create a campaign on a brand with no assets and no connected account.
+**Steps**
+1. Use a brand with **no** connected account and **no** assets.
+2. Start a campaign, choose an objective, and confirm.
+3. Read the modal before doing anything else.
 
-**Working looks like** — a modal appears **before** creation. "Nowhere to publish"
-is a blocker; a missing asset is a warning with the number of extra posts it would
-unlock. You can still proceed — the button says "Create anyway".
+**Pass when** — the modal appears **before** the campaign is created. "Nowhere to
+publish" is a **blocker**; a missing asset is a **warning** carrying the number of
+extra posts it would unlock. The button reads **Create anyway** — you are not forced
+to fix anything.
 
 ## 5.2 Creating a campaign
 
 **What it is** — an objective and a window; SPARK plans the mix and fills a calendar.
-**Working looks like** — the calendar has posts on it, balanced across content
-pillars rather than all promotional.
+
+**Steps**
+1. Connect one account first (§6).
+2. Create a campaign with objective **sales** over 30 days.
+3. Open `/calendar`.
+4. Count how many posts are promotional versus educational.
+
+**Pass when** — the calendar has posts on it, and they are spread across content
+pillars rather than being all promotional.
 
 ## 5.3 The calendar
 
 **What it is** — the month, with drag-to-reschedule and slot recommendations.
 **Where** — `/calendar`
 
-**Working looks like** — an empty calendar explains *why* it is empty rather than
-just saying "nothing scheduled".
+**Steps**
+1. Drag a post to a different day.
+2. Refresh the page.
+3. Now open the calendar of a brand with **no** campaign.
+
+**Pass when** — the move survives the refresh, and the empty calendar explains
+*why* it is empty rather than just saying "nothing scheduled".
 
 ## 5.4 Publishing
 
-**What it is** — posts go out on their schedule, or immediately.
+**What it is** — posts go out on schedule, or immediately.
 **Where** — Draft Panel → Preview → Publish.
 
-**Try it** — publish to Bluesky, which needs only a handle and an app password.
+**Steps**
+1. Connect **Bluesky** (§6) — it needs only a handle and an app password.
+2. Open a finished draft, press Publish, choose Bluesky.
+3. Open the post on Bluesky itself.
 
-**Working looks like** — the post appears on the platform and the item carries a
-receipt and a link back.
+**Pass when** — the post is live, the text matches the preview exactly (including
+hashtags), and the item in SPARK carries a receipt and a link back.
 
 ## 5.5 Rollback
 
 **What it is** — take a published post back down.
-**Working looks like** — removed from the platform; the record is kept, marked
-rolled back, rather than deleted.
+
+**Steps**
+1. On the post from §5.4, press rollback and confirm.
+2. Check Bluesky.
+3. Look at the item in SPARK.
+
+**Pass when** — gone from the platform, but the record is **kept and marked rolled
+back**, not deleted.
 
 ## 5.6 Tracked links
 
 **What it is** — shortens your CTA link so clicks can be counted.
-**Working looks like** — the short link is appended after the hashtags, where the
-platform will still build a preview card from it.
+
+**Steps**
+1. On a draft, shorten the link.
+2. Look at the Preview.
+3. Publish and open the live post.
+
+**Pass when** — the short link sits **after** the hashtags, and the platform still
+builds a preview card from it.
 
 ---
 
@@ -346,17 +486,20 @@ platform will still build a preview card from it.
 **Where** — Settings → Account Connection
 
 **Connectable today:** X, TikTok, LinkedIn, YouTube, Google Business (OAuth), and
-**Bluesky** (handle + app password, no setup at all).
-**Not configured:** Instagram, Facebook, Threads, Pinterest, Reddit — see
-`docs/VENDOR_SETUP.pdf`.
+**Bluesky** (handle + app password, nothing to set up).
+**Not configured:** Instagram, Facebook, Threads, Pinterest, Reddit — `docs/VENDOR_SETUP.pdf`.
 
-**Try it**
-1. Connect Bluesky first — it needs nothing set up.
-2. Then an OAuth platform. You should be asked *which* account to use.
+**Steps**
+1. Connect **Bluesky** first: your handle and an app password from your Bluesky
+   settings. It needs no vendor setup, so it isolates "does connecting work".
+2. Then connect an OAuth platform — X, TikTok or YouTube.
+3. On the consent screen, note whether you are asked **which** account to use.
+4. Back in SPARK, read the tile.
+5. Leave it a while and re-open the page.
 
-**Working looks like** — the tile shows **your** account name and picture, not a
-generic platform name. Health shows the connection and when its token expires;
-tokens refresh on their own before they do.
+**Pass when** — step 3 asks which account; the tile shows **your** account name and
+picture rather than a generic platform name; health shows when the token expires;
+and the token refreshes on its own before it does.
 
 ---
 
@@ -364,32 +507,50 @@ tokens refresh on their own before they do.
 
 ## 7.1 Trends
 
-**What it is** — what is moving right now, scored against your brand.
-**The story** *(creator)* — "What should I post about today?"
+**What it is** — what is moving now, scored against your brand.
+*Story (creator)* — "What should I post about today?"
 **Where** — `/discovery`
 
-**Working looks like** — every trend carries a score and a **why**. Things your
-brand cannot credibly speak to are removed, not shown faintly. A trend everyone
-has already done scores near zero however hot it is.
+**Steps**
+1. Open Discovery and let it load.
+2. Open the **why** on the top-scoring trend.
+3. Scan the list for anything wildly unrelated to the business.
+4. Run `npx tsx --env-file-if-exists=apps/api/.env scripts/check-trend-sources.mts`.
 
-**Live sources:** YouTube, Hacker News, Product Hunt, Google Trends.
-Reddit, X, TikTok and Pinterest need keys — run
-`npx tsx --env-file-if-exists=apps/api/.env scripts/check-trend-sources.mts`
-to see exactly which and why.
+**Pass when** — every trend carries a score and a why; nothing off-brand appears
+(it is removed, not shown faintly); and the script reports which sources are live.
+Four of eight are expected: YouTube, Hacker News, Product Hunt, Google Trends.
 
 ## 7.2 Turning a trend into a post
 
-**Working looks like** — a draft about that trend, in your voice, using a format
-your brand can actually make.
+**Steps**
+1. Pick a trend with a decent score.
+2. Press repurpose.
+3. Read the resulting draft.
+
+**Pass when** — the draft is about that trend, in your brand's voice, using a
+format your brand can actually make.
 
 ## 7.3 Watchlist, muting and influencers
 
-**What it is** — follow topics, mute a source that is noisy, and watch specific
-accounts.
+**Steps**
+1. Add a topic to the watchlist.
+2. Mute one source.
+3. Reload Discovery.
+
+**Pass when** — the watched topic is tracked and the muted source no longer
+contributes to the feed.
 
 ## 7.4 Hooks
 
 **What it is** — opening lines drawn from what is working, adapted to your brand.
+
+**Steps**
+1. Open the Hooks tab.
+2. Take one hook into a draft.
+
+**Pass when** — the hooks read as usable openers for *your* brand, not generic
+copywriting templates.
 
 ---
 
@@ -397,21 +558,20 @@ accounts.
 
 **What it is** — standing rules that keep producing content: watch trends for
 keywords, pull an RSS feed, or import a CSV in bulk.
-**The story** *(agency operator)* — "Keep output going without me starting it."
+*Story (agency operator)* — "Keep output going without me starting it."
 **Where** — `/automation`
 
-**Try it**
-1. New recipe → **auto trend** → add two or three keywords → save.
-2. Run it.
-3. Open the output queue.
+**Steps**
+1. New recipe → **auto trend** → add two or three broad keywords → save.
+2. Run it and open the output queue.
+3. Now edit the recipe to use one absurd keyword (`zzzqqq`) and run again.
+4. Approve one output and reject another.
+5. Pause the recipe.
 
-**Working looks like** — outputs appear for review, or a message explaining
-*which* reason nothing came back: no trends matched those words, or they matched
-but scored too low for this brand. Those need different fixes, so they are
-reported differently.
-
-**Also** — recipes can be scheduled, paused, and their output approved or rejected
-individually.
+**Pass when** — step 2 produces outputs for review; step 3 returns a message saying
+*which* reason nothing came back — no trends matched those words, or they matched
+but scored too low for this brand; approve/reject each act on only that output; and
+a paused recipe produces nothing further.
 
 ---
 
@@ -419,21 +579,20 @@ individually.
 
 **What it is** — incoming comments and DMs, classified, with drafted replies and
 sales opportunities pulled out.
-**The story** *(sales-driven brand)* — "Turn DMs into bookings."
+*Story (sales-driven brand)* — "Turn DMs into bookings."
 **Where** — `/agents?tab=engagement`
 
-**Try it**
-1. Open a conversation.
-2. Draft a reply.
-3. Check the sales opportunities list.
+**Steps**
+1. Open a conversation and read its classification.
+2. Draft a reply and read it before doing anything else.
+3. Check it has **not** been sent.
+4. Approve it.
+5. Open the sales opportunities list.
 
-**Working looks like** — replies are in your brand's voice, not generic. Nothing
-is sent until you approve it unless you have explicitly turned auto-handling on.
-Intent is scored, opportunities carry a recommended next action, and anything
-risky is escalated rather than answered.
-
-**Also** — WhatsApp in and out, lead capture and import, and a full audit of every
-reply that went out.
+**Pass when** — the reply is in your brand's voice rather than generic; nothing is
+sent until step 4 unless auto-handling is explicitly on; opportunities are
+intent-scored and carry a recommended next action; anything risky is escalated
+rather than answered.
 
 ---
 
@@ -441,14 +600,17 @@ reply that went out.
 
 **What it is** — SPARK tells you exactly what to film, you send it over WhatsApp,
 and it finishes it into a post.
-**The story** *(solo owner)* — "I'll film it if you tell me what to point at."
+*Story (solo owner)* — "I'll film it if you tell me what to point at."
 
-**Try it** — from a format that needs footage you do not have, start a capture
-session and follow the brief.
+**Steps**
+1. Pick a format that needs footage you do not have.
+2. Start a capture session and read the brief.
+3. Send a clip back over WhatsApp.
+4. Now send a deliberately poor clip — very dark, or very short.
 
-**Working looks like** — the brief is specific and shootable. Sent media is
-ingested and attached to the post. If quality is poor, it degrades to a simpler
-format rather than failing.
+**Pass when** — the brief is specific and shootable (not "film something nice");
+the sent media is ingested and attached to the post; and the poor clip **degrades
+to a simpler format** rather than failing outright.
 
 ---
 
@@ -459,71 +621,120 @@ format rather than failing.
 **What it is** — autopublish, or hold everything for review.
 **Where** — Settings, and per campaign.
 
-**Working looks like** — in review mode nothing publishes until approved. A post
-belonging to no campaign is always held, whatever the mode.
+**Steps**
+1. Set approval mode to **review**.
+2. Publish a post from a campaign.
+3. Find it in the review queue and approve it.
+4. Now create a post with **no campaign** and try to publish it.
+
+**Pass when** — step 2 is held rather than published, step 3 publishes it, and
+step 4 is held **regardless of mode** — autonomy is a property of the campaign.
 
 ## 11.2 Approval rules
 
-**What it is** — finer control: hold by platform, by content type, by risk, by role.
+**What it is** — finer control: hold by platform, content type, risk or role.
+
+**Steps**
+1. Add a rule holding everything for one specific platform.
+2. Publish to that platform, then to another.
+
+**Pass when** — only the named platform is held.
 
 ## 11.3 Review queue
 
-**Where** — the queue in the Command Center. Everything waiting on a person.
+**Steps**
+1. Create two or three held items.
+2. Open the queue in the Command Center.
+3. Act on one.
+
+**Pass when** — everything waiting on a person is in one place, and acting on one
+removes only that item.
 
 ## 11.4 Guardrails
 
-**What it is** — every draft is checked before it is scheduled and again before it
-publishes: claim grounding, banned phrases, restricted topics, per-platform limits,
-duplicate detection, AI disclosure, rights, avatar saturation.
-**Working looks like** — a blocked post stays visible with the reason on it. The
-check never deletes the evidence.
+**What it is** — every draft is checked before scheduling and again before
+publishing: claim grounding, banned phrases, restricted topics, per-platform
+limits, duplicates, AI disclosure, rights, avatar saturation.
+
+**Steps**
+1. With §2.5 configured, generate a batch of drafts.
+2. Find one that was blocked or flagged.
+3. Open it.
+4. Draft the same intent twice and look for the duplicate warning.
+
+**Pass when** — a blocked post **stays visible with the reason on it**. The check
+never deletes the evidence.
 
 ## 11.5 Ask Spark and notifications
 
-**What it is** — ask SPARK anything in context; it asks you back when it needs a
-decision.
-**Working looks like** — questions appear as notifications and the work waits for
+**Steps**
+1. Open Ask Spark and ask something about the current brand.
+2. Trigger work that needs a decision from you.
+3. Open the notification.
+
+**Pass when** — the answer is grounded in this brand, and the work **waits** for
 your answer rather than guessing.
 
 ## 11.6 The agent
 
-**What it is** — pause, resume, set how often it acts, and read a log of every run
-with the reasoning.
-**Working looks like** — paused means paused; the run log explains each decision.
+**Steps**
+1. Open agent status and pause it.
+2. Wait past its normal interval.
+3. Resume, then open the run log.
+
+**Pass when** — nothing happens while paused, and each run in the log carries its
+reasoning.
 
 ---
 
 # 12. Analytics
 
-**What it is** — what happened after publishing: per-post metrics, brand trend
-over time, campaign reports, CTA click traffic, and the PRD's success metrics.
-**Where** — Command Center overview and campaign reports.
+**What it is** — what happened after publishing: per-post metrics, brand trend over
+time, campaign reports, CTA click traffic, success metrics.
+**Where** — Command Center overview, and campaign reports.
 
-**Working looks like** — a campaign report compares what was promised against what
-happened, rather than only showing totals.
+**Steps**
+1. Publish at least one post (§5.4).
+2. Open the Command Center overview.
+3. Open the campaign's report.
+
+**Pass when** — the report compares what was **promised against what happened**,
+rather than only showing totals.
 
 ---
 
 # 13. Team, roles and organisation
 
-**What it is** — invite people, set roles and permissions, group them, set budgets
-and credit limits, configure SSO, and read an audit log of every action.
-**The story** *(agency operator)* — "Different people, different powers."
+**What it is** — invite people, set roles, permissions and groups; set budgets and
+credit limits; configure SSO; read an audit log.
+*Story (agency operator)* — "Different people, different powers."
 **Where** — Settings → Team Roles, and Settings → Credit & Usage.
 
-**Working looks like** — a viewer cannot publish. Budget limits refuse spend
-rather than overspending quietly. Every tool call is in the audit log.
+**Steps**
+1. Invite a second user as **viewer**.
+2. As that user, try to publish a post.
+3. Set a very low budget cap and generate several drafts.
+4. Open the audit log.
+
+**Pass when** — the viewer cannot publish; the budget **refuses spend** rather than
+overspending quietly; and every action appears in the audit log.
 
 ---
 
 # 14. Agency features
 
-**What it is** — a client roster, white-labelled links, and client proposals that
-can be shared on a public link and accepted without an account.
-**Where** — `/agency`, and shared proposals at `/p/<token>`.
+**What it is** — a client roster, white-labelled links, and client proposals
+shareable on a public link.
+**Where** — `/agency`, shared proposals at `/p/<token>`.
 
-**Working looks like** — a proposal link opens for someone with no login, shows
-the plan, and records their decision.
+**Steps**
+1. Open the roster and check every brand is listed.
+2. Draft a proposal for one client and share it.
+3. Open the share link in a **private window**, signed out.
+4. Accept or decline it there.
+
+**Pass when** — the link opens with no login, shows the plan, and the decision is
+recorded back in SPARK.
 
 ---
 
@@ -532,14 +743,20 @@ the plan, and records their decision.
 **What it is** — export a brand whole, import it elsewhere.
 **Where** — Settings → Import / Export
 
-**Working looks like** — an exported brand carries its genome, rules, assets and
-knowledge, and restores to the same state.
+**Steps**
+1. Export a fully set-up brand.
+2. Create an empty brand.
+3. Import the export into it.
+4. Compare brand kit, knowledge and assets against the original.
+
+**Pass when** — genome, rules, assets and knowledge all arrive, and the imported
+brand behaves like the original when you draft a post.
 
 ---
 
 # Known limits
 
-These are correct behaviour today, not defects:
+Correct behaviour today, not defects. Do not log these as failures.
 
 | Thing | Why |
 |---|---|
@@ -554,6 +771,7 @@ These are correct behaviour today, not defects:
 
 # Reporting a problem
 
-Give the **feature and section number**, what you did, what you saw, and what you
-expected. For a publish failure the item itself carries the reason — copy that.
-Browser console for screen problems, the API terminal for anything server-side.
+Give the **section number**, what you did, what you saw, what you expected. For a
+publish failure the item itself carries the reason — copy that rather than "it
+didn't work". Browser console for screen problems; the API terminal for anything
+server-side.
