@@ -1,4 +1,4 @@
-import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
+import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, sql, type SQL } from 'drizzle-orm';
 import {
   ToolError,
   type AssetMediaType,
@@ -2100,6 +2100,84 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
     .where(and(eq(contentItems.status, 'scheduled'), lte(contentItems.scheduledAt, args.before)))
     .orderBy(asc(contentItems.scheduledAt))
     .limit(args.limit) as Promise<DueContentItem[]>;
+}
+
+/** A post whose pixels have not been made yet — `startRenderQueue`'s input. */
+export interface UnrenderedContentItem {
+  id: string;
+  orgId: string;
+  genomeId: string;
+  playbookId: string | null;
+  copy: unknown;
+}
+
+/**
+ * Posts in a live campaign that have copy and no rendered file.
+ *
+ * ── Why this query exists ─────────────────────────────────────────────────
+ *
+ * Drafting writes the script; `compose.render` makes the file, and nothing
+ * called it. It is reachable from exactly one place — a button in the Draft
+ * Panel — so a thirty-day campaign produced eleven scripts and zero pixels
+ * until somebody opened each post and pressed render. The calendar said
+ * "video", the campaign said "video", and there was no video, with nothing
+ * anywhere saying so.
+ *
+ * Deliberately narrow on three axes:
+ *
+ *   - **`copy is not null`**. A calendar slot exists long before it is written;
+ *     rendering an empty one would produce a blank frame and charge for it.
+ *   - **`mode <> 'direct_finish'`**. Those posts are waiting on footage from a
+ *     person, not on a renderer.
+ *   - **no existing render**. A re-render is a deliberate act — `compose.render`
+ *     says so itself and is non-idempotent — so this only ever makes the first
+ *     one.
+ *
+ * Campaign status is checked rather than assumed: a paused campaign's posts
+ * must not keep spending. `campaign_id` may be null for an ad-hoc post, and
+ * those are excluded — nothing has promised to render them.
+ */
+export async function findUnrenderedContentItems(
+  db: Database,
+  args: { limit: number; excludePlaybookIds?: string[] },
+): Promise<UnrenderedContentItem[]> {
+  return db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      playbookId: contentItems.playbookId,
+      copy: contentItems.copy,
+    })
+    .from(contentItems)
+    .innerJoin(campaigns, eq(campaigns.id, contentItems.campaignId))
+    .where(
+      and(
+        eq(campaigns.status, 'active'),
+        isNotNull(contentItems.copy),
+        ne(contentItems.mode, 'direct_finish'),
+        notExists(
+          db.select({ one: sql`1` }).from(renders).where(eq(renders.contentItemId, contentItems.id)),
+        ),
+        /*
+         * Formats with no pixels are excluded HERE, not by the caller skipping
+         * them afterwards.
+         *
+         * Skipping in the loop looked equivalent and was not: the batch is
+         * small and ordered by date, so two old text posts sat at the head of
+         * the queue and consumed the whole batch on every tick, forever.
+         * Nothing renderable behind them was ever reached — a head-of-line
+         * block that is indistinguishable from a queue doing nothing at all.
+         * Found by watching a live queue render nothing for ten minutes with
+         * ten eligible posts waiting.
+         */
+        ...(args.excludePlaybookIds?.length
+          ? [notInArray(contentItems.playbookId, args.excludePlaybookIds)]
+          : []),
+      ),
+    )
+    .orderBy(asc(contentItems.scheduledAt))
+    .limit(args.limit) as Promise<UnrenderedContentItem[]>;
 }
 
 export interface CalendarSlotRow {

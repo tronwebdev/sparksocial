@@ -23,6 +23,7 @@ import { createDevRunStore } from './dev-runs.js';
 import { embedClient } from './embed-client.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
+import { startRenderQueue } from './render-queue.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
 import { startConnectionWatcher } from './connection-watcher.js';
@@ -428,6 +429,36 @@ const recipeScheduler = startRecipeScheduler(
  * is the resolution the store buckets to; a shorter interval would write no
  * extra rows.
  */
+/**
+ * The render queue — makes the pixels a campaign promised (§6.8's Assemble).
+ *
+ * Drafting writes the script and `compose.render` makes the file; nothing
+ * called it, so a thirty-day campaign produced eleven scripts and no video at
+ * all. This watches for a post in a live campaign that has copy and no render
+ * and makes the first one.
+ *
+ * Postgres only. The dev store has no `renders` table to ask about, and a
+ * queue that cannot tell what has already been rendered would re-render
+ * everything on every tick — which is the one failure mode worth refusing
+ * outright, because it bills for it.
+ *
+ * Five minutes rather than one: a render is tens of seconds of CPU and real
+ * money, so there is nothing to gain from asking more often than the work
+ * takes.
+ */
+const renderQueue = pg
+  ? startRenderQueue(
+      {
+        source: { findUnrendered: pg.findUnrendered },
+        db: scopedDb,
+        invoke: invokeDeps,
+        loadBrandGovernance: makeBrandGovernance(scopedDb),
+        credits,
+      },
+      envNum('RENDER_QUEUE_INTERVAL_MS', 300_000),
+    )
+  : undefined;
+
 const trendObserver = startTrendObserver(
   {
     db: scopedDb,
@@ -639,6 +670,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     scheduler.stop();
     recipeScheduler.stop();
     trendObserver.stop();
+    renderQueue?.stop();
     connectionWatcher.stop();
     tokenRefresher.stop();
     outcomeObserver.stop();
