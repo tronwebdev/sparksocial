@@ -6,6 +6,7 @@ import {
   MAX_KIT_TEMPLATES,
   Watermark,
 } from '@sparksocial/shared/brandKit';
+import { ensureBrandKitAsset } from './brandKitAsset.js';
 import { DEFAULT_STOCK_VOICE_ID, StockVoiceIdSchema } from '@sparksocial/shared/voices';
 import {
   DEFAULT_EMOJI_LEVEL,
@@ -410,6 +411,29 @@ export const brandGovernanceSet = defineTool({
     const brandId = requireBrand(named ?? ctx.brandId);
     const before = await ctx.db.brands.get(brandId, ctx.orgId);
     const after = await ctx.db.brands.setGovernance({ brandId, orgId: ctx.orgId, patch });
+
+    /*
+     * A logo is also the brand's `brand_kit` asset.
+     *
+     * The upload path writes `logoUrl` here and, before this, created no asset
+     * — so seven playbooks that gate on the `brand_kit` role stayed blocked
+     * with the brand's own logo visible on the screen. `ensureBrandKitAsset`
+     * explains why registering it cannot leak the logo into posts.
+     */
+    if (patch.logoUrl && ctx.genomeId) {
+      // Bookkeeping must not fail the save the owner actually asked for.
+      await ensureBrandKitAsset(ctx, {
+        genomeId: ctx.genomeId,
+        url: patch.logoUrl,
+        businessName: before?.name ?? 'This brand',
+        source: 'brand.governance.set',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('brand kit asset not registered', {
+          brandId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
 
     const changed = Object.keys(patch).filter((k) => k in patch);
     ctx.logger.info('brand governance set', { brandId, changed, by: ctx.userId ?? 'unknown' });

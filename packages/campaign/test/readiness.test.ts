@@ -26,7 +26,13 @@ import { makeCampaignReadiness } from '../src/readiness.js';
  */
 const genome = lagosBarbershop.genome as never;
 
-function ctx(over: { inventory?: Record<string, number>; connected?: string[] } = {}): ToolCtx {
+function ctx(
+  over: {
+    inventory?: Record<string, number>;
+    connected?: string[];
+    pending?: Array<{ assetId: string; role: string }>;
+  } = {},
+): ToolCtx {
   const inventory = over.inventory ?? {};
   const connected = new Set(over.connected ?? []);
   return {
@@ -39,7 +45,10 @@ function ctx(over: { inventory?: Record<string, number>; connected?: string[] } 
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
     db: {
       genomes: { get: async () => genome },
-      assets: { inventory: async () => inventory },
+      assets: {
+        inventory: async () => inventory,
+        awaitingRights: async () => over.pending ?? [],
+      },
       oauthConnections: { get: async (_g: string, _o: string, p: string) => (connected.has(p) ? { id: 'c' } : undefined) },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -106,5 +115,35 @@ describe('campaign.readiness', () => {
   it('is a read — it must never be the thing that creates a campaign', async () => {
     expect(tool.effect).toBe('read');
     expect(tool.idempotent).toBe(true);
+  });
+});
+
+/**
+ * An asset that exists but is not cleared yet.
+ *
+ * `assetInventory` counts only `cleared` rows — the right rule, and an
+ * invisible one. A brand that had uploaded exactly the file a format needs was
+ * told to go and upload it; the person then finds it already in their library
+ * and concludes the checklist is broken. That costs more trust than the gap it
+ * was reporting.
+ */
+describe('campaign.readiness — assets awaiting rights', () => {
+  it('names the rights step instead of telling you to upload it again', async () => {
+    const out = await run(
+      ctx({ connected: ['x'], pending: [{ assetId: 'a1', role: 'social_proof' }] }),
+    );
+    const item = out.items.find((i) => i.id === 'rights:social_proof');
+    expect(item).toBeDefined();
+    expect(item!.fixWith).toBe('Assets Library → Rights');
+    expect(item!.label).toMatch(/awaiting rights/);
+    // And the misleading one is gone.
+    expect(out.items.find((i) => i.id === 'asset:social_proof')).toBeUndefined();
+  });
+
+  it('still says upload when there is genuinely nothing there', async () => {
+    const out = await run(ctx({ connected: ['x'], pending: [] }));
+    const uploads = out.items.filter((i) => i.id.startsWith('asset:'));
+    expect(uploads.length).toBeGreaterThan(0);
+    for (const i of uploads) expect(i.fixWith).not.toMatch(/Rights/);
   });
 });

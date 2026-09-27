@@ -14,7 +14,9 @@ import { makeBrandLogoGenerate } from '../src/logo.js';
 
 const genome = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_saas')!.genome;
 
-function ctx(over: { setGovernance?: unknown } = {}): ToolCtx {
+function ctx(
+  over: { setGovernance?: unknown; inventory?: Record<string, number>; createAsset?: unknown } = {},
+): ToolCtx {
   return {
     orgId: 'org_1',
     brandId: 'brand_1',
@@ -27,6 +29,12 @@ function ctx(over: { setGovernance?: unknown } = {}): ToolCtx {
       genomes: { get: async () => genome },
       brands: {
         setGovernance: over.setGovernance ?? (async () => ({ brandId: 'brand_1' })),
+      },
+      // The logo is also the brand's `brand_kit` asset as of
+      // `ensureBrandKitAsset`, so the tool now reads and writes this store.
+      assets: {
+        inventory: async () => over.inventory ?? {},
+        create: over.createAsset ?? (async () => ({ id: 'asset_1' })),
       },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -137,5 +145,48 @@ describe('brand.logo.generate — the contract', () => {
     await expect(makeBrandLogoGenerate(images()).handler({}, noBrand)).rejects.toMatchObject({
       code: 'INVALID_INPUT',
     });
+  });
+});
+
+/**
+ * The logo is the brand's `brand_kit` asset.
+ *
+ * Seven playbooks gate on that role existing, and generating a logo used to
+ * write `logoUrl` onto governance and nothing else — so a brand that had just
+ * generated one still resolved zero formats, with "a brand kit file" listed as
+ * a blocker beside the logo on screen.
+ */
+describe('brand.logo.generate — the brand kit asset', () => {
+  it('registers the logo as a cleared brand_kit asset', async () => {
+    const created: Array<Record<string, unknown>> = [];
+    await makeBrandLogoGenerate(images()).handler(
+      {},
+      ctx({ createAsset: async (a: Record<string, unknown>) => { created.push(a); return { id: 'a1' }; } }),
+    );
+
+    expect(created).toHaveLength(1);
+    expect(created[0]!.assetRole).toBe('brand_kit');
+    // Pending would leave it invisible: `assetInventory` counts only cleared
+    // rows, so the brand would still build nothing, one layer further down.
+    expect(created[0]!.rightsStatus).toBe('cleared');
+  });
+
+  it('does not add a second one when the brand already has one', async () => {
+    const created: unknown[] = [];
+    await makeBrandLogoGenerate(images()).handler(
+      {},
+      ctx({ inventory: { brand_kit: 1 }, createAsset: async () => { created.push(1); return { id: 'a1' }; } }),
+    );
+    expect(created).toHaveLength(0);
+  });
+
+  it('still returns the logo when the asset write fails', async () => {
+    // The image cost a vendor call and is already saved on the brand. Losing
+    // it to a bookkeeping failure would discard the expensive half.
+    const out = await makeBrandLogoGenerate(images()).handler(
+      {},
+      ctx({ createAsset: async () => { throw new Error('db down'); } }),
+    );
+    expect(out.logoUrl).toBeTruthy();
   });
 });

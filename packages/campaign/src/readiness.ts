@@ -133,6 +133,23 @@ export function makeCampaignReadiness(deps: CampaignReadinessDeps) {
 
       const inventory = (await ctx.db.assets.inventory(input.genomeId, ctx.orgId)) as AssetInventory;
 
+      /**
+       * Assets that exist but are not counted yet.
+       *
+       * `assetInventory` counts only `cleared` rows, which is the right rule and
+       * an invisible one: a brand that has uploaded exactly the file a format
+       * needs is told to go and upload it. Somebody hunting that message finds
+       * the asset already sitting in their library, decides the checklist is
+       * broken, and stops trusting it — which is worse than the original gap.
+       *
+       * So a role with something pending gets a different item: the fix is
+       * clearing rights, not uploading again.
+       */
+      const pendingByRole = new Map<AssetRole, number>();
+      for (const a of await ctx.db.assets.awaitingRights(input.genomeId, ctx.orgId)) {
+        pendingByRole.set(a.role, (pendingByRole.get(a.role) ?? 0) + 1);
+      }
+
       // The same call `campaign.propose_plan` and `calendar.generate` make, so
       // this cannot disagree with what they will actually build.
       const plan = planCampaign({
@@ -190,13 +207,30 @@ export function makeCampaignReadiness(deps: CampaignReadinessDeps) {
 
       for (const [role, info] of [...byRole.entries()].sort((a, b) => b[1].blocks - a[1].blocks)) {
         const words = role.replace(/_/g, ' ');
+        const pending = pendingByRole.get(role) ?? 0;
+        const unlocks = `Unlocks ${info.blocks} format${info.blocks === 1 ? '' : 's'}.`;
+
+        // Something is already here — say so, and point at the step that is
+        // actually missing rather than at uploading it a second time.
+        if (pending > 0) {
+          items.push({
+            id: `rights:${role}`,
+            severity: plan.buildableNow === 0 ? 'blocker' : 'warning',
+            label: `${words} — ${pending} file${pending === 1 ? '' : 's'} awaiting rights`,
+            hint: `Already uploaded. Nothing uses an asset until its rights are cleared. ${unlocks}`,
+            fixWith: 'Assets Library → Rights',
+            unlocksPosts: info.blocks,
+          });
+          continue;
+        }
+
         items.push({
           id: `asset:${role}`,
           severity: plan.buildableNow === 0 ? 'blocker' : 'warning',
           label: info.upload ? `a ${words} file` : `${words} — needs filming`,
           hint: info.upload
-            ? `A file you probably already have. Unlocks ${info.blocks} format${info.blocks === 1 ? '' : 's'}.`
-            : `An afternoon with a camera, guided by a capture brief. Unlocks ${info.blocks} format${info.blocks === 1 ? '' : 's'}.`,
+            ? `A file you probably already have. ${unlocks}`
+            : `An afternoon with a camera, guided by a capture brief. ${unlocks}`,
           fixWith: info.upload ? 'Assets Library → Upload' : 'Capture → Start a session',
           unlocksPosts: info.blocks,
         });
