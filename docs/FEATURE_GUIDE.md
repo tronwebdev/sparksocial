@@ -189,14 +189,16 @@ than writing around it. A brand knowledge base holding "18 hours" and a
 "four-year-old starter" should produce copy containing those, not "a slow,
 delicious journey".
 
-> **What it does not do: enforce the document's prohibitions.** A knowledge base
-> usually has a section of things the business must never claim. The writer
-> reads the document as facts and will write past that section — asked directly
-> for "awards we have won" it claims them, even when the document says the
-> business has won nothing. That is not a bug you can prompt away; the control
-> is **Enable Strict Compliance** (§2.5), which blocks a draft rather than
-> asking it nicely. Put anything that must never be said there, not only in the
-> document.
+**Pass when (prohibitions)** — attaching the document also reports
+`restrictionsAdded`, and those rules then hold. A knowledge base with a *"things
+we must never claim"* section has its quoted phrases and claim categories added
+to **Enable Strict Compliance** (§2.5) automatically. Ask for a post that
+breaks one and it comes back held, naming the phrase.
+
+> The writer itself will still write the forbidden thing when asked directly —
+> that cannot be prompted away. What stops it is the guardrail, which is why the
+> document's rules are copied into governance rather than left as prose. Adding
+> is one-way: nothing extracted can remove a rule you set by hand.
 
 ## 2.8 Offer
 

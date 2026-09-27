@@ -213,7 +213,7 @@ export interface ToolIO {
   };
   "brand.knowledge.attach_document": {
     input: { genomeId: string; url: string; filename: string };
-    output: { docId: string; pages: number; chunks: number; characters: number };
+    output: { docId: string; pages: number; chunks: number; characters: number; restrictionsAdded: { claimsToAvoid: Array<string>; bannedPhrases: Array<string> } };
   };
   "brand.logo.generate": {
     input: { brandId?: string; hint?: string };
