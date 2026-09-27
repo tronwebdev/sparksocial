@@ -174,13 +174,22 @@ any specific factual claim.
 **Where** — Settings → Brand kits → *Brand Knowledge*
 
 **Steps**
-1. **Before attaching anything**, generate a draft and note how general it is.
-2. Upload `docs/test-assets/fernhill-knowledge-base.pdf`.
-3. Wait for it to finish processing.
-4. Generate another draft on the same playbook.
+1. Upload `docs/test-assets/fernhill-knowledge-base.pdf` (or
+   `harbour-lane-knowledge-base.pdf`).
+2. Wait for it to finish processing — it reports pages and chunks.
+3. Generate a draft that would need a specific fact.
+4. Now generate one that states a number the document does **not** contain.
 
-**Pass when** — the second draft cites real specifics from the document (a farm
-name, a roast day, a real price) where the first stayed vague.
+**Pass when** — step 4 is blocked or flagged with a grounding reason, and the
+document counts toward the `knowledge` asset role so knowledge-dependent formats
+resolve.
+
+> **What it does not do.** Attaching knowledge does not feed the writer. The
+> chunks are read by `guard.claim_grounding`, which *checks* what was written
+> against them — the copy writer never receives them, in any mode. So a draft
+> will not start quoting your prices because you uploaded a price list; it will
+> start being stopped when it invents one. Supplying facts to a post is what the
+> **intent** field and `assemble`-mode asset captions do.
 
 ## 2.8 Offer
 
