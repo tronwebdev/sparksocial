@@ -454,6 +454,9 @@ const renderQueue = pg
         invoke: invokeDeps,
         loadBrandGovernance: makeBrandGovernance(scopedDb),
         credits,
+        // Auto-illustration's asset lookup. See `auto-illustrate.ts`: the
+        // brand's own pictures first, generated ones only where it has none.
+        embed: embedClient(),
       },
       envNum('RENDER_QUEUE_INTERVAL_MS', 300_000),
     )

@@ -112,6 +112,30 @@ const beatShape = {
    * slot — see `lowerThirdOverlay`.
    */
   lowerThird: z.string().min(1).max(MAX_LOWER_THIRD).optional(),
+  /**
+   * A picture or clip rendered *behind* this beat's words.
+   *
+   * ── Why a backdrop and not a replacement ─────────────────────────────────
+   *
+   * `content.generate_image` and `content.generate_broll` replace the beat they
+   * are given: the beat stops being words and becomes the media. That is right
+   * when somebody asks for an illustration of a specific scene, and wrong as an
+   * automatic step — a text beat *is* the post's copy, so replacing it produces
+   * a picture with the writing thrown away. A campaign of those is a month of
+   * photographs nobody can read a message off.
+   *
+   * So auto-illustration attaches instead. The words stay the beat; the
+   * generated media goes behind them, which is what a social image post
+   * actually is. Before this, a brand with no footage got white type on a flat
+   * background for every post in its calendar — correct, and indistinguishable
+   * from a placeholder.
+   *
+   * Absent is the normal state for a beat that already has real media of its
+   * own, and for any brand whose assets resolved.
+   */
+  backdropUrl: z.string().optional(),
+  /** `image` renders as a still behind the text; `video` loops under it. */
+  backdropKind: z.enum(['image', 'video']).optional(),
 };
 
 export const ResolvedBeat = z.discriminatedUnion('kind', [
@@ -878,6 +902,10 @@ export function keepStructure(
     ...(beat.label !== undefined ? { label: beat.label } : {}),
     ...(beat.voice !== undefined ? { voice: beat.voice } : {}),
     ...(beat.lowerThird !== undefined ? { lowerThird: beat.lowerThird } : {}),
+    // A backdrop belongs to the scene, not to what fills it, so generating
+    // media into a beat keeps the picture that was already behind it.
+    ...(beat.backdropUrl !== undefined ? { backdropUrl: beat.backdropUrl } : {}),
+    ...(beat.backdropKind !== undefined ? { backdropKind: beat.backdropKind } : {}),
   };
 }
 

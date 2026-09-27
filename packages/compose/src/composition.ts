@@ -111,13 +111,66 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
     return h(Audio, { src: beat.url });
   }
   // kind === 'text'
+  /*
+   * A backdrop, when auto-illustration found or made one.
+   *
+   * Behind the words rather than instead of them: the beat *is* the post's
+   * copy, so a brand with no footage used to get white type on a flat ground
+   * for every post in its calendar — correct, and indistinguishable from a
+   * placeholder.
+   *
+   * The scrim is not decoration. Type sits on arbitrary photography here, and
+   * generated imagery is exactly where a light patch lands under white text
+   * with nobody checking. Same reasoning, and the same neutral treatment, as
+   * `captionOverlay` below.
+   */
+  const backdrop = beat.backdropUrl
+    ? [
+        beat.backdropKind === 'video'
+          ? h(Video, {
+              src: beat.backdropUrl,
+              // A clip shorter than its beat would otherwise freeze on its last
+              // frame for the remainder — a still pretending to be footage.
+              loop: true,
+              muted: true,
+              style: { width: '100%', height: '100%', objectFit: 'cover' },
+            })
+          : h(Img, { src: beat.backdropUrl, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
+        h('div', { style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' } }),
+      ]
+    : [];
+
+  /*
+   * Two layers, not one.
+   *
+   * The first version put the backdrop inside the padded, centred box that
+   * holds the words, so the picture was inset by the padding and the text was
+   * pushed down onto the watermark — a letterboxed photograph with the copy
+   * sitting in the margin. The backdrop is full-bleed and the type layer sits
+   * on top of it; only the type is padded.
+   */
   return h(
     AbsoluteFill,
-    { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
+    null,
+    ...backdrop,
     h(
-      'div',
-      { style: { color: kit.type, fontSize: 64, fontFamily: kit.displayFont, textAlign: 'center', lineHeight: 1.3 } },
-      beat.text,
+      AbsoluteFill,
+      { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
+      h(
+        'div',
+        {
+          style: {
+            // Over a photograph the brand's type colour is a coin flip; white
+            // on the scrim is legible whatever the picture turned out to be.
+            color: beat.backdropUrl ? '#FFFFFF' : kit.type,
+            fontSize: 64,
+            fontFamily: kit.displayFont,
+            textAlign: 'center',
+            lineHeight: 1.3,
+          },
+        },
+        beat.text,
+      ),
     ),
     lower,
   );

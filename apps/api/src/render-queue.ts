@@ -1,6 +1,9 @@
 import { invokeTool, type CreditStore, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import { byId, PLAYBOOKS } from '@sparksocial/playbooks';
+import { ResolvedBeat } from '@sparksocial/generate';
+import { autoIllustrate } from './auto-illustrate.js';
 import type { UnrenderedContentSource } from '@sparksocial/db';
+import { createHash } from 'node:crypto';
 import { makeDevResolveCtx } from './dev-auth.js';
 
 /**
@@ -43,6 +46,14 @@ export interface RenderQueueDeps {
   loadBrandGovernance: (orgId: string, brandId?: string) => Promise<InvokeRequest['brand']>;
   /** The same ledger the publish scheduler reads — see its comment on why this matters. */
   credits?: CreditStore;
+  /**
+   * Embeddings, for matching the brand's own pictures against a post's words.
+   *
+   * Absent turns auto-illustration off rather than failing: a deployment with
+   * no embedder still renders, it just renders on the brand's flat ground the
+   * way everything did before.
+   */
+  embed?: { embed(text: string): Promise<number[]> };
   /**
    * The tool invoker, injectable purely so a test can assert what this loop
    * asks for.
@@ -144,6 +155,62 @@ async function renderOne(
   const { userId: _drop, caller: _caller, ...ctx } = base;
   const brand = await deps.loadBrandGovernance(item.orgId, genome.workspace_id);
 
+  /*
+   * Give it pictures first.
+   *
+   * Before the renderer, deliberately: `compose.render` draws whatever the
+   * beats hold, so a post reaching it with nothing but words produces a
+   * caption on a flat ground — correct, and indistinguishable from a
+   * placeholder. Illustrating here means every render in a campaign gets the
+   * brand's own photographs where they exist, and something made where they
+   * do not.
+   *
+   * Its failures are its own. A post that could not be illustrated is still a
+   * post, and it renders exactly as it would have before this existed.
+   */
+  if (deps.embed) {
+    try {
+      const beats = ResolvedBeat.array().safeParse(item.copy);
+      if (beats.success) {
+        const { beats: illustrated, result } = await autoIllustrate({
+          beats: beats.data,
+          playbook,
+          contentItemId: item.id,
+          genomeId: item.genomeId,
+          ctx,
+          brand,
+          deps: {
+            db: deps.db,
+            invoke: deps.invoke,
+            embed: deps.embed,
+            ...(deps.invokeTool ? { invokeTool: deps.invokeTool } : {}),
+          },
+        });
+        if (result.fromAssets || result.generated) {
+          /*
+           * Written back before rendering, and this is the step that undoes
+           * what the generators did: both of them *replace* the beat they are
+           * given, so the row at this moment holds a picture where the copy
+           * used to be. Re-saving the beats this function holds puts the words
+           * back with the backdrop attached.
+           */
+          await deps.db.content.updateDraft({
+            id: item.id,
+            genomeId: item.genomeId,
+            orgId: item.orgId,
+            copy: illustrated,
+            why: { summary: 'Illustrated before rendering.', factors: [], evidence: [], alternatives: [] },
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[warn] render queue: auto-illustration failed', {
+        contentItemId: item.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   const invoke = deps.invokeTool ?? invokeTool;
   const rendered = await invoke(
     {
@@ -153,13 +220,23 @@ async function renderOne(
       ctx,
       brand,
       /*
-       * Keyed on the item, not on the attempt. `compose.render` declares itself
-       * non-idempotent because a *deliberate* re-render is a new render — but a
-       * queue that retried a transient failure without a stable key would bill
-       * twice for one post, and the query that feeds this loop already stops
-       * once a render exists.
+       * Keyed on the post's *content*, not just its id.
+       *
+       * A stable per-item key deadlocks, and did: the idempotency record
+       * outlives the render row, so once a row is gone — retention, cleanup, a
+       * failed upload — every later tick gets the cached success back, writes
+       * nothing, and finds the same item again. A loop that reports "rendered"
+       * forever while rendering nothing, and with a batch of two it blocks
+       * everything behind it. Watched it happen: four `render queue: rendered`
+       * lines against zero rows in the table.
+       *
+       * Hashing the copy also makes the key mean the right thing. A post whose
+       * words changed — most obviously the moment auto-illustration attaches a
+       * backdrop — is a different post and deserves a new render. A genuine
+       * retry of unchanged copy still collapses onto one charge, which is what
+       * the key was for.
        */
-      idempotencyKey: `queued-render:${item.id}`,
+      idempotencyKey: `queued-render:${item.id}:${fingerprint(item.copy)}`,
     },
     deps.invoke,
   );
@@ -180,9 +257,59 @@ async function renderOne(
     return;
   }
 
+  /*
+   * Did the render actually survive?
+   *
+   * `invokeTool` returns the *recorded* result for a key it has seen, without
+   * re-running the tool. So an item whose render rows have gone — retention, a
+   * cleanup, a restore — gets a cached success back, writes nothing, and is
+   * found again by the very next tick. The queue then reports "rendered"
+   * forever while rendering nothing, and with a batch of two it blocks
+   * everything behind it. Observed exactly that: four success lines against an
+   * empty table.
+   *
+   * Hashing the copy into the key fixes the common case, where the post
+   * changed. It cannot fix this one, where the post is identical and only the
+   * output is missing — so the outcome is checked rather than assumed, and one
+   * cache-busting attempt is made. Bounded to a single extra call: if that also
+   * produces nothing, something is wrong that a retry loop will not mend, and
+   * saying so once beats billing for it every five minutes.
+   */
+  const existing = await deps.db.content.listRenders(item.id, item.genomeId, item.orgId).catch(() => []);
+  if (existing.length === 0) {
+    const retried = await invoke(
+      {
+        tool: 'compose.render',
+        input: { genomeId: item.genomeId, contentItemId: item.id },
+        caller: 'agent',
+        ctx,
+        brand,
+        idempotencyKey: `queued-render:${item.id}:${fingerprint(item.copy)}:recovered`,
+      },
+      deps.invoke,
+    );
+    if (retried.status !== 'succeeded') {
+      console.warn('[warn] render queue: reported success but stored nothing, and the retry failed', {
+        contentItemId: item.id,
+      });
+      return;
+    }
+  }
+
   console.info('[info] render queue: rendered', {
     contentItemId: item.id,
     playbookId: playbook.playbook_id,
     mediaType: playbook.output.media_type,
   });
+}
+
+/**
+ * A short, stable fingerprint of a post's copy.
+ *
+ * Only needs to change when the content does, so a cheap non-cryptographic
+ * digest is the right tool — this decides whether to spend a render, not
+ * whether to trust anything.
+ */
+function fingerprint(copy: unknown): string {
+  return createHash('sha1').update(JSON.stringify(copy ?? null)).digest('hex').slice(0, 12);
 }

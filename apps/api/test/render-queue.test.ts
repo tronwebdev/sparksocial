@@ -17,11 +17,14 @@ const genome = { workspace_id: 'ws_1' } as never;
 
 type Pending = { id: string; orgId: string; genomeId: string; playbookId: string | null; copy: unknown };
 
-function harness(over: { pending?: Pending[]; result?: unknown } = {}) {
+function harness(over: { pending?: Pending[]; result?: unknown; stored?: unknown[] } = {}) {
   const calls: Array<{ tool: string; input: Record<string, unknown>; idempotencyKey?: string }> = [];
   const d = {
     source: { findUnrendered: async () => over.pending ?? [] },
-    db: { genomes: { get: async () => genome } },
+    db: {
+      genomes: { get: async () => genome },
+      content: { listRenders: async () => over.stored ?? [{ aspect: '9:16' }] },
+    },
     invoke: {} as never,
     loadBrandGovernance: async () => ({}) as never,
     invokeTool: (async (req: { tool: string; input: Record<string, unknown>; idempotencyKey?: string }) => {
@@ -53,11 +56,33 @@ describe('render queue', () => {
     expect(calls[0]!.input).toEqual({ genomeId: 'g', contentItemId: 'c_video' });
   });
 
-  it('keys on the item, so a retried tick cannot bill twice', async () => {
+  it('keys on unchanged copy, so a retried tick cannot bill twice', async () => {
     const { d, calls } = harness({ pending: [VIDEO] });
     await runOnce(d);
     await runOnce(d);
     expect(new Set(calls.map((c) => c.idempotencyKey)).size).toBe(1);
+  });
+
+  it('keys differently once the copy changes', async () => {
+    /*
+     * A per-item key deadlocks: the idempotency record outlives the render
+     * row, so once a row is gone every later tick gets the cached success,
+     * writes nothing and finds the same item again — a loop reporting
+     * "rendered" forever while rendering nothing, blocking the batch behind
+     * it. Observed as four success lines against zero rows in the table.
+     *
+     * Hashing the copy also makes the key mean the right thing: a post whose
+     * words changed — most obviously when auto-illustration attaches a
+     * backdrop — is a different post and deserves its own render.
+     */
+    const before = harness({ pending: [VIDEO] });
+    await runOnce(before.d);
+
+    const illustrated = { ...VIDEO, copy: [{ kind: 'text', beatId: 'hook', text: 'a hook', backdropUrl: 'u' }] };
+    const after = harness({ pending: [illustrated] });
+    await runOnce(after.d);
+
+    expect(before.calls[0]!.idempotencyKey).not.toBe(after.calls[0]!.idempotencyKey);
   });
 
   it('never asks the query for a format with no pixels', async () => {
@@ -91,6 +116,26 @@ describe('render queue', () => {
     const { d, calls } = harness({ pending: [{ ...VIDEO, playbookId: null }] });
     await runOnce(d);
     expect(calls).toHaveLength(0);
+  });
+
+  it('retries once when a success stored nothing', async () => {
+    /*
+     * `invokeTool` replays a recorded result without re-running the tool, so
+     * an item whose render rows have gone gets a cached success, writes
+     * nothing, and is found again next tick — "rendered" forever against an
+     * empty table, blocking the batch behind it. Watched it do exactly that.
+     */
+    const { d, calls } = harness({ pending: [VIDEO], stored: [] });
+    await runOnce(d);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]!.idempotencyKey).toMatch(/:recovered$/);
+    expect(calls[1]!.idempotencyKey).not.toBe(calls[0]!.idempotencyKey);
+  });
+
+  it('does not retry when the render is there', async () => {
+    const { d, calls } = harness({ pending: [VIDEO], stored: [{ aspect: '9:16' }] });
+    await runOnce(d);
+    expect(calls).toHaveLength(1);
   });
 
   it('leaves a post alone when rendering fails', async () => {

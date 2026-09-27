@@ -54,9 +54,23 @@ export interface LowerThird {
 export type TimedBeat =
   | ({ kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
   | ({ kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
-  | ({ kind: 'text'; beatId: string; durationSec: number; text: string } & LowerThird)
+  | ({ kind: 'text'; beatId: string; durationSec: number; text: string } & LowerThird & Backdrop)
   /** A narration track meant to underlay the composition, not its own visual slot — see the module comment on `generated_audio`. */
   | { kind: 'audio'; beatId: string; durationSec: number; url: string };
+
+/**
+ * Media rendered *behind* a text beat, not instead of it.
+ *
+ * A text beat is the post's copy. Generating media *into* it replaces the
+ * words with a picture, which is right when somebody asks to illustrate one
+ * scene and wrong as an automatic step — a campaign of those is a month of
+ * photographs with the message thrown away. So auto-illustration attaches, and
+ * the words stay the beat.
+ */
+export interface Backdrop {
+  backdropUrl?: string;
+  backdropKind?: 'image' | 'video';
+}
 
 export interface AssetLookup {
   url: string;
@@ -106,7 +120,15 @@ export function zipTimeline(args: {
     }
 
     if (beat.kind === 'text') {
-      return { kind: 'text', beatId: beat.beatId, durationSec, text: beat.text, ...lower };
+      return {
+        kind: 'text',
+        beatId: beat.beatId,
+        durationSec,
+        text: beat.text,
+        ...lower,
+        ...(beat.backdropUrl ? { backdropUrl: beat.backdropUrl } : {}),
+        ...(beat.backdropKind ? { backdropKind: beat.backdropKind } : {}),
+      };
     }
 
     if (beat.kind === 'generated_image') {
