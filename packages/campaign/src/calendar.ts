@@ -133,6 +133,8 @@ export function placeCalendar(args: PlaceCalendarArgs): PlacedCalendar {
 
   const order = interleave(demand);
   const lastUsedDay = new Map<string, number>();
+  /** How many slots each media type already holds — see `pickPlaybook`. */
+  const mediaUsed = new Map<string, number>();
   const slots: CalendarSlot[] = [];
   const timeZone = args.timeZone ?? 'UTC';
   /** How many slots already sit on each day, so two never share an instant. */
@@ -145,8 +147,9 @@ export function placeCalendar(args: PlaceCalendarArgs): PlacedCalendar {
     // rather than stacking the first on day 0 and the last on the final day.
     const dayOffset = Math.min(windowDays - 1, Math.floor(((i + 0.5) / total) * windowDays));
     const pillar = order[i]!;
-    const chosen = pickPlaybook(byPillar.get(pillar)!, dayOffset, lastUsedDay);
+    const chosen = pickPlaybook(byPillar.get(pillar)!, dayOffset, lastUsedDay, mediaUsed);
     lastUsedDay.set(chosen.playbook_id, dayOffset);
+    mediaUsed.set(chosen.output.media_type, (mediaUsed.get(chosen.output.media_type) ?? 0) + 1);
 
     const indexWithinDay = placedPerDay.get(dayOffset) ?? 0;
     placedPerDay.set(dayOffset, indexWithinDay + 1);
@@ -275,6 +278,7 @@ function pickPlaybook(
   candidates: Playbook[],
   dayOffset: number,
   lastUsedDay: Map<string, number>,
+  mediaUsed: Map<string, number>,
 ): Playbook {
   const spaced = candidates.filter((p) => {
     const last = lastUsedDay.get(p.playbook_id);
@@ -282,9 +286,32 @@ function pickPlaybook(
   });
   const pool = spaced.length > 0 ? spaced : candidates;
 
-  // Strict `<` keeps the earlier (higher-ranked) entry on ties, which is what
-  // makes never-used formats resolve in resolver order.
-  return pool.reduce((best, p) =>
-    (lastUsedDay.get(p.playbook_id) ?? -Infinity) < (lastUsedDay.get(best.playbook_id) ?? -Infinity) ? p : best,
-  );
+  /*
+   * Format balance, then recency.
+   *
+   * Recency alone is scoped to one pillar, and the calendar is not. A real
+   * 30-day campaign came out 9 image / 1 text / 1 video / 0 carousel: every
+   * pillar rotated its own formats perfectly well while the month as a whole
+   * was almost entirely stills, because nothing was counting media types
+   * across pillars. A brand that can make video and carousels should not
+   * discover that it published neither for a month.
+   *
+   * Counted over what has actually been placed, not over the library: the
+   * question is what somebody scrolling the account will see.
+   *
+   * Recency stays as the second key rather than being replaced, because it is
+   * what stops one playbook owning a pillar — the two solve different
+   * problems, and dropping it would trade a monotonous mix of formats for a
+   * monotonous mix of playbooks.
+   */
+  return pool.reduce((best, p) => {
+    const pMedia = mediaUsed.get(p.output.media_type) ?? 0;
+    const bMedia = mediaUsed.get(best.output.media_type) ?? 0;
+    if (pMedia !== bMedia) return pMedia < bMedia ? p : best;
+    // Strict `<` keeps the earlier (higher-ranked) entry on ties, which is what
+    // makes never-used formats resolve in resolver order.
+    return (lastUsedDay.get(p.playbook_id) ?? -Infinity) < (lastUsedDay.get(best.playbook_id) ?? -Infinity)
+      ? p
+      : best;
+  });
 }

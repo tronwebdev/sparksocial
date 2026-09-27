@@ -388,3 +388,80 @@ describe('content.draft — hashtags', () => {
     expect(seen[0]).toContain('#ColdBrew');
   });
 });
+
+/**
+ * Beats that share a `prompt_ref` must not paraphrase each other.
+ *
+ * A Teaching Carousel has four step beats all keyed `teach.steps`. Written in
+ * parallel, each got an identical brief and no knowledge of the others, and a
+ * real draft came back with four ways of saying "put it in an airtight
+ * container". The outline was meant to prevent this and could not: it carried
+ * `text` only for *literal* beats, so a copy beat could see a sibling existed
+ * and never what it said. That is why CTA de-duplication worked and step
+ * de-duplication never did.
+ */
+describe('content.draft — beats that share a prompt_ref', () => {
+  /** Records the outline each call was given, and answers with its call number. */
+  function recordingWriter(seen: Array<{ beatId: string; siblingTexts: string[] }>): TextWriter {
+    let n = 0;
+    return {
+      write: async ({ beatId, promptRef, outline }) => {
+        seen.push({
+          beatId,
+          siblingTexts: outline
+            .filter((o) => o.beatId !== beatId && o.kind === 'copy' && o.promptRef === promptRef && o.text)
+            .map((o) => o.text!),
+        });
+        n += 1;
+        return `written ${n}: ${promptRef}`;
+      },
+    };
+  }
+
+  it('hands each later sibling the words the earlier ones actually used', async () => {
+    const seen: Array<{ beatId: string; siblingTexts: string[] }> = [];
+    const tool = makeContentDraft({ text: recordingWriter(seen), embed });
+    await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_carousel_teaching', intent: '' }, ctx());
+
+    const steps = seen.filter((s) => s.beatId.startsWith('step'));
+    expect(steps.length).toBeGreaterThan(1);
+    // The first step has nothing before it; every one after it can see its
+    // predecessors. Without this the model is writing blind and rewords.
+    expect(steps[0]!.siblingTexts).toEqual([]);
+    expect(steps[steps.length - 1]!.siblingTexts.length).toBe(steps.length - 1);
+  });
+
+  it('still writes beats with a unique prompt_ref concurrently', async () => {
+    /*
+     * The fix is scoped deliberately. Serialising every beat would make a
+     * five-beat post five round trips deep for no benefit — a hook and a CTA
+     * have nothing to collide over. Only the duplicated key pays.
+     */
+    const order: string[] = [];
+    const writer: TextWriter = {
+      write: async ({ beatId, promptRef }) => {
+        order.push(`start:${beatId}`);
+        await new Promise((r) => setTimeout(r, 5));
+        order.push(`end:${beatId}`);
+        return `written: ${promptRef}`;
+      },
+    };
+    const tool = makeContentDraft({ text: writer, embed });
+    await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_voice_over_broll', intent: '' }, ctx());
+
+    // Concurrent work interleaves: at least one beat starts before another ends.
+    const firstEnd = order.findIndex((o) => o.startsWith('end:'));
+    const startsBeforeFirstEnd = order.slice(0, firstEnd).filter((o) => o.startsWith('start:')).length;
+    expect(startsBeforeFirstEnd).toBeGreaterThan(1);
+  });
+
+  it('produces one beat per step rather than collapsing them', async () => {
+    const tool = makeContentDraft({ text: echoWriter(), embed });
+    const res = await tool.handler(
+      { genomeId: 'gen_saas', playbookId: 'pb_carousel_teaching', intent: '' },
+      ctx(),
+    );
+    const steps = res.beats.filter((b) => b.beatId.startsWith('step'));
+    expect(steps.length).toBeGreaterThan(1);
+  });
+});

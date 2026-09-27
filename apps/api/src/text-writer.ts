@@ -516,6 +516,13 @@ function prompt(
   const others = beat.outline.filter((o) => o.beatId !== beat.beatId);
   const ctaHandled = others.some((o) => o.kind === 'literal' && Boolean(o.text));
 
+  /** Other beats written from this same `prompt_ref` - see the note by its use. */
+  const siblings = beat.outline.filter(
+    (o) => o.beatId !== beat.beatId && o.kind === 'copy' && o.promptRef === promptRef,
+  );
+  const siblingsShareKey = siblings.length > 0;
+  const siblingIds = siblings.map((o) => o.beatId);
+
   return [
     `Business: ${identity.business_name} — ${identity.category}`,
     `What they do: ${identity.one_liner}`,
@@ -566,9 +573,31 @@ function prompt(
           .map((o) =>
             o.kind === 'literal'
               ? `  - ${o.beatId}: fixed text, reads "${o.text ?? '(supplied at render time)'}"`
-              : `  - ${o.beatId}: ${o.promptRef ?? 'copy'}`,
+              : /*
+                 * A sibling already written now arrives with its words, not
+                 * just its key. Without them, four beats keyed `teach.steps`
+                 * each knew three others existed and nothing about what they
+                 * said, and returned four paraphrases of a single step.
+                 */
+                o.text
+                ? `  - ${o.beatId}: already written, reads "${o.text}"`
+                : `  - ${o.beatId}: ${o.promptRef ?? 'copy'} (not written yet)`,
           )
           .join('\n')
+      : '',
+    /*
+     * Said outright when siblings share this beat's key.
+     *
+     * "Do not duplicate" is too weak for the case that most needs it: four
+     * steps of one walkthrough are *supposed* to be about the same subject, so
+     * a model reads the instruction as satisfied by rewording. What it has to
+     * be told is that these are consecutive parts of one list and each must
+     * carry its own distinct point.
+     */
+    siblingsShareKey
+      ? `Beats ${siblingIds.join(', ')} share this beat's key - they are consecutive parts of ONE list. ` +
+        'Make a different point from every one already written above: a different step, stage or idea, ' +
+        'not the same advice in other words. If the obvious point is taken, move the list forward.'
       : '',
     ctaHandled
       ? 'A later beat already carries the call to action. Do not write one, and do not end on an ' +

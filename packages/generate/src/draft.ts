@@ -416,11 +416,71 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const outline = buildOutline(plan.beats);
 
-      const beats: ResolvedBeat[] = await Promise.all(
-        plan.beats.map((beat) =>
-          resolveBeat(beat, { genome, playbook, intent: input.intent, outline, objective }, deps.text),
-        ),
-      );
+      /**
+       * ── Why these are not all written in parallel ──────────────────────
+       *
+       * They were, and beats that share a `prompt_ref` came back as
+       * paraphrases of each other. A Teaching Carousel has four step beats all
+       * keyed `teach.steps`; written simultaneously, each one received an
+       * identical brief and no knowledge of the others, so a real draft
+       * produced:
+       *
+       *   Step 1  Keep coffee in an airtight container away from light.
+       *   Step 2  Store coffee beans in an airtight, opaque container.
+       *   Step 3  Transfer coffee to an airtight container, away from sunlight.
+       *
+       * The outline was supposed to prevent exactly this, and could not: it
+       * carries `text` only for *literal* beats, so a copy beat could see that
+       * a sibling existed and what its `prompt_ref` was, never what it said.
+       * That is why the CTA de-duplication works — the CTA is a literal — and
+       * step de-duplication never did.
+       *
+       * Only the duplicated ones are serialised. A beat whose `prompt_ref` is
+       * unique in the post has nothing to collide with and still runs in
+       * parallel, so a hook, a body and a CTA cost one round trip between them
+       * as before; only the four carousel steps pay for going in order, which
+       * is the one place the ordering means anything.
+       */
+      const perPromptRef = new Map<string, number>();
+      for (const b of plan.beats) {
+        if (b.kind === 'copy') perPromptRef.set(b.promptRef, (perPromptRef.get(b.promptRef) ?? 0) + 1);
+      }
+
+      /** Text of every beat written so far, so a later sibling can avoid it. */
+      const writtenSoFar = new Map<string, string>();
+      const outlineNow = (): BeatOutlineEntry[] =>
+        outline.map((entry) => {
+          const text = writtenSoFar.get(entry.beatId);
+          return text === undefined ? entry : { ...entry, text };
+        });
+
+      const inOrder: number[] = [];
+      const concurrent: number[] = [];
+      plan.beats.forEach((beat, i) => {
+        if (beat.kind === 'copy' && (perPromptRef.get(beat.promptRef) ?? 0) > 1) inOrder.push(i);
+        else concurrent.push(i);
+      });
+
+      const resolved = new Array<ResolvedBeat | undefined>(plan.beats.length);
+      const write = async (i: number) => {
+        const beat = plan.beats[i]!;
+        const out = await resolveBeat(
+          beat,
+          { genome, playbook, intent: input.intent, outline: outlineNow(), objective },
+          deps.text,
+        );
+        resolved[i] = out;
+        if (out.kind === 'text') writtenSoFar.set(out.beatId, out.text);
+      };
+
+      await Promise.all([
+        Promise.all(concurrent.map(write)),
+        (async () => {
+          for (const i of inOrder) await write(i);
+        })(),
+      ]);
+
+      const beats = resolved as ResolvedBeat[];
 
       const why = explain(plan, playbook.name, beats);
 
