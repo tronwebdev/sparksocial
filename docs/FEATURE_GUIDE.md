@@ -184,12 +184,19 @@ any specific factual claim.
 document counts toward the `knowledge` asset role so knowledge-dependent formats
 resolve.
 
-> **What it does not do.** Attaching knowledge does not feed the writer. The
-> chunks are read by `guard.claim_grounding`, which *checks* what was written
-> against them — the copy writer never receives them, in any mode. So a draft
-> will not start quoting your prices because you uploaded a price list; it will
-> start being stopped when it invents one. Supplying facts to a post is what the
-> **intent** field and `assemble`-mode asset captions do.
+**Pass when (grounding)** — step 3 cites a real number from the document rather
+than writing around it. A brand knowledge base holding "18 hours" and a
+"four-year-old starter" should produce copy containing those, not "a slow,
+delicious journey".
+
+> **What it does not do: enforce the document's prohibitions.** A knowledge base
+> usually has a section of things the business must never claim. The writer
+> reads the document as facts and will write past that section — asked directly
+> for "awards we have won" it claims them, even when the document says the
+> business has won nothing. That is not a bug you can prompt away; the control
+> is **Enable Strict Compliance** (§2.5), which blocks a draft rather than
+> asking it nicely. Put anything that must never be said there, not only in the
+> document.
 
 ## 2.8 Offer
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
-import { makeContentDraft } from '../src/draft.js';
+import { makeContentDraft, KNOWLEDGE_BUDGET_CHARS } from '../src/draft.js';
 import type { TextWriter } from '../src/types.js';
 
 const genome = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_saas')!.genome;
@@ -19,6 +19,7 @@ function ctx(over: {
   createDraft?: ScopedDb['content']['createDraft'];
   updateDraft?: ScopedDb['content']['updateDraft'];
   contentGet?: ScopedDb['content']['get'];
+  knowledge?: Array<{ text: string }>;
 } = {}): ToolCtx {
   return {
     orgId: 'org_1',
@@ -59,6 +60,7 @@ function ctx(over: {
         })),
       },
       runs: { list: async () => [], get: async () => undefined },
+      knowledge: { listAll: async () => over.knowledge ?? [] },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -463,5 +465,86 @@ describe('content.draft — beats that share a prompt_ref', () => {
     );
     const steps = res.beats.filter((b) => b.beatId.startsWith('step'));
     expect(steps.length).toBeGreaterThan(1);
+  });
+});
+
+/**
+ * The writer receives what the brand has written down about itself.
+ *
+ * It did not, and the result was visible in every draft: a brand could attach a
+ * document holding its hours, its prices and the age of its starter, and the
+ * copy came back "a slow, delicious journey". `guard.claim_grounding` read that
+ * corpus to *check* what had been written while the thing writing it had never
+ * seen it — the product policed specificity it had no way to supply.
+ */
+describe('content.draft — brand knowledge reaches the writer', () => {
+  const chunks = [
+    { text: 'Sourdough ferments for 18 hours. We bake 120 loaves on weekdays.' },
+    { text: 'Flour comes from Trenoweth Mill, thirty miles away. Closed Mondays.' },
+  ];
+
+  function capturingWriter(seen: Array<string[] | undefined>): TextWriter {
+    return {
+      write: async ({ knowledge, promptRef }) => {
+        seen.push(knowledge);
+        return `written: ${promptRef}`;
+      },
+    };
+  }
+
+  it('hands the chunks to every beat', async () => {
+    const seen: Array<string[] | undefined> = [];
+    const tool = makeContentDraft({ text: capturingWriter(seen), embed });
+    await tool.handler(
+      { genomeId: 'gen_saas', playbookId: 'pb_carousel_teaching', intent: 'how long it ferments' },
+      ctx({ knowledge: chunks }),
+    );
+
+    expect(seen.length).toBeGreaterThan(1);
+    for (const k of seen) expect(k?.join(' ')).toContain('18 hours');
+  });
+
+  it('passes nothing when the brand has attached nothing', async () => {
+    // The common case, and it worked before this existed. An empty array must
+    // not become an empty instruction block in the prompt.
+    const seen: Array<string[] | undefined> = [];
+    const tool = makeContentDraft({ text: capturingWriter(seen), embed });
+    await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, ctx({ knowledge: [] }));
+
+    for (const k of seen) expect(k ?? []).toEqual([]);
+  });
+
+  it('still drafts when the knowledge store fails', async () => {
+    /*
+     * Beats cost a model call each. Losing a post because the optional
+     * grounding material could not be read would discard the expensive half
+     * for the cheap one — the same rule hashtags follow.
+     */
+    const failing = ctx({ knowledge: [] });
+    (failing.db as unknown as { knowledge: { listAll: () => Promise<never> } }).knowledge = {
+      listAll: async () => {
+        throw new Error('store down');
+      },
+    };
+    const tool = makeContentDraft({ text: echoWriter(), embed });
+    const res = await tool.handler({ genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: '' }, failing);
+    expect(res.beats.length).toBeGreaterThan(0);
+  });
+
+  it('ranks the chunk that matches the post first, and stays within budget', async () => {
+    const many = [
+      { text: 'Irrelevant filler about parking and bin collection. '.repeat(30) },
+      { text: 'Sourdough ferments for 18 hours before it reaches the oven.' },
+    ];
+    const seen: Array<string[] | undefined> = [];
+    const tool = makeContentDraft({ text: capturingWriter(seen), embed });
+    await tool.handler(
+      { genomeId: 'gen_saas', playbookId: 'pb_text_update', intent: 'sourdough ferments slowly' },
+      ctx({ knowledge: many }),
+    );
+
+    const joined = (seen[0] ?? []).join('');
+    expect(joined).toContain('18 hours');
+    expect(joined.length).toBeLessThanOrEqual(KNOWLEDGE_BUDGET_CHARS);
   });
 });

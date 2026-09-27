@@ -214,7 +214,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
   async function attemptWrite({
-    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective,
+    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective, knowledge,
   }: Parameters<TextWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'copy writer',
@@ -227,7 +227,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
             messages: [
               {
                 role: 'user',
-                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective),
+                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective, knowledge),
               },
             ],
             tools: [
@@ -500,6 +500,7 @@ function prompt(
   intent: string | undefined,
   beat: { beatId: string; durationSec: number; outline: BeatOutlineEntry[] },
   objective?: string,
+  knowledge?: string[],
 ): string {
   const { identity, voice, audience, offer } = genome;
   const budget = beatBudget(playbook, beat.durationSec);
@@ -613,6 +614,55 @@ function prompt(
      */
     objective ? OBJECTIVE_BRIEF[objective] ?? `The campaign's goal: ${objective}.` : '',
     intent ? `What this specific post is about: ${intent}` : '',
+    /*
+     * The brand's own written facts.
+     *
+     * Last in the prompt, because it is the longest block and the one the
+     * model should still have in view when it starts writing.
+     *
+     * The instructions around it matter more than the text itself. Handed a
+     * document and no rules, a model treats it as tone material and
+     * paraphrases it; the point here is the opposite — these are the only
+     * specifics that may be stated, and a beat that needs one not present has
+     * to describe the shape of the claim instead of inventing a figure. That
+     * rule already existed in the system prompt with no source behind it. This
+     * is the source.
+     *
+     * Not permission to empty the document into the post: most beats need one
+     * fact, not twelve, and a caption that reads as a specification is its own
+     * failure.
+     */
+    knowledge && knowledge.length
+      ? 'What this brand has written down about itself. These are the ONLY specific facts, numbers, ' +
+        'names, prices and dates you may state. Use one where it earns its place and leave the rest; ' +
+        'do not list them. Anything not here does not exist for this post - describe the shape of the ' +
+        'claim rather than inventing a figure.' +
+        /*
+         * The document is not only a fact sheet - and this line is advisory,
+         * not a control.
+         *
+         * A real knowledge base carries a section of things the business must
+         * never say: no health claims, not organic, no awards. Handed the
+         * document as facts alone, the writer read straight past that section
+         * and produced "recognition in the local community" for a brand whose
+         * own document says "we have won nothing".
+         *
+         * This sentence was added to fix that and **measurably does not**. Asked
+         * directly for "awards we have won" it still claims them, and asked why
+         * the sourdough is "better for your gut" it writes the health claim the
+         * document forbids in as many words. A model handed an explicit intent
+         * follows the intent. Kept because it costs nothing and occasionally
+         * helps; relied on for nothing.
+         *
+         * The mechanism that does work is `brand.governance.set`'s
+         * `restrictedClaims` / `bannedPhrases`, enforced by the guardrail layer,
+         * which blocks a draft rather than asking it nicely. `claim_grounding`
+         * does not close the gap on its own either - "recognition in the local
+         * community" is too vague to register as a checkable claim and passes.
+         */
+        ' If the document says the business must NEVER claim something, that is binding - do not' +
+        ' write it, even loosely, even as a suggestion.' + `\n\n${knowledge.join('\n\n---\n\n')}`
+      : '',
   ]
     .filter(Boolean)
     .join('\n');

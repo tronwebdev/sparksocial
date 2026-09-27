@@ -416,6 +416,23 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const outline = buildOutline(plan.beats);
 
+      /*
+       * What the brand has written down about itself, for the writer to draw on.
+       *
+       * Failure is silent: a brand with no knowledge attached is the common
+       * case and produced perfectly good drafts before this existed, so a store
+       * that cannot answer must not cost anybody their post.
+       */
+      const knowledge = await selectKnowledge(ctx, input.genomeId, [input.intent, playbook.name].filter(Boolean).join(' ')).catch(
+        (err: unknown) => {
+          ctx.logger.warn('knowledge not read for draft', {
+            genomeId: input.genomeId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return [] as string[];
+        },
+      );
+
       /**
        * ── Why these are not all written in parallel ──────────────────────
        *
@@ -466,7 +483,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         const beat = plan.beats[i]!;
         const out = await resolveBeat(
           beat,
-          { genome, playbook, intent: input.intent, outline: outlineNow(), objective },
+          { genome, playbook, intent: input.intent, outline: outlineNow(), objective, knowledge },
           deps.text,
         );
         resolved[i] = out;
@@ -664,6 +681,69 @@ export async function writeHashtags(args: {
 }
 
 /**
+ * How much of the brand's knowledge to put in front of the writer.
+ *
+ * Every beat is a separate model call and each one carries this, so the budget
+ * is paid per beat rather than per post — a six-beat carousel pays it six
+ * times. A typical brand knowledge base is one or two thousand characters and
+ * fits whole; the cap only bites on a brand that has attached a manual, and
+ * there the ranking below decides what survives.
+ */
+export const KNOWLEDGE_BUDGET_CHARS = 2400;
+
+/**
+ * The brand's own written facts, most relevant first.
+ *
+ * ── Why lexical and not vector ────────────────────────────────────────────
+ *
+ * `KnowledgeStore` exposes `listAll` and nothing else: chunks are stored with
+ * an embedding but `KnowledgeChunk` does not carry it back, so similarity would
+ * mean re-embedding the whole corpus on every draft — a vendor call per chunk
+ * per post, to reorder a list that usually fits in the budget entirely.
+ *
+ * Overlap with the post's subject is enough for the job the ranking actually
+ * does, which is deciding what to drop when a corpus is too big to send. It is
+ * not retrieval; it is truncation with an opinion. If knowledge bases grow to
+ * the point where that stops being true, the fix is a `search` on the store,
+ * not a cleverer scorer here.
+ */
+export async function selectKnowledge(ctx: ToolCtx, genomeId: string, subject: string): Promise<string[]> {
+  const chunks = await ctx.db.knowledge.listAll(genomeId, ctx.orgId);
+  if (chunks.length === 0) return [];
+
+  const terms = new Set(
+    subject
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 3),
+  );
+  const scored = chunks.map((c) => {
+    const text = c.text.toLowerCase();
+    let hits = 0;
+    for (const t of terms) if (text.includes(t)) hits += 1;
+    return { text: c.text, hits };
+  });
+  // Stable: equal scores keep ingestion order, so a brand with one document
+  // gets it in the order they wrote it rather than in an arbitrary shuffle.
+  scored.sort((a, b) => b.hits - a.hits);
+
+  const out: string[] = [];
+  let used = 0;
+  for (const { text } of scored) {
+    if (used + text.length > KNOWLEDGE_BUDGET_CHARS) {
+      // Take a partial chunk rather than nothing — half a price list is more
+      // use to a writer than none of it.
+      const room = KNOWLEDGE_BUDGET_CHARS - used;
+      if (room > 200) out.push(text.slice(0, room));
+      break;
+    }
+    out.push(text);
+    used += text.length;
+  }
+  return out;
+}
+
+/**
  * The written words of a draft, in running order — the caption, before
  * hashtags and before any short link.
  *
@@ -735,6 +815,8 @@ export async function resolveBeat(
     outline: BeatOutlineEntry[];
     /** The campaign's objective, or the genome's when there is no campaign. */
     objective?: string;
+    /** The brand's own written facts — see `TextWriter.write`'s `knowledge`. */
+    knowledge?: string[];
   },
   text: TextWriter,
 ): Promise<ResolvedBeat> {
@@ -767,6 +849,7 @@ export async function resolveBeat(
     promptRef: beat.promptRef,
     ...(ground.intent ? { intent: ground.intent } : {}),
     ...(ground.objective ? { objective: ground.objective } : {}),
+    ...(ground.knowledge?.length ? { knowledge: ground.knowledge } : {}),
     beatId: beat.beatId,
     durationSec: beat.durationSec,
     outline: ground.outline,

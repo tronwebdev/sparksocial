@@ -62,6 +62,27 @@ export interface TextWriter {
     durationSec: number;
     /** Every beat in the post, in order. See `BeatOutlineEntry`. */
     outline: BeatOutlineEntry[];
+    /**
+     * What this brand has actually written down about itself — the chunks
+     * `brand.knowledge.attach` stored.
+     *
+     * ── Why the writer gets these at all ──────────────────────────────────
+     *
+     * It did not, and the consequence was visible in every draft. A brand could
+     * attach a document holding its opening hours, its prices, the age of its
+     * starter and the number of loaves it bakes, and the copy still came back
+     * "a slow, delicious journey" — because `guard.claim_grounding` read that
+     * corpus to *check* what had been written while the thing doing the
+     * writing had never seen it. The product policed specificity it had no way
+     * to supply.
+     *
+     * Passing them closes that: the same facts that decide whether a claim
+     * survives the guardrail are now in front of the writer while it makes one.
+     *
+     * Empty for a brand that has attached nothing, which is the common case and
+     * must keep working exactly as before.
+     */
+    knowledge?: string[];
   }): Promise<string>;
 
   /**
