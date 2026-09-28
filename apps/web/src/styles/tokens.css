@@ -41,6 +41,13 @@
   --ss-teal-900: #043133; /* auth-card headings */
   --ss-teal-500: #0baac7; /* info chips */
 
+  /* ── Draft Panel (`DP *.dc.html`) ──────────────────────────────────────
+     Three colours the drawer uses that no other screen does. Measured off
+     `DP image.dc.html` rather than sampled from a screenshot. */
+  --ss-violet: #8937d6; /* the drawer's emphasis label */
+  --ss-sky: #64c3d5; /* the hero wash, always at 0.4 */
+  --ss-teal-700: #2f8291; /* one metadata label */
+
   /* Confirmation tick. Sampled from `Screenshot …192600` — a lime, distinct
      from the ramp's signal greens, and used only for that badge. */
   --ss-lime: #bbf52e;

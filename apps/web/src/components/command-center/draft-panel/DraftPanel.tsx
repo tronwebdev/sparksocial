@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
+import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
@@ -61,6 +62,18 @@ export function DraftPanel({
    * in `error` state and never drawn, because `error` is only rendered inside the
    * phase blocks that never mounted.
    */
+  /**
+   * The drawer's own two controls — `DP image` / `video` / `carousel` / `text`
+   * and the Current Draft / Drafts List tabs.
+   *
+   * Held here rather than in `DraftDrawer` because the post type decides what
+   * the panel drafts, not merely which rail card looks selected: a rail that
+   * owned its own state would highlight Video while the panel went on building
+   * an image.
+   */
+  const [postType, setPostType] = useState<PostType>('image');
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>('current');
+
   const [phase, setPhase] = useState<'loading' | 'failed' | 'trigger' | 'editor' | 'preview'>(
     initialContentItemId ? 'loading' : 'trigger',
   );
@@ -1007,16 +1020,13 @@ export function DraftPanel({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Draft">
-      <div className="flex max-h-[85vh] w-[640px] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-16 font-semibold text-ink">
-            {phase === 'trigger' ? 'New post' : phase === 'preview' ? 'Review your post' : draft?.playbookId ?? 'Draft'}
-          </h2>
-          <button type="button" onClick={onClose} className="text-14 text-ink-muted hover:text-ink">
-            Close
-          </button>
-        </header>
+    <DraftDrawer
+      postType={postType}
+      onPostType={setPostType}
+      tab={drawerTab}
+      onTab={setDrawerTab}
+      onClose={onClose}
+    >
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {phase === 'loading' ? <Skeleton className="h-64 w-full rounded" /> : null}
@@ -1745,8 +1755,7 @@ export function DraftPanel({
             )}
           </footer>
         ) : null}
-      </div>
-    </div>
+    </DraftDrawer>
   );
 }
 
