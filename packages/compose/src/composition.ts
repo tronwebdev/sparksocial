@@ -124,18 +124,11 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
    * with nobody checking. Same reasoning, and the same neutral treatment, as
    * `captionOverlay` below.
    */
-  const backdrop = beat.backdropUrl
+  const backdrop = beat.backdrop
     ? [
-        beat.backdropKind === 'video'
-          ? h(Video, {
-              src: beat.backdropUrl,
-              // A clip shorter than its beat would otherwise freeze on its last
-              // frame for the remainder — a still pretending to be footage.
-              loop: true,
-              muted: true,
-              style: { width: '100%', height: '100%', objectFit: 'cover' },
-            })
-          : h(Img, { src: beat.backdropUrl, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
+        beat.backdrop.kind === 'video'
+          ? videoBackdrop(beat.backdrop.urls, beat.durationSec)
+          : h(Img, { src: beat.backdrop.urls[0]!, style: FILL }),
         h('div', { style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' } }),
       ]
     : [];
@@ -162,7 +155,7 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
           style: {
             // Over a photograph the brand's type colour is a coin flip; white
             // on the scrim is legible whatever the picture turned out to be.
-            color: beat.backdropUrl ? '#FFFFFF' : kit.type,
+            color: beat.backdrop ? '#FFFFFF' : kit.type,
             fontSize: 64,
             fontFamily: kit.displayFont,
             textAlign: 'center',
@@ -283,3 +276,45 @@ export function BeatsRoot(): React.ReactElement | null {
 }
 
 registerRoot(BeatsRoot);
+
+/** Cover the frame, whatever the clip's own aspect turned out to be. */
+const FILL = { width: '100%', height: '100%', objectFit: 'cover' } as const;
+
+/**
+ * Several clips across one beat, rather than one clip looped under it.
+ *
+ * The clip generator caps at ten seconds and a narration beat can be five
+ * times that. One clip stretched over it loops the same five seconds ten
+ * times, which does not read as footage — it reads as a video that is broken.
+ *
+ * The beat is divided evenly between whatever clips there are, so N of them
+ * always cover it however long it is, and each still loops inside its own span
+ * if it is shorter than its share. That is a much smaller lie: a two-second
+ * shot repeating twice inside its own eight seconds is how b-roll is cut
+ * anyway.
+ */
+function videoBackdrop(urls: string[], durationSec: number): React.ReactElement {
+  const total = Math.max(1, Math.round(durationSec * FPS));
+  if (urls.length === 1) {
+    return h(Video, { src: urls[0]!, loop: true, muted: true, style: FILL });
+  }
+
+  const each = Math.max(1, Math.floor(total / urls.length));
+  return h(
+    AbsoluteFill,
+    null,
+    ...urls.map((url, i) =>
+      h(
+        Sequence,
+        {
+          key: `${url}-${i}`,
+          from: i * each,
+          // The last one absorbs the rounding, so the beat is covered to its
+          // final frame rather than flickering to the ground colour at the end.
+          durationInFrames: i === urls.length - 1 ? Math.max(1, total - i * each) : each,
+        },
+        h(Video, { src: url, loop: true, muted: true, style: FILL }),
+      ),
+    ),
+  );
+}

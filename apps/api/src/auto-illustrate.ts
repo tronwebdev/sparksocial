@@ -56,8 +56,19 @@ export interface AutoIllustrateDeps {
  */
 const MAX_BEATS = 4;
 
-/** fal's ceiling. A longer beat gets a looping clip rather than a frozen frame. */
+/** fal's ceiling for one generated clip. */
 const MAX_CLIP_SEC = 10;
+
+/**
+ * How many clips one beat may be split into, and how many a post may spend.
+ *
+ * A clip is charged individually, so a fifty-second narration wanting five of
+ * them is five times the cost of a still. The per-post ceiling is the one that
+ * matters: it is what stops a single video playbook spending more than the
+ * rest of a brand's month.
+ */
+const MAX_CLIPS_PER_BEAT = 5;
+const MAX_CLIPS_PER_POST = 6;
 
 export interface IllustrateResult {
   /** Beats given a backdrop, and where each one came from. */
@@ -90,7 +101,7 @@ export async function autoIllustrate(args: {
   const hasVisuals = beats.some((b) => b.kind !== 'text');
   if (hasVisuals) return { beats, result };
 
-  const needing = beats.filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text' && !b.backdropUrl);
+  const needing = beats.filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text' && !b.backdrop);
   if (needing.length === 0) return { beats, result };
 
   const wantsVideo = playbook.output.media_type === 'video';
@@ -102,6 +113,15 @@ export async function autoIllustrate(args: {
 
   const out = [...beats];
   let poolIndex = 0;
+  /*
+   * The whole post's generation allowance, in clips.
+   *
+   * Splitting a long beat multiplies what a post costs — a fifty-second
+   * narration alone wants five clips — so the ceiling is per post rather than
+   * per beat. Without it a single video playbook could quietly spend more than
+   * a month of that brand's other output put together.
+   */
+  const budget = { left: MAX_CLIPS_PER_POST };
 
   for (const beat of needing.slice(0, MAX_BEATS)) {
     const at = out.findIndex((b) => b.beatId === beat.beatId);
@@ -110,17 +130,33 @@ export async function autoIllustrate(args: {
     const asset = pool[poolIndex];
     if (asset) {
       poolIndex += 1;
-      out[at] = { ...out[at]!, backdropUrl: asset.url, backdropKind: asset.kind };
+      out[at] = { ...out[at]!, backdrop: { kind: asset.kind, urls: [asset.url] } };
       result.fromAssets += 1;
       continue;
     }
 
     /* ── 2. Nothing of the brand's fits. Make something. ─────────────────── */
 
-    const made = await generateBackdrop({ ...args, beat, wantsVideo, aspect });
-    if (!made) continue;
-    out[at] = { ...out[at]!, backdropUrl: made, backdropKind: wantsVideo ? 'video' : 'image' };
-    result.generated += 1;
+    /*
+     * Enough clips to cover the beat, not one clip stretched over it.
+     *
+     * The generator caps at ten seconds; a fifty-second narration given a
+     * single clip is the same five seconds looping ten times, which reads as a
+     * broken video rather than as footage.
+     */
+    const wanted = wantsVideo
+      ? Math.min(MAX_CLIPS_PER_BEAT, Math.max(1, Math.ceil((beat.durationSec ?? MAX_CLIP_SEC) / MAX_CLIP_SEC)))
+      : 1;
+    const urls: string[] = [];
+    for (let clip = 0; clip < wanted && budget.left > 0; clip += 1) {
+      const made = await generateBackdrop({ ...args, beat, wantsVideo, aspect, clip, of: wanted });
+      if (!made) break;
+      urls.push(made);
+      budget.left -= 1;
+    }
+    if (urls.length === 0) continue;
+    out[at] = { ...out[at]!, backdrop: { kind: wantsVideo ? 'video' : 'image', urls } };
+    result.generated += urls.length;
   }
 
   if (result.fromAssets || result.generated) {
@@ -222,9 +258,18 @@ async function generateBackdrop(args: {
   deps: AutoIllustrateDeps;
   wantsVideo: boolean;
   aspect: string;
+  /** Which slice of the beat this clip covers, and how many there are. */
+  clip: number;
+  of: number;
 }): Promise<string | undefined> {
   const prompt = [
     args.beat.text.slice(0, 300),
+    /*
+     * Clips of one beat must differ from each other or the split is pointless
+     * — five takes of the same shot cut together is still one shot. The angle
+     * is the cheapest thing to vary that does not change what is being shown.
+     */
+    args.of > 1 ? SHOT_ANGLES[args.clip % SHOT_ANGLES.length]! : '',
     'Photographic, natural light, shallow depth of field.',
     'No text, no letters, no words, no logos, no watermarks, no captions.',
     'Leave the middle of the frame uncluttered — type is placed over it.',
@@ -260,7 +305,7 @@ async function generateBackdrop(args: {
        * picture. Both generators are non-idempotent by declaration, which is
        * right for somebody pressing the button and wrong for a loop.
        */
-      idempotencyKey: `backdrop:${args.contentItemId}:${args.beat.beatId}`,
+      idempotencyKey: `backdrop:${args.contentItemId}:${args.beat.beatId}:${args.clip}`,
     },
     args.deps.invoke,
   );
@@ -288,3 +333,19 @@ async function generateBackdrop(args: {
   const out = res.output as { url?: string };
   return out.url;
 }
+
+/**
+ * Varied framing across the clips of one beat.
+ *
+ * Five generations from an identical prompt come back as five near-identical
+ * shots, and cutting those together looks like a stutter rather than like
+ * coverage. Naming a different framing per clip is the smallest change that
+ * makes the sequence read as one scene shot several ways.
+ */
+const SHOT_ANGLES = [
+  'Wide establishing shot.',
+  'Close detail shot.',
+  'Overhead shot.',
+  'Low angle, shallow focus.',
+  'Slow push in, mid shot.',
+];

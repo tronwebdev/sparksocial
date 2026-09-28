@@ -71,7 +71,7 @@ describe('autoIllustrate', () => {
     });
 
     expect(result).toEqual({ fromAssets: 1, generated: 0 });
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).toBe('https://cdn/real.jpg');
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop?.urls).toEqual(['https://cdn/real.jpg']);
     // The words survive — the whole reason this attaches rather than replaces.
     expect(beats[0]!.kind).toBe('text');
   });
@@ -88,7 +88,7 @@ describe('autoIllustrate', () => {
       info: { logo: { mediaType: 'image', rightsStatus: 'cleared', url: 'https://cdn/logo.png' } },
     });
     const { beats, result } = await autoIllustrate({ ...base, beats: [textBeat('copy')], playbook: IMAGE_PB, deps });
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).not.toBe('https://cdn/logo.png');
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop?.urls?.[0]).not.toBe('https://cdn/logo.png');
     expect(result.fromAssets).toBe(0);
   });
 
@@ -100,7 +100,7 @@ describe('autoIllustrate', () => {
       info: { a1: { mediaType: 'image', rightsStatus: 'pending', url: 'https://cdn/x.jpg' } },
     });
     const { beats, result } = await autoIllustrate({ ...base, beats: [textBeat('copy')], playbook: IMAGE_PB, deps });
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).not.toBe('https://cdn/x.jpg');
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop?.urls?.[0]).not.toBe('https://cdn/x.jpg');
     expect(result.fromAssets).toBe(0);
   });
 
@@ -136,8 +136,8 @@ describe('autoIllustrate', () => {
       },
     });
     const { beats } = await autoIllustrate({ ...base, beats: [textBeat('hook')], playbook: VIDEO_PB, deps });
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).toBe('https://cdn/c.mp4');
-    expect((beats[0] as { backdropKind?: string }).backdropKind).toBe('video');
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop?.urls).toEqual(['https://cdn/c.mp4']);
+    expect((beats[0] as { backdrop?: { kind: string } }).backdrop?.kind).toBe('video');
   });
 
   it('renders without a backdrop when the asset lookup fails', async () => {
@@ -150,7 +150,7 @@ describe('autoIllustrate', () => {
     } as never;
     const { beats, result } = await autoIllustrate({ ...base, beats: [textBeat('copy')], playbook: IMAGE_PB, deps });
     expect(result).toEqual({ fromAssets: 0, generated: 0 });
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).toBeUndefined();
+    expect((beats[0] as { backdrop?: unknown }).backdrop).toBeUndefined();
   });
 });
 
@@ -166,7 +166,7 @@ describe('autoIllustrate — generation as the fallback', () => {
 
     expect(result).toEqual({ fromAssets: 0, generated: 1 });
     expect(generated).toEqual(['content.generate_image']);
-    expect((beats[0] as { backdropUrl?: string }).backdropUrl).toBe('https://cdn/made.jpg');
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop?.urls).toEqual(['https://cdn/made.jpg']);
     // Still the copy. Generating *into* the beat would have thrown it away.
     expect(beats[0]!.kind).toBe('text');
   });
@@ -175,5 +175,40 @@ describe('autoIllustrate — generation as the fallback', () => {
     const { deps, generated } = harness({ assets: [] });
     await autoIllustrate({ ...base, beats: [textBeat('why we bake at 4am')], playbook: VIDEO_PB, deps });
     expect(generated).toEqual(['content.generate_broll']);
+  });
+});
+
+describe('autoIllustrate — long beats are split', () => {
+  it('makes enough clips to cover the beat rather than looping one', async () => {
+    /*
+     * The generator caps at ten seconds. A fifty-second narration given one
+     * clip is the same five seconds looping ten times, which reads as a broken
+     * video rather than as footage.
+     */
+    const { deps, generated } = harness({ assets: [] });
+    const long = { kind: 'text', beatId: 'analysis', text: 'why we bake at 4am', durationSec: 50 } as ResolvedBeat;
+    const { beats, result } = await autoIllustrate({ ...base, beats: [long], playbook: VIDEO_PB, deps });
+
+    expect(generated.length).toBeGreaterThan(1);
+    expect((beats[0] as { backdrop?: { urls: string[] } }).backdrop!.urls.length).toBeGreaterThan(1);
+    expect(result.generated).toBe(generated.length);
+  });
+
+  it('does not split a short beat', async () => {
+    const { deps, generated } = harness({ assets: [] });
+    const short = { kind: 'text', beatId: 'hook', text: 'a hook', durationSec: 3 } as ResolvedBeat;
+    await autoIllustrate({ ...base, beats: [short], playbook: VIDEO_PB, deps });
+    expect(generated).toHaveLength(1);
+  });
+
+  it('never spends more clips on one post than the ceiling allows', async () => {
+    // Splitting multiplies cost, so the ceiling is per post: without it one
+    // video playbook could outspend the rest of a brand's month.
+    const { deps, generated } = harness({ assets: [] });
+    const longs = ['a', 'b', 'c'].map(
+      (id) => ({ kind: 'text', beatId: id, text: 'narration', durationSec: 50 }) as ResolvedBeat,
+    );
+    await autoIllustrate({ ...base, beats: longs, playbook: VIDEO_PB, deps });
+    expect(generated.length).toBeLessThanOrEqual(6);
   });
 });

@@ -133,9 +133,21 @@ const beatShape = {
    * Absent is the normal state for a beat that already has real media of its
    * own, and for any brand whose assets resolved.
    */
-  backdropUrl: z.string().optional(),
-  /** `image` renders as a still behind the text; `video` loops under it. */
-  backdropKind: z.enum(['image', 'video']).optional(),
+  backdrop: z
+    .object({
+      kind: z.enum(['image', 'video']),
+      /**
+       * One entry, or several played in sequence across the beat.
+       *
+       * Several, because the clip generator caps at ten seconds and a beat can
+       * be far longer: a fifty-second narration given one clip gets the same
+       * five seconds looping ten times, which reads as a broken video rather
+       * than as footage. The renderer divides the beat evenly between whatever
+       * is here, so N clips always cover the beat however long it is.
+       */
+      urls: z.array(z.string()).min(1).max(8),
+    })
+    .optional(),
 };
 
 export const ResolvedBeat = z.discriminatedUnion('kind', [
@@ -904,8 +916,7 @@ export function keepStructure(
     ...(beat.lowerThird !== undefined ? { lowerThird: beat.lowerThird } : {}),
     // A backdrop belongs to the scene, not to what fills it, so generating
     // media into a beat keeps the picture that was already behind it.
-    ...(beat.backdropUrl !== undefined ? { backdropUrl: beat.backdropUrl } : {}),
-    ...(beat.backdropKind !== undefined ? { backdropKind: beat.backdropKind } : {}),
+    ...(beat.backdrop !== undefined ? { backdrop: beat.backdrop } : {}),
   };
 }
 

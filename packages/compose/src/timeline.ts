@@ -68,8 +68,7 @@ export type TimedBeat =
  * the words stay the beat.
  */
 export interface Backdrop {
-  backdropUrl?: string;
-  backdropKind?: 'image' | 'video';
+  backdrop?: { kind: 'image' | 'video'; urls: string[] };
 }
 
 export interface AssetLookup {
@@ -126,8 +125,7 @@ export function zipTimeline(args: {
         durationSec,
         text: beat.text,
         ...lower,
-        ...(beat.backdropUrl ? { backdropUrl: beat.backdropUrl } : {}),
-        ...(beat.backdropKind ? { backdropKind: beat.backdropKind } : {}),
+        ...(beat.backdrop ? { backdrop: beat.backdrop } : {}),
       };
     }
 
