@@ -755,6 +755,23 @@ export function CalendarBoard({
         genomeId={genome?.genomeId}
         contentItemId={draftPanel.contentItemId}
         open={draftPanel.open}
+        /*
+          The drawer's Current Focus card. Every value is one this board has
+          already loaded — the campaign's name and objective come straight off
+          `calendar.get`, and the duration is the span its own slots cover,
+          which is the honest answer for a campaign whose window rarely lines up
+          with a calendar month.
+        */
+        focus={
+          view
+            ? {
+                campaignName: view.name,
+                goal: view.objective,
+                duration: slotSpan(view.slots),
+                source: 'Calendar',
+              }
+            : undefined
+        }
         onDraftCreated={onDraftCreated}
         onClose={() => {
           setDraftPanel({ open: false });
@@ -1102,4 +1119,22 @@ function SlotList({
       </ul>
     </div>
   );
+}
+
+/**
+ * How long the campaign runs, from its own slots.
+ *
+ * `calendar.get` returns no duration field, and the campaign's window is
+ * whatever its scheduled days span — so this counts inclusive days between the
+ * first and last scheduled slot rather than reporting a number nothing stores.
+ * Unscheduled slots carry no date and are skipped.
+ */
+function slotSpan(slots: Slot[]): string | undefined {
+  const days = slots.map((s) => s.scheduledAt).filter((d): d is string => Boolean(d)).sort();
+  if (days.length === 0) return undefined;
+  const first = Date.parse(`${days[0].slice(0, 10)}T00:00:00Z`);
+  const last = Date.parse(`${days[days.length - 1].slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(first) || Number.isNaN(last)) return undefined;
+  const n = Math.round((last - first) / 86_400_000) + 1;
+  return n === 1 ? '1 day' : `${n} days`;
 }

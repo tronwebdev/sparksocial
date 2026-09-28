@@ -8,6 +8,9 @@ import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
 import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
+import { ImageDraftForm } from './ImageDraftForm';
+import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
+import { cn } from '@/lib/utils';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
@@ -45,11 +48,23 @@ export function DraftPanel({
   open,
   onClose,
   onDraftCreated,
+  focus,
 }: {
   genomeId: string | undefined;
   contentItemId?: string;
   open: boolean;
   onClose: () => void;
+  /**
+   * What the drawer's Current Focus card says — `DP image`'s header.
+   *
+   * Passed in rather than loaded here because the caller already has it: the
+   * Calendar opens this panel from a view it fetched, and a second
+   * `calendar.get` to redraw four strings the opener is holding would be a
+   * round trip for nothing. Absent is a legitimate state — a panel opened from
+   * somewhere with no campaign behind it shows the post and no campaign facts,
+   * rather than a card of blanks.
+   */
+  focus?: { campaignName?: string; goal?: string; duration?: string; source?: string };
   /** Fires once, right after `content.draft` first creates a row — CAL-04's hook for pinning a fresh trigger-phase draft to the date the caller opened this panel for. */
   onDraftCreated?: (contentItemId: string) => void;
 }) {
@@ -73,11 +88,27 @@ export function DraftPanel({
    */
   const [postType, setPostType] = useState<PostType>('image');
   const [drawerTab, setDrawerTab] = useState<DrawerTab>('current');
+  /** `DP image`'s editable prompt, which the old panel had nowhere to put. */
+  const [conceptPrompt, setConceptPrompt] = useState('');
 
   const [phase, setPhase] = useState<'loading' | 'failed' | 'trigger' | 'editor' | 'preview'>(
     initialContentItemId ? 'loading' : 'trigger',
   );
   const [draft, setDraft] = useState<DraftView | null>(null);
+
+  /**
+   * The rail follows the post once there is a post.
+   *
+   * Before this, the rail kept whatever the user last clicked while drafting —
+   * so a carousel drafted from the picker opened its editor with "Image" lit
+   * and "Image Post" over a list of slides. The rail is a *choice* only in the
+   * trigger phase; after `content.draft` the media type is the playbook's and
+   * the rail reports it.
+   */
+  useEffect(() => {
+    if (draft) setPostType(draft.mediaType);
+  }, [draft?.mediaType, draft]);
+
   const [playbooks, setPlaybooks] = useState<RankedPlaybook[] | null>(null);
   const [playbooksWhy, setPlaybooksWhy] = useState<string | null>(null);
   // Distinguishes "nothing fits this genome at all" from "something fits, but
@@ -123,6 +154,8 @@ export function DraftPanel({
    */
   const [sceneDescription, setSceneDescription] = useState('');
   const [sceneDuration, setSceneDuration] = useState('4');
+  /** Whether the storyboard's "Add scene" strip has its form open beneath it. */
+  const [addingScene, setAddingScene] = useState(false);
   const [sceneTotal, setSceneTotal] = useState<number | null>(null);
 
   /**
@@ -602,12 +635,31 @@ export function DraftPanel({
    */
   type SceneResult = { beats: ResolvedBeat[]; totalDurationSec: number; durationBand?: [number, number] };
 
-  async function runSceneTool(name: string, input: Record<string, unknown>, beatId?: string) {
+  /**
+   * @param idempotencyKey required by any scene tool declared `idempotent: false`.
+   *
+   * Only `content.scene.insert` is, and it refuses outright without one — so
+   * "Add scene" failed every time it was clicked, with
+   * `"content.scene.insert" is not idempotent and requires an idempotency key`
+   * shown in the form's error line. The other five are idempotent and pass
+   * nothing. The key must be fresh per click for the reason `createDraft` gives:
+   * a stable one would make every later add replay the first insert.
+   */
+  async function runSceneTool(
+    name: string,
+    input: Record<string, unknown>,
+    beatId?: string,
+    idempotencyKey?: string,
+  ) {
     if (!draft || !genomeId || busyBeatId) return;
     const busyKey = beatId ?? SCENE_ADD_KEY;
     setBusyBeatId(busyKey);
     setBeatErrors((e) => ({ ...e, [busyKey]: '' }));
-    const res = await invoke<SceneResult>(name, { contentItemId: draft.contentItemId, genomeId, ...input });
+    const res = await invoke<SceneResult>(
+      name,
+      { contentItemId: draft.contentItemId, genomeId, ...input },
+      idempotencyKey,
+    );
     setBusyBeatId(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? res.error.message : 'Gated.' }));
@@ -666,26 +718,38 @@ export function DraftPanel({
             ? { afterBeatId: draft.beats[draft.beats.length - 2]!.beatId }
             : {};
 
-    await runSceneTool('content.scene.insert', {
-      description: template.text,
-      durationSec: seconds,
-      label: KIT_TEMPLATE_LABEL[template.category],
-      ...position,
-    });
+    // Same non-idempotent tool as `addScene`, so the same fresh key — applying
+    // an intro twice is two intros, and without one this refused outright.
+    await runSceneTool(
+      'content.scene.insert',
+      {
+        description: template.text,
+        durationSec: seconds,
+        label: KIT_TEMPLATE_LABEL[template.category],
+        ...position,
+      },
+      undefined,
+      crypto.randomUUID(),
+    );
   }
 
   async function addScene() {
     if (!sceneDescription.trim()) return;
     const seconds = Number(sceneDuration);
     if (!Number.isFinite(seconds) || seconds < 0.5) return;
-    await runSceneTool('content.scene.insert', {
-      description: sceneDescription.trim(),
-      durationSec: seconds,
-      // Appends after the last scene. The tool also takes no anchor at all,
-      // which opens the post instead - but "add" reads as "add at the end",
-      // and the Move buttons are how a scene gets to the front.
-      ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
-    });
+    await runSceneTool(
+      'content.scene.insert',
+      {
+        description: sceneDescription.trim(),
+        durationSec: seconds,
+        // Appends after the last scene. The tool also takes no anchor at all,
+        // which opens the post instead - but "add" reads as "add at the end",
+        // and the Move buttons are how a scene gets to the front.
+        ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
+      },
+      undefined,
+      crypto.randomUUID(),
+    );
     setSceneDescription('');
   }
 
@@ -1019,6 +1083,105 @@ export function DraftPanel({
 
   if (!open) return null;
 
+  /**
+   * One beat's controls, wherever they are drawn.
+   *
+   * Defined once and called from both the plain list and the storyboard's
+   * expanded card, because the two places differ only in whether the row draws
+   * its own frame. Two copies of twenty props is how one of them ends up
+   * missing a handler that only some drafts reach.
+   */
+  function beatRowFor(beat: ResolvedBeat, i: number, chrome: boolean) {
+    if (!draft) return null;
+    return (
+      <BeatRow
+        // `BeatRow`'s own textarea state initializes once from `beat` on mount
+        // and never re-syncs on a prop change — React doesn't re-run a
+        // `useState` initializer. A key that changes whenever the beat's
+        // *generated content* changes (not on every keystroke, since typing
+        // never touches `beat` until Save/regenerate) forces a remount exactly
+        // when the textarea needs to pick up the fresh value — found live:
+        // applying a `draft.variants` take updated the draft and the backend
+        // correctly but left the visible textarea showing the old copy, which a
+        // stray "Save" click would have silently reverted.
+        key={`${beat.beatId}:${beat.kind}:${'url' in beat ? beat.url : ''}:${beat.kind === 'text' ? beat.text : ''}`}
+        beat={beat}
+        chrome={chrome}
+        mediaType={draft.mediaType}
+        busy={busyBeatId === beat.beatId}
+        error={beatErrors[beat.beatId] || undefined}
+        index={i}
+        startSec={startOf(i)}
+        timed={draft.mediaType === 'video'}
+        isFirst={i === 0}
+        isLast={i === draft.beats.length - 1}
+        onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
+        onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
+        onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
+        onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
+        templates={(kitTemplates ?? []).filter((t) => t.category === 'caption' || t.category === 'lower_third')}
+        onApplyTemplate={(t, id) => void applyTemplate(t, id)}
+        onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
+        onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
+        onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
+        onGenerateBroll={(id, prompt) => void generateBroll(id, prompt)}
+        onDub={(id, sourceUrl, mediaKind, lang) => void dubBeat(id, sourceUrl, mediaKind, lang)}
+        onSaveText={(id, text) => void saveBeatText(id, text)}
+      />
+    );
+  }
+
+  /**
+   * The add-scene form, now behind the storyboard's own "Add scene" strip.
+   *
+   * Unchanged in behaviour: a new scene is a written slot, not a generate call,
+   * which is what keeps the storyboard editable without spending money per
+   * keystroke. It moved rather than being rebuilt, so the design gets its
+   * control and the panel keeps its one way to add a scene.
+   */
+  const addSceneForm = (
+    <div className="mt-[16px] rounded-lg border border-dashed border-border p-4">
+      <p className="text-13 font-medium text-ink">Add a scene</p>
+      <p className="mt-1 text-12 text-ink-muted">
+        Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a written slot
+        you can film, generate, or leave as an overlay.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <textarea
+          value={sceneDescription}
+          onChange={(e) => setSceneDescription(e.target.value)}
+          disabled={busyBeatId !== null}
+          rows={2}
+          placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
+          className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-11 text-ink-muted" htmlFor="new-scene-seconds">
+            Seconds
+          </label>
+          <input
+            id="new-scene-seconds"
+            value={sceneDuration}
+            onChange={(e) => setSceneDuration(e.target.value)}
+            disabled={busyBeatId !== null}
+            inputMode="decimal"
+            className="h-9 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
+          />
+          <Button
+            size="sm"
+            disabled={busyBeatId !== null || !sceneDescription.trim()}
+            onClick={() => void addScene()}
+          >
+            {busyBeatId === SCENE_ADD_KEY ? 'Adding…' : 'Add scene'}
+          </Button>
+        </div>
+      </div>
+      {beatErrors[SCENE_ADD_KEY] ? (
+        <p className="mt-2 text-12 text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
+      ) : null}
+    </div>
+  );
+
   return (
     <DraftDrawer
       postType={postType}
@@ -1028,7 +1191,21 @@ export function DraftPanel({
       onClose={onClose}
     >
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/*
+          The trigger phase draws its own column.
+
+          `DP image` insets its single column 30px from the content pane, and
+          this container's `px-6` sat *inside* that, pushing every row 24px
+          right and shaving 48 off the width — a form measured to 875 rendering
+          at 807. The other phases still want the container's padding, so the
+          padding follows the phase rather than the phase fighting the padding.
+        */}
+        <div
+          className={cn(
+            'flex-1 overflow-y-auto',
+            phase === 'trigger' ? '' : 'px-6 py-5',
+          )}
+        >
           {phase === 'loading' ? <Skeleton className="h-64 w-full rounded" /> : null}
 
           {/*
@@ -1065,20 +1242,55 @@ export function DraftPanel({
           ) : null}
 
           {phase === 'trigger' ? (
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-13 font-medium text-ink-muted" htmlFor="dp-intent">
-                  What is this post about?
-                </label>
-                <textarea
-                  id="dp-intent"
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  rows={2}
-                  className="mt-1 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
-                />
-              </div>
+            <>
+              {/*
+                `DP image`'s form. The block below it is the playbook picker,
+                which the prototype does not draw: its rail picks a *media
+                type*, the product picks a specific format, and `content.draft`
+                needs one — `RankedPlaybook` carries no media type, so the rail
+                cannot stand in for it. Deleting a working control to match a
+                screenshot would trade behaviour for a resemblance.
+              */}
+              <ImageDraftForm
+                postType={postType}
+                campaignName={focus?.campaignName}
+                goal={focus?.goal}
+                duration={focus?.duration}
+                source={focus?.source}
+                status={draft?.status ?? 'draft'}
+                intent={intent}
+                onIntent={setIntent}
+                prompt={conceptPrompt}
+                onPrompt={setConceptPrompt}
+                onGenerate={() => void createDraft()}
+                /*
+                  `createDraft` returns early without a playbook, so without
+                  this the drawer's primary action was clickable and silent.
+                  The picker that resolves it is the block directly below.
+                */
+                blockedReason={
+                  selectedPlaybookId ? undefined : 'Pick a post format below to generate this post.'
+                }
+                /*
+                  The storyboard, for `DP video` and `DP carousel`.
 
+                  `content.draft` is what writes the beats, so at this phase
+                  there are none and the storyboard shows its one-line empty
+                  state rather than placeholder cards. The prop is passed
+                  regardless: `draft` survives a reopen, and the moment a phase
+                  hands this form a post with scenes they render.
+                */
+                beats={draft?.beats ?? []}
+                busy={busy}
+              />
+            {/*
+              The picker only. Its "What is this post about?" textarea is gone:
+              the form above asks the same question, bound to the same `intent`
+              state, and both carried `id="dp-intent"` — so the panel showed the
+              label twice and the second `<label htmlFor>` pointed at the first
+              field. One question, one control.
+            */}
+            <div className="grid grid-cols-1 gap-4 px-[30px] pb-6">
               <div>
                 <p className="text-13 font-medium text-ink-muted">Post type</p>
                 {playbooks === null ? (
@@ -1170,6 +1382,7 @@ export function DraftPanel({
                 {busy ? 'Generating…' : 'Generate post'}
               </Button>
             </div>
+            </>
           ) : null}
 
           {/* ── Why this post is not moving (PRD §10 / §7.4) ─────────────────
@@ -1330,97 +1543,37 @@ export function DraftPanel({
                 </div>
               ) : null}
 
-              <ul className="grid grid-cols-1 gap-3">
-                {draft.beats.map((beat, i) => (
-                  <BeatRow
-                    // `BeatRow`'s own textarea state initializes once from
-                    // `beat` on mount and never re-syncs on a prop change —
-                    // React doesn't re-run a `useState` initializer. A key
-                    // that changes whenever the beat's *generated content*
-                    // changes (not on every keystroke, since typing never
-                    // touches `beat` until Save/regenerate) forces a remount
-                    // exactly when the textarea needs to pick up the fresh
-                    // value — found live: applying a `draft.variants` take
-                    // updated the draft and the backend correctly but left
-                    // the visible textarea showing the old copy, which a
-                    // stray "Save" click would have silently reverted.
-                    key={`${beat.beatId}:${beat.kind}:${'url' in beat ? beat.url : ''}:${beat.kind === 'text' ? beat.text : ''}`}
-                    beat={beat}
-                    mediaType={draft.mediaType}
-                    busy={busyBeatId === beat.beatId}
-                    error={beatErrors[beat.beatId] || undefined}
-                    index={i}
-                    startSec={startOf(i)}
-                    timed={draft.mediaType === 'video'}
-                    isFirst={i === 0}
-                    isLast={i === draft.beats.length - 1}
-                    onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
-                    onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
-                    onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
-                    onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
-                    templates={(kitTemplates ?? []).filter(
-                      (t) => t.category === 'caption' || t.category === 'lower_third',
-                    )}
-                    onApplyTemplate={(t, id) => void applyTemplate(t, id)}
-                    onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
-                    onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
-                    onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
-                    onGenerateBroll={(id, prompt) => void generateBroll(id, prompt)}
-                    onDub={(id, sourceUrl, mediaKind, lang) => void dubBeat(id, sourceUrl, mediaKind, lang)}
-                    onSaveText={(id, text) => void saveBeatText(id, text)}
-                  />
-                ))}
-              </ul>
-
               {/*
-                Add scene. Deliberately does not generate anything: the new scene
-                holds the description as its text, and turning that into footage
-                is one of the generate buttons on the row it creates. Splitting
-                "make a slot" from "fill it" is what keeps the storyboard
-                editable without spending money per keystroke.
+                Video and carousel wear the design's storyboard.
+
+                `DP video` and `DP carousel` draw this list as cards — time
+                range, badges, the voiceover script — where the editor drew a
+                bordered row per beat. The cards are presentation only, so each
+                one opens the same `BeatRow` underneath on demand: nothing this
+                phase could do before it can't do now, it is one click further
+                in. Image and text keep the plain list, because the design draws
+                no storyboard for them.
               */}
               {draft.mediaType === 'video' ? (
-                <div className="rounded-lg border border-dashed border-border p-4">
-                  <p className="text-13 font-medium text-ink">Add a scene</p>
-                  <p className="mt-1 text-12 text-ink-muted">
-                    Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a
-                    written slot you can film, generate, or leave as an overlay.
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <textarea
-                      value={sceneDescription}
-                      onChange={(e) => setSceneDescription(e.target.value)}
-                      disabled={busyBeatId !== null}
-                      rows={2}
-                      placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
-                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="text-11 text-ink-muted" htmlFor="new-scene-seconds">
-                        Seconds
-                      </label>
-                      <input
-                        id="new-scene-seconds"
-                        value={sceneDuration}
-                        onChange={(e) => setSceneDuration(e.target.value)}
-                        disabled={busyBeatId !== null}
-                        inputMode="decimal"
-                        className="h-9 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={busyBeatId !== null || !sceneDescription.trim()}
-                        onClick={() => void addScene()}
-                      >
-                        {busyBeatId === SCENE_ADD_KEY ? 'Adding\u2026' : 'Add scene'}
-                      </Button>
-                    </div>
-                  </div>
-                  {beatErrors[SCENE_ADD_KEY] ? (
-                    <p className="mt-2 text-12 text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
-                  ) : null}
-                </div>
-              ) : null}
+                <VideoStoryboard
+                  beats={draft.beats}
+                  busy={busyBeatId !== null}
+                  onAddScene={() => setAddingScene((v) => !v)}
+                  addSlot={addingScene ? addSceneForm : null}
+                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                />
+              ) : draft.mediaType === 'carousel' ? (
+                <CarouselStoryboard
+                  beats={draft.beats}
+                  busy={busyBeatId !== null}
+                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                />
+              ) : (
+              <ul className="grid grid-cols-1 gap-3">
+                {draft.beats.map((beat, i) => beatRowFor(beat, i, true))}
+              </ul>
+              )}
+
 
               {/*
                 `M10`. One line, naming the beat and what is being asked of which

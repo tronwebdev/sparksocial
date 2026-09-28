@@ -24,9 +24,10 @@ import { cn } from '@/lib/utils';
  *   radius      24.38 / 10.158 / 10.158 / 24.38  (round left, near-square right)
  *   rail        637…788 · 151 wide
  *   content     x788 · 940x1063 · r24.38
- *   rail items  y302 · 429 · 555 · 682  → 126.7 pitch
+ *   rail labels y302 · 429 · 555 · 682  → 126.7 pitch, 14/500
+ *   rail tiles  75x75 · r15.69 · active rgba(108,232,255,0.2), idle grey 5%
+ *   orb         x651 y40 · 126x126
  *   "Post Type" y183 · 14/600 · ink-500
- *   active item ink-900 on white; the rest ink-500 on the rail gradient
  *   tab chip    x820 y52 · 174x44 · r10 · #6CE8FF
  *   tab label   18/600 active, 18/500 inactive
  *   Close Draft x605 y500 · 23x96 · 18/500 — on the drawer's *outside* edge
@@ -133,15 +134,20 @@ export function DraftDrawer({
  * The post-type rail — the drawer's own navigation.
  *
  * Each item is a state in the prototype set (`DP image`, `DP video`,
- * `DP carousel`, `DP text`), so this is the control that drives them. The
- * active one is a white card with ink-900 type; the rest sit on the rail's
- * gradient in ink-500.
+ * `DP carousel`, `DP text`), so this is the control that drives them.
+ *
+ * Those four files turn out to differ from each other in one string — the
+ * heading over the form. `DP text` is `DP image` with "Text Post" in place of
+ * "Image Post", down to the "AI image concept" block and the 4:5 chip, and its
+ * rail still highlights Image. So the rail changes the heading and nothing
+ * else, which is what the design says, rather than what a text post would
+ * plausibly want.
  */
 function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next: PostType) => void }) {
   return (
     <nav
       aria-label="Post type"
-      className="flex w-[151px] shrink-0 flex-col items-center gap-[18px] px-[14px] pt-[24px]"
+      className="flex w-[151px] shrink-0 flex-col items-center px-[14px] pt-[13px]"
       style={{
         // The rail's own wash, measured off the prototype: cyan at the top
         // falling to the violet the drawer uses for emphasis.
@@ -149,10 +155,10 @@ function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next:
           'linear-gradient(180deg, rgba(108,232,255,0.20) 0%, rgba(163,65,255,0.10) 55%, rgba(255,255,255,0) 100%)',
       }}
     >
-      {/* The Spark orb, y≈34 in the prototype. */}
+      {/* The Spark orb — 126x126 at y40, 13px below the drawer's top edge. */}
       <span
         aria-hidden
-        className="block h-[92px] w-[92px] rounded-full"
+        className="block h-[126px] w-[126px] rounded-full"
         style={{
           background:
             'radial-gradient(circle at 35% 30%, #FFFFFF 0%, rgba(108,232,255,0.9) 35%, rgba(163,65,255,0.75) 75%)',
@@ -160,9 +166,10 @@ function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next:
         }}
       />
 
-      <span className="text-14 font-semibold text-ink-muted">Post Type</span>
+      <span className="mt-[17px] text-14 font-semibold text-ink-muted">Post Type</span>
 
-      <ul className="flex w-full flex-col items-center gap-[14px]">
+      {/* 126.7 apart: a 75 tile, a 6 gap, the label, and the rest to the next. */}
+      <ul className="mt-[14px] flex w-full flex-col items-center gap-[17.4px]">
         {POST_TYPES.map((t) => {
           const on = t.id === active;
           return (
@@ -171,14 +178,38 @@ function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next:
                 type="button"
                 aria-current={on ? 'true' : undefined}
                 onClick={() => onSelect(t.id)}
-                className={cn(
-                  'flex w-full flex-col items-center gap-[8px] rounded-[16px] px-2 py-[12px] transition-colors',
-                  // The active card is the only opaque surface on the rail,
-                  // which is what makes the selection readable over a gradient.
-                  on ? 'bg-white shadow-[0_2px_10px_rgba(12,12,12,0.08)]' : 'hover:bg-white/45',
-                )}
+                className="flex w-full flex-col items-center gap-[6px] py-[4px]"
               >
-                <TypeIcon type={t.id} active={on} />
+                {/*
+                  A 75x75 tile, r15.69 — measured, not a card.
+
+                  The first build made the active item a white card with a
+                  shadow. The design does something quieter: every tile carries a
+                  fill, grey at 5% when idle and the brand cyan at 20% when
+                  active, so the selection reads as a tint rather than a raised
+                  surface. The label stays 14/500 throughout and only its colour
+                  changes.
+                */}
+                <span
+                  aria-hidden
+                  className="flex h-[75px] w-[75px] items-center justify-center rounded-[15.689px] transition-colors"
+                  /*
+                    Inline, not `bg-[rgba(...)]`.
+
+                    Written as arbitrary Tailwind values first, and the two
+                    classes came out crossed: the Text tile carried
+                    `bg-[rgba(108,232,255,0.2)]` in its `className` and computed
+                    to grey, while the Image tile carried the grey class and
+                    computed to cyan. Whatever the escaping does to a comma-laden
+                    `rgba()` in a selector, the rule it generates cannot be
+                    trusted — and it fails while the markup looks correct, which
+                    is the worst way for it to fail. The focus card sets its own
+                    rgba the same way for the same reason.
+                  */
+                  style={{ background: on ? 'rgba(108,232,255,0.2)' : 'rgba(131,131,131,0.05)' }}
+                >
+                  <TypeIcon type={t.id} active={on} />
+                </span>
                 <span className={cn('text-14 font-medium', on ? 'text-ink' : 'text-ink-muted')}>{t.label}</span>
               </button>
             </li>

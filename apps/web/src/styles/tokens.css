@@ -48,6 +48,16 @@
   --ss-sky: #64c3d5; /* the hero wash, always at 0.4 */
   --ss-teal-700: #2f8291; /* one metadata label */
 
+  /* The storyboard's badge palette, from `DP video.dc.html` / `DP carousel`.
+     One colour per scene kind, so a scene is identifiable at a glance without
+     reading it. `Hook` reuses --ss-purple and `No voiceover` --ss-orange-500;
+     these four have no equivalent in the ramp. */
+  --ss-scene-cta: #1faf13; /* the closing scene, and its thumbnail tint */
+  --ss-scene-talking: #db27e7; /* talking head */
+  --ss-scene-broll: #3079e7; /* b-roll + text overlay */
+  --ss-scene-override: #e18b1c; /* a scene whose audio departs from the default */
+  --ss-scene-bar-warm: #fbd8ac; /* the left accent bar on an overridden scene */
+
   /* Confirmation tick. Sampled from `Screenshot …192600` — a lime, distinct
      from the ramp's signal greens, and used only for that badge. */
   --ss-lime: #bbf52e;

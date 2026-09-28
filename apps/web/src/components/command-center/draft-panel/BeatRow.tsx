@@ -38,6 +38,7 @@ export function BeatRow({
   onSetVoice,
   templates,
   onApplyTemplate,
+  chrome = true,
 }: {
   beat: ResolvedBeat;
   mediaType: DraftView['mediaType'];
@@ -67,6 +68,16 @@ export function BeatRow({
   /** The brand kit's caption and lower-third presets. Empty hides the control. */
   templates: KitTemplate[];
   onApplyTemplate: (template: KitTemplate, beatId: string) => void;
+  /**
+   * Whether to draw the row's own frame and header.
+   *
+   * False when this row opens inside a storyboard card, which already shows the
+   * scene number, its time range and its badges — the card is the design's
+   * presentation and this is the machinery underneath it. Two copies of "Scene
+   * 2 · 0:04–0:10", one in the design's type and one in the old row's, reads as
+   * a rendering bug rather than as a panel and its detail.
+   */
+  chrome?: boolean;
 }) {
   const initialText =
     beat.kind === 'text'
@@ -92,27 +103,33 @@ export function BeatRow({
   const durationValid = duration.trim() !== '' && Number.isFinite(parsedDuration) && parsedDuration >= 0.5;
   const durationDirty = durationValid && parsedDuration !== beat.durationSec;
 
+  const Frame = chrome ? 'li' : 'div';
+
   return (
-    <li className="rounded-lg border border-border p-4">
+    <Frame className={chrome ? 'rounded-lg border border-border p-4' : undefined}>
       {/*
         The storyboard header - M5. The badge is the label the design draws
         ("Hook", "Talking head", "B-roll + text overlay"), falling back to the
         beat id, which is exactly what this row showed before a beat carried a
         label - so a legacy draft degrades to the old display, not to a blank.
+
+        Skipped when a storyboard card is already showing all three above it.
       */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-11 font-medium text-ink">
-            {beat.label ?? beat.beatId}
-          </span>
-          <span className="text-11 uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+      {chrome ? (
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-11 font-medium text-ink">
+              {beat.label ?? beat.beatId}
+            </span>
+            <span className="text-11 uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+          </div>
+          {timed && beat.durationSec !== undefined ? (
+            <span className="text-11 tabular-nums text-ink-muted">
+              {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
+            </span>
+          ) : null}
         </div>
-        {timed && beat.durationSec !== undefined ? (
-          <span className="text-11 tabular-nums text-ink-muted">
-            {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
 
       {beat.kind === 'asset' ? (
         <p className="mt-2 text-14 text-ink-muted">
@@ -323,6 +340,6 @@ export function BeatRow({
       </div>
 
       {error ? <p className="mt-2 text-12 text-destructive">{error}</p> : null}
-    </li>
+    </Frame>
   );
 }
