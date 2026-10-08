@@ -34,6 +34,17 @@ export const ContentGenerateImageInput = z.object({
   beatId: z.string().min(1),
   prompt: z.string().min(1).max(1_000),
   aspectRatio: z.string().default('1:1'),
+  /**
+   * Attach the picture behind the beat instead of replacing it.
+   *
+   * The still half of `content.generate_broll`'s flag, and the same crash-safety
+   * argument: replacing writes a beat with a picture and no copy, and
+   * auto-illustration then puts the words back in a later, separate update.
+   * A process that stops in between leaves the post's own words deleted and the
+   * beat non-text, which `autoIllustrate`'s `hasVisuals` guard reads as "already
+   * illustrated" forever after.
+   */
+  attach: z.boolean().optional(),
 });
 
 export const ContentGenerateImageOutput = z.object({
@@ -91,7 +102,10 @@ export function makeContentGenerateImage(image: ImageClient) {
       const { url } = await image.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt: input.prompt };
+      // Attach or replace — see `attach` on the input.
+      nextBeats[index] = input.attach
+        ? { ...beats[index]!, backdrop: { kind: 'image', urls: [url] } }
+        : { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt: input.prompt };
 
       const why: Explanation = {
         summary: `Generated an image for "${input.beatId}".`,

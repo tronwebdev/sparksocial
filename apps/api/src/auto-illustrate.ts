@@ -30,10 +30,18 @@ import { envNum } from './env.js';
  * ── Backdrops, not replacements ───────────────────────────────────────────
  *
  * `content.generate_image` and `content.generate_broll` replace the beat they
- * are given. That is right when somebody asks to illustrate one scene and
- * wrong as an automatic step: a text beat *is* the copy, so replacing it
- * produces a picture with the message thrown away. Everything here attaches to
- * the beat instead — see `backdropUrl` in `packages/generate/src/draft.ts`.
+ * are given by default. That is right when somebody asks to illustrate one
+ * scene and wrong as an automatic step: a text beat *is* the copy, so replacing
+ * it produces a picture with the message thrown away. Every call from here
+ * passes `attach: true`, so the generator writes the words and the picture
+ * together in one update.
+ *
+ * That flag is also what makes this crash-safe. The earlier arrangement —
+ * replace, then put the copy back at the end of the pass — was correct only if
+ * the pass finished, and the gap between the two writes is as long as the
+ * remaining clips take to generate. Stopping in that gap deleted a beat's copy
+ * permanently and left the post looking illustrated to `hasVisuals`, so it was
+ * never retried. With `attach` there is no intermediate state to stop in.
  */
 
 export interface AutoIllustrateDeps {
@@ -468,6 +476,22 @@ async function generateBackdrop(args: {
     .join(' ');
 
   const tool = args.wantsVideo ? 'content.generate_broll' : 'content.generate_image';
+  /*
+   * `attach: true` — the beat keeps its words and gains a picture behind them.
+   *
+   * This used to call the generators in their default replace mode and repair
+   * the damage afterwards, in one `updateDraft` at the end of the whole pass.
+   * The repair was correct and the window was not: between the generator's
+   * write and ours the stored beat had a clip and no copy, for as long as the
+   * remaining clips took to generate — minutes, on a post with several. A
+   * process stopped in there left the beat non-text with its words gone, and
+   * `hasVisuals` above then skipped that post on every future pass. It happened
+   * twice in one day.
+   *
+   * Now the tool writes the finished state in a single update. There is no
+   * intermediate state to be interrupted in, and nothing for this function to
+   * put back.
+   */
   const input = args.wantsVideo
     ? {
         contentItemId: args.contentItemId,
@@ -476,6 +500,7 @@ async function generateBackdrop(args: {
         prompt,
         aspectRatio: args.aspect,
         durationSec: Math.min(MAX_CLIP_SEC, Math.max(1, Math.round(args.beat.durationSec ?? MAX_CLIP_SEC))),
+        attach: true,
       }
     : {
         contentItemId: args.contentItemId,
@@ -483,6 +508,7 @@ async function generateBackdrop(args: {
         beatId: args.beat.beatId,
         prompt,
         aspectRatio: args.aspect,
+        attach: true,
       };
 
   const res = await (args.deps.invokeTool ?? invokeTool)(

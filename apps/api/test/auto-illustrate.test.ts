@@ -394,6 +394,44 @@ describe('autoIllustrate — what the generator is actually asked for', () => {
 
   const copy = 'Gear up for Bristol’s Cycle Fest 🚴 Share your prep tips!';
 
+  /**
+   * The crash-safety property, stated as the thing that actually broke.
+   *
+   * Auto-illustration used to call the generators in replace mode and put the
+   * copy back in its own update at the end of the pass. Everything in between
+   * — minutes, on a post whose other clips are still generating — had the beat
+   * stored with a picture and no words. A process stopped there lost that copy
+   * for good, and `hasVisuals` then skipped the post on every later pass, so it
+   * could never be illustrated again either.
+   *
+   * `attach: true` is what closes that window: the generator writes words and
+   * picture in one update, so there is no half-applied state to be interrupted
+   * in. Asserting the flag is asserting the property — without it the tool
+   * reverts to replacing, and the window reopens silently.
+   */
+  it('asks the generators to attach, so a beat is never stored without its copy', async () => {
+    const calls: Array<{ tool: string; attach?: boolean }> = [];
+    const spy = {
+      db: {
+        assets: { retrieve: async () => [], info: async () => ({}) },
+        genomes: { get: async () => ({ identity: { business_name: 'Rowan & Vale', one_liner: 'A bike workshop.' } }) },
+      },
+      invoke: {} as never,
+      embed: { embed: async () => [0.1] },
+      sceneBrief: { describe: async () => 'A wheel on a bench.' },
+      invokeTool: async (req: { tool: string; input: { attach?: boolean } }) => {
+        calls.push({ tool: req.tool, attach: req.input.attach });
+        return { status: 'succeeded', output: { url: 'https://cdn/made.mp4' } };
+      },
+    } as never;
+
+    await autoIllustrate({ ...base, beats: [textBeat('hook', copy)], playbook: VIDEO_PB, deps: spy });
+
+    const generators = calls.filter((c) => c.tool !== 'content.generate_voiceover');
+    expect(generators.length).toBeGreaterThan(0);
+    for (const c of generators) expect(c.attach).toBe(true);
+  });
+
   it('sends the shot description, not the post’s copy', async () => {
     const { deps, prompts } = promptHarness('A bicycle wheel in a truing stand, spoke key in hand, window light.');
     await autoIllustrate({ ...base, beats: [textBeat('hook', copy)], playbook: IMAGE_PB, deps });
