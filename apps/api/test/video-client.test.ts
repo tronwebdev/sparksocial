@@ -115,3 +115,51 @@ describe('transport', () => {
     await expect(client.generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 5 })).rejects.toThrow(ToolError);
   });
 });
+
+/**
+ * fal accepts a submission, validates it lazily, and reports the rejection
+ * through the *result* endpoint — a 422 on a job whose status says COMPLETED.
+ *
+ * Kling takes a literal '5' or '10' and nothing else, so every three- and
+ * four-second beat was rejected: the model was configured, the key worked, the
+ * job was accepted, and not one frame came back. The old message said
+ * "result fetch failed (422)", which reads as a transport problem and hides the
+ * one sentence that explains it.
+ */
+describe('a model that only takes certain clip lengths', () => {
+  const rejecting = () =>
+    vi.fn(async (url: string | URL | Request) => {
+      const u = String(url);
+      if (u.includes('/status')) return json({ status: 'COMPLETED' });
+      if (u.includes('/result')) {
+        return new Response(
+          JSON.stringify({ detail: [{ msg: "Input should be '5' or '10'", loc: ['body', 'duration'] }] }),
+          { status: 422, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return json({ status_url: 'https://queue.fal.run/s/status', response_url: 'https://queue.fal.run/s/result' });
+    });
+
+  it('surfaces what the model actually said', async () => {
+    const f = rejecting();
+    const client = createVideoClient({ apiKey: 'k', fetchImpl: f as unknown as typeof fetch, sleep: async () => {} });
+
+    await expect(client.generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 3 })).rejects.toThrow(
+      /Input should be '5' or '10'/,
+    );
+  });
+
+  it('sends the beat’s own length when no allowed set is configured', async () => {
+    const f = vi.fn(async (url: string | URL | Request, _init?: RequestInit) =>
+      String(url).includes('/status')
+        ? json({ status: 'COMPLETED' })
+        : String(url).includes('/result')
+          ? json({ video: { url: 'https://fal.example/out.mp4' } })
+          : json({ status_url: 'https://queue.fal.run/s/status', response_url: 'https://queue.fal.run/s/result' }),
+    );
+    const client = createVideoClient({ apiKey: 'k', fetchImpl: f as unknown as typeof fetch, sleep: async () => {} });
+    await client.generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 7 });
+
+    expect(JSON.parse(String((f.mock.calls[0]![1] as RequestInit).body)).duration).toBe(7);
+  });
+});

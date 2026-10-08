@@ -82,3 +82,48 @@ describe('response handling', () => {
       });
   });
 });
+
+/**
+ * The heavier models are the whole reason `FAL_MODEL` exists, and they do not
+ * answer the synchronous endpoint with an image — fal returns 200 with a queue
+ * handle instead. This read `images[0].url` off that, found nothing, and raised
+ * "response had no image": a successful submission reported as a vendor fault,
+ * on exactly the models somebody switches to when the fast one looks wrong.
+ */
+describe('a model that queues instead of answering inline', () => {
+  const queued = (frames: unknown[]) => {
+    let call = 0;
+    return vi.fn(async (url: string | URL | Request) => {
+      const body = String(url).includes('/status')
+        ? frames[Math.min(call++, frames.length - 1)]
+        : String(url).includes('/result')
+          ? { images: [{ url: 'https://fal.example/slow.png' }] }
+          : { status_url: 'https://queue.fal.run/status', response_url: 'https://queue.fal.run/result' };
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    });
+  };
+
+  it('follows the queue handle to the finished image', async () => {
+    const f = queued([{ status: 'IN_PROGRESS' }, { status: 'COMPLETED' }]);
+    const out = await client(f as unknown as typeof fetch, 'fal-ai/flux-pro/v1.1').generate({
+      prompt: 'a bicycle wheel in a truing stand',
+      aspectRatio: '4:5',
+    });
+
+    expect(out.url).toBe('https://fal.example/slow.png');
+    expect(String(f.mock.calls[0]![0])).toBe('https://fal.run/fal-ai/flux-pro/v1.1');
+  });
+
+  it('raises the vendor’s failure rather than a missing-image message', async () => {
+    const f = queued([{ status: 'ERROR' }]);
+    await expect(
+      client(f as unknown as typeof fetch, 'fal-ai/flux-pro/v1.1').generate({ prompt: 'x', aspectRatio: '1:1' }),
+    ).rejects.toThrow(/failed on the vendor side/);
+  });
+
+  it('still reads an inline image when the model answers with one', async () => {
+    const f = respond({ images: [{ url: 'https://fal.example/fast.png' }] });
+    const out = await client(f as unknown as typeof fetch).generate({ prompt: 'x', aspectRatio: '1:1' });
+    expect(out.url).toBe('https://fal.example/fast.png');
+  });
+});

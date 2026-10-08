@@ -101,7 +101,18 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
     return h(
       AbsoluteFill,
       null,
-      h(Video, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
+      /*
+       * `loop`, for the same reason `videoBackdrop` loops.
+       *
+       * The clip and the beat are sized by different things: the beat's length
+       * comes from the playbook, the clip's from whatever the generator would
+       * sell — Kling takes `'5'` or `'10'` and nothing else. A thirty-second
+       * body beat handed a ten-second clip played the footage once and then
+       * held the last frame for twenty seconds, which reads as a video that
+       * froze rather than as a short shot. Looping is the smaller lie, and it
+       * is what the multi-clip path next to this one already does.
+       */
+      h(Video, { src: beat.url, loop: true, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
       beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
       lower,
     );
@@ -129,7 +140,15 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
         beat.backdrop.kind === 'video'
           ? videoBackdrop(beat.backdrop.urls, beat.durationSec)
           : h(Img, { src: beat.backdrop.urls[0]!, style: FILL }),
-        h('div', { style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' } }),
+        /*
+         * Only under type. The scrim's whole job is legibility, so a frame with
+         * no words on it gets the picture at full strength — darkening a
+         * photograph by 45% for text that is not there was making every still
+         * post muddier than the image it was given.
+         */
+        beat.text
+          ? h('div', { style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' } })
+          : null,
       ]
     : [];
 
@@ -146,25 +165,44 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
     AbsoluteFill,
     null,
     ...backdrop,
-    h(
-      AbsoluteFill,
-      { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
-      h(
-        'div',
-        {
-          style: {
-            // Over a photograph the brand's type colour is a coin flip; white
-            // on the scrim is legible whatever the picture turned out to be.
-            color: beat.backdrop ? '#FFFFFF' : kit.type,
-            fontSize: 64,
-            fontFamily: kit.displayFont,
-            textAlign: 'center',
-            lineHeight: 1.3,
-          },
-        },
-        beat.text,
-      ),
-    ),
+    /*
+     * The narration, if this beat has one.
+     *
+     * Rendered inside the beat's own sequence, so it starts when the scene does
+     * and stops when it ends — the alternative, a post-wide track, drifts out of
+     * sync the moment a scene is retimed or reordered.
+     */
+    beat.voiceoverUrl ? h(Audio, { src: beat.voiceoverUrl }) : null,
+    /*
+     * The words, when they belong in the frame.
+     *
+     * `zipTimeline` blanks this for a still post that has a picture: there the
+     * copy is the caption the platform prints beneath the image, and printing
+     * it across the photograph as well showed the same sentence twice. An empty
+     * string would still render a padded, centred, invisible div over the
+     * backdrop, so the layer is omitted rather than emptied.
+     */
+    beat.text
+      ? h(
+          AbsoluteFill,
+          { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
+          h(
+            'div',
+            {
+              style: {
+                // Over a photograph the brand's type colour is a coin flip; white
+                // on the scrim is legible whatever the picture turned out to be.
+                color: beat.backdrop ? '#FFFFFF' : kit.type,
+                fontSize: 64,
+                fontFamily: kit.displayFont,
+                textAlign: 'center',
+                lineHeight: 1.3,
+              },
+            },
+            beat.text,
+          ),
+        )
+      : null,
     lower,
   );
 }

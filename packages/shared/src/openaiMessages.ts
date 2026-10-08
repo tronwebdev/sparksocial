@@ -110,6 +110,30 @@ function translateContent(content: string | ContentBlock[]): unknown {
 
   return content.map((block) => {
     if (block.type === 'text') return { type: 'text', text: block.text };
+
+    /*
+     * Anything that is not text and not an image is refused here, by name.
+     *
+     * This used to be an `else`: every non-text block fell through to the image
+     * branch and was emitted as an `image_url` part. A `document` block —
+     * which the captioner really does send, past the declared union via a cast
+     * — therefore reached OpenAI as `data:application/pdf;base64,…` inside an
+     * image part, and came back as a bare 400. The caller could see only that
+     * the fallback had failed, not that this translation had quietly turned a
+     * PDF into a malformed image; the comment here even described it as an
+     * "unrecognised part", which is the failure we had assumed rather than the
+     * one we had.
+     *
+     * Failing with the block's own type in the message costs nothing and means
+     * the next block kind somebody adds is reported instead of mangled.
+     */
+    if (block.type !== 'image') {
+      throw new Error(
+        `The OpenAI fallback cannot carry a "${(block as { type: string }).type}" content block — ` +
+          'only text and image blocks translate. This vendor has no equivalent part for it.',
+      );
+    }
+
     // OpenAI takes a remote URL and an inline data: URI through the same
     // `image_url` part, which is why the two caption paths collapse to one here.
     const url =

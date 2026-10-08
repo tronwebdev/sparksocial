@@ -10,6 +10,8 @@ import { DraftChat } from './DraftChat';
 import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
 import { ImageDraftForm } from './ImageDraftForm';
 import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
+import { DraftsList } from './DraftsList';
+import { PostPreview } from './PostPreview';
 import { cn } from '@/lib/utils';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
@@ -64,7 +66,19 @@ export function DraftPanel({
    * somewhere with no campaign behind it shows the post and no campaign facts,
    * rather than a card of blanks.
    */
-  focus?: { campaignName?: string; goal?: string; duration?: string; source?: string };
+  focus?: {
+    campaignName?: string;
+    goal?: string;
+    campaignType?: string;
+    duration?: string;
+    source?: string;
+    /** The four post types and what each is doing on this date. */
+    production?: Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }>;
+    /** The accounts this date is posting to. */
+    platforms?: string[];
+    /** The brand's own name, for the preview's post card byline. */
+    brandName?: string;
+  };
   /** Fires once, right after `content.draft` first creates a row — CAL-04's hook for pinning a fresh trigger-phase draft to the date the caller opened this panel for. */
   onDraftCreated?: (contentItemId: string) => void;
 }) {
@@ -325,6 +339,15 @@ export function DraftPanel({
       }
 
       setDraft(res.output);
+      /*
+        The renders this post already has.
+
+        `renders` was reset to null on open and filled only by
+        `compose.render`'s own response, so reopening a post the queue had
+        already composed showed no video and a Render button beside it — an
+        offer to pay a second time for a file that existed.
+      */
+      setRenders(res.output.renders ?? null);
       setPhase('editor');
     },
     [genomeId],
@@ -447,6 +470,34 @@ export function DraftPanel({
     setDraft(res.output);
     setPhase('editor');
     onDraftCreated?.(res.output.contentItemId);
+    return res.output;
+  }
+
+  /**
+   * `DP image`'s "Save as Draft", beside Generate Post.
+   *
+   * Both call `content.draft` — there is one tool, and it writes copy. What
+   * differs is where you end up, which is what the two labels actually promise:
+   * "Generate Post" takes you into the editor to work on what it made, "Save as
+   * Draft" saves it and gets out of the way. The draft is on the calendar
+   * either way, and the Drafts List is how you come back to it.
+   */
+  async function saveAsDraft() {
+    const made = await createDraft();
+    if (made) onClose();
+  }
+
+  /**
+   * "Regenerate concept" — another take on the same brief.
+   *
+   * A second `content.draft` with the same intent and playbook and a fresh
+   * idempotency key, which is exactly what the tool means by `idempotent:
+   * false`: a second call is a second take. The panel keeps the newer one, and
+   * the older draft stays on the calendar rather than being silently replaced —
+   * removing it would be a delete nobody asked for.
+   */
+  async function regenerateConcept() {
+    await createDraft();
   }
 
   const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
@@ -1190,7 +1241,24 @@ export function DraftPanel({
       onTab={setDrawerTab}
       onClose={onClose}
     >
+      {/*
+        The Drafts List tab.
 
+        Its own branch rather than a phase, because it is not a phase of *this*
+        post — it is every other post. Opening one loads it into the Current
+        Draft tab, which is the only thing the tab can usefully do.
+      */}
+      {drawerTab === 'list' ? (
+        <DraftsList
+          genomeId={genomeId}
+          currentId={draft?.contentItemId}
+          onOpen={(id) => {
+            setDrawerTab('current');
+            void loadDraft(id);
+          }}
+        />
+      ) : (
+      <>
         {/*
           The trigger phase draws its own column.
 
@@ -1255,8 +1323,20 @@ export function DraftPanel({
                 postType={postType}
                 campaignName={focus?.campaignName}
                 goal={focus?.goal}
+                campaignType={focus?.campaignType}
                 duration={focus?.duration}
                 source={focus?.source}
+                production={focus?.production}
+                platforms={focus?.platforms}
+                onSaveDraft={selectedPlaybookId ? () => void saveAsDraft() : undefined}
+                /*
+                  Only once there is a concept to regenerate — before the first
+                  draft there is nothing to take a second run at, and a live
+                  button that does nothing is the defect this panel has already
+                  had twice.
+                */
+                onRegenerate={draft && selectedPlaybookId ? () => void regenerateConcept() : undefined}
+                concept={draft ? summariseBeats(draft.beats) : undefined}
                 status={draft?.status ?? 'draft'}
                 intent={intent}
                 onIntent={setIntent}
@@ -1706,38 +1786,27 @@ export function DraftPanel({
 
           {phase === 'preview' && draft ? (
             <div className="grid grid-cols-1 gap-4">
-              <div className="rounded-lg border border-border p-4">
-                <p className="whitespace-pre-wrap text-14 text-ink">
-                  {caption(draft, shortUrl) || '(no written copy)'}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  {draft.beats
-                    .filter(
-                      (b) =>
-                        b.kind === 'generated_image' ||
-                        b.kind === 'generated_video' ||
-                        b.kind === 'generated_audio' ||
-                        b.kind === 'generated_broll' ||
-                        b.kind === 'dubbed_media',
-                    )
-                    .map((b) =>
-                      b.kind === 'generated_image' ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={b.beatId} src={b.url} alt={b.prompt} className="max-h-64 rounded object-contain" />
-                      ) : b.kind === 'generated_video' || b.kind === 'generated_broll' ? (
-                        <video key={b.beatId} src={b.url} controls className="max-h-64 rounded" />
-                      ) : b.kind === 'dubbed_media' ? (
-                        b.mediaType === 'video' ? (
-                          <video key={b.beatId} src={b.url} controls className="max-h-64 rounded" />
-                        ) : (
-                          <audio key={b.beatId} src={b.url} controls className="w-full" />
-                        )
-                      ) : (
-                        <audio key={b.beatId} src={b.url} controls className="w-full" />
-                      ),
-                    )}
-                </div>
-              </div>
+              {/*
+                The post as it will appear — the DP prevText design.
+
+                Was a bordered box holding the caption and whichever beats had
+                a media *kind*, which for an auto-illustrated post is none of
+                them. It also never showed the composed file, because the panel
+                only held renders that came back from a compose.render call it
+                had just made — so the thing this phase exists to show was the
+                one thing missing from it.
+              */}
+              <PostPreview
+                draft={draft}
+                caption={caption(draft, shortUrl)}
+                {...(focus?.brandName ? { brandName: focus.brandName } : {})}
+                platforms={draft.platform ? [draft.platform] : []}
+                {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
+                onPublish={() => void publishNow()}
+                onSaveDraft={onClose}
+                busy={busy}
+                {...(renderError ? { error: renderError } : {})}
+              />
 
               {draft.mediaType !== 'text' ? (
                 <div>
@@ -1820,17 +1889,28 @@ export function DraftPanel({
                       ) : null}
                     </div>
                   ) : null}
+                  {/*
+                    The other aspects, not the one above.
+
+                    `compose.render` writes a file per aspect ratio and the
+                    preview card already plays the first — repeating it here
+                    made the same 53-second video appear twice on one screen.
+                    What is worth showing is the 1:1 beside the 9:16, which is
+                    the actual reason there is more than one file.
+                  */}
                   {renders ? (
-                    <div className="mt-2 grid grid-cols-1 gap-2">
-                      {renders.map((r, i) =>
-                        draft.mediaType === 'video' ? (
-                          <video key={`${r.aspect}-${i}`} src={r.url} controls className="max-h-64 rounded" />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img key={`${r.aspect}-${i}`} src={r.url} alt={`${r.aspect} render`} className="max-h-64 rounded object-contain" />
-                        ),
-                      )}
-                    </div>
+                    renders.length > 1 ? (
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        {renders.slice(1).map((r, i) =>
+                          draft.mediaType === 'video' ? (
+                            <video key={`${r.aspect}-${i}`} src={r.url} controls className="max-h-64 rounded" />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={`${r.aspect}-${i}`} src={r.url} alt={`${r.aspect} render`} className="max-h-64 rounded object-contain" />
+                          ),
+                        )}
+                      </div>
+                    ) : null
                   ) : (
                     <p className="mt-1 text-12 text-ink-muted">
                       Not rendered yet — publishing before rendering sends the raw generated clips, not one assembled {draft.mediaType}.
@@ -1908,6 +1988,8 @@ export function DraftPanel({
             )}
           </footer>
         ) : null}
+      </>
+      )}
     </DraftDrawer>
   );
 }
@@ -1997,4 +2079,28 @@ function roleWords(roles: readonly string[]): string {
 /** "a brand kit", "an audio clip" — the article the role's own words need. */
 function aOrAn(words: string): string {
   return `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words}`;
+}
+
+/**
+ * The concept card's words — what the draft actually says.
+ *
+ * `DP image` shows a written concept above the editable prompt. The product has
+ * no separate "concept" field; what it has is the beats `content.draft` wrote,
+ * and their text *is* the concept. Joining the written ones reads as the brief
+ * the card is asking for, and needs no second tool to produce it.
+ */
+function summariseBeats(beats: ResolvedBeat[]): string | undefined {
+  const words = beats
+    .map((b) =>
+      b.kind === 'text'
+        ? b.text
+        : b.kind === 'generated_image' || b.kind === 'generated_broll'
+          ? b.prompt
+          : 'script' in b
+            ? b.script
+            : '',
+    )
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return words.length > 0 ? words.join(' ') : undefined;
 }

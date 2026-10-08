@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { clock, type ResolvedBeat } from './types';
+import { backdropOf, clock, type ResolvedBeat } from './types';
 
 /**
  * The storyboard — `DP video.dc.html`'s scene list and `DP carousel`'s slides.
@@ -273,6 +273,21 @@ function SceneCard({
 
       <p className="mt-[17px] text-18 font-medium leading-[1.28] text-ink">{describe(beat)}</p>
 
+      {/*
+        The footage behind this scene's words.
+
+        A row of thumbnails rather than one, because a long beat is covered by
+        several clips in sequence — the renderer divides the scene between them,
+        so showing only the first would misreport what the scene contains.
+      */}
+      <BackdropStrip beat={beat} />
+      {beat.kind === 'generated_video' || beat.kind === 'generated_broll' ? (
+        <video src={beat.url} controls className="mt-[14px] max-h-[220px] rounded-[10px]" />
+      ) : beat.kind === 'generated_image' ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={beat.url} alt="" className="mt-[14px] max-h-[220px] rounded-[10px] object-contain" />
+      ) : null}
+
       {script === null ? (
         <div className="mt-[19px] rounded-[14.058px] bg-white px-[19px] py-[16px]">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -331,6 +346,30 @@ function SceneCard({
       {open && detail ? (
         <div className="mt-[16px] rounded-[14.058px] bg-white px-[19px] py-[16px]">{detail(beat, index)}</div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A scene's backdrop clips, in the order the renderer plays them.
+ *
+ * Videos get a `<video>` with controls rather than a poster frame: a still of a
+ * generated clip is indistinguishable from a generated image, and the question
+ * this row answers is "what will this scene look like", which needs playing.
+ */
+function BackdropStrip({ beat }: { beat: ResolvedBeat }) {
+  const back = backdropOf(beat);
+  if (!back) return null;
+  return (
+    <div className="mt-[14px] flex flex-wrap gap-[10px]">
+      {back.urls.map((u, i) =>
+        back.kind === 'video' ? (
+          <video key={u + i} src={u} controls className="h-[120px] rounded-[10px] bg-black/5" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={u + i} src={u} alt="" className="h-[120px] rounded-[10px] object-cover" />
+        ),
+      )}
     </div>
   );
 }
@@ -414,7 +453,9 @@ function SlideCard({
   const url =
     beat.kind === 'generated_image' || beat.kind === 'generated_broll' || beat.kind === 'dubbed_media'
       ? beat.url
-      : null;
+      : // A slide whose words kept their place and gained a picture behind them.
+        // The commonest case by far, and the one nothing used to draw.
+        (backdropOf(beat)?.urls[0] ?? null);
   const tint =
     hue === 'hook' ? 'rgba(108,232,255,0.3)' : hue === 'cta' ? 'rgba(31,175,19,0.2)' : 'rgba(131,131,131,0.2)';
 

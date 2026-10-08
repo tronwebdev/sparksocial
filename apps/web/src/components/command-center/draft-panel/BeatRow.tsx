@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
+import { backdropOf, clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
 
 /**
  * One beat, editor phase. What action(s) it offers depends on the draft's
@@ -103,6 +103,7 @@ export function BeatRow({
   const durationValid = duration.trim() !== '' && Number.isFinite(parsedDuration) && parsedDuration >= 0.5;
   const durationDirty = durationValid && parsedDuration !== beat.durationSec;
 
+  const backdrop = backdropOf(beat);
   const Frame = chrome ? 'li' : 'div';
 
   return (
@@ -151,6 +152,28 @@ export function BeatRow({
       ) : null}
       {beat.kind === 'dubbed_media' ? (
         <p className="mt-1 text-12 text-ink-muted">Dubbed into {beat.targetLanguage}.</p>
+      ) : null}
+
+      {/*
+        The backdrop — auto-illustration's output.
+
+        Every branch above tests `kind`, and auto-illustration does not change a
+        beat's kind: it leaves the words in place and attaches the media. So a
+        text beat with a picture behind it fell through all of them and this row
+        showed a textarea and nothing else, for every automatically illustrated
+        post in the library.
+      */}
+      {backdrop ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {backdrop.urls.map((u, i) =>
+            backdrop.kind === 'video' ? (
+              <video key={u + i} src={u} controls className="max-h-48 rounded" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={u + i} src={u} alt="" className="max-h-48 rounded object-contain" />
+            ),
+          )}
+        </div>
       ) : null}
 
       {beat.kind === 'text' ||

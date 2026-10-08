@@ -117,7 +117,15 @@ export function DraftDrawer({
             className="flex h-full w-full overflow-hidden bg-white"
             style={{ borderRadius: '24.38px 10.158px 10.158px 24.38px' }}
           >
-            <PostTypeRail active={postType} onSelect={onPostType} />
+            {/*
+              The list is the one state with no rail.
+
+              `DP list.dc.html` puts its header at x678 — left of the content
+              pane's own x788 — so the list runs the drawer's full width. Which
+              follows: the rail picks what *this* post is, and the list is not
+              one post.
+            */}
+            {tab === 'list' ? null : <PostTypeRail active={postType} onSelect={onPostType} />}
 
             <div className="flex min-w-0 flex-1 flex-col">
               <DrawerTabs tab={tab} onTab={onTab} />
@@ -221,7 +229,7 @@ function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next:
 }
 
 /** The four rail glyphs, drawn rather than imported — each is a few lines. */
-function TypeIcon({ type, active }: { type: PostType; active: boolean }) {
+export function TypeIcon({ type, active }: { type: PostType; active: boolean }) {
   const stroke = active ? 'var(--ss-ink-900)' : 'var(--ss-ink-500)';
   const common = { width: 26, height: 26, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: 1.6 } as const;
   if (type === 'image') {

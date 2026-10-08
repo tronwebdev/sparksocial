@@ -45,8 +45,17 @@ export const MAX_EXTRACTED = 25;
  * Matched on the heading text, not on position, because the section sits
  * wherever the author put it. Deliberately narrow: a heading has to be *about*
  * prohibition, or every "What we do not offer" list becomes a publishing rule.
+ * Which is why the verbs are all about *speech* — say, claim, use, avoid. "We
+ * do not say" is a rule; "we do not offer" is a menu.
+ *
+ * The first set missed **"Things we do not say"**, which is about as plain as
+ * that heading gets: it required the word "never" or the word "claim", so a
+ * brand whose knowledge base spelled its own prohibitions out under that
+ * heading had every one of them ignored. Caught by attaching a real document
+ * and reading `restrictionsAdded` back — it was empty, and nothing had failed.
  */
-const SECTION = /^[#*\s]*(never (claim|say)|must not (claim|say)|things we (must )?never|do not claim|prohibit)/i;
+const SECTION =
+  /^[#*\s]*(never (claim|say|use)|must not (claim|say|use)|things we (must )?never|things we (do not|don'?t) (say|use)|(do not|don'?t) (claim|say)|words we (avoid|never use)|banned (phrase|word)|restricted (topic|phrase)|prohibit)/i;
 
 /** `**We do not say:** "a", "b"` — the inline form, which needs no heading. */
 const INLINE = /\*{0,2}we (do not|don't|never) say:?\*{0,2}\s*(.+)/i;

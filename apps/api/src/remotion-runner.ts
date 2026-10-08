@@ -6,6 +6,7 @@ import { bundle } from '@remotion/bundler';
 import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { ToolError } from '@sparksocial/shared';
 import type { RenderRunner } from '@sparksocial/compose';
+import { envNum } from './env.js';
 
 /**
  * REMOTION, ACTUALLY EXECUTED — plan §6.5's `compose.render`.
@@ -52,6 +53,35 @@ import type { RenderRunner } from '@sparksocial/compose';
  */
 const BROWSER = process.env.CHROMIUM_PATH ? { browserExecutable: process.env.CHROMIUM_PATH } : {};
 
+/**
+ * How long a frame may wait on the media it is drawing.
+ *
+ * Remotion's default is 28 seconds, and a backdrop is a clip on a vendor CDN —
+ * `<Html5Video>` has to fetch the whole file before it can draw frame zero. Five
+ * generated clips over an ordinary connection blow through 28s routinely, and
+ * the render fails with `A delayRender() ... was called but not cleared`, which
+ * names the symptom and not the cause. Observed: a 37-second post with five
+ * clips failed at exactly 28s on the first one, having already been illustrated
+ * and narrated at real cost.
+ *
+ * Two minutes was chosen against one clip: the generator caps a clip at ten
+ * seconds, so the largest file fetched is a few megabytes, and a connection that
+ * cannot manage that in two minutes is broken rather than slow.
+ *
+ * That reasoning was wrong, and it took a six-clip post to show why. The timeout
+ * is per `delayRender` handle, but the handles are not serial — every clip in the
+ * post starts fetching at once and they share one connection. The per-clip budget
+ * is therefore the whole budget divided by however many clips the post happens to
+ * have, which is exactly backwards: the posts that need the most patience get the
+ * least. Six clips failed at 118s on the first one, already illustrated and
+ * narrated at real cost, for the second time in a day.
+ *
+ * Five minutes, and tunable, because the right number is a property of the
+ * connection and the post, not of this file. It is a ceiling on a hang, not a
+ * budget anyone is meant to spend: a healthy fetch still finishes in seconds.
+ */
+const MEDIA_TIMEOUT_MS = envNum('REMOTION_MEDIA_TIMEOUT_MS', 300_000);
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const COMPOSITION_ENTRY = join(__dirname, '../../../packages/compose/src/composition.ts');
 
@@ -94,16 +124,38 @@ export function createRemotionRunner(opts: RemotionRunnerOptions = {}): RenderRu
     const serveUrl = await getBundle();
     // `selectComposition` opens a browser too — it evaluates the bundle to read
     // the composition's declared dimensions and duration.
-    const composition = await selectComposition({ serveUrl, id: 'beats', inputProps, ...BROWSER });
+    const composition = await selectComposition({
+      serveUrl,
+      id: 'beats',
+      inputProps,
+      timeoutInMilliseconds: MEDIA_TIMEOUT_MS,
+      ...BROWSER,
+    });
 
     const workDir = await mkdtemp(join(tmpdir(), 'spark-compose-'));
     try {
       const outputLocation = join(workDir, mode === 'video' ? 'out.mp4' : 'out.png');
 
       if (mode === 'video') {
-        await renderMedia({ composition, serveUrl, codec: 'h264', outputLocation, inputProps, ...BROWSER });
+        await renderMedia({
+          composition,
+          serveUrl,
+          codec: 'h264',
+          outputLocation,
+          inputProps,
+          timeoutInMilliseconds: MEDIA_TIMEOUT_MS,
+          ...BROWSER,
+        });
       } else {
-        await renderStill({ composition, serveUrl, output: outputLocation, inputProps, frame: 0, ...BROWSER });
+        await renderStill({
+          composition,
+          serveUrl,
+          output: outputLocation,
+          inputProps,
+          frame: 0,
+          timeoutInMilliseconds: MEDIA_TIMEOUT_MS,
+          ...BROWSER,
+        });
       }
 
       return opts.publish ? await opts.publish(outputLocation, mode) : `file://${outputLocation}`;

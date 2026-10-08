@@ -30,8 +30,23 @@ export const ContentGenerateBrollInput = z.object({
   beatId: z.string().min(1),
   prompt: z.string().min(1).max(1_000),
   aspectRatio: z.string().default('9:16'),
-  /** fal's video models take a target duration; short b-roll clips only — see the client's own ceiling. */
-  durationSec: z.number().min(1).max(10).default(5),
+  /**
+   * Target clip length.
+   *
+   * The ceiling is 60 rather than 10 because 10 was one vendor's limit written
+   * into the contract of the tool. `apps/api`'s client is where a model's
+   * allowed lengths actually live (`FAL_VIDEO_DURATIONS`, which snaps the
+   * request to something the endpoint accepts) and where the caller's own
+   * ceiling lives (`FAL_VIDEO_MAX_CLIP_SEC`). With 10 here, pointing the deploy
+   * at Seedance — which takes four to thirty seconds — got the longest beat of
+   * a post refused at the schema with `Number must be less than or equal to 10`
+   * while the short beats around it generated fine: a post illustrated
+   * everywhere except the scene it is actually about.
+   *
+   * A bound still belongs here, because an unbounded number is money. Sixty is
+   * a sanity limit on a single clip, not a claim about any model.
+   */
+  durationSec: z.number().min(1).max(60).default(5),
 });
 
 export const ContentGenerateBrollOutput = z.object({

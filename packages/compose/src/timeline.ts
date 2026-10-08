@@ -54,7 +54,8 @@ export interface LowerThird {
 export type TimedBeat =
   | ({ kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
   | ({ kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
-  | ({ kind: 'text'; beatId: string; durationSec: number; text: string } & LowerThird & Backdrop)
+  | ({ kind: 'text'; beatId: string; durationSec: number; text: string; voiceoverUrl?: string } & LowerThird &
+      Backdrop)
   /** A narration track meant to underlay the composition, not its own visual slot — see the module comment on `generated_audio`. */
   | { kind: 'audio'; beatId: string; durationSec: number; url: string };
 
@@ -80,6 +81,19 @@ export function zipTimeline(args: {
   resolvedBeats: ResolvedBeat[];
   playbookBeats: Array<{ id: string; duration_sec: number }>;
   assetInfo: Record<string, AssetLookup>;
+  /**
+   * What is being made, because it decides whether the copy is burned in.
+   *
+   * A text beat is the post's copy, and the composer drew it at 64px over
+   * whatever backdrop the beat had. On a video that is a caption card and
+   * reads correctly. On an *image* post it is the whole caption printed across
+   * the photograph — the same words the platform will show underneath it, set
+   * over the picture they were meant to accompany.
+   *
+   * Optional so an older caller keeps the previous behaviour rather than
+   * silently losing its overlays.
+   */
+  mediaType?: 'video' | 'image' | 'carousel' | 'text';
 }): TimedBeat[] {
   const durationByBeatId = new Map(args.playbookBeats.map((b) => [b.id, b.duration_sec]));
 
@@ -119,13 +133,45 @@ export function zipTimeline(args: {
     }
 
     if (beat.kind === 'text') {
+      /*
+       * Whether these words belong on the picture.
+       *
+       * Only when there is no picture, or when the format is one whose words
+       * are *in* the frame. A still post's copy is its caption — the platform
+       * prints it under the image — so burning it across the photograph shows
+       * the same sentence twice and ruins the picture to do it.
+       */
+      const stillWithPicture =
+        beat.backdrop !== undefined && (args.mediaType === 'image' || args.mediaType === 'carousel');
+
+      /*
+       * A narrated beat does not also print its narration.
+       *
+       * This used to read "a video has no caption on screen, so its beats are
+       * captions and stay", which was true right up until the narration pass
+       * existed. Now the same sentence is spoken *and* set across the frame at
+       * 64px over a darkened picture — a forty-second paragraph rendered as a
+       * wall of type that hides the footage it was generated to sit on. Watched
+       * it happen on a three-beat post where all three beats were narrated: the
+       * video was, end to end, text on a dimmed background with a voice reading
+       * it out.
+       *
+       * Burned-in captions are a real format, but they are time-synced to the
+       * speech a few words at a time, and nothing here has word timings. The
+       * whole paragraph at once is not that format; it is the absence of one.
+       * Until timings exist, the voice carries the words and the picture gets
+       * the frame.
+       */
+      const spokenAloud = beat.voiceoverUrl !== undefined && beat.backdrop !== undefined;
+
       return {
         kind: 'text',
         beatId: beat.beatId,
         durationSec,
-        text: beat.text,
+        text: stillWithPicture || spokenAloud ? '' : beat.text,
         ...lower,
         ...(beat.backdrop ? { backdrop: beat.backdrop } : {}),
+        ...(beat.voiceoverUrl ? { voiceoverUrl: beat.voiceoverUrl } : {}),
       };
     }
 

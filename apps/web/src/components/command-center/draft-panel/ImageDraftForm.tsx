@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { PostType } from './DraftDrawer';
+import { TypeIcon, type PostType } from './DraftDrawer';
 import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
 import { clock, type ResolvedBeat } from './types';
 
@@ -32,23 +32,25 @@ import { clock, type ResolvedBeat } from './types';
  *   chips         y949 · 18/500 · #838383
  *   actions       y1026 · "Generate Post" 190x43 r8.46 ink; "Save as Draft" right
  *
- * ── The one row that is missing, deliberately ─────────────────────────────
+ * ── Where the card's data comes from ──────────────────────────────────────
  *
- * The card also carries three 30px circles at y275 and four status chips rather
- * than one. Both describe collaborators and a per-post pipeline this product
- * does not have: there is no data behind either, and filling four slots with
- * states nothing can ever reach is decoration that reads as information. The
- * card keeps its measured 240px height regardless, so every row below it lands
- * where the design puts it, and shows the status the draft genuinely carries.
+ * Everything the design draws here is a fact about the *calendar*, not about
+ * this draft, so the opener supplies it. The four chips are the four post types
+ * in the rail and what each is doing on this date; the circles at y275 read as
+ * collaborators in the design and a draft has none, so they show the accounts
+ * that date is posting to — the nearest true thing, and real data either way.
+ *
+ * All of it was read as "a pipeline this product does not have" on the first
+ * pass and left as a single chip, which is what made this card look emptier
+ * than the design. `CalendarBoard` had every value already.
  *
  * ── "Regenerate concept" and "Save as Draft" ──────────────────────────────
  *
- * Both are props, and the trigger phase passes neither, because at that point
- * neither has anything to do. There is no concept to regenerate until a draft
- * exists, and "Generate Post" *is* the save — it calls `content.draft`, which
- * writes copy and nothing else. A second button running the same tool would be
- * a control that looks like a choice and is not one. A phase that can tell them
- * apart passes the handlers and both appear.
+ * Both are props, so a phase that has nothing for them to do passes neither and
+ * they do not render — that is the rule this file follows for every control.
+ * The trigger phase now passes both, because both have a job there: Generate
+ * Post drafts and opens the editor, Save as Draft drafts and closes the drawer,
+ * and Regenerate concept rewrites the brief from the same intent.
  */
 
 export interface ImageDraftFormProps {
@@ -59,6 +61,16 @@ export interface ImageDraftFormProps {
   duration?: string;
   source?: string;
   status: string;
+  /**
+   * What each post type is doing on this date — the design's four chips.
+   *
+   * One entry per type in the rail, in the rail's order. Supplied by whoever
+   * opened the panel, because it is a fact about the *calendar* and not about
+   * this draft; absent collapses the row to the draft's own status.
+   */
+  production?: Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }>;
+  /** The accounts this date is posting to — the design's circles at y275. */
+  platforms?: string[];
   intent: string;
   onIntent: (next: string) => void;
   concept?: string;
@@ -128,6 +140,8 @@ export function ImageDraftForm({
   campaignType,
   duration,
   source,
+  production,
+  platforms,
   status,
   intent,
   onIntent,
@@ -175,15 +189,63 @@ export function ImageDraftForm({
           {campaignName ?? 'This post'}
         </h2>
 
-        <dl className="mt-[17px] flex flex-wrap items-baseline gap-x-[19px] gap-y-[8px]">
+        {/*
+          Three columns, not a packed row.
+
+          The design's facts start at x843, x1013 and x1180 — a fixed ~168px
+          pitch — so they line up whatever the values say. Built as a flex row
+          with a gap first, which looked right with the design's copy and
+          bunched everything against the left edge the moment a real campaign
+          had a short objective.
+        */}
+        <dl className="mt-[17px] grid grid-cols-[168px_167px_1fr] gap-y-[8px]">
           <Fact label="Goal" value={goal} />
           <Fact label="Type" value={campaignType} />
           <Fact label="Duration" value={duration} />
         </dl>
 
-        {/* Pinned to the card's foot — y326 in the design, 18px above its edge. */}
+        {/*
+          The circles at y275 — 30px, r50%, #F8F8F8, 44px pitch.
+
+          They read as collaborators in the design, and a draft has none. What
+          this date *does* have is the accounts its posts are going to, which
+          the calendar knows slot by slot — so the row shows the channels this
+          post will land on. Absent when the day has no platform chosen yet,
+          which `content.list` treats as a real state rather than a blank.
+        */}
+        {platforms && platforms.length > 0 ? (
+          <div className="mt-[16px] flex items-center gap-[14px]">
+            {platforms.slice(0, 4).map((p) => (
+              <span
+                key={p}
+                title={p}
+                className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-11 font-semibold uppercase text-ink-muted"
+                style={{ background: 'var(--ss-surface-100)' }}
+              >
+                {p.slice(0, 2)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {/*
+          Pinned to the card's foot — y326 in the design, 18px above its edge.
+
+          The design draws four chips: "Generating", "Completed", "No post",
+          "No post". They are the four post types in the rail, and what each one
+          is doing on this date — which the calendar already knows, slot by
+          slot. When the caller has no such view (a post opened from somewhere
+          with no campaign behind it) the row falls back to the one status this
+          draft genuinely carries, rather than four slots of invention.
+        */}
         <div className="mt-auto flex flex-wrap items-center gap-[6px] pt-[24px]">
-          <StatusChip label={statusLabel(status)} tone={statusTone(status)} />
+          {production && production.length > 0 ? (
+            production.map((p) => (
+              <StatusChip key={p.label} label={p.state} tone={p.tone} type={p.label as PostType} />
+            ))
+          ) : (
+            <StatusChip label={statusLabel(status)} tone={statusTone(status)} />
+          )}
         </div>
       </section>
 
@@ -359,13 +421,17 @@ export function ImageDraftForm({
   );
 }
 
-/** `Goal - Get more leads` — label #838383 16/400, value ink 14/600, 4px apart. */
+/**
+ * `Goal - Get more leads` — label #838383 16/400, value ink 14/600, 5px apart.
+ *
+ * Renders its column even with no value, so the three stay aligned; an absent
+ * fact shows an em dash rather than collapsing and dragging the next one left.
+ */
 function Fact({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
   return (
     <div className="flex items-baseline gap-[5px]">
       <dt className="text-16 text-ink-muted">{label} -</dt>
-      <dd className="text-14 font-semibold text-ink">{value}</dd>
+      <dd className="text-14 font-semibold text-ink">{value ?? '—'}</dd>
     </div>
   );
 }
@@ -502,21 +568,38 @@ function ChipMark({ mark }: { mark: ChipMarkKind }) {
  * (#13D711). The token wins: one green for one meaning beats a second green
  * that exists only on this panel.
  */
-function StatusChip({ label, tone }: { label: string; tone: 'work' | 'done' | 'idle' }) {
+function StatusChip({
+  label,
+  tone,
+  type,
+}: {
+  label: string;
+  tone: 'work' | 'done' | 'idle';
+  type?: PostType;
+}) {
   return (
     <span
       className={cn(
         'flex h-[35px] items-center gap-[7px] rounded-[7.776px] bg-white/[0.62] px-[14px] text-14 font-medium',
         tone === 'done' ? 'text-success' : tone === 'work' ? 'text-ink' : 'text-ink-muted',
       )}
+      // Four chips reading "No post" are indistinguishable without it. The
+      // design gives each one a leading glyph and this is which type it is.
+      title={type ? `${type[0]!.toUpperCase()}${type.slice(1)}` : undefined}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'h-[9px] w-[9px] rounded-full',
-          tone === 'done' ? 'bg-success' : tone === 'work' ? 'bg-ink' : 'bg-ink-muted',
-        )}
-      />
+      {type ? (
+        <span className="shrink-0 [&>svg]:h-[17px] [&>svg]:w-[17px]">
+          <TypeIcon type={type} active={tone !== 'idle'} />
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            'h-[9px] w-[9px] rounded-full',
+            tone === 'done' ? 'bg-success' : tone === 'work' ? 'bg-ink' : 'bg-ink-muted',
+          )}
+        />
+      )}
       {label}
     </span>
   );

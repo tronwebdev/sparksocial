@@ -163,6 +163,62 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
           deps.infer,
         );
 
+        /*
+         * One genome per brand — the same rule `genome.create` states and
+         * follows.
+         *
+         * This always created a new one, so a brand that already had a genome
+         * ended up with two and every later `listForOrg` lookup picked whichever
+         * sorted first. `brand.create` pairs an empty genome with each new
+         * brand, so onboarding's crawl path hit that on its very first run:
+         * a brand, its empty genome, and then a second genome holding
+         * everything the crawl had just learned.
+         *
+         * Reusing patches the three parts the crawl produces onto the genome
+         * the brand already has. A brand that genuinely has none still gets one
+         * created below.
+         */
+        const identity = {
+          business_name: inferred.identity.businessName,
+          category: inferred.identity.category,
+          ...(inferred.identity.subCategory ? { sub_category: inferred.identity.subCategory } : {}),
+          one_liner: inferred.identity.oneLiner,
+          geography: {
+            scope: inferred.identity.geography.scope,
+            locale: inferred.identity.geography.locale,
+            radius_km: inferred.identity.geography.radiusKm,
+          },
+          languages: inferred.identity.languages,
+          price_tier: inferred.identity.priceTier,
+        };
+
+        const existing = (await ctx.db.genomes.listForOrg(ctx.orgId)).find((g) => g.brandId === input.brandId);
+        if (existing) {
+          await ctx.db.genomes.patchIdentity({ genomeId: existing.id, orgId: ctx.orgId, identity });
+          await ctx.db.genomes.patchDimensions({
+            genomeId: existing.id,
+            orgId: ctx.orgId,
+            dimensions: inferred.dimensions,
+            /*
+             * The same derivation `genome.dimensions.set` makes: a synthetic
+             * presenter is allowed only where there is a person to present and
+             * they have licensed their likeness. A crawl can suggest the first
+             * and can never establish the second, so this is false here and the
+             * questions screen is where it can become true.
+             */
+            avatarEnabled: false,
+          });
+          await ctx.db.genomes.patchVoice({ genomeId: existing.id, orgId: ctx.orgId, voice: inferred.voice });
+
+          ctx.logger.info('genome drafted onto the brand’s existing genome', {
+            brandId: input.brandId,
+            genomeId: existing.id,
+            pages: pages.length,
+          });
+
+          return bootstrapOutput(input, existing.id, inferred, pages);
+        }
+
         const draft = await ctx.db.genomes.createDraft({
           brandId: input.brandId,
           orgId: ctx.orgId,
@@ -172,19 +228,7 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
           // snake_case). Passing the inference result straight through used
           // to hand the repository a `business_name`-shaped field that was
           // simply never present on the object it received.
-          identity: {
-            business_name: inferred.identity.businessName,
-            category: inferred.identity.category,
-            ...(inferred.identity.subCategory ? { sub_category: inferred.identity.subCategory } : {}),
-            one_liner: inferred.identity.oneLiner,
-            geography: {
-              scope: inferred.identity.geography.scope,
-              locale: inferred.identity.geography.locale,
-              radius_km: inferred.identity.geography.radiusKm,
-            },
-            languages: inferred.identity.languages,
-            price_tier: inferred.identity.priceTier,
-          },
+          identity,
           dimensions: inferred.dimensions,
           voice: inferred.voice,
           source: 'inference',
@@ -220,4 +264,36 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
     });
   },
   });
+}
+
+/**
+ * The crawl's answer, whichever genome it landed on.
+ *
+ * Shared so the reuse branch and the create branch cannot drift: they differ
+ * only in which genome id they name, and a second hand-written copy of this
+ * object is how one of them would quietly stop returning `chips` or `why`.
+ */
+function bootstrapOutput(
+  input: { url: string },
+  draftGenomeId: string,
+  inferred: Awaited<ReturnType<typeof inferGenome>>,
+  pages: Array<{ url: string; title: string }>,
+) {
+  return {
+    draftGenomeId,
+    identity: inferred.identity,
+    dimensions: inferred.dimensions,
+    chips: [...inferred.chips].sort((a, b) => a.confidence - b.confidence),
+    unresolved: inferred.unresolved,
+    why: {
+      summary: `Read ${pages.length} pages from ${new URL(input.url).hostname} and inferred the profile.`,
+      factors: inferred.factors,
+      evidence: pages.slice(0, 5).map((p) => ({
+        kind: 'knowledge_chunk' as const,
+        id: p.url,
+        note: p.title,
+      })),
+      alternatives: inferred.alternatives,
+    },
+  };
 }

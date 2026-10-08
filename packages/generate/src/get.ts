@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ContentStatus, Explanation, GenerationMode, Platform, ToolError } from '@sparksocial/shared';
 import { byId } from '@sparksocial/playbooks';
-import { ResolvedBeat } from './draft.js';
+import { normaliseBackdrop, ResolvedBeat } from './draft.js';
 
 /**
  * `content.get` — reads a draft back by id.
@@ -86,6 +86,28 @@ export const ContentGetOutput = z.object({
   /** `DISC-02`'s A/B group, when this draft is an arm — so the panel can say so rather than looking like an ordinary post. */
   variantGroupId: z.string().optional(),
   variantLabel: z.string().optional(),
+  /**
+   * The files `compose.render` has already made for this post.
+   *
+   * Absent from this read until now, and the Draft Panel paid for it: its
+   * preview held renders in state that only `compose.render`'s own response
+   * ever filled, so reopening a post that the render queue had already composed
+   * showed no video and offered a Render button — a second charge for a file
+   * sitting in the table. Read here rather than from a second tool because
+   * every caller that wants the beats wants to know whether they have been
+   * rendered.
+   */
+  renders: z.array(z.object({ aspect: z.string(), url: z.string(), engine: z.string() })),
+  /**
+   * When this post goes out, if it has a slot.
+   *
+   * On the row since drafts were first scheduled and never returned by this
+   * read, so the preview — the screen whose whole job is "this is what goes
+   * out" — could not say when. `content.list` returned it; the single read did
+   * not, which is the sort of gap that shows up as a blank line in a UI rather
+   * than as an error anywhere.
+   */
+  scheduledAt: z.string().optional(),
 });
 
 export const contentGet = defineTool({
@@ -122,6 +144,18 @@ export const contentGet = defineTool({
     const mediaType = playbook?.output.media_type ?? 'text';
     const band = playbook?.output.duration_sec;
 
+    /*
+     * Newest first, one per aspect.
+     *
+     * `compose.render` writes a row per aspect ratio and a re-render adds more
+     * rather than replacing, so the table holds every take ever made. The
+     * preview wants the current one, which is the newest of each aspect —
+     * showing all of them would be a gallery of supplanted versions.
+     */
+    const all = await ctx.db.content.listRenders(input.contentItemId, input.genomeId, ctx.orgId).catch(() => []);
+    const newestPerAspect = new Map<string, (typeof all)[number]>();
+    for (const r of all) if (!newestPerAspect.has(r.aspect)) newestPerAspect.set(r.aspect, r);
+
     return {
       contentItemId: draft.id,
       playbookId: draft.playbookId,
@@ -143,7 +177,8 @@ export const contentGet = defineTool({
       mediaType,
       status: draft.status,
       ...(draft.campaignId ? { campaignId: draft.campaignId } : {}),
-      beats: parsed.success ? parsed.data : [],
+      // Folded to one backdrop shape so the panel never meets the legacy pair.
+      beats: parsed.success ? parsed.data.map(normaliseBackdrop) : [],
       // Stored bare; the `#` is added at the one place that renders them.
       hashtags: (draft.hashtags ?? []).map((t) => `#${t}`),
       ...(band ? { durationBand: [band[0], band[1]] as [number, number] } : {}),
@@ -157,6 +192,12 @@ export const contentGet = defineTool({
       ...(draft.lastPublishError ? { lastPublishError: draft.lastPublishError } : {}),
       ...(draft.variantGroupId ? { variantGroupId: draft.variantGroupId } : {}),
       ...(draft.variantLabel ? { variantLabel: draft.variantLabel } : {}),
+      ...(draft.scheduledAt ? { scheduledAt: draft.scheduledAt.toISOString() } : {}),
+      renders: [...newestPerAspect.values()].map((r) => ({
+        aspect: r.aspect,
+        url: r.storageUrl,
+        engine: r.engine,
+      })),
     };
   },
 });

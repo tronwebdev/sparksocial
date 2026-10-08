@@ -21,6 +21,7 @@ import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
 import { embedClient } from './embed-client.js';
+import { sceneBrief } from './scene-brief.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
 import { startRenderQueue } from './render-queue.js';
@@ -457,6 +458,9 @@ const renderQueue = pg
         // Auto-illustration's asset lookup. See `auto-illustrate.ts`: the
         // brand's own pictures first, generated ones only where it has none.
         embed: embedClient(),
+        // Turns a beat into a shot description before it reaches a generator —
+        // see scene-brief.ts on what was being sent instead.
+        sceneBrief: sceneBrief(),
       },
       envNum('RENDER_QUEUE_INTERVAL_MS', 300_000),
     )

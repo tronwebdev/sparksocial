@@ -100,8 +100,8 @@ export function makeComposeRender(deps: ComposeDeps) {
       const assetIds = resolvedBeats.filter((b): b is Extract<ResolvedBeat, { kind: 'asset' }> => b.kind === 'asset').map((b) => b.assetId);
       const assetInfo = assetIds.length ? await ctx.db.assets.info(assetIds, input.genomeId, ctx.orgId) : {};
 
-      const timeline = zipTimeline({ resolvedBeats, playbookBeats: playbook.structure.beats, assetInfo });
       const mediaType = playbook.output.media_type;
+      const timeline = zipTimeline({ resolvedBeats, playbookBeats: playbook.structure.beats, assetInfo, mediaType });
 
       if (mediaType === 'text') {
         return {

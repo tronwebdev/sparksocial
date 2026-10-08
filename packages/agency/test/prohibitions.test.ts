@@ -152,3 +152,59 @@ describe('extractProhibitions — PDF-extracted text', () => {
     for (const p of out.bannedPhrases) expect(p).not.toMatch(/saturday|11am/i);
   });
 });
+
+/**
+ * "Things we do not say" — as plain as a prohibition heading gets, and the
+ * pattern missed it. It demanded the word "never" or the word "claim", so a
+ * brand that wrote its rules under that heading had every one of them ignored.
+ *
+ * Found by attaching a real knowledge base and reading `restrictionsAdded`
+ * back: it was empty, and nothing had failed or logged a thing.
+ */
+describe('extractProhibitions — headings people actually write', () => {
+  const body = [
+    'Things we do not say',
+    '',
+    '- Never call our work "artisan" or "bespoke". We are a workshop.',
+    '- Never describe a repair as "like new".',
+    '- No medical claims.',
+    '',
+    'Proof we can show',
+    '',
+    '- The workshop itself.',
+  ].join('\n');
+
+  it('reads a section headed “Things we do not say”', () => {
+    const out = extractProhibitions(body);
+    expect(out.bannedPhrases).toEqual(expect.arrayContaining(['artisan', 'bespoke', 'like new']));
+    expect(out.claimsToAvoid.length).toBeGreaterThan(0);
+  });
+
+  it('stops at the next heading rather than swallowing the rest', () => {
+    const out = extractProhibitions(body);
+    expect(out.claimsToAvoid.join(' ')).not.toContain('workshop itself');
+  });
+
+  for (const heading of [
+    'Words we avoid',
+    'Banned phrases',
+    'Restricted topics',
+    "Things we don't say",
+    'Do not say',
+  ]) {
+    it(`recognises “${heading}”`, () => {
+      const out = extractProhibitions(`${heading}\n\n- Never say "guaranteed".\n`);
+      expect(out.bannedPhrases).toContain('guaranteed');
+    });
+  }
+
+  /**
+   * The narrowness is the point: a menu is not a publishing rule. "We do not
+   * offer" lists what the business does not sell, and turning that into banned
+   * phrases would stop it writing about its own products.
+   */
+  it('still ignores a section about what the business does not sell', () => {
+    const out = extractProhibitions('What we do not offer\n\n- We do not offer "carbon repair".\n');
+    expect(out.bannedPhrases).not.toContain('carbon repair');
+  });
+});

@@ -148,7 +148,49 @@ const beatShape = {
       urls: z.array(z.string()).min(1).max(8),
     })
     .optional(),
+  /**
+   * The same backdrop, in the one-clip shape written before `urls` existed.
+   *
+   * Declared so a row drafted then survives being read. Zod strips unknown keys,
+   * so without these two the flat pair was dropped the moment the beat was
+   * parsed — the picture stayed in the column, every consumer saw a beat with no
+   * media, and the Draft Panel showed illustrated posts as plain text. Seventeen
+   * beats on the current database are in this shape.
+   *
+   * Nothing writes them any more: `normaliseBackdrop` folds them into `backdrop`
+   * on the way out, so callers only ever deal with one shape.
+   */
+  backdropUrl: z.string().optional(),
+  backdropKind: z.enum(['image', 'video']).optional(),
+  /**
+   * Narration for this beat's words, played over it.
+   *
+   * Attached rather than replacing, for the same reason as `backdrop`.
+   * `content.generate_voiceover` *replaces* the beat with a `generated_audio`
+   * one, which is right when somebody asks to narrate a specific scene and
+   * useless as an automatic step: it throws the words away, so the scene loses
+   * both its copy and its picture and becomes a sound with no visual.
+   *
+   * Without this a `pb_voice_over_broll` post — a format whose name is the
+   * thing it does — rendered as silent b-roll with a paragraph printed across
+   * it. The footage has no audio of its own either; fal's clips are silent.
+   */
+  voiceoverUrl: z.string().optional(),
 };
+
+/**
+ * One backdrop shape, whichever way the beat was written.
+ *
+ * Called wherever beats are read back, so the flat legacy pair never escapes
+ * into code that only knows about `backdrop`.
+ */
+export function normaliseBackdrop<T extends { backdrop?: { kind: 'image' | 'video'; urls: string[] }; backdropUrl?: string; backdropKind?: 'image' | 'video' }>(
+  beat: T,
+): T {
+  if (beat.backdrop || !beat.backdropUrl) return beat;
+  const { backdropUrl, backdropKind, ...rest } = beat;
+  return { ...rest, backdrop: { kind: backdropKind ?? 'image', urls: [backdropUrl] } } as T;
+}
 
 export const ResolvedBeat = z.discriminatedUnion('kind', [
   z.object({

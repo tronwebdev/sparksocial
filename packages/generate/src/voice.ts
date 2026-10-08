@@ -36,6 +36,19 @@ export const ContentGenerateVoiceoverInput = z.object({
    * per call; omit it to use whatever the scene was set to.
    */
   useClonedVoice: z.boolean().optional(),
+  /**
+   * Narrate the beat instead of becoming it.
+   *
+   * The default replaces the beat with a `generated_audio` one, which is right
+   * when somebody asks to narrate a specific scene: they want the sound, and
+   * the scene was a placeholder for it. It is useless as an automatic step,
+   * because it throws the words away — the scene loses its copy *and* whatever
+   * picture it had, and turns into a sound with no visual.
+   *
+   * With this, the beat keeps its words and its backdrop and gains a narration
+   * track played over it, which is what "voice-over b-roll" actually means.
+   */
+  attach: z.boolean().optional(),
 });
 
 export const ContentGenerateVoiceoverOutput = z.object({
@@ -136,7 +149,17 @@ export function makeContentGenerateVoiceover(voice: VoiceClient) {
       const { url } = await voice.generate({ voiceId, script: input.script });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_audio', beatId: input.beatId, url, script: input.script };
+      /*
+       * Attach or replace — see `attach` on the input.
+       *
+       * Attaching keeps the whole beat and adds the track, so a copy beat with
+       * a backdrop ends up as words, picture and narration together. Replacing
+       * is the original behaviour and stays the default, because a caller that
+       * asked for a scene to *become* a voiceover still means that.
+       */
+      nextBeats[index] = input.attach
+        ? { ...beats[index]!, voiceoverUrl: url }
+        : { ...keepStructure(beats[index]!), kind: 'generated_audio', beatId: input.beatId, url, script: input.script };
 
       const why: Explanation = {
         summary: `Narrated "${input.beatId}" in ${

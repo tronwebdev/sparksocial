@@ -269,22 +269,40 @@ async function captionDocument(
         },
       ],
     });
-  } catch {
+  } catch (e) {
     /**
      * A PDF has no second vendor.
      *
-     * `modelClient`'s fallback retries on the OpenAI shim, and that shim maps
-     * only `text` and `image` blocks (`packages/shared/src/openaiMessages.ts`)
-     * — a `document` block reaches it as an unrecognised part and comes back
-     * 400. So when the primary vendor cannot serve the call, a PDF that
-     * uploaded fine would otherwise fail to become an asset at all.
+     * `modelClient`'s fallback retries on the OpenAI shim, and that shim
+     * translates only `text` and `image` blocks
+     * (`packages/shared/src/openaiMessages.ts`) — it now refuses a `document`
+     * block by name rather than emitting it as a malformed image part. So when
+     * the primary vendor cannot serve the call, a PDF that uploaded fine would
+     * otherwise fail to become an asset at all.
      *
      * Same posture as `describeSilence`: state what is actually known — the
      * filename — rather than either inventing a description or refusing the
      * file. It embeds narrowly, which means the asset is findable by its name
      * and not much else, and that is the truth about it. Re-captioning it
      * properly is `asset.caption.set`.
+     *
+     * ── Why this logs ─────────────────────────────────────────────────────
+     *
+     * It used to be a bare `catch {}`. Every PDF in the library carried the
+     * "not read" caption and there was no way to find out why — the vendor's
+     * reason was discarded at the moment it arrived. Two brands' knowledge
+     * bases sat unindexed for days looking exactly like a model that had
+     * declined to describe them, and the actual cause (the primary vendor
+     * rejecting the account outright, then the fallback rejecting the block)
+     * could only be recovered by reproducing the call by hand.
+     *
+     * The caption stays the same. The difference is that the operator can now
+     * tell a disabled account from an unreadable file.
      */
+    console.warn('[warn] document caption unavailable — storing the filename only, contents not indexed', {
+      url,
+      detail: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+    });
     return describeUnread(url);
   }
 

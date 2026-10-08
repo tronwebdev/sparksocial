@@ -213,3 +213,84 @@ describe('CarouselStoryboard', () => {
     ).toContain('Edit slide');
   });
 });
+
+/**
+ * Auto-illustration attaches media to a beat instead of replacing it, so an
+ * illustrated post's beats keep `kind: 'text'` and carry the picture alongside.
+ * Every render path tested `kind`, so those posts displayed as plain words —
+ * seventeen beats' worth on the current database, all of them with a URL sitting
+ * in the column.
+ */
+describe('backdrops', () => {
+  it('shows a picture attached to a text beat', () => {
+    const out = html(
+      createElement(VideoStoryboard, {
+        beats: [
+          {
+            kind: 'text',
+            beatId: 'a',
+            text: 'Weekend pastries.',
+            durationSec: 4,
+            backdrop: { kind: 'image', urls: ['https://example.test/one.jpg'] },
+          },
+        ],
+      }),
+    );
+
+    expect(out).toContain('https://example.test/one.jpg');
+  });
+
+  it('reads the one-clip shape written before `urls` existed', () => {
+    const out = html(
+      createElement(VideoStoryboard, {
+        beats: [
+          {
+            kind: 'text',
+            beatId: 'a',
+            text: 'Legacy.',
+            durationSec: 4,
+            backdropUrl: 'https://example.test/legacy.jpg',
+            backdropKind: 'image',
+          },
+        ],
+      }),
+    );
+
+    expect(out).toContain('https://example.test/legacy.jpg');
+  });
+
+  it('plays every clip of a long scene, not just the first', () => {
+    const out = html(
+      createElement(VideoStoryboard, {
+        beats: [
+          {
+            kind: 'text',
+            beatId: 'a',
+            text: 'Fifty seconds.',
+            durationSec: 50,
+            backdrop: { kind: 'video', urls: ['a.mp4', 'b.mp4', 'c.mp4'] },
+          },
+        ],
+      }),
+    );
+
+    for (const clip of ['a.mp4', 'b.mp4', 'c.mp4']) expect(out).toContain(clip);
+  });
+
+  it('uses the backdrop as a slide thumbnail rather than the role tint', () => {
+    const out = html(
+      createElement(CarouselStoryboard, {
+        beats: [
+          {
+            kind: 'text',
+            beatId: 'a',
+            text: 'Cover slide.',
+            backdrop: { kind: 'image', urls: ['https://example.test/slide.jpg'] },
+          },
+        ],
+      }),
+    );
+
+    expect(out).toContain('https://example.test/slide.jpg');
+  });
+});

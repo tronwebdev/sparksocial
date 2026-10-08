@@ -1,7 +1,7 @@
 import { invokeTool, type CreditStore, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import { byId, PLAYBOOKS } from '@sparksocial/playbooks';
 import { ResolvedBeat } from '@sparksocial/generate';
-import { autoIllustrate } from './auto-illustrate.js';
+import { autoIllustrate, type AutoIllustrateDeps } from './auto-illustrate.js';
 import type { UnrenderedContentSource } from '@sparksocial/db';
 import { createHash } from 'node:crypto';
 import { makeDevResolveCtx } from './dev-auth.js';
@@ -54,6 +54,14 @@ export interface RenderQueueDeps {
    * way everything did before.
    */
   embed?: { embed(text: string): Promise<number[]> };
+  /**
+   * Writes the shot description auto-illustration sends to the generators.
+   *
+   * Absent falls back to sending the post's own copy, which is what this did
+   * before and produces pictures loosely associated with the words rather than
+   * of the thing being described.
+   */
+  sceneBrief?: AutoIllustrateDeps['sceneBrief'];
   /**
    * The tool invoker, injectable purely so a test can assert what this loop
    * asks for.
@@ -184,6 +192,7 @@ async function renderOne(
             invoke: deps.invoke,
             embed: deps.embed,
             ...(deps.invokeTool ? { invokeTool: deps.invokeTool } : {}),
+            ...(deps.sceneBrief ? { sceneBrief: deps.sceneBrief } : {}),
           },
         });
         if (result.fromAssets || result.generated) {

@@ -17,6 +17,38 @@ export interface BeatStructure {
   label?: string;
   /** `M5`'s per-scene audio override. Absent means the post's default voice. */
   voice?: 'brand' | 'stock';
+  /**
+   * The picture or clip behind this beat's words — auto-illustration's output.
+   *
+   * The panel had no idea this existed. `content.generate_image` replaces a
+   * beat and shows up as `kind: 'generated_image'`, which `BeatRow` draws; the
+   * automatic path *attaches* instead, so the words stay the beat and the media
+   * rides along here. Nothing rendered it, which is why a brand with sixty
+   * illustrated posts saw sixty posts with no pictures.
+   */
+  backdrop?: { kind: 'image' | 'video'; urls: string[] };
+  /**
+   * The same thing, as it was written before the multi-clip change.
+   *
+   * A beat drafted then holds a flat `backdropUrl`/`backdropKind` pair, and
+   * there are rows like that on disk. Declared so they survive the read rather
+   * than being silently dropped — `backdropOf` is what everything else calls.
+   */
+  backdropUrl?: string;
+  backdropKind?: 'image' | 'video';
+}
+
+/**
+ * A beat's backdrop, whichever shape it was written in.
+ *
+ * Always call this rather than reading `backdrop` directly: the older flat pair
+ * is the majority of what is currently stored, and code that only knows the new
+ * shape shows those beats as having no media at all.
+ */
+export function backdropOf(beat: ResolvedBeat): { kind: 'image' | 'video'; urls: string[] } | undefined {
+  if (beat.backdrop && beat.backdrop.urls.length > 0) return beat.backdrop;
+  if (beat.backdropUrl) return { kind: beat.backdropKind ?? 'image', urls: [beat.backdropUrl] };
+  return undefined;
 }
 
 export type ResolvedBeat = BeatStructure &
@@ -46,6 +78,12 @@ export function keepStructure(beat: ResolvedBeat): BeatStructure {
     ...(beat.durationSec !== undefined ? { durationSec: beat.durationSec } : {}),
     ...(beat.label !== undefined ? { label: beat.label } : {}),
     ...(beat.voice !== undefined ? { voice: beat.voice } : {}),
+    // The backdrop belongs to the scene, not to what fills it — the same rule
+    // `content.generate_image` follows server-side. Without this, regenerating
+    // a beat's media threw its picture away.
+    ...(beat.backdrop !== undefined ? { backdrop: beat.backdrop } : {}),
+    ...(beat.backdropUrl !== undefined ? { backdropUrl: beat.backdropUrl } : {}),
+    ...(beat.backdropKind !== undefined ? { backdropKind: beat.backdropKind } : {}),
   };
 }
 
@@ -106,6 +144,17 @@ export interface DraftView {
    * edit that leaves the band and a refusal after the fact reads as a bug.
    */
   durationBand?: [number, number];
+  /**
+   * Files `compose.render` has already produced for this post.
+   *
+   * The preview used to hold renders in state that only a fresh
+   * `compose.render` ever filled, so a post the render queue had already
+   * composed opened with no video and a Render button — a second charge for a
+   * file that existed. `content.get` returns them now.
+   */
+  renders?: Array<{ aspect: string; url: string; engine: string }>;
+  /** When this post goes out, ISO. Absent on a draft with no slot yet. */
+  scheduledAt?: string;
 }
 
 export interface RankedPlaybook {

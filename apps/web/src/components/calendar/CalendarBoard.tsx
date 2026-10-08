@@ -767,8 +767,12 @@ export function CalendarBoard({
             ? {
                 campaignName: view.name,
                 goal: view.objective,
+                campaignType: leadingPillar(view.mixActual),
                 duration: slotSpan(view.slots),
                 source: 'Calendar',
+                brandName: genome?.name,
+                production: productionByType(view.slots, draftPanel.pinDate),
+                platforms: platformsOn(view.slots, draftPanel.pinDate),
               }
             : undefined
         }
@@ -1137,4 +1141,60 @@ function slotSpan(slots: Slot[]): string | undefined {
   if (Number.isNaN(first) || Number.isNaN(last)) return undefined;
   const n = Math.round((last - first) / 86_400_000) + 1;
   return n === 1 ? '1 day' : `${n} days`;
+}
+
+/**
+ * The campaign's "Type" — its leading pillar.
+ *
+ * `calendar.get` returns no type field. What a campaign *is* shows in the shape
+ * of what it posts, and the mix is exactly that, so the pillar with the most
+ * slots answers the question the design is asking. Undefined when the calendar
+ * is empty, which is honest: a campaign with no posts has no shape yet.
+ */
+function leadingPillar(mix: MixSlice[]): string | undefined {
+  const top = [...mix].sort((a, b) => b.count - a.count)[0];
+  if (!top || top.count === 0) return undefined;
+  return top.pillar.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * The four post types, and what each is doing on one date.
+ *
+ * This is the design's chip row — "Generating", "Completed", "No post", "No
+ * post" — read as what it plainly is: one chip per type in the drawer's rail,
+ * in the rail's order, describing that day. Every value comes from slots the
+ * board already loaded, so a type with nothing scheduled says "No post" because
+ * there is genuinely no post, not because a slot was left blank.
+ */
+function productionByType(
+  slots: Slot[],
+  day?: string,
+): Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }> {
+  const onDay = day ? slots.filter((s) => (s.scheduledAt ?? '').slice(0, 10) === day) : slots;
+
+  return (['image', 'video', 'carousel', 'text'] as const).map((type) => {
+    const mine = onDay.filter((s) => s.mediaType === type);
+    if (mine.length === 0) return { label: type, state: 'No post', tone: 'idle' as const };
+    // "Completed" only when every post of that type is out; one still in flight
+    // keeps the whole type in progress, which is what the chip is for.
+    if (mine.every((s) => s.status === 'published')) {
+      return { label: type, state: 'Completed', tone: 'done' as const };
+    }
+    if (mine.some((s) => s.status === 'scheduled' || s.status === 'needs_review')) {
+      return { label: type, state: 'Scheduled', tone: 'work' as const };
+    }
+    return { label: type, state: 'Drafting', tone: 'work' as const };
+  });
+}
+
+/**
+ * The accounts one date is posting to, in the order they appear.
+ *
+ * A slot carries `platform: string | null`, and null is a real state — a slot
+ * placed on a day has no account until one is chosen. Those are dropped rather
+ * than shown as an unnamed circle.
+ */
+function platformsOn(slots: Slot[], day?: string): string[] {
+  const onDay = day ? slots.filter((s) => (s.scheduledAt ?? '').slice(0, 10) === day) : slots;
+  return [...new Set(onDay.map((s) => s.platform).filter((p): p is string => Boolean(p)))];
 }

@@ -193,6 +193,53 @@ export default function OnboardingPage() {
     if (orgId) writeSelectedGenome(orgId, genomeId);
   }
 
+  /**
+   * A brand of its own for this run of onboarding.
+   *
+   * Both entry points used to pass `brandId: orgId`, which is not a brand — it
+   * is the whole account. One genome belongs to one brand, so the second time
+   * anybody onboarded, `genome.create` found the org's existing genome and
+   * patched it: the new business's identity and dimensions landed on top of the
+   * previous one. Watched it happen — a bakery's genome became a bicycle
+   * workshop's, and nothing anywhere said a brand had been overwritten rather
+   * than created. The crawl path failed the other way, writing a second genome
+   * under the same brand, which is the duplicate `genome.create`'s own comment
+   * describes.
+   *
+   * `brand.create` mints `brand_<uuid>`, provisions the governance row and
+   * pairs an empty genome with it. Its id is what every later call here is
+   * keyed to, so onboarding creates a brand every time it is run — which is
+   * what the screen says it does.
+   */
+  async function provisionBrand(name: string): Promise<string | undefined> {
+    const made = await invoke<{ brandId: string; genomeId: string; name: string }>(
+      'brand.create',
+      {
+        name,
+        // Onboarding asks for the real category two screens later, and nothing in
+        // the engine branches on it — same reasoning `genome.create` gives.
+        category: 'business',
+        locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+      },
+      /*
+       * Fresh per press, because each one is a new brand.
+       *
+       * `brand.create` is `idempotent: false`, so `invoke.ts` refuses the call
+       * outright when no key is given — the first version of this had none and
+       * would have made the button do nothing at all. A stable key would be
+       * worse than none: it would collapse every later onboarding onto the first
+       * brand, which is the bug this whole change exists to fix.
+       */
+      crypto.randomUUID(),
+    );
+
+    if (made.status !== 'succeeded') {
+      setError(humanError(made, 'That needs approval before it can run.'));
+      return undefined;
+    }
+    return made.output.brandId;
+  }
+
   async function bootstrap() {
     /**
      * Guard rather than `orgId ?? ''`.
@@ -210,6 +257,12 @@ export default function OnboardingPage() {
     setBusy(true);
     setError(undefined);
 
+    const brandId = await provisionBrand(brandName.trim() || url.trim());
+    if (!brandId) {
+      setBusy(false);
+      return;
+    }
+
     const result = await invoke<{
       draftGenomeId: string;
       identity: { businessName: string; category?: string };
@@ -219,7 +272,7 @@ export default function OnboardingPage() {
       dimensions?: Record<string, string | string[] | undefined>;
     }>('genome.bootstrap_from_url', {
       url: url.trim(),
-      brandId: orgId,
+      brandId,
       // Five pages is the crawler's own budget. Asking for more here would
       // stretch a wait that is already the longest in the product.
       maxPages: 5,
@@ -266,12 +319,18 @@ export default function OnboardingPage() {
     setManualBusy(true);
     setError(undefined);
 
+    const brandId = await provisionBrand(brandName.trim());
+    if (!brandId) {
+      setManualBusy(false);
+      return;
+    }
+
     const result = await invoke<{
       draftGenomeId: string;
       identity: { businessName: string };
       unresolved: string[];
     }>('genome.create', {
-      brandId: orgId,
+      brandId,
       businessName: brandName.trim(),
       // The details screen asks for the real one two screens later; the category
       // is display-only either way and nothing in the engine branches on it.
