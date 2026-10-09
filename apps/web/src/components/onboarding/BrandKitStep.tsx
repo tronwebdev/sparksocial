@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
@@ -111,36 +111,49 @@ interface Governance {
 export function BrandKitStep() {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
-  const picker = useRef<HTMLInputElement>(null);
+  /** Undo for the picker listener, so a remount does not stack a second one. */
+  const detach = useRef<(() => void) | null>(null);
 
   /**
    * The custom-colour tile commits once, on `change` — not on React's `onChange`.
    *
    * React's `onChange` for an input is the native **`input`** event, which a
    * colour picker fires continuously: once per pixel as the cursor drags across
-   * the spectrum, and once per keystroke in the hex field. The handler appended
-   * on every one of those, so picking a single colour added dozens — dragging
-   * from red to blue filled the row with every shade it passed through, and
-   * typing a hex added one entry per character.
+   * the spectrum, and once per keystroke in the hex field. Appending on every
+   * one of those meant picking a single colour added dozens — dragging red to
+   * blue filled the row with every shade it passed through.
    *
-   * The native `change` event is the one that means "this is the colour" — it
+   * The native `change` event is the one that means "this is the colour": it
    * fires when the dialog is committed or dismissed, once. React has no prop for
-   * it on inputs (`onChange` is already taken by `input`), so it is attached
-   * directly.
+   * it on inputs, so it is bound by hand.
    *
-   * `setColors` takes the updater form because this listener is attached once
-   * and would otherwise close over the first render's empty `colors`, dropping
-   * every colour picked before it.
+   * ── A callback ref, not `useRef` + a mount effect ─────────────────────────
+   *
+   * The first version of this used `useRef` with a `[]`-dependency effect, and
+   * bound nothing at all. This component returns a loading line until `loaded`
+   * is true, so the input does not exist on the first render: the effect ran
+   * once, found `current === null`, and never ran again. The flood was gone and
+   * so was the colour — picking one did nothing.
+   *
+   * A callback ref runs when the node mounts, whenever that is, and runs again
+   * with `null` when it unmounts. There is no render-order assumption left to
+   * get wrong.
+   *
+   * `setColors` takes the updater form because this closure is created once per
+   * mount and would otherwise capture that render's `colors`.
    */
-  useEffect(() => {
-    const el = picker.current;
+  const bindPicker = useCallback((el: HTMLInputElement | null) => {
+    if (detach.current) {
+      detach.current();
+      detach.current = null;
+    }
     if (!el) return;
     const commit = () => {
       const hex = el.value.toUpperCase();
       setColors((prev) => (prev.includes(hex) ? prev : [...prev, hex]));
     };
     el.addEventListener('change', commit);
-    return () => el.removeEventListener('change', commit);
+    detach.current = () => el.removeEventListener('change', commit);
   }, []);
   const [fonts, setFonts] = useState<{ display?: string; body?: string }>({});
   const [voice, setVoice] = useState<string>('');
@@ -304,10 +317,10 @@ export function BrandKitStep() {
                   looked interactive and did nothing. A 1×1 transparent input keeps
                   the box and anchors the dialog to the tile it belongs to.
 
-                  No `onChange` here on purpose: see the effect above.
+                  No `onChange` here on purpose: see `bindPicker` above.
                 */}
                 <input
-                  ref={picker}
+                  ref={bindPicker}
                   type="color"
                   aria-label="Pick a custom colour"
                   style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
