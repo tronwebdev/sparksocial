@@ -236,6 +236,30 @@ export interface ScopedDb {
      * `packages/db/src/scoped.ts` for why this is its own query and not a flag
      * on `retrieve`.
      */
+    /**
+     * `asset.list`'s read — everything this genome holds, newest first.
+     *
+     * Separate from `retrieve` for the same reason `unfiled` is: retrieval
+     * ranks by similarity and is the wrong instrument for "show me what I own".
+     * An asset whose embedding is weak or zero is effectively unfindable
+     * through search while being perfectly present here.
+     */
+    list(
+      genomeId: string,
+      orgId: string,
+      args?: { roles?: AssetRole[]; limit?: number; offset?: number },
+    ): Promise<Array<{
+      assetId: string;
+      role: AssetRole;
+      rightsStatus: AssetRightsStatus;
+      caption: string | null;
+      url: string;
+      mediaType: AssetMediaType;
+      folderId: string | null;
+      filename: string | null;
+      sizeBytes: number | null;
+      createdAt: Date;
+    }>>;
     /** `asset.unfiled`'s read — assets in no folder. See `listUnfiledAssets`. */
     unfiled(genomeId: string, orgId: string): Promise<Array<{
       assetId: string;

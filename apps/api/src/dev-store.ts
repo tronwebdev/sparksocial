@@ -501,6 +501,33 @@ export function createDevStore(
         return out;
       },
 
+      /*
+       * Real, not a stub. This store *is* the implementation when no
+       * DATABASE_URL is set, so returning [] here would show an empty Assets
+       * Library to every developer running without Postgres — the exact
+       * "my asset is not there" symptom `asset.list` exists to fix.
+       */
+      async list(genomeId, org, args) {
+        const roles = args?.roles;
+        return [...assets.entries()]
+          .filter(([, a]) => a.genomeId === genomeId && a.orgId === org && !a.archivedAt)
+          .filter(([, a]) => !roles?.length || roles.includes(a.role))
+          .map(([id, a]) => ({
+            assetId: id,
+            role: a.role,
+            rightsStatus: a.rightsStatus,
+            caption: a.caption ?? null,
+            url: a.url,
+            mediaType: a.mediaType,
+            folderId: a.folderId ?? null,
+            filename: a.filename ?? null,
+            sizeBytes: a.sizeBytes ?? null,
+            createdAt: a.createdAt ?? new Date(),
+          }))
+          .sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime())
+          .slice(args?.offset ?? 0, (args?.offset ?? 0) + Math.min(args?.limit ?? 60, 200));
+      },
+
       async unfiled(genomeId, org) {
         return [...assets.entries()]
           .filter(([, a]) => a.genomeId === genomeId && a.orgId === org && !a.archivedAt && a.folderId === null)

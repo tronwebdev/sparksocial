@@ -38,6 +38,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         info: async () => ({}),
         setRights: async () => undefined,
         awaitingRights: async () => [],
+        list: async () => [],
         unfiled: async () => [],
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,

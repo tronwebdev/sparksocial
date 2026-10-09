@@ -636,6 +636,71 @@ export async function listUnfiledAssets(
   }));
 }
 
+/**
+ * `asset.list` — every asset this genome holds, newest first.
+ *
+ * The plain browse the library did not have. `asset.retrieve` is semantic: it
+ * ranks by similarity minus recency and usage penalties, which is right for
+ * "find me a picture that suits these words" and wrong for "show me what I
+ * own". An asset with a weak or zero embedding — the brand's own logo, for one
+ * — sorts below everything for every query, so it was in the table and absent
+ * from the only screen that could show it.
+ *
+ * Scoped by the same predicate as every other query here; the role filter is a
+ * convenience on top, never a substitute for it.
+ */
+export async function listAssets(
+  db: Database,
+  scope: Scope,
+  args: { roles?: AssetRole[]; limit?: number; offset?: number } = {},
+): Promise<
+  Array<{
+    assetId: string;
+    role: AssetRole;
+    rightsStatus: AssetRightsStatus;
+    caption: string | null;
+    url: string;
+    mediaType: AssetMediaType;
+    folderId: string | null;
+    filename: string | null;
+    sizeBytes: number | null;
+    createdAt: Date;
+  }>
+> {
+  assertScope(scope);
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      role: assets.assetRole,
+      rightsStatus: assets.rightsStatus,
+      caption: assets.caption,
+      url: assets.storagePath,
+      mediaType: assets.mediaType,
+      folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
+    })
+    .from(assets)
+    .where(
+      and(
+        scopePredicate('assets', scope),          // ← non-negotiable
+        isNull(assets.archivedAt),
+        ...(args.roles?.length ? [inArray(assets.assetRole, args.roles)] : []),
+      ),
+    )
+    .orderBy(sql`${assets.createdAt} DESC`)
+    .limit(Math.min(args.limit ?? 60, 200))
+    .offset(args.offset ?? 0);
+
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+  }));
+}
+
 /** `asset.folder.rename`. Undefined when the id is out of scope — same "one outcome for both" rule as the rest of this file. */
 export async function renameAssetFolder(
   db: Database,

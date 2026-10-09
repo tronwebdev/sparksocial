@@ -40,7 +40,29 @@ import type { ToolCtx } from '@sparksocial/tools/defineTool';
  */
 export async function ensureBrandKitAsset(
   ctx: ToolCtx,
-  args: { genomeId: string; url: string; businessName: string; source: string },
+  args: {
+    genomeId: string;
+    url: string;
+    businessName: string;
+    source: string;
+    /**
+     * Embeds the caption, so the mark is findable in the Assets Library.
+     *
+     * This used to be a hardcoded zero vector, justified on the grounds that
+     * nothing retrieves this role — true of *generation*, and false of the one
+     * screen an owner actually looks at. The Assets Library grid is
+     * `asset.retrieve`, which ranks by similarity: a zero vector matches no
+     * query, so a brand's own logo was written to the table and then sorted
+     * below everything for every search anybody could type. Reported as "I
+     * uploaded a logo and cannot find it in the assets library", which is
+     * exactly what it would look like.
+     *
+     * Optional, because a caller without an embedder is better off writing the
+     * row than skipping it — the role gate is the more important half, and a
+     * hard-to-find asset still unlocks seven playbooks.
+     */
+    embed?: (text: string) => Promise<number[]>;
+  },
 ): Promise<{ created: boolean }> {
   const inventory = await ctx.db.assets.inventory(args.genomeId, ctx.orgId);
   // Idempotent: a brand that already has one keeps it. Re-generating a logo
@@ -56,8 +78,19 @@ export async function ensureBrandKitAsset(
     mediaType: 'image',
     rightsStatus: 'cleared',
     caption: `${args.businessName} logo`,
-    embedding: new Array<number>(EMBEDDING_DIM).fill(0),
+    embedding: await embedding(args.businessName, args.embed),
     source: args.source,
   });
   return { created: true };
+}
+
+/** The caption's vector, or zeros when no embedder was supplied. */
+async function embedding(
+  businessName: string,
+  embed: ((text: string) => Promise<number[]>) | undefined,
+): Promise<number[]> {
+  if (!embed) return new Array<number>(EMBEDDING_DIM).fill(0);
+  // Never lose the asset row to a failed embedding: the row is what the
+  // resolver counts, and zeros only cost findability.
+  return embed(`${businessName} logo brand mark`).catch(() => new Array<number>(EMBEDDING_DIM).fill(0));
 }

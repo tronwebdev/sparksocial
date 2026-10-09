@@ -8,6 +8,7 @@ import { makeAssetIngestUrl } from '../src/ingest.js';
 import { assetRightsPending, assetRightsSet } from '../src/rights.js';
 import { assetReuse } from '../src/reuse.js';
 import { assetCooldownCheck } from '../src/cooldown.js';
+import { assetList } from '../src/folders.js';
 import {
   assetFolderCreate,
   assetFolderMove,
@@ -48,6 +49,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         info: async () => ({}),
         setRights: async () => undefined,
         awaitingRights: async () => [],
+        list: async () => [],
         unfiled: async () => [],
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
@@ -918,5 +920,63 @@ describe('asset.folder.move', () => {
         ctx({ db: { ...ctx().db, assets: { ...ctx().db.assets, moveToFolder: async () => undefined } } }),
       ),
     ).rejects.toThrow(ToolError);
+  });
+});
+
+/**
+ * `asset.list` — the browse the library did not have.
+ *
+ * The property worth pinning is not "it returns rows", it is that it returns
+ * the rows semantic search cannot reach. `asset.retrieve` ranks by similarity
+ * minus recency and usage penalties, so an asset with a zero or weak embedding
+ * — the brand's own logo, written that way on purpose — sinks below everything
+ * for every query an owner could type. It was in the table and missing from the
+ * only screen that could show it.
+ */
+describe('asset.list', () => {
+  const logo = {
+    assetId: 'a_logo',
+    role: 'brand_kit' as const,
+    rightsStatus: 'cleared' as const,
+    caption: 'Rowan & Vale logo',
+    url: 'https://cdn/logo.png',
+    mediaType: 'image' as const,
+    folderId: null,
+    filename: 'logo.png',
+    sizeBytes: 12_000,
+    createdAt: new Date('2026-09-01T10:00:00Z'),
+  };
+
+  it('returns an asset that retrieval ranks away to nothing', async () => {
+    // Retrieval finds nothing — the zero-vector case, exactly as reported.
+    const retrieve = vi.fn(async () => []);
+    const list = vi.fn(async () => [logo]);
+    const base = ctx();
+    const scope = ctx({ db: { ...base.db, assets: { ...base.db.assets, retrieve, list } } });
+
+    const res = await assetList.handler({ genomeId: 'gen_1', limit: 60, offset: 0 }, scope);
+
+    expect(res.assets).toHaveLength(1);
+    expect(res.assets[0]!.role).toBe('brand_kit');
+    expect(res.assets[0]!.caption).toBe('Rowan & Vale logo');
+    // Serialised for the wire — a Date would not survive the tool boundary.
+    expect(res.assets[0]!.createdAt).toBe('2026-09-01T10:00:00.000Z');
+  });
+
+  it('passes the role filter and paging down rather than filtering in memory', async () => {
+    // A library that fetched everything and filtered client-side would be
+    // correct and unscalable; the scoped query is where both belong.
+    const list = vi.fn(async () => []);
+    const base = ctx();
+    await assetList.handler(
+      { genomeId: 'gen_1', roles: ['knowledge'], limit: 10, offset: 20 },
+      ctx({ db: { ...base.db, assets: { ...base.db.assets, list } } }),
+    );
+
+    expect(list).toHaveBeenCalledWith('gen_1', expect.any(String), {
+      roles: ['knowledge'],
+      limit: 10,
+      offset: 20,
+    });
   });
 });

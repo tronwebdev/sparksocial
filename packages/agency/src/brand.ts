@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { extractProhibitions, merge } from './prohibitions.js';
+import { registerKnowledgeAsset } from './knowledgeAsset.js';
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
@@ -146,6 +147,35 @@ export function makeBrandKnowledgeAttach(embed: EmbedClient) {
         embedding,
         ...(input.citationLabel ? { citation: { label: input.citationLabel } } : {}),
       });
+      /*
+       * Pasted knowledge counts as a knowledge source too.
+       *
+       * The role gate asks "does this brand have a knowledge file", and an
+       * owner who pastes their guidelines has answered that as squarely as one
+       * who uploads a PDF. Registering only the uploaded path would mean the
+       * same information unlocks seven playbooks or none depending on which
+       * button it arrived through, which is not a distinction anybody intends.
+       *
+       * The url is a `knowledge:` reference rather than a fetchable address,
+       * because there is no file — the text lives in `knowledge_chunks` and the
+       * chunk id is what points at it. Nothing fetches this: a document is
+       * filtered out of backdrops by media type, and no beat sources the role.
+       */
+      await registerKnowledgeAsset(ctx, {
+        genomeId: input.genomeId,
+        url: `knowledge:${chunk.docId}`,
+        filename: input.citationLabel ?? input.docId,
+        excerpt: input.text.slice(0, 400),
+        embedding,
+        source: 'brand.knowledge.attach',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('knowledge asset not registered', {
+          genomeId: input.genomeId,
+          docId: input.docId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+
       ctx.logger.info('knowledge attached', { genomeId: input.genomeId, docId: input.docId });
       return { id: chunk.id, docId: chunk.docId };
     },
@@ -278,6 +308,35 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
           citation: { label: input.filename },
         });
       }
+
+      /*
+       * The document is also an asset.
+       *
+       * Chunks answer "what does this brand know"; the asset row answers "does
+       * this brand have a knowledge file", which is the question seven playbook
+       * preconditions ask. Writing only the chunks meant an owner could upload
+       * their company documents in onboarding, get retrieval over them, and
+       * still resolve nothing that required one. See `registerKnowledgeAsset`.
+       *
+       * After the chunks, and non-fatal: the chunks are what the caller asked
+       * for and are already written, so a failure to register the row must not
+       * throw away work that succeeded — the same posture `ensureBrandKitAsset`
+       * takes on the logo path.
+       */
+      await registerKnowledgeAsset(ctx, {
+        genomeId: input.genomeId,
+        url: input.url,
+        filename: input.filename,
+        excerpt: cleaned.slice(0, 400),
+        embedding: await deps.embed.embed(`${input.filename} ${cleaned.slice(0, 400)}`),
+        source: 'brand.knowledge.attach_document',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('knowledge asset not registered', {
+          genomeId: input.genomeId,
+          docId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
 
       /**
        * The document's prohibitions become enforceable rules.

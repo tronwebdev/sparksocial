@@ -53,7 +53,7 @@ export const BrandLogoGenerateOutput = z.object({
   why: Explanation,
 });
 
-export function makeBrandLogoGenerate(images: LogoImageClient) {
+export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: string) => Promise<number[]>) {
   return defineTool({
     name: 'brand.logo.generate',
     version: 1,
@@ -127,6 +127,7 @@ export function makeBrandLogoGenerate(images: LogoImageClient) {
         // cost a vendor call and is already saved on the brand; the asset row
         // is the cheap half and can be retried by setting the logo again.
         await ensureBrandKitAsset(ctx, {
+          ...(embed ? { embed } : {}),
           genomeId: ctx.genomeId,
           url,
           businessName: name,

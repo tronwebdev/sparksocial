@@ -26,6 +26,7 @@ import {
   assetCooldownCheck,
   assetFolderCreate,
   assetFolderRename,
+  assetList,
   assetUnfiled,
   assetFolderMembers,
   assetFolderMemberSet,
@@ -119,7 +120,7 @@ import {
   brandCreate,
   brandSettingsPatch,
   brandGovernanceGet,
-  brandGovernanceSet,
+  makeBrandGovernanceSet,
   brandEngagementPlatformsGet,
   brandEngagementPlatformsSet,
   agencyRoster,
@@ -396,6 +397,7 @@ export function registerAlphaTools(): void {
   register(assetFolderMove);
   register(assetFolderList);
   register(assetFolderRename);
+  register(assetList);
   register(assetUnfiled);
   register(assetFolderMembers);
   register(assetFolderMemberSet);
@@ -442,7 +444,7 @@ export function registerAlphaTools(): void {
   const images = imageClient();
   if (images) register(makeContentGenerateImage(images));
   // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
-  if (images) register(makeBrandLogoGenerate(images));
+  if (images) register(makeBrandLogoGenerate(images, (t) => embed.embed(t)));
   const videos = videoClient();
   if (videos) register(makeContentGenerateBroll(videos));
   // Same "unset → not registered" rule as the image tool, and for the same
@@ -948,7 +950,10 @@ export function registerAgencyTools(deps: {
   // guardrail-enforcement section with nothing to enforce and every post
   // firing at the instant its campaign happened to be created.
   register(brandGovernanceGet);
-  register(brandGovernanceSet);
+  // `embedClient()` is memoised — same instance as the one `registerAlphaTools`
+  // holds, which is the point of the note on it there: ingest and retrieve must
+  // share a vector space or the ranking is noise that looks like a result.
+  register(makeBrandGovernanceSet({ embed: (t) => embedClient().embed(t) }));
   // §8.8's per-platform engagement matrix. The brand-level autonomy is the
   // fallback and stays where it is; these only ever record an *override*, so a
   // brand that never opens the screen behaves exactly as it did before.

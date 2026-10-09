@@ -210,6 +210,84 @@ export const assetFolderMove = defineTool({
  * database and false of the product. Also catches assets that never had a
  * folder — the WhatsApp capture loop ingests without one.
  */
+/**
+ * `asset.list` — browse the library.
+ *
+ * The Assets Library grid was `asset.retrieve` and nothing else, so the only
+ * way to see an asset was to describe it well enough for a vector search to
+ * surface it. That is the right instrument for "find me a picture that suits
+ * these words" and the wrong one for "show me what I own": ranking is
+ * similarity minus recency minus usage, so an asset with a weak embedding sinks
+ * below everything for every query somebody could type.
+ *
+ * It was reported as a bug about the logo, which is the worst case —
+ * `ensureBrandKitAsset` wrote a zero vector on the reasoning that nothing
+ * retrieves that role. Nothing *generative* does. The owner does, and had no
+ * way to.
+ *
+ * Deliberately not a flag on `asset.retrieve`: that tool's contract is "ranked
+ * by meaning", and a mode where it ignores the query would make its `why`
+ * explanation a lie about how its own results were ordered.
+ */
+export const assetList = defineTool({
+  name: 'asset.list',
+  version: 1,
+
+  summary:
+    'Every asset this brand holds, newest first, optionally filtered by role. The plain browse behind the ' +
+    'Assets Library — use asset.retrieve to find one by meaning. Free.',
+
+  input: z.object({
+    genomeId: z.string().min(1),
+    roles: z.array(AssetRole).optional(),
+    limit: z.number().int().min(1).max(200).default(60),
+    offset: z.number().int().min(0).default(0),
+  }),
+  output: z.object({
+    assets: z.array(
+      z.object({
+        assetId: z.string(),
+        role: AssetRole,
+        rightsStatus: AssetRightsStatus,
+        caption: z.string().nullable(),
+        url: z.string(),
+        mediaType: AssetMediaType,
+        folderId: z.string().nullable(),
+        filename: z.string().nullable(),
+        sizeBytes: z.number().nullable(),
+        createdAt: z.string(),
+      }),
+    ),
+  }),
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin', 'editor', 'approver', 'viewer'],
+  idempotent: true,
+
+  async handler(input, ctx) {
+    const rows = await ctx.db.assets.list(input.genomeId, ctx.orgId, {
+      ...(input.roles?.length ? { roles: input.roles } : {}),
+      limit: input.limit,
+      offset: input.offset,
+    });
+    return {
+      assets: rows.map((r) => ({
+        assetId: r.assetId,
+        role: r.role,
+        rightsStatus: r.rightsStatus,
+        caption: r.caption,
+        url: r.url,
+        mediaType: r.mediaType,
+        folderId: r.folderId,
+        filename: r.filename,
+        sizeBytes: r.sizeBytes,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    };
+  },
+});
+
 export const assetUnfiled = defineTool({
   name: 'asset.unfiled',
   version: 1,

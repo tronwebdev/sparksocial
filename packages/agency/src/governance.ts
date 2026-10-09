@@ -357,7 +357,13 @@ export const brandGovernanceGet = defineTool({
   },
 });
 
-export const brandGovernanceSet = defineTool({
+export interface GovernanceDeps {
+  /** Embeds the logo's caption so it is findable in the Assets Library. */
+  embed?: (text: string) => Promise<number[]>;
+}
+
+export function makeBrandGovernanceSet(deps: GovernanceDeps = {}) {
+  return defineTool({
   name: 'brand.governance.set',
   version: 1,
 
@@ -427,6 +433,7 @@ export const brandGovernanceSet = defineTool({
         url: patch.logoUrl,
         businessName: before?.name ?? 'This brand',
         source: 'brand.governance.set',
+        ...(deps.embed ? { embed: deps.embed } : {}),
       }).catch((err: unknown) => {
         ctx.logger.warn('brand kit asset not registered', {
           brandId,
@@ -485,7 +492,8 @@ export const brandGovernanceSet = defineTool({
       },
     };
   },
-});
+  });
+}
 
 function toOutput(gov: {
   brandId: string;

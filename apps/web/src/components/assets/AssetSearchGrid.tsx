@@ -43,6 +43,47 @@ interface RetrievedAsset {
   createdAt: string;
 }
 
+/** What `asset.list` returns — the same row without the ranking fields, which browsing has no basis for. */
+interface ListedAsset {
+  assetId: string;
+  role: string;
+  rightsStatus: string;
+  caption: string | null;
+  url: string;
+  mediaType: string;
+  folderId: string | null;
+  filename: string | null;
+  sizeBytes: number | null;
+  createdAt: string;
+}
+
+/**
+ * A browsed row in the shape the grid already renders.
+ *
+ * `embeddingScore` is zero rather than invented: nothing ranked this row, and a
+ * fabricated score would show up in the detail panel as a relevance the result
+ * never had. `usageCount` is the one honest loss — `asset.list` does not join
+ * the usage table — so the card omits it rather than printing "used 0×" about
+ * an asset that may well have been used.
+ */
+function asRetrieved(a: ListedAsset): RetrievedAsset {
+  return {
+    assetId: a.assetId,
+    role: a.role,
+    caption: a.caption ?? '',
+    embeddingScore: 0,
+    usageCount: 0,
+    lastUsedAt: null,
+    rightsStatus: a.rightsStatus,
+    folderId: a.folderId,
+    url: a.url,
+    mediaType: a.mediaType,
+    filename: a.filename,
+    sizeBytes: a.sizeBytes,
+    createdAt: a.createdAt,
+  };
+}
+
 /** How many the grid asks for per page. */
 const PAGE = 24;
 
@@ -86,12 +127,46 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<RetrievedAsset | null>(null);
 
+  /**
+   * Empty box browses; a query searches.
+   *
+   * An empty search used to fall back to `asset.retrieve` with the brand's own
+   * name as the intent, which is a semantic search that happens to look like a
+   * listing — and ranks by similarity minus recency and usage penalties. An
+   * asset with a weak or zero embedding therefore sat below everything no matter
+   * what you typed, including nothing. The brand's own logo is written with a
+   * zero vector on purpose, so it was in the table and on no screen; that is the
+   * bug this split fixes.
+   *
+   * `asset.list` is the plain browse: newest first, same scoping, no ranking.
+   * Typing a query still goes to retrieval, because finding a picture by meaning
+   * is what that tool is for.
+   */
   const search = useCallback(async () => {
     if (!genome) return;
     setResults(null);
+    const query = intent.trim();
+
+    if (!query) {
+      const res = await invoke<{ assets: ListedAsset[] }>('asset.list', {
+        genomeId: genome.genomeId,
+        ...(role ? { roles: [role] } : {}),
+        limit: PAGE,
+        ...(page > 0 ? { offset: page * PAGE } : {}),
+      });
+      if (res.status === 'succeeded') {
+        setResults(res.output.assets.map(asRetrieved));
+        setError(null);
+      } else {
+        setResults([]);
+        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      }
+      return;
+    }
+
     const res = await invoke<{ results: RetrievedAsset[] }>('asset.retrieve', {
       genomeId: genome.genomeId,
-      intent: intent.trim() || genome.name,
+      intent: query,
       ...(role ? { requiredRoles: [role] } : {}),
       k: PAGE,
       ...(page > 0 ? { offset: page * PAGE } : {}),
@@ -284,7 +359,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                     <video src={a.url} className="h-32 w-full object-cover" muted preload="metadata" />
                   ) : (
                     <div className="flex h-32 w-full items-center justify-center text-12 text-ink-muted">
-                      Audio
+                      {a.mediaType === 'document' ? 'Document' : 'Audio'}
                     </div>
                   )}
                 </button>
@@ -354,7 +429,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
                           <img src={a.url} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
                         ) : (
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-surface-muted text-10 text-ink-muted">
-                            {a.mediaType === 'video' ? 'Vid' : 'Aud'}
+                            {a.mediaType === 'video' ? 'Vid' : a.mediaType === 'document' ? 'Doc' : 'Aud'}
                           </span>
                         )}
                         <span className="min-w-0">
