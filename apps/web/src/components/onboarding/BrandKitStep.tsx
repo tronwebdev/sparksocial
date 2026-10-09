@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
@@ -111,6 +111,37 @@ interface Governance {
 export function BrandKitStep() {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
+  const picker = useRef<HTMLInputElement>(null);
+
+  /**
+   * The custom-colour tile commits once, on `change` — not on React's `onChange`.
+   *
+   * React's `onChange` for an input is the native **`input`** event, which a
+   * colour picker fires continuously: once per pixel as the cursor drags across
+   * the spectrum, and once per keystroke in the hex field. The handler appended
+   * on every one of those, so picking a single colour added dozens — dragging
+   * from red to blue filled the row with every shade it passed through, and
+   * typing a hex added one entry per character.
+   *
+   * The native `change` event is the one that means "this is the colour" — it
+   * fires when the dialog is committed or dismissed, once. React has no prop for
+   * it on inputs (`onChange` is already taken by `input`), so it is attached
+   * directly.
+   *
+   * `setColors` takes the updater form because this listener is attached once
+   * and would otherwise close over the first render's empty `colors`, dropping
+   * every colour picked before it.
+   */
+  useEffect(() => {
+    const el = picker.current;
+    if (!el) return;
+    const commit = () => {
+      const hex = el.value.toUpperCase();
+      setColors((prev) => (prev.includes(hex) ? prev : [...prev, hex]));
+    };
+    el.addEventListener('change', commit);
+    return () => el.removeEventListener('change', commit);
+  }, []);
   const [fonts, setFonts] = useState<{ display?: string; body?: string }>({});
   const [voice, setVoice] = useState<string>('');
   const [timezone, setTimezone] = useState('');
@@ -255,6 +286,7 @@ export function BrandKitStep() {
                   `EyeDropper` API is Chromium-only and a throwing button is worse. */}
               <label
                 style={{
+                  position: 'relative',
                   width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
                   boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -263,7 +295,23 @@ export function BrandKitStep() {
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
                   <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <input type="color" aria-label="Pick a custom colour" style={{ display: 'none' }} onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])} />
+                {/*
+                  Hidden by opacity, not by `display: none`.
+
+                  `display: none` removes the layout box, and the native colour
+                  picker is positioned against the input's box — with none, Chrome
+                  has nothing to anchor to and the dialog never opens, so the tile
+                  looked interactive and did nothing. A 1×1 transparent input keeps
+                  the box and anchors the dialog to the tile it belongs to.
+
+                  No `onChange` here on purpose: see the effect above.
+                */}
+                <input
+                  ref={picker}
+                  type="color"
+                  aria-label="Pick a custom colour"
+                  style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
+                />
               </label>
             </div>
           </div>
