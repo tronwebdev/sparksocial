@@ -175,7 +175,11 @@ function SlotCalendarGlyph() {
 function Upcoming({ posts }: { posts: UpcomingPost[] }) {
   if (posts.length === 0) {
     return (
-      <EmptyCard body={<>Create your first campaign to get started and view upcoming contents</>} />
+      <EmptyCard
+        title="Nothing is scheduled yet"
+        body={<>Posts appear here once they have a date. Generate a calendar from a campaign, or schedule a draft you already have.</>}
+        action={{ label: 'Open calendar', href: '/calendar' }}
+      />
     );
   }
 
@@ -310,7 +314,11 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
 function Insights({ series }: { series: BrandSeries | null }) {
   if (!series || series.totals.posts === 0) {
     return (
-      <EmptyCard body={<>Create your first campaign to get started and see how it performs</>} />
+      <EmptyCard
+        title="Nothing has been published yet"
+        body={<>Reach, engagement and the rest arrive once posts have gone out and the platforms report back.</>}
+        action={{ label: 'Open calendar', href: '/calendar' }}
+      />
     );
   }
 
@@ -463,7 +471,11 @@ function Sales({ leads, counts }: { leads: Lead[]; counts: { hot: number; warm: 
 
   if (total === 0) {
     return (
-      <EmptyCard body={<>Create your first campaign to get started and see who is showing buying intent</>} />
+      <EmptyCard
+        title="No buying intent yet"
+        body={<>People who reply, ask a price or show intent on a published post are collected here and ranked.</>}
+        action={{ label: 'Open calendar', href: '/calendar' }}
+      />
     );
   }
 

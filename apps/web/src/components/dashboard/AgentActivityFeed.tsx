@@ -165,7 +165,17 @@ export function AgentActivityFeed({
       <section>
         <SectionHeading />
         <div className="mt-dash-label-gap rounded-lg bg-white">
-          <EmptyCard body={<>Create your first campaign to get started and view agent activities</>} />
+          {/*
+            Empty because no agent run exists — not because no campaign does.
+            Drafting a post through the tools does not create a run, so a brand
+            mid-campaign lands here and used to be told to create the campaign
+            it already had.
+          */}
+          <EmptyCard
+            title="Your agent hasn't run yet"
+            body={<>When your agent plans, drafts or publishes, each step it takes appears here with the reason it took it.</>}
+            action={{ label: 'Open Command Center', href: '/home' }}
+          />
         </div>
       </section>
     );

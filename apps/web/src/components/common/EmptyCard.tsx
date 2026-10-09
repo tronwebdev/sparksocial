@@ -23,22 +23,37 @@ import Link from 'next/link';
  *
  * They were each their own: a left-aligned heading and a paragraph, in three
  * different sizes, with `Empty` in `CockpitTabs` doing one version and the feed
- * and rail doing two more. The design has one. Sharing it is also the only way
- * the "no campaign" story stays consistent — all five of these cards are empty
- * for exactly the same reason, and saying it five different ways implies five
- * different problems.
+ * and rail doing two more. The design has one.
+ *
+ * ── `title` is required, and that is the point ────────────────────────────
+ *
+ * It used to default to "You don't have an active campaign", on the reasoning
+ * that all of these cards are empty for the same reason. They are not. The
+ * calendar is the only one that actually tests for a campaign; the others test
+ * for agent runs, scheduled posts, published posts and leads. A brand with a
+ * live campaign, a generated calendar and drafted posts saw four panels telling
+ * it to create the campaign it already had — and pointing at a button that
+ * would do nothing about the real cause.
+ *
+ * Reported by an owner whose campaign was running. The headline was the only
+ * part of the card that was wrong, which is what made it convincing.
+ *
+ * So the caller must say what is empty. Inheriting a headline is how one card's
+ * sentence ended up asserting something false on four screens that never
+ * checked it.
  */
 export function EmptyCard({
   glyph = 'document',
   body,
-  title = "You don't have an active campaign",
+  title,
   narrow,
   action = { label: 'Create Campaign', href: '/home?new=1' },
 }: {
   glyph?: 'document' | 'plane' | 'chat' | 'chart';
-  /** The second line. The only part that differs between cards. */
+  /** The second line — what will fill this card, and how. */
   body: React.ReactNode;
-  title?: string;
+  /** What is actually empty. Required: see the note above on inherited headlines. */
+  title: string;
   /** The rail is 446px wide, so its text wraps earlier and its type is smaller. */
   narrow?: boolean;
   /** The one step that changes this state. Defaults to starting a campaign. */

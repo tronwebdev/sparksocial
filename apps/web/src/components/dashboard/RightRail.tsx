@@ -185,7 +185,9 @@ function Published({ posts }: { posts: UpcomingPost[] | null }) {
       <EmptyCard
         narrow
         glyph="plane"
-        body={<>Create your first campaign to get started and see all published post.</>}
+        title="Nothing published yet"
+        body={<>Posts appear here once they have gone out. Scheduled and drafted posts live on the calendar until then.</>}
+        action={{ label: 'Open calendar', href: '/calendar' }}
       />
     );
   }

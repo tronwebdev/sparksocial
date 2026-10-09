@@ -315,7 +315,11 @@ export function PlanQueue({
       {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 
       {items !== null && items.length === 0 ? (
-        <EmptyCard body="Generate a calendar from a campaign, or create a single post, and everything your agent plans appears here in the order it will go out." />
+        <EmptyCard
+          title="Nothing is queued yet"
+          body="Generate a calendar from a campaign, or create a single post, and everything your agent plans appears here in the order it will go out."
+          action={{ label: 'Open calendar', href: '/calendar' }}
+        />
       ) : null}
 
       {/* Filtered to nothing is a different fact from an empty queue, and the

@@ -541,6 +541,7 @@ export function CalendarBoard({
      */
     return (
       <EmptyCard
+        title="You don't have an active campaign"
         body="A campaign is what fills this calendar — a goal, a window, and the accounts to post to. Start one from your home screen and it will appear here."
       />
     );
