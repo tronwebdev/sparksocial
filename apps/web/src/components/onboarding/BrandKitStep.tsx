@@ -108,7 +108,7 @@ interface Governance {
   claimsToAvoid: string[];
 }
 
-export function BrandKitStep() {
+export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Promise<boolean>) => void } = {}) {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
   /** Undo for the picker listener, so a remount does not stack a second one. */
@@ -230,6 +230,24 @@ export function BrandKitStep() {
     return res.status === 'succeeded';
   }
 
+  /*
+   * Hand `save` up so Continue can call it.
+   *
+   * The only other trigger is `onBlur` on the container below, which fires when
+   * focus leaves whatever the owner last touched. That covers the ordinary path
+   * and nothing else: a control that never takes focus, or a value set without
+   * one, leaves this screen looking filled in and saves nothing — and `save`
+   * carries all seven settings here, so the silent loss is colours, fonts,
+   * voice, timezone, strict mode and both guardrail lists together.
+   *
+   * Registered on every render rather than once, deliberately: `save` closes
+   * over this render's state, and a stale closure would post the values as they
+   * were when the step mounted.
+   */
+  useEffect(() => {
+    registerSave?.(save);
+  });
+
   if (!loaded) return <p className="text-14 text-ink-muted">Reading what SPARK already has…</p>;
 
   const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
@@ -248,7 +266,14 @@ export function BrandKitStep() {
     splitList(current).filter((v) => v !== value).join(', ');
 
   const countries = [...new Set(ZONES.map((z) => z.split('/')[0]))];
-  const region = timezone.includes('/') ? timezone.split('/')[0] : countries[0];
+  /*
+   * A zone with no slash — `UTC` — is its own region.
+   *
+   * This fell through to `countries[0]`, so a brand already set to UTC opened
+   * this screen showing its country as "Africa" and the matching zone list,
+   * misreporting a setting the owner had chosen.
+   */
+  const region = timezone.includes('/') ? timezone.split('/')[0] : (ZONES.includes(timezone) ? timezone : countries[0]);
 
   /*
     `…193155` at the prototype's own numbers: two 432-wide columns 27px apart,
@@ -398,7 +423,19 @@ export function BrandKitStep() {
                 <SmallSelect
                   ariaLabel="Country"
                   value={region ?? ''}
-                  onChange={(r: string) => setTimezone(ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone)}
+                  /*
+                   * `UTC` is a zone, not a region — it is the one entry in
+                   * `ZONES` with no slash in it.
+                   *
+                   * Picking it searched for a zone starting `UTC/`, found none,
+                   * and fell back to the previous timezone. The select bounced
+                   * straight back to whatever was chosen before, and the
+                   * Timezone list beside it stayed empty, so the option was
+                   * visibly offered and quietly unselectable.
+                   */
+                  onChange={(r: string) =>
+                    setTimezone(r.includes('/') || !ZONES.includes(r) ? (ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone) : r)
+                  }
                   options={countries.map((c) => ({ value: c as string, label: c as string }))}
                 />
               </div>
@@ -411,7 +448,13 @@ export function BrandKitStep() {
                   value={timezone}
                   placeholder="Select"
                   onChange={setTimezone}
-                  options={ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))}
+                  /* A region with no sub-zones is itself the only choice — `UTC`
+                     has no `UTC/...` entries, so it lists itself rather than nothing. */
+                  options={
+                    ZONES.some((z) => z.startsWith(`${region}/`))
+                      ? ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))
+                      : ZONES.filter((z) => z === region).map((z) => ({ value: z, label: z }))
+                  }
                 />
               </div>
             </div>

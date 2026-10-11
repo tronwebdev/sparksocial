@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
@@ -186,6 +186,9 @@ export default function OnboardingPage() {
    * upload, the document attach, `asset.gaps` — and without it those are scoped
    * to nothing.
    */
+  /** `BrandKitStep`'s own `save`, so Continue can flush it. See the KIT step below. */
+  const kitSave = useRef<null | (() => Promise<boolean>)>(null);
+
   function selectGenome(genomeId: string) {
     // The org goes in with it. A cookie with no org is dropped by the proxy, and
     // one written under the wrong org is what stopped a second account from
@@ -624,9 +627,28 @@ export default function OnboardingPage() {
         group={3}
         onBack={back}
         eyebrow={<><strong className="font-semibold text-ink">Exciting update!</strong> Your Brand Knowledge is complete. Next up, we'll focus on your <strong className="font-semibold text-ink">Brand's Voice, Guardrails, and Time Zone.</strong></>}
-        onContinue={() => setStep(AGENT)}
+        /*
+         * Save before advancing.
+         *
+         * `BrandKitStep` saved only on `onBlur` of its own container, which
+         * covers the ordinary path — touch a control, then press Continue — and
+         * nothing else. A value that changes without focus entering that
+         * container leaves the step looking complete and persists none of it,
+         * and that one call carries colours, fonts, voice, timezone, strict mode
+         * and both guardrail lists together.
+         *
+         * Caught on a run where the brand kit was filled in on screen and the
+         * row came back with `brand_colors: null` and the timezone untouched.
+         *
+         * The step still advances if the save fails: the failure is already
+         * reported in the step's own message line, and trapping someone on this
+         * screen over a write they can retry from settings is the worse outcome.
+         */
+        onContinue={() => {
+          void kitSave.current?.().finally(() => setStep(AGENT));
+        }}
       >
-        <BrandKitStep />
+        <BrandKitStep registerSave={(fn) => { kitSave.current = fn; }} />
       </StepShell>
     );
   }
