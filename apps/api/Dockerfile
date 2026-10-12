@@ -103,7 +103,26 @@ ENV CHROMIUM_PATH=/usr/bin/chromium
 
 RUN groupadd -r spark && useradd -r -g spark spark
 
-COPY --from=deps /app/node_modules ./node_modules
+# The whole install tree, not just `/app/node_modules`.
+#
+# This line used to be `COPY --from=deps /app/node_modules ./node_modules`, and
+# that is a root-only copy of a workspace install. npm hoists what it can to the
+# root and *nests* whatever conflicts: `apps/web` pulls `@clerk/backend@2` via
+# `@clerk/nextjs`, which wins the root, so `apps/api` and `packages/agency`
+# (both on `^3.16.1`) get their own copies at `apps/api/node_modules/@clerk/…`
+# and `packages/agency/node_modules/@clerk/…`. Those were never copied, so the
+# image built clean and the container died on its first import with
+# `ERR_MODULE_NOT_FOUND: Cannot find package '@clerk/backend'`.
+#
+# Enumerating the nested paths would work today and rot at the next version
+# conflict — silently, in exactly this way, since nothing about the Dockerfile
+# changes when npm decides to nest a new package. Copying the tree whole is
+# self-maintaining. The `deps` stage holds only manifests and `node_modules`, so
+# this adds one file (`package-lock.json`) over the old line, and the source
+# copies below overwrite the stub manifests with the real ones — Docker's `COPY`
+# merges into a directory rather than replacing it, which is what leaves the
+# nested `node_modules` in place underneath `packages/` and `apps/api/`.
+COPY --from=deps /app ./
 COPY package.json tsconfig.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
