@@ -179,7 +179,14 @@ databases:
   # ceiling is `max × replicas` (10 per replica by default). The small plans
   # allow fewer than the Flexible Server this was sized against.
   - name: sparksocial-db
-    plan: standard
+    # `1c-2g`, not `standard`. Render retired the legacy Postgres plan names for
+    # new databases and sizes them by compute now; their own mapping table puts
+    # the old `standard` at `1c-2g` — 1 CPU, 2 GB — so this is the same machine
+    # under the name it answers to today.
+    #
+    # Web services and Key Value still take the legacy names, which is why only
+    # this line changed. Expect that to catch up eventually.
+    plan: 1c-2g
     postgresMajorVersion: "16"
 
 envVarGroups:
