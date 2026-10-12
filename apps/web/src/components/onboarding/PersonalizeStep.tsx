@@ -119,14 +119,14 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="max-w-prose text-[16px] text-ink-muted">
+      <p className="max-w-prose text-16 text-ink-muted">
         Optional. If someone has already had an avatar or voice trained — on HeyGen or ElevenLabs — point SPARK
         at it and say whose it is. Skip this and SPARK writes and films nothing that needs a face.
       </p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-[13px] text-ink-muted" htmlFor="onb-heygen">
+          <label className="block text-13 text-ink-muted" htmlFor="onb-heygen">
             HeyGen avatar id
           </label>
           <Input
@@ -138,7 +138,7 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
           />
         </div>
         <div>
-          <label className="block text-[13px] text-ink-muted" htmlFor="onb-voice">
+          <label className="block text-13 text-ink-muted" htmlFor="onb-voice">
             ElevenLabs voice id
           </label>
           <Input
@@ -153,10 +153,10 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
 
       {wantsSomething ? (
         <div className="rounded-xl border border-border p-4">
-          <label className="block text-[13px] font-medium text-ink" htmlFor="onb-subject">
+          <label className="block text-13 font-medium text-ink" htmlFor="onb-subject">
             Whose likeness is this?
           </label>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="mt-1 text-13 text-ink-muted">
             Recorded as a consent record against your account. SPARK refuses to generate a face or a voice
             without one, so this is not a formality — it is what makes the ids above usable.
           </p>
@@ -171,7 +171,7 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
       ) : null}
 
       {message ? (
-        <p className={`text-[14px] ${message.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
+        <p className={`text-14 ${message.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
           {message.text}
         </p>
       ) : null}

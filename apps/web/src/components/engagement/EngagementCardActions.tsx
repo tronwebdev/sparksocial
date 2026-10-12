@@ -73,22 +73,22 @@ export function EngagementCardActions({
     <div className="mt-2 flex flex-wrap items-center gap-2">
       <button
         type="button"
-        className="text-[13px] font-medium text-ink-muted hover:text-ink disabled:opacity-50"
+        className="text-13 font-medium text-ink-muted hover:text-ink disabled:opacity-50"
         disabled={phase !== 'idle'}
         onClick={() => void escalate()}
       >
         {phase === 'escalating' ? 'Escalating…' : 'Escalate'}
       </button>
-      <span className="text-[13px] text-ink-muted">·</span>
+      <span className="text-13 text-ink-muted">·</span>
       <button
         type="button"
-        className="text-[13px] font-medium text-ink-muted hover:text-ink disabled:opacity-50"
+        className="text-13 font-medium text-ink-muted hover:text-ink disabled:opacity-50"
         disabled={phase !== 'idle'}
         onClick={() => void takeover()}
       >
         {phase === 'takingOver' ? 'Taking over…' : 'Take over'}
       </button>
-      {error ? <p className="w-full text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="w-full text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }

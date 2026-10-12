@@ -207,7 +207,7 @@ export function CommandCenterShell({
           page title is measured 26px from that, not from Ask Spark's shadow.
         */}
         <header className="flex flex-wrap items-start gap-4 px-[17px] pt-4 sm:h-cc-chrome-h sm:gap-[22.1px] sm:px-cc-chrome-x sm:pb-0 sm:pr-cc-chrome-r sm:pt-0">
-          <span className="font-display text-[27.49px] leading-[1.13] text-ink sm:mt-cc-top-mark">
+          <span className="font-display text-28 leading-[1.13] text-ink sm:mt-cc-top-mark">
             Sparksocial
           </span>
 
@@ -215,7 +215,7 @@ export function CommandCenterShell({
               — which is where the prototype's own Back goes. */}
           <Link
             href="/home"
-            className="flex h-[36.4px] w-[92px] items-center justify-center gap-3 rounded-[7.07px] text-[16.9px] font-medium text-ink-muted transition-colors hover:bg-white hover:text-ink sm:mt-cc-top-back"
+            className="flex h-[36.4px] w-[92px] items-center justify-center gap-3 rounded-[7.07px] text-17 font-medium text-ink-muted transition-colors hover:bg-white hover:text-ink sm:mt-cc-top-back"
             style={{ boxShadow: '0 0 0 0.71px #838383' }}
           >
             <svg width="7" height="12" viewBox="0 0 7 12" fill="none" aria-hidden>
@@ -260,7 +260,7 @@ export function CommandCenterShell({
                   aria-selected={tab === t.id}
                   onClick={() => onTab(t.id)}
                   className={cn(
-                    'relative z-10 flex h-[23px] items-center gap-2 whitespace-nowrap bg-transparent px-[20px] text-[16.63px] font-medium leading-none transition-colors',
+                    'relative z-10 flex h-[23px] items-center gap-2 whitespace-nowrap bg-transparent px-[20px] text-17 font-medium leading-none transition-colors',
                     tab === t.id ? 'text-white' : 'text-ink-muted hover:text-ink',
                   )}
                 >
@@ -271,7 +271,7 @@ export function CommandCenterShell({
                   {t.id === 'engagement' && engagementCount > 0 ? (
                     <span
                       className={cn(
-                        'ml-0.5 rounded-full px-1.5 text-[12px] font-semibold tabular-nums',
+                        'ml-0.5 rounded-full px-1.5 text-12 font-semibold tabular-nums',
                         tab === t.id ? 'bg-white/20 text-white' : 'bg-warn/15 text-warn',
                       )}
                     >

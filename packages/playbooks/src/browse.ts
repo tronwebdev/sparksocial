@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError, assetRoleWordList } from '@sparksocial/shared';
+import { Platform, ToolError, assetRoleWordList } from '@sparksocial/shared';
 import { PLAYBOOKS, byId } from './records.js';
 import { resolve } from './resolver.js';
 import type { AssetInventory } from './golden.js';
@@ -24,7 +24,7 @@ const PlaybookSummary = z.object({
   mode: z.enum(['synthesize', 'assemble', 'direct_finish']),
   contentPillar: z.enum(['educational', 'product', 'proof', 'personality', 'community']),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
-  platforms: z.array(z.string()),
+  platforms: z.array(Platform),
   saturationRisk: z.enum(['low', 'medium', 'high']),
 });
 

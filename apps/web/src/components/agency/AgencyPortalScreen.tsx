@@ -43,7 +43,12 @@ export function AgencyPortalScreen() {
   const [view, setView] = useState<View>('home');
   const [launched, setLaunched] = useState(false);
   const [rowOpen, setRowOpen] = useState(false);
-  const [cfConnected, setCfConnected] = useState(false);
+  /**
+   * True once the pipeline has anything in it. The design grows this view
+   * 760 → 1180 on connecting a lead source; the real trigger is having leads,
+   * because the source it depicts does not exist. See `AgencyClientFinder`.
+   */
+  const [cfHasLeads, setCfHasLeads] = useState(false);
   const [wizStep, setWizStep] = useState<WizStep | null>(null);
   const [draft, setDraft] = useState<WizardDraft>(emptyWizardDraft);
   /** The design's Search Workspace box, filtering the roster by brand name. */
@@ -68,7 +73,7 @@ export function AgencyPortalScreen() {
 
   let height =
     view === 'clientFinder'
-      ? cfConnected
+      ? cfHasLeads
         ? 1180
         : 760
       : view === 'jobFinder'
@@ -95,7 +100,7 @@ export function AgencyPortalScreen() {
   const visible = (roster?.brands ?? []).filter((b) => (q === '' ? true : b.name.toLowerCase().includes(q)));
 
   const toolTitle =
-    view === 'clientFinder' ? (cfConnected ? 'Saved Leads' : 'Client Finder') : view === 'jobFinder' ? 'Job Finder' : undefined;
+    view === 'clientFinder' ? (cfHasLeads ? 'Client Pipeline' : 'Client Finder') : view === 'jobFinder' ? 'Job Finder' : undefined;
 
   return (
     <AgencyStage height={height} toolTitle={toolTitle} toolIcon={view === 'clientFinder'} onBack={() => setView('home')}>
@@ -130,7 +135,7 @@ export function AgencyPortalScreen() {
           */}
           {launched ? null : (
             <>
-              <h2 className="absolute left-[56px] top-[688px] text-[24px] font-bold leading-none text-ink">My Clients</h2>
+              <h2 className="absolute left-[56px] top-[688px] text-24 font-bold leading-none text-ink">My Clients</h2>
               <label
                 className="absolute left-[1226px] top-[674px] flex h-[58px] w-[460px] items-center rounded-[13px] bg-white pl-[20px] pr-[18px]"
                 style={{ boxShadow: '0 10px 26px -20px rgba(12,12,12,0.35)' }}
@@ -140,7 +145,7 @@ export function AgencyPortalScreen() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search Workspace"
                   aria-label="Search Workspace"
-                  className="h-full w-[390px] bg-transparent text-[15.5px] font-medium text-ink outline-none"
+                  className="h-full w-[390px] bg-transparent text-16 font-medium text-ink outline-none"
                 />
                 <svg width="19" height="19" viewBox="0 0 26 26" fill="none" aria-hidden className="ml-auto block">
                   <circle cx="11" cy="11" r="8" stroke="rgb(91,91,91)" strokeWidth="2" />
@@ -151,14 +156,21 @@ export function AgencyPortalScreen() {
           )}
 
           {error ? (
-            <p className="absolute left-[56px] text-[15px] text-destructive" style={{ top: launched ? 494 : 721 }}>
+            <p className="absolute left-[56px] text-15 text-destructive" style={{ top: launched ? 494 : 721 }}>
               {error}
             </p>
           ) : null}
         </>
       ) : null}
 
-      {view === 'clientFinder' ? <AgencyClientFinder onConnected={setCfConnected} /> : null}
+      {view === 'clientFinder' ? (
+        <AgencyClientFinder
+          onHasLeads={setCfHasLeads}
+          /* `lead.convert` attaches a won lead to a real workspace, so the
+             picker needs the org's brands — the same roster the table reads. */
+          brands={(roster?.brands ?? []).map((b) => ({ brandId: b.brandId, name: b.name }))}
+        />
+      ) : null}
       {view === 'jobFinder' ? <AgencyJobFinder /> : null}
 
       {wizStep !== null ? (
@@ -166,6 +178,7 @@ export function AgencyPortalScreen() {
           step={wizStep}
           draft={draft}
           onDraft={setDraft}
+          accounts={accounts}
           onBack={() => setWizStep((s) => (s === null || s === 0 ? null : ((s - 1) as WizStep)))}
           onNext={() => {
             if (wizStep === 3) {

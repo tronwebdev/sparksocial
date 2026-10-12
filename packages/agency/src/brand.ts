@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { extractProhibitions, merge } from './prohibitions.js';
+import { registerKnowledgeAsset } from './knowledgeAsset.js';
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
@@ -145,6 +147,35 @@ export function makeBrandKnowledgeAttach(embed: EmbedClient) {
         embedding,
         ...(input.citationLabel ? { citation: { label: input.citationLabel } } : {}),
       });
+      /*
+       * Pasted knowledge counts as a knowledge source too.
+       *
+       * The role gate asks "does this brand have a knowledge file", and an
+       * owner who pastes their guidelines has answered that as squarely as one
+       * who uploads a PDF. Registering only the uploaded path would mean the
+       * same information unlocks seven playbooks or none depending on which
+       * button it arrived through, which is not a distinction anybody intends.
+       *
+       * The url is a `knowledge:` reference rather than a fetchable address,
+       * because there is no file — the text lives in `knowledge_chunks` and the
+       * chunk id is what points at it. Nothing fetches this: a document is
+       * filtered out of backdrops by media type, and no beat sources the role.
+       */
+      await registerKnowledgeAsset(ctx, {
+        genomeId: input.genomeId,
+        url: `knowledge:${chunk.docId}`,
+        filename: input.citationLabel ?? input.docId,
+        excerpt: input.text.slice(0, 400),
+        embedding,
+        source: 'brand.knowledge.attach',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('knowledge asset not registered', {
+          genomeId: input.genomeId,
+          docId: input.docId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+
       ctx.logger.info('knowledge attached', { genomeId: input.genomeId, docId: input.docId });
       return { id: chunk.id, docId: chunk.docId };
     },
@@ -222,6 +253,18 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
       chunks: z.number().int(),
       /** Characters extracted — a scanned PDF with no text layer comes back near zero. */
       characters: z.number().int(),
+      /**
+       * Publishing rules taken from the document's own "must never claim"
+       * section and added to this brand's governance.
+       *
+       * Reported because this tool changed a setting the caller did not ask it
+       * to change. Silently tightening what may be published is how somebody
+       * spends an afternoon on a post that will never go out.
+       */
+      restrictionsAdded: z.object({
+        claimsToAvoid: z.array(z.string()),
+        bannedPhrases: z.array(z.string()),
+      }),
     }),
 
     effect: 'write',
@@ -266,14 +309,91 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
         });
       }
 
+      /*
+       * The document is also an asset.
+       *
+       * Chunks answer "what does this brand know"; the asset row answers "does
+       * this brand have a knowledge file", which is the question seven playbook
+       * preconditions ask. Writing only the chunks meant an owner could upload
+       * their company documents in onboarding, get retrieval over them, and
+       * still resolve nothing that required one. See `registerKnowledgeAsset`.
+       *
+       * After the chunks, and non-fatal: the chunks are what the caller asked
+       * for and are already written, so a failure to register the row must not
+       * throw away work that succeeded — the same posture `ensureBrandKitAsset`
+       * takes on the logo path.
+       */
+      await registerKnowledgeAsset(ctx, {
+        genomeId: input.genomeId,
+        url: input.url,
+        filename: input.filename,
+        excerpt: cleaned.slice(0, 400),
+        embedding: await deps.embed.embed(`${input.filename} ${cleaned.slice(0, 400)}`),
+        source: 'brand.knowledge.attach_document',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('knowledge asset not registered', {
+          genomeId: input.genomeId,
+          docId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+
+      /**
+       * The document's prohibitions become enforceable rules.
+       *
+       * A knowledge base almost always carries a section of things the business
+       * must never say. It grounded nothing and enforced nothing: the writer
+       * reads the document as facts and goes straight past it — asked for
+       * "awards we have won" it claims them for a brand whose own document says
+       * it has won nothing — and `claim_grounding` does not catch it either,
+       * because a vague boast is not a checkable claim. Instructing the model
+       * harder was tried and measured and does not work.
+       *
+       * `claimsToAvoid` and `bannedPhrases` do work, because the guardrail layer
+       * blocks on them. This is the bridge between the sentence somebody wrote
+       * in their guidelines and the list that actually stops a post.
+       *
+       * Strictly additive — see `merge`. Nothing here can remove a restriction
+       * the owner set by hand, so a bad parse can only over-block, which is
+       * visible and fixable, rather than silently under-block, which is not.
+       */
+      const restrictionsAdded = { claimsToAvoid: [] as string[], bannedPhrases: [] as string[] };
+      if (ctx.brandId) {
+        try {
+          const found = extractProhibitions(cleaned);
+          if (found.claimsToAvoid.length || found.bannedPhrases.length) {
+            const before = await ctx.db.brands.get(ctx.brandId, ctx.orgId);
+            const claims = merge(before?.claimsToAvoid, found.claimsToAvoid);
+            const phrases = merge(before?.bannedPhrases, found.bannedPhrases);
+            if (claims.added.length || phrases.added.length) {
+              await ctx.db.brands.setGovernance({
+                brandId: ctx.brandId,
+                orgId: ctx.orgId,
+                patch: { claimsToAvoid: claims.next, bannedPhrases: phrases.next },
+              });
+              restrictionsAdded.claimsToAvoid = claims.added;
+              restrictionsAdded.bannedPhrases = phrases.added;
+            }
+          }
+        } catch (err: unknown) {
+          // Never lose an attached document to the rule-extraction half. The
+          // chunks are the thing that was asked for and are already written.
+          ctx.logger.warn('prohibitions not extracted', {
+            genomeId: input.genomeId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
       ctx.logger.info('document attached', {
         genomeId: input.genomeId,
         filename: input.filename,
         pages,
         chunks: chunks.length,
+        restrictionsAdded: restrictionsAdded.claimsToAvoid.length + restrictionsAdded.bannedPhrases.length,
       });
 
-      return { docId, pages, chunks: chunks.length, characters: cleaned.length };
+      return { docId, pages, chunks: chunks.length, characters: cleaned.length, restrictionsAdded };
     },
   });
 }

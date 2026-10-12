@@ -31,9 +31,9 @@ export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () =
   return (
     <ModalShell top={170} height={700} width={780} radius={24} background="#FFFFFF" label="View asset" onClose={onClose}>
       <div className="px-[40px] pt-[34px]">
-        <p className="pr-[40px] text-[22px] font-bold text-ink">{assetName(asset)}</p>
+        <p className="pr-[40px] text-22 font-bold text-ink">{assetName(asset)}</p>
         <span
-          className="mt-[14px] flex h-[30px] w-fit items-center rounded-lg px-[11px] text-[13.5px] font-semibold"
+          className="mt-[14px] flex h-[30px] w-fit items-center rounded-lg px-[11px] text-14 font-semibold"
           style={{ background: 'rgba(131,131,131,0.1)', color: '#5B5B5B' }}
         >
           {asset.sizeBytes === null ? 'size not recorded' : formatBytes(asset.sizeBytes)}
@@ -113,7 +113,7 @@ export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () =
         </a>
       </div>
 
-      <p className="px-[40px] pt-[16px] text-center text-[13.5px] text-ink-muted">
+      <p className="px-[40px] pt-[16px] text-center text-14 text-ink-muted">
         SPARK finds this by meaning when it drafts — there is no “send to the Draft Panel”, because the panel
         retrieves what it needs by role and intent.
       </p>

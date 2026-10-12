@@ -101,7 +101,18 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
     return h(
       AbsoluteFill,
       null,
-      h(Video, { src: beat.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
+      /*
+       * `loop`, for the same reason `videoBackdrop` loops.
+       *
+       * The clip and the beat are sized by different things: the beat's length
+       * comes from the playbook, the clip's from whatever the generator would
+       * sell — Kling takes `'5'` or `'10'` and nothing else. A thirty-second
+       * body beat handed a ten-second clip played the footage once and then
+       * held the last frame for twenty seconds, which reads as a video that
+       * froze rather than as a short shot. Looping is the smaller lie, and it
+       * is what the multi-clip path next to this one already does.
+       */
+      h(Video, { src: beat.url, loop: true, style: { width: '100%', height: '100%', objectFit: 'cover' } }),
       beat.caption ? captionOverlay(beat.caption, kit.type, kit.bodyFont) : null,
       lower,
     );
@@ -111,14 +122,87 @@ function renderBeat(beat: TimedBeat, kit: ResolvedKit, width: number): React.Rea
     return h(Audio, { src: beat.url });
   }
   // kind === 'text'
+  /*
+   * A backdrop, when auto-illustration found or made one.
+   *
+   * Behind the words rather than instead of them: the beat *is* the post's
+   * copy, so a brand with no footage used to get white type on a flat ground
+   * for every post in its calendar — correct, and indistinguishable from a
+   * placeholder.
+   *
+   * The scrim is not decoration. Type sits on arbitrary photography here, and
+   * generated imagery is exactly where a light patch lands under white text
+   * with nobody checking. Same reasoning, and the same neutral treatment, as
+   * `captionOverlay` below.
+   */
+  const backdrop = beat.backdrop
+    ? [
+        beat.backdrop.kind === 'video'
+          ? videoBackdrop(beat.backdrop.urls, beat.durationSec)
+          : h(Img, { src: beat.backdrop.urls[0]!, style: FILL }),
+        /*
+         * Only under type. The scrim's whole job is legibility, so a frame with
+         * no words on it gets the picture at full strength — darkening a
+         * photograph by 45% for text that is not there was making every still
+         * post muddier than the image it was given.
+         */
+        beat.text
+          ? h('div', { style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' } })
+          : null,
+      ]
+    : [];
+
+  /*
+   * Two layers, not one.
+   *
+   * The first version put the backdrop inside the padded, centred box that
+   * holds the words, so the picture was inset by the padding and the text was
+   * pushed down onto the watermark — a letterboxed photograph with the copy
+   * sitting in the margin. The backdrop is full-bleed and the type layer sits
+   * on top of it; only the type is padded.
+   */
   return h(
     AbsoluteFill,
-    { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
-    h(
-      'div',
-      { style: { color: kit.type, fontSize: 64, fontFamily: kit.displayFont, textAlign: 'center', lineHeight: 1.3 } },
-      beat.text,
-    ),
+    null,
+    ...backdrop,
+    /*
+     * The narration, if this beat has one.
+     *
+     * Rendered inside the beat's own sequence, so it starts when the scene does
+     * and stops when it ends — the alternative, a post-wide track, drifts out of
+     * sync the moment a scene is retimed or reordered.
+     */
+    beat.voiceoverUrl ? h(Audio, { src: beat.voiceoverUrl }) : null,
+    /*
+     * The words, when they belong in the frame.
+     *
+     * `zipTimeline` blanks this for a still post that has a picture: there the
+     * copy is the caption the platform prints beneath the image, and printing
+     * it across the photograph as well showed the same sentence twice. An empty
+     * string would still render a padded, centred, invisible div over the
+     * backdrop, so the layer is omitted rather than emptied.
+     */
+    beat.text
+      ? h(
+          AbsoluteFill,
+          { style: { justifyContent: 'center', alignItems: 'center', padding: 80 } },
+          h(
+            'div',
+            {
+              style: {
+                // Over a photograph the brand's type colour is a coin flip; white
+                // on the scrim is legible whatever the picture turned out to be.
+                color: beat.backdrop ? '#FFFFFF' : kit.type,
+                fontSize: 64,
+                fontFamily: kit.displayFont,
+                textAlign: 'center',
+                lineHeight: 1.3,
+              },
+            },
+            beat.text,
+          ),
+        )
+      : null,
     lower,
   );
 }
@@ -230,3 +314,45 @@ export function BeatsRoot(): React.ReactElement | null {
 }
 
 registerRoot(BeatsRoot);
+
+/** Cover the frame, whatever the clip's own aspect turned out to be. */
+const FILL = { width: '100%', height: '100%', objectFit: 'cover' } as const;
+
+/**
+ * Several clips across one beat, rather than one clip looped under it.
+ *
+ * The clip generator caps at ten seconds and a narration beat can be five
+ * times that. One clip stretched over it loops the same five seconds ten
+ * times, which does not read as footage — it reads as a video that is broken.
+ *
+ * The beat is divided evenly between whatever clips there are, so N of them
+ * always cover it however long it is, and each still loops inside its own span
+ * if it is shorter than its share. That is a much smaller lie: a two-second
+ * shot repeating twice inside its own eight seconds is how b-roll is cut
+ * anyway.
+ */
+function videoBackdrop(urls: string[], durationSec: number): React.ReactElement {
+  const total = Math.max(1, Math.round(durationSec * FPS));
+  if (urls.length === 1) {
+    return h(Video, { src: urls[0]!, loop: true, muted: true, style: FILL });
+  }
+
+  const each = Math.max(1, Math.floor(total / urls.length));
+  return h(
+    AbsoluteFill,
+    null,
+    ...urls.map((url, i) =>
+      h(
+        Sequence,
+        {
+          key: `${url}-${i}`,
+          from: i * each,
+          // The last one absorbs the rounding, so the beat is covered to its
+          // final frame rather than flickering to the ground colour at the end.
+          durationInFrames: i === urls.length - 1 ? Math.max(1, total - i * each) : each,
+        },
+        h(Video, { src: url, loop: true, muted: true, style: FILL }),
+      ),
+    ),
+  );
+}

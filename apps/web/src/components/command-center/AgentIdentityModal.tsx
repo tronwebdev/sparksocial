@@ -179,8 +179,8 @@ export function AgentIdentityModal({
   return (
     <ModalShell top={28} height={930} width={1164} label="Agent identity" gradientTo="#EAF9FE" onClose={onClose}>
       <div className="px-[48px] pt-[44px]">
-        <p className="text-[28px] font-bold leading-[1.2] text-ink">Agent Identity — Ownership &amp; Personality</p>
-        <p className="mt-[10px] text-[17px] font-normal text-ink-muted">
+        <p className="text-28 font-bold leading-[1.2] text-ink">Agent Identity — Ownership &amp; Personality</p>
+        <p className="mt-[10px] text-17 font-normal text-ink-muted">
           A brief summary of an agent&rsquo;s distinct identity, showcasing their ownership and personality traits.
         </p>
       </div>
@@ -200,7 +200,7 @@ export function AgentIdentityModal({
                 style={{ background: 'rgba(255,255,255,0.55)' }}
               >
                 <span
-                  className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-ink text-[38px] font-bold text-white"
+                  className="flex h-[118px] w-[118px] items-center justify-center rounded-full bg-ink text-40 font-bold text-white"
                   style={{ boxShadow: '0 0 0 2px #F56BFF' }}
                 >
                   {(id?.name ?? 'A').slice(0, 1).toUpperCase()}
@@ -208,7 +208,7 @@ export function AgentIdentityModal({
               </span>
 
               <div className="min-w-0">
-                <p className="truncate text-[32px] font-bold leading-[1.2] text-ink">{id?.name ?? 'Loading…'}</p>
+                <p className="truncate text-32 font-bold leading-[1.2] text-ink">{id?.name ?? 'Loading…'}</p>
 
                 <div className="mt-[10px] flex flex-wrap items-center gap-[12px]">
                   <span className="text-16 text-ink">Status</span>
@@ -253,32 +253,32 @@ export function AgentIdentityModal({
           {/* ── the two cards ─────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-[32px] px-[48px] pt-[30px]">
             <div className={CARD} style={{ ...CARD_RING, flex: '1 1 380px' }}>
-              <p className="px-[24px] py-[20px] text-[22px] font-bold text-ink">Identity Attributes</p>
+              <p className="px-[24px] py-[20px] text-22 font-bold text-ink">Identity Attributes</p>
               <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.16)' }} />
               <dl className="px-[24px] py-[20px]">
                 {rows.map((r) => (
                   <div key={r.label} className="flex items-baseline gap-4 py-[11px]" title={r.title}>
-                    <dt className="w-[150px] shrink-0 text-[17px] font-normal text-ink-muted">{r.label}:</dt>
-                    <dd className="min-w-0 flex-1 text-[17px] font-medium text-ink">{r.value}</dd>
+                    <dt className="w-[150px] shrink-0 text-17 font-normal text-ink-muted">{r.label}:</dt>
+                    <dd className="min-w-0 flex-1 text-17 font-medium text-ink">{r.value}</dd>
                   </div>
                 ))}
               </dl>
             </div>
 
             <div className={CARD} style={{ ...CARD_RING, flex: '1 1 380px' }}>
-              <p className="px-[24px] py-[20px] text-[22px] font-bold text-ink">Avatar &amp; Voice</p>
+              <p className="px-[24px] py-[20px] text-22 font-bold text-ink">Avatar &amp; Voice</p>
               <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.16)' }} />
               <div className="px-[24px] py-[20px]">
                 {/* `genome.avatar_config.set` is write-only — there is no read —
                     so this names where the setting lives instead of reporting a
                     source it cannot see. */}
-                <p className="text-[17px] font-normal text-ink-muted">
+                <p className="text-17 font-normal text-ink-muted">
                   Avatar source: set in Settings
                 </p>
                 <div className="mt-[14px] flex flex-wrap gap-[12px]">
                   <a
                     href="/settings/brand-kit"
-                    className="flex h-[46px] items-center gap-[10px] rounded-xl px-[18px] text-[16px] font-semibold text-white"
+                    className="flex h-[46px] items-center gap-[10px] rounded-xl px-[18px] text-16 font-semibold text-white"
                     style={{ background: 'linear-gradient(90deg, #C46BF5 0%, #A341FF 100%)' }}
                   >
                     <svg width="18" height="16" viewBox="0 0 20 18" fill="none" aria-hidden>
@@ -289,7 +289,7 @@ export function AgentIdentityModal({
                   </a>
                   <a
                     href="/settings/brand-kit"
-                    className="flex h-[46px] items-center gap-[10px] rounded-xl bg-white px-[18px] text-[16px] font-semibold text-ink"
+                    className="flex h-[46px] items-center gap-[10px] rounded-xl bg-white px-[18px] text-16 font-semibold text-ink"
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
                   >
                     <svg width="17" height="17" viewBox="0 0 20 19" fill="none" aria-hidden>
@@ -299,10 +299,10 @@ export function AgentIdentityModal({
                   </a>
                 </div>
 
-                <p className="mt-[22px] text-[17px] font-normal text-ink-muted">Voice profile: set in Settings</p>
+                <p className="mt-[22px] text-17 font-normal text-ink-muted">Voice profile: set in Settings</p>
                 <a
                   href="/settings/brand-kit"
-                  className="mt-[14px] flex h-[46px] w-fit items-center gap-[10px] rounded-xl px-[18px] text-[16px] font-semibold text-ink"
+                  className="mt-[14px] flex h-[46px] w-fit items-center gap-[10px] rounded-xl px-[18px] text-16 font-semibold text-ink"
                   style={{ background: '#9CEFFF' }}
                 >
                   <svg width="18" height="16" viewBox="0 0 20 18" fill="none" aria-hidden>
@@ -316,7 +316,7 @@ export function AgentIdentityModal({
 
           {/* ── governance ────────────────────────────────────────────── */}
           <div className="px-[48px] pb-[44px] pt-[34px]">
-            <p className="flex items-center gap-[12px] text-[22px] font-bold text-ink">
+            <p className="flex items-center gap-[12px] text-22 font-bold text-ink">
               <svg width="20" height="24" viewBox="0 0 16 20" fill="none" aria-hidden>
                 <path
                   d="M7.7.04c.21-.06.44-.05.64.03l7 2.75.14.07c.3.18.5.5.5.86v5.5c0 4.9-3.09 9.1-7.67 10.69a1 1 0 0 1-.66 0C3.09 18.35 0 14.15 0 9.25v-5.5l.01-.15c.05-.35.29-.65.62-.78l7-2.75.07-.03Z"
@@ -365,7 +365,7 @@ export function AgentIdentityModal({
                       </svg>
                     )}
                   </span>
-                  <span className={`text-[18px] font-medium ${g.off ? 'text-ink-muted' : 'text-ink'}`}>{g.label}</span>
+                  <span className={`text-18 font-medium ${g.off ? 'text-ink-muted' : 'text-ink'}`}>{g.label}</span>
                 </li>
               ))}
             </ul>

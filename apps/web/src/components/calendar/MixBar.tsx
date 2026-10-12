@@ -32,7 +32,7 @@ export function MixBar({
 }) {
   const total = mix.reduce((s, m) => s + m.count, 0);
   if (total === 0) {
-    return <p className="text-[14px] text-ink-muted">Nothing scheduled yet.</p>;
+    return <p className="text-14 text-ink-muted">Nothing scheduled yet.</p>;
   }
 
   const present = mix.filter((m) => m.count > 0);
@@ -60,7 +60,7 @@ export function MixBar({
           return (
             <li key={m.pillar} className="flex items-center gap-2">
               <span className={cn('h-2 w-2 shrink-0 rounded-full', style.dot)} />
-              <span className="text-[13px] text-ink">
+              <span className="text-13 text-ink">
                 {style.label} <span className="text-ink-muted">{m.count} · {share}%</span>
               </span>
               {onAdjust ? (
@@ -111,7 +111,7 @@ function AdjustButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'flex h-5 w-5 items-center justify-center rounded border border-border text-[13px] leading-none',
+        'flex h-5 w-5 items-center justify-center rounded border border-border text-13 leading-none',
         'text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink',
         'disabled:pointer-events-none disabled:opacity-40',
       )}

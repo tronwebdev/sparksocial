@@ -91,7 +91,7 @@ export function CommandCenterOverview({
   if (genomeError) {
     return (
       <div className="rounded border border-border bg-surface p-6">
-        <p className="text-[14px] text-ink-muted">{genomeError}</p>
+        <p className="text-14 text-ink-muted">{genomeError}</p>
       </div>
     );
   }

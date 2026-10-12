@@ -1,3 +1,4 @@
+import { AppProviders } from '../AppProviders';
 import { OrgGuard } from '@/components/auth/OrgGuard';
 import { GenomeGuard } from '@/components/auth/GenomeGuard';
 
@@ -21,8 +22,10 @@ import { GenomeGuard } from '@/components/auth/GenomeGuard';
  */
 export default function CommandCenterLayout({ children }: { children: React.ReactNode }) {
   return (
-    <OrgGuard>
-      <GenomeGuard>{children}</GenomeGuard>
-    </OrgGuard>
+    <AppProviders>
+      <OrgGuard>
+        <GenomeGuard>{children}</GenomeGuard>
+      </OrgGuard>
+    </AppProviders>
   );
 }

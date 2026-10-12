@@ -263,7 +263,7 @@ export function EngagementPanel() {
   if (loading) {
     return (
       <section aria-busy className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="text-[18px] font-semibold text-ink">Engagement Intelligence</h2>
+        <h2 className="text-18 font-semibold text-ink">Engagement Intelligence</h2>
         <PanelSkeleton rows={3} />
       </section>
     );
@@ -304,9 +304,9 @@ export function EngagementPanel() {
             </span>
           </span>
 
-          <h2 className="mt-[20px] text-[32px] font-bold leading-[1.22] text-black">Engagement Intelligence</h2>
+          <h2 className="mt-[20px] text-32 font-bold leading-[1.22] text-black">Engagement Intelligence</h2>
 
-          <p className="mt-[18px] text-[24px] font-medium leading-[1.29] text-ink">
+          <p className="mt-[18px] text-24 font-medium leading-[1.29] text-ink">
             Decide how your Agent listens, responds, and escalates conversations.
           </p>
 
@@ -318,13 +318,13 @@ export function EngagementPanel() {
           {configuredAt ? (
             <>
               <div className="mt-[23px] flex flex-wrap items-center justify-center gap-[7px]">
-                <span className="flex h-[54px] w-[168px] items-center justify-center rounded-[10.828px] text-[17.643px] font-semibold text-white" style={{ background: 'var(--ss-green-600)' }}>
+                <span className="flex h-[54px] w-[168px] items-center justify-center rounded-[10.828px] text-18 font-semibold text-white" style={{ background: 'var(--ss-green-600)' }}>
                   Configured
                 </span>
                 <button
                   type="button"
                   onClick={() => setStep(STEPS[0])}
-                  className="flex h-[54px] w-[225px] items-center justify-center rounded-[10.828px] bg-white text-[17.643px] font-semibold text-ink transition-colors hover:bg-surface-200"
+                  className="flex h-[54px] w-[225px] items-center justify-center rounded-[10.828px] bg-white text-18 font-semibold text-ink transition-colors hover:bg-surface-200"
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                 >
                   Edit Configuration
@@ -347,7 +347,7 @@ export function EngagementPanel() {
             <button
               type="button"
               onClick={() => setStep(STEPS[0])}
-              className="mt-[23px] h-[68px] w-[365px] max-w-full rounded-[10.828px] bg-ink text-[17.643px] font-semibold text-white transition-colors hover:bg-ink-800"
+              className="mt-[23px] h-[68px] w-[365px] max-w-full rounded-[10.828px] bg-ink text-18 font-semibold text-white transition-colors hover:bg-ink-800"
             >
               Configure Engagement Intelligence
             </button>
@@ -390,7 +390,7 @@ export function EngagementPanel() {
         />
 
         <div className="relative px-[70px] pb-[36px] pt-[52px]">
-          <h2 className="text-[32px] font-semibold leading-[1.22] text-black">{STEP_TITLES[step]}</h2>
+          <h2 className="text-32 font-semibold leading-[1.22] text-black">{STEP_TITLES[step]}</h2>
 
           <p className="mt-[13px] max-w-[470px] text-18 font-normal leading-[1.33]" style={{ color: 'rgb(131,131,131)' }}>
             {STEP_BLURBS[step]}
@@ -449,7 +449,7 @@ export function EngagementPanel() {
             <button
               type="button"
               onClick={() => (index === 0 ? setStep(null) : setStep(STEPS[index - 1] ?? null))}
-              className="flex h-[44px] w-[110px] items-center justify-center rounded-[8.457px] text-[16.915px] font-medium transition-colors hover:bg-white/60"
+              className="flex h-[44px] w-[110px] items-center justify-center rounded-[8.457px] text-17 font-medium transition-colors hover:bg-white/60"
               style={{ color: 'rgb(131,131,131)' }}
             >
               {index === 0 ? 'Cancel' : 'Back'}
@@ -459,7 +459,7 @@ export function EngagementPanel() {
               type="button"
               disabled={busy}
               onClick={() => void advance(step)}
-              className="flex h-[43px] w-[132px] items-center justify-center rounded-[8.457px] text-[16.915px] font-medium text-ink transition-colors hover:bg-white disabled:opacity-60"
+              className="flex h-[43px] w-[132px] items-center justify-center rounded-[8.457px] text-17 font-medium text-ink transition-colors hover:bg-white disabled:opacity-60"
               style={{ background: 'rgba(255,255,255,0.6)' }}
             >
               {busy ? 'Saving…' : last ? 'Finish Setup' : 'Continue'}
@@ -480,8 +480,8 @@ export function EngagementPanel() {
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border p-3">
-      <dt className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-1 text-[13px] text-ink">{value}</dd>
+      <dt className="text-11 uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="mt-1 text-13 text-ink">{value}</dd>
     </div>
   );
 }

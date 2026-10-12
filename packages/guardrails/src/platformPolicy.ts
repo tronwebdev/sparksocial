@@ -1,4 +1,5 @@
 import { PASS, type CheckResult } from './types.js';
+import { PLATFORM_LIMITS, countHashtags } from '@sparksocial/shared';
 
 /**
  * PLATFORM POLICY — engine spec §10: "Per-platform length, hashtag, link, and
@@ -10,24 +11,15 @@ import { PASS, type CheckResult } from './types.js';
  * here). Re-verify at build time per master plan's closing note: these move.
  */
 
-interface PlatformLimits {
-  maxLength: number;
-  maxHashtags: number;
-}
-
-const LIMITS: Record<string, PlatformLimits> = {
-  x: { maxLength: 280, maxHashtags: 2 },
-  instagram: { maxLength: 2200, maxHashtags: 30 },
-  tiktok: { maxLength: 2200, maxHashtags: 30 },
-  linkedin: { maxLength: 3000, maxHashtags: 5 },
-  facebook: { maxLength: 63_206, maxHashtags: 30 },
-  youtube_shorts: { maxLength: 5000, maxHashtags: 15 },
-  threads: { maxLength: 500, maxHashtags: 1 },
-  pinterest: { maxLength: 500, maxHashtags: 20 },
-  bluesky: { maxLength: 300, maxHashtags: 10 },
-};
-
-const HASHTAG = /#[\w]+/g;
+/*
+ * The numbers moved to `@sparksocial/shared`.
+ *
+ * They were private here, which was correct while nothing else needed them and
+ * wrong the moment something did. `content.draft` now writes hashtags, and a
+ * writer holding its own copy of "X allows 2" could drift from the check that
+ * enforces it — producing a draft SPARK wrote and then refuses to publish. One
+ * table, read by both.
+ */
 
 export interface PlatformPolicyInput {
   platform: string;
@@ -39,7 +31,7 @@ export interface PlatformPolicyInput {
 }
 
 export function platformPolicy(input: PlatformPolicyInput): CheckResult {
-  const limits = LIMITS[input.platform];
+  const limits = PLATFORM_LIMITS[input.platform];
   if (!limits) {
     // An unrecognised platform is not something to guess rules for.
     return { verdict: 'flag', rule: 'platform_policy', fixAction: `No policy profile for "${input.platform}" — verify limits manually before scheduling.` };
@@ -54,7 +46,7 @@ export function platformPolicy(input: PlatformPolicyInput): CheckResult {
     };
   }
 
-  const hashtagCount = (input.text.match(HASHTAG) ?? []).length;
+  const hashtagCount = countHashtags(input.text);
   if (hashtagCount > limits.maxHashtags) {
     return {
       verdict: 'block',

@@ -112,12 +112,12 @@ export function ConnectAccountsStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="max-w-prose text-[16px] text-ink-muted">
+      <p className="max-w-prose text-16 text-ink-muted">
         SPARK can plan and write without these. It cannot post without them — so a campaign started now would
         fill up and then hold everything. You can also do this later in Settings.
       </p>
 
-      {error ? <p className="text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+      {error ? <p className="text-14 text-[var(--ss-danger)]">{error}</p> : null}
 
       {platforms === null && !error ? (
         <Skeleton className="h-40 w-full rounded-xl" />
@@ -129,8 +129,8 @@ export function ConnectAccountsStep({
               className="flex items-center justify-between gap-3 rounded-xl border border-border p-4"
             >
               <div className="min-w-0">
-                <p className="text-[15px] font-medium text-ink">{platformLabel(p.platform)}</p>
-                <p className="text-[13px] text-ink-muted">
+                <p className="text-15 font-medium text-ink">{platformLabel(p.platform)}</p>
+                <p className="text-13 text-ink-muted">
                   {p.connected ? (p.accountLabel ?? 'Connected') : 'Not connected'}
                 </p>
               </div>

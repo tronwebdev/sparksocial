@@ -104,7 +104,7 @@ export function CreditUsageSection() {
           </p>
 
           <p className="mt-[8px] flex flex-wrap items-baseline gap-[9px]">
-            <span className="text-[49.231px] font-bold leading-[1.28] text-white">
+            <span className="text-48 font-bold leading-[1.28] text-white">
               {usage.spentCredits.toLocaleString()}
             </span>
             <span className="text-16 font-normal" style={{ color: 'rgba(255,255,255,0.6)' }}>

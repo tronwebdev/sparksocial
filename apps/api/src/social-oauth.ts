@@ -25,13 +25,26 @@ export interface SocialOAuthCallbackDeps {
   fetchImpl?: (url: string, init: RequestInit) => Promise<Response>;
 }
 
+/*
+ * ── Where the browser lands afterwards ──────────────────────────────────
+ *
+ * `/settings/accounts`, not `/settings`. The redirect used to point at the
+ * settings root, which renders `OverviewSection` — and the only component that
+ * reads `?social=` is `PublishHealthPanel`, which lives inside `AccountsSection`
+ * one level down. So the "TikTok connected." confirmation this handler has been
+ * sending all along was never rendered by anything.
+ *
+ * Nothing was lost by it: both panels reload on `focus`, so closing the popup
+ * still flipped the tile. But the popup's last page was the settings overview,
+ * which is not an answer to "did that work?".
+ */
 export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallbackDeps): void {
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   app.get('/oauth/social/callback', async (c) => {
     const error = c.req.query('error');
     if (error) {
-      return c.redirect(`${deps.webAppUrl}/settings?social=denied`, 302);
+      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=denied`, 302);
     }
 
     const code = c.req.query('code');
@@ -49,7 +62,7 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
     const clientId = deps.clientIds[provider];
     const clientSecret = deps.clientSecrets[provider];
     if (!clientId || !clientSecret) {
-      return c.redirect(`${deps.webAppUrl}/settings?social=failed`, 302);
+      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=failed`, 302);
     }
 
     let tokens: Awaited<ReturnType<typeof exchangeSocialCode>>;
@@ -68,7 +81,7 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
         provider,
         error: e instanceof Error ? e.message : String(e),
       });
-      return c.redirect(`${deps.webAppUrl}/settings?social=failed`, 302);
+      return c.redirect(`${deps.webAppUrl}/settings/accounts?social=failed`, 302);
     }
 
     await deps.db.oauthConnections.save({
@@ -84,6 +97,6 @@ export function registerSocialOAuthCallback(app: Hono, deps: SocialOAuthCallback
       ...(tokens.accountId ? { accountId: tokens.accountId } : {}),
     });
 
-    return c.redirect(`${deps.webAppUrl}/settings?social=connected&provider=${provider}`, 302);
+    return c.redirect(`${deps.webAppUrl}/settings/accounts?social=connected&provider=${provider}`, 302);
   });
 }

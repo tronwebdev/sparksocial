@@ -103,7 +103,7 @@ export function ShareFolderModal({
       label="Share folder"
       onClose={onClose}
     >
-      <p className="pt-[54px] text-center text-[26px] font-bold text-ink">Share “{folder.name}”</p>
+      <p className="pt-[54px] text-center text-26 font-bold text-ink">Share “{folder.name}”</p>
       <p className="mx-auto mt-[10px] max-w-[420px] text-center text-15 leading-[1.5] text-ink-muted">
         {/* Said plainly, because "share" usually means "anyone with the link".
             This one does not: there is no public review page yet, so the link
@@ -203,7 +203,7 @@ export function RenameFolderModal({
       label="Rename folder"
       onClose={onClose}
     >
-      <p className="pt-[54px] text-center text-[26px] font-bold text-ink">Rename Folder</p>
+      <p className="pt-[54px] text-center text-26 font-bold text-ink">Rename Folder</p>
 
       <div className="px-[90px] pt-[30px]">
         <label htmlFor="lib-folder-rename" className="block text-17 font-medium text-ink">
@@ -271,7 +271,7 @@ export function DeleteFolderModal({
       label="Delete folder"
       onClose={onClose}
     >
-      <p className="pt-[50px] text-center text-[26px] font-bold text-ink">Delete “{folder.name}”?</p>
+      <p className="pt-[50px] text-center text-26 font-bold text-ink">Delete “{folder.name}”?</p>
 
       <div className="px-[70px] pt-[20px]">
         {/* The single most important thing this panel does is say that the files
@@ -347,7 +347,7 @@ export function PickFolderModal({
       label="Choose a folder"
       onClose={onClose}
     >
-      <p className="pt-[50px] text-center text-[26px] font-bold text-ink">Move to a folder</p>
+      <p className="pt-[50px] text-center text-26 font-bold text-ink">Move to a folder</p>
       <p className="mx-auto mt-[8px] max-w-[420px] truncate text-center text-15 text-ink-muted" title={assetName}>
         {assetName}
       </p>

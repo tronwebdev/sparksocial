@@ -1,3 +1,4 @@
+import { AppProviders } from '../AppProviders';
 import { AppShell } from '@/components/shell/AppShell';
 import { OrgGuard } from '@/components/auth/OrgGuard';
 import { GenomeGuard } from '@/components/auth/GenomeGuard';
@@ -16,10 +17,12 @@ import { GenomeGuard } from '@/components/auth/GenomeGuard';
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <OrgGuard>
-      <GenomeGuard>
-        <AppShell>{children}</AppShell>
-      </GenomeGuard>
-    </OrgGuard>
+    <AppProviders>
+      <OrgGuard>
+        <GenomeGuard>
+          <AppShell>{children}</AppShell>
+        </GenomeGuard>
+      </OrgGuard>
+    </AppProviders>
   );
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { EngagementKind, EngagementPlatform, Explanation, ToolError } from '@sparksocial/shared';
 
 /**
  * `engage.thread` — PRD §8.8 / `ENG-02.4`'s conversation.
@@ -87,8 +87,8 @@ const Turn = z.object({
 
 export const EngageThreadOutput = z.object({
   threadKey: z.string(),
-  platform: z.string(),
-  kind: z.string(),
+  platform: EngagementPlatform,
+  kind: EngagementKind,
   authorHandle: z.string(),
   authorName: z.string().optional(),
   /** Oldest first — a transcript is read downward. */
@@ -124,8 +124,8 @@ export const EngageThreadOutput = z.object({
  *   commenter's threads and is still safe by the rule above.
  */
 export function deriveThreadKey(args: {
-  platform: string;
-  kind: string;
+  platform: EngagementPlatform;
+  kind: EngagementKind;
   authorHandle: string;
   contentItemId?: string;
 }): string {

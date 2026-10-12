@@ -30,8 +30,50 @@ export const ContentGenerateBrollInput = z.object({
   beatId: z.string().min(1),
   prompt: z.string().min(1).max(1_000),
   aspectRatio: z.string().default('9:16'),
-  /** fal's video models take a target duration; short b-roll clips only — see the client's own ceiling. */
-  durationSec: z.number().min(1).max(10).default(5),
+  /**
+   * Target clip length.
+   *
+   * The ceiling is 60 rather than 10 because 10 was one vendor's limit written
+   * into the contract of the tool. `apps/api`'s client is where a model's
+   * allowed lengths actually live (`FAL_VIDEO_DURATIONS`, which snaps the
+   * request to something the endpoint accepts) and where the caller's own
+   * ceiling lives (`FAL_VIDEO_MAX_CLIP_SEC`). With 10 here, pointing the deploy
+   * at Seedance — which takes four to thirty seconds — got the longest beat of
+   * a post refused at the schema with `Number must be less than or equal to 10`
+   * while the short beats around it generated fine: a post illustrated
+   * everywhere except the scene it is actually about.
+   *
+   * A bound still belongs here, because an unbounded number is money. Sixty is
+   * a sanity limit on a single clip, not a claim about any model.
+   */
+  durationSec: z.number().min(1).max(60).default(5),
+  /**
+   * Attach the clip behind the beat instead of replacing it.
+   *
+   * Same flag, same reason, as `content.generate_voiceover`'s. Replacing is
+   * right when somebody points at one scene and asks for b-roll *instead* of
+   * it, and stays the default. It is wrong as an automatic step, because a text
+   * beat **is** the post's copy.
+   *
+   * ── Why this is a crash-safety fix, not just a tidier shape ──────────────
+   *
+   * Auto-illustration used to call this in replace mode and then put the words
+   * back afterwards, in its own `updateDraft` at the end of the pass. Between
+   * those two writes the stored beat had a clip and no text — and that window
+   * is minutes wide, because the next thing it does is wait on another clip.
+   *
+   * A process killed in that window leaves the row permanently wrong: the beat
+   * is `generated_broll`, its copy is gone and unrecoverable, and
+   * `autoIllustrate`'s own `hasVisuals` guard then sees a non-text beat and
+   * skips that post forever. Observed twice — once from a `ctrl-c`, once from a
+   * usage limit — each time leaving a post that could never be illustrated
+   * again and whose hook copy only existed in a log line.
+   *
+   * With `attach`, there is no window. The tool writes the finished state in
+   * one update: words kept, clip behind them. Nothing has to be undone later,
+   * so nothing is left half-undone.
+   */
+  attach: z.boolean().optional(),
 });
 
 export const ContentGenerateBrollOutput = z.object({
@@ -87,7 +129,22 @@ export function makeContentGenerateBroll(video: VideoClient) {
       const { url } = await video.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio, durationSec: input.durationSec });
 
       const nextBeats = [...beats];
-      nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_broll', beatId: input.beatId, url, prompt: input.prompt };
+      /*
+       * Attach or replace — see `attach` on the input.
+       *
+       * Attaching appends to whatever clips the beat already carries, so the
+       * multi-clip split (a long scene covered by several takes) is a sequence
+       * of attaching calls rather than each one overwriting the last.
+       */
+      nextBeats[index] = input.attach
+        ? {
+            ...beats[index]!,
+            backdrop: {
+              kind: 'video',
+              urls: [...(beats[index]!.backdrop?.kind === 'video' ? beats[index]!.backdrop!.urls : []), url],
+            },
+          }
+        : { ...keepStructure(beats[index]!), kind: 'generated_broll', beatId: input.beatId, url, prompt: input.prompt };
 
       const why: Explanation = {
         summary: `Generated a ${input.durationSec}s b-roll clip for "${input.beatId}".`,

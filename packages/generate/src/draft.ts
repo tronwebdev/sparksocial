@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { AssetRole, Explanation, ToolError } from '@sparksocial/shared';
+import { AssetRole, Explanation, ToolError, hashtagBudget, tidyHashtags } from '@sparksocial/shared';
 import { MAX_LOWER_THIRD } from '@sparksocial/shared/brandKit';
 import type { Genome } from '@sparksocial/shared/genome';
 import { byId, type Playbook } from '@sparksocial/playbooks';
@@ -112,7 +112,85 @@ const beatShape = {
    * slot — see `lowerThirdOverlay`.
    */
   lowerThird: z.string().min(1).max(MAX_LOWER_THIRD).optional(),
+  /**
+   * A picture or clip rendered *behind* this beat's words.
+   *
+   * ── Why a backdrop and not a replacement ─────────────────────────────────
+   *
+   * `content.generate_image` and `content.generate_broll` replace the beat they
+   * are given: the beat stops being words and becomes the media. That is right
+   * when somebody asks for an illustration of a specific scene, and wrong as an
+   * automatic step — a text beat *is* the post's copy, so replacing it produces
+   * a picture with the writing thrown away. A campaign of those is a month of
+   * photographs nobody can read a message off.
+   *
+   * So auto-illustration attaches instead. The words stay the beat; the
+   * generated media goes behind them, which is what a social image post
+   * actually is. Before this, a brand with no footage got white type on a flat
+   * background for every post in its calendar — correct, and indistinguishable
+   * from a placeholder.
+   *
+   * Absent is the normal state for a beat that already has real media of its
+   * own, and for any brand whose assets resolved.
+   */
+  backdrop: z
+    .object({
+      kind: z.enum(['image', 'video']),
+      /**
+       * One entry, or several played in sequence across the beat.
+       *
+       * Several, because the clip generator caps at ten seconds and a beat can
+       * be far longer: a fifty-second narration given one clip gets the same
+       * five seconds looping ten times, which reads as a broken video rather
+       * than as footage. The renderer divides the beat evenly between whatever
+       * is here, so N clips always cover the beat however long it is.
+       */
+      urls: z.array(z.string()).min(1).max(8),
+    })
+    .optional(),
+  /**
+   * The same backdrop, in the one-clip shape written before `urls` existed.
+   *
+   * Declared so a row drafted then survives being read. Zod strips unknown keys,
+   * so without these two the flat pair was dropped the moment the beat was
+   * parsed — the picture stayed in the column, every consumer saw a beat with no
+   * media, and the Draft Panel showed illustrated posts as plain text. Seventeen
+   * beats on the current database are in this shape.
+   *
+   * Nothing writes them any more: `normaliseBackdrop` folds them into `backdrop`
+   * on the way out, so callers only ever deal with one shape.
+   */
+  backdropUrl: z.string().optional(),
+  backdropKind: z.enum(['image', 'video']).optional(),
+  /**
+   * Narration for this beat's words, played over it.
+   *
+   * Attached rather than replacing, for the same reason as `backdrop`.
+   * `content.generate_voiceover` *replaces* the beat with a `generated_audio`
+   * one, which is right when somebody asks to narrate a specific scene and
+   * useless as an automatic step: it throws the words away, so the scene loses
+   * both its copy and its picture and becomes a sound with no visual.
+   *
+   * Without this a `pb_voice_over_broll` post — a format whose name is the
+   * thing it does — rendered as silent b-roll with a paragraph printed across
+   * it. The footage has no audio of its own either; fal's clips are silent.
+   */
+  voiceoverUrl: z.string().optional(),
 };
+
+/**
+ * One backdrop shape, whichever way the beat was written.
+ *
+ * Called wherever beats are read back, so the flat legacy pair never escapes
+ * into code that only knows about `backdrop`.
+ */
+export function normaliseBackdrop<T extends { backdrop?: { kind: 'image' | 'video'; urls: string[] }; backdropUrl?: string; backdropKind?: 'image' | 'video' }>(
+  beat: T,
+): T {
+  if (beat.backdrop || !beat.backdropUrl) return beat;
+  const { backdropUrl, backdropKind, ...rest } = beat;
+  return { ...rest, backdrop: { kind: backdropKind ?? 'image', urls: [backdropUrl] } } as T;
+}
 
 export const ResolvedBeat = z.discriminatedUnion('kind', [
   z.object({
@@ -265,6 +343,14 @@ export const ContentDraftOutput = z.object({
   mode: z.enum(['synthesize', 'assemble']),
   mediaType: z.enum(['video', 'image', 'carousel', 'text']),
   beats: z.array(ResolvedBeat),
+  /**
+   * The post's hashtags, ready to append to the caption, each with its `#`.
+   *
+   * Empty is a real answer and not a failure: a Google Business post gets none
+   * because they do nothing there, and a Reddit post gets none because they read
+   * as somebody who has mistaken it for Instagram. See `hashtagBudget`.
+   */
+  hashtags: z.array(z.string()),
   why: Explanation,
 });
 
@@ -326,12 +412,20 @@ export function makeContentDraft(deps: ContentDraftDeps) {
     idempotent: false,
     surfaces: ['CC-02', 'CC-03'],
 
-    /** One LLM call per copy beat — the only spend this tool incurs. */
+    /**
+     * One LLM call per copy beat, plus one for the post's hashtags — the only
+     * spend this tool incurs.
+     *
+     * The hashtag call is counted only where the platform actually takes them.
+     * A Reddit playbook has a budget of zero and never makes the call, and
+     * charging for it would be billing for a request nothing sends.
+     */
     estimateCents: (raw) => {
       const parsed = ContentDraftInput.safeParse(raw);
       const playbook = parsed.success ? byId(parsed.data.playbookId) : undefined;
       if (!playbook) return 1;
-      return Math.max(1, playbook.structure.beats.filter((b) => !b.source).length);
+      const tags = hashtagBudget(playbook.output.platforms) > 0 ? 1 : 0;
+      return Math.max(1, playbook.structure.beats.filter((b) => !b.source).length + tags);
     },
 
     async handler(input, ctx) {
@@ -400,13 +494,99 @@ export function makeContentDraft(deps: ContentDraftDeps) {
 
       const outline = buildOutline(plan.beats);
 
-      const beats: ResolvedBeat[] = await Promise.all(
-        plan.beats.map((beat) =>
-          resolveBeat(beat, { genome, playbook, intent: input.intent, outline, objective }, deps.text),
-        ),
+      /*
+       * What the brand has written down about itself, for the writer to draw on.
+       *
+       * Failure is silent: a brand with no knowledge attached is the common
+       * case and produced perfectly good drafts before this existed, so a store
+       * that cannot answer must not cost anybody their post.
+       */
+      const knowledge = await selectKnowledge(ctx, input.genomeId, [input.intent, playbook.name].filter(Boolean).join(' ')).catch(
+        (err: unknown) => {
+          ctx.logger.warn('knowledge not read for draft', {
+            genomeId: input.genomeId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return [] as string[];
+        },
       );
 
+      /**
+       * ── Why these are not all written in parallel ──────────────────────
+       *
+       * They were, and beats that share a `prompt_ref` came back as
+       * paraphrases of each other. A Teaching Carousel has four step beats all
+       * keyed `teach.steps`; written simultaneously, each one received an
+       * identical brief and no knowledge of the others, so a real draft
+       * produced:
+       *
+       *   Step 1  Keep coffee in an airtight container away from light.
+       *   Step 2  Store coffee beans in an airtight, opaque container.
+       *   Step 3  Transfer coffee to an airtight container, away from sunlight.
+       *
+       * The outline was supposed to prevent exactly this, and could not: it
+       * carries `text` only for *literal* beats, so a copy beat could see that
+       * a sibling existed and what its `prompt_ref` was, never what it said.
+       * That is why the CTA de-duplication works — the CTA is a literal — and
+       * step de-duplication never did.
+       *
+       * Only the duplicated ones are serialised. A beat whose `prompt_ref` is
+       * unique in the post has nothing to collide with and still runs in
+       * parallel, so a hook, a body and a CTA cost one round trip between them
+       * as before; only the four carousel steps pay for going in order, which
+       * is the one place the ordering means anything.
+       */
+      const perPromptRef = new Map<string, number>();
+      for (const b of plan.beats) {
+        if (b.kind === 'copy') perPromptRef.set(b.promptRef, (perPromptRef.get(b.promptRef) ?? 0) + 1);
+      }
+
+      /** Text of every beat written so far, so a later sibling can avoid it. */
+      const writtenSoFar = new Map<string, string>();
+      const outlineNow = (): BeatOutlineEntry[] =>
+        outline.map((entry) => {
+          const text = writtenSoFar.get(entry.beatId);
+          return text === undefined ? entry : { ...entry, text };
+        });
+
+      const inOrder: number[] = [];
+      const concurrent: number[] = [];
+      plan.beats.forEach((beat, i) => {
+        if (beat.kind === 'copy' && (perPromptRef.get(beat.promptRef) ?? 0) > 1) inOrder.push(i);
+        else concurrent.push(i);
+      });
+
+      const resolved = new Array<ResolvedBeat | undefined>(plan.beats.length);
+      const write = async (i: number) => {
+        const beat = plan.beats[i]!;
+        const out = await resolveBeat(
+          beat,
+          { genome, playbook, intent: input.intent, outline: outlineNow(), objective, knowledge },
+          deps.text,
+        );
+        resolved[i] = out;
+        if (out.kind === 'text') writtenSoFar.set(out.beatId, out.text);
+      };
+
+      await Promise.all([
+        Promise.all(concurrent.map(write)),
+        (async () => {
+          for (const i of inOrder) await write(i);
+        })(),
+      ]);
+
+      const beats = resolved as ResolvedBeat[];
+
       const why = explain(plan, playbook.name, beats);
+
+      const { hashtags, storedHashtags } = await writeHashtags({
+        genome,
+        playbook,
+        beats,
+        ...(input.intent ? { intent: input.intent } : {}),
+        text: deps.text,
+        ctx,
+      });
 
       const draft = input.contentItemId
         ? await ctx.db.content.updateDraft({
@@ -414,6 +594,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
             genomeId: input.genomeId,
             orgId: ctx.orgId,
             copy: beats,
+            ...(storedHashtags.length > 0 ? { hashtags: storedHashtags } : {}),
             why,
           })
         : await ctx.db.content.createDraft({
@@ -423,6 +604,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
             mode: playbook.mode,
             ...(playbook.content_pillar ? { pillar: playbook.content_pillar } : {}),
             copy: beats,
+            ...(storedHashtags.length > 0 ? { hashtags: storedHashtags } : {}),
             why,
             ...(input.intent ? { intent: input.intent } : {}),
             ...(input.fromTrendId ? { sourceTrendId: input.fromTrendId } : {}),
@@ -449,10 +631,16 @@ export function makeContentDraft(deps: ContentDraftDeps) {
        * check that reads it.
        */
       const guardPlatform = playbook.output.platforms[0] ?? 'instagram';
-      const draftText = beats
-        .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
-        .map((b) => b.text)
-        .join('\n\n');
+      /*
+       * The hashtags are part of the text being checked.
+       *
+       * `platformPolicy` counts hashtags and measures length against the
+       * platform's cap, and both are about the caption that actually goes out.
+       * Checking the beats alone would be checking something nobody ever
+       * publishes — and would let a draft pass here and fail at `publish.now`,
+       * which re-runs the same check against the assembled caption.
+       */
+      const draftText = [textOf(beats), hashtags.join(' ')].filter(Boolean).join('\n\n');
 
       if (deps.guard && draftText) {
         const verdict = await deps.guard
@@ -492,6 +680,7 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         playbookId: playbook.playbook_id,
         contentItemId: draft.id,
         beats: beats.length,
+        hashtags: hashtags.length,
       });
 
       return {
@@ -500,10 +689,153 @@ export function makeContentDraft(deps: ContentDraftDeps) {
         mode: playbook.mode as 'synthesize' | 'assemble',
         mediaType: plan.mediaType,
         beats,
+        hashtags,
         why,
       };
     },
   });
+}
+
+/**
+ * The post's hashtags.
+ *
+ * ── Written from the copy, not from the brand ─────────────────────────────
+ *
+ * Tags derived from the genome alone describe the *business*, so every post for
+ * that brand gets the same ones — the `#coffee #smallbusiness` tail that makes a
+ * caption look machine-written. The beats that were just written are the only
+ * thing that knows what this particular post is about.
+ *
+ * ── The budget is not this function's opinion ─────────────────────────────
+ *
+ * It comes from `@sparksocial/shared`, which is also where `platformPolicy`
+ * reads the ceiling it blocks on. A writer holding its own idea of "X allows 2"
+ * could produce a draft SPARK wrote and then refuses to publish, which is the
+ * worst outcome available — worse than no hashtags, because the post is stuck
+ * rather than merely plainer.
+ *
+ * ── Failure is silent, deliberately ──────────────────────────────────────
+ *
+ * A hashtag call that does not come back leaves a post without hashtags, which
+ * is exactly what every draft was before this existed. Throwing would discard
+ * beats that cost a model call each and are the actual content.
+ *
+ * Shared with `draft.repurpose`, which writes a draft for a *different*
+ * playbook: a repurposed post can target a platform with a different budget, so
+ * it needs its own tags rather than the source's.
+ */
+export async function writeHashtags(args: {
+  genome: Genome;
+  playbook: Playbook;
+  beats: readonly ResolvedBeat[];
+  intent?: string;
+  text: TextWriter;
+  ctx: ToolCtx;
+}): Promise<{ hashtags: string[]; storedHashtags: string[] }> {
+  const budget = hashtagBudget(args.playbook.output.platforms);
+  const draftText = textOf(args.beats);
+  if (budget <= 0 || !args.text.hashtags || !draftText) return { hashtags: [], storedHashtags: [] };
+
+  const hashtags = await args.text
+    .hashtags({
+      genome: args.genome,
+      playbook: args.playbook,
+      ...(args.intent ? { intent: args.intent } : {}),
+      draftText,
+      budget,
+    })
+    .then((raw) => tidyHashtags(raw, budget))
+    .catch((err: unknown) => {
+      args.ctx.logger.warn('hashtags not written', {
+        playbookId: args.playbook.playbook_id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return [] as string[];
+    });
+
+  // Stored without the `#`, the way the column is documented; returned with it,
+  // because every caller is about to put them in a caption.
+  return { hashtags, storedHashtags: hashtags.map((t) => t.replace(/^#/, '')) };
+}
+
+/**
+ * How much of the brand's knowledge to put in front of the writer.
+ *
+ * Every beat is a separate model call and each one carries this, so the budget
+ * is paid per beat rather than per post — a six-beat carousel pays it six
+ * times. A typical brand knowledge base is one or two thousand characters and
+ * fits whole; the cap only bites on a brand that has attached a manual, and
+ * there the ranking below decides what survives.
+ */
+export const KNOWLEDGE_BUDGET_CHARS = 2400;
+
+/**
+ * The brand's own written facts, most relevant first.
+ *
+ * ── Why lexical and not vector ────────────────────────────────────────────
+ *
+ * `KnowledgeStore` exposes `listAll` and nothing else: chunks are stored with
+ * an embedding but `KnowledgeChunk` does not carry it back, so similarity would
+ * mean re-embedding the whole corpus on every draft — a vendor call per chunk
+ * per post, to reorder a list that usually fits in the budget entirely.
+ *
+ * Overlap with the post's subject is enough for the job the ranking actually
+ * does, which is deciding what to drop when a corpus is too big to send. It is
+ * not retrieval; it is truncation with an opinion. If knowledge bases grow to
+ * the point where that stops being true, the fix is a `search` on the store,
+ * not a cleverer scorer here.
+ */
+export async function selectKnowledge(ctx: ToolCtx, genomeId: string, subject: string): Promise<string[]> {
+  const chunks = await ctx.db.knowledge.listAll(genomeId, ctx.orgId);
+  if (chunks.length === 0) return [];
+
+  const terms = new Set(
+    subject
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 3),
+  );
+  const scored = chunks.map((c) => {
+    const text = c.text.toLowerCase();
+    let hits = 0;
+    for (const t of terms) if (text.includes(t)) hits += 1;
+    return { text: c.text, hits };
+  });
+  // Stable: equal scores keep ingestion order, so a brand with one document
+  // gets it in the order they wrote it rather than in an arbitrary shuffle.
+  scored.sort((a, b) => b.hits - a.hits);
+
+  const out: string[] = [];
+  let used = 0;
+  for (const { text } of scored) {
+    if (used + text.length > KNOWLEDGE_BUDGET_CHARS) {
+      // Take a partial chunk rather than nothing — half a price list is more
+      // use to a writer than none of it.
+      const room = KNOWLEDGE_BUDGET_CHARS - used;
+      if (room > 200) out.push(text.slice(0, room));
+      break;
+    }
+    out.push(text);
+    used += text.length;
+  }
+  return out;
+}
+
+/**
+ * The written words of a draft, in running order — the caption, before
+ * hashtags and before any short link.
+ *
+ * One function because three places were doing it by hand and were free to
+ * disagree: the draft-time guardrail pass, the hashtag writer's grounding, and
+ * the Draft Panel's publish. A guardrail checking a different string than the
+ * one that goes out is a check of nothing.
+ */
+export function textOf(beats: readonly ResolvedBeat[]): string {
+  return beats
+    .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
+    .map((b) => b.text)
+    .filter(Boolean)
+    .join('\n\n');
 }
 
 /** Exported for `draft.variants`/`draft.repurpose` (variants.ts) — the same plan-then-write pipeline `content.draft` itself uses. */
@@ -561,6 +893,8 @@ export async function resolveBeat(
     outline: BeatOutlineEntry[];
     /** The campaign's objective, or the genome's when there is no campaign. */
     objective?: string;
+    /** The brand's own written facts — see `TextWriter.write`'s `knowledge`. */
+    knowledge?: string[];
   },
   text: TextWriter,
 ): Promise<ResolvedBeat> {
@@ -593,6 +927,7 @@ export async function resolveBeat(
     promptRef: beat.promptRef,
     ...(ground.intent ? { intent: ground.intent } : {}),
     ...(ground.objective ? { objective: ground.objective } : {}),
+    ...(ground.knowledge?.length ? { knowledge: ground.knowledge } : {}),
     beatId: beat.beatId,
     durationSec: beat.durationSec,
     outline: ground.outline,
@@ -621,6 +956,9 @@ export function keepStructure(
     ...(beat.label !== undefined ? { label: beat.label } : {}),
     ...(beat.voice !== undefined ? { voice: beat.voice } : {}),
     ...(beat.lowerThird !== undefined ? { lowerThird: beat.lowerThird } : {}),
+    // A backdrop belongs to the scene, not to what fills it, so generating
+    // media into a beat keeps the picture that was already behind it.
+    ...(beat.backdrop !== undefined ? { backdrop: beat.backdrop } : {}),
   };
 }
 

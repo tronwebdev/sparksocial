@@ -125,7 +125,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
   return (
     <div className="flex flex-col gap-dash-card-gap">
       <div>
-        <h1 className="text-[28px] font-semibold leading-[1.27] text-ink">Agent Command Center — Needs Attention</h1>
+        <h1 className="text-28 font-semibold leading-[1.27] text-ink">Agent Command Center — Needs Attention</h1>
         <p className="mt-[9px] text-16 text-ink-muted">
           {waiting > 0
             ? 'The Agent is safe, but requires your input to proceed.'
@@ -139,7 +139,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
           <h2 className="text-20 font-semibold leading-[1.28] text-ink">Action Required</h2>
           <span
             title="Every tool call SPARK is holding because your approval mode requires a person. Approving replays the original call; rejecting drops it."
-            className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+            className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
             style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
           >
             i
@@ -186,7 +186,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
                         `content.publish` on a UUID reads as a sentence. */}
                     {it.goal ? humaniseGoal(it.goal, new Map()) : `${it.tool} is waiting for your approval`}
                   </span>
-                  {it.because ? <span className="block text-[14.5px] text-ink-muted">{it.because}</span> : null}
+                  {it.because ? <span className="block text-15 text-ink-muted">{it.because}</span> : null}
                 </span>
 
                 <div className="flex shrink-0 items-center gap-[10px]">
@@ -194,7 +194,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
                     type="button"
                     disabled={busy === it.callId}
                     onClick={() => void decide(it.callId, 'approve')}
-                    className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-lg bg-white px-[16px] text-[15px] font-semibold text-ink disabled:opacity-50"
+                    className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-lg bg-white px-[16px] text-15 font-semibold text-ink disabled:opacity-50"
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.2)' }}
                   >
                     <svg width="14" height="11" viewBox="0 0 16 12" fill="none" aria-hidden>
@@ -206,7 +206,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
                     type="button"
                     disabled={busy === it.callId}
                     onClick={() => void decide(it.callId, 'reject')}
-                    className="h-[38px] shrink-0 rounded-lg px-[12px] text-[15px] font-medium text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
+                    className="h-[38px] shrink-0 rounded-lg px-[12px] text-15 font-medium text-ink-muted transition-colors hover:text-ink disabled:opacity-50"
                   >
                     Reject
                   </button>
@@ -225,13 +225,13 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
           <h2 className="text-20 font-semibold leading-[1.28] text-ink">Reassurance</h2>
           <span
             title="Each line here is checked against this brand's state rather than printed unconditionally — see this file's header."
-            className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+            className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
             style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
           >
             i
           </span>
           <span
-            className="ml-auto flex h-[34px] items-center rounded-[10px] px-[16px] text-[15px] font-medium"
+            className="ml-auto flex h-[34px] items-center rounded-[10px] px-[16px] text-15 font-medium"
             style={{ background: '#E9F9E7', boxShadow: 'inset 0 0 0 1px rgba(19,215,17,0.35)', color: '#13A711' }}
           >
             Your Agent only pauses when necessary. You are always in control.

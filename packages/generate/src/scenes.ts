@@ -3,7 +3,7 @@ import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { byId, type Playbook } from '@sparksocial/playbooks';
 import { assertDraftDuration } from '@sparksocial/assemble';
-import { ResolvedBeat, labelFor } from './draft.js';
+import { normaliseBackdrop, ResolvedBeat, labelFor } from './draft.js';
 import { MAX_LOWER_THIRD } from '@sparksocial/shared/brandKit';
 
 /**
@@ -96,7 +96,7 @@ async function loadStrip(
   }
 
   const parsed = z.array(ResolvedBeat).safeParse(draft.copy);
-  const beats = parsed.success ? parsed.data : [];
+  const beats = parsed.success ? parsed.data.map(normaliseBackdrop) : [];
   if (beats.length === 0) {
     throw new ToolError('INVALID_INPUT', 'This slot has no draft yet — run content.draft on it first.', {
       contentItemId: input.contentItemId,

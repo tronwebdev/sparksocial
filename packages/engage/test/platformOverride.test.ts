@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ToolCtx } from '@sparksocial/tools';
+import type { PlatformEngagementRow, ToolCtx } from '@sparksocial/tools';
 import { listPlatformOverrides, pickPlatformOverride } from '../src/platformOverride.js';
 
 /**
@@ -50,7 +50,7 @@ describe('listPlatformOverrides', () => {
 });
 
 describe('pickPlatformOverride', () => {
-  const rows = [
+  const rows: PlatformEngagementRow[] = [
     { platform: 'x', autonomy: 'off', engagementTypes: null, enabled: true },
     { platform: 'instagram', autonomy: null, engagementTypes: ['comment'], enabled: false },
   ];

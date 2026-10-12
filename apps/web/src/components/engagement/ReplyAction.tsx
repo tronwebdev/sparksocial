@@ -91,7 +91,7 @@ export function ReplyAction({
         <Button size="sm" variant="outline" disabled={phase === 'loading'} onClick={() => void draft(false)}>
           {phase === 'loading' ? 'Drafting…' : 'Draft reply'}
         </Button>
-        {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
       </div>
     );
   }
@@ -99,12 +99,12 @@ export function ReplyAction({
   return (
     <div className="mt-3 rounded border border-border bg-surface-muted p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
+        <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
           {source === 'suggested' ? 'Suggested reply' : 'Drafted reply'} — edit before sending
         </p>
         <button
           type="button"
-          className="shrink-0 text-[12px] font-medium text-ink-muted hover:text-ink disabled:opacity-50"
+          className="shrink-0 text-12 font-medium text-ink-muted hover:text-ink disabled:opacity-50"
           disabled={phase === 'sending'}
           onClick={() => void draft(true)}
         >
@@ -118,7 +118,7 @@ export function ReplyAction({
         disabled={phase === 'sending'}
         rows={3}
         className={
-          'mt-2 w-full resize-y rounded border border-border bg-surface p-2 text-[14px] text-ink ' +
+          'mt-2 w-full resize-y rounded border border-border bg-surface p-2 text-14 text-ink ' +
           'focus:outline-none focus:ring-[1.5px] focus:ring-ring disabled:opacity-50'
         }
       />
@@ -129,7 +129,7 @@ export function ReplyAction({
         </Button>
         <button
           type="button"
-          className="text-[13px] text-ink-muted hover:text-ink"
+          className="text-13 text-ink-muted hover:text-ink"
           disabled={phase === 'sending'}
           onClick={() => {
             setPhase('idle');
@@ -143,8 +143,8 @@ export function ReplyAction({
         </button>
       </div>
 
-      {gated ? <p className="mt-2 text-[13px] text-warn">Held: {gated}</p> : null}
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+      {gated ? <p className="mt-2 text-13 text-warn">Held: {gated}</p> : null}
+      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }

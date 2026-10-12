@@ -130,7 +130,7 @@ export function ProfileSection() {
           }}
         >
           {user?.imageUrl ? null : (
-            <span className="text-[64.081px] font-medium leading-none text-white">{monogram}</span>
+            <span className="text-64 font-medium leading-none text-white">{monogram}</span>
           )}
         </span>
 
@@ -147,7 +147,7 @@ export function ProfileSection() {
                 e.preventDefault();
                 window.dispatchEvent(new CustomEvent('spark:open-user-profile'));
               }}
-              className="flex h-[40px] w-[100px] items-center justify-center rounded-[8.863px] bg-white text-[16.839px] font-medium transition-colors hover:bg-surface-200"
+              className="flex h-[40px] w-[100px] items-center justify-center rounded-[8.863px] bg-white text-17 font-medium transition-colors hover:bg-surface-200"
               style={{ boxShadow: 'inset 0 0 0 0.591px rgba(131,131,131,0.2), 0 4px 40px rgba(0,0,0,0.15)', color: 'rgb(131,131,131)' }}
             >
               Upload

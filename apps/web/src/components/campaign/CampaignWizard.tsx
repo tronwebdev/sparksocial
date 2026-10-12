@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT, UNNAMED_AGENT_INLINE } from '@sparksocial/shared/agentIdentity';
 import { useCallback, useEffect, useState } from 'react';
 import { useRef } from 'react';
 import {
@@ -29,6 +30,7 @@ import { OfferStep, type BrandCard } from './CampaignOfferStep';
 import { AccountsStep, type PlatformStatus } from './CampaignAccountsStep';
 import { AutonomyStep } from './CampaignAutonomyStep';
 import { ReviewStep } from './CampaignReviewStep';
+import { ReadinessModal } from './ReadinessModal';
 import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
 
 /**
@@ -204,10 +206,30 @@ export function CampaignWizard({
 
   /** The brand card on step 3, and the agent's name in the header. */
   const [brand, setBrand] = useState<BrandCard | null>(null);
-  const [agentName, setAgentName] = useState('your agent');
+  /**
+   * The agent, with whether it actually has a name.
+   *
+   * This was a bare string defaulting to the literal `'your agent'`, which then
+   * disagreed in case with the `UNNAMED_AGENT` the tool substitutes once the
+   * fetch lands — the header visibly changed capitalisation on load. And with
+   * only the string, an unnamed agent got rendered in bold purple as if "Your
+   * agent" were somebody's choice, which is the one thing that constant's own
+   * comment says not to do.
+   */
+  const [agent, setAgent] = useState<{ name: string; named: boolean }>({
+    name: UNNAMED_AGENT,
+    named: false,
+  });
   const [timezone, setTimezone] = useState('UTC');
 
   const [busy, setBusy] = useState(false);
+  /*
+   * The readiness check sits between Activate and `campaign.create`, not on an
+   * earlier step: the objective and window are what it is computed against, and
+   * both can still change up to the last screen. Asking sooner would answer a
+   * question about a campaign the person had not finished describing.
+   */
+  const [showReadiness, setShowReadiness] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
    * Set when somebody chooses "Continue without it".
@@ -451,7 +473,12 @@ export function CampaignWizard({
           brandColors: string[];
           brandFonts?: { display?: string; body?: string };
           timezone: string;
-          agentIdentity: { name: string; voice: string[] };
+          /* `named` matters as much as `name`: without it there is no way to
+             tell a chosen name from the `UNNAMED_AGENT` placeholder the tool
+             substitutes, and the wizard renders one in bold as if it were the
+             other. Hand-written assertions over tool output are where these
+             omissions hide — the compiler cannot check a shape you invented. */
+          agentIdentity: { name: string; named: boolean; voice: string[] };
         }>('brand.governance.get', {}),
         invoke<{ genomes: Array<{ genomeId: string; name: string }> }>('genome.list', {}),
         invoke<{ docs: Array<{ docId: string; citationLabel?: string; preview: string }> }>(
@@ -462,7 +489,7 @@ export function CampaignWizard({
 
       const g = gov.status === 'succeeded' ? gov.output : null;
       if (g) {
-        setAgentName(g.agentIdentity.name);
+        setAgent({ name: g.agentIdentity.name, named: g.agentIdentity.named });
         setTimezone(g.timezone);
       }
 
@@ -499,9 +526,18 @@ export function CampaignWizard({
    * coming back from the provider updates the grid without a reload.
    */
   async function connectPlatform(platform: string) {
+    if (!genomeId) {
+      setError('Select a brand before connecting an account.');
+      return;
+    }
     setConnecting(platform);
     setError(null);
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { platform });
+    // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
+    // which matches neither field; see `AccountsSection.connect`.
+    const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
+      genomeId,
+      provider: platform,
+    });
     setConnecting(null);
     if (res.status !== 'succeeded') {
       setError(
@@ -553,11 +589,11 @@ export function CampaignWizard({
   if (emptyResult) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">Created</p>
-        <h2 className="mt-1 text-[20px] font-medium text-ink">
+        <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Created</p>
+        <h2 className="mt-1 text-20 font-medium text-ink">
           {name.trim() || 'Your campaign'} is set up
         </h2>
-        <p className="mt-1.5 max-w-prose text-[13px] text-ink-muted">
+        <p className="mt-1.5 max-w-prose text-13 text-ink-muted">
           The campaign, its window and its oversight are all saved. It has no posts in it yet though, and
           that is worth reading before you go looking for a step you missed.
         </p>
@@ -568,7 +604,7 @@ export function CampaignWizard({
 
         <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <Button onClick={() => onActivated(emptyResult.campaignId)}>Go to the calendar</Button>
-          <span className="text-[13px] text-ink-muted">
+          <span className="text-13 text-ink-muted">
             You can regenerate the calendar there once you have added something.
           </span>
         </div>
@@ -611,7 +647,10 @@ export function CampaignWizard({
       return;
     }
     if (step === 6) {
-      void activate();
+      // Shown once. Dismissing it and pressing Activate again proceeds — a
+      // checklist that reappears after you have read it and decided is a
+      // dialog people learn to fight rather than read.
+      setShowReadiness(true);
       return;
     }
     setStep((step + 1) as Step);
@@ -626,8 +665,23 @@ export function CampaignWizard({
     setStep((step - 1) as Step);
   }
 
+  const readinessModal =
+    showReadiness && genomeId ? (
+      <ReadinessModal
+        genomeId={genomeId}
+        objective={objective}
+        windowDays={windowDays}
+        onClose={() => setShowReadiness(false)}
+        onProceed={() => {
+          setShowReadiness(false);
+          void activate();
+        }}
+      />
+    ) : null;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
+      {readinessModal}
       <div className="relative w-full overflow-hidden" style={{ height: Math.round(geom.frame * scale) }}>
         <div className="absolute left-0 top-0 w-[1728px] origin-top-left" style={{ transform: `scale(${scale})`, height: geom.frame }}>
           {/* The scrim. Clicking it leaves, the way a modal backdrop should. */}
@@ -653,7 +707,7 @@ export function CampaignWizard({
               style={{ top: hdrTop, backdropFilter: 'blur(26.946px)', boxShadow: '0 0 0 0.846px rgb(131,131,131)' }}
             >
               <Chevron className="absolute left-[13.532px] top-[14.125px]" style={{ transform: 'scaleX(-1)' }} />
-              <span className="absolute left-[55px] top-[10.996px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
+              <span className="absolute left-[55px] top-[10.996px] whitespace-nowrap text-17 font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
                 Back
               </span>
             </button>
@@ -665,13 +719,13 @@ export function CampaignWizard({
               className="absolute left-[857.023px] h-[43px] w-[132px] cursor-pointer rounded-[8.457px] transition-colors hover:bg-white/60 active:scale-[0.98] disabled:opacity-60"
               style={{ top: hdrTop, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(26.946px)' }}
             >
-              <span className="absolute top-[10.768px] whitespace-nowrap text-[16.915px] font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
+              <span className="absolute top-[10.768px] whitespace-nowrap text-17 font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
                 {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
               </span>
               <Chevron className="absolute left-[109.135px] top-[13.864px]" color="rgb(12,12,12)" />
             </button>
 
-            <span className="absolute left-[265px] top-[47px] whitespace-nowrap text-[18px] font-semibold leading-none text-ink">
+            <span className="absolute left-[265px] top-[47px] whitespace-nowrap text-18 font-semibold leading-none text-ink">
               Step {step}
               <span className="font-normal"> of 6</span>
             </span>
@@ -693,8 +747,15 @@ export function CampaignWizard({
 
             <div className="absolute left-[514px] top-[49px] h-[18px] w-[258px]">
               <Spinner className="absolute left-0 top-[2px]" />
-              <span className="absolute right-0 top-0 whitespace-nowrap text-right text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
-                Assigning this campaign to <span className="font-bold text-purple">{agentName}</span>
+              <span className="absolute right-0 top-0 whitespace-nowrap text-right text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+                {/* Mid-sentence, so the unnamed form is the lowercase one — and
+                    unstyled, because it is a placeholder rather than a name. */}
+                Assigning this campaign to{' '}
+                {agent.named ? (
+                  <span className="font-bold text-purple">{agent.name}</span>
+                ) : (
+                  UNNAMED_AGENT_INLINE
+                )}
               </span>
             </div>
 
@@ -792,7 +853,7 @@ export function CampaignWizard({
 
             {step === 6 ? (
               <ReviewStep
-                agentName={agentName}
+                agent={agent}
                 brandLogo={brand?.logoUrl}
                 goalLabel={goalLabel}
                 typeLabel={TYPE_CARDS.find((t) => t.value === campaignType)?.title ?? campaignType}
@@ -810,7 +871,7 @@ export function CampaignWizard({
             ) : null}
 
             {error ? (
-              <p className="absolute left-[265px] w-[720px] text-[15px] text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
+              <p className="absolute left-[265px] w-[720px] text-15 text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
                 {error}
               </p>
             ) : null}

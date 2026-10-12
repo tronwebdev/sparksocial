@@ -7,11 +7,13 @@ import {
   runAgent,
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
+import { registerPublicProposal } from './public-proposal.js';
 import { createClerkClient } from '@clerk/backend';
 import { registerAlphaTools, registerAgencyTools, blobStore, localBlobStoreForRoutes } from './tools.js';
 import { registerLocalStorageRoutes } from './local-storage-routes.js';
 import { registerCanvaOAuthCallback } from './canva-oauth.js';
 import { registerSocialOAuthCallback } from './social-oauth.js';
+import { startTokenRefresher } from './token-refresher.js';
 import { socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import { makeDevResolveCtx, makeBrandGovernance } from './dev-auth.js';
 import { makeSystemCtx } from './system-ctx.js';
@@ -19,8 +21,10 @@ import { makeClerkResolveCtx } from './clerk-auth.js';
 import { createDevStore } from './dev-store.js';
 import { createDevRunStore } from './dev-runs.js';
 import { embedClient } from './embed-client.js';
+import { sceneBrief } from './scene-brief.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
+import { startRenderQueue } from './render-queue.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
 import { startConnectionWatcher } from './connection-watcher.js';
@@ -56,6 +60,21 @@ registerAlphaTools();
 // dev resolver is used and the warning below is printed — visibly wrong rather
 // than quietly insecure.
 const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY && process.env.CLERK_PUBLISHABLE_KEY);
+
+/**
+ * One Clerk client for the process.
+ *
+ * It was constructed inline at each call site, which meant a fresh client — and
+ * a fresh connection pool and token cache — per resolution on a route that can
+ * be hit by anyone with a link. Built once here, and `undefined` when Clerk is
+ * unconfigured so every consumer has to decide what it does without one.
+ */
+const clerk = clerkConfigured
+  ? createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY ?? '',
+      publishableKey: process.env.CLERK_PUBLISHABLE_KEY ?? '',
+    })
+  : undefined;
 
 if (env === 'production' && !clerkConfigured && process.env.ALLOW_DEV_AUTH !== 'true') {
   // Without Clerk the only resolver left trusts request headers for tenancy,
@@ -150,9 +169,7 @@ const socialRedirectUri = envStr('SOCIAL_REDIRECT_URI', `http://127.0.0.1:${port
 
 registerAgencyTools({
   credits,
-  ...(clerkConfigured
-    ? { clerk: createClerkClient({ secretKey: envStr('CLERK_SECRET_KEY', ''), publishableKey: envStr('CLERK_PUBLISHABLE_KEY', '') }) }
-    : {}),
+  ...(clerk ? { clerk } : {}),
   ...(canvaOAuthConfigured
     ? { canvaOAuth: { clientId: envStr('CANVA_CLIENT_ID', ''), redirectUri: canvaRedirectUri, stateSecret: envStr('OAUTH_STATE_SECRET', '') } }
     : {}),
@@ -413,6 +430,42 @@ const recipeScheduler = startRecipeScheduler(
  * is the resolution the store buckets to; a shorter interval would write no
  * extra rows.
  */
+/**
+ * The render queue — makes the pixels a campaign promised (§6.8's Assemble).
+ *
+ * Drafting writes the script and `compose.render` makes the file; nothing
+ * called it, so a thirty-day campaign produced eleven scripts and no video at
+ * all. This watches for a post in a live campaign that has copy and no render
+ * and makes the first one.
+ *
+ * Postgres only. The dev store has no `renders` table to ask about, and a
+ * queue that cannot tell what has already been rendered would re-render
+ * everything on every tick — which is the one failure mode worth refusing
+ * outright, because it bills for it.
+ *
+ * Five minutes rather than one: a render is tens of seconds of CPU and real
+ * money, so there is nothing to gain from asking more often than the work
+ * takes.
+ */
+const renderQueue = pg
+  ? startRenderQueue(
+      {
+        source: { findUnrendered: pg.findUnrendered },
+        db: scopedDb,
+        invoke: invokeDeps,
+        loadBrandGovernance: makeBrandGovernance(scopedDb),
+        credits,
+        // Auto-illustration's asset lookup. See `auto-illustrate.ts`: the
+        // brand's own pictures first, generated ones only where it has none.
+        embed: embedClient(),
+        // Turns a beat into a shot description before it reaches a generator —
+        // see scene-brief.ts on what was being sent instead.
+        sceneBrief: sceneBrief(),
+      },
+      envNum('RENDER_QUEUE_INTERVAL_MS', 300_000),
+    )
+  : undefined;
+
 const trendObserver = startTrendObserver(
   {
     db: scopedDb,
@@ -434,6 +487,30 @@ const connectionWatcher = startConnectionWatcher(
     loadBrandGovernance: makeBrandGovernance(scopedDb),
   },
   envNum('CONNECTION_WATCHER_INTERVAL_MS', 21_600_000),
+);
+
+/**
+ * The token refresher — the repair the watcher above could only report.
+ *
+ * Every fifteen minutes, not every six hours. The watcher's interval is tuned to
+ * a seven-day human warning window; this one is bounded by the shortest token
+ * life in the system, and Google's is one hour. A six-hour tick would let a
+ * connection die five times between attempts to save it.
+ *
+ * Registered unconditionally: `runOnce` selects only platforms this deployment
+ * has credentials for and returns immediately when that set is empty, so an
+ * operator with no native apps configured pays one no-op function call per tick.
+ */
+const tokenRefresher = startTokenRefresher(
+  { db: scopedDb, clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
+  /*
+   * Five minutes, not fifteen. The refresh lead is three ticks (see `leadFor`),
+   * so this is what buys the margin: a token is eligible for renewal across four
+   * attempts before it dies rather than on the last one only. The query is one
+   * indexed read capped at 25 rows, so the cost of asking more often is close to
+   * nothing, and the cost of asking too rarely is a brand that cannot publish.
+   */
+  envNum('TOKEN_REFRESHER_INTERVAL_MS', 300_000),
 );
 
 /**
@@ -483,6 +560,33 @@ const app = createApp({
 if (!agentConfigured) {
   console.warn('[warn] ANTHROPIC_API_KEY unset — /v1/agent/runs will answer 501. Timeline reads still work.');
 }
+
+/*
+  The client-facing proposal view — `proposal.share`'s link finally resolves.
+  Unauthenticated by design: the token is the whole credential, which is why it
+  is 256 bits, expires, and is revoked the moment a decision is recorded. Not a
+  tool, and deliberately read-only — see `public-proposal.ts`.
+*/
+registerPublicProposal(app, {
+  db: scopedDb,
+  /*
+    Who the proposal is from. Clerk owns organisation names, so this is the
+    only place the answer exists — and the route gets a one-string lookup
+    rather than the Clerk client, because it is the one surface in this
+    product that answers to no session. Unconfigured (dev) means the page
+    renders with no sender named, which is the honest degradation.
+  */
+  ...(clerk
+    ? {
+        resolveAgency: async (orgId: string) => {
+          const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+          /* Name only. `org.imageUrl` base64-embeds the org and instance ids —
+             see `Agency` in `public-proposal.ts`. */
+          return org.name ? { name: org.name } : undefined;
+        },
+      }
+    : {}),
+});
 
 if (canvaOAuthConfigured) {
   registerCanvaOAuthCallback(app, {
@@ -573,7 +677,9 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     scheduler.stop();
     recipeScheduler.stop();
     trendObserver.stop();
+    renderQueue?.stop();
     connectionWatcher.stop();
+    tokenRefresher.stop();
     outcomeObserver.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a

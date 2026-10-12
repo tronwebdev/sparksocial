@@ -5,6 +5,7 @@ import {
   ContentPillar,
   GenerationMode,
   Objective,
+  Platform,
   ProofAsset,
 } from '@sparksocial/shared';
 
@@ -95,7 +96,15 @@ export const Playbook = z.object({
     media_type: z.enum(['video', 'image', 'carousel', 'text']),
     aspect_ratios: z.array(z.string()).min(1),
     duration_sec: z.tuple([z.number(), z.number()]).optional(),
-    platforms: z.array(z.string()).min(1),
+    /*
+     * The publish layer can only reach a `Platform`, so a playbook naming
+     * anything else declares a destination that cannot be posted to. Because
+     * `definePlaybook` parses at module load, this fails the build rather than
+     * failing at 3am in the scheduler — and it is what lets `placeCalendar`
+     * hand a slot a real `Platform` instead of a `string` that four tools
+     * downstream then re-narrow by hand.
+     */
+    platforms: z.array(Platform).min(1),
   }),
 
   /** Beats map 1:1 onto Remotion composition props. */

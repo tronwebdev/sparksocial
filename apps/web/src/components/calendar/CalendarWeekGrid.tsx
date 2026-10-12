@@ -214,7 +214,7 @@ export function CalendarWeekGrid({
                       <>
                         <span className="mt-[6px] flex items-center gap-[6px]">
                           <span aria-hidden className="block h-[15px] w-[15px] shrink-0 rounded-full" style={{ background: 'linear-gradient(140deg,#6B4A2F,#2F2119)' }} />
-                          <span className="truncate text-[11.5px]" style={{ color: '#5B5B5B' }}>
+                          <span className="truncate text-12" style={{ color: '#5B5B5B' }}>
                             Planned by Agent
                           </span>
                         </span>
@@ -223,13 +223,13 @@ export function CalendarWeekGrid({
                           type="button"
                           onClick={() => onOpenDraft(posts[0]!.contentItemId)}
                           title={posts[0]!.summary}
-                          className="mt-[6px] truncate rounded-[6px] bg-white/70 px-[7px] py-[4px] text-left text-[11.5px] font-medium text-ink"
+                          className="mt-[6px] truncate rounded-[6px] bg-white/70 px-[7px] py-[4px] text-left text-12 font-medium text-ink"
                           style={{ boxShadow: `inset 0 0 0 1.1px ${tint.chipRing}` }}
                         >
                           {posts.length > 1 ? `${posts.length} posts` : posts[0]!.summary || posts[0]!.playbookName}
                         </button>
 
-                        <span className="mt-auto truncate text-[11.5px]" style={{ color: '#5B5B5B' }}>
+                        <span className="mt-auto truncate text-12" style={{ color: '#5B5B5B' }}>
                           {formats.join(', ')}
                         </span>
                         {channels.length > 0 ? (

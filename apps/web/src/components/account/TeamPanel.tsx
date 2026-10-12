@@ -176,28 +176,28 @@ export function TeamPanel() {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Team</h2>
-      <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Team</h2>
+      <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Who is in this account, and which brands each of them can open. Being in the account is not the
         same as having access to a brand — everyone below an admin needs to be assigned explicitly.
       </p>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
-      {partial ? <p className="mt-3 text-[13px] text-warn">{partial}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
+      {partial ? <p className="mt-3 text-13 text-warn">{partial}</p> : null}
       {note ? (
-        <p className={cn('mt-3 text-[13px]', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
+        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
       ) : null}
 
       {/* ── Invite ──────────────────────────────────────────────────────── */}
       <div className="mt-5 rounded-lg border border-border p-4">
-        <p className="text-[13px] font-medium text-ink">Invite someone</p>
-        <p className="mt-1 text-[12px] text-ink-muted">
+        <p className="text-13 font-medium text-ink">Invite someone</p>
+        <p className="mt-1 text-12 text-ink-muted">
           Clerk sends the email. They join the account with the role you pick here, and reach no brand until
           you assign one below.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <div className="min-w-[220px] flex-1">
-            <label className="block text-[12px] text-ink-muted" htmlFor="team-email">
+            <label className="block text-12 text-ink-muted" htmlFor="team-email">
               Email
             </label>
             <Input
@@ -210,14 +210,14 @@ export function TeamPanel() {
             />
           </div>
           <div>
-            <label className="block text-[12px] text-ink-muted" htmlFor="team-role">
+            <label className="block text-12 text-ink-muted" htmlFor="team-role">
               Account role
             </label>
             <select
               id="team-role"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-ink"
+              className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
             >
               {ORG_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -237,17 +237,17 @@ export function TeamPanel() {
         {members === null && !error ? (
           <Skeleton className="h-40 w-full rounded-lg" />
         ) : members && members.length === 0 ? (
-          <p className="text-[14px] text-ink-muted">Nobody else has joined yet.</p>
+          <p className="text-14 text-ink-muted">Nobody else has joined yet.</p>
         ) : members ? (
           <ul className="grid grid-cols-1 gap-3">
             {members.map((m) => (
               <li key={m.userId} className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-medium text-ink">
+                    <p className="truncate text-14 font-medium text-ink">
                       {m.name ?? m.email ?? m.userId}
                     </p>
-                    <p className="text-[12px] text-ink-muted">
+                    <p className="text-12 text-ink-muted">
                       {m.email && m.name ? `${m.email} · ` : ''}
                       joined{' '}
                       {new Date(m.joinedAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -263,7 +263,7 @@ export function TeamPanel() {
                       value={`org:${m.orgRole}`}
                       disabled={busy !== null || m.orgRole === 'owner'}
                       onChange={(e) => void setOrgRole(m.userId, e.target.value)}
-                      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12px] text-ink disabled:opacity-50"
+                      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-12 text-ink disabled:opacity-50"
                     >
                       {/* The owner is listed so the select shows the truth, and
                           disabled so this screen cannot orphan an account by
@@ -280,22 +280,22 @@ export function TeamPanel() {
 
                 <div className="mt-3 border-t border-rule pt-3">
                   {m.allBrands ? (
-                    <p className="text-[12px] text-ink-muted">
+                    <p className="text-12 text-ink-muted">
                       <span className="font-medium text-ink">Reaches every brand.</span> Owners and admins
                       administer the whole account, so there is nothing to assign.
                     </p>
                   ) : brands.length === 0 ? (
-                    <p className="text-[12px] text-ink-muted">No brands to assign yet.</p>
+                    <p className="text-12 text-ink-muted">No brands to assign yet.</p>
                   ) : (
                     <>
-                      <p className="text-[12px] text-ink-muted">Brands this person can open</p>
+                      <p className="text-12 text-ink-muted">Brands this person can open</p>
                       <ul className="mt-2 grid grid-cols-1 gap-1.5">
                         {brands.map((b) => {
                           const assigned = m.brands.find((a) => a.brandId === b.brandId);
                           const key = `brand:${m.userId}:${b.brandId}`;
                           return (
                             <li key={b.brandId} className="flex flex-wrap items-center gap-2">
-                              <span className="min-w-[140px] flex-1 truncate text-[13px] text-ink">
+                              <span className="min-w-[140px] flex-1 truncate text-13 text-ink">
                                 {b.name || b.brandId}
                               </span>
                               {assigned ? <Badge variant="success">{assigned.role}</Badge> : null}
@@ -309,7 +309,7 @@ export function TeamPanel() {
                                 onChange={(e) =>
                                   void setBrandAccess(m.userId, b.brandId, e.target.value || undefined)
                                 }
-                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-[12px] text-ink disabled:opacity-50"
+                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-12 text-ink disabled:opacity-50"
                               >
                                 <option value="">No access</option>
                                 {BRAND_ROLES.map((r) => (

@@ -87,6 +87,49 @@ export const GenomeDimensions = z.object({
 });
 export type GenomeDimensions = z.infer<typeof GenomeDimensions>;
 
+/**
+ * A campaign's lifecycle state — `campaigns.status`.
+ *
+ * Three values, because there are exactly two writers: the insert defaults to
+ * `draft`, and `CampaignStore.setStatus`'s only caller is `makeStatusTool` in
+ * `packages/campaign/src/lifecycle.ts`, which is instantiated twice — once with
+ * `paused` (`campaign.pause`) and once with `active` (`campaign.resume`).
+ *
+ * There is deliberately no `completed`: a campaign's window ending is a fact
+ * about `startAt + windowDays` that `campaign.report_vs_outcome` computes, not
+ * a state anything writes, and adding the value would invite a second source of
+ * truth for the same question. `recipes.status` does carry `completed`, which is
+ * a different table and a different vocabulary — see `RecipeRecord` in
+ * `packages/tools/src/defineTool.ts`.
+ */
+export const CampaignStatus = z.enum(['draft', 'active', 'paused']);
+export type CampaignStatus = z.infer<typeof CampaignStatus>;
+
+/**
+ * A content item's state — `content_items.status`, PRD §7.4's unified ladder:
+ *
+ *   *"Draft → Needs Review → Approved → Scheduled → Published. Failed /
+ *   Blocked."*
+ *
+ * Seven values, one per literal that `scoped.ts` writes. Every write is a
+ * constant — the insert defaults to `draft`, `createContentDraft` and
+ * `scheduleContentItem` and `replaceCampaignSlots` write `scheduled`,
+ * `markContentPublished`/`RolledBack`/`Blocked`/`NeedsReview`/`Approved` write
+ * their own name, and `unapproveContentItem` writes `draft`. No function takes
+ * a status from its caller.
+ *
+ * `failed` is in §7.4's sentence and is deliberately not here: a failed publish
+ * does not change the status. `recordContentPublishFailure` increments
+ * `publishAttempts` and stores `lastPublishError`, leaving the item `scheduled`
+ * so the next tick retries it, and only when the scheduler gives up does
+ * `markContentBlocked` move it to `blocked`. Adding `failed` would name a state
+ * nothing can reach and imply the retry counter had a second home.
+ */
+export const ContentStatus = z.enum([
+  'draft', 'needs_review', 'approved', 'scheduled', 'published', 'blocked', 'rolled_back',
+]);
+export type ContentStatus = z.infer<typeof ContentStatus>;
+
 export const GenerationMode = z.enum(['synthesize', 'assemble', 'direct_finish']);
 export type GenerationMode = z.infer<typeof GenerationMode>;
 
@@ -95,6 +138,73 @@ export const AssetRole = z.enum([
   'product_shot', 'social_proof', 'knowledge', 'past_post', 'brand_kit',
 ]);
 export type AssetRole = z.infer<typeof AssetRole>;
+
+/**
+ * Whether an asset may be used in generated output.
+ *
+ * `asset.rights.set` has validated this as exactly these three values since it
+ * was written, and `scoped.ts` types the column the same way — but the tool
+ * *output* schemas said `z.string()`, so the frontend received `string` and
+ * every screen narrowed it back to a union by hand. One of them narrowed it to
+ * a set the schema never promised.
+ *
+ * Named here rather than inline so the input, the repository and the outputs
+ * cannot drift apart again.
+ */
+export const AssetRightsStatus = z.enum(['cleared', 'pending', 'restricted']);
+export type AssetRightsStatus = z.infer<typeof AssetRightsStatus>;
+
+/**
+ * Every platform the product can publish to.
+ *
+ * ── Why this list grew ─────────────────────────────────────────────────────
+ *
+ * It was `['instagram', 'tiktok', 'linkedin', 'x', 'youtube_shorts']` — five —
+ * and **Facebook was not among them**, despite being the first channel on PRD
+ * §9's must-have-at-GA list and free under the very same Meta app review as
+ * Instagram (Track 1: *"apply to Meta once, unlock Facebook + Instagram +
+ * Threads"*). Pinterest, Threads and the whole secondary list were absent too.
+ *
+ * That was not a routing gap, it was a *vocabulary* gap, and it made the
+ * aggregator strategy incoherent: the Ayrshare adapter exists specifically to
+ * cover "the long tail (Pinterest, Snapchat, Google Business, Reddit, Bluesky,
+ * Threads) without waiting on every audit", and it could not be asked to
+ * publish to any of them, because no caller could name one.
+ *
+ * ── Naming ─────────────────────────────────────────────────────────────────
+ *
+ * Surface-specific where the surfaces have genuinely different rules and
+ * limits (`instagram_story` is 24 hours and vertical; `youtube_long` is not
+ * Shorts; `facebook_group` posts under different permissions than a Page), and
+ * plain where they do not. `youtube_shorts` keeps its name rather than becoming
+ * `youtube` — renaming it would silently repoint every stored
+ * `content_items.platform` value.
+ *
+ * A platform being nameable here does not mean it is reachable: `routeAdapters`
+ * picks the first adapter claiming `supports()`, and an unconfigured platform
+ * falls through to whatever is last in the list. What this fixes is that the
+ * aggregator can now *be* asked.
+ */
+export const Platform = z.enum([
+  // ── Core five: native adapters, own the relationship (PRD Part B, Tier 2) ──
+  'instagram',
+  'instagram_story',
+  'tiktok',
+  'linkedin',
+  'x',
+  'youtube_shorts',
+  'youtube_long',
+  // ── Meta's other surfaces, same App Review as Instagram ──
+  'facebook',
+  'facebook_group',
+  'threads',
+  // ── The aggregator's long tail (PRD §9 "Secondary / Optional") ──
+  'pinterest',
+  'google_business',
+  'reddit',
+  'bluesky',
+]);
+export type Platform = z.infer<typeof Platform>;
 
 /**
  * What kind of file an asset is — the captioner's dispatch and the library's

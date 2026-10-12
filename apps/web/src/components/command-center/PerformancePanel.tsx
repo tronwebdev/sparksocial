@@ -191,7 +191,7 @@ export function PerformancePanel({
       */}
       <PerformanceCards genomeId={genomeId} series={series2} onOpenPost={onOpenPost} />
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       {!metrics && !error ? <Skeleton className="mt-4 h-64 w-full rounded-lg" /> : null}
 
@@ -318,7 +318,7 @@ export function PerformancePanel({
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[11px] uppercase tracking-wide text-ink-muted">{title}</h3>
+      <h3 className="text-11 uppercase tracking-wide text-ink-muted">{title}</h3>
       <dl className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">{children}</dl>
     </div>
   );
@@ -345,17 +345,17 @@ function Metric({
 }) {
   return (
     <div>
-      <dt className="text-[12px] text-ink-muted">{label}</dt>
+      <dt className="text-12 text-ink-muted">{label}</dt>
       <dd
         className={cn(
-          'mt-0.5 text-[22px] font-medium tabular-nums',
+          'mt-0.5 text-22 font-medium tabular-nums',
           value === null ? 'text-ink-muted' : warn ? 'text-warn' : 'text-ink',
         )}
       >
         {value ?? '—'}
       </dd>
-      {value === null && empty ? <p className="mt-0.5 text-[11px] text-ink-muted">{empty}</p> : null}
-      {value !== null && note ? <p className="mt-0.5 text-[11px] text-ink-muted">{note}</p> : null}
+      {value === null && empty ? <p className="mt-0.5 text-11 text-ink-muted">{empty}</p> : null}
+      {value !== null && note ? <p className="mt-0.5 text-11 text-ink-muted">{note}</p> : null}
     </div>
   );
 }

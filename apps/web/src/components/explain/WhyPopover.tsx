@@ -84,10 +84,10 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
   return (
     <div className={cn('mt-2', className)}>
       <div className="flex flex-wrap items-baseline gap-2">
-        <p className="text-[13px] italic text-ink-muted">{label ?? `Why: ${why.summary}`}</p>
+        <p className="text-13 italic text-ink-muted">{label ?? `Why: ${why.summary}`}</p>
 
         {typeof why.confidence === 'number' ? (
-          <span className="text-[12px] tabular-nums text-ink-muted">
+          <span className="text-12 tabular-nums text-ink-muted">
             {Math.round(why.confidence * 100)}% confident
           </span>
         ) : null}
@@ -99,7 +99,7 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="rounded text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--ss-ring]"
+            className="rounded text-12 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--ss-ring]"
           >
             {open ? 'Hide reasoning' : 'Show reasoning'}
           </button>
@@ -110,10 +110,10 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
         <div className="mt-2 grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface-muted p-3">
           {why.factors?.length ? (
             <section>
-              <h4 className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">What decided it</h4>
+              <h4 className="text-11 font-medium uppercase tracking-wide text-ink-muted">What decided it</h4>
               <ul className="mt-1.5 grid grid-cols-1 gap-1.5">
                 {why.factors.map((f, i) => (
-                  <li key={`${f.label}-${i}`} className="flex items-baseline gap-2 text-[13px]">
+                  <li key={`${f.label}-${i}`} className="flex items-baseline gap-2 text-13">
                     <span className="font-medium text-ink">{f.label}</span>
                     {f.detail ? <span className="text-ink-muted">{f.detail}</span> : null}
                     {/* A weight is only meaningful next to other weights, so it
@@ -126,7 +126,7 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
                             style={{ width: `${Math.round(Math.min(1, Math.max(0, f.weight)) * 100)}%` }}
                           />
                         </span>
-                        <span className="w-8 text-right text-[12px] tabular-nums text-ink-muted">
+                        <span className="w-8 text-right text-12 tabular-nums text-ink-muted">
                           {Math.round(f.weight * 100)}%
                         </span>
                       </span>
@@ -139,7 +139,7 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
 
           {why.evidence?.length ? (
             <section>
-              <h4 className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">What it looked at</h4>
+              <h4 className="text-11 font-medium uppercase tracking-wide text-ink-muted">What it looked at</h4>
               <ul className="mt-1.5 grid grid-cols-1 gap-1">
                 {/*
                   The note leads and the identifier follows, for the same reason the
@@ -153,10 +153,10 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
                   support conversation needs, so it stays, small and second.
                 */}
                 {why.evidence.map((e, i) => (
-                  <li key={`${e.id}-${i}`} className="text-[13px] text-ink-muted">
+                  <li key={`${e.id}-${i}`} className="text-13 text-ink-muted">
                     <span className="font-medium text-ink">{EVIDENCE_LABEL[e.kind] ?? e.kind}</span>
                     {e.note ? <span className="text-ink"> — {e.note}</span> : null}
-                    <span className="ml-1.5 font-mono text-[11px] text-ink-soft">{e.id}</span>
+                    <span className="ml-1.5 font-mono text-11 text-ink-soft">{e.id}</span>
                   </li>
                 ))}
               </ul>
@@ -165,12 +165,12 @@ export function WhyPopover({ why, label, className }: WhyPopoverProps) {
 
           {why.alternatives?.length ? (
             <section>
-              <h4 className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+              <h4 className="text-11 font-medium uppercase tracking-wide text-ink-muted">
                 What it ruled out
               </h4>
               <ul className="mt-1.5 grid grid-cols-1 gap-1">
                 {why.alternatives.map((a, i) => (
-                  <li key={`${a.option}-${i}`} className="text-[13px] text-ink-muted">
+                  <li key={`${a.option}-${i}`} className="text-13 text-ink-muted">
                     <span className="font-medium text-ink">{a.option}</span> — {a.rejectedBecause}
                   </li>
                 ))}

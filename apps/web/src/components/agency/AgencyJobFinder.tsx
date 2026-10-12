@@ -51,13 +51,13 @@ export function AgencyJobFinder() {
           true of the panel rather than inventing a number.
         */}
         <span
-          className="absolute left-[82px] top-[64px] flex h-[38px] items-center rounded-[19px] px-[14px] text-[14px] font-semibold"
+          className="absolute left-[82px] top-[64px] flex h-[38px] items-center rounded-[19px] px-[14px] text-14 font-semibold"
           style={{ background: 'rgba(120,170,255,0.18)', boxShadow: 'inset 0 0 0 1px rgba(120,170,255,0.5)', color: '#9CC2FF' }}
         >
           Job board not connected
         </span>
 
-        <h2 className="absolute left-[82px] top-[122px] w-[760px] text-[40px] font-semibold leading-[1.25] text-white">
+        <h2 className="absolute left-[82px] top-[122px] w-[760px] text-40 font-semibold leading-[1.25] text-white">
           Find Potential Jobs for your Agency on Demand
         </h2>
 
@@ -98,7 +98,7 @@ export function AgencyJobFinder() {
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={cn(
-              'flex h-[46px] w-[252px] items-center justify-center rounded-[10px] text-[16px] font-semibold text-ink transition-colors',
+              'flex h-[46px] w-[252px] items-center justify-center rounded-[10px] text-16 font-semibold text-ink transition-colors',
               tab === id ? 'bg-cyan-200' : 'bg-white',
             )}
           >
@@ -107,11 +107,11 @@ export function AgencyJobFinder() {
         ))}
       </div>
 
-      <h3 className="absolute left-ag-tool-x top-[606px] text-[22px] font-bold leading-none text-ink">
+      <h3 className="absolute left-ag-tool-x top-[606px] text-22 font-bold leading-none text-ink">
         {tab === 'saved' ? 'Saved Jobs' : 'Search Jobs'}
       </h3>
       {tab === 'saved' ? (
-        <p className="absolute left-ag-tool-x top-[642px] text-[15.5px] font-normal" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-ag-tool-x top-[642px] text-16 font-normal" style={{ color: 'rgb(131,131,131)' }}>
           Your bookmarked opportunities, all in one place
         </p>
       ) : null}
@@ -129,7 +129,7 @@ export function AgencyJobFinder() {
             <input
               placeholder="Job Title, Company, keyword"
               aria-label="Search jobs"
-              className="w-full bg-transparent text-[15.5px] font-medium text-ink outline-none"
+              className="w-full bg-transparent text-16 font-medium text-ink outline-none"
             />
           </label>
 
@@ -140,7 +140,7 @@ export function AgencyJobFinder() {
           ].map((d) => (
             <span
               key={d.label}
-              className="absolute top-[648px] flex h-[58px] w-[170px] items-center justify-between rounded-[13px] bg-white px-[18px] text-[15.5px] font-semibold text-ink"
+              className="absolute top-[648px] flex h-[58px] w-[170px] items-center justify-between rounded-[13px] bg-white px-[18px] text-16 font-semibold text-ink"
               style={{ left: d.x, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)', opacity: 0.55 }}
               title="Filters need a job source"
             >
@@ -152,7 +152,7 @@ export function AgencyJobFinder() {
           ))}
 
           <span
-            className="absolute left-[1500px] top-[648px] flex h-[58px] items-center rounded-[13px] bg-ink px-[24px] text-[15.5px] font-semibold text-white"
+            className="absolute left-[1500px] top-[648px] flex h-[58px] items-center rounded-[13px] bg-ink px-[24px] text-16 font-semibold text-white"
             style={{ opacity: 0.55 }}
             title="No job source is connected"
           >
@@ -161,7 +161,7 @@ export function AgencyJobFinder() {
         </>
       ) : null}
 
-      <span className="absolute left-ag-tool-x top-[734px] text-[17px] font-semibold" style={{ color: 'rgb(91,91,91)' }}>
+      <span className="absolute left-ag-tool-x top-[734px] text-17 font-semibold" style={{ color: 'rgb(91,91,91)' }}>
         {tab === 'saved' ? `${saved.length} Saved` : '0 Results'}
       </span>
 
@@ -173,10 +173,10 @@ export function AgencyJobFinder() {
         className="absolute left-ag-tool-x top-[772px] w-ag-tool-wide rounded-[16px] bg-white py-[54px] text-center"
         style={{ boxShadow: '0 16px 40px -34px rgba(12,12,12,0.45)' }}
       >
-        <p className="text-[19px] font-bold text-ink">
+        <p className="text-19 font-bold text-ink">
           {tab === 'saved' ? 'Nothing saved yet' : 'No job source connected'}
         </p>
-        <p className="mx-auto mt-[12px] max-w-[660px] text-[15.5px] leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="mx-auto mt-[12px] max-w-[660px] text-16 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
           {tab === 'saved'
             ? 'Jobs you bookmark from Discover appear here.'
             : 'Nothing in the registry queries job listings yet, so there is no board to search. The filters and the save toggle are built and will work the moment a source exists.'}
@@ -186,7 +186,7 @@ export function AgencyJobFinder() {
           <button
             type="button"
             onClick={() => setSaved((s) => (s.includes('demo') ? s.filter((x) => x !== 'demo') : [...s, 'demo']))}
-            className="mx-auto mt-[20px] flex h-[38px] items-center rounded-[9px] bg-cyan-200 px-[16px] text-[14px] font-semibold text-ink"
+            className="mx-auto mt-[20px] flex h-[38px] items-center rounded-[9px] bg-cyan-200 px-[16px] text-14 font-semibold text-ink"
           >
             {saved.includes('demo') ? 'Remove sample bookmark' : 'Save a sample bookmark'}
           </button>

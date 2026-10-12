@@ -30,6 +30,7 @@ import { createOAuthConnectionRepository } from './oauthConnectionRepository.js'
 import { createOrgSettingsRepository } from './orgSettingsRepository.js';
 import { createBrandMemberRepository, createReviewLinkRepository } from './agencyRepository.js';
 import { createKnowledgeRepository } from './knowledgeRepository.js';
+import { createLeadRepository, createProposalRepository } from './pipelineRepository.js';
 import { createCtaLinkRepository } from './ctaLinkRepository.js';
 
 /** The real `ScopedDb`, assembled from the Postgres-backed repositories. */
@@ -58,6 +59,8 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     orgSettings: createOrgSettingsRepository(db),
     brandMembers: createBrandMemberRepository(db),
     reviewLinks: createReviewLinkRepository(db),
+    leads: createLeadRepository(db),
+    proposals: createProposalRepository(db),
     approvals: createApprovalRepository(db),
     brands: createBrandRepository(db),
     brandEngagement: createBrandEngagementRepository(db),

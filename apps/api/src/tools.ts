@@ -26,6 +26,7 @@ import {
   assetCooldownCheck,
   assetFolderCreate,
   assetFolderRename,
+  assetList,
   assetUnfiled,
   assetFolderMembers,
   assetFolderMemberSet,
@@ -35,6 +36,7 @@ import {
 } from '@sparksocial/assetgraph';
 import {
   createAzureBlobStore,
+  createR2BlobStore,
   createLocalDiskBlobStore,
   LOCAL_STORAGE_ROUTE_PREFIX,
   type BlobStore,
@@ -76,6 +78,7 @@ import {
 } from '@sparksocial/generate';
 import {
   campaignProposePlan,
+  makeCampaignReadiness,
   campaignCreate,
   campaignList,
   campaignReportVsOutcome,
@@ -118,7 +121,7 @@ import {
   brandCreate,
   brandSettingsPatch,
   brandGovernanceGet,
-  brandGovernanceSet,
+  makeBrandGovernanceSet,
   brandEngagementPlatformsGet,
   brandEngagementPlatformsSet,
   agencyRoster,
@@ -139,6 +142,16 @@ import {
   teamGroupDelete,
   teamGroupMemberSet,
   whitelabelLinkCreate,
+  leadCreate,
+  leadImport,
+  leadList,
+  leadUpdate,
+  leadConvert,
+  proposalDraft,
+  proposalList,
+  proposalUpdate,
+  proposalShare,
+  proposalDecide,
   makeBrandOAuthConnect,
   brandOAuthStatus,
   brandOAuthDisconnect,
@@ -153,10 +166,12 @@ import {
   makeIntegrationConnect,
   makeIntegrationHealth,
   makeIntegrationRateBudget,
+  routeAdapters,
   integrationScopesVerify,
+  integrationConnectCredentials,
   type Platform,
 } from '@sparksocial/publish';
-import { socialAdapterClients } from './social-adapter-clients.js';
+import { socialAdapterClients, socialClientIds, socialClientSecrets } from './social-adapter-clients.js';
 import {
   makeTrendRank,
   makeTrendFetch,
@@ -383,6 +398,7 @@ export function registerAlphaTools(): void {
   register(assetFolderMove);
   register(assetFolderList);
   register(assetFolderRename);
+  register(assetList);
   register(assetUnfiled);
   register(assetFolderMembers);
   register(assetFolderMemberSet);
@@ -429,7 +445,7 @@ export function registerAlphaTools(): void {
   const images = imageClient();
   if (images) register(makeContentGenerateImage(images));
   // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
-  if (images) register(makeBrandLogoGenerate(images));
+  if (images) register(makeBrandLogoGenerate(images, (t) => embed.embed(t)));
   const videos = videoClient();
   if (videos) register(makeContentGenerateBroll(videos));
   // Same "unset → not registered" rule as the image tool, and for the same
@@ -510,17 +526,45 @@ export function registerAlphaTools(): void {
   // developer app (`socialAdapterClients`'s own comment); an unconfigured
   // platform falls through to the stub, so the whole calendar → guardrails →
   // policy → publish path still runs end to end without any vendor account.
-  // The Ayrshare aggregator adapter is deliberately NOT included here even
-  // when `AYRSHARE_API_KEY` is set — its code is kept intact
-  // (`ayrshareAdapter.ts`, `ayrshare-adapter-client.ts`) for the long-tail
-  // platforms (Pinterest, GBP, Reddit, Bluesky, Threads) post-GA, but is not
-  // wired into routing until `PUBLISH_USE_AGGREGATOR=true` opts back in.
   const nativeAdapters = socialAdapterClients();
-  const useAggregator = envSet('PUBLISH_USE_AGGREGATOR') && envStr('PUBLISH_USE_AGGREGATOR', '').toLowerCase() === 'true';
-  const ayrshareAdapter = useAggregator ? ayrshareAdapterClient() : undefined;
+
+  /*
+   * ── The aggregator switch ──────────────────────────────────────────────
+   *
+   * `routeAdapters` picks the FIRST adapter whose `supports()` answers true, so
+   * order is the whole switch.
+   *
+   * `PUBLISH_USE_AGGREGATOR=true` puts Ayrshare in the table at all. It used to
+   * be enough on its own, because it was the only thing that could reach the
+   * long tail — Threads, Pinterest, Google Business, Reddit, Bluesky. All five
+   * are native now, so appending it would mean it never gets asked: every
+   * platform would match a native adapter first and the flag would look broken.
+   *
+   * `PUBLISH_PREFER_AGGREGATOR=true` is therefore the real lever. It puts
+   * Ayrshare *ahead* of the native adapters, so one env var moves every platform
+   * it supports onto the aggregator without touching a connection, a token or a
+   * line of code — and removing it moves them all back. That is the on/off this
+   * needs to be: a way to fall back to one vendor when a native app is
+   * rate-limited, awaiting re-approval, or simply misbehaving, without a deploy.
+   */
+  const useAggregator = envStr('PUBLISH_USE_AGGREGATOR', '').toLowerCase() === 'true';
+  const preferAggregator = envStr('PUBLISH_PREFER_AGGREGATOR', '').toLowerCase() === 'true';
+  const ayrshareAdapter = useAggregator || preferAggregator ? ayrshareAdapterClient() : undefined;
+
+  if (preferAggregator && !ayrshareAdapter) {
+    console.warn(
+      '[warn] PUBLISH_PREFER_AGGREGATOR is set but no aggregator is configured (AYRSHARE_API_KEY) — ' +
+        'publishing stays on the native adapters.',
+    );
+  }
+  if (ayrshareAdapter) {
+    console.log(`  publishing: aggregator ${preferAggregator ? 'FIRST — native adapters are bypassed' : 'as fallback behind native adapters'}`);
+  }
+
   const adapters = [
+    ...(preferAggregator && ayrshareAdapter ? [ayrshareAdapter] : []),
     ...nativeAdapters,
-    ...(ayrshareAdapter ? [ayrshareAdapter] : []),
+    ...(!preferAggregator && ayrshareAdapter ? [ayrshareAdapter] : []),
     // Last-resort fallback: whatever platform nothing above claims still
     // round-trips end to end in dev — `routeAdapters` picks the first
     // adapter whose `supports()` returns true, so this only ever serves a
@@ -531,12 +575,41 @@ export function registerAlphaTools(): void {
   // would let a health panel report a budget `publish.now` does not
   // actually enforce, worse than no health panel at all.
   const limiter = buildRateLimiter();
-  register(makePublishNow({ adapters, limiter, embed }));
+  /*
+   * `oauthApps` is what lets `publish.now` renew an expiring token in place.
+   * Only `publish.now` takes it: `publish.status` and `publish.rollback` read
+   * or undo an existing post and are not worth a token write on the way.
+   */
+  register(
+    makePublishNow({
+      adapters,
+      limiter,
+      embed,
+      oauthApps: { clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
+    }),
+  );
   register(makePublishStatus({ adapters, limiter, embed }));
   register(makePublishRollback({ adapters, limiter, embed }));
   register(makeIntegrationHealth({ adapters }));
+  /*
+   * Registered here rather than with the other campaign tools above, because
+   * it needs the routing table: 'nowhere to publish' is one of the two things
+   * that make a campaign produce nothing, and only `routeAdapters` knows which
+   * platforms this deployment can actually reach. Asking the campaign block to
+   * build adapters early, or this to guess, would both be worse than the
+   * ordering.
+   */
+  register(makeCampaignReadiness({ supportedPlatforms: () => routeAdapters(adapters).supported() }));
   register(makeIntegrationRateBudget({ limiter }));
   register(integrationScopesVerify);
+  /*
+   * Registered unconditionally, unlike `integration.connect`. That one is
+   * gated on OAUTH_STATE_SECRET because it signs a state envelope; this one
+   * signs nothing and needs no app registration — Bluesky authenticates with
+   * the brand's own app password, so there is nothing for an operator to set
+   * up and no reason to hide the tool when they have not.
+   */
+  register(integrationConnectCredentials);
 
   // Link attribution (§8, P4). Same "unset → not registered" rule as the
   // image/avatar/voice generation tools.
@@ -775,18 +848,45 @@ function localUrlPrefix(): string {
  * surface as a wall of Azure credential text under an upload button.
  */
 export function blobStore(): BlobStore {
+  /*
+   * R2 before Azure, local last.
+   *
+   * Two cloud stores exist because the deploy target is moving: Azure signs with
+   * a managed identity that only exists inside Container Apps, and R2 signs with
+   * a static key that works anywhere — see `infra/render/MIGRATION.md` §0.1 on
+   * why Render cannot run the Azure path at all.
+   *
+   * Ordered rather than exclusive so a migration can run both for a window: set
+   * the R2 variables and the next boot writes to R2 while the Azure account is
+   * still there to read from. Whichever is checked first wins, and R2 is first
+   * because it is the destination, not the origin.
+   */
+  if (envSet('R2_ACCOUNT_ID')) {
+    return createR2BlobStore({
+      accountId: envStr('R2_ACCOUNT_ID', ''),
+      bucket: envStr('R2_BUCKET', 'assets'),
+      accessKeyId: envStr('R2_ACCESS_KEY_ID', ''),
+      secretAccessKey: envStr('R2_SECRET_ACCESS_KEY', ''),
+      ...(envSet('R2_PUBLIC_BASE_URL') ? { publicBaseUrl: envStr('R2_PUBLIC_BASE_URL', '') } : {}),
+    });
+  }
   if (!envSet('AZURE_STORAGE_ACCOUNT')) return localBlobStore();
   const account = envStr('AZURE_STORAGE_ACCOUNT', '');
   return createAzureBlobStore({ account, container: envStr('AZURE_STORAGE_CONTAINER', 'assets') });
 }
 
+/** Whether any real object store is configured — local disk is the fallback, not a store. */
+function cloudStoreConfigured(): boolean {
+  return envSet('R2_ACCOUNT_ID') || envSet('AZURE_STORAGE_ACCOUNT');
+}
+
 /**
  * Exposed so `index.ts` can mount the PUT/GET routes a local-disk store's
- * URLs point at. `undefined` when Azure is configured — those URLs are real
- * Blob Storage SAS links and need no local route.
+ * URLs point at. `undefined` when a cloud store is configured — those URLs are
+ * real presigned links (Blob SAS or R2 SigV4) and need no local route.
  */
 export function localBlobStoreForRoutes(): LocalDiskBlobStore | undefined {
-  return envSet('AZURE_STORAGE_ACCOUNT') ? undefined : localBlobStore();
+  return cloudStoreConfigured() ? undefined : localBlobStore();
 }
 
 /**
@@ -878,7 +978,10 @@ export function registerAgencyTools(deps: {
   // guardrail-enforcement section with nothing to enforce and every post
   // firing at the instant its campaign happened to be created.
   register(brandGovernanceGet);
-  register(brandGovernanceSet);
+  // `embedClient()` is memoised — same instance as the one `registerAlphaTools`
+  // holds, which is the point of the note on it there: ingest and retrieve must
+  // share a vector space or the ranking is noise that looks like a result.
+  register(makeBrandGovernanceSet({ embed: (t) => embedClient().embed(t) }));
   // §8.8's per-platform engagement matrix. The brand-level autonomy is the
   // fallback and stays where it is; these only ever record an *override*, so a
   // brand that never opens the screen behaves exactly as it did before.
@@ -918,6 +1021,29 @@ export function registerAgencyTools(deps: {
   register(teamGroupMemberSet);
 
   register(whitelabelLinkCreate);
+
+  // ── The agency's own sales pipeline (`lead.*`, `proposal.*`) ──────────
+  //
+  // Org-level like `agency.roster`, and for the same reason: a lead has no
+  // genome because a lead is not a client yet. `lead.convert` is the bridge —
+  // it links a won lead to the brand `brand.create` made for it, and from that
+  // point the client is genome-scoped like every other.
+  //
+  // Capture only. Nothing here prospects: no tool harvests businesses out of a
+  // directory, which is why the portal's "Find Clients" button stays honestly
+  // unavailable. See the header in `leads.ts`.
+  register(leadCreate);
+  register(leadImport);
+  register(leadList);
+  register(leadUpdate);
+  register(leadConvert);
+  // Proposals price what the agency supplies and never invent a rate — a
+  // contractual offer carrying a model's guess would bind the agency to it.
+  register(proposalDraft);
+  register(proposalList);
+  register(proposalUpdate);
+  register(proposalShare);
+  register(proposalDecide);
 
   // Canva OAuth (bulk_connector's canva source). `brand.oauth.connect` needs
   // an app registration to mint an authorize URL against — unset →

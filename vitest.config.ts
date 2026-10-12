@@ -4,6 +4,15 @@ import { fileURLToPath } from "node:url";
 const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
+  /**
+   * The automatic JSX runtime, so a `.tsx` component can be imported by a test.
+   *
+   * Vitest's default is the classic transform, which compiles JSX to
+   * `React.createElement` and expects a `React` binding these files do not have
+   * — Next has run the automatic runtime since 17. Without this every component
+   * under test fails at render with "React is not defined".
+   */
+  esbuild: { jsx: "automatic" },
   test: {
     globals: true,
     environment: "node",
@@ -44,6 +53,13 @@ export default defineConfig({
     alias: [
       { find: /^@sparksocial\/([^/]+)\/(.+)$/, replacement: r("./packages/$1/src/$2.ts") },
       { find: /^@sparksocial\/([^/]+)$/, replacement: r("./packages/$1/src/index.ts") },
+      /**
+       * `apps/web`'s own alias, so a component can be rendered in a test.
+       *
+       * Only the web app uses a bare `@/`, and it is the last rule, so it
+       * cannot shadow the package patterns above.
+       */
+      { find: /^@\/(.+)$/, replacement: r("./apps/web/src/$1") },
     ],
   },
 });

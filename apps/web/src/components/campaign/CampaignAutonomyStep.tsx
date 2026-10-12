@@ -55,7 +55,7 @@ function SwitchRow({
       style={{ left: x, top: y, width: w, boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
       title={locked ? lockedWhy : undefined}
     >
-      <span className="absolute top-[17px] whitespace-nowrap text-[16px] font-medium leading-none" style={{ left: labelX, color: 'rgb(131,131,131)' }}>
+      <span className="absolute top-[17px] whitespace-nowrap text-16 font-medium leading-none" style={{ left: labelX, color: 'rgb(131,131,131)' }}>
         {label}
       </span>
       <span className="absolute top-[14px]" style={{ left: knobX }}>
@@ -100,31 +100,31 @@ export function AutonomyStep({
 
   return (
     <StepPanel x={59} y={222} w={920} h={870} clip={PANEL_CLIP.s5}>
-      <span className="absolute left-[25px] top-[39px] whitespace-nowrap text-[16px] font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
+      <span className="absolute left-[25px] top-[39px] whitespace-nowrap text-16 font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
         Autonomy &amp; Responsibility
       </span>
       <InfoIcon className="absolute left-[238px] top-[39px]" title="What this campaign may do without you. Every one of these is enforced, not advisory." />
 
-      <h2 className="absolute left-[25px] top-[85px] whitespace-nowrap text-[18px] font-semibold leading-[1.273] text-black">
+      <h2 className="absolute left-[25px] top-[85px] whitespace-nowrap text-18 font-semibold leading-[1.273] text-black">
         How much responsibility does your agent have?
       </h2>
-      <p className="absolute left-[25px] top-[111px] whitespace-nowrap text-[16px] font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="absolute left-[25px] top-[111px] whitespace-nowrap text-16 font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
         Control what your agent does independently, you can change anytime
       </p>
-      <span className="absolute left-[668px] top-[111px] whitespace-nowrap text-[20px] font-medium leading-none" style={{ color: 'rgb(131,131,131)' }}>
+      <span className="absolute left-[668px] top-[111px] whitespace-nowrap text-20 font-medium leading-none" style={{ color: 'rgb(131,131,131)' }}>
         Timezone: {timezone}
       </span>
       <a
         href="/settings/brand-kit"
-        className="absolute left-[822px] top-[111px] whitespace-nowrap text-[20px] font-medium leading-none text-purple transition-opacity hover:opacity-70"
+        className="absolute left-[822px] top-[111px] whitespace-nowrap text-20 font-medium leading-none text-purple transition-opacity hover:opacity-70"
       >
         Change
       </a>
 
       {/* ── content responsibility ──────────────────────────────────────── */}
       <div className="absolute left-[23px] top-[161px] h-[289px] w-[440px] rounded bg-white" style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
-        <span className="absolute left-[20px] top-[15px] whitespace-nowrap text-[16px] font-semibold leading-none text-black">Content responsibility</span>
-        <span className="absolute left-[20px] top-[38px] block w-[297px] text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[20px] top-[15px] whitespace-nowrap text-16 font-semibold leading-none text-black">Content responsibility</span>
+        <span className="absolute left-[20px] top-[38px] block w-[297px] text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
           Decide how your agent handles content creation and publishing
         </span>
 
@@ -166,8 +166,8 @@ export function AutonomyStep({
 
       {/* ── optimization & learning ─────────────────────────────────────── */}
       <div className="absolute left-[480px] top-[161px] h-[289px] w-[420px] rounded bg-white" style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
-        <span className="absolute left-[22px] top-[17px] whitespace-nowrap text-[16px] font-semibold leading-none text-black">Optimization &amp; Learning</span>
-        <span className="absolute left-[22px] top-[40px] block w-[297px] text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[22px] top-[17px] whitespace-nowrap text-16 font-semibold leading-none text-black">Optimization &amp; Learning</span>
+        <span className="absolute left-[22px] top-[40px] block w-[297px] text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
           Allow your agent to adapt based on performance
         </span>
         <SwitchRow x={23} y={89} w={377} labelX={14} knobX={322} label="Learn from performance automatically" on={learn} onChange={onLearn} />
@@ -176,9 +176,9 @@ export function AutonomyStep({
 
       {/* ── campaign duration ───────────────────────────────────────────── */}
       <div className="absolute left-[23px] top-[471px] h-[155px] w-[440px] rounded bg-white" style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
-        <span className="absolute left-[23px] top-[17px] whitespace-nowrap text-[16px] font-semibold leading-none text-black">Campaign Duration</span>
+        <span className="absolute left-[23px] top-[17px] whitespace-nowrap text-16 font-semibold leading-none text-black">Campaign Duration</span>
         <InfoIcon className="absolute left-[177px] top-[16px]" title="How long the campaign plans for. The calendar is generated across this window." />
-        <span className="absolute left-[23px] top-[44px] whitespace-nowrap text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[23px] top-[44px] whitespace-nowrap text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
           How long should the campaign run for?
         </span>
         <button
@@ -194,7 +194,7 @@ export function AutonomyStep({
             e.currentTarget.style.boxShadow = 'inset 0 0 0 1px rgba(12,12,12,0.1)';
           }}
         >
-          <span className="absolute left-[17px] top-[17px] whitespace-nowrap text-[16px] font-medium leading-none" style={{ color: 'rgb(131,131,131)' }}>
+          <span className="absolute left-[17px] top-[17px] whitespace-nowrap text-16 font-medium leading-none" style={{ color: 'rgb(131,131,131)' }}>
             {DURATIONS[durationIdx]?.label}
           </span>
           <Chevron className="absolute left-[361px] top-[19px]" style={{ transform: 'rotate(90deg) scale(0.85)' }} />
@@ -203,9 +203,9 @@ export function AutonomyStep({
 
       {/* ── campaign frequency ──────────────────────────────────────────── */}
       <div className="absolute left-[482px] top-[471px] h-[155px] w-[418px] rounded bg-white" style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
-        <span className="absolute left-[23px] top-[17px] whitespace-nowrap text-[16px] font-semibold leading-none text-black">Campaign frequency</span>
+        <span className="absolute left-[23px] top-[17px] whitespace-nowrap text-16 font-semibold leading-none text-black">Campaign frequency</span>
         <InfoIcon className="absolute left-[186px] top-[16px]" title="How much of the month this campaign takes. The rest stays your baseline posting." />
-        <span className="absolute left-[23px] top-[44px] whitespace-nowrap text-[14px] font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[23px] top-[44px] whitespace-nowrap text-14 font-normal leading-none" style={{ color: 'rgb(131,131,131)' }}>
           How much attention should this get?
         </span>
 
@@ -233,7 +233,7 @@ export function AutonomyStep({
               type="button"
               onClick={() => onWeight(s.value)}
               tabIndex={-1}
-              className="absolute top-[33px] cursor-pointer whitespace-nowrap text-[14px] font-medium leading-none"
+              className="absolute top-[33px] cursor-pointer whitespace-nowrap text-14 font-medium leading-none"
               style={{ left: s.labelX, color: weight === s.value ? 'var(--ss-ink-900)' : 'rgb(131,131,131)' }}
             >
               {s.label}
@@ -244,11 +244,11 @@ export function AutonomyStep({
 
       {/* ── engagement responsibilities (live — see the header) ─────────── */}
       <div className="absolute left-[23px] top-[660px] h-[181px] w-[877px]">
-        <span className="absolute left-[2px] top-0 whitespace-nowrap text-[18px] font-semibold leading-[1.273] text-black">
+        <span className="absolute left-[2px] top-0 whitespace-nowrap text-18 font-semibold leading-[1.273] text-black">
           Engagement Responsibilities
         </span>
         <InfoIcon className="absolute left-[255px] top-0" title="How far the agent may go in replies. Enforced on every comment and DM." />
-        <span className="absolute left-[2px] top-[26px] whitespace-nowrap text-[16px] font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="absolute left-[2px] top-[26px] whitespace-nowrap text-16 font-normal leading-[1.43]" style={{ color: 'rgb(131,131,131)' }}>
           Control how the agent handles comments and DMs
         </span>
 
@@ -263,8 +263,8 @@ export function AutonomyStep({
               className="absolute top-[72px] h-[109px] w-[211px] cursor-pointer rounded-xl bg-white text-left transition-shadow"
               style={{ left: i * 222, boxShadow: on ? 'inset 0 0 0 1.4px rgba(12,12,12,0.45)' : 'none' }}
             >
-              <span className="absolute left-[16px] top-[24px] whitespace-nowrap text-[18px] font-semibold leading-none text-ink">{r.title}</span>
-              <span className="absolute left-[16px] top-[53px] block w-[171px] text-[16px] font-medium leading-[0.9976]" style={{ color: 'rgb(131,131,131)' }}>
+              <span className="absolute left-[16px] top-[24px] whitespace-nowrap text-18 font-semibold leading-none text-ink">{r.title}</span>
+              <span className="absolute left-[16px] top-[53px] block w-[171px] text-16 font-medium leading-[0.9976]" style={{ color: 'rgb(131,131,131)' }}>
                 {r.desc}
               </span>
               {on ? (

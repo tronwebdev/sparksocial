@@ -3,7 +3,7 @@ import { ToolError } from '@sparksocial/shared';
 import type { ScopedDb, ToolCtx } from '@sparksocial/tools';
 import { contentGet } from '../src/get.js';
 
-function ctx(over: { get?: ScopedDb['content']['get'] } = {}): ToolCtx {
+function ctx(over: { get?: ScopedDb['content']['get']; renders?: Awaited<ReturnType<ScopedDb['content']['listRenders']>> } = {}): ToolCtx {
   return {
     orgId: 'org_1',
     role: 'owner',
@@ -21,6 +21,9 @@ function ctx(over: { get?: ScopedDb['content']['get'] } = {}): ToolCtx {
             why: { summary: 'x', factors: [], evidence: [], alternatives: [] }, createdAt: new Date(),
           })),
         updateDraft: async () => undefined,
+        // Declared on the store interface, so a fake that omits it is an
+        // incomplete fake rather than a reason for the read to be defensive.
+        listRenders: async () => over.renders ?? [],
       },
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -151,5 +154,58 @@ describe('content.get — a playbook the library no longer has', () => {
     // to redraft any post at all.
     const out = await contentGet.handler({ contentItemId: 'ci_1', genomeId: 'gen_1' }, ctx());
     expect(out.playbookMissing).toBe(false);
+  });
+});
+
+/**
+ * The Draft Panel's preview held renders in state that only a fresh
+ * `compose.render` ever filled, so a post the render queue had already composed
+ * reopened with no video and a Render button beside it — an offer to pay a
+ * second time for a file sitting in the table. This read is where that comes
+ * from now.
+ */
+describe('content.get — renders already made', () => {
+  const render = (aspect: string, url: string, at: string) => ({
+    id: url,
+    contentItemId: 'ci_1',
+    aspect,
+    storageUrl: url,
+    engine: 'remotion',
+    costCents: 5,
+    createdAt: new Date(at),
+  });
+
+  it('returns the files this post already has', async () => {
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({ renders: [render('9:16', 'https://cdn/a.mp4', '2026-01-02')] }),
+    );
+
+    expect(res.renders).toEqual([{ aspect: '9:16', url: 'https://cdn/a.mp4', engine: 'remotion' }]);
+  });
+
+  /**
+   * A re-render adds a row rather than replacing one, so the table holds every
+   * take ever made. Showing all of them would be a gallery of supplanted
+   * versions; the newest of each aspect is the post as it stands.
+   */
+  it('keeps the newest take of each aspect and drops the supplanted ones', async () => {
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({
+        renders: [
+          render('9:16', 'https://cdn/new.mp4', '2026-01-03'),
+          render('1:1', 'https://cdn/square.mp4', '2026-01-03'),
+          render('9:16', 'https://cdn/old.mp4', '2026-01-01'),
+        ],
+      }),
+    );
+
+    expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/new.mp4', 'https://cdn/square.mp4']);
+  });
+
+  it('answers with an empty list rather than failing when nothing is rendered', async () => {
+    const res = await contentGet.handler({ contentItemId: 'ci_1', genomeId: 'gen_1' }, ctx());
+    expect(res.renders).toEqual([]);
   });
 });

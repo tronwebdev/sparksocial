@@ -59,7 +59,7 @@ export function ReviewQueueList({
         <h2 className="text-20 font-semibold leading-[1.28] text-ink">Waiting on you</h2>
         <span
           title="Work your agent has stopped and is holding until you decide. Approving here runs the call it was gated on."
-          className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+          className="mt-1 flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
           style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
         >
           i
@@ -104,7 +104,7 @@ export function ReviewQueueList({
                     minute: '2-digit',
                   })}
                 </p>
-                <p className="mt-[4px] truncate font-mono text-[11px] text-ink-muted">{item.tool}</p>
+                <p className="mt-[4px] truncate font-mono text-11 text-ink-muted">{item.tool}</p>
               </div>
 
               {/*

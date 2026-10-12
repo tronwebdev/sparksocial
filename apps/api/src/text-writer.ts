@@ -34,6 +34,7 @@ import type { BeatOutlineEntry, TextWriter } from '@sparksocial/generate';
 
 const MODEL = 'claude-sonnet-5';
 const TOOL_NAME = 'record_copy';
+const HASHTAG_TOOL = 'record_hashtags';
 
 /**
  * -- Why the length instruction changed ------------------------------------
@@ -76,6 +77,54 @@ const SCHEMA = {
   required: ['text'],
 };
 
+/**
+ * ── What this prompt is guarding against ──────────────────────────────────
+ *
+ * Every failure mode here was predictable from what hashtag generators
+ * normally produce, and each one is worse than the empty list the product
+ * shipped before this existed:
+ *
+ *   - **Volume.** Models reach for twenty. The budget is stated as a hard
+ *     number because `platformPolicy` blocks a post that exceeds the platform
+ *     cap, and a draft SPARK wrote and then refuses to publish is the worst
+ *     outcome available.
+ *   - **Generic filler.** `#smallbusiness #entrepreneur #mondaymotivation`
+ *     could be appended to any post by any business, which is precisely what
+ *     makes a caption look automated.
+ *   - **Invented claims.** A hashtag is text in the caption and is bound by the
+ *     same rule as the copy: it cannot assert something the brand did not say.
+ *     `#Organic` on a roaster that holds no certification is a false claim in
+ *     nine characters.
+ *   - **Banned phrases.** A brand that has banned "artisanal" has not permitted
+ *     `#artisanal`. Removing the space does not make it a different word.
+ */
+const HASHTAG_SYSTEM =
+  'You choose the hashtags for one social post. Return only hashtags, as a list of words with no ' +
+  "leading # — the caller adds it.\n\n" +
+  'Give exactly the number you are asked for, and no more. The number is a platform limit, not a ' +
+  "suggestion; a post over it is rejected outright.\n\n" +
+  'Each tag must be specific enough that it would be wrong on a different business. Tags that would ' +
+  'suit any company at all — smallbusiness, entrepreneur, motivation, instagood, viral, fyp — are ' +
+  'filler, and a caption ending in filler reads as machine-written. Prefer what this post is ' +
+  "actually about: the place, the product, the method, the origin, the craft, the audience.\n\n" +
+  'Never invent a fact. A hashtag asserts whatever it says — do not claim a certification, an award, ' +
+  'a location or an ingredient that is not in what you were given. Never use a banned phrase, with or ' +
+  "without its spaces.\n\n" +
+  'Write them the way a person would type them: no spaces, no punctuation, CamelCase where that makes ' +
+  'a multi-word tag readable.';
+
+const HASHTAG_SCHEMA = {
+  type: 'object' as const,
+  properties: {
+    hashtags: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+      description: 'The hashtags, without the leading #. Exactly as many as requested.',
+    },
+  },
+  required: ['hashtags'],
+};
+
 export interface TextWriterOptions {
   anthropic?: Anthropic;
   model?: string;
@@ -93,11 +142,79 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
     async write(args): Promise<string> {
       return withShapeRetry(() => attemptWrite(args));
     },
+
+    async hashtags(args): Promise<string[]> {
+      return withShapeRetry(() => attemptHashtags(args));
+    },
   };
+
+  /**
+   * The post's hashtags — one call, after every beat is written.
+   *
+   * ── Why the copy is in the prompt ─────────────────────────────────────────
+   *
+   * Tags written from the brand alone describe the business, and every post for
+   * that brand then gets the same ones. That is the `#coffee #smallbusiness`
+   * tail that makes a caption look generated, and it is worse than no hashtags
+   * because it is *visibly* automated. The written beats are the only thing that
+   * knows what this particular post is about.
+   *
+   * ── Not the copy writer's own prompt ──────────────────────────────────────
+   *
+   * `SYSTEM` above tells the model to return prose at a word budget and nothing
+   * else, which is the opposite instruction. Reusing it with a `hashtags.*`
+   * prompt_ref would be asking a writer tuned against "return the beat text
+   * only" to return a list, and the generalisation it is good at is beat
+   * categories, not output shapes.
+   */
+  async function attemptHashtags({
+    genome, playbook, intent, draftText, budget,
+  }: Parameters<NonNullable<TextWriter['hashtags']>>[0]): Promise<string[]> {
+    const response = await callVendor(
+      'hashtag writer',
+      'SPARK could not write hashtags for this post. The copy itself was saved.',
+      () =>
+        anthropic.messages.create({
+          model,
+          max_tokens: 300,
+          system: HASHTAG_SYSTEM,
+          messages: [{ role: 'user', content: hashtagPrompt(genome, playbook, draftText, budget, intent) }],
+          tools: [
+            {
+              name: HASHTAG_TOOL,
+              description: 'Record the hashtags for this post.',
+              input_schema: HASHTAG_SCHEMA as unknown as Anthropic.Messages.Tool.InputSchema,
+            },
+          ],
+          tool_choice: { type: 'tool', name: HASHTAG_TOOL },
+        }),
+    );
+
+    const block = response.content.find(
+      (c): c is Anthropic.Messages.ToolUseBlock => c.type === 'tool_use' && c.name === HASHTAG_TOOL,
+    );
+    if (!block) throw missingToolCall(response.stop_reason);
+
+    const tags = (block.input as Record<string, unknown>).hashtags;
+    if (!Array.isArray(tags)) {
+      throw new ShapeMismatch(
+        new ToolError('UPSTREAM_FAILED', 'The hashtag writer returned an unusable shape.', {
+          playbookId: playbook.playbook_id,
+        }),
+      );
+    }
+    /*
+     * Handed back raw. `content.draft` runs `tidyHashtags`, which strips stray
+     * `#`, collapses "#Cold Brew" to "#ColdBrew", de-duplicates case-insensitively
+     * and caps at the budget. Cleaning here as well would be two places that
+     * have to agree about what a hashtag is.
+     */
+    return tags.filter((t): t is string => typeof t === 'string');
+  }
 
   /** One attempt. Throws `ShapeMismatch` when the answer does not fit the schema. */
   async function attemptWrite({
-    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective,
+    genome, playbook, promptRef, intent, beatId, durationSec, outline, objective, knowledge,
   }: Parameters<TextWriter['write']>[0]): Promise<string> {
       const response = await callVendor(
         'copy writer',
@@ -110,7 +227,7 @@ export function createTextWriter(opts: TextWriterOptions = {}): TextWriter {
             messages: [
               {
                 role: 'user',
-                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective),
+                content: prompt(genome, playbook, promptRef, intent, { beatId, durationSec, outline }, objective, knowledge),
               },
             ],
             tools: [
@@ -383,6 +500,7 @@ function prompt(
   intent: string | undefined,
   beat: { beatId: string; durationSec: number; outline: BeatOutlineEntry[] },
   objective?: string,
+  knowledge?: string[],
 ): string {
   const { identity, voice, audience, offer } = genome;
   const budget = beatBudget(playbook, beat.durationSec);
@@ -398,6 +516,13 @@ function prompt(
    */
   const others = beat.outline.filter((o) => o.beatId !== beat.beatId);
   const ctaHandled = others.some((o) => o.kind === 'literal' && Boolean(o.text));
+
+  /** Other beats written from this same `prompt_ref` - see the note by its use. */
+  const siblings = beat.outline.filter(
+    (o) => o.beatId !== beat.beatId && o.kind === 'copy' && o.promptRef === promptRef,
+  );
+  const siblingsShareKey = siblings.length > 0;
+  const siblingIds = siblings.map((o) => o.beatId);
 
   return [
     `Business: ${identity.business_name} — ${identity.category}`,
@@ -449,9 +574,31 @@ function prompt(
           .map((o) =>
             o.kind === 'literal'
               ? `  - ${o.beatId}: fixed text, reads "${o.text ?? '(supplied at render time)'}"`
-              : `  - ${o.beatId}: ${o.promptRef ?? 'copy'}`,
+              : /*
+                 * A sibling already written now arrives with its words, not
+                 * just its key. Without them, four beats keyed `teach.steps`
+                 * each knew three others existed and nothing about what they
+                 * said, and returned four paraphrases of a single step.
+                 */
+                o.text
+                ? `  - ${o.beatId}: already written, reads "${o.text}"`
+                : `  - ${o.beatId}: ${o.promptRef ?? 'copy'} (not written yet)`,
           )
           .join('\n')
+      : '',
+    /*
+     * Said outright when siblings share this beat's key.
+     *
+     * "Do not duplicate" is too weak for the case that most needs it: four
+     * steps of one walkthrough are *supposed* to be about the same subject, so
+     * a model reads the instruction as satisfied by rewording. What it has to
+     * be told is that these are consecutive parts of one list and each must
+     * carry its own distinct point.
+     */
+    siblingsShareKey
+      ? `Beats ${siblingIds.join(', ')} share this beat's key - they are consecutive parts of ONE list. ` +
+        'Make a different point from every one already written above: a different step, stage or idea, ' +
+        'not the same advice in other words. If the obvious point is taken, move the list forward.'
       : '',
     ctaHandled
       ? 'A later beat already carries the call to action. Do not write one, and do not end on an ' +
@@ -467,6 +614,55 @@ function prompt(
      */
     objective ? OBJECTIVE_BRIEF[objective] ?? `The campaign's goal: ${objective}.` : '',
     intent ? `What this specific post is about: ${intent}` : '',
+    /*
+     * The brand's own written facts.
+     *
+     * Last in the prompt, because it is the longest block and the one the
+     * model should still have in view when it starts writing.
+     *
+     * The instructions around it matter more than the text itself. Handed a
+     * document and no rules, a model treats it as tone material and
+     * paraphrases it; the point here is the opposite — these are the only
+     * specifics that may be stated, and a beat that needs one not present has
+     * to describe the shape of the claim instead of inventing a figure. That
+     * rule already existed in the system prompt with no source behind it. This
+     * is the source.
+     *
+     * Not permission to empty the document into the post: most beats need one
+     * fact, not twelve, and a caption that reads as a specification is its own
+     * failure.
+     */
+    knowledge && knowledge.length
+      ? 'What this brand has written down about itself. These are the ONLY specific facts, numbers, ' +
+        'names, prices and dates you may state. Use one where it earns its place and leave the rest; ' +
+        'do not list them. Anything not here does not exist for this post - describe the shape of the ' +
+        'claim rather than inventing a figure.' +
+        /*
+         * The document is not only a fact sheet - and this line is advisory,
+         * not a control.
+         *
+         * A real knowledge base carries a section of things the business must
+         * never say: no health claims, not organic, no awards. Handed the
+         * document as facts alone, the writer read straight past that section
+         * and produced "recognition in the local community" for a brand whose
+         * own document says "we have won nothing".
+         *
+         * This sentence was added to fix that and **measurably does not**. Asked
+         * directly for "awards we have won" it still claims them, and asked why
+         * the sourdough is "better for your gut" it writes the health claim the
+         * document forbids in as many words. A model handed an explicit intent
+         * follows the intent. Kept because it costs nothing and occasionally
+         * helps; relied on for nothing.
+         *
+         * The mechanism that does work is `brand.governance.set`'s
+         * `restrictedClaims` / `bannedPhrases`, enforced by the guardrail layer,
+         * which blocks a draft rather than asking it nicely. `claim_grounding`
+         * does not close the gap on its own either - "recognition in the local
+         * community" is too vague to register as a checkable claim and passes.
+         */
+        ' If the document says the business must NEVER claim something, that is binding - do not' +
+        ' write it, even loosely, even as a suggestion.' + `\n\n${knowledge.join('\n\n---\n\n')}`
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -502,4 +698,45 @@ export function textWriter(fallback: TextWriter): TextWriter {
 function missingToolCall(stopReason: string | null): Error {
   const detail = new ToolError('UPSTREAM_FAILED', 'The copy writer returned no text.', { stopReason });
   return stopReason === 'max_tokens' ? detail : new ShapeMismatch(detail);
+}
+
+/**
+ * The brief for the hashtag call.
+ *
+ * Shorter than `prompt()` on purpose. Tone vectors and reading level decide how
+ * a sentence is written and have nothing to say about which tags belong on a
+ * post; what matters is what the post is about, what the brand is allowed to
+ * claim, and what it has banned.
+ */
+function hashtagPrompt(
+  genome: Genome,
+  playbook: Playbook,
+  draftText: string,
+  budget: number,
+  intent?: string,
+): string {
+  const { identity, voice, audience } = genome;
+  return [
+    `Business: ${identity.business_name} — ${identity.category}`,
+    `What they do: ${identity.one_liner}`,
+    audience?.segments?.length ? `Audience: ${audience.segments.map((s) => s.label).join(', ')}` : '',
+    /*
+     * Repeated from the system prompt with the actual words, because "never use
+     * a banned phrase" is unactionable without the list, and a banned phrase
+     * with its spaces removed is the form this call is most likely to produce.
+     */
+    voice.banned_phrases?.length
+      ? `Never use, in any form including as one word: ${voice.banned_phrases.join(', ')}`
+      : '',
+    '',
+    `Publishing to: ${playbook.output.platforms.join(', ')}`,
+    intent ? `What this post is about: ${intent}` : '',
+    '',
+    'The post, in full:',
+    draftText,
+    '',
+    `Write exactly ${budget} hashtag${budget === 1 ? '' : 's'} for it.`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }

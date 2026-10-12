@@ -49,7 +49,7 @@ export function MobileNav() {
                 href={item.href}
                 onClick={() => setOpen(false)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-15 ${
                   isActive ? 'bg-nav-active font-medium text-ink' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
                 }`}
               >

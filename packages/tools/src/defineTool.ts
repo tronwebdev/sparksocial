@@ -1,8 +1,10 @@
 ﻿import { z, ZodTypeAny } from 'zod';
 import type {
-  Role, Effect, Autonomy, AssetRole, AssetMediaType, RunStatus, RunTrigger, StepType, Explanation,
+  Role, Effect, Autonomy, AssetRole, AssetMediaType, AssetRightsStatus, RunStatus, RunTrigger, StepType, Explanation,
+  CampaignStatus, ContentPillar, ContentStatus, GenerationMode, Objective, Platform,
 } from '@sparksocial/shared/types';
 import type { CampaignType, CampaignWeight, EngagementRung } from '@sparksocial/shared/campaignAutonomy';
+import type { EngagementKind, EngagementPlatform } from '@sparksocial/shared/engagementConfig';
 import type { KitTemplate, Watermark } from '@sparksocial/shared/brandKit';
 import type {
   EmojiLevel,
@@ -11,6 +13,12 @@ import type {
   HardRule,
 } from '@sparksocial/shared/engagementConfig';
 import type { Genome, ComplianceProfile } from '@sparksocial/shared/genome';
+import type {
+  LeadSource,
+  LeadStatus,
+  ProposalLineItem,
+  ProposalStatus,
+} from '@sparksocial/shared/agencyPipeline';
 
 /* ── Context handed to every handler ───────────────────────────────── */
 
@@ -178,9 +186,9 @@ export interface ScopedDb {
         score: number;
         usageCount: number;
         lastUsedAt: Date | null;
-        rightsStatus: string;
+        rightsStatus: AssetRightsStatus;
         url: string;
-        mediaType: string;
+        mediaType: AssetMediaType;
         folderId: string | null;
         /** Null on any row uploaded before `assets.filename` existed. */
         filename: string | null;
@@ -210,7 +218,7 @@ export interface ScopedDb {
       ids: string[],
       genomeId: string,
       orgId: string,
-    ): Promise<Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }>>;
+    ): Promise<Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }>>;
     /**
      * `asset.rights.set` — the only writer of `rightsStatus` after ingest.
      * Returns undefined when the id is out of scope or doesn't exist, same
@@ -221,18 +229,42 @@ export interface ScopedDb {
       genomeId: string;
       orgId: string;
       rightsStatus: 'cleared' | 'pending' | 'restricted';
-    }): Promise<{ id: string; rightsStatus: string } | undefined>;
+    }): Promise<{ id: string; rightsStatus: AssetRightsStatus } | undefined>;
     /**
      * `asset.rights.pending`'s read — the assets retrieval is holding back
      * because their rights are not cleared. See `listAssetsAwaitingRights` in
      * `packages/db/src/scoped.ts` for why this is its own query and not a flag
      * on `retrieve`.
      */
+    /**
+     * `asset.list`'s read — everything this genome holds, newest first.
+     *
+     * Separate from `retrieve` for the same reason `unfiled` is: retrieval
+     * ranks by similarity and is the wrong instrument for "show me what I own".
+     * An asset whose embedding is weak or zero is effectively unfindable
+     * through search while being perfectly present here.
+     */
+    list(
+      genomeId: string,
+      orgId: string,
+      args?: { roles?: AssetRole[]; limit?: number; offset?: number },
+    ): Promise<Array<{
+      assetId: string;
+      role: AssetRole;
+      rightsStatus: AssetRightsStatus;
+      caption: string | null;
+      url: string;
+      mediaType: AssetMediaType;
+      folderId: string | null;
+      filename: string | null;
+      sizeBytes: number | null;
+      createdAt: Date;
+    }>>;
     /** `asset.unfiled`'s read — assets in no folder. See `listUnfiledAssets`. */
     unfiled(genomeId: string, orgId: string): Promise<Array<{
       assetId: string;
       role: AssetRole;
-      rightsStatus: string;
+      rightsStatus: AssetRightsStatus;
       caption: string | null;
       url: string;
       mediaType: AssetMediaType;
@@ -244,7 +276,7 @@ export interface ScopedDb {
     awaitingRights(genomeId: string, orgId: string): Promise<Array<{
       assetId: string;
       role: AssetRole;
-      rightsStatus: string;
+      rightsStatus: AssetRightsStatus;
       caption: string | null;
       url: string;
       mediaType: AssetMediaType;
@@ -357,6 +389,10 @@ export interface ScopedDb {
   brandMembers: BrandMemberStore;
   /** Unauthenticated, expiring client review links — `whitelabel.link.create`. See {@link ReviewLinkStore}. */
   reviewLinks: ReviewLinkStore;
+  /** The agency's own sales pipeline — businesses that are not clients yet. See {@link LeadStore}. */
+  leads: LeadStore;
+  /** Priced offers sent to those leads. See {@link ProposalStore}. */
+  proposals: ProposalStore;
   /** The Review queue. See {@link ApprovalStore}. */
   approvals: ApprovalStore;
   /** The approval ladder's storage (PRD §7.1). */
@@ -650,7 +686,8 @@ export interface BrandGovernanceStore {
  * following the brand.
  */
 export interface PlatformEngagementRow {
-  platform: string;
+  /** The only writer is `set` below, and `brand.engagement.platforms.set`'s input is `EngagementPlatform`. */
+  platform: EngagementPlatform;
   /** Null means no override: this platform follows `BrandGovernance.engagementAutonomy`. */
   autonomy: string | null;
   /** Null means no override; an empty array is a real value and means every type. */
@@ -671,13 +708,13 @@ export interface BrandEngagementStore {
   set(args: {
     brandId: string;
     orgId: string;
-    platform: string;
+    platform: EngagementPlatform;
     autonomy?: string | null;
     engagementTypes?: string[] | null;
     enabled?: boolean;
   }): Promise<PlatformEngagementRow>;
   /** Remove the override entirely, so the platform inherits again. */
-  clear(brandId: string, orgId: string, platform: string): Promise<void>;
+  clear(brandId: string, orgId: string, platform: EngagementPlatform): Promise<void>;
 }
 
 /**
@@ -855,10 +892,22 @@ export interface ContentDraft {
   genomeId: string;
   campaignId?: string;
   playbookId: string;
-  mode: 'synthesize' | 'assemble' | 'direct_finish';
-  pillar?: string;
-  status: string;
-  platform?: string;
+  mode: GenerationMode;
+  /**
+   * The playbook's own `content_pillar`, copied at creation. Absent only on a
+   * calendar slot placed before the mix engine assigned one; nothing writes a
+   * pillar that did not come from a playbook record.
+   */
+  pillar?: ContentPillar;
+  /** PRD §7.4's ladder. Every writer is a literal — see `ContentStatus`. */
+  status: ContentStatus;
+  /**
+   * Absent until the post goes live. Written by `markPublished` — whose only
+   * caller is `publish.now`, with a `platform: Platform` input — and by slot
+   * placement, which intersects the campaign's accounts with the playbook's own
+   * `Platform[]`. There is no path that puts an off-vocabulary string here.
+   */
+  platform?: Platform;
   /** The platform adapter's receipt — set once, by `markPublished`. */
   externalId?: string;
   via?: string;
@@ -880,6 +929,16 @@ export interface ContentDraft {
    * it to persist it.
    */
   copy?: unknown;
+  /**
+   * The post's hashtags, without the leading `#`.
+   *
+   * Typed here, unlike `copy`, because this shape belongs to nobody in
+   * particular — it is a list of words, and every consumer from the Draft Panel
+   * to `publish.now` wants exactly that. Absent means none were ever written;
+   * an empty array means the platform's budget is zero, which is a real answer
+   * for Reddit and Google Business rather than a missing one.
+   */
+  hashtags?: string[];
   why?: Explanation;
   scheduledAt?: Date;
   /** Set by `markPublished`. PRD §5's "time to first post" measures from here. */
@@ -917,9 +976,11 @@ export interface ContentStore {
     genomeId: string;
     orgId: string;
     playbookId: string;
-    mode: 'synthesize' | 'assemble' | 'direct_finish';
-    pillar?: string;
+    mode: GenerationMode;
+    pillar?: ContentPillar;
     copy: unknown;
+    /** See `ContentDraft.hashtags`. Omitted leaves the column null. */
+    hashtags?: string[];
     why: Explanation;
     campaignId?: string;
     /**
@@ -984,6 +1045,11 @@ export interface ContentStore {
     genomeId: string;
     orgId: string;
     copy: unknown;
+    /**
+     * Omitted leaves whatever is stored alone. A redraft that could not write
+     * tags must not erase ones a person edited by hand on the previous pass.
+     */
+    hashtags?: string[];
     why: Explanation;
   }): Promise<ContentDraft | undefined>;
 
@@ -993,7 +1059,7 @@ export interface ContentStore {
    * (CC-02) creates rows with no `campaignId` at all, so a campaign-scoped
    * read (`CampaignStore.slots`) would never surface them.
    */
-  list(genomeId: string, orgId: string, args: { status?: string; limit: number }): Promise<ContentDraft[]>;
+  list(genomeId: string, orgId: string, args: { status?: ContentStatus; limit: number }): Promise<ContentDraft[]>;
 
   /**
    * Places or moves a content item on the calendar. `CAL-04` ("create post
@@ -1017,7 +1083,7 @@ export interface ContentStore {
   markPublished(args: {
     id: string;
     orgId: string;
-    platform: string;
+    platform: Platform;
     embedding: number[];
     externalId: string;
     via: string;
@@ -1173,7 +1239,8 @@ export interface RenderRecord {
 /** One platform's performance snapshot, returned by {@link AnalyticsStore.record}. */
 export interface ContentMetricsSnapshot {
   contentItemId: string;
-  platform: string;
+  /** Copied from `content_items.platform` by `analytics.sync`, never from the vendor. */
+  platform: Platform;
   likes: number;
   comments: number;
   shares: number;
@@ -1197,7 +1264,7 @@ export interface AnalyticsStore {
     genomeId: string;
     orgId: string;
     contentItemId: string;
-    platform: string;
+    platform: Platform;
     likes: number;
     comments: number;
     shares: number;
@@ -1242,7 +1309,12 @@ export interface AnalyticsStore {
     Array<{
       contentItemId: string;
       publishedAt: Date;
-      platform?: string;
+      /**
+       * Absent, not null, when the item has not been published to a platform —
+       * the mapper omits the key rather than passing `null`. `Platform` and not
+       * `string`: see `ContentMetricsRow` in `packages/db/src/scoped.ts`.
+       */
+      platform?: Platform;
       impressions: number;
       likes: number;
       comments: number;
@@ -1281,9 +1353,15 @@ export interface CtaLinkStore {
 export interface EngagementMessage {
   id: string;
   genomeId: string;
-  platform: string;
+  /**
+   * The one writer is `ingest` below, and `engage.ingest`'s input has always
+   * validated against exactly `EngagementPlatform`'s five values — it just
+   * spelled them out inline instead of naming the enum, so the vocabulary
+   * stopped at the tool boundary and every reader got a `string` back.
+   */
+  platform: EngagementPlatform;
   externalId: string;
-  kind: string;
+  kind: EngagementKind;
   authorHandle: string;
   authorName?: string;
   text: string;
@@ -1328,9 +1406,9 @@ export interface EngagementStore {
   ingest(args: {
     genomeId: string;
     orgId: string;
-    platform: string;
+    platform: EngagementPlatform;
     externalId: string;
-    kind: string;
+    kind: EngagementKind;
     authorHandle: string;
     authorName?: string;
     text: string;
@@ -1461,7 +1539,7 @@ export interface Opportunity {
  * *countable* rather than silently dropped from a total the owner is reading.
  */
 export interface OpportunityWithMessage extends Opportunity {
-  platform?: string;
+  platform?: EngagementPlatform;
   authorHandle?: string;
   authorName?: string;
   messageText?: string;
@@ -1664,10 +1742,12 @@ export interface CampaignRecord {
   id: string;
   genomeId: string;
   name: string;
-  objective: string;
+  /** Written once, by `create`, from `campaign.create`'s `objective: Objective` input. */
+  objective: Objective;
   windowDays: number;
   startAt: Date;
-  status: string;
+  /** Defaults to `draft` at insert; only `setStatus` changes it. See `CampaignStatus`. */
+  status: CampaignStatus;
   /**
    * The wizard's own fields (`CMP-01`, F8). All optional: a campaign created
    * before the wizard asked never answered, and reporting a default as though
@@ -1695,7 +1775,7 @@ export interface CampaignRecord {
    * each chosen format is meant for" — see `campaigns.platforms` in `schema.ts`
    * on the scheduler fallback this replaces.
    */
-  platforms?: string[];
+  platforms?: Platform[];
   /**
    * PRD §7.2's per-campaign approval scope. Absent means the brand's own mode
    * applies — see `campaigns.approvalMode` in `schema.ts`.
@@ -1766,8 +1846,9 @@ export interface MetricsStore {
 
 export interface CampaignSlotInput {
   playbookId: string;
-  mode: string;
-  pillar: string;
+  /** Both copied from the playbook the mix engine chose — see `placeCalendar`. */
+  mode: GenerationMode;
+  pillar: ContentPillar;
   scheduledAt: Date;
   /**
    * Which account this slot posts to.
@@ -1778,7 +1859,7 @@ export interface CampaignSlotInput {
    * `apps/api/src/scheduler.ts` carried a *"falling back to the playbook's first
    * declared platform"* branch.
    */
-  platform?: string;
+  platform?: Platform;
 }
 
 /**
@@ -1794,13 +1875,13 @@ export interface CampaignStore {
     orgId: string;
     genomeId: string;
     name: string;
-    objective: string;
+    objective: Objective;
     windowDays: number;
     startAt: Date;
     plan: unknown;
     targetCount?: number;
     targetLabel?: string;
-    platforms?: string[];
+    platforms?: Platform[];
     approvalMode?: ApprovalMode;
     /** The wizard's own fields — see the `campaigns` table for each. */
     campaignType?: CampaignType;
@@ -1828,15 +1909,15 @@ export interface CampaignStore {
     Array<{
       id: string;
       playbookId: string | null;
-      mode: string | null;
-      pillar: string | null;
-      status: string;
+      mode: GenerationMode | null;
+      pillar: ContentPillar | null;
+      status: ContentStatus;
       scheduledAt: Date | null;
       /** Set by `CMP-01.4`'s account selection; null for a slot placed on a day rather than an account. §8.7's platform filter reads it. */
-      platform: string | null;
+      platform: Platform | null;
     }>
   >;
-  setStatus(campaignId: string, orgId: string, status: string): Promise<void>;
+  setStatus(campaignId: string, orgId: string, status: CampaignStatus): Promise<void>;
   /**
    * `campaign.rename` — the only field of a live campaign that is safe to edit.
    *
@@ -1949,7 +2030,12 @@ export interface TrendObservationStore {
 
 /** One (genome, pillar) Thompson-sampling arm — `learning.*`'s storage (plan §6.7). */
 export interface LearningArm {
-  pillar: string;
+  /**
+   * `learning_arms.pillar`. Written only by `recordOutcome`, whose only caller
+   * (`learning.record_outcome`) passes a content item's own pillar — so an arm
+   * exists for a pillar a playbook declared, or it does not exist.
+   */
+  pillar: ContentPillar;
   alpha: number;
   beta: number;
   observations: number;
@@ -1968,7 +2054,7 @@ export interface LearningStore {
     genomeId: string;
     orgId: string;
     contentItemId: string;
-    pillar: string;
+    pillar: ContentPillar;
     reward: number;
   }): Promise<{ recorded: boolean; arm: LearningArm }>;
   /**
@@ -2131,6 +2217,14 @@ export interface OAuthConnectionRecord {
    * as an inbound webhook's route back to a genome.
    */
   accountId?: string;
+  /**
+   * The account's profile picture, when the provider returns one.
+   *
+   * Absent at several providers and sometimes a signed URL that stops resolving,
+   * so every reader falls back to the platform mark — a stale avatar is cosmetic,
+   * never a broken screen.
+   */
+  accountAvatarUrl?: string;
   /** When the owner was last warned this connection is expiring. Absent means never, or reconnected since. */
   expiryNotifiedAt?: Date;
 }
@@ -2152,6 +2246,8 @@ export interface OAuthConnectionStore {
      * route from an inbound event back to a genome. See `oauth_connections`.
      */
     accountId?: string;
+    /** The account's profile picture, when the provider returns one. */
+    accountAvatarUrl?: string;
   }): Promise<OAuthConnectionRecord>;
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
 
@@ -2172,6 +2268,21 @@ export interface OAuthConnectionStore {
    * which is what makes a reconnection re-arm the warning.
    */
   markExpiryNotified(args: { id: string; orgId: string; at: Date }): Promise<void>;
+
+  /**
+   * Connections whose token is near expiry and that hold a refresh token —
+   * the token refresher's read.
+   *
+   * Separate from `findExpiring` on purpose. That one notifies a human once and
+   * then latches quiet; this one must keep returning a connection every tick
+   * until it is actually renewed, including the ones already warned about,
+   * which are the ones most in need of repair. `providers` is the set the build
+   * can actually refresh (see `REFRESHABLE_PLATFORMS`) — selecting a row nothing
+   * can renew would retry a failure that is never going to change.
+   *
+   * Cross-tenant for the same reason as `findExpiring`: the caller is a clock.
+   */
+  findRefreshable(args: { before: Date; providers: string[]; limit: number }): Promise<(OAuthConnectionRecord & { orgId: string })[]>;
 }
 
 /** One ingested chunk of claim-grounding source text — `brand.knowledge.attach`'s storage. */
@@ -2364,6 +2475,189 @@ export interface ReviewLinkStore {
   getByToken(token: string): Promise<ReviewLink | undefined>;
   revoke(args: { orgId: string; id: string }): Promise<void>;
   listForBrand(orgId: string, brandId: string): Promise<ReviewLink[]>;
+}
+
+/* ── The agency sales pipeline (`lead.*`, `proposal.*`) ─────────────── */
+
+/**
+ * A lead as stored. Every field beyond the ids came from outside the workspace,
+ * so anything rendering one into a model prompt wraps it in `untrusted()` first.
+ */
+export interface Lead {
+  id: string;
+  orgId: string;
+  businessName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  interest?: string;
+  notes?: string;
+  rating?: number;
+  source: LeadSource;
+  status: LeadStatus;
+  dedupeKey: string;
+  convertedBrandId?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** The fields a caller may supply when creating or importing. */
+export interface LeadInputFields {
+  businessName: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  interest?: string;
+  notes?: string;
+  rating?: number;
+}
+
+/**
+ * `leads` backed by Postgres. Org-scoped rather than genome-scoped — see the
+ * table header in `schema.ts`: a lead has no genome, which is what makes it a
+ * lead. Every method takes `orgId` and every query filters on it.
+ */
+export interface LeadStore {
+  create(args: LeadInputFields & {
+    orgId: string;
+    source: LeadSource;
+    dedupeKey: string;
+    createdBy: string;
+  }): Promise<Lead>;
+
+  /**
+   * Inserts many, skipping rows whose `dedupeKey` an org already holds, and
+   * reports which were skipped so the caller can explain the difference between
+   * what was offered and what landed.
+   *
+   * One statement rather than a loop of `create` calls: a 2,000-row sheet is the
+   * normal import size, and per-row round trips make it a timeout. `ON CONFLICT
+   * DO NOTHING` against `leads_dedupe_idx` is what makes it safe to re-run.
+   */
+  importMany(args: {
+    orgId: string;
+    source: LeadSource;
+    createdBy: string;
+    rows: Array<LeadInputFields & { dedupeKey: string }>;
+  }): Promise<{ inserted: Lead[]; skippedKeys: string[] }>;
+
+  get(args: { orgId: string; id: string }): Promise<Lead | undefined>;
+
+  /**
+   * The `leads_dedupe_idx` lookup — one indexed read, used to turn a unique
+   * violation into an error that can name the lead already holding the key.
+   * The index stays the guarantee; this only buys the better message.
+   */
+  getByDedupeKey(args: { orgId: string; dedupeKey: string }): Promise<Lead | undefined>;
+
+  list(args: {
+    orgId: string;
+    status?: LeadStatus[];
+    source?: LeadSource[];
+    /** Case-insensitive substring over business name, contact and email. */
+    search?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ rows: Lead[]; total: number }>;
+
+  /** Counts per status for the whole org, so a header need not page to total. */
+  countsByStatus(orgId: string): Promise<Record<LeadStatus, number>>;
+
+  update(args: {
+    orgId: string;
+    id: string;
+    patch: Partial<LeadInputFields> & {
+      status?: LeadStatus;
+      /** Recomputed by the caller when an identifying field changed. */
+      dedupeKey?: string;
+      convertedBrandId?: string;
+    };
+  }): Promise<Lead>;
+}
+
+/** A proposal as stored — the document, as quoted. */
+export interface Proposal {
+  id: string;
+  orgId: string;
+  leadId: string;
+  title: string;
+  currency: string;
+  status: ProposalStatus;
+  termMonths: number;
+  lineItems: ProposalLineItem[];
+  monthlyCents: number;
+  oneOffCents: number;
+  totalContractCents: number;
+  notes?: string;
+  shareToken?: string;
+  shareExpiresAt?: Date;
+  shareRevokedAt?: Date;
+  sentAt?: Date;
+  decidedAt?: Date;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * `proposals` backed by Postgres. Org-scoped for the same reason as
+ * {@link LeadStore}, with one deliberate exception: `getByShareToken` carries no
+ * `orgId`, because the unauthenticated reader of a shared proposal has nothing
+ * but the token to present — the same posture as `ReviewLinkStore.getByToken`.
+ */
+export interface ProposalStore {
+  create(args: {
+    orgId: string;
+    leadId: string;
+    title: string;
+    currency: string;
+    termMonths: number;
+    lineItems: ProposalLineItem[];
+    monthlyCents: number;
+    oneOffCents: number;
+    totalContractCents: number;
+    notes?: string;
+    createdBy: string;
+  }): Promise<Proposal>;
+
+  get(args: { orgId: string; id: string }): Promise<Proposal | undefined>;
+
+  list(args: {
+    orgId: string;
+    leadId?: string;
+    status?: ProposalStatus[];
+    limit: number;
+    offset: number;
+  }): Promise<{ rows: Proposal[]; total: number }>;
+
+  update(args: {
+    orgId: string;
+    id: string;
+    patch: {
+      title?: string;
+      currency?: string;
+      status?: ProposalStatus;
+      termMonths?: number;
+      lineItems?: ProposalLineItem[];
+      monthlyCents?: number;
+      oneOffCents?: number;
+      totalContractCents?: number;
+      notes?: string;
+      shareToken?: string;
+      shareExpiresAt?: Date;
+      shareRevokedAt?: Date | null;
+      sentAt?: Date;
+      decidedAt?: Date;
+    };
+  }): Promise<Proposal>;
+
+  /** Resolves a public share token. Undefined once expired or revoked. */
+  getByShareToken(token: string): Promise<Proposal | undefined>;
 }
 
 /** One row in the Timeline's run list. */

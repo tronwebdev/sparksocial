@@ -1,5 +1,6 @@
 'use client';
 
+import { UNNAMED_AGENT } from '@sparksocial/shared/agentIdentity';
 import { useState } from 'react';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
@@ -108,8 +109,8 @@ export function AgentCalendarTab({
           <span className="absolute left-[26px] top-[24px] block h-[100px] w-[100px]">
             <SparkMark variant="shell" size={100} />
           </span>
-          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-[30px] font-semibold leading-[1.27] text-ink">
-            {agentName ?? 'Unnamed agent'}
+          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-32 font-semibold leading-[1.27] text-ink">
+            {agentName ?? UNNAMED_AGENT}
           </p>
           <span className="absolute left-[152px] top-[92px] text-16 leading-none text-ink">Status</span>
           <span className="absolute left-[210px] top-[86px] inline-flex h-[31px] items-center gap-[7px] rounded-[90px] bg-white px-[13px]">
@@ -235,7 +236,7 @@ export function AgentCalendarTab({
       {/* ── heading and the view toggle ──────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[28px] font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
+          <h1 className="text-28 font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
           <p className="mt-[9px] text-16 text-ink-muted">
             Your Ai Agent is running your social presence for this brand
           </p>

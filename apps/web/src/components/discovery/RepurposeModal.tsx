@@ -179,7 +179,7 @@ export function RepurposeModal({
           way the trend card labels its actions. */}
       <div className="flex items-center gap-[11px] px-[24px] pt-[22px]">
         <span
-          className="flex h-[36px] items-center gap-[8px] rounded-[10px] px-[13px] text-[15px] font-semibold text-ink"
+          className="flex h-[36px] items-center gap-[8px] rounded-[10px] px-[13px] text-15 font-semibold text-ink"
           style={{ background: 'rgba(131,131,131,0.10)' }}
         >
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -190,7 +190,7 @@ export function RepurposeModal({
         <span
           aria-hidden
           title={why ?? undefined}
-          className="flex h-[17px] w-[17px] items-center justify-center rounded-full text-[11px] font-bold"
+          className="flex h-[17px] w-[17px] items-center justify-center rounded-full text-11 font-bold"
           style={{ color: '#9A9A9A', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.5)' }}
         >
           i
@@ -202,7 +202,7 @@ export function RepurposeModal({
         <div className="min-w-0 flex-1 overflow-y-auto bg-white px-[24px] py-[18px]">
           <div className="flex items-center justify-between">
             <p className="text-15 font-medium text-ink-muted">Media Preview</p>
-            <span className="text-[13px] font-semibold" style={{ color: '#838383' }}>
+            <span className="text-13 font-semibold" style={{ color: '#838383' }}>
               {sourceLabel(trend.source)}
             </span>
           </div>
@@ -231,9 +231,9 @@ export function RepurposeModal({
             )}
           </div>
 
-          <p className="mt-[12px] text-[17px] font-semibold text-ink">{trend.topic}</p>
+          <p className="mt-[12px] text-17 font-semibold text-ink">{trend.topic}</p>
 
-          <div className="mt-[16px] flex flex-wrap items-center gap-[12px] text-[13.5px] font-medium">
+          <div className="mt-[16px] flex flex-wrap items-center gap-[12px] text-14 font-medium">
             <Metric label="Velocity" value={`+${velocityPct}%`} tone="#1E8C42" />
             <Metric label="Vol" value={compactVolume(trend.metrics.volume)} tone="#2F8291" />
             {measuredGrowth ? <Metric label="7d" value={`+${growthPct}%`} tone="#1E8C42" /> : null}
@@ -260,10 +260,10 @@ export function RepurposeModal({
                   className="rounded-[10px] bg-white px-[14px] py-[10px]"
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
                 >
-                  <p className="text-[11.5px]" style={{ color: '#9A9A9A' }}>
+                  <p className="text-12" style={{ color: '#9A9A9A' }}>
                     Hook Idea {i + 1}
                   </p>
-                  <p className="mt-[2px] text-[15px] font-medium text-ink">&ldquo;{h}&rdquo;</p>
+                  <p className="mt-[2px] text-15 font-medium text-ink">&ldquo;{h}&rdquo;</p>
                 </div>
               ))
             )}
@@ -272,7 +272,7 @@ export function RepurposeModal({
                 type="button"
                 onClick={() => void writeHooks()}
                 disabled={hooksBusy}
-                className="self-start text-[12.5px] font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                className="self-start text-13 font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ color: '#2F8291' }}
               >
                 {hooksBusy ? 'Writing…' : 'New angles (2 credits)'}
@@ -287,7 +287,7 @@ export function RepurposeModal({
                 {trend.tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded-[7px] px-[10px] py-[5px] text-[13px] font-medium text-ink"
+                    className="rounded-[7px] px-[10px] py-[5px] text-13 font-medium text-ink"
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
                   >
                     {t.startsWith('#') ? t : `#${t}`}
@@ -316,7 +316,7 @@ export function RepurposeModal({
             className="relative w-full rounded-[14px] bg-white px-[18px] py-[14px] text-center"
             style={{ boxShadow: '0 14px 34px -22px rgba(12,12,12,0.4)' }}
           >
-            <p className="text-[15px] leading-[1.45] text-ink">
+            <p className="text-15 leading-[1.45] text-ink">
               <span style={{ color: '#A46CF0' }}>Hey,</span> I&rsquo;m going to create a new post based on
               this trend.
             </p>
@@ -325,7 +325,7 @@ export function RepurposeModal({
           {/* What the tool actually found. The design has no room for it and it
               is the difference between a button that works and one that fails
               on press: `trend.repurpose` returns null when no playbook fits. */}
-          <p className="mt-[14px] text-center text-[12.5px] leading-[1.45] text-ink-muted">
+          <p className="mt-[14px] text-center text-13 leading-[1.45] text-ink-muted">
             {loading
               ? 'Checking which playbook fits…'
               : suggestion
@@ -337,7 +337,7 @@ export function RepurposeModal({
             type="button"
             onClick={() => void generateDraft()}
             disabled={!suggestion || drafting}
-            className="mt-[18px] flex h-[48px] items-center gap-[10px] rounded-[12px] bg-white px-[22px] text-[15.5px] font-semibold text-ink transition-transform hover:scale-[1.02] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-[18px] flex h-[48px] items-center gap-[10px] rounded-[12px] bg-white px-[22px] text-16 font-semibold text-ink transition-transform hover:scale-[1.02] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
             style={{ boxShadow: '0 0 0 1.6px rgba(164,108,240,0.55), 0 16px 36px -20px rgba(12,12,12,0.5)' }}
           >
             <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden>
@@ -348,7 +348,7 @@ export function RepurposeModal({
 
           {draftError ? <p className="mt-[12px] text-center text-14 text-destructive">{draftError}</p> : null}
           {!loading && !suggestion ? (
-            <p className="mt-[10px] text-center text-[12px] text-ink-muted">
+            <p className="mt-[10px] text-center text-12 text-ink-muted">
               Add the assets it is missing, or pick a different trend.
             </p>
           ) : null}

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, expiresInWords } from '@sparksocial/shared';
 import { generatePkce, signOAuthState, verifyOAuthState, type OAuthStatePayload } from '@sparksocial/shared/oauthState';
-import { Platform, routeAdapters, type PlatformAdapter } from './adapter.js';
+import { Platform, connectionPlatform, isDerivedPlatform, routeAdapters, type PlatformAdapter } from './adapter.js';
 import { createRateLimiter, DEFAULT_BUDGETS, type RateLimiter } from './retry.js';
 import { joinScopedToken } from './native/scopedToken.js';
 
@@ -50,6 +50,15 @@ export interface SocialTokenResult {
    * engagement inbox has a write tool and nothing that can call it.
    */
   accountId?: string;
+  /**
+   * The connected account's profile picture, when the provider returns one.
+   *
+   * Best-effort at every provider and absent at several, so a reader must always
+   * fall back to the platform mark. It exists because "Google Business" on a chip
+   * answers none of the question the chip is there to answer — *which* account is
+   * this?
+   */
+  accountAvatarUrl?: string;
 }
 
 interface ExchangeArgs {
@@ -78,12 +87,45 @@ interface ExchangeArgs {
  * name instead, which is the same "unset → say so, never fake it" rule the rest
  * of this codebase's vendor seams follow.
  */
+/**
+ * Reddit refuses a request with no User-Agent and rate-limits a generic one
+ * hard — their API rules ask for an identifying string, so this is one place
+ * rather than repeated at each call.
+ */
+const REDDIT_USER_AGENT = 'web:sparksocial:v1 (by /u/sparksocial)';
+
 export const REQUIRED_SCOPES: Partial<Record<Platform, string[]>> = {
-  instagram: ['instagram_content_publish', 'pages_show_list', 'pages_read_engagement'],
+  // `pages_manage_posts` is what the Facebook adapter spends: one Meta login
+  // serves Instagram, Stories, the Page and its Groups, so the Page scope is
+  // requested here rather than at a second connection that does not exist.
+  instagram: ['instagram_content_publish', 'pages_show_list', 'pages_read_engagement', 'pages_manage_posts'],
   tiktok: ['video.publish', 'user.info.basic'],
   linkedin: ['w_member_social', 'openid', 'profile'],
   x: ['tweet.write', 'tweet.read', 'users.read', 'offline.access'],
-  youtube_shorts: ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.readonly'],
+  // `openid`/`profile` are what guarantee a name and a picture for the connected
+  // account even when it has no YouTube channel. Neither needs Google review.
+  youtube_shorts: [
+    'https://www.googleapis.com/auth/youtube.upload',
+    'https://www.googleapis.com/auth/youtube.readonly',
+    'openid',
+    'profile',
+  ],
+  /*
+   * Threads is a Meta product with its own developer app, its own OAuth host
+   * (`threads.net`, not `facebook.com`) and its own graph (`graph.threads.net`).
+   * It is not reachable with a Meta app's token, which is why it has its own
+   * credentials rather than joining Instagram under `PARENT_PLATFORM`.
+   */
+  threads: ['threads_basic', 'threads_content_publish'],
+  // `boards:read` is not optional: a pin must name a board, and the board list
+  // is how the account picker offers one.
+  pinterest: ['pins:write', 'boards:read'],
+  // `identity` is what makes the account label possible; `submit` is the post.
+  reddit: ['identity', 'submit'],
+  // Same reasoning as `youtube_shorts`: the Business account name is unavailable
+  // until Google approves the project, so without these a connected profile has
+  // no name to show at all.
+  google_business: ['https://www.googleapis.com/auth/business.manage', 'openid', 'profile'],
 };
 
 function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirectUri: string; codeChallenge: string; state: string }): string {
@@ -144,9 +186,78 @@ function buildAuthorizeUrl(provider: Platform, args: { clientId: string; redirec
         response_type: 'code',
         scope,
         access_type: 'offline',
-        prompt: 'consent',
+        /*
+         * `select_account` as well as `consent`.
+         *
+         * Google shows an account chooser on its own when several accounts are
+         * signed in, and silently uses the only one when there is one — so
+         * whether a person is asked depends on their browser rather than on
+         * anything we decide. Asking always is the behaviour worth having: a
+         * brand connecting a client's channel from their own laptop has no
+         * signal, otherwise, that they just connected the wrong one.
+         *
+         * `consent` stays because dropping it costs the refresh token — Google
+         * returns one only on a fresh consent, and `token-refresher.ts` has
+         * nothing to spend without it.
+         */
+        prompt: 'select_account consent',
         state: args.state,
       })}`;
+    case 'threads':
+      return `https://threads.net/oauth/authorize?${new URLSearchParams({
+        client_id: args.clientId,
+        redirect_uri: args.redirectUri,
+        scope,
+        response_type: 'code',
+        state: args.state,
+      })}`;
+    case 'pinterest':
+      return `https://www.pinterest.com/oauth/?${new URLSearchParams({
+        client_id: args.clientId,
+        redirect_uri: args.redirectUri,
+        response_type: 'code',
+        scope,
+        state: args.state,
+      })}`;
+    case 'reddit':
+      return `https://www.reddit.com/api/v1/authorize?${new URLSearchParams({
+        client_id: args.clientId,
+        response_type: 'code',
+        state: args.state,
+        redirect_uri: args.redirectUri,
+        /*
+         * `permanent`, not the default `temporary`. A temporary grant returns no
+         * refresh token and Reddit's access token lasts one hour, so the default
+         * would rebuild exactly the "reconnect every hour forever" problem the
+         * refresher exists to end.
+         */
+        duration: 'permanent',
+        scope,
+      })}`;
+    case 'google_business':
+      return `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({
+        client_id: args.clientId,
+        redirect_uri: args.redirectUri,
+        response_type: 'code',
+        scope,
+        access_type: 'offline',
+        // Same reasoning as `youtube_shorts` above.
+        prompt: 'select_account consent',
+        state: args.state,
+      })}`;
+    case 'bluesky':
+      /*
+       * Bluesky has no OAuth redirect to build. AT Protocol authenticates with a
+       * handle and an app password, which the user creates in their own account
+       * settings — there is no consent screen to send a browser to.
+       * `integration.connect_credentials` is its connect path; sending someone
+       * here would be sending them nowhere.
+       */
+      throw new ToolError(
+        'INVALID_INPUT',
+        'Bluesky connects with a handle and an app password, not a browser redirect — use integration.connect_credentials.',
+        { platform: provider },
+      );
     default:
       // Unreachable: `REQUIRED_SCOPES` above gates every provider that gets
       // here, and its keys are exactly this switch's cases. Present so adding a
@@ -272,12 +383,14 @@ async function exchangeLinkedIn(args: ExchangeArgs): Promise<SocialTokenResult> 
 
   let authorUrn = '';
   let accountLabel: string | undefined;
+  let accountAvatarUrl: string | undefined;
   try {
     const userinfo = (await (
       await args.fetchImpl('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${body.access_token}` } })
-    ).json()) as { sub?: string; name?: string };
+    ).json()) as { sub?: string; name?: string; picture?: string };
     if (userinfo.sub) authorUrn = `urn:li:person:${userinfo.sub}`;
     accountLabel = userinfo.name;
+    accountAvatarUrl = userinfo.picture;
   } catch {
     // Best-effort — connection still succeeds; publish will correctly refuse without an author id.
   }
@@ -286,10 +399,12 @@ async function exchangeLinkedIn(args: ExchangeArgs): Promise<SocialTokenResult> 
     accessToken: joinScopedToken(authorUrn, body.access_token),
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
 }
 
 async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
+  let accountAvatarUrl: string | undefined;
   const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
   const res = await args.fetchImpl('https://api.x.com/2/oauth2/token', {
     method: 'POST',
@@ -309,9 +424,17 @@ async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
   let accountLabel: string | undefined;
   try {
     const me = (await (
-      await args.fetchImpl('https://api.x.com/2/users/me', { headers: { Authorization: `Bearer ${body.access_token}` } })
-    ).json()) as { data?: { username?: string } };
+      await args.fetchImpl('https://api.x.com/2/users/me?user.fields=profile_image_url', {
+        headers: { Authorization: `Bearer ${body.access_token}` },
+      })
+    ).json()) as { data?: { username?: string; profile_image_url?: string } };
     accountLabel = me.data?.username ? `@${me.data.username}` : undefined;
+    /*
+     * `_normal` is X's 48px crop and the only size the API hands back.
+     * `_400x400` is the same asset at a usable size — a documented rename, not
+     * a guess, and the 48px one is visibly soft on a 47px chip at 2x.
+     */
+    accountAvatarUrl = me.data?.profile_image_url?.replace('_normal.', '_400x400.');
   } catch {
     // Best-effort.
   }
@@ -322,7 +445,41 @@ async function exchangeX(args: ExchangeArgs): Promise<SocialTokenResult> {
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(body.scope ? { scopes: body.scope.split(' ') } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
+}
+
+/**
+ * Who a Google token belongs to.
+ *
+ * The YouTube exchange reads the *channel*, which is the right name when there
+ * is one — and null when there is not. A Google account without a YouTube
+ * channel is ordinary, and a Business Profile account has no channel at all, so
+ * both were storing no `accountLabel` and the UI fell back to rendering the
+ * platform's own name: a chip saying "YouTube Shorts" and another saying "Google
+ * Business", telling a person nothing about which account they had connected.
+ *
+ * `openid` and `profile` are requested for exactly this. Neither needs Google's
+ * review, and between them they guarantee a name and a picture for any Google
+ * account — so the channel remains the preferred label and this is the floor
+ * beneath it rather than a replacement.
+ */
+async function googleIdentity(
+  accessToken: string,
+  fetchImpl: typeof fetch,
+): Promise<{ name?: string; picture?: string }> {
+  try {
+    const me = (await (
+      await fetchImpl('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+    ).json()) as { name?: string; email?: string; picture?: string };
+    // The email is a better label than nothing when a Google account has no
+    // display name set — which happens on accounts made for a business.
+    return { ...(me.name ?? me.email ? { name: me.name ?? me.email } : {}), ...(me.picture ? { picture: me.picture } : {}) };
+  } catch {
+    return {};
+  }
 }
 
 async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
@@ -342,15 +499,30 @@ async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
   if (!body.access_token) throw new Error('YouTube token exchange returned no access_token.');
 
   let accountLabel: string | undefined;
+  let accountAvatarUrl: string | undefined;
   try {
     const channels = (await (
       await args.fetchImpl('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', {
         headers: { Authorization: `Bearer ${body.access_token}` },
       })
-    ).json()) as { items?: { snippet?: { title?: string } }[] };
+    ).json()) as { items?: { snippet?: { title?: string; thumbnails?: { default?: { url?: string } } } }[] };
     accountLabel = channels.items?.[0]?.snippet?.title;
+    accountAvatarUrl = channels.items?.[0]?.snippet?.thumbnails?.default?.url;
   } catch {
     // Best-effort.
+  }
+
+  /*
+   * A Google account with no YouTube channel is ordinary, and the channel read
+   * above then yields nothing — which is how a connection ended up labelled
+   * "YouTube Shorts" instead of naming an account. The Google identity is the
+   * floor under that, never the preference: a channel name is what a person
+   * recognises.
+   */
+  if (!accountLabel || !accountAvatarUrl) {
+    const identity = await googleIdentity(body.access_token, args.fetchImpl);
+    accountLabel ??= identity.name;
+    accountAvatarUrl ??= identity.picture;
   }
 
   return {
@@ -359,16 +531,215 @@ async function exchangeYouTube(args: ExchangeArgs): Promise<SocialTokenResult> {
     ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
     ...(body.scope ? { scopes: body.scope.split(' ') } : {}),
     ...(accountLabel ? { accountLabel } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
   };
 }
 
 /** Same `Partial` reasoning as {@link REQUIRED_SCOPES}: native flows only. */
+async function exchangeThreads(args: ExchangeArgs): Promise<SocialTokenResult> {
+  const short = await args.fetchImpl('https://graph.threads.net/oauth/access_token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: args.clientId,
+      client_secret: args.clientSecret,
+      grant_type: 'authorization_code',
+      redirect_uri: args.redirectUri,
+      code: args.code,
+    }).toString(),
+  });
+  if (!short.ok) throw new Error(`Threads token exchange failed: ${short.status} ${await short.text().catch(() => '')}`);
+  const shortBody = (await short.json()) as { access_token?: string; user_id?: string };
+  if (!shortBody.access_token) throw new Error('Threads token exchange returned no access_token.');
+
+  /*
+   * Threads' first token lasts an hour. Exchanging it for the 60-day one is a
+   * second call, exactly as Instagram does — and skipping it would leave every
+   * brand reconnecting hourly against a provider that offers not to.
+   */
+  let token = shortBody.access_token;
+  let expiresIn: number | undefined;
+  try {
+    const long = await args.fetchImpl(
+      `https://graph.threads.net/access_token?${new URLSearchParams({
+        grant_type: 'th_exchange_token',
+        client_secret: args.clientSecret,
+        access_token: token,
+      })}`,
+    );
+    const longBody = (await long.json()) as { access_token?: string; expires_in?: number };
+    if (longBody.access_token) {
+      token = longBody.access_token;
+      expiresIn = longBody.expires_in;
+    }
+  } catch {
+    // Best-effort: the short-lived token still works, it just expires sooner.
+  }
+
+  let accountLabel: string | undefined;
+  try {
+    const me = (await (
+      await args.fetchImpl(`https://graph.threads.net/v1.0/me?fields=username&access_token=${encodeURIComponent(token)}`)
+    ).json()) as { username?: string };
+    accountLabel = me.username ? `@${me.username}` : undefined;
+  } catch {
+    // Best-effort — the connection is still usable without a display name.
+  }
+
+  return {
+    // The Threads user id is required on every publish call, so it travels with
+    // the token the same way Instagram's does. See `scopedToken.ts`.
+    accessToken: shortBody.user_id ? joinScopedToken(shortBody.user_id, token) : token,
+    ...(expiresIn ? { expiresAt: new Date(Date.now() + expiresIn * 1000) } : {}),
+    ...(accountLabel ? { accountLabel } : {}),
+    ...(shortBody.user_id ? { accountId: shortBody.user_id } : {}),
+  };
+}
+
+async function exchangePinterest(args: ExchangeArgs): Promise<SocialTokenResult> {
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://api.pinterest.com/v5/oauth/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basic}` },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: args.code,
+      redirect_uri: args.redirectUri,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`Pinterest token exchange failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('Pinterest token exchange returned no access_token.');
+
+  let accountLabel: string | undefined;
+  try {
+    const me = (await (
+      await args.fetchImpl('https://api.pinterest.com/v5/user_account', {
+        headers: { Authorization: `Bearer ${body.access_token}` },
+      })
+    ).json()) as { username?: string };
+    accountLabel = me.username ? `@${me.username}` : undefined;
+  } catch {
+    // Best-effort.
+  }
+
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+    ...(accountLabel ? { accountLabel } : {}),
+  };
+}
+
+async function exchangeReddit(args: ExchangeArgs): Promise<SocialTokenResult> {
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://www.reddit.com/api/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${basic}`,
+      // Reddit rejects a request with no User-Agent, and rate-limits a generic
+      // one hard. Their own guidance is an identifying string.
+      'user-agent': REDDIT_USER_AGENT,
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: args.code,
+      redirect_uri: args.redirectUri,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`Reddit token exchange failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('Reddit token exchange returned no access_token.');
+
+  let accountLabel: string | undefined;
+  try {
+    const me = (await (
+      await args.fetchImpl('https://oauth.reddit.com/api/v1/me', {
+        headers: { Authorization: `Bearer ${body.access_token}`, 'user-agent': REDDIT_USER_AGENT },
+      })
+    ).json()) as { name?: string };
+    accountLabel = me.name ? `u/${me.name}` : undefined;
+  } catch {
+    // Best-effort.
+  }
+
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+    ...(accountLabel ? { accountLabel } : {}),
+  };
+}
+
+async function exchangeGoogleBusiness(args: ExchangeArgs): Promise<SocialTokenResult> {
+  // Google's token endpoint is the same one YouTube uses; only the scope and
+  // the developer app differ, so the shape below is deliberately identical.
+  const res = await args.fetchImpl('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code: args.code,
+      client_id: args.clientId,
+      client_secret: args.clientSecret,
+      redirect_uri: args.redirectUri,
+      grant_type: 'authorization_code',
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`Google Business token exchange failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('Google Business token exchange returned no access_token.');
+
+  let accountLabel: string | undefined;
+  let accountId: string | undefined;
+  try {
+    const accounts = (await (
+      await args.fetchImpl('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
+        headers: { Authorization: `Bearer ${body.access_token}` },
+      })
+    ).json()) as { accounts?: { name?: string; accountName?: string }[] };
+    const first = accounts.accounts?.[0];
+    accountLabel = first?.accountName;
+    accountId = first?.name;
+  } catch {
+    // Best-effort — publish will refuse clearly if the location cannot be found.
+  }
+
+  /*
+   * The account read above 403s until Google approves the project, which is the
+   * normal state for a long time — so without this every Business connection
+   * showed as "Google Business" with no account named. The signed-in identity is
+   * available immediately and says whose profile this is.
+   */
+  const identity = await googleIdentity(body.access_token, args.fetchImpl);
+  accountLabel ??= identity.name;
+  const accountAvatarUrl = identity.picture;
+
+  return {
+    // The account resource name (`accounts/123`) is needed on every publish, so
+    // it rides with the token like Instagram's ig-user-id does.
+    accessToken: accountId ? joinScopedToken(accountId, body.access_token) : body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+    ...(accountLabel ? { accountLabel } : {}),
+    ...(accountId ? { accountId } : {}),
+    ...(accountAvatarUrl ? { accountAvatarUrl } : {}),
+  };
+}
+
 const EXCHANGERS: Partial<Record<Platform, (args: ExchangeArgs) => Promise<SocialTokenResult>>> = {
   instagram: exchangeInstagram,
   tiktok: exchangeTikTok,
   linkedin: exchangeLinkedIn,
   x: exchangeX,
   youtube_shorts: exchangeYouTube,
+  threads: exchangeThreads,
+  pinterest: exchangePinterest,
+  reddit: exchangeReddit,
+  google_business: exchangeGoogleBusiness,
 };
 
 /** Dispatches to the right platform's token exchange — the callback route's one entry point into this file. */
@@ -382,6 +753,201 @@ export function exchangeSocialCode(provider: Platform, args: ExchangeArgs): Prom
     );
   }
   return exchange(args);
+}
+
+/* ── Refreshing a token that has not yet died ────────────────────────────── */
+
+/**
+ * REFRESHING, and why only three platforms are here.
+ *
+ * `exchangeSocialCode` has always stored the `refresh_token` a provider hands
+ * back, and nothing ever spent it. The consequence was not subtle: Google issues
+ * an access token good for one hour and X for two, so a brand that connected
+ * YouTube on Monday could not publish on Monday afternoon, and the only repair
+ * offered anywhere was a human pressing Reconnect.
+ *
+ * The three below are exactly the providers that issue a short token *and*
+ * implement the `refresh_token` grant. The other two are absent on purpose,
+ * not by omission:
+ *
+ *   instagram  Meta returns no refresh token. `exchangeInstagram` already
+ *              trades the short-lived code for a ~60-day long-lived token, so
+ *              there is nothing hourly to repair; renewing it before day 60 is
+ *              a different call (`fb_exchange_token`) against a different
+ *              lifetime, and pretending it is this one would hide that.
+ *   linkedin   Refresh tokens are gated on LinkedIn's partner programme. A
+ *              standard app gets a 60-day token and no way to renew it, so
+ *              claiming refresh support here would produce a confident failure
+ *              two months after connecting.
+ *
+ * `canRefreshToken` is exported so callers can tell "this connection cannot be
+ * refreshed" from "refreshing it failed" — the first is normal, the second is
+ * worth a warning.
+ */
+export interface RefreshArgs {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  fetchImpl: typeof fetch;
+}
+
+async function refreshTikTok(args: RefreshArgs): Promise<SocialTokenResult> {
+  const res = await args.fetchImpl('https://open.tiktokapis.com/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'cache-control': 'no-cache' },
+    body: new URLSearchParams({
+      client_key: args.clientId,
+      client_secret: args.clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`TikTok token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('TikTok token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshX(args: RefreshArgs): Promise<SocialTokenResult> {
+  // Same Basic-auth confidential-client form as `exchangeX`: X rejects a
+  // refresh that authenticates with `client_id` in the body alone.
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://api.x.com/2/oauth2/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basic}` },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+      client_id: args.clientId,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`X token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('X token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshYouTube(args: RefreshArgs): Promise<SocialTokenResult> {
+  const res = await args.fetchImpl('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: args.clientId,
+      client_secret: args.clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: args.refreshToken,
+    }).toString(),
+  });
+  if (!res.ok) throw new Error(`YouTube token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('YouTube token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    /*
+     * Google does not return a refresh token on a refresh — the original one
+     * stays valid. Spreading `body.refresh_token` here would write `undefined`
+     * over a token the brand still needs, turning the first successful refresh
+     * into the last one.
+     */
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshPinterest(args: RefreshArgs): Promise<SocialTokenResult> {
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://api.pinterest.com/v5/oauth/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', Authorization: `Basic ${basic}` },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: args.refreshToken }).toString(),
+  });
+  if (!res.ok) throw new Error(`Pinterest token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('Pinterest token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+    ...(body.scope ? { scopes: body.scope.split(/[ ,]+/).filter(Boolean) } : {}),
+  };
+}
+
+async function refreshReddit(args: RefreshArgs): Promise<SocialTokenResult> {
+  const basic = Buffer.from(`${args.clientId}:${args.clientSecret}`).toString('base64');
+  const res = await args.fetchImpl('https://www.reddit.com/api/v1/access_token', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${basic}`,
+      'user-agent': REDDIT_USER_AGENT,
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: args.refreshToken }).toString(),
+  });
+  if (!res.ok) throw new Error(`Reddit token refresh failed: ${res.status} ${await res.text().catch(() => '')}`);
+  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; scope?: string };
+  if (!body.access_token) throw new Error('Reddit token refresh returned no access_token.');
+  return {
+    accessToken: body.access_token,
+    // Reddit reuses the permanent refresh token and returns none here, the same
+    // way Google does — spreading the absent value would blank it.
+    ...(body.refresh_token ? { refreshToken: body.refresh_token } : {}),
+    ...(body.expires_in ? { expiresAt: new Date(Date.now() + body.expires_in * 1000) } : {}),
+  };
+}
+
+const REFRESHERS: Partial<Record<Platform, (args: RefreshArgs) => Promise<SocialTokenResult>>> = {
+  tiktok: refreshTikTok,
+  x: refreshX,
+  youtube_shorts: refreshYouTube,
+  pinterest: refreshPinterest,
+  reddit: refreshReddit,
+  // Google Business is the same Google token endpoint as YouTube, so the same
+  // refresher serves it — Google keys the grant on the client id, not the scope.
+  google_business: refreshYouTube,
+  /*
+   * Threads is absent for Instagram's reason, not LinkedIn's: it issues no
+   * refresh token, and `exchangeThreads` already trades up to the 60-day token.
+   * Renewing that before day 60 is `th_refresh_token`, a different call against
+   * a different lifetime — worth adding, but not by pretending it is this one.
+   */
+};
+
+/** Whether this platform implements the `refresh_token` grant in this build. */
+export function canRefreshToken(provider: Platform): boolean {
+  return provider in REFRESHERS;
+}
+
+/** The platforms a stored refresh token can actually be spent on. */
+export const REFRESHABLE_PLATFORMS = Object.keys(REFRESHERS) as Platform[];
+
+/**
+ * Trades a stored refresh token for a fresh access token.
+ *
+ * Throws rather than returning undefined on an unsupported provider, matching
+ * `exchangeSocialCode`: a caller that reaches here for Instagram has a bug, and
+ * `canRefreshToken` is the check that belongs before the call.
+ */
+export function refreshSocialToken(provider: Platform, args: RefreshArgs): Promise<SocialTokenResult> {
+  const refresh = REFRESHERS[provider];
+  if (!refresh) {
+    throw new ToolError(
+      'INVALID_INPUT',
+      `${provider} does not support refreshing a token in this build — reconnecting is the only renewal it has.`,
+      { platform: provider, refreshablePlatforms: REFRESHABLE_PLATFORMS },
+    );
+  }
+  return refresh(args);
 }
 
 export { generatePkce, signOAuthState, verifyOAuthState };
@@ -423,6 +989,39 @@ export function makeIntegrationConnect(deps: IntegrationConnectDeps) {
     idempotent: true,
 
     async handler(input, ctx) {
+      /*
+       * A derived platform cannot be connected on its own, and saying it "isn't
+       * configured" would send someone looking for a developer app that does not
+       * exist. There is no `instagram_story` app to register; there is an
+       * Instagram account, and connecting it is what lights this up.
+       */
+      const owner = connectionPlatform(input.provider);
+      if (owner !== input.provider) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `${input.provider} publishes through your ${owner} connection — connect ${owner} and this comes with it.`,
+          { provider: input.provider, connectVia: owner },
+        );
+      }
+      /*
+       * A credential platform has no client id and never will, so the
+       * "isn't configured yet" refusal below would be exactly wrong about it:
+       * there is nothing for an operator to configure, and the person reading it
+       * would go looking for a developer console that does not exist.
+       *
+       * This has to run BEFORE the client-id check for that reason — Bluesky
+       * fails that check for a reason that is not its actual one. The same
+       * refusal exists in `buildAuthorizeUrl`, which is unreachable from here
+       * precisely because the client-id check gets there first.
+       */
+      if (CREDENTIAL_PLATFORMS.includes(input.provider)) {
+        throw new ToolError(
+          'INVALID_INPUT',
+          `${input.provider} connects with a handle and an app password, not a browser redirect — use integration.connect_credentials.`,
+          { provider: input.provider, connectMethod: 'credentials' },
+        );
+      }
+
       const clientId = deps.clientIds[input.provider];
       if (!clientId) {
         throw new ToolError('INVALID_INPUT', `${input.provider} isn’t configured for native publishing yet.`, { provider: input.provider });
@@ -445,6 +1044,125 @@ export function makeIntegrationConnect(deps: IntegrationConnectDeps) {
     },
   });
 }
+
+/* ── integration.connect_credentials ─────────────────────────────────────── */
+
+/**
+ * The connect path for a platform with no OAuth redirect.
+ *
+ * Bluesky is the only one today. AT Protocol authenticates with a handle and an
+ * **app password** — a scoped credential the user creates in their own Bluesky
+ * settings and revokes there — so there is no authorize URL to send a browser
+ * to, no consent screen, and nothing for `integration.connect` to return.
+ *
+ * ── Why this is a separate tool and not a flag on `integration.connect` ───
+ *
+ * The two have opposite shapes. `integration.connect` is a `read` that returns a
+ * URL and writes nothing; this one takes a secret and writes it. Folding a
+ * credential write into a read-effect tool would put a password behind the
+ * policy decision for reading, and `effect` is what the policy engine routes on.
+ *
+ * `human_only`, for the same reason `integration.connect` is: a credential the
+ * user creates by hand is not something SPARK can obtain on their behalf.
+ *
+ * The app password is stored as `{handle}:{password}` in the same column an
+ * OAuth token would occupy — see `scopedToken.ts`. It is a long-lived secret and
+ * `disconnect` only forgets it; revoking it is done in Bluesky.
+ */
+export const CREDENTIAL_PLATFORMS: Platform[] = ['bluesky'];
+
+export const IntegrationConnectCredentialsInput = z.object({
+  genomeId: z.string().min(1),
+  provider: Platform,
+  /** The account handle — `name.bsky.social`, with or without a leading `@`. */
+  handle: z.string().min(1).max(253),
+  /**
+   * An app password, not the account password.
+   *
+   * Bluesky's are issued as `xxxx-xxxx-xxxx-xxxx`. The distinction matters
+   * enough to state: an account password grants everything and cannot be
+   * revoked in isolation, and nothing here can tell the two apart, so the
+   * wording at every call site has to.
+   */
+  appPassword: z.string().min(1).max(200),
+});
+
+export const integrationConnectCredentials = defineTool({
+  name: 'integration.connect_credentials',
+  version: 1,
+
+  summary:
+    'Connect a platform that authenticates with a handle and an app password rather than a browser redirect — ' +
+    'Bluesky today. Verifies the credential against the platform before storing it.',
+
+  input: IntegrationConnectCredentialsInput,
+  output: z.object({ connected: z.boolean(), accountLabel: z.string() }),
+
+  effect: 'write',
+  autonomy: 'human_only',
+  scopes: ['owner', 'admin'],
+  // Connecting the same account twice is one connection, not two.
+  idempotent: true,
+
+  async handler(input, ctx) {
+    if (!CREDENTIAL_PLATFORMS.includes(input.provider)) {
+      throw new ToolError(
+        'INVALID_INPUT',
+        `${input.provider} connects through a browser redirect, not a password — use integration.connect.`,
+        { provider: input.provider, credentialPlatforms: CREDENTIAL_PLATFORMS },
+      );
+    }
+    const genomeId = requireGenome(ctx.genomeId ?? input.genomeId);
+    const handle = input.handle.replace(/^@/, '').trim();
+
+    /*
+     * Verified before it is stored, which is the whole reason this tool does the
+     * work rather than a form writing straight to the table: a mistyped app
+     * password would otherwise be accepted here and fail at the first scheduled
+     * post, hours later, with nobody watching.
+     */
+    let res: Response;
+    try {
+      res = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ identifier: handle, password: input.appPassword }),
+      });
+    } catch (e) {
+      throw new ToolError('UPSTREAM_FAILED', 'Could not reach Bluesky to check that credential.', {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+    if (!res.ok) {
+      throw new ToolError(
+        'INVALID_INPUT',
+        'Bluesky rejected that handle and app password. Check the handle, and that the password is an app password from Settings → App Passwords rather than your account password.',
+        { provider: input.provider },
+      );
+    }
+    const body = (await res.json().catch(() => ({}))) as { did?: string };
+
+    await ctx.db.oauthConnections.save({
+      genomeId,
+      orgId: ctx.orgId,
+      provider: input.provider,
+      // The handle is needed on every publish, so it rides with the secret the
+      // same way an ig-user-id does.
+      accessToken: joinScopedToken(handle, input.appPassword),
+      connectedBy: ctx.userId ?? 'unknown',
+      accountLabel: `@${handle}`,
+      ...(body.did ? { accountId: body.did } : {}),
+      /*
+       * No `expiresAt`. An app password does not expire — it is revoked or it is
+       * not — so claiming an expiry would make `integration.health` count down
+       * to a date that means nothing and `connection-watcher` warn about it.
+       */
+    });
+
+    ctx.logger.info('credential connection saved', { genomeId, provider: input.provider });
+    return { connected: true, accountLabel: `@${handle}` };
+  },
+});
 
 /* ── integration.health ──────────────────────────────────────────────── */
 
@@ -503,10 +1221,27 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
           /** §10's health indicator. See {@link connectionStatus}. */
           status: ConnectionStatus,
           accountLabel: z.string().optional(),
+          /** The account's profile picture, when the provider gave one. */
+          accountAvatarUrl: z.string().optional(),
           expiresAt: z.string().optional(),
           /** Negative once expired, so a caller can say "3 days ago" without re-parsing the date. */
           hoursUntilExpiry: z.number().nullable(),
           supported: z.boolean(),
+          /**
+           * Set when this platform publishes with another's connection —
+           * `instagram_story` with Instagram's, `youtube_long` with YouTube's.
+           * The UI shows "via Instagram" instead of a Connect button that
+           * cannot lead anywhere. See `PARENT_PLATFORM`.
+           */
+          connectedVia: Platform.optional(),
+          /**
+           * How this platform is connected, so the UI does not have to hardcode
+           * which ones are which. `credentials` means a handle and an app
+           * password (`integration.connect_credentials`) rather than a browser
+           * redirect — Bluesky today. `derived` platforms carry `connectedVia`
+           * above and offer no connect action at all.
+           */
+          connectMethod: z.enum(['oauth', 'credentials', 'derived']),
           via: z.string().nullable(),
         }),
       ),
@@ -531,14 +1266,26 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
 
       const platforms = await Promise.all(
         Platform.options.map(async (platform) => {
-          const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, platform);
+          // A derived platform has no connection of its own and never will —
+          // it borrows the account it posts through. Reading its own provider
+          // row would report "not connected" for an Instagram Story on a brand
+          // whose Instagram is connected and working.
+          const owner = connectionPlatform(platform);
+          const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, owner);
           const isSupported = supported.has(platform);
           const status = connectionStatus(conn?.expiresAt, Boolean(conn), now);
           return {
             platform,
             connected: Boolean(conn),
             status,
+            ...(owner !== platform ? { connectedVia: owner } : {}),
+            connectMethod: (owner !== platform
+              ? 'derived'
+              : CREDENTIAL_PLATFORMS.includes(platform)
+                ? 'credentials'
+                : 'oauth') as 'oauth' | 'credentials' | 'derived',
             ...(conn?.accountLabel ? { accountLabel: conn.accountLabel } : {}),
+            ...(conn?.accountAvatarUrl ? { accountAvatarUrl: conn.accountAvatarUrl } : {}),
             ...(conn?.expiresAt ? { expiresAt: conn.expiresAt.toISOString() } : {}),
             hoursUntilExpiry: conn?.expiresAt
               ? Math.round(((conn.expiresAt.getTime() - now.getTime()) / 3_600_000) * 10) / 10
@@ -555,6 +1302,20 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
         // is not broken, and listing eleven platforms as problems would bury the
         // one that genuinely is.
         needsAttention: platforms
+          /*
+           * One alert per *connection*, not per platform.
+           *
+           * Four platforms share the Meta connection, so an expiring Instagram
+           * token would otherwise raise four identical warnings — Instagram,
+           * Stories, Facebook and Groups all reporting the one account. That is
+           * the burial this list exists to prevent: the comment above says
+           * listing eleven platforms as problems hides the one that is real, and
+           * saying the same problem four times does it just as effectively.
+           *
+           * The derived rows still carry their own `status`, so their tiles show
+           * amber; only the alert is deduplicated to the account that owns it.
+           */
+          .filter((p) => !isDerivedPlatform(p.platform))
           .filter((p) => p.status === 'expiring' || p.status === 'expired')
           .map((p) => ({
             platform: p.platform,
@@ -562,7 +1323,9 @@ export function makeIntegrationHealth(deps: { adapters: PlatformAdapter[]; now?:
             detail:
               p.status === 'expired'
                 ? `${p.accountLabel ?? p.platform} needs reconnecting — its access expired and posts to it will fail.`
-                : `${p.accountLabel ?? p.platform} expires in ${Math.max(0, Math.round((p.hoursUntilExpiry ?? 0) / 24))} days. Reconnect before it does.`,
+                : `${p.accountLabel ?? p.platform} expires in ${
+                    expiresInWords((p.hoursUntilExpiry ?? 0) * 3_600_000) ?? 'under 1 hour'
+                  }. Reconnect before it does.`,
           })),
       };
     },

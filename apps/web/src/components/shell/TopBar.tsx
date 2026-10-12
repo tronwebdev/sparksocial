@@ -59,11 +59,11 @@ export function TopBar({ title, subtitle, actions, className, askSpark = true }:
           </div>
           <div className="min-w-0">
             {typeof title === 'string' ? (
-              <h1 className="truncate text-[20px] font-semibold leading-tight text-ink sm:text-[26px]">{title}</h1>
+              <h1 className="truncate text-20 font-semibold leading-tight text-ink sm:text-26">{title}</h1>
             ) : (
               title
             )}
-            {subtitle ? <p className="mt-[3px] truncate text-[14px] font-normal leading-[1.28] text-ink-muted sm:text-[18px]">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-[3px] truncate text-14 font-normal leading-[1.28] text-ink-muted sm:text-18">{subtitle}</p> : null}
           </div>
         </div>
         {actions || askSpark ? (

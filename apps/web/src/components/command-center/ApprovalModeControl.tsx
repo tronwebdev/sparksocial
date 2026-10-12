@@ -61,9 +61,9 @@ export function ApprovalModeControl() {
   return (
     <section className="rounded border border-border bg-surface p-4">
       <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium text-ink-muted">Before publishing</p>
+        <p className="text-13 font-medium text-ink-muted">Before publishing</p>
         {view.approvalMode === 'review_first_week' && view.graduatesInDays !== null ? (
-          <span className="text-[12px] text-ink-muted">
+          <span className="text-12 text-ink-muted">
             Graduates to autopublish in {view.graduatesInDays} day{view.graduatesInDays === 1 ? '' : 's'}
           </span>
         ) : null}
@@ -77,7 +77,7 @@ export function ApprovalModeControl() {
             disabled={busy}
             onClick={() => void setMode(m.value)}
             title={m.hint}
-            className={`rounded-full border px-3 py-1.5 text-[13px] disabled:opacity-50 ${
+            className={`rounded-full border px-3 py-1.5 text-13 disabled:opacity-50 ${
               view.approvalMode === m.value
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border text-ink hover:bg-surface-muted'
@@ -89,7 +89,7 @@ export function ApprovalModeControl() {
         ))}
       </div>
 
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </section>
   );
 }

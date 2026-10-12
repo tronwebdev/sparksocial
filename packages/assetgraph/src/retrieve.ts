@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { AssetRole } from '@sparksocial/shared';
+import { AssetMediaType, AssetRightsStatus, AssetRole } from '@sparksocial/shared';
 
 /**
  * `asset.retrieve` — engine spec §4.3.
@@ -49,7 +49,7 @@ const RetrievedAsset = z.object({
   embeddingScore: z.number(),
   usageCount: z.number().int(),
   lastUsedAt: z.string().nullable(),
-  rightsStatus: z.string(),
+  rightsStatus: AssetRightsStatus,
   folderId: z.string().nullable(),
   /**
    * Where the file actually is, and what kind it is.
@@ -61,7 +61,7 @@ const RetrievedAsset = z.object({
    * rendered is a table with extra steps.
    */
   url: z.string(),
-  mediaType: z.string(),
+  mediaType: AssetMediaType,
   /**
    * The three fields `LIB-02` draws and had no source for.
    *

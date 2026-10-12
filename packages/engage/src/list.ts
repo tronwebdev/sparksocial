@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { EngagementKind, EngagementPlatform, Explanation, ToolError } from '@sparksocial/shared';
 import { EngagementCategory } from './classifier.js';
 
 /**
@@ -31,8 +31,8 @@ export const EngageListInput = z.object({
 
 const EngageListItem = z.object({
   id: z.string(),
-  platform: z.string(),
-  kind: z.string(),
+  platform: EngagementPlatform,
+  kind: EngagementKind,
   authorHandle: z.string(),
   authorName: z.string().optional(),
   text: z.string(),

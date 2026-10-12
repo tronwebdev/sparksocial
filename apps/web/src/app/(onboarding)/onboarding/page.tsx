@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
@@ -186,11 +186,61 @@ export default function OnboardingPage() {
    * upload, the document attach, `asset.gaps` — and without it those are scoped
    * to nothing.
    */
+  /** `BrandKitStep`'s own `save`, so Continue can flush it. See the KIT step below. */
+  const kitSave = useRef<null | (() => Promise<boolean>)>(null);
+
   function selectGenome(genomeId: string) {
     // The org goes in with it. A cookie with no org is dropped by the proxy, and
     // one written under the wrong org is what stopped a second account from
     // onboarding in a browser the first had used — see `lib/selectedGenome.ts`.
     if (orgId) writeSelectedGenome(orgId, genomeId);
+  }
+
+  /**
+   * A brand of its own for this run of onboarding.
+   *
+   * Both entry points used to pass `brandId: orgId`, which is not a brand — it
+   * is the whole account. One genome belongs to one brand, so the second time
+   * anybody onboarded, `genome.create` found the org's existing genome and
+   * patched it: the new business's identity and dimensions landed on top of the
+   * previous one. Watched it happen — a bakery's genome became a bicycle
+   * workshop's, and nothing anywhere said a brand had been overwritten rather
+   * than created. The crawl path failed the other way, writing a second genome
+   * under the same brand, which is the duplicate `genome.create`'s own comment
+   * describes.
+   *
+   * `brand.create` mints `brand_<uuid>`, provisions the governance row and
+   * pairs an empty genome with it. Its id is what every later call here is
+   * keyed to, so onboarding creates a brand every time it is run — which is
+   * what the screen says it does.
+   */
+  async function provisionBrand(name: string): Promise<string | undefined> {
+    const made = await invoke<{ brandId: string; genomeId: string; name: string }>(
+      'brand.create',
+      {
+        name,
+        // Onboarding asks for the real category two screens later, and nothing in
+        // the engine branches on it — same reasoning `genome.create` gives.
+        category: 'business',
+        locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+      },
+      /*
+       * Fresh per press, because each one is a new brand.
+       *
+       * `brand.create` is `idempotent: false`, so `invoke.ts` refuses the call
+       * outright when no key is given — the first version of this had none and
+       * would have made the button do nothing at all. A stable key would be
+       * worse than none: it would collapse every later onboarding onto the first
+       * brand, which is the bug this whole change exists to fix.
+       */
+      crypto.randomUUID(),
+    );
+
+    if (made.status !== 'succeeded') {
+      setError(humanError(made, 'That needs approval before it can run.'));
+      return undefined;
+    }
+    return made.output.brandId;
   }
 
   async function bootstrap() {
@@ -210,6 +260,12 @@ export default function OnboardingPage() {
     setBusy(true);
     setError(undefined);
 
+    const brandId = await provisionBrand(brandName.trim() || url.trim());
+    if (!brandId) {
+      setBusy(false);
+      return;
+    }
+
     const result = await invoke<{
       draftGenomeId: string;
       identity: { businessName: string; category?: string };
@@ -219,7 +275,7 @@ export default function OnboardingPage() {
       dimensions?: Record<string, string | string[] | undefined>;
     }>('genome.bootstrap_from_url', {
       url: url.trim(),
-      brandId: orgId,
+      brandId,
       // Five pages is the crawler's own budget. Asking for more here would
       // stretch a wait that is already the longest in the product.
       maxPages: 5,
@@ -266,12 +322,18 @@ export default function OnboardingPage() {
     setManualBusy(true);
     setError(undefined);
 
+    const brandId = await provisionBrand(brandName.trim());
+    if (!brandId) {
+      setManualBusy(false);
+      return;
+    }
+
     const result = await invoke<{
       draftGenomeId: string;
       identity: { businessName: string };
       unresolved: string[];
     }>('genome.create', {
-      brandId: orgId,
+      brandId,
       businessName: brandName.trim(),
       // The details screen asks for the real one two screens later; the category
       // is display-only either way and nothing in the engine branches on it.
@@ -512,7 +574,7 @@ export default function OnboardingPage() {
           selected={selected}
           onChange={(values) => setAnswers((prev) => ({ ...prev, [question.id]: values }))}
         />
-        {error ? <p className="mt-4 text-[14px] text-[var(--ss-danger)]">{error}</p> : null}
+        {error ? <p className="mt-4 text-14 text-[var(--ss-danger)]">{error}</p> : null}
       </StepShell>
     );
   }
@@ -565,9 +627,28 @@ export default function OnboardingPage() {
         group={3}
         onBack={back}
         eyebrow={<><strong className="font-semibold text-ink">Exciting update!</strong> Your Brand Knowledge is complete. Next up, we'll focus on your <strong className="font-semibold text-ink">Brand's Voice, Guardrails, and Time Zone.</strong></>}
-        onContinue={() => setStep(AGENT)}
+        /*
+         * Save before advancing.
+         *
+         * `BrandKitStep` saved only on `onBlur` of its own container, which
+         * covers the ordinary path — touch a control, then press Continue — and
+         * nothing else. A value that changes without focus entering that
+         * container leaves the step looking complete and persists none of it,
+         * and that one call carries colours, fonts, voice, timezone, strict mode
+         * and both guardrail lists together.
+         *
+         * Caught on a run where the brand kit was filled in on screen and the
+         * row came back with `brand_colors: null` and the timezone untouched.
+         *
+         * The step still advances if the save fails: the failure is already
+         * reported in the step's own message line, and trapping someone on this
+         * screen over a write they can retry from settings is the worse outcome.
+         */
+        onContinue={() => {
+          void kitSave.current?.().finally(() => setStep(AGENT));
+        }}
       >
-        <BrandKitStep />
+        <BrandKitStep registerSave={(fn) => { kitSave.current = fn; }} />
       </StepShell>
     );
   }

@@ -120,10 +120,10 @@ export function ApprovalFlowsPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Approval flows</h2>
+          <h2 className="text-18 font-semibold text-ink">Approval flows</h2>
           {/* The opposite framing to the panel above, said out loud, because the
               two sit together and a reader who conflates them misconfigures both. */}
-          <p className="mt-1 max-w-[62ch] text-[13px] text-ink-muted">
+          <p className="mt-1 max-w-[62ch] text-13 text-ink-muted">
             Groups above <em>add</em> what people can do. These rules <em>hold things back</em>: an action
             that matches one waits in the review queue until the right person signs it off. A rule can only
             ever ask a person — it never grants anything, and it cannot let something through that a role or
@@ -135,7 +135,7 @@ export function ApprovalFlowsPanel() {
         </Button>
       </div>
 
-      {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+      {error && <p className="mt-3 text-13 text-destructive">{error}</p>}
 
       {adding && (
         <RuleForm
@@ -151,7 +151,7 @@ export function ApprovalFlowsPanel() {
       {rules === null ? (
         <Skeleton className="mt-4 h-24 w-full rounded-lg" />
       ) : rules.length === 0 ? (
-        <p className="mt-4 text-[13px] text-ink-muted">
+        <p className="mt-4 text-13 text-ink-muted">
           No rules yet. Everything follows each campaign&rsquo;s own approval setting.
         </p>
       ) : (
@@ -167,8 +167,8 @@ export function ApprovalFlowsPanel() {
               )}
             >
               <div className="min-w-0">
-                <p className="text-[13px] text-ink">{rule.label}</p>
-                <p className="mt-0.5 text-[12px] text-ink-muted">Applies to: {rule.appliesTo}</p>
+                <p className="text-13 text-ink">{rule.label}</p>
+                <p className="mt-0.5 text-12 text-ink-muted">Applies to: {rule.appliesTo}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={rule.enabled ? 'success' : 'neutral'}>{rule.enabled ? 'On' : 'Off'}</Badge>
@@ -238,7 +238,7 @@ function RuleForm({
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4">
       <div className="grid gap-1">
-        <span className="text-[12px] font-medium text-ink">What should wait for sign-off?</span>
+        <span className="text-12 font-medium text-ink">What should wait for sign-off?</span>
         <div className="mt-1 flex flex-wrap gap-2">
           {(
             [
@@ -260,8 +260,8 @@ function RuleForm({
 
       {trigger === 'spend_over' && (
         <label className="grid gap-1">
-          <span className="text-[12px] font-medium text-ink">Amount</span>
-          <span className="text-[11px] text-ink-muted">
+          <span className="text-12 font-medium text-ink">Amount</span>
+          <span className="text-11 text-ink-muted">
             Anything estimated above this waits. Exactly this amount goes through.
           </span>
           <Input
@@ -277,7 +277,7 @@ function RuleForm({
       )}
 
       <div className="grid gap-1">
-        <span className="text-[12px] font-medium text-ink">Who can sign it off?</span>
+        <span className="text-12 font-medium text-ink">Who can sign it off?</span>
         <div className="mt-1 flex flex-wrap gap-2">
           {REVIEWER_ROLES.map((option) => (
             <Button
@@ -292,20 +292,20 @@ function RuleForm({
         </div>
         {/* Stated because it is surprising, and because the alternative is
             somebody discovering it by having a post sit in a queue. */}
-        <p className="mt-1 text-[11px] text-ink-muted">
+        <p className="mt-1 text-11 text-ink-muted">
           Owners and admins can always sign off, whichever you pick.
         </p>
       </div>
 
       <div className="grid gap-1">
-        <span className="text-[12px] font-medium text-ink">Who does it apply to?</span>
-        <p className="text-[11px] text-ink-muted">
+        <span className="text-12 font-medium text-ink">Who does it apply to?</span>
+        <p className="text-11 text-ink-muted">
           Pick no teams to apply it to everyone, including SPARK working on its own. Pick teams and it
           applies only to those people — SPARK is in no team, so its work goes through.
         </p>
         <div className="mt-1 flex flex-wrap gap-2">
           {groups.length === 0 ? (
-            <span className="text-[12px] text-ink-muted">No teams yet — this rule will apply to everyone.</span>
+            <span className="text-12 text-ink-muted">No teams yet — this rule will apply to everyone.</span>
           ) : (
             groups.map((g) => {
               const on = groupIds.includes(g.id);

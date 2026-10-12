@@ -61,6 +61,10 @@ export function createAssetRepository(db: Database): ScopedDb['assets'] {
       return scoped.setAssetCaption(db, { orgId, brandId: orgId, genomeId }, { id, caption, embedding });
     },
 
+    async list(genomeId, orgId, args) {
+      return scoped.listAssets(db, { orgId, brandId: orgId, genomeId }, args ?? {});
+    },
+
     async unfiled(genomeId, orgId) {
       return scoped.listUnfiledAssets(db, { orgId, brandId: orgId, genomeId });
     },

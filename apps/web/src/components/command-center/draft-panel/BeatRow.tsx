@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
+import { backdropOf, clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
 
 /**
  * One beat, editor phase. What action(s) it offers depends on the draft's
@@ -38,6 +38,7 @@ export function BeatRow({
   onSetVoice,
   templates,
   onApplyTemplate,
+  chrome = true,
 }: {
   beat: ResolvedBeat;
   mediaType: DraftView['mediaType'];
@@ -67,6 +68,16 @@ export function BeatRow({
   /** The brand kit's caption and lower-third presets. Empty hides the control. */
   templates: KitTemplate[];
   onApplyTemplate: (template: KitTemplate, beatId: string) => void;
+  /**
+   * Whether to draw the row's own frame and header.
+   *
+   * False when this row opens inside a storyboard card, which already shows the
+   * scene number, its time range and its badges — the card is the design's
+   * presentation and this is the machinery underneath it. Two copies of "Scene
+   * 2 · 0:04–0:10", one in the design's type and one in the old row's, reads as
+   * a rendering bug rather than as a panel and its detail.
+   */
+  chrome?: boolean;
 }) {
   const initialText =
     beat.kind === 'text'
@@ -92,30 +103,37 @@ export function BeatRow({
   const durationValid = duration.trim() !== '' && Number.isFinite(parsedDuration) && parsedDuration >= 0.5;
   const durationDirty = durationValid && parsedDuration !== beat.durationSec;
 
+  const backdrop = backdropOf(beat);
+  const Frame = chrome ? 'li' : 'div';
+
   return (
-    <li className="rounded-lg border border-border p-4">
+    <Frame className={chrome ? 'rounded-lg border border-border p-4' : undefined}>
       {/*
         The storyboard header - M5. The badge is the label the design draws
         ("Hook", "Talking head", "B-roll + text overlay"), falling back to the
         beat id, which is exactly what this row showed before a beat carried a
         label - so a legacy draft degrades to the old display, not to a blank.
+
+        Skipped when a storyboard card is already showing all three above it.
       */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink">
-            {beat.label ?? beat.beatId}
-          </span>
-          <span className="text-[11px] uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+      {chrome ? (
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-11 font-medium text-ink">
+              {beat.label ?? beat.beatId}
+            </span>
+            <span className="text-11 uppercase tracking-wide text-ink-muted">Scene {index + 1}</span>
+          </div>
+          {timed && beat.durationSec !== undefined ? (
+            <span className="text-11 tabular-nums text-ink-muted">
+              {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
+            </span>
+          ) : null}
         </div>
-        {timed && beat.durationSec !== undefined ? (
-          <span className="text-[11px] tabular-nums text-ink-muted">
-            {clock(startSec)}&ndash;{clock(startSec + beat.durationSec)}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
 
       {beat.kind === 'asset' ? (
-        <p className="mt-2 text-[14px] text-ink-muted">
+        <p className="mt-2 text-14 text-ink-muted">
           Your own {beat.role.replace(/_/g, ' ')} asset{beat.caption ? ` — ${beat.caption}` : ''}.
         </p>
       ) : beat.kind === 'generated_image' ? (
@@ -133,7 +151,29 @@ export function BeatRow({
         )
       ) : null}
       {beat.kind === 'dubbed_media' ? (
-        <p className="mt-1 text-[12px] text-ink-muted">Dubbed into {beat.targetLanguage}.</p>
+        <p className="mt-1 text-12 text-ink-muted">Dubbed into {beat.targetLanguage}.</p>
+      ) : null}
+
+      {/*
+        The backdrop — auto-illustration's output.
+
+        Every branch above tests `kind`, and auto-illustration does not change a
+        beat's kind: it leaves the words in place and attaches the media. So a
+        text beat with a picture behind it fell through all of them and this row
+        showed a textarea and nothing else, for every automatically illustrated
+        post in the library.
+      */}
+      {backdrop ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {backdrop.urls.map((u, i) =>
+            backdrop.kind === 'video' ? (
+              <video key={u + i} src={u} controls className="max-h-48 rounded" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={u + i} src={u} alt="" className="max-h-48 rounded object-contain" />
+            ),
+          )}
+        </div>
       ) : null}
 
       {beat.kind === 'text' ||
@@ -146,7 +186,7 @@ export function BeatRow({
           onChange={(e) => setText(e.target.value)}
           disabled={busy}
           rows={2}
-          className="mt-2 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+          className="mt-2 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
         />
       ) : null}
 
@@ -205,7 +245,7 @@ export function BeatRow({
             onChange={(e) => setDubLanguage(e.target.value)}
             disabled={busy}
             placeholder="Language code, e.g. es"
-            className="h-8 w-40 rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="h-8 w-40 rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button
             size="sm"
@@ -234,7 +274,7 @@ export function BeatRow({
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {timed ? (
           <>
-            <label className="text-[11px] text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
+            <label className="text-11 text-ink-muted" htmlFor={`dur-${beat.beatId}`}>
               Seconds
             </label>
             <input
@@ -243,7 +283,7 @@ export function BeatRow({
               onChange={(e) => setDuration(e.target.value)}
               disabled={busy}
               inputMode="decimal"
-              className="h-8 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
+              className="h-8 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
             />
             <Button
               size="sm"
@@ -269,7 +309,7 @@ export function BeatRow({
             value={beat.voice ?? 'default'}
             disabled={busy}
             onChange={(e) => onSetVoice(beat.beatId, e.target.value as 'brand' | 'stock' | 'default')}
-            className="h-8 rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-8 rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Voice for this scene"
           >
             <option value="default">Default voice</option>
@@ -299,7 +339,7 @@ export function BeatRow({
               // Reset to the placeholder so the same preset can be applied twice.
               e.target.value = '';
             }}
-            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-8 max-w-[13rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Apply a brand preset to this scene"
           >
             <option value="">Use a brand preset…</option>
@@ -322,7 +362,7 @@ export function BeatRow({
         </Button>
       </div>
 
-      {error ? <p className="mt-2 text-[12px] text-destructive">{error}</p> : null}
-    </li>
+      {error ? <p className="mt-2 text-12 text-destructive">{error}</p> : null}
+    </Frame>
   );
 }

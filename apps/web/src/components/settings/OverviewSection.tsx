@@ -181,7 +181,7 @@ export function OverviewSection() {
             aria-label="Brand name"
             placeholder="This brand"
             maxLength={120}
-            className="absolute left-[50px] top-[291px] h-[37px] w-[560px] bg-transparent text-[28.633px] font-semibold leading-[1.28] text-ink outline-none"
+            className="absolute left-[50px] top-[291px] h-[37px] w-[560px] bg-transparent text-28 font-semibold leading-[1.28] text-ink outline-none"
           />
 
           <span aria-hidden className="absolute left-[50px] top-[348px] block h-[40px] w-[91px]">
@@ -201,7 +201,7 @@ export function OverviewSection() {
 
           {updatedAt ? (
             <span
-              className="absolute left-[152px] top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-[15.317px] font-medium"
+              className="absolute left-[152px] top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-15 font-medium"
               style={{ boxShadow: 'inset 0 0 0 0.851px rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
             >
               Updated {new Date(updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -209,7 +209,7 @@ export function OverviewSection() {
           ) : null}
 
           {/* ── the three facts ────────────────────────────────────────── */}
-          <dl className="absolute left-[796px] top-[256px] w-[520px] text-[19.285px] font-medium leading-[1.3]">
+          <dl className="absolute left-[796px] top-[256px] w-[520px] text-19 font-medium leading-[1.3]">
             <div>
               <dt className="inline" style={{ color: 'rgba(131,131,131,0.8)' }}>Purpose:&nbsp;</dt>
               <dd className="inline text-ink">
@@ -233,7 +233,7 @@ export function OverviewSection() {
 
           {/* The design's cyan status chip. */}
           <span
-            className="absolute left-[1166px] top-[299px] flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-[19.285px] font-medium text-ink"
+            className="absolute left-[1166px] top-[299px] flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink"
             style={{ background: compliant ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.18)' }}
           >
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>

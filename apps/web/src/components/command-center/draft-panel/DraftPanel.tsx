@@ -7,7 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
-import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
+import { ImageDraftForm } from './ImageDraftForm';
+import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
+import { DraftsList } from './DraftsList';
+import { PostPreview } from './PostPreview';
+import { cn } from '@/lib/utils';
+import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -44,11 +50,35 @@ export function DraftPanel({
   open,
   onClose,
   onDraftCreated,
+  focus,
 }: {
   genomeId: string | undefined;
   contentItemId?: string;
   open: boolean;
   onClose: () => void;
+  /**
+   * What the drawer's Current Focus card says — `DP image`'s header.
+   *
+   * Passed in rather than loaded here because the caller already has it: the
+   * Calendar opens this panel from a view it fetched, and a second
+   * `calendar.get` to redraw four strings the opener is holding would be a
+   * round trip for nothing. Absent is a legitimate state — a panel opened from
+   * somewhere with no campaign behind it shows the post and no campaign facts,
+   * rather than a card of blanks.
+   */
+  focus?: {
+    campaignName?: string;
+    goal?: string;
+    campaignType?: string;
+    duration?: string;
+    source?: string;
+    /** The four post types and what each is doing on this date. */
+    production?: Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }>;
+    /** The accounts this date is posting to. */
+    platforms?: string[];
+    /** The brand's own name, for the preview's post card byline. */
+    brandName?: string;
+  };
   /** Fires once, right after `content.draft` first creates a row — CAL-04's hook for pinning a fresh trigger-phase draft to the date the caller opened this panel for. */
   onDraftCreated?: (contentItemId: string) => void;
 }) {
@@ -61,10 +91,38 @@ export function DraftPanel({
    * in `error` state and never drawn, because `error` is only rendered inside the
    * phase blocks that never mounted.
    */
+  /**
+   * The drawer's own two controls — `DP image` / `video` / `carousel` / `text`
+   * and the Current Draft / Drafts List tabs.
+   *
+   * Held here rather than in `DraftDrawer` because the post type decides what
+   * the panel drafts, not merely which rail card looks selected: a rail that
+   * owned its own state would highlight Video while the panel went on building
+   * an image.
+   */
+  const [postType, setPostType] = useState<PostType>('image');
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>('current');
+  /** `DP image`'s editable prompt, which the old panel had nowhere to put. */
+  const [conceptPrompt, setConceptPrompt] = useState('');
+
   const [phase, setPhase] = useState<'loading' | 'failed' | 'trigger' | 'editor' | 'preview'>(
     initialContentItemId ? 'loading' : 'trigger',
   );
   const [draft, setDraft] = useState<DraftView | null>(null);
+
+  /**
+   * The rail follows the post once there is a post.
+   *
+   * Before this, the rail kept whatever the user last clicked while drafting —
+   * so a carousel drafted from the picker opened its editor with "Image" lit
+   * and "Image Post" over a list of slides. The rail is a *choice* only in the
+   * trigger phase; after `content.draft` the media type is the playbook's and
+   * the rail reports it.
+   */
+  useEffect(() => {
+    if (draft) setPostType(draft.mediaType);
+  }, [draft?.mediaType, draft]);
+
   const [playbooks, setPlaybooks] = useState<RankedPlaybook[] | null>(null);
   const [playbooksWhy, setPlaybooksWhy] = useState<string | null>(null);
   // Distinguishes "nothing fits this genome at all" from "something fits, but
@@ -110,6 +168,8 @@ export function DraftPanel({
    */
   const [sceneDescription, setSceneDescription] = useState('');
   const [sceneDuration, setSceneDuration] = useState('4');
+  /** Whether the storyboard's "Add scene" strip has its form open beneath it. */
+  const [addingScene, setAddingScene] = useState(false);
   const [sceneTotal, setSceneTotal] = useState<number | null>(null);
 
   /**
@@ -279,6 +339,15 @@ export function DraftPanel({
       }
 
       setDraft(res.output);
+      /*
+        The renders this post already has.
+
+        `renders` was reset to null on open and filled only by
+        `compose.render`'s own response, so reopening a post the queue had
+        already composed showed no video and a Render button beside it — an
+        offer to pay a second time for a file that existed.
+      */
+      setRenders(res.output.renders ?? null);
       setPhase('editor');
     },
     [genomeId],
@@ -401,6 +470,34 @@ export function DraftPanel({
     setDraft(res.output);
     setPhase('editor');
     onDraftCreated?.(res.output.contentItemId);
+    return res.output;
+  }
+
+  /**
+   * `DP image`'s "Save as Draft", beside Generate Post.
+   *
+   * Both call `content.draft` — there is one tool, and it writes copy. What
+   * differs is where you end up, which is what the two labels actually promise:
+   * "Generate Post" takes you into the editor to work on what it made, "Save as
+   * Draft" saves it and gets out of the way. The draft is on the calendar
+   * either way, and the Drafts List is how you come back to it.
+   */
+  async function saveAsDraft() {
+    const made = await createDraft();
+    if (made) onClose();
+  }
+
+  /**
+   * "Regenerate concept" — another take on the same brief.
+   *
+   * A second `content.draft` with the same intent and playbook and a fresh
+   * idempotency key, which is exactly what the tool means by `idempotent:
+   * false`: a second call is a second take. The panel keeps the newer one, and
+   * the older draft stays on the calendar rather than being silently replaced —
+   * removing it would be a delete nobody asked for.
+   */
+  async function regenerateConcept() {
+    await createDraft();
   }
 
   const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
@@ -589,12 +686,31 @@ export function DraftPanel({
    */
   type SceneResult = { beats: ResolvedBeat[]; totalDurationSec: number; durationBand?: [number, number] };
 
-  async function runSceneTool(name: string, input: Record<string, unknown>, beatId?: string) {
+  /**
+   * @param idempotencyKey required by any scene tool declared `idempotent: false`.
+   *
+   * Only `content.scene.insert` is, and it refuses outright without one — so
+   * "Add scene" failed every time it was clicked, with
+   * `"content.scene.insert" is not idempotent and requires an idempotency key`
+   * shown in the form's error line. The other five are idempotent and pass
+   * nothing. The key must be fresh per click for the reason `createDraft` gives:
+   * a stable one would make every later add replay the first insert.
+   */
+  async function runSceneTool(
+    name: string,
+    input: Record<string, unknown>,
+    beatId?: string,
+    idempotencyKey?: string,
+  ) {
     if (!draft || !genomeId || busyBeatId) return;
     const busyKey = beatId ?? SCENE_ADD_KEY;
     setBusyBeatId(busyKey);
     setBeatErrors((e) => ({ ...e, [busyKey]: '' }));
-    const res = await invoke<SceneResult>(name, { contentItemId: draft.contentItemId, genomeId, ...input });
+    const res = await invoke<SceneResult>(
+      name,
+      { contentItemId: draft.contentItemId, genomeId, ...input },
+      idempotencyKey,
+    );
     setBusyBeatId(null);
     if (res.status !== 'succeeded') {
       setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? res.error.message : 'Gated.' }));
@@ -653,26 +769,38 @@ export function DraftPanel({
             ? { afterBeatId: draft.beats[draft.beats.length - 2]!.beatId }
             : {};
 
-    await runSceneTool('content.scene.insert', {
-      description: template.text,
-      durationSec: seconds,
-      label: KIT_TEMPLATE_LABEL[template.category],
-      ...position,
-    });
+    // Same non-idempotent tool as `addScene`, so the same fresh key — applying
+    // an intro twice is two intros, and without one this refused outright.
+    await runSceneTool(
+      'content.scene.insert',
+      {
+        description: template.text,
+        durationSec: seconds,
+        label: KIT_TEMPLATE_LABEL[template.category],
+        ...position,
+      },
+      undefined,
+      crypto.randomUUID(),
+    );
   }
 
   async function addScene() {
     if (!sceneDescription.trim()) return;
     const seconds = Number(sceneDuration);
     if (!Number.isFinite(seconds) || seconds < 0.5) return;
-    await runSceneTool('content.scene.insert', {
-      description: sceneDescription.trim(),
-      durationSec: seconds,
-      // Appends after the last scene. The tool also takes no anchor at all,
-      // which opens the post instead - but "add" reads as "add at the end",
-      // and the Move buttons are how a scene gets to the front.
-      ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
-    });
+    await runSceneTool(
+      'content.scene.insert',
+      {
+        description: sceneDescription.trim(),
+        durationSec: seconds,
+        // Appends after the last scene. The tool also takes no anchor at all,
+        // which opens the post instead - but "add" reads as "add at the end",
+        // and the Move buttons are how a scene gets to the front.
+        ...(draft && draft.beats.length ? { afterBeatId: draft.beats[draft.beats.length - 1]!.beatId } : {}),
+      },
+      undefined,
+      crypto.randomUUID(),
+    );
     setSceneDescription('');
   }
 
@@ -896,15 +1024,17 @@ export function DraftPanel({
     if (!draft || !genomeId || busy) return;
     setBusy(true);
     setError(null);
-    const text = [
-      draft.beats
-        .map((b) => (b.kind === 'text' ? b.text : ''))
-        .filter(Boolean)
-        .join('\n\n'),
-      shortUrl,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    /*
+     * Caption, then hashtags, then the tracked link.
+     *
+     * Hashtags go before the link and not after: a trailing URL is what the
+     * platform turns into a preview card, and burying it under a row of tags
+     * is how a link stops being clicked. They are appended here rather than
+     * living in the storyboard because they are not beats — a text beat is
+     * rendered as a full-screen card by `packages/compose`, which would burn
+     * them into the video.
+     */
+    const text = caption(draft, shortUrl);
     const referencedAssetIds = draft.beats.filter((b) => b.kind === 'asset').map((b) => b.assetId);
     // A real `compose.render` output — one composed file per aspect ratio —
     // is what should actually publish for anything with pixels. Falling back
@@ -1004,19 +1134,146 @@ export function DraftPanel({
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6" role="dialog" aria-label="Draft">
-      <div className="flex max-h-[85vh] w-[640px] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
-        <header className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-[16px] font-semibold text-ink">
-            {phase === 'trigger' ? 'New post' : phase === 'preview' ? 'Review your post' : draft?.playbookId ?? 'Draft'}
-          </h2>
-          <button type="button" onClick={onClose} className="text-[14px] text-ink-muted hover:text-ink">
-            Close
-          </button>
-        </header>
+  /**
+   * One beat's controls, wherever they are drawn.
+   *
+   * Defined once and called from both the plain list and the storyboard's
+   * expanded card, because the two places differ only in whether the row draws
+   * its own frame. Two copies of twenty props is how one of them ends up
+   * missing a handler that only some drafts reach.
+   */
+  function beatRowFor(beat: ResolvedBeat, i: number, chrome: boolean) {
+    if (!draft) return null;
+    return (
+      <BeatRow
+        // `BeatRow`'s own textarea state initializes once from `beat` on mount
+        // and never re-syncs on a prop change — React doesn't re-run a
+        // `useState` initializer. A key that changes whenever the beat's
+        // *generated content* changes (not on every keystroke, since typing
+        // never touches `beat` until Save/regenerate) forces a remount exactly
+        // when the textarea needs to pick up the fresh value — found live:
+        // applying a `draft.variants` take updated the draft and the backend
+        // correctly but left the visible textarea showing the old copy, which a
+        // stray "Save" click would have silently reverted.
+        key={`${beat.beatId}:${beat.kind}:${'url' in beat ? beat.url : ''}:${beat.kind === 'text' ? beat.text : ''}`}
+        beat={beat}
+        chrome={chrome}
+        mediaType={draft.mediaType}
+        busy={busyBeatId === beat.beatId}
+        error={beatErrors[beat.beatId] || undefined}
+        index={i}
+        startSec={startOf(i)}
+        timed={draft.mediaType === 'video'}
+        isFirst={i === 0}
+        isLast={i === draft.beats.length - 1}
+        onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
+        onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
+        onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
+        onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
+        templates={(kitTemplates ?? []).filter((t) => t.category === 'caption' || t.category === 'lower_third')}
+        onApplyTemplate={(t, id) => void applyTemplate(t, id)}
+        onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
+        onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
+        onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
+        onGenerateBroll={(id, prompt) => void generateBroll(id, prompt)}
+        onDub={(id, sourceUrl, mediaKind, lang) => void dubBeat(id, sourceUrl, mediaKind, lang)}
+        onSaveText={(id, text) => void saveBeatText(id, text)}
+      />
+    );
+  }
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+  /**
+   * The add-scene form, now behind the storyboard's own "Add scene" strip.
+   *
+   * Unchanged in behaviour: a new scene is a written slot, not a generate call,
+   * which is what keeps the storyboard editable without spending money per
+   * keystroke. It moved rather than being rebuilt, so the design gets its
+   * control and the panel keeps its one way to add a scene.
+   */
+  const addSceneForm = (
+    <div className="mt-[16px] rounded-lg border border-dashed border-border p-4">
+      <p className="text-13 font-medium text-ink">Add a scene</p>
+      <p className="mt-1 text-12 text-ink-muted">
+        Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a written slot
+        you can film, generate, or leave as an overlay.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <textarea
+          value={sceneDescription}
+          onChange={(e) => setSceneDescription(e.target.value)}
+          disabled={busyBeatId !== null}
+          rows={2}
+          placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
+          className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-11 text-ink-muted" htmlFor="new-scene-seconds">
+            Seconds
+          </label>
+          <input
+            id="new-scene-seconds"
+            value={sceneDuration}
+            onChange={(e) => setSceneDuration(e.target.value)}
+            disabled={busyBeatId !== null}
+            inputMode="decimal"
+            className="h-9 w-16 rounded border border-border bg-input px-2 text-13 tabular-nums text-ink disabled:opacity-50"
+          />
+          <Button
+            size="sm"
+            disabled={busyBeatId !== null || !sceneDescription.trim()}
+            onClick={() => void addScene()}
+          >
+            {busyBeatId === SCENE_ADD_KEY ? 'Adding…' : 'Add scene'}
+          </Button>
+        </div>
+      </div>
+      {beatErrors[SCENE_ADD_KEY] ? (
+        <p className="mt-2 text-12 text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <DraftDrawer
+      postType={postType}
+      onPostType={setPostType}
+      tab={drawerTab}
+      onTab={setDrawerTab}
+      onClose={onClose}
+    >
+      {/*
+        The Drafts List tab.
+
+        Its own branch rather than a phase, because it is not a phase of *this*
+        post — it is every other post. Opening one loads it into the Current
+        Draft tab, which is the only thing the tab can usefully do.
+      */}
+      {drawerTab === 'list' ? (
+        <DraftsList
+          genomeId={genomeId}
+          currentId={draft?.contentItemId}
+          onOpen={(id) => {
+            setDrawerTab('current');
+            void loadDraft(id);
+          }}
+        />
+      ) : (
+      <>
+        {/*
+          The trigger phase draws its own column.
+
+          `DP image` insets its single column 30px from the content pane, and
+          this container's `px-6` sat *inside* that, pushing every row 24px
+          right and shaving 48 off the width — a form measured to 875 rendering
+          at 807. The other phases still want the container's padding, so the
+          padding follows the phase rather than the phase fighting the padding.
+        */}
+        <div
+          className={cn(
+            'flex-1 overflow-y-auto',
+            phase === 'trigger' ? '' : 'px-6 py-5',
+          )}
+        >
           {phase === 'loading' ? <Skeleton className="h-64 w-full rounded" /> : null}
 
           {/*
@@ -1030,8 +1287,8 @@ export function DraftPanel({
           */}
           {phase === 'failed' ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-[14px] font-medium text-ink">This post could not be opened</p>
-              <p className="mt-1 text-[13px] text-ink-muted">{error ?? 'Something went wrong loading it.'}</p>
+              <p className="text-14 font-medium text-ink">This post could not be opened</p>
+              <p className="mt-1 text-13 text-ink-muted">{error ?? 'Something went wrong loading it.'}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {initialContentItemId ? (
                   <Button
@@ -1053,27 +1310,74 @@ export function DraftPanel({
           ) : null}
 
           {phase === 'trigger' ? (
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-[13px] font-medium text-ink-muted" htmlFor="dp-intent">
-                  What is this post about?
-                </label>
-                <textarea
-                  id="dp-intent"
-                  value={intent}
-                  onChange={(e) => setIntent(e.target.value)}
-                  rows={2}
-                  className="mt-1 w-full resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
-                />
-              </div>
+            <>
+              {/*
+                `DP image`'s form. The block below it is the playbook picker,
+                which the prototype does not draw: its rail picks a *media
+                type*, the product picks a specific format, and `content.draft`
+                needs one — `RankedPlaybook` carries no media type, so the rail
+                cannot stand in for it. Deleting a working control to match a
+                screenshot would trade behaviour for a resemblance.
+              */}
+              <ImageDraftForm
+                postType={postType}
+                campaignName={focus?.campaignName}
+                goal={focus?.goal}
+                campaignType={focus?.campaignType}
+                duration={focus?.duration}
+                source={focus?.source}
+                production={focus?.production}
+                platforms={focus?.platforms}
+                onSaveDraft={selectedPlaybookId ? () => void saveAsDraft() : undefined}
+                /*
+                  Only once there is a concept to regenerate — before the first
+                  draft there is nothing to take a second run at, and a live
+                  button that does nothing is the defect this panel has already
+                  had twice.
+                */
+                onRegenerate={draft && selectedPlaybookId ? () => void regenerateConcept() : undefined}
+                concept={draft ? summariseBeats(draft.beats) : undefined}
+                status={draft?.status ?? 'draft'}
+                intent={intent}
+                onIntent={setIntent}
+                prompt={conceptPrompt}
+                onPrompt={setConceptPrompt}
+                onGenerate={() => void createDraft()}
+                /*
+                  `createDraft` returns early without a playbook, so without
+                  this the drawer's primary action was clickable and silent.
+                  The picker that resolves it is the block directly below.
+                */
+                blockedReason={
+                  selectedPlaybookId ? undefined : 'Pick a post format below to generate this post.'
+                }
+                /*
+                  The storyboard, for `DP video` and `DP carousel`.
 
+                  `content.draft` is what writes the beats, so at this phase
+                  there are none and the storyboard shows its one-line empty
+                  state rather than placeholder cards. The prop is passed
+                  regardless: `draft` survives a reopen, and the moment a phase
+                  hands this form a post with scenes they render.
+                */
+                beats={draft?.beats ?? []}
+                busy={busy}
+              />
+            {/*
+              The picker only. Its "What is this post about?" textarea is gone:
+              the form above asks the same question, bound to the same `intent`
+              state, and both carried `id="dp-intent"` — so the panel showed the
+              label twice and the second `<label htmlFor>` pointed at the first
+              field. One question, one control.
+            */}
+            <div className="grid grid-cols-1 gap-4 px-[30px] pb-6">
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Post type</p>
+                <p className="text-13 font-medium text-ink-muted">Post type</p>
                 {playbooks === null ? (
                   <Skeleton className="mt-2 h-10 w-full rounded" />
                 ) : playbooks.length === 0 ? (
                   <div className="mt-2 rounded-lg border border-border bg-surface-muted p-3">
-                    <p className="text-[13px] text-ink">
+                    <p className="text-13 text-ink">
                       {playbooksWhy ?? "Nothing is ready to post yet — this brand's Asset Graph is empty."}
                     </p>
                     {/* Uploads first, because they are the cheap route and the
@@ -1092,7 +1396,7 @@ export function DraftPanel({
                             scored highest, which buried the one file that
                             unlocks the most. Leading with the best single
                             upload turns the block into one action. */}
-                        <p className="mt-1 text-[12.5px] text-ink-muted">
+                        <p className="mt-1 text-13 text-ink-muted">
                           Nothing needs filming to get started.{' '}
                           {bestUpload
                             ? `Uploading ${aOrAn(roleWords([bestUpload.role]))} unlocks ${bestUpload.count} of these ${uploadUnlockable.length} formats — more than any other single file.`
@@ -1106,7 +1410,7 @@ export function DraftPanel({
                           )
                             .slice(0, 6)
                             .map((pb) => (
-                              <li key={pb.playbook_id} className="text-[12.5px] text-ink-muted">
+                              <li key={pb.playbook_id} className="text-13 text-ink-muted">
                                 <span className="font-medium text-ink">{pb.name}</span>
                                 {pb.missing_roles.length > 1
                                   ? ` — also needs ${roleWords(pb.missing_roles.filter((r) => r !== bestUpload?.role))}`
@@ -1115,14 +1419,14 @@ export function DraftPanel({
                             ))}
                         </ul>
                         {captureOnly ? (
-                          <p className="mt-2 text-[12.5px] text-ink-muted">
+                          <p className="mt-2 text-13 text-ink-muted">
                             Filming unlocks more on top of that — ask SPARK to start this week&rsquo;s capture
                             session (Ask Spark, top right).
                           </p>
                         ) : null}
                       </>
                     ) : (
-                      <p className="mt-1 text-[12.5px] text-ink-muted">
+                      <p className="mt-1 text-13 text-ink-muted">
                         {captureOnly
                           ? "Those formats need filming first — ask SPARK to start this week's capture session " +
                             '(Ask Spark, top right), or add existing photos/screenshots in the Assets Library to ' +
@@ -1139,7 +1443,7 @@ export function DraftPanel({
                         key={pb.playbook_id}
                         type="button"
                         onClick={() => setSelectedPlaybookId(pb.playbook_id)}
-                        className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                        className={`rounded-full border px-3 py-1.5 text-13 ${
                           selectedPlaybookId === pb.playbook_id
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-border text-ink hover:bg-surface-muted'
@@ -1152,12 +1456,13 @@ export function DraftPanel({
                 )}
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
               <Button disabled={!selectedPlaybookId || busy} onClick={() => void createDraft()}>
                 {busy ? 'Generating…' : 'Generate post'}
               </Button>
             </div>
+            </>
           ) : null}
 
           {/* ── Why this post is not moving (PRD §10 / §7.4) ─────────────────
@@ -1177,8 +1482,8 @@ export function DraftPanel({
               its own banner is the more specific thing to read. */}
           {phase === 'editor' && draft && !draft.campaignId && draft.status !== 'published' ? (
             <div className="rounded-lg border border-warn/40 bg-warn/10 p-3.5">
-              <p className="text-[13px] font-medium text-ink">This post is not part of a campaign</p>
-              <p className="mt-1 text-[12.5px] text-ink-muted">
+              <p className="text-13 font-medium text-ink">This post is not part of a campaign</p>
+              <p className="mt-1 text-13 text-ink-muted">
                 It will wait for your approval rather than going out on its own — autonomy is set per
                 campaign, and this post has none. Add it to a campaign from the{' '}
                 <Link
@@ -1214,8 +1519,8 @@ export function DraftPanel({
               in `tools.ts`. */}
           {phase === 'editor' && draft && draft.status === 'published' && draft.via === 'aggregator:stub' ? (
             <div className="mb-1 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3">
-              <p className="text-[13px] font-medium text-ink">Recorded, but not published anywhere</p>
-              <p className="mt-1 text-[12.5px] text-ink-muted">
+              <p className="text-13 font-medium text-ink">Recorded, but not published anywhere</p>
+              <p className="mt-1 text-13 text-ink-muted">
                 No publishing account is configured, so this went to the built-in stub. Everything up to
                 the moment of sending ran for real — guardrails, approval, scheduling, the receipt — and
                 nothing reached{' '}
@@ -1227,7 +1532,7 @@ export function DraftPanel({
 
           {phase === 'editor' && draft && draft.status === 'published' && draft.via !== 'aggregator:stub' ? (
             <div className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
-              <p className="text-[13px] text-ink">
+              <p className="text-13 text-ink">
                 Live on <span className="font-medium capitalize">{draft.platform?.replace('_', ' ')}</span>
                 {draft.via ? <span className="text-ink-muted"> via {draft.via}</span> : null}
                 {draft.url ? (
@@ -1240,7 +1545,7 @@ export function DraftPanel({
                 ) : null}
               </p>
               <div className="flex items-center gap-2">
-                {rollbackError ? <p className="text-[12px] text-destructive">{rollbackError}</p> : null}
+                {rollbackError ? <p className="text-12 text-destructive">{rollbackError}</p> : null}
                 <Button size="sm" variant="outline" disabled={rollingBack} onClick={() => void rollbackPost()}>
                   {rollingBack ? 'Rolling back…' : 'Roll back'}
                 </Button>
@@ -1250,7 +1555,7 @@ export function DraftPanel({
 
           {phase === 'editor' && draft && draft.status === 'rolled_back' ? (
             <div className="mb-1 rounded-lg border border-border bg-surface-muted px-4 py-3">
-              <p className="text-[13px] text-ink-muted">
+              <p className="text-13 text-ink-muted">
                 Rolled back — no longer live on <span className="capitalize">{draft.platform?.replace('_', ' ')}</span>.
               </p>
             </div>
@@ -1267,12 +1572,12 @@ export function DraftPanel({
               {draft.mediaType === 'video' ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3">
                   <div className="flex flex-wrap items-baseline gap-3">
-                    <p className="text-[13px] font-medium text-ink">Storyboard</p>
-                    <span className="text-[12px] tabular-nums text-ink-muted">
+                    <p className="text-13 font-medium text-ink">Storyboard</p>
+                    <span className="text-12 tabular-nums text-ink-muted">
                       {clock(sceneTotal ?? localTotal)} total
                     </span>
                     {draft.durationBand ? (
-                      <span className="text-[12px] text-ink-muted">
+                      <span className="text-12 text-ink-muted">
                         {outsideBand ? (
                           <span className="text-destructive">
                             outside this format&rsquo;s {draft.durationBand[0]}&ndash;{draft.durationBand[1]}s
@@ -1302,7 +1607,7 @@ export function DraftPanel({
                         if (chosen) void applyTemplate(chosen);
                         e.target.value = '';
                       }}
-                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-[13px] text-ink disabled:opacity-50"
+                      className="h-8 max-w-[15rem] rounded border border-border bg-input px-2 text-13 text-ink disabled:opacity-50"
                       aria-label="Add a scene from a brand preset"
                     >
                       <option value="">Add from a brand preset…</option>
@@ -1318,97 +1623,37 @@ export function DraftPanel({
                 </div>
               ) : null}
 
-              <ul className="grid grid-cols-1 gap-3">
-                {draft.beats.map((beat, i) => (
-                  <BeatRow
-                    // `BeatRow`'s own textarea state initializes once from
-                    // `beat` on mount and never re-syncs on a prop change —
-                    // React doesn't re-run a `useState` initializer. A key
-                    // that changes whenever the beat's *generated content*
-                    // changes (not on every keystroke, since typing never
-                    // touches `beat` until Save/regenerate) forces a remount
-                    // exactly when the textarea needs to pick up the fresh
-                    // value — found live: applying a `draft.variants` take
-                    // updated the draft and the backend correctly but left
-                    // the visible textarea showing the old copy, which a
-                    // stray "Save" click would have silently reverted.
-                    key={`${beat.beatId}:${beat.kind}:${'url' in beat ? beat.url : ''}:${beat.kind === 'text' ? beat.text : ''}`}
-                    beat={beat}
-                    mediaType={draft.mediaType}
-                    busy={busyBeatId === beat.beatId}
-                    error={beatErrors[beat.beatId] || undefined}
-                    index={i}
-                    startSec={startOf(i)}
-                    timed={draft.mediaType === 'video'}
-                    isFirst={i === 0}
-                    isLast={i === draft.beats.length - 1}
-                    onRetime={(id, seconds) => void runSceneTool('content.scene.retime', { beatId: id, durationSec: seconds }, id)}
-                    onRemove={(id) => void runSceneTool('content.scene.remove', { beatId: id }, id)}
-                    onMove={(id, toIndex) => void runSceneTool('content.scene.reorder', { beatId: id, toIndex }, id)}
-                    onSetVoice={(id, voice) => void runSceneTool('content.scene.voice', { beatId: id, voice }, id)}
-                    templates={(kitTemplates ?? []).filter(
-                      (t) => t.category === 'caption' || t.category === 'lower_third',
-                    )}
-                    onApplyTemplate={(t, id) => void applyTemplate(t, id)}
-                    onGenerateImage={(id, prompt) => void generateImage(id, prompt)}
-                    onGenerateAvatarVideo={(id, script) => void generateAvatarVideo(id, script)}
-                    onGenerateVoiceover={(id, script) => void generateVoiceover(id, script)}
-                    onGenerateBroll={(id, prompt) => void generateBroll(id, prompt)}
-                    onDub={(id, sourceUrl, mediaKind, lang) => void dubBeat(id, sourceUrl, mediaKind, lang)}
-                    onSaveText={(id, text) => void saveBeatText(id, text)}
-                  />
-                ))}
-              </ul>
-
               {/*
-                Add scene. Deliberately does not generate anything: the new scene
-                holds the description as its text, and turning that into footage
-                is one of the generate buttons on the row it creates. Splitting
-                "make a slot" from "fill it" is what keeps the storyboard
-                editable without spending money per keystroke.
+                Video and carousel wear the design's storyboard.
+
+                `DP video` and `DP carousel` draw this list as cards — time
+                range, badges, the voiceover script — where the editor drew a
+                bordered row per beat. The cards are presentation only, so each
+                one opens the same `BeatRow` underneath on demand: nothing this
+                phase could do before it can't do now, it is one click further
+                in. Image and text keep the plain list, because the design draws
+                no storyboard for them.
               */}
               {draft.mediaType === 'video' ? (
-                <div className="rounded-lg border border-dashed border-border p-4">
-                  <p className="text-[13px] font-medium text-ink">Add a scene</p>
-                  <p className="mt-1 text-[12px] text-ink-muted">
-                    Describe what happens in it. Nothing is generated yet &mdash; the new scene arrives as a
-                    written slot you can film, generate, or leave as an overlay.
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <textarea
-                      value={sceneDescription}
-                      onChange={(e) => setSceneDescription(e.target.value)}
-                      disabled={busyBeatId !== null}
-                      rows={2}
-                      placeholder="Cut to the pricing page, text overlay: one hero, one CTA."
-                      className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-[14px] text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring"
-                    />
-                    <div className="flex items-center gap-2">
-                      <label className="text-[11px] text-ink-muted" htmlFor="new-scene-seconds">
-                        Seconds
-                      </label>
-                      <input
-                        id="new-scene-seconds"
-                        value={sceneDuration}
-                        onChange={(e) => setSceneDuration(e.target.value)}
-                        disabled={busyBeatId !== null}
-                        inputMode="decimal"
-                        className="h-9 w-16 rounded border border-border bg-input px-2 text-[13px] tabular-nums text-ink disabled:opacity-50"
-                      />
-                      <Button
-                        size="sm"
-                        disabled={busyBeatId !== null || !sceneDescription.trim()}
-                        onClick={() => void addScene()}
-                      >
-                        {busyBeatId === SCENE_ADD_KEY ? 'Adding\u2026' : 'Add scene'}
-                      </Button>
-                    </div>
-                  </div>
-                  {beatErrors[SCENE_ADD_KEY] ? (
-                    <p className="mt-2 text-[12px] text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
-                  ) : null}
-                </div>
-              ) : null}
+                <VideoStoryboard
+                  beats={draft.beats}
+                  busy={busyBeatId !== null}
+                  onAddScene={() => setAddingScene((v) => !v)}
+                  addSlot={addingScene ? addSceneForm : null}
+                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                />
+              ) : draft.mediaType === 'carousel' ? (
+                <CarouselStoryboard
+                  beats={draft.beats}
+                  busy={busyBeatId !== null}
+                  renderDetail={(beat, i) => beatRowFor(beat, i, false)}
+                />
+              ) : (
+              <ul className="grid grid-cols-1 gap-3">
+                {draft.beats.map((beat, i) => beatRowFor(beat, i, true))}
+              </ul>
+              )}
+
 
               {/*
                 `M10`. One line, naming the beat and what is being asked of which
@@ -1418,7 +1663,7 @@ export function DraftPanel({
               {stage ? (
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
-                  <p className="text-[13px] text-ink">
+                  <p className="text-13 text-ink">
                     {stage.label}{' '}
                     <span className="text-ink-muted">
                       &mdash; {draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}
@@ -1438,8 +1683,8 @@ export function DraftPanel({
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[13px] font-medium text-ink">Not sure this is the best take?</p>
-                    <p className="text-[12px] text-ink-muted">
+                    <p className="text-13 font-medium text-ink">Not sure this is the best take?</p>
+                    <p className="text-12 text-ink-muted">
                       Preview alternative takes on the written copy. Use one, or keep both and let them compete —
                       nothing is saved until you choose.
                     </p>
@@ -1448,13 +1693,13 @@ export function DraftPanel({
                     {variantsLoading ? 'Generating…' : 'See variants'}
                   </Button>
                 </div>
-                {variantsError ? <p className="mt-2 text-[12px] text-destructive">{variantsError}</p> : null}
-                {splitNote ? <p className="mt-2 text-[12px] text-ink-muted">{splitNote}</p> : null}
+                {variantsError ? <p className="mt-2 text-12 text-destructive">{variantsError}</p> : null}
+                {splitNote ? <p className="mt-2 text-12 text-ink-muted">{splitNote}</p> : null}
                 {variants && variants.length > 0 ? (
                   <ul className="mt-3 grid grid-cols-1 gap-2">
                     {variants.map((v, i) => (
                       <li key={i} className="rounded border border-border p-3">
-                        <p className="whitespace-pre-wrap text-[13px] text-ink">
+                        <p className="whitespace-pre-wrap text-13 text-ink">
                           {v.beats
                             .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
                             .map((b) => b.text)
@@ -1489,8 +1734,8 @@ export function DraftPanel({
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[13px] font-medium text-ink">Want this as a different format?</p>
-                    <p className="text-[12px] text-ink-muted">Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
+                    <p className="text-13 font-medium text-ink">Want this as a different format?</p>
+                    <p className="text-12 text-ink-muted">Repurpose this post's topic into another playbook — creates a new draft, this one stays as-is.</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setRepurposeOpen((v) => !v)}>
                     {repurposeOpen ? 'Cancel' : 'Repurpose'}
@@ -1509,7 +1754,7 @@ export function DraftPanel({
                               type="button"
                               disabled={repurposing}
                               onClick={() => void repurposeAs(p.playbookId)}
-                              className="rounded-full px-3 py-1.5 text-[13px] text-ink hover:bg-surface-muted disabled:opacity-50"
+                              className="rounded-full px-3 py-1.5 text-13 text-ink hover:bg-surface-muted disabled:opacity-50"
                             >
                               {repurposing ? 'Working…' : p.name}
                             </button>
@@ -1517,7 +1762,7 @@ export function DraftPanel({
                               type="button"
                               title="Why — is this producible for this brand right now?"
                               onClick={() => void explainPlaybook(p.playbookId)}
-                              className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] text-ink-muted hover:bg-surface-muted hover:text-ink"
+                              className="flex h-5 w-5 items-center justify-center rounded-full text-11 text-ink-muted hover:bg-surface-muted hover:text-ink"
                             >
                               ⓘ
                             </button>
@@ -1527,65 +1772,46 @@ export function DraftPanel({
                   )
                 ) : null}
                 {explainOpenId ? (
-                  <p className="mt-2 text-[12px] text-ink-muted">
+                  <p className="mt-2 text-12 text-ink-muted">
                     {explainLoading === explainOpenId ? 'Working it out…' : explainSummary[explainOpenId]}
                   </p>
                 ) : null}
-                {repurposeError ? <p className="mt-2 text-[12px] text-destructive">{repurposeError}</p> : null}
-                {repurposeResult ? <p className="mt-2 text-[12px] text-success">{repurposeResult}</p> : null}
+                {repurposeError ? <p className="mt-2 text-12 text-destructive">{repurposeError}</p> : null}
+                {repurposeResult ? <p className="mt-2 text-12 text-success">{repurposeResult}</p> : null}
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
             </div>
           ) : null}
 
           {phase === 'preview' && draft ? (
             <div className="grid grid-cols-1 gap-4">
-              <div className="rounded-lg border border-border p-4">
-                <p className="whitespace-pre-wrap text-[14px] text-ink">
-                  {[
-                    draft.beats
-                      .map((b) => (b.kind === 'text' ? b.text : ''))
-                      .filter(Boolean)
-                      .join('\n\n'),
-                    shortUrl,
-                  ]
-                    .filter(Boolean)
-                    .join('\n\n') || '(no written copy)'}
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  {draft.beats
-                    .filter(
-                      (b) =>
-                        b.kind === 'generated_image' ||
-                        b.kind === 'generated_video' ||
-                        b.kind === 'generated_audio' ||
-                        b.kind === 'generated_broll' ||
-                        b.kind === 'dubbed_media',
-                    )
-                    .map((b) =>
-                      b.kind === 'generated_image' ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={b.beatId} src={b.url} alt={b.prompt} className="max-h-64 rounded object-contain" />
-                      ) : b.kind === 'generated_video' || b.kind === 'generated_broll' ? (
-                        <video key={b.beatId} src={b.url} controls className="max-h-64 rounded" />
-                      ) : b.kind === 'dubbed_media' ? (
-                        b.mediaType === 'video' ? (
-                          <video key={b.beatId} src={b.url} controls className="max-h-64 rounded" />
-                        ) : (
-                          <audio key={b.beatId} src={b.url} controls className="w-full" />
-                        )
-                      ) : (
-                        <audio key={b.beatId} src={b.url} controls className="w-full" />
-                      ),
-                    )}
-                </div>
-              </div>
+              {/*
+                The post as it will appear — the DP prevText design.
+
+                Was a bordered box holding the caption and whichever beats had
+                a media *kind*, which for an auto-illustrated post is none of
+                them. It also never showed the composed file, because the panel
+                only held renders that came back from a compose.render call it
+                had just made — so the thing this phase exists to show was the
+                one thing missing from it.
+              */}
+              <PostPreview
+                draft={draft}
+                caption={caption(draft, shortUrl)}
+                {...(focus?.brandName ? { brandName: focus.brandName } : {})}
+                platforms={draft.platform ? [draft.platform] : []}
+                {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
+                onPublish={() => void publishNow()}
+                onSaveDraft={onClose}
+                busy={busy}
+                {...(renderError ? { error: renderError } : {})}
+              />
 
               {draft.mediaType !== 'text' ? (
                 <div>
                   <div className="flex items-center justify-between">
-                    <p className="text-[13px] font-medium text-ink-muted">
+                    <p className="text-13 font-medium text-ink-muted">
                       {draft.mediaType === 'video' ? 'Composed video' : draft.mediaType === 'carousel' ? 'Carousel slides' : 'Composed image'}
                     </p>
                     <div className="flex gap-2">
@@ -1618,11 +1844,11 @@ export function DraftPanel({
                       ) : null}
                     </div>
                   </div>
-                  {staticRenderError ? <p className="mt-1 text-[12px] text-destructive">{staticRenderError}</p> : null}
+                  {staticRenderError ? <p className="mt-1 text-12 text-destructive">{staticRenderError}</p> : null}
 
                   {fanoutOpen ? (
                     <div className="mt-2 rounded-lg border border-border p-3">
-                      <label className="text-[12px] font-medium text-ink-muted" htmlFor="dp-brand-template-id">
+                      <label className="text-12 font-medium text-ink-muted" htmlFor="dp-brand-template-id">
                         Canva Brand Template ID
                       </label>
                       <input
@@ -1630,9 +1856,9 @@ export function DraftPanel({
                         value={brandTemplateId}
                         onChange={(e) => setBrandTemplateId(e.target.value)}
                         placeholder="from the template's Canva URL"
-                        className="mt-1 h-9 w-full rounded border border-border bg-input px-2 text-[13px] text-ink placeholder:text-ink-placeholder"
+                        className="mt-1 h-9 w-full rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder"
                       />
-                      <label className="mt-2 block text-[12px] font-medium text-ink-muted" htmlFor="dp-fanout-data">
+                      <label className="mt-2 block text-12 font-medium text-ink-muted" htmlFor="dp-fanout-data">
                         Field data (JSON — edit the keys to match the template's own field names)
                       </label>
                       <textarea
@@ -1640,16 +1866,16 @@ export function DraftPanel({
                         value={fanoutData}
                         onChange={(e) => setFanoutData(e.target.value)}
                         rows={5}
-                        className="mt-1 w-full resize-y rounded border border-border bg-input px-2 py-1.5 font-mono text-[12px] text-ink"
+                        className="mt-1 w-full resize-y rounded border border-border bg-input px-2 py-1.5 font-mono text-12 text-ink"
                       />
                       <Button size="sm" className="mt-2" disabled={fanoutBusy || !brandTemplateId.trim()} onClick={() => void fanout()}>
                         {fanoutBusy ? 'Fanning out…' : 'Fan out'}
                       </Button>
-                      {fanoutError ? <p className="mt-1 text-[12px] text-destructive">{fanoutError}</p> : null}
+                      {fanoutError ? <p className="mt-1 text-12 text-destructive">{fanoutError}</p> : null}
                       {fanoutResult ? (
                         <div className="mt-2">
                           {fanoutResult.editUrl ? (
-                            <a href={fanoutResult.editUrl} target="_blank" rel="noreferrer" className="text-[12px] text-brand-purple underline">
+                            <a href={fanoutResult.editUrl} target="_blank" rel="noreferrer" className="text-12 text-brand-purple underline">
                               Edit in Canva
                             </a>
                           ) : null}
@@ -1663,35 +1889,46 @@ export function DraftPanel({
                       ) : null}
                     </div>
                   ) : null}
+                  {/*
+                    The other aspects, not the one above.
+
+                    `compose.render` writes a file per aspect ratio and the
+                    preview card already plays the first — repeating it here
+                    made the same 53-second video appear twice on one screen.
+                    What is worth showing is the 1:1 beside the 9:16, which is
+                    the actual reason there is more than one file.
+                  */}
                   {renders ? (
-                    <div className="mt-2 grid grid-cols-1 gap-2">
-                      {renders.map((r, i) =>
-                        draft.mediaType === 'video' ? (
-                          <video key={`${r.aspect}-${i}`} src={r.url} controls className="max-h-64 rounded" />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img key={`${r.aspect}-${i}`} src={r.url} alt={`${r.aspect} render`} className="max-h-64 rounded object-contain" />
-                        ),
-                      )}
-                    </div>
+                    renders.length > 1 ? (
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        {renders.slice(1).map((r, i) =>
+                          draft.mediaType === 'video' ? (
+                            <video key={`${r.aspect}-${i}`} src={r.url} controls className="max-h-64 rounded" />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={`${r.aspect}-${i}`} src={r.url} alt={`${r.aspect} render`} className="max-h-64 rounded object-contain" />
+                          ),
+                        )}
+                      </div>
+                    ) : null
                   ) : (
-                    <p className="mt-1 text-[12px] text-ink-muted">
+                    <p className="mt-1 text-12 text-ink-muted">
                       Not rendered yet — publishing before rendering sends the raw generated clips, not one assembled {draft.mediaType}.
                     </p>
                   )}
-                  {renderError ? <p className="mt-1 text-[12px] text-destructive">{renderError}</p> : null}
+                  {renderError ? <p className="mt-1 text-12 text-destructive">{renderError}</p> : null}
                 </div>
               ) : null}
 
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Add a tracked link</p>
+                <p className="text-13 font-medium text-ink-muted">Add a tracked link</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <input
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://your-site.com/offer"
                     disabled={shortening || !!shortUrl}
-                    className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                    className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                   />
                   {shortUrl ? (
                     <Button size="sm" variant="outline" onClick={() => { setShortUrl(null); setLinkUrl(''); }}>
@@ -1703,19 +1940,19 @@ export function DraftPanel({
                     </Button>
                   )}
                 </div>
-                {shortUrl ? <p className="mt-1 text-[12px] text-success">Added {shortUrl} to the caption above.</p> : null}
-                {linkError ? <p className="mt-1 text-[12px] text-destructive">{linkError}</p> : null}
+                {shortUrl ? <p className="mt-1 text-12 text-success">Added {shortUrl} to the caption above.</p> : null}
+                {linkError ? <p className="mt-1 text-12 text-destructive">{linkError}</p> : null}
               </div>
 
               <div>
-                <p className="text-[13px] font-medium text-ink-muted">Publish to</p>
+                <p className="text-13 font-medium text-ink-muted">Publish to</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {PLATFORMS.map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPlatform(p)}
-                      className={`rounded-full border px-3 py-1.5 text-[13px] capitalize ${
+                      className={`rounded-full border px-3 py-1.5 text-13 capitalize ${
                         platform === p ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
                       }`}
                     >
@@ -1725,7 +1962,7 @@ export function DraftPanel({
                 </div>
               </div>
 
-              {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+              {error ? <p className="text-13 text-destructive">{error}</p> : null}
             </div>
           ) : null}
         </div>
@@ -1751,8 +1988,9 @@ export function DraftPanel({
             )}
           </footer>
         ) : null}
-      </div>
-    </div>
+      </>
+      )}
+    </DraftDrawer>
   );
 }
 
@@ -1790,20 +2028,20 @@ function StallNotice({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-ink">
+          <p className="text-13 font-medium text-ink">
             {blocked ? 'This post stopped and will not retry' : 'Waiting for approval'}
           </p>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <p className="mt-1 text-13 text-ink-muted">
             {draft.blockedReason ?? (blocked ? 'No reason was recorded.' : 'Someone has to approve it in the Review queue.')}
           </p>
 
           {attempts > 0 ? (
-            <p className="mt-1.5 text-[12px] text-ink-muted">
+            <p className="mt-1.5 text-12 text-ink-muted">
               Tried {attempts} {attempts === 1 ? 'time' : 'times'}
               {draft.lastPublishError ? (
                 <>
                   {' \u00b7 last error: '}
-                  <span className="font-mono text-[11px] text-ink">{draft.lastPublishError}</span>
+                  <span className="font-mono text-11 text-ink">{draft.lastPublishError}</span>
                 </>
               ) : null}
             </p>
@@ -1812,7 +2050,7 @@ function StallNotice({
 
         {blocked ? (
           <div className="flex shrink-0 items-center gap-2">
-            {error ? <p className="text-[12px] text-destructive">{error}</p> : null}
+            {error ? <p className="text-12 text-destructive">{error}</p> : null}
             <Button size="sm" variant="outline" disabled={rescheduling} onClick={onReschedule}>
               {rescheduling ? 'Rescheduling\u2026' : 'Try again tomorrow'}
             </Button>
@@ -1841,4 +2079,28 @@ function roleWords(roles: readonly string[]): string {
 /** "a brand kit", "an audio clip" — the article the role's own words need. */
 function aOrAn(words: string): string {
   return `${/^[aeiou]/i.test(words) ? 'an' : 'a'} ${words}`;
+}
+
+/**
+ * The concept card's words — what the draft actually says.
+ *
+ * `DP image` shows a written concept above the editable prompt. The product has
+ * no separate "concept" field; what it has is the beats `content.draft` wrote,
+ * and their text *is* the concept. Joining the written ones reads as the brief
+ * the card is asking for, and needs no second tool to produce it.
+ */
+function summariseBeats(beats: ResolvedBeat[]): string | undefined {
+  const words = beats
+    .map((b) =>
+      b.kind === 'text'
+        ? b.text
+        : b.kind === 'generated_image' || b.kind === 'generated_broll'
+          ? b.prompt
+          : 'script' in b
+            ? b.script
+            : '',
+    )
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return words.length > 0 ? words.join(' ') : undefined;
 }

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { platformLabel } from '@/lib/platforms';
+import { CredentialConnectModal } from './CredentialConnectModal';
 import { PublishHealthPanel } from './PublishHealthPanel';
 
 /**
@@ -32,7 +34,17 @@ interface Platform {
   platform: string;
   connected: boolean;
   accountLabel?: string;
+  accountAvatarUrl?: string;
   supported: boolean;
+  /**
+   * Set when this tile posts through another platform's connection — Instagram
+   * Stories through Instagram, Facebook through the Page behind it. There is no
+   * separate account to connect and no developer app to register, so the tile
+   * names its source instead of offering a button that always errored.
+   */
+  connectedVia?: string;
+  /** See `PublishHealthPanel`'s copy of this — `credentials` opens a form, not a popup. */
+  connectMethod: 'oauth' | 'credentials' | 'derived';
 }
 
 const TINT: Record<string, string> = {
@@ -52,6 +64,32 @@ const TINT: Record<string, string> = {
   bluesky: '#0085FF',
 };
 
+/**
+ * The connected account's own picture, falling back to the platform mark.
+ *
+ * A fallback and not a preference: several providers return no avatar, and the
+ * ones that do sometimes hand back a signed URL that stops resolving weeks
+ * later. `onError` swaps back to the mark rather than leaving a broken image,
+ * which is the difference between a cosmetic gap and a screen that looks broken.
+ */
+function Avatar({ platform, src, size = 45 }: { platform: string; src?: string; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <Mark platform={platform} size={size} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="shrink-0 rounded-[12px] object-cover"
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
 function Mark({ platform, size = 45 }: { platform: string; size?: number }) {
   const letter = platformLabel(platform).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase() || '?';
   return (
@@ -66,8 +104,18 @@ function Mark({ platform, size = 45 }: { platform: string; size?: number }) {
 }
 
 export function AccountsSection() {
+  /*
+   * `integration.connect` takes the brand in its *input*, not off the request:
+   * `ctx.genomeId` comes from the `x-genome-id` header the proxy forwards, and
+   * the tool's schema is `{ genomeId, provider }`. This screen used to send
+   * `{ platform }` — neither field — so every Connect click failed Zod
+   * validation in `invoke.ts` before reaching the handler, and the button
+   * reported an error instead of opening the consent screen.
+   */
+  const { genome } = useSelectedGenome();
   const [platforms, setPlatforms] = useState<Platform[] | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -92,9 +140,27 @@ export function AccountsSection() {
   }, [load]);
 
   async function connect(platform: string) {
+    if (!genome) {
+      setError('Select a brand before connecting an account.');
+      return;
+    }
+    /*
+     * Bluesky and anything else that authenticates with a handle and an app
+     * password. `integration.connect` has no authorize URL to give for these and
+     * refuses — which is what "bluesky isn't configured for native publishing
+     * yet" was.
+     */
+    if ((platforms ?? []).find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setError(null);
+      setCredentialFor(platform);
+      return;
+    }
     setConnecting(platform);
     setError(null);
-    const res = await invoke<{ authorizeUrl: string }>('integration.connect', { platform });
+    const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
+      genomeId: genome.genomeId,
+      provider: platform,
+    });
     setConnecting(null);
     if (res.status !== 'succeeded') {
       setError(
@@ -130,12 +196,12 @@ export function AccountsSection() {
                 className="flex h-[68px] w-[221px] items-center gap-[12px] rounded-[10px] bg-white px-[11px]"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}
               >
-                <Mark platform={p.platform} size={47} />
+                <Avatar platform={p.platform} src={p.accountAvatarUrl} size={47} />
                 <span className="min-w-0">
                   <span className="block truncate text-16 font-semibold text-black">
                     {p.accountLabel ?? platformLabel(p.platform)}
                   </span>
-                  <span className="mt-[3px] flex items-center gap-[6px] text-[13px]" style={{ color: 'var(--ss-green-700)' }}>
+                  <span className="mt-[3px] flex items-center gap-[6px] text-13" style={{ color: 'var(--ss-green-700)' }}>
                     <span aria-hidden className="block h-[7px] w-[7px] rounded-full" style={{ background: 'var(--ss-set-online)' }} />
                     Connected
                   </span>
@@ -154,9 +220,15 @@ export function AccountsSection() {
             <li key={p.platform}>
               <button
                 type="button"
-                onClick={() => (p.connected ? undefined : void connect(p.platform))}
-                disabled={p.connected}
-                aria-label={p.connected ? `${platformLabel(p.platform)} is connected` : `Connect ${platformLabel(p.platform)}`}
+                onClick={() => (p.connected || p.connectedVia ? undefined : void connect(p.platform))}
+                disabled={p.connected || Boolean(p.connectedVia)}
+                aria-label={
+                  p.connected
+                    ? `${platformLabel(p.platform)} is connected`
+                    : p.connectedVia
+                      ? `${platformLabel(p.platform)} posts through ${platformLabel(p.connectedVia)}`
+                      : `Connect ${platformLabel(p.platform)}`
+                }
                 className="flex h-[103px] w-[130px] flex-col items-center justify-center gap-[9px] rounded-[10.529px] bg-white transition-shadow disabled:cursor-default"
                 style={{
                   boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)',
@@ -164,20 +236,36 @@ export function AccountsSection() {
                 }}
               >
                 <Mark platform={p.platform} />
-                <span className="max-w-full truncate px-[6px] text-center text-[14.741px] font-semibold text-black">
+                <span className="max-w-full truncate px-[6px] text-center text-15 font-semibold text-black">
                   {platformLabel(p.platform)}
                 </span>
-                {!p.connected ? (
-                  <span className="text-[11.5px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
-                    {connecting === p.platform ? 'Opening…' : 'Connect'}
+                {p.connected ? null : (
+                  <span className="max-w-full truncate px-[4px] text-12 font-medium" style={{ color: 'rgb(131,131,131)' }}>
+                    {p.connectedVia
+                      ? `via ${platformLabel(p.connectedVia)}`
+                      : connecting === p.platform
+                        ? 'Opening…'
+                        : 'Connect'}
                   </span>
-                ) : null}
+                )}
               </button>
             </li>
           ))}
         </ul>
 
         {error ? <p className="mt-[16px] text-16 text-destructive">{error}</p> : null}
+
+        {credentialFor && genome ? (
+          <CredentialConnectModal
+            platform={credentialFor}
+            genomeId={genome.genomeId}
+            onClose={() => setCredentialFor(null)}
+            onConnected={() => {
+              setCredentialFor(null);
+              void load();
+            }}
+          />
+        ) : null}
       </section>
 
       {/* Publishing health is the other half of "is this account working". */}

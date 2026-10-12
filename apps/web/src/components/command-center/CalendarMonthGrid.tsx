@@ -237,7 +237,7 @@ export function CalendarMonthGrid({
                 <path d="M7 1 1 7l6 6" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <span className="flex-1 text-center text-[17px] font-semibold text-ink">
+            <span className="flex-1 text-center text-17 font-semibold text-ink">
               {first.toLocaleDateString('en', { month: 'long', year: 'numeric' })}
             </span>
             <button
@@ -277,7 +277,7 @@ export function CalendarMonthGrid({
             : 'px-7 pb-8 pt-[10px]',
         )}
       >
-      {error ? <p className="pb-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="pb-3 text-13 text-destructive">{error}</p> : null}
 
       {/* 96 and 136 in the design are 16 and 56 below the card's 80px hairline. */}
       <div className="grid grid-cols-7 gap-[8px]">
@@ -287,7 +287,7 @@ export function CalendarMonthGrid({
             className={cn(
               'text-center',
               variant === 'screen'
-                ? 'pb-[12px] text-[17px] font-medium'
+                ? 'pb-[12px] text-17 font-medium'
                 : 'pb-[10px] text-16 font-medium text-ink-muted',
             )}
             /* Sunday is the one weekday the design colours, and the only red on
@@ -371,7 +371,7 @@ export function CalendarMonthGrid({
               >
                 <span
                   className={cn(
-                    'absolute text-[20px] font-medium tabular-nums',
+                    'absolute text-20 font-medium tabular-nums',
                     variant === 'screen' ? 'left-[16px] top-[11px]' : 'left-[14px] top-[9px]',
                   )}
                   style={{
@@ -417,7 +417,7 @@ export function CalendarMonthGrid({
 
                       <span className="absolute left-[16px] top-[52px] flex items-center gap-[8px]">
                         <SparkMark variant="shell" size={26} />
-                        <span className="whitespace-nowrap text-[13.5px] font-medium text-ink">
+                        <span className="whitespace-nowrap text-14 font-medium text-ink">
                           Planned by Agent
                         </span>
                       </span>
@@ -447,7 +447,7 @@ export function CalendarMonthGrid({
                       <span className="absolute left-[16px] top-[176px] flex items-center gap-[6px]">
                         <PlatformIcon platform={post.platform} size={24} />
                         {posts.length > 1 ? (
-                          <span className="text-[13px] font-semibold text-brand-purple">
+                          <span className="text-13 font-semibold text-brand-purple">
                             +{posts.length - 1}
                           </span>
                         ) : null}
@@ -472,16 +472,16 @@ export function CalendarMonthGrid({
                     <div className="flex items-center gap-[6px]">
                       {/* 16px in the design's cells. */}
                       <PlatformIcon platform={post.platform} size={16} />
-                      <span className="truncate text-[12.5px] font-semibold text-ink">
+                      <span className="truncate text-13 font-semibold text-ink">
                         {postKindLabel(post.platform, post.mediaType)}
                       </span>
                       {posts.length > 1 ? (
-                        <span className="shrink-0 text-[11px] font-semibold text-brand-purple">
+                        <span className="shrink-0 text-11 font-semibold text-brand-purple">
                           +{posts.length - 1}
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-[6px] truncate text-[11.5px] font-medium text-ink-muted">
+                    <div className="mt-[6px] truncate text-12 font-medium text-ink-muted">
                       {post.summary === NO_COPY ? 'not written yet' : post.summary}
                     </div>
                   </div>

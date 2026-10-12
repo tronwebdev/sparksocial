@@ -218,3 +218,53 @@ describe('resolveKit — §8.6\'s brand kit', () => {
     expect(resolveKit({ colors: [], logoUrl: 'https://cdn/logo.png' }).logoUrl).toBe('https://cdn/logo.png');
   });
 });
+
+/**
+ * A text beat is the post's copy. The composer drew it at 64px over whatever
+ * backdrop the beat had, which on a video is a caption card and reads
+ * correctly — and on a still is the entire caption printed across the
+ * photograph, the same words the platform shows underneath it.
+ */
+describe('zipTimeline — whose words go on the picture', () => {
+  const playbookBeats = [{ id: 'copy', duration_sec: 5 }];
+  const withPicture = [
+    {
+      kind: 'text' as const,
+      beatId: 'copy',
+      text: 'At Harbour Lane the dough starts at 4am.',
+      durationSec: 5,
+      backdrop: { kind: 'image' as const, urls: ['https://cdn/loaf.jpg'] },
+    },
+  ];
+
+  it('keeps the words on a video, where they are the caption', () => {
+    const [timed] = zipTimeline({ resolvedBeats: withPicture, playbookBeats, assetInfo: {}, mediaType: 'video' });
+    expect((timed as { text: string }).text).toBe('At Harbour Lane the dough starts at 4am.');
+  });
+
+  for (const mediaType of ['image', 'carousel'] as const) {
+    it(`does not burn the caption onto a ${mediaType} post`, () => {
+      const [timed] = zipTimeline({ resolvedBeats: withPicture, playbookBeats, assetInfo: {}, mediaType });
+      expect((timed as { text: string }).text).toBe('');
+      // The picture is still the post — only the duplicated words are dropped.
+      expect((timed as { backdrop?: unknown }).backdrop).toBeTruthy();
+    });
+  }
+
+  /**
+   * A still with no picture is a type card, and the words are all it has. The
+   * rule is "do not print the caption over the photograph", not "still posts
+   * have no text".
+   */
+  it('keeps the words on a still that has no picture to put them on', () => {
+    const bare = [{ kind: 'text' as const, beatId: 'copy', text: 'Two slots left.', durationSec: 5 }];
+    const [timed] = zipTimeline({ resolvedBeats: bare, playbookBeats, assetInfo: {}, mediaType: 'image' });
+    expect((timed as { text: string }).text).toBe('Two slots left.');
+  });
+
+  it('carries a beat’s narration through to the renderer', () => {
+    const narrated = [{ ...withPicture[0]!, voiceoverUrl: 'https://cdn/voice.mp3' }];
+    const [timed] = zipTimeline({ resolvedBeats: narrated, playbookBeats, assetInfo: {}, mediaType: 'video' });
+    expect((timed as { voiceoverUrl?: string }).voiceoverUrl).toBe('https://cdn/voice.mp3');
+  });
+});

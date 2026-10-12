@@ -106,10 +106,10 @@ export function AutomationHome({
           style={{ backgroundImage: 'var(--ss-grad-auto-stars)' }}
         />
 
-        <p className="absolute inset-x-0 top-[38px] text-center text-[34px] font-bold text-auto-hero-title">
+        <p className="absolute inset-x-0 top-[38px] text-center text-36 font-bold text-auto-hero-title">
           Automation Recipes
         </p>
-        <p className="absolute inset-x-0 top-[94px] text-center text-[17px] font-normal leading-[1.4] text-white/85">
+        <p className="absolute inset-x-0 top-[94px] text-center text-17 font-normal leading-[1.4] text-white/85">
           Set-and-forget content engines. Recipes generate posts on a schedule
           <br />
           and route them to your queue and calendar.
@@ -127,20 +127,20 @@ export function AutomationHome({
           <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden>
             <path d="M7 1v12M1 7h12" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          <span className="whitespace-nowrap text-[16.5px] font-semibold text-white">Add New Recipe</span>
+          <span className="whitespace-nowrap text-17 font-semibold text-white">Add New Recipe</span>
         </button>
 
         {/* The design's six floating source marks. Decoration, so they go under
             `xl` where the hero's own copy needs the width. */}
         <span aria-hidden className="absolute left-[112px] top-[104px] hidden h-[64px] w-[64px] items-center justify-center rounded-full bg-white/10 xl:flex">
           <span className="relative block h-[40px] w-[34px] rounded-[7px]" style={{ background: '#AFC6E9' }}>
-            <span className="absolute inset-x-0 bottom-[5px] text-center text-[9px] font-extrabold" style={{ color: '#3B5B8C' }}>
+            <span className="absolute inset-x-0 bottom-[5px] text-center text-9 font-extrabold" style={{ color: '#3B5B8C' }}>
               CSV
             </span>
           </span>
         </span>
         <span aria-hidden className="absolute left-[420px] top-[172px] hidden h-[52px] w-[52px] items-center justify-center rounded-[12px] xl:flex" style={{ background: 'linear-gradient(135deg,#21C4C8 0%,#7A5FE0 100%)' }}>
-          <span className="text-[26px] font-bold italic text-white" style={{ fontFamily: 'Georgia, serif' }}>
+          <span className="text-26 font-bold italic text-white" style={{ fontFamily: 'Georgia, serif' }}>
             C
           </span>
         </span>
@@ -181,7 +181,7 @@ export function AutomationHome({
               />
               <path d="M10.9 5.5v6.2M10.9 15.4v.6" stroke="#E6A751" strokeWidth="2.3" strokeLinecap="round" />
             </svg>
-            <p className="min-w-0 flex-1 truncate text-[16.65px] leading-[1.28]">
+            <p className="min-w-0 flex-1 truncate text-17 leading-[1.28]">
               <b className="font-bold text-amber-500" style={{ color: 'var(--ss-amber-500)' }}>
                 Needs Attention:
               </b>
@@ -191,7 +191,7 @@ export function AutomationHome({
               </span>
             </p>
             <button type="button" onClick={onReview} className="flex shrink-0 items-center gap-[12px] transition-opacity hover:opacity-70">
-              <span className="text-[16.65px] text-ink">Review</span>
+              <span className="text-17 text-ink">Review</span>
               <span className="flex h-[22.9px] w-[22.9px] items-center justify-center rounded-full" style={{ boxShadow: 'inset 0 0 0 0.8px #0C0C0C' }}>
                 <svg width="5" height="9" viewBox="0 0 5 9" fill="none" aria-hidden>
                   <path d="m1 1 3 3.5L1 8" stroke="#0C0C0C" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -225,13 +225,13 @@ export function AutomationHome({
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.15)' }}
               >
                 <span aria-hidden className="block h-[8px] w-[8px] rounded-full" style={{ background: 'var(--ss-green-500)' }} />
-                <span className="whitespace-nowrap text-[13.5px] font-semibold text-ink">
+                <span className="whitespace-nowrap text-14 font-semibold text-ink">
                   {loading ? '—' : counts[kind]} active
                 </span>
               </span>
 
-              <p className="absolute left-[24px] top-[102px] whitespace-nowrap text-[22px] font-bold text-ink">{meta.name}</p>
-              <p className="absolute left-[24px] top-[138px] w-[378px] max-w-[calc(100%-48px)] text-[15.5px] font-normal leading-[1.35]" style={{ color: '#5B5B5B' }}>
+              <p className="absolute left-[24px] top-[102px] whitespace-nowrap text-22 font-bold text-ink">{meta.name}</p>
+              <p className="absolute left-[24px] top-[138px] w-[378px] max-w-[calc(100%-48px)] text-16 font-normal leading-[1.35]" style={{ color: '#5B5B5B' }}>
                 {meta.desc}
               </p>
 
@@ -241,7 +241,7 @@ export function AutomationHome({
                 className="absolute left-[24px] top-[192px] flex h-[41px] items-center rounded-[9px] bg-white px-[22px] transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383]"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
               >
-                <span className="text-[15px] font-semibold text-ink">Manage</span>
+                <span className="text-15 font-semibold text-ink">Manage</span>
               </button>
               <button
                 type="button"
@@ -251,7 +251,7 @@ export function AutomationHome({
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
                   <path d="M7 1v12M1 7h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
-                <span className="whitespace-nowrap text-[15px] font-semibold text-ink">Add New</span>
+                <span className="whitespace-nowrap text-15 font-semibold text-ink">Add New</span>
               </button>
             </div>
           );
@@ -262,7 +262,7 @@ export function AutomationHome({
       <div className="mt-[34px] max-w-auto-wide rounded-[20px] bg-white pb-[24px]">
         <div className="flex flex-wrap items-start gap-4 px-[28px] pt-[28px]">
           <div className="min-w-0 flex-1">
-            <p className="text-[22px] font-bold text-ink">Automation output queue</p>
+            <p className="text-22 font-bold text-ink">Automation output queue</p>
             <p className="mt-[10px] text-16 font-normal text-ink-muted">
               All posts generated by recipes — review, edit, or let them ship.
             </p>
@@ -320,9 +320,9 @@ export function AutomationHome({
                 className="flex h-[40px] shrink-0 items-center gap-[9px] rounded-[10px] px-[14px] transition-colors duration-200"
                 style={{ background: tab === i ? 'var(--ss-cyan-200)' : 'transparent' }}
               >
-                <span className="whitespace-nowrap text-[15.5px] font-semibold text-ink">{t.label}</span>
+                <span className="whitespace-nowrap text-16 font-semibold text-ink">{t.label}</span>
                 <span
-                  className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[6px] px-[6px] text-[12.5px] font-bold text-ink"
+                  className="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-[6px] px-[6px] text-13 font-bold text-ink"
                   style={{ background: tab === i ? '#FFFFFF' : 'rgba(131,131,131,0.12)' }}
                 >
                   {tabCount(i)}
@@ -356,7 +356,7 @@ export function AutomationHome({
             1318 card, carried as track widths so a long title cannot push a
             chip out from under its own heading. */}
         <div
-          className="mt-[38px] grid items-center pb-[10px] pl-[28px] pr-[10px] text-[16.5px] font-semibold"
+          className="mt-[38px] grid items-center pb-[10px] pl-[28px] pr-[10px] text-17 font-semibold"
           style={{ gridTemplateColumns: QUEUE_COLUMNS, color: '#5B5B5B', boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}
         >
           <span>Contents</span>
@@ -385,7 +385,7 @@ export function AutomationHome({
                   style={{ gridTemplateColumns: QUEUE_COLUMNS, boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.1)' }}
                 >
                   <div className="min-w-0 pr-[16px]">
-                    <p className="truncate text-[19px] font-semibold leading-[1.28] text-ink" title={row.title}>
+                    <p className="truncate text-19 font-semibold leading-[1.28] text-ink" title={row.title}>
                       {row.title}
                     </p>
                     <span className="mt-[8px] flex items-center gap-[9px]">
@@ -394,7 +394,7 @@ export function AutomationHome({
                         <path d="M2.9 9.9h18.2" stroke="#838383" strokeWidth="1.7" strokeLinecap="round" />
                         <path d="M8.1 1.9v3.8M18.5 1.9v3.8" stroke="#838383" strokeWidth="1.7" strokeLinecap="round" />
                       </svg>
-                      <span className="whitespace-nowrap text-[15.5px] font-medium" style={{ color: '#838383' }}>
+                      <span className="whitespace-nowrap text-16 font-medium" style={{ color: '#838383' }}>
                         {queueStamp(row.scheduledAt ?? row.createdAt)}
                       </span>
                     </span>
@@ -408,10 +408,10 @@ export function AutomationHome({
                       <span aria-hidden className="shrink-0 text-ink">
                         <RecipeGlyph kind={row.kind} size={19} />
                       </span>
-                      <span className="truncate text-[14.5px] font-bold text-ink">{row.recipeName}</span>
+                      <span className="truncate text-15 font-bold text-ink">{row.recipeName}</span>
                       {row.sub ? (
                         <span
-                          className="inline-flex h-[32px] shrink-0 items-center rounded-[8px] bg-white px-[10px] text-[13px] font-semibold text-ink"
+                          className="inline-flex h-[32px] shrink-0 items-center rounded-[8px] bg-white px-[10px] text-13 font-semibold text-ink"
                           style={{ boxShadow: 'inset 0 0 0 0.8px rgba(12,12,12,0.12)' }}
                         >
                           {row.sub}
@@ -431,7 +431,7 @@ export function AutomationHome({
 
                   <span className="pr-[16px]">
                     <span
-                      className="inline-flex h-[40px] items-center gap-[8px] rounded-[9px] px-[15px] text-[14.5px] font-semibold"
+                      className="inline-flex h-[40px] items-center gap-[8px] rounded-[9px] px-[15px] text-15 font-semibold"
                       style={{ background: row.chip.bg, boxShadow: `inset 0 0 0 1.06px ${row.chip.ring}`, color: row.chip.color }}
                     >
                       {row.chip.label}
@@ -483,7 +483,7 @@ export function AutomationHome({
           <span className="text-16 font-medium" style={{ color: '#838383' }}>
             Page {pageCount === 0 ? 0 : page + 1} of {pageCount}
           </span>
-          <span className="text-[14px]" style={{ color: '#9A9A9A' }}>
+          <span className="text-14" style={{ color: '#9A9A9A' }}>
             {visible.length} of {rows?.length ?? 0} shown
           </span>
           <span className="ml-auto flex items-center gap-[8px]">

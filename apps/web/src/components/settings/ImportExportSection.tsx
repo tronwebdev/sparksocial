@@ -120,7 +120,7 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
               type="button"
               onClick={() => void generate()}
               disabled={busy || !genomeId}
-              className="h-[44px] rounded-[9px] bg-ink px-[22px] text-[17.643px] font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
+              className="h-[44px] rounded-[9px] bg-ink px-[22px] text-18 font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
             >
               {busy ? 'Preparing…' : 'Generate export'}
             </button>
@@ -134,7 +134,7 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
               <a
                 download={`${payload.name.replace(/[^\w.-]+/g, '-').toLowerCase() || 'brand'}-genome.json`}
                 href={`data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(payload, null, 2))}`}
-                className="h-[44px] rounded-[9px] bg-white px-[22px] text-[17.643px] font-medium leading-[44px] text-ink transition-colors hover:bg-surface-200"
+                className="h-[44px] rounded-[9px] bg-white px-[22px] text-18 font-medium leading-[44px] text-ink transition-colors hover:bg-surface-200"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
               >
                 Download
@@ -287,7 +287,7 @@ function ImportTab({
             <p className="text-20 font-bold text-ink">
               {file ? file.name : 'Drop a brand export here'}
             </p>
-            <p className="my-[12px] text-[22px] font-bold" style={{ color: 'rgb(131,131,131)' }}>
+            <p className="my-[12px] text-22 font-bold" style={{ color: 'rgb(131,131,131)' }}>
               or
             </p>
             <input
@@ -303,7 +303,7 @@ function ImportTab({
             <button
               type="button"
               onClick={() => input.current?.click()}
-              className="h-[44px] rounded-[9px] bg-white px-[22px] text-[17.643px] font-medium transition-colors hover:bg-surface-200"
+              className="h-[44px] rounded-[9px] bg-white px-[22px] text-18 font-medium transition-colors hover:bg-surface-200"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(131,131,131)' }}
             >
               Browse files
@@ -356,7 +356,7 @@ function ImportTab({
             type="button"
             onClick={() => void run()}
             disabled={busy || (mode === 'import' ? !file && !pick : !pick && !sourceGenomeId)}
-            className="h-[44px] rounded-[9px] bg-ink px-[24px] text-[15.19px] font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
+            className="h-[44px] rounded-[9px] bg-ink px-[24px] text-15 font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
           >
             {busy ? 'Working…' : mode === 'clone' ? 'Clone workspace' : 'Start import'}
           </button>

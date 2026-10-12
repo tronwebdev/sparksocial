@@ -108,10 +108,10 @@ export function TrendResultsRail({
       style={{ boxShadow: '0 24px 60px -40px rgba(12,12,12,0.25)' }}
       aria-live="polite"
     >
-      <p className="px-[26px] pt-[24px] text-[19px] font-bold text-ink">Posts Results</p>
+      <p className="px-[26px] pt-[24px] text-19 font-bold text-ink">Posts Results</p>
       <div className="mt-[20px] h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
-      <p className="px-[34px] pt-[22px] text-center text-[15.5px] font-normal leading-[1.45]" style={{ color: '#5B5B5B' }}>
+      <p className="px-[34px] pt-[22px] text-center text-16 font-normal leading-[1.45]" style={{ color: '#5B5B5B' }}>
         {keywords.length === 0
           ? 'What is trending for this brand right now. Add keywords and this narrows to them.'
           : 'What your query matches in this brand’s ranked feed. Tick one to add its topic to the keywords.'}
@@ -134,14 +134,14 @@ export function TrendResultsRail({
               what tells you to change the keywords rather than wait. */}
           {trends.length === 0 && excluded.length > 0 ? (
             <div className="mt-[18px]">
-              <p className="text-[13px] font-semibold uppercase tracking-[0.06em]" style={{ color: '#9A9A9A' }}>
+              <p className="text-13 font-semibold uppercase tracking-[0.06em]" style={{ color: '#9A9A9A' }}>
                 {excluded.length} passed over
               </p>
               <ul className="mt-[10px] flex flex-col gap-[10px]">
                 {excluded.slice(0, 4).map((t) => (
                   <li key={t.trendId} className="rounded-[12px] px-[14px] py-[10px]" style={{ background: 'rgba(131,131,131,0.07)' }}>
-                    <p className="line-clamp-2 text-[14.5px] font-semibold text-ink">{t.topic}</p>
-                    <p className="mt-[3px] text-[13px]" style={{ color: '#838383' }}>
+                    <p className="line-clamp-2 text-15 font-semibold text-ink">{t.topic}</p>
+                    <p className="mt-[3px] text-13" style={{ color: '#838383' }}>
                       {t.because}
                     </p>
                   </li>
@@ -157,7 +157,7 @@ export function TrendResultsRail({
             return (
               <li key={t.trendId} className="rounded-[16px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
                 {/* The design's 42px metric strip, four cells divided by hairlines. */}
-                <div className="flex h-[42px] items-center text-[13px] text-ink" style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}>
+                <div className="flex h-[42px] items-center text-13 text-ink" style={{ boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}>
                   <span className="flex-1 text-center font-semibold">Vol: {compactVolume(t.metrics.volume)}</span>
                   <span className="h-full w-px" style={{ background: 'rgba(131,131,131,0.15)' }} />
                   <span className="flex-[1.1] text-center font-medium">
@@ -182,7 +182,7 @@ export function TrendResultsRail({
                     <span className="block text-16 font-medium" style={{ color: '#838383' }}>
                       {t.media?.kind === 'video' ? 'Video' : t.media ? 'Image' : 'Topic'}
                     </span>
-                    <span className="mt-[6px] line-clamp-3 block text-[17px] font-bold leading-[1.3] text-ink">{t.topic}</span>
+                    <span className="mt-[6px] line-clamp-3 block text-17 font-bold leading-[1.3] text-ink">{t.topic}</span>
                   </span>
                 </div>
 
@@ -202,7 +202,7 @@ export function TrendResultsRail({
                       </svg>
                     ) : null}
                   </button>
-                  <span className="text-[13.5px]" style={{ color: '#838383' }}>
+                  <span className="text-14" style={{ color: '#838383' }}>
                     {picked ? 'In your keywords' : 'Use this topic'}
                   </span>
                 </div>

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError, assetRoleWordList } from '@sparksocial/shared';
+import { ContentPillar, Explanation, GenerationMode, ToolError, assetRoleWordList } from '@sparksocial/shared';
 import { rankTrends, scoreTrend, type RankedTrend } from './rank.js';
 import { assessSafety } from './safety.js';
 import { suggestRepurpose } from './repurpose.js';
@@ -546,8 +546,8 @@ function adhocTrend(topic: string, tags: string[], language?: string): Trend {
 const RepurposeSuggestionOut = z.object({
   playbookId: z.string(),
   playbookName: z.string(),
-  pillar: z.string(),
-  mode: z.string(),
+  pillar: ContentPillar,
+  mode: GenerationMode,
   intent: z.string(),
   unlockable: z.boolean(),
   missingRoles: z.array(z.string()),

@@ -92,7 +92,7 @@ export function RightsModal({
       label="Rights clearance"
       onClose={onClose}
     >
-      <p className="pt-[46px] text-center text-[26px] font-bold text-ink">Rights clearance</p>
+      <p className="pt-[46px] text-center text-26 font-bold text-ink">Rights clearance</p>
       <p className="mx-auto mt-[10px] max-w-[520px] text-center text-15 font-normal leading-[1.5] text-ink-muted">
         SPARK will not build a post around a file until someone confirms the business is allowed to
         publish it. These are held back until you do.

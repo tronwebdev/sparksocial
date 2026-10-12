@@ -47,8 +47,22 @@ export interface AgentIdentity {
   riskBecause: string;
 }
 
-/** Shown when nobody has named it. Not a name, and deliberately not styled as one. */
+/**
+ * Shown when nobody has named it. Not a name, and deliberately not styled as
+ * one — no bold, no accent colour, nothing that implies somebody chose it.
+ *
+ * Two forms, because this phrase lands in two grammatical positions and a
+ * single one is wrong in the other: "Your agent" heads a card, and
+ * "…assigning this campaign to your agent" sits mid-sentence. The campaign
+ * wizard had its own lowercase literal for the second case, which then
+ * disagreed in case with the value this module hands back once the fetch
+ * lands — the label visibly changed capitalisation on load. Both live here so
+ * there is one place that decides.
+ */
 export const UNNAMED_AGENT = 'Your agent';
+
+/** {@link UNNAMED_AGENT}, for mid-sentence use. */
+export const UNNAMED_AGENT_INLINE = 'your agent';
 
 /**
  * The axes, as words.

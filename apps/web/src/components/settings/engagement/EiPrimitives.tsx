@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 export function EiSectionChip({ children }: { children: ReactNode }) {
   return (
     <span
-      className="inline-flex h-[37px] items-center rounded-[8.786px] px-[15px] text-[14.013px] font-medium leading-[1.28]"
+      className="inline-flex h-[37px] items-center rounded-[8.786px] px-[15px] text-14 font-medium leading-[1.28]"
       style={{ background: 'var(--ss-cyan)', color: 'var(--ss-ink-900)' }}
     >
       {children}

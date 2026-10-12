@@ -22,10 +22,48 @@ export interface ImageClientOptions {
 }
 
 const DEFAULT_MODEL = 'fal-ai/flux/schnell';
+/** A queued image is minutes at worst, not the ten a video can take. */
+const QUEUE_POLL_INTERVAL_MS = 2_000;
+const QUEUE_POLL_ATTEMPTS = 90;
 
 export function createImageClient(opts: ImageClientOptions): ImageClient {
   const model = opts.model ?? DEFAULT_MODEL;
   const doFetch = opts.fetchImpl ?? fetch;
+
+  /**
+   * Poll a queued job to its image.
+   *
+   * Same shape as `video-client.ts`'s loop, and deliberately not shared with
+   * it: that one is written against a video response body and a video's
+   * patience. Two small loops that each say what they wait for beat one
+   * parameterised loop that says neither.
+   */
+  async function awaitQueued(statusUrl: string, responseUrl: string): Promise<string> {
+    const auth = { authorization: `Key ${opts.apiKey}` };
+    for (let attempt = 0; attempt < QUEUE_POLL_ATTEMPTS; attempt += 1) {
+      const status = await doFetch(statusUrl, { headers: auth });
+      if (!status.ok) {
+        throw new ToolError('UPSTREAM_FAILED', `Image generation status check failed (${status.status}).`, {
+          status: status.status,
+        });
+      }
+      const state = (await status.json()) as { status?: string };
+      if (state.status === 'ERROR') {
+        throw new ToolError('UPSTREAM_FAILED', 'Image generation job failed on the vendor side.', { model });
+      }
+      if (state.status === 'COMPLETED') {
+        const result = await doFetch(responseUrl, { headers: auth });
+        const done = (await result.json()) as { images?: Array<{ url?: string }> };
+        const url = done.images?.[0]?.url;
+        if (typeof url !== 'string' || !url) {
+          throw new ToolError('UPSTREAM_FAILED', 'Image generation completed but the response had no image.', { model });
+        }
+        return url;
+      }
+      await new Promise((r) => setTimeout(r, QUEUE_POLL_INTERVAL_MS));
+    }
+    throw new ToolError('UPSTREAM_FAILED', 'Image generation did not complete in time.', { model });
+  }
 
   return {
     async generate({ prompt, aspectRatio }): Promise<{ url: string }> {
@@ -37,7 +75,8 @@ export function createImageClient(opts: ImageClientOptions): ImageClient {
         },
         body: JSON.stringify({
           prompt,
-          image_size: falImageSize(aspectRatio),
+          ...aspectParam(aspectRatio),
+          ...EXTRA,
         }),
       });
 
@@ -49,7 +88,27 @@ export function createImageClient(opts: ImageClientOptions): ImageClient {
         });
       }
 
-      const body = (await response.json()) as { images?: Array<{ url?: string }> };
+      const body = (await response.json()) as {
+        images?: Array<{ url?: string }>;
+        status_url?: string;
+        response_url?: string;
+      };
+
+      /*
+       * A queued answer instead of an image.
+       *
+       * `fal.run` is the synchronous endpoint and the fast distilled models
+       * return the image inline. The heavier ones — the whole reason anybody
+       * changes `FAL_MODEL` — take long enough that fal answers 200 with a
+       * queue handle instead, and this read `images[0].url` off that, found
+       * nothing, and reported "response had no image": a successful submission
+       * presented as a vendor fault. Following the handle is what makes every
+       * model in the catalogue reachable rather than only the fastest ones.
+       */
+      if (!body.images?.[0]?.url && body.status_url && body.response_url) {
+        return { url: await awaitQueued(body.status_url, body.response_url) };
+      }
+
       const url = body.images?.[0]?.url;
 
       if (typeof url !== 'string' || !url) {
@@ -59,6 +118,58 @@ export function createImageClient(opts: ImageClientOptions): ImageClient {
       return { url };
     },
   };
+}
+
+/**
+ * How this model is told what shape to draw.
+ *
+ * `image_size` with named presets is FLUX's parameter, and it was hardcoded —
+ * which is fine until the model changes. Google's models on fal (nano-banana,
+ * gemini-*-image) take `aspect_ratio` with a literal ratio string instead, and
+ * they do not reject `image_size`: they ignore it and fall back to their own
+ * default of 1:1. So pointing `FAL_MODEL` at one of those silently produced a
+ * square image for every playbook, including the 9:16 video thumbnails and the
+ * 4:5 feed stills, with a 200 and no warning anywhere.
+ *
+ * Declared rather than inferred from the model name, for the reason
+ * `video-client.ts` gives about `FAL_VIDEO_DURATIONS`: a table of model names
+ * in here is a second, private copy of fal's catalogue that goes stale the
+ * moment they ship a version.
+ */
+const ASPECT_PARAM = envStr('FAL_IMAGE_ASPECT_PARAM', 'image_size');
+
+/**
+ * Anything else this model wants, as JSON.
+ *
+ * An escape hatch rather than a growing list of optional fields: the models
+ * differ in ways that are not worth a schema here (`output_format`,
+ * `safety_tolerance`, `num_images`), and each one added as a named option is a
+ * field every other model has to ignore. Malformed JSON is treated as empty and
+ * said so, because a silently dropped parameter is the failure this whole file
+ * keeps running into.
+ */
+const EXTRA = parseExtra('FAL_IMAGE_EXTRA_PARAMS');
+
+function aspectParam(aspectRatio: string): Record<string, string> {
+  return ASPECT_PARAM === 'aspect_ratio'
+    ? { aspect_ratio: aspectRatio }
+    : { image_size: falImageSize(aspectRatio) };
+}
+
+export function parseExtra(envName: string): Record<string, unknown> {
+  const raw = envStr(envName, '').trim();
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    console.warn(`[warn] ${envName} is not a JSON object — ignoring it.`, { raw: raw.slice(0, 120) });
+  } catch (e) {
+    console.warn(`[warn] ${envName} is not valid JSON — ignoring it.`, {
+      raw: raw.slice(0, 120),
+      detail: e instanceof Error ? e.message.slice(0, 120) : '',
+    });
+  }
+  return {};
 }
 
 /**

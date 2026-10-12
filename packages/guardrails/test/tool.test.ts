@@ -38,6 +38,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         info: async () => ({}),
         setRights: async () => undefined,
         awaitingRights: async () => [],
+        list: async () => [],
         unfiled: async () => [],
         recordUsage: async () => undefined,
         moveToFolder: async () => undefined,
@@ -164,6 +165,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         save: async () => { throw new Error('oauthConnections.save not stubbed in this test'); },
         remove: async () => {},
         findExpiring: async () => [],
+        findRefreshable: async () => [],
         markExpiryNotified: async () => {},
       },
       knowledge: {
@@ -176,6 +178,22 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setPlan: async () => { throw new Error('orgSettings.setPlan not stubbed in this test'); },
         setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
         setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
+      },
+      leads: {
+        create: async () => { throw new Error('leads.create not stubbed in this test'); },
+        importMany: async () => ({ inserted: [], skippedKeys: [] }),
+        get: async () => undefined,
+        getByDedupeKey: async () => undefined,
+        list: async () => ({ rows: [], total: 0 }),
+        countsByStatus: async () => ({ new: 0, contacted: 0, qualified: 0, won: 0, lost: 0 }),
+        update: async () => { throw new Error('leads.update not stubbed in this test'); },
+      },
+      proposals: {
+        create: async () => { throw new Error('proposals.create not stubbed in this test'); },
+        get: async () => undefined,
+        list: async () => ({ rows: [], total: 0 }),
+        update: async () => { throw new Error('proposals.update not stubbed in this test'); },
+        getByShareToken: async () => undefined,
       },
       brandMembers: {
         set: async () => { throw new Error('brandMembers.set not stubbed in this test'); },

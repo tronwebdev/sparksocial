@@ -17,6 +17,15 @@ const isPublic = createRouteMatcher([
   '/sign-up(.*)',
   '/forgot-password(.*)',
   '/sso-callback(.*)',
+  /*
+    `AG-PROP-03`: the client-facing proposal view. Public because its reader has
+    no account by definition — the 256-bit token in the path is the entire
+    credential, and it expires and is revoked when the proposal is decided
+    (`apps/api/src/public-proposal.ts`). This is the only path here that is
+    public for a reason other than authentication, and it stays exactly this
+    narrow: one page, read-only, no accept.
+  */
+  '/p/(.*)',
 ]);
 
 /**

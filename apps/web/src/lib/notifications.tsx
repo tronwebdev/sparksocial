@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from './tools';
+import { readSelectedGenome } from './selectedGenome';
 
 /**
  * ONE notification system, for the whole app.
@@ -182,6 +183,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const refresh = useCallback(async () => {
     if (!isSignedIn) return;
+    /*
+     * No brand selected, nothing to ask about.
+     *
+     * `human.notifications` is brand-scoped — `requireBrand(ctx.brandId)` — and
+     * the brand comes from the `spark_genome` cookie the proxy forwards. Without
+     * it the tool correctly refuses with INVALID_INPUT, which is an HTTP 400, and
+     * this provider polls every thirty seconds on every page. A new account with
+     * no brands therefore produced a steady stream of red 400s in the console
+     * from the moment it signed in.
+     *
+     * The handling below was already right — the bell shows nothing rather than
+     * an error nobody can act on. It was the asking that was wrong: a question
+     * whose answer cannot be anything but a refusal.
+     */
+    if (!readSelectedGenome(orgId)) {
+      setItems((cur) => cur ?? []);
+      setUnreadCount(0);
+      return;
+    }
     setLoading(true);
     const res = await invoke<{ notifications: AppNotification[]; unreadCount: number }>(
       'human.notifications',
@@ -209,7 +229,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       seen.current.add(row.messageId);
       if (!row.read) announce(row);
     }
-  }, [isSignedIn, announce]);
+  }, [isSignedIn, orgId, announce]);
 
   /* A different org is a different feed — start the baseline again. */
   useEffect(() => {

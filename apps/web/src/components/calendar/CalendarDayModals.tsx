@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import type { ToolOutput } from '@/lib/toolTypes.generated';
 import { cn } from '@/lib/utils';
 import { CalendarModal } from './CalendarModal';
 import type { BoardActions } from './CalendarBoard';
@@ -30,12 +31,18 @@ import type { BoardActions } from './CalendarBoard';
  * have produced a second "accept a recommendation" that drifts from the first.
  */
 
-interface Recommendation {
-  playbookId: string;
-  playbookName?: string;
-  mode?: string;
-  why?: { summary?: string };
-}
+/*
+ * Printed from the tool's own schema rather than described by hand.
+ *
+ * The hand-written version declared `playbookId`/`playbookName`/`why` at the top
+ * level. `calendar.recommend_slot` returns `{ date, create?, move? }` and puts
+ * all three under `create`, so every read here was `undefined`: the panel showed
+ * an empty recommendation, the Preview fell back to its placeholder, and
+ * "Accept & Draft" stayed enabled while passing `undefined` as the playbook id.
+ * `DayActionSheet` — the other reader of this same tool — had the shape right
+ * all along, which is what two hand-written types for one schema buys you.
+ */
+type Recommendation = ToolOutput<'calendar.recommend_slot'>;
 
 const PANEL = 'rounded-2xl bg-white px-[26px] py-[22px]';
 const PANEL_RING = { boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.08)' } as const;
@@ -52,7 +59,7 @@ function prettyDay(day: string): string {
 function Head({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="px-[50px] pt-[44px]">
-      <p className="text-center text-[28px] font-bold leading-[1.2] text-ink">{title}</p>
+      <p className="text-center text-28 font-bold leading-[1.2] text-ink">{title}</p>
       <p className="mt-[14px] text-center text-18 font-normal text-ink-muted">{subtitle}</p>
     </div>
   );
@@ -61,7 +68,7 @@ function Head({ title, subtitle }: { title: string; subtitle: string }) {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="px-[40px] pt-[28px]">
-      <p className="text-[19px] font-semibold text-ink">{label}</p>
+      <p className="text-19 font-semibold text-ink">{label}</p>
       <div className={cn('mt-[14px]', PANEL)} style={PANEL_RING}>
         {children}
       </div>
@@ -84,7 +91,7 @@ function Primary({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="ml-auto flex h-[52px] items-center justify-center rounded-xl bg-ink px-[26px] text-[17px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="ml-auto flex h-[52px] items-center justify-center rounded-xl bg-ink px-[26px] text-17 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {children}
       </button>
@@ -107,9 +114,15 @@ export function AskAgentModal({
 
   const load = useCallback(async () => {
     if (!actions) return;
+    /*
+     * `date`, not `day`. The prop is named `day` and was passed through under
+     * that name, so the input failed validation and the modal rendered 'none'
+     * — a failed read and a day with genuinely nothing to suggest looked
+     * identical, which is why this went unnoticed.
+     */
     const res = await invoke<Recommendation>('calendar.recommend_slot', {
       campaignId: actions.campaignId,
-      day,
+      date: day,
     });
     setRec(res.status === 'succeeded' ? res.output : 'none');
   }, [actions, day]);
@@ -118,7 +131,10 @@ export function AskAgentModal({
     void load();
   }, [load]);
 
-  const ready = rec !== null && rec !== 'none' ? rec : null;
+  // `create` is what this modal drafts. The tool may instead answer with a
+  // `move` (a post better placed here), which the day action sheet handles and
+  // this panel has no affordance for — so no `create` reads as nothing to draft.
+  const ready = rec !== null && rec !== 'none' ? (rec.create ?? null) : null;
 
   return (
     <CalendarModal kind="ask" label={`Ask the agent to plan ${prettyDay(day)}`} onClose={onClose}>
@@ -126,17 +142,17 @@ export function AskAgentModal({
 
       <Section label="Agent Recommendation">
         {rec === null ? (
-          <p className="text-[19px] font-medium text-ink-muted">Working out what fits this day…</p>
+          <p className="text-19 font-medium text-ink-muted">Working out what fits this day…</p>
         ) : rec === 'none' ? (
-          <p className="text-[19px] font-medium text-ink-muted">
+          <p className="text-19 font-medium text-ink-muted">
             {/* A recommendation nobody can produce is a real state — the campaign
                 may have nothing left that fits this day — so it says that
                 rather than showing an empty panel. */}
             Nothing in this campaign fits this day yet.
           </p>
         ) : (
-          <p className="text-[19px] font-medium text-ink">
-            {ready?.playbookName ?? ready?.playbookId}
+          <p className="text-19 font-medium text-ink">
+            {ready ? (ready.playbookName ?? ready.playbookId) : 'Nothing in this campaign fits this day yet.'}
           </p>
         )}
       </Section>
@@ -149,7 +165,7 @@ export function AskAgentModal({
         reasoning it does have, and the four invented lines are left out.
       */}
       <Section label="Preview">
-        <p className="text-[19px] font-medium leading-[1.45] text-ink-muted">
+        <p className="text-19 font-medium leading-[1.45] text-ink-muted">
           {ready?.why?.summary ??
             'The hook, CTA and caption are written when this is accepted — the agent picks the format first.'}
         </p>
@@ -321,7 +337,7 @@ export function MoveExistingModal({
       <Head title="Move existing post" subtitle={`Reschedule another post to ${prettyDay(day)}`} />
 
       <Section label="Agent recommendation">
-        <p className="text-[19px] font-medium leading-[1.45] text-ink-muted">
+        <p className="text-19 font-medium leading-[1.45] text-ink-muted">
           {/* The design asserts the agent suggests which post to move. Nothing
               ranks a move — `calendar.recommend_slot` recommends a *playbook*
               for an empty day — so this says what the list below is instead of
@@ -354,13 +370,13 @@ export function MoveExistingModal({
                   {/* 74x74 well at 24,22 in the design. */}
                   <span
                     aria-hidden
-                    className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-xl text-[11px] text-ink-muted"
+                    className="flex h-[74px] w-[74px] shrink-0 items-center justify-center rounded-xl text-11 text-ink-muted"
                     style={{ background: 'rgba(131,131,131,0.1)' }}
                   >
                     no preview
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[19px] font-medium text-ink">{it.summary}</span>
+                    <span className="block truncate text-19 font-medium text-ink">{it.summary}</span>
                     {it.scheduledAt ? (
                       <span className="mt-[6px] block text-16 text-ink-muted">
                         Currently {new Date(it.scheduledAt).toLocaleDateString('en', {

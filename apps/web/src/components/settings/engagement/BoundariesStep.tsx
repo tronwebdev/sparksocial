@@ -60,7 +60,7 @@ export function BoundariesStep({
           })}
         </ul>
         {hardRules.length === 0 && (
-          <p className="mt-2 text-[12px] text-ink-muted">
+          <p className="mt-2 text-12 text-ink-muted">
             Nothing selected. Replies stay inside your guardrails and brand voice, which is where every
             brand starts.
           </p>
@@ -90,7 +90,7 @@ export function BoundariesStep({
         <label className="block text-18 font-medium" style={{ color: 'rgb(131,131,131)' }} htmlFor="ei-escalation">
           Sensitive keywords
         </label>
-        <p className="mt-0.5 text-[12px] text-ink-muted">
+        <p className="mt-0.5 text-12 text-ink-muted">
           A message containing any of these is always escalated, and SPARK will not offer a reply for it
           &mdash; no matter how routine it looked. Comma separated.
         </p>
@@ -106,7 +106,7 @@ export function BoundariesStep({
             {words.map((word) => (
               <span
                 key={word}
-                className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-[12px] text-ink"
+                className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-12 text-ink"
               >
                 {word}
               </span>

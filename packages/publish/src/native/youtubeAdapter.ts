@@ -52,9 +52,17 @@ export function createYouTubeAdapter(opts: YouTubeAdapterOptions = {}): Platform
 
   return {
     name,
-    supports: (platform) => platform === 'youtube_shorts',
+    /*
+     * Both, because they are one channel and one token. "Shorts" is a duration
+     * and an aspect ratio, not a destination — YouTube decides which a video is
+     * from the file, not from the upload endpoint, and there is no separate
+     * Shorts API to call. The only thing that differs here is the watch URL the
+     * receipt reports back.
+     */
+    supports: (platform) => platform === 'youtube_shorts' || platform === 'youtube_long',
 
     async publish(req: PublishRequest): Promise<PublishReceipt> {
+      const platform = req.platform === 'youtube_long' ? 'youtube_long' : 'youtube_shorts';
       if (!req.accessToken) {
         throw new PublishError('youtube_shorts', 'No connected YouTube channel for this brand — connect one in Settings first.', false);
       }
@@ -114,7 +122,14 @@ export function createYouTubeAdapter(opts: YouTubeAdapterOptions = {}): Platform
         throw classify(uploadRes.status, `YouTube video upload failed (${uploadRes.status}).`);
       }
 
-      return { platform: 'youtube_shorts', externalId: body.id, url: `https://youtube.com/shorts/${body.id}`, via: name, publishedAt: new Date() };
+      /*
+       * `/shorts/{id}` only resolves for a video YouTube actually classified as
+       * a Short. Handing that URL back for a long-form upload would produce a
+       * receipt whose link 404s, so each reports the form it was uploaded as —
+       * and `/watch?v=` is correct for either.
+       */
+      const url = platform === 'youtube_long' ? `https://youtube.com/watch?v=${body.id}` : `https://youtube.com/shorts/${body.id}`;
+      return { platform, externalId: body.id, url, via: name, publishedAt: new Date() };
     },
 
     async delete(externalId: string, _platform, accessToken?: string): Promise<void> {

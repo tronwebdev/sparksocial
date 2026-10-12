@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
+import { ensureBrandKitAsset } from './brandKitAsset.js';
 
 /**
  * `brand.logo.generate` — the Brand Kits screen's "Generate logo".
@@ -52,7 +53,7 @@ export const BrandLogoGenerateOutput = z.object({
   why: Explanation,
 });
 
-export function makeBrandLogoGenerate(images: LogoImageClient) {
+export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: string) => Promise<number[]>) {
   return defineTool({
     name: 'brand.logo.generate',
     version: 1,
@@ -113,6 +114,31 @@ export function makeBrandLogoGenerate(images: LogoImageClient) {
         orgId: ctx.orgId,
         patch: { logoUrl: url },
       });
+
+      /*
+       * The logo is also the brand's `brand_kit` asset — see
+       * `ensureBrandKitAsset`. Without this a brand that had just pressed
+       * "Generate a placeholder" still resolved nothing, because seven
+       * playbooks gate on that role existing and a governance field is not an
+       * asset.
+       */
+      if (ctx.genomeId) {
+        // Never lose a generated logo to a failed bookkeeping write. The image
+        // cost a vendor call and is already saved on the brand; the asset row
+        // is the cheap half and can be retried by setting the logo again.
+        await ensureBrandKitAsset(ctx, {
+          ...(embed ? { embed } : {}),
+          genomeId: ctx.genomeId,
+          url,
+          businessName: name,
+          source: 'brand.logo.generate',
+        }).catch((err: unknown) => {
+          ctx.logger.warn('brand kit asset not registered', {
+            brandId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
 
       const why: Explanation = {
         summary: `Generated a placeholder mark for ${name}. Replace it with a real logo when you have one.`,

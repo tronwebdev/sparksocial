@@ -102,7 +102,7 @@ export function LaunchModal({
           </span>
         </span>
 
-        <p className="px-[40px] pt-[44px] text-center text-[27px] font-bold leading-[1.35] text-ink">
+        <p className="px-[40px] pt-[44px] text-center text-28 font-bold leading-[1.35] text-ink">
           🎉 Congratulations On Successfully
           <br />
           Launching Your Campaign!
@@ -120,10 +120,10 @@ export function LaunchModal({
             <span className="whitespace-nowrap text-14 font-semibold text-ink">{meta.name}</span>
           </span>
 
-          <p className="truncate text-[22px] font-bold text-ink" title={draft.name}>
+          <p className="truncate text-22 font-bold text-ink" title={draft.name}>
             {draft.name}
           </p>
-          <p className="mt-[16px] text-[15.5px] font-medium text-ink">
+          <p className="mt-[16px] text-16 font-medium text-ink">
             <b className="font-bold">Runs:</b>{' '}
             {draft.cadence === 'regular'
               ? `every ${draft.everyN} ${draft.everyUnit === 'days' ? 'day' : 'hour'}${draft.everyN === 1 ? '' : 's'}`
@@ -131,11 +131,11 @@ export function LaunchModal({
             {draft.startToday ? ' · starting now' : ''}
           </p>
           <div className="mt-[14px] flex flex-wrap items-center gap-[10px]">
-            <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-[13.5px] font-semibold" style={{ boxShadow: 'inset 0 0 0 1.2px #8F8FF0', color: 'var(--ss-auto-scheduled)' }}>
+            <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-14 font-semibold" style={{ boxShadow: 'inset 0 0 0 1.2px #8F8FF0', color: 'var(--ss-auto-scheduled)' }}>
               {draft.reviewFirst ? 'Waits for review' : 'Publishes on its own'}
             </span>
             {draft.kind === 'bulk_connector' ? (
-              <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-[13.5px] font-semibold text-ink" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
+              <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-14 font-semibold text-ink" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
                 {draft.bulkSource === 'csv' ? 'CSV Upload' : draft.bulkSource === 'canva' ? 'Canva' : 'Google Drive'}
               </span>
             ) : null}
@@ -144,7 +144,7 @@ export function LaunchModal({
 
         {/* ── what it will do ────────────────────────────────────────────── */}
         <div className="mt-[34px] flex items-center justify-between px-[76px] max-md:px-[24px]">
-          <p className="text-[19px] font-bold text-ink">Here&rsquo;s what I&rsquo;ll do</p>
+          <p className="text-19 font-bold text-ink">Here&rsquo;s what I&rsquo;ll do</p>
           <span className="flex items-center gap-[10px]">
             <span className="inline-flex h-[30px] items-center rounded-[7px] px-[11px] text-14 font-semibold" style={{ background: '#EFEFEF', color: '#5B5B5B' }}>
               Status
@@ -160,7 +160,7 @@ export function LaunchModal({
               <svg width="17" height="17" viewBox="0 0 19 19" fill="none" aria-hidden className="shrink-0">
                 <path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="truncate text-[16.5px] font-medium" style={{ color: '#3B3B3B' }}>
+              <span className="truncate text-17 font-medium" style={{ color: '#3B3B3B' }}>
                 {row}
               </span>
             </li>
@@ -180,7 +180,7 @@ export function LaunchModal({
               </svg>
             ) : null}
           </span>
-          <span className="max-w-[500px] text-[16.5px] font-normal leading-[1.4]" style={{ color: '#5B5B5B' }}>
+          <span className="max-w-[500px] text-17 font-normal leading-[1.4]" style={{ color: '#5B5B5B' }}>
             Require approval for this recipe&rsquo;s posts. Your baseline posts carry on automatically.
           </span>
         </label>
@@ -235,7 +235,7 @@ export function RecipeChooserModal({ onPick, onClose }: { onPick: (kind: RecipeK
           </svg>
         </button>
 
-        <p className="px-[38px] pt-[36px] text-[28px] font-bold text-ink">Add New Recipe</p>
+        <p className="px-[38px] pt-[36px] text-28 font-bold text-ink">Add New Recipe</p>
         <p className="mt-[10px] px-[38px] text-18 font-normal" style={{ color: '#838383' }}>
           Pick a content engine to configure
         </p>
@@ -263,7 +263,7 @@ export function RecipeChooserModal({ onPick, onClose }: { onPick: (kind: RecipeK
                 <span aria-hidden className="absolute left-[30px] top-[42px] flex h-[58px] w-[58px] items-center justify-center rounded-[14px] text-white" style={{ background: meta.iconBg }}>
                   <RecipeGlyph kind={kind} size={30} />
                 </span>
-                <span className="absolute left-[114px] top-[38px] whitespace-nowrap text-[22px] font-bold text-ink">{meta.name}</span>
+                <span className="absolute left-[114px] top-[38px] whitespace-nowrap text-22 font-bold text-ink">{meta.name}</span>
                 <span className="absolute left-[114px] top-[78px] w-[740px] max-w-[calc(100%-160px)] text-16 font-normal leading-[1.4]" style={{ color: '#5B5B5B' }}>
                   {meta.desc}
                 </span>

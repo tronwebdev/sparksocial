@@ -1,6 +1,30 @@
 import { ToolError } from '@sparksocial/shared';
 import type { VideoClient } from '@sparksocial/generate';
-import { envSet, envStr } from './env.js';
+import { envNum, envSet, envStr } from './env.js';
+import { parseExtra } from './image-client.js';
+
+/**
+ * Anything else this model wants, as JSON — the same escape hatch
+ * `image-client.ts` documents, and needed here first.
+ *
+ * Two real cases, both from one model:
+ *
+ * `generate_audio` defaults to **true** on Seedance: clips arrive carrying their
+ * own ambient sound and lip-synced speech. Backdrops are muted by the composer,
+ * but a `generated_broll` beat is played unmuted, so a narrated post would have
+ * the model's invented speech talking over the ElevenLabs track.
+ *
+ * `codec` defaults to `auto`, which on Seedance means **HEVC Main 10, 10-bit**
+ * (`hvc1`, `yuv420p10le`). Headless Chrome cannot decode it, so every clip
+ * reached the renderer and died as `Code 4 -` with an empty message — a
+ * perfectly good, paid-for file that no part of the pipeline could read. Asking
+ * for `H264` costs nothing and is what the composer can actually play.
+ *
+ * Configuration rather than a code branch, because the next model will spell
+ * these differently or not have them at all — the same reasoning
+ * `FAL_VIDEO_DURATIONS` is written against.
+ */
+const EXTRA = parseExtra('FAL_VIDEO_EXTRA_PARAMS');
 
 /**
  * Production b-roll generation for `content.generate_broll` — fal.ai's QUEUE
@@ -24,7 +48,24 @@ export interface VideoClientOptions {
 
 const DEFAULT_MODEL = 'fal-ai/ltx-video';
 const POLL_INTERVAL_MS = 2_000;
-const MAX_POLL_ATTEMPTS = 60; // ~2 minutes — video inference is slow but a call should still fail rather than hang the request indefinitely.
+/**
+ * How long a clip may take to come back.
+ *
+ * Two minutes was sized against `ltx-video`, which is the fastest and least
+ * faithful thing fal hosts. Every model worth switching to — Kling, Veo,
+ * Seedance — routinely takes three to six minutes for a few seconds of footage,
+ * so this ceiling silently made them unusable: the job would still be running
+ * and this would give up and report `did not complete within 120s`, which reads
+ * as a vendor failure rather than as our own stopwatch.
+ *
+ * It already bit at the old value on a model it was sized for — one scene of a
+ * three-scene post came back empty that way, after the other two had been paid
+ * for.
+ *
+ * Ten minutes, and tunable, because the right number is a property of the model
+ * somebody chose rather than of this code.
+ */
+const MAX_POLL_ATTEMPTS = envNum('FAL_VIDEO_POLL_ATTEMPTS', 300); // 300 × 2s = 10 minutes
 
 export function createVideoClient(opts: VideoClientOptions): VideoClient {
   const model = opts.model ?? DEFAULT_MODEL;
@@ -39,7 +80,8 @@ export function createVideoClient(opts: VideoClientOptions): VideoClient {
         body: JSON.stringify({
           prompt,
           aspect_ratio: falAspectRatio(aspectRatio),
-          duration: durationSec,
+          duration: snapDuration(durationSec),
+          ...EXTRA,
         }),
       });
 
@@ -66,7 +108,22 @@ export function createVideoClient(opts: VideoClientOptions): VideoClient {
         if (status.status === 'COMPLETED') {
           const resultResponse = await doFetch(submitted.response_url, { headers: { authorization: `Key ${opts.apiKey}` } });
           if (!resultResponse.ok) {
-            throw new ToolError('UPSTREAM_FAILED', `Video generation result fetch failed (${resultResponse.status}).`, { status: resultResponse.status });
+            /*
+             * The body is the whole message here.
+             *
+             * fal accepts a submission, validates it lazily, and then reports
+             * the rejection through *this* endpoint — as a 422 on a job whose
+             * status says COMPLETED. Reporting only the code turned
+             * `Input should be '5' or '10'` into "result fetch failed (422)",
+             * which reads as a transport problem and cost an afternoon of
+             * looking at the wrong thing.
+             */
+            const detail = await resultResponse.text().catch(() => '');
+            throw new ToolError(
+              'UPSTREAM_FAILED',
+              `Video generation was rejected by the model (${resultResponse.status}): ${detail.slice(0, 300)}`,
+              { status: resultResponse.status, model },
+            );
           }
           const body = (await resultResponse.json()) as { video?: { url?: string } };
           const url = body.video?.url;
@@ -121,4 +178,39 @@ function buildVideoClient(): VideoClient | undefined {
     apiKey: envStr('FAL_API_KEY', ''),
     ...(envSet('FAL_VIDEO_MODEL') ? { model: envStr('FAL_VIDEO_MODEL', '') } : {}),
   });
+}
+
+/**
+ * The clip lengths this model will accept, if it only accepts some.
+ *
+ * Empty — the default — sends whatever the beat asked for, which is what
+ * `ltx-video` wants and what this client was written against. Kling takes a
+ * literal `'5'` or `'10'` and nothing else, so a three-second hook was rejected
+ * with `Input should be '5' or '10'` on every single clip: the model was
+ * configured, the key worked, the job was accepted, and not one frame came back.
+ *
+ * Declared rather than inferred from the model name. A table of model names in
+ * here would be a second, private copy of fal's catalogue that goes stale the
+ * moment they ship a version — and this module's whole posture is that changing
+ * models is configuration, not a code change. The rejection names the allowed
+ * set, so an operator who hits it is told exactly what to put here.
+ */
+const ALLOWED_DURATIONS = envStr('FAL_VIDEO_DURATIONS', '')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isFinite(n) && n > 0);
+
+/**
+ * The nearest length the model will take, rounding down where it can.
+ *
+ * Down rather than nearest: a clip shorter than its scene is covered by the
+ * next one in the split, where a clip longer than the whole post's remaining
+ * time is footage nobody sees and money already spent. The shortest allowed
+ * value is the floor, since asking for less than the model's minimum is the
+ * rejection this exists to avoid.
+ */
+function snapDuration(seconds: number): number {
+  if (ALLOWED_DURATIONS.length === 0) return seconds;
+  const notLonger = ALLOWED_DURATIONS.filter((d) => d <= seconds);
+  return notLonger.length > 0 ? Math.max(...notLonger) : Math.min(...ALLOWED_DURATIONS);
 }

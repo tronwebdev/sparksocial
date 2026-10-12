@@ -119,7 +119,7 @@ export function HoldButton({
           }
         }}
         className={cn(
-          'relative w-full max-w-[420px] overflow-hidden rounded-full px-8 py-4 text-[17px] font-medium transition-colors',
+          'relative w-full max-w-[420px] overflow-hidden rounded-full px-8 py-4 text-17 font-medium transition-colors',
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           dark ? 'bg-white/10 text-white' : 'border border-border bg-surface text-ink hover:bg-surface-muted',
         )}
@@ -135,7 +135,7 @@ export function HoldButton({
         <span className="relative">{label}</span>
       </button>
       {caption ? (
-        <span className={cn('text-[13px]', dark ? 'text-white/40' : 'text-ink-muted')}>{caption}</span>
+        <span className={cn('text-13', dark ? 'text-white/40' : 'text-ink-muted')}>{caption}</span>
       ) : null}
     </div>
   );

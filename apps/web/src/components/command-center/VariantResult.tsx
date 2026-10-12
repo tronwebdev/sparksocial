@@ -111,7 +111,7 @@ export function VariantResult({
   }
 
   if (!genomeId) return null;
-  if (error) return <p className="text-[12px] text-destructive">{error}</p>;
+  if (error) return <p className="text-12 text-destructive">{error}</p>;
   if (!result) return <Skeleton className="h-24 w-full rounded-lg" />;
 
   const winnerArm = result.arms.find((a) => a.label === result.winner);
@@ -119,7 +119,7 @@ export function VariantResult({
   return (
     <div className="rounded-lg border border-border p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[13px] font-medium text-ink">
+        <p className="text-13 font-medium text-ink">
           {result.winner
             ? `Arm ${result.winner.toUpperCase()} did better`
             : HEADLINE[result.undecidedBecause ?? 'too_close']}
@@ -127,9 +127,9 @@ export function VariantResult({
         <Badge variant={result.winner ? 'success' : 'neutral'}>A/B test</Badge>
       </div>
 
-      <table className="mt-2 w-full border-collapse text-[12px]">
+      <table className="mt-2 w-full border-collapse text-12">
         <thead>
-          <tr className="text-left text-[11px] uppercase tracking-wide text-ink-muted">
+          <tr className="text-left text-11 uppercase tracking-wide text-ink-muted">
             <th className="pb-1 pr-3 font-medium">Arm</th>
             <th className="pb-1 pr-3 font-medium">Status</th>
             <th className="pb-1 pr-3 text-right font-medium">Seen</th>
@@ -152,7 +152,7 @@ export function VariantResult({
 
       {/* Inline, not behind the popover: the caveat is the part somebody acting
           on this most needs to read. */}
-      <p className="mt-2 text-[12px] text-ink-muted">{result.why.summary}</p>
+      <p className="mt-2 text-12 text-ink-muted">{result.why.summary}</p>
       <WhyPopover why={result.why} label="How this was decided" />
 
       {result.winnerContentItemId && !recorded ? (
@@ -160,10 +160,10 @@ export function VariantResult({
           {recording ? 'Recording…' : `Teach SPARK from arm ${result.winner?.toUpperCase()}`}
         </Button>
       ) : null}
-      {recorded ? <p className="mt-2 text-[12px] text-ink-muted">{recorded}</p> : null}
+      {recorded ? <p className="mt-2 text-12 text-ink-muted">{recorded}</p> : null}
 
       {winnerArm && result.winner && !winnerArm.engagementRate ? (
-        <p className="mt-2 text-[12px] text-warn">
+        <p className="mt-2 text-12 text-warn">
           The winning arm has no measured engagement rate — check the post actually reached anybody before acting
           on this.
         </p>

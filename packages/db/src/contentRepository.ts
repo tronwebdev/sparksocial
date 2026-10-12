@@ -16,7 +16,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.recentContent(db, { orgId, brandId: orgId, genomeId }, windowDays);
     },
 
-    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
+    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, hashtags, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
       const row = await scoped.createContentDraft(
         db,
         { orgId, brandId: orgId, genomeId },
@@ -25,6 +25,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
           mode,
           ...(pillar ? { pillar } : {}),
           copy,
+          ...(hashtags ? { hashtags } : {}),
           why,
           ...(campaignId ? { campaignId } : {}),
           ...(recipeId ? { recipeId } : {}),
@@ -53,8 +54,8 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return row ? toDraft(row) : undefined;
     },
 
-    async updateDraft({ id, genomeId, orgId, copy, why }) {
-      const row = await scoped.updateContentDraft(db, { orgId, brandId: orgId, genomeId }, { id, copy, why });
+    async updateDraft({ id, genomeId, orgId, copy, hashtags, why }) {
+      const row = await scoped.updateContentDraft(db, { orgId, brandId: orgId, genomeId }, { id, copy, ...(hashtags ? { hashtags } : {}), why });
       return row ? toDraft(row) : undefined;
     },
 
@@ -156,6 +157,9 @@ function toDraft(row: scoped.ContentDraftRow): ContentDraft {
     ...(row.variantGroupId ? { variantGroupId: row.variantGroupId } : {}),
     ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
     ...(row.copy !== null ? { copy: row.copy } : {}),
+    // Absent rather than `[]` when null, so "no tags were ever written" and
+    // "this platform gets none" stay distinguishable to a caller.
+    ...(row.hashtags !== null ? { hashtags: row.hashtags } : {}),
     ...(row.why !== null ? { why: row.why as Explanation } : {}),
     ...(row.scheduledAt ? { scheduledAt: row.scheduledAt } : {}),
     ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),

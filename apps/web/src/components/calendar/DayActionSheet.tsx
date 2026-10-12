@@ -164,23 +164,23 @@ export function DayActionSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[17px] font-semibold text-ink">{pretty}</h2>
-          <button type="button" onClick={onClose} className="text-[13px] text-ink-muted underline">
+          <h2 className="text-17 font-semibold text-ink">{pretty}</h2>
+          <button type="button" onClick={onClose} className="text-13 text-ink-muted underline">
             Close
           </button>
         </div>
 
         {rec === null && !asking ? (
           <>
-            <p className="mt-1 text-[13px] text-ink-muted">Nothing planned for this day yet.</p>
+            <p className="mt-1 text-13 text-ink-muted">Nothing planned for this day yet.</p>
             <div className="mt-4 grid grid-cols-1 gap-2">
               <button
                 type="button"
                 onClick={() => void ask([], [])}
                 className="rounded-lg border border-border p-3 text-left hover:border-ink-muted"
               >
-                <span className="block text-[14px] font-medium text-ink">Ask the agent to plan it</span>
-                <span className="mt-0.5 block text-[13px] text-ink-muted">
+                <span className="block text-14 font-medium text-ink">Ask the agent to plan it</span>
+                <span className="mt-0.5 block text-13 text-ink-muted">
                   It picks the format that fits this campaign and says what the post is for.
                 </span>
               </button>
@@ -192,8 +192,8 @@ export function DayActionSheet({
                 }}
                 className="rounded-lg border border-border p-3 text-left hover:border-ink-muted"
               >
-                <span className="block text-[14px] font-medium text-ink">Create something specific</span>
-                <span className="mt-0.5 block text-[13px] text-ink-muted">
+                <span className="block text-14 font-medium text-ink">Create something specific</span>
+                <span className="mt-0.5 block text-13 text-ink-muted">
                   You say what it is about, and pick the format yourself.
                 </span>
               </button>
@@ -208,30 +208,30 @@ export function DayActionSheet({
           </div>
         ) : null}
 
-        {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
         {rec && !asking ? (
           <div className="mt-4 grid grid-cols-1 gap-3">
             {rec.create ? (
               <div className="rounded-lg border border-border p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-[15px] font-medium text-ink">{rec.create.playbookName}</p>
+                  <p className="text-15 font-medium text-ink">{rec.create.playbookName}</p>
                   <Badge variant={rec.create.readiness === 'ready' ? 'success' : 'warn'}>
                     {rec.create.readiness === 'ready' ? 'Ready' : 'Needs something'}
                   </Badge>
                 </div>
-                <p className="mt-1 text-[13px] text-ink-muted">{rec.create.description}</p>
+                <p className="mt-1 text-13 text-ink-muted">{rec.create.description}</p>
 
-                <p className="mt-3 text-[11px] uppercase tracking-wide text-ink-muted">This post is designed to</p>
+                <p className="mt-3 text-11 uppercase tracking-wide text-ink-muted">This post is designed to</p>
                 <ul className="mt-1 grid grid-cols-1 gap-0.5">
                   {rec.create.designedTo.map((line) => (
-                    <li key={line} className="text-[13px] text-ink">
+                    <li key={line} className="text-13 text-ink">
                       {line}
                     </li>
                   ))}
                 </ul>
 
-                <p className="mt-3 text-[12px] text-ink-muted">
+                <p className="mt-3 text-12 text-ink-muted">
                   {[
                     rec.create.mediaType,
                     rec.create.pillar,
@@ -249,13 +249,13 @@ export function DayActionSheet({
                   product signal, not an error to paper over.
                 */}
                 {rec.create.missingRoles.length > 0 ? (
-                  <p className="mt-2 text-[12px] text-warn">
+                  <p className="mt-2 text-12 text-warn">
                     Needs {rec.create.missingRoles.join(', ').replace(/_/g, ' ')} — you can still draft it and
                     fill that in.
                   </p>
                 ) : null}
 
-                <p className="mt-3 text-[12px] text-ink-muted">{rec.create.why.summary}</p>
+                <p className="mt-3 text-12 text-ink-muted">{rec.create.why.summary}</p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button
@@ -288,8 +288,8 @@ export function DayActionSheet({
 
             {rec.move ? (
               <div className="rounded-lg border border-border p-4">
-                <p className="text-[15px] font-medium text-ink">Move a post here</p>
-                <p className="mt-1 text-[13px] text-ink-muted">
+                <p className="text-15 font-medium text-ink">Move a post here</p>
+                <p className="mt-1 text-13 text-ink-muted">
                   {rec.move.playbookName} — currently{' '}
                   {new Date(rec.move.currentlyAt).toLocaleDateString('en', {
                     weekday: 'short',
@@ -298,7 +298,7 @@ export function DayActionSheet({
                   })}
                   {rec.move.platform ? ` on ${rec.move.platform.replace('_', ' ')}` : ''}
                 </p>
-                <p className="mt-2 text-[12px] text-ink-muted">{rec.move.why.summary}</p>
+                <p className="mt-2 text-12 text-ink-muted">{rec.move.why.summary}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
@@ -329,7 +329,7 @@ export function DayActionSheet({
             */}
             {!rec.create && !rec.move ? (
               <div className="rounded-lg border border-dashed border-border p-4">
-                <p className="text-[13px] text-ink">{rec.note ?? 'Nothing to suggest for this day.'}</p>
+                <p className="text-13 text-ink">{rec.note ?? 'Nothing to suggest for this day.'}</p>
                 <Button
                   size="sm"
                   variant="outline"

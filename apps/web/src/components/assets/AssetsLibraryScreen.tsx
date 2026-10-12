@@ -346,9 +346,9 @@ export function AssetsLibraryScreen() {
           {openFolder ? (
             <>
               {/* 352,46 — the folder's own name, then its meta row at 94. */}
-              <h1 className="truncate text-[26px] font-bold leading-[1.27] text-ink">{openFolder.name}</h1>
+              <h1 className="truncate text-26 font-bold leading-[1.27] text-ink">{openFolder.name}</h1>
               {/* 94 against a title box of 46..79. */}
-              <div className="mt-[15px] flex flex-wrap items-center gap-[14px] text-[15.5px] font-medium" style={{ color: '#5B5B5B' }}>
+              <div className="mt-[15px] flex flex-wrap items-center gap-[14px] text-16 font-medium" style={{ color: '#5B5B5B' }}>
                 <span>
                   {/* The Unfiled shelf has no row of its own, so its count is
                       whatever the listing just returned rather than a stored
@@ -385,7 +385,7 @@ export function AssetsLibraryScreen() {
             </>
           ) : (
             <>
-              <h1 className="text-[26px] font-bold leading-[1.27] text-ink">Assets Library</h1>
+              <h1 className="text-26 font-bold leading-[1.27] text-ink">Assets Library</h1>
               <p className="mt-[11px] text-16 font-normal text-ink-muted">
                 A centralized hub for managing and accessing all your digital assets.
               </p>
@@ -427,7 +427,7 @@ export function AssetsLibraryScreen() {
             onClick={() => setModal('create')}
             className="flex h-[52px] w-[226px] shrink-0 items-center justify-center gap-[10px] rounded-xl bg-ink transition-colors hover:bg-[#242424] active:scale-[0.985]"
           >
-            <span className="text-[19px] font-semibold leading-none" style={{ color: '#C46BF5' }}>
+            <span className="text-19 font-semibold leading-none" style={{ color: '#C46BF5' }}>
               +
             </span>
             <span className="whitespace-nowrap text-16 font-semibold text-white">Create A New Folder</span>
@@ -470,7 +470,7 @@ export function AssetsLibraryScreen() {
                   <path d="M6 1 1 6l5 5" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-              <span className="whitespace-nowrap text-[19px] font-semibold text-ink">Back To Folders</span>
+              <span className="whitespace-nowrap text-19 font-semibold text-ink">Back To Folders</span>
             </button>
 
             <div className="ml-auto flex flex-wrap items-center gap-[16px]">
@@ -550,7 +550,7 @@ export function AssetsLibraryScreen() {
             <span className="text-16 font-medium" style={{ color: '#5B5B5B' }}>
               Page {pageCount === 0 ? 0 : page + 1} of {pageCount}
             </span>
-            <span className="text-[15px] font-normal" style={{ color: '#838383' }}>
+            <span className="text-15 font-normal" style={{ color: '#838383' }}>
               {visibleAssets.length} of {assets?.length ?? 0} shown
             </span>
             <div className="ml-auto flex items-center gap-[10px] pr-[6px]">
@@ -584,7 +584,7 @@ export function AssetsLibraryScreen() {
               1680 — the card's own edge. The heading and both controls are
               centred on 210, which is where the design puts all three. */}
           <div className="flex min-h-[52px] flex-wrap items-center gap-4 pr-[30px]">
-            <h2 className="whitespace-nowrap text-[22px] font-bold text-ink">My Folders</h2>
+            <h2 className="whitespace-nowrap text-22 font-bold text-ink">My Folders</h2>
 
             <div className="ml-auto flex flex-wrap items-center gap-[16px]">
               {/* 1160,184 · 190x52. The design toasts "Date filter — mock"; the
@@ -623,7 +623,7 @@ export function AssetsLibraryScreen() {
                           setSortOpen(false);
                         }}
                         className={cn(
-                          'flex h-[40px] w-full items-center rounded-lg px-[12px] text-left text-[15px] font-medium',
+                          'flex h-[40px] w-full items-center rounded-lg px-[12px] text-left text-15 font-medium',
                           d.key === sort ? 'bg-[rgba(131,131,131,0.1)] text-ink' : 'text-ink-muted hover:bg-[rgba(131,131,131,0.07)]',
                         )}
                       >
@@ -887,7 +887,7 @@ function ViewToggle({
       className="flex h-[46px] items-center justify-center gap-[9px] rounded-[10px] transition-colors duration-200 motion-reduce:transition-none"
     >
       {children}
-      <span className="whitespace-nowrap text-[15.5px] font-semibold text-ink">{label}</span>
+      <span className="whitespace-nowrap text-16 font-semibold text-ink">{label}</span>
     </button>
   );
 }
@@ -912,7 +912,7 @@ function SearchBox({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={label}
-        className="h-full w-full bg-transparent pl-[18px] pr-[46px] text-[15.5px] font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
+        className="h-full w-full bg-transparent pl-[18px] pr-[46px] text-16 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
       />
       <svg
         width="19"

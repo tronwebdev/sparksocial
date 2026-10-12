@@ -107,7 +107,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
   if (!genomeId) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-[14px] text-ink-muted">No brand selected.</p>
+        <p className="text-14 text-ink-muted">No brand selected.</p>
       </section>
     );
   }
@@ -128,15 +128,15 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Folders</h2>
-      <p className="mt-1 text-[13px] text-ink-muted">
+      <h2 className="text-18 font-semibold text-ink">Folders</h2>
+      <p className="mt-1 text-13 text-ink-muted">
         However you want to organise it. SPARK finds assets by what they show, not by where they sit — so
         folders are for you, not for the engine.
       </p>
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <div className="min-w-48 flex-1">
-          <label className="text-[12px] font-medium text-ink-muted" htmlFor="folder-name">
+          <label className="text-12 font-medium text-ink-muted" htmlFor="folder-name">
             New folder
           </label>
           <Input
@@ -155,7 +155,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
       {folders === null ? (
         <Skeleton className="mt-5 h-24 w-full rounded-lg" />
       ) : folders.length === 0 ? (
-        <p className="mt-5 text-[14px] text-ink-muted">
+        <p className="mt-5 text-14 text-ink-muted">
           No folders yet. Everything you upload is still searchable — a folder just gives you somewhere to
           group things you think of together.
         </p>
@@ -168,8 +168,8 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
                 onClick={() => setOpenFolder(f)}
                 className="w-full rounded-lg border border-border p-4 text-left transition-colors hover:bg-surface-muted"
               >
-                <span className="block text-[14px] font-medium text-ink">{f.name}</span>
-                <span className="mt-0.5 block text-[12px] text-ink-muted">
+                <span className="block text-14 font-medium text-ink">{f.name}</span>
+                <span className="mt-0.5 block text-12 text-ink-muted">
                   {typeof f.assetCount === 'number'
                     ? `${f.assetCount} item${f.assetCount === 1 ? '' : 's'}`
                     : 'Open'}
@@ -187,7 +187,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
         </ul>
       )}
 
-      {error ? <p className="mt-4 text-[13px] text-ink-muted">{error}</p> : null}
+      {error ? <p className="mt-4 text-13 text-ink-muted">{error}</p> : null}
     </section>
   );
 }
@@ -268,8 +268,8 @@ function FolderDetail({
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">{folder.name}</h2>
-          <p className="mt-0.5 text-[13px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">{folder.name}</h2>
+          <p className="mt-0.5 text-13 text-ink-muted">
             {assets === null ? 'Loading…' : `${assets.length} item${assets.length === 1 ? '' : 's'}`}
           </p>
         </div>
@@ -282,7 +282,7 @@ function FolderDetail({
                 aria-pressed={mode === m}
                 onClick={() => setMode(m)}
                 className={cn(
-                  'px-3 py-1.5 text-[13px] capitalize transition-colors',
+                  'px-3 py-1.5 text-13 capitalize transition-colors',
                   mode === m ? 'bg-ink text-surface' : 'text-ink-muted hover:bg-surface-muted',
                 )}
               >
@@ -299,7 +299,7 @@ function FolderDetail({
       {assets === null ? (
         <Skeleton className="mt-5 h-40 w-full rounded-lg" />
       ) : assets.length === 0 ? (
-        <p className="mt-5 text-[14px] text-ink-muted">
+        <p className="mt-5 text-14 text-ink-muted">
           Nothing in this folder yet. Move something here from any asset, or upload with this folder
           selected.
         </p>
@@ -314,14 +314,14 @@ function FolderDetail({
                 ) : a.mediaType === 'video' ? (
                   <video src={a.url} className="size-full object-cover" muted playsInline />
                 ) : (
-                  <div className="flex size-full items-center justify-center text-[12px] text-ink-muted">
+                  <div className="flex size-full items-center justify-center text-12 text-ink-muted">
                     Audio
                   </div>
                 )}
               </div>
               <div className="p-2">
-                <p className="truncate text-[12px] text-ink">{a.caption ?? 'No caption yet'}</p>
-                <p className="mt-0.5 text-[11px] text-ink-muted">
+                <p className="truncate text-12 text-ink">{a.caption ?? 'No caption yet'}</p>
+                <p className="mt-0.5 text-11 text-ink-muted">
                   {ROLE_LABEL[a.role] ?? a.role} ·{' '}
                   <span className={RIGHTS_TONE[a.rightsStatus] ?? ''}>{a.rightsStatus}</span>
                 </p>
@@ -331,7 +331,7 @@ function FolderDetail({
         </ul>
       ) : (
         <div className="mt-5 overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-[720px] text-left text-[13px]">
+          <table className="w-full min-w-[720px] text-left text-13">
             <thead className="bg-surface-muted">
               <tr>
                 <th className="px-3 py-2 font-medium text-ink-muted">Caption</th>
@@ -363,7 +363,7 @@ function FolderDetail({
                     <select
                       value={a.folderId ?? ''}
                       onChange={(e) => void move(a.assetId, e.target.value || null)}
-                      className="rounded border border-border bg-field px-2 py-1 text-[12px] text-ink"
+                      className="rounded border border-border bg-field px-2 py-1 text-12 text-ink"
                     >
                       <option value="">No folder</option>
                       {folders.map((f) => (
@@ -377,7 +377,7 @@ function FolderDetail({
                     <button
                       type="button"
                       onClick={() => void reuse(a.assetId)}
-                      className="text-[12px] font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
+                      className="text-12 font-medium text-primary underline decoration-dotted underline-offset-2 hover:no-underline"
                     >
                       Mark used
                     </button>
@@ -389,7 +389,7 @@ function FolderDetail({
         </div>
       )}
 
-      {note ? <p className="mt-3 text-[13px] text-ink-muted">{note}</p> : null}
+      {note ? <p className="mt-3 text-13 text-ink-muted">{note}</p> : null}
     </section>
   );
 }

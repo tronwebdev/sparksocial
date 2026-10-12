@@ -1,5 +1,15 @@
-import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, sql, type SQL } from 'drizzle-orm';
-import { ToolError, type AssetMediaType, type AssetRole } from '@sparksocial/shared/types';
+import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, sql, type SQL } from 'drizzle-orm';
+import {
+  ToolError,
+  type AssetMediaType,
+  type AssetRightsStatus,
+  type AssetRole,
+  type ContentPillar,
+  type ContentStatus,
+  type GenerationMode,
+  type Platform,
+} from '@sparksocial/shared/types';
+import type { EngagementKind, EngagementPlatform } from '@sparksocial/shared/engagementConfig';
 import { byId } from '@sparksocial/playbooks';
 import { assets, assetFolders, campaigns, knowledgeChunks, memories, contentItems, contentMetrics, engagementMessages, renders, opportunities, trendWatchlist, trendSourceMutes, influencerWatchlist, learningArms, learningOutcomes, recipes, recipeRuns, recipeOutputs, oauthConnections, contentLinks, teamGroups, teamGroupMembers } from './schema.js';
 import type { Database } from './client.js';
@@ -218,9 +228,9 @@ export async function retrieveAssets(
     score: number;
     usageCount: number;
     lastUsedAt: Date | null;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     url: string;
-    mediaType: string;
+    mediaType: AssetMediaType;
     folderId: string | null;
     /** `LIB-02`'s `Assets` column and grid labels. Null on a row uploaded before the column existed. */
     filename: string | null;
@@ -261,7 +271,21 @@ export async function retrieveAssets(
      */
     .offset(q.offset);
 
-  return rows.map((r) => ({ ...r, role: r.role as AssetRole }));
+  /*
+   * The three columns are `text` in Postgres, so Drizzle types them `string`.
+   * This is the layer that knows better: `asset.rights.set` validates
+   * `rightsStatus` against exactly these values, ingest validates `assetRole`
+   * and `mediaType`, and no other writer exists. Asserting here rather than in
+   * the tool means the vocabulary is declared once, at the only place that reads
+   * the table — and the tool schemas above it can promise the union instead of
+   * handing the frontend a `string` for every screen to re-narrow by hand.
+   */
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+    mediaType: r.mediaType as AssetMediaType,
+  }));
 }
 
 export interface CreateAssetArgs {
@@ -363,7 +387,7 @@ export async function assetInfo(
   db: Database,
   scope: Scope,
   ids: string[],
-): Promise<Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }>> {
+): Promise<Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }>> {
   if (ids.length === 0) return {};
   const now = Date.now();
   const rows = await db
@@ -377,10 +401,10 @@ export async function assetInfo(
     .from(assets)
     .where(and(scopePredicate('assets', scope), inArray(assets.id, ids)));
 
-  const out: Record<string, { rightsStatus: string; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
+  const out: Record<string, { rightsStatus: AssetRightsStatus; lastUsedDaysAgo?: number; url: string; mediaType: string }> = {};
   for (const r of rows) {
     out[r.id] = {
-      rightsStatus: r.rightsStatus,
+      rightsStatus: r.rightsStatus as AssetRightsStatus,
       lastUsedDaysAgo: r.lastUsedAt ? (now - r.lastUsedAt.getTime()) / 86_400_000 : undefined,
       url: r.url,
       mediaType: r.mediaType,
@@ -407,7 +431,7 @@ export async function setAssetRights(
     .set({ rightsStatus: args.rightsStatus })
     .where(and(eq(assets.id, args.id), scopePredicate('assets', scope)))
     .returning({ id: assets.id, rightsStatus: assets.rightsStatus });
-  return row;
+  return row ? { ...row, rightsStatus: row.rightsStatus as AssetRightsStatus } : undefined;
 }
 
 /**
@@ -428,7 +452,7 @@ export async function listAssetsAwaitingRights(
   Array<{
     assetId: string;
     role: AssetRole;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     caption: string | null;
     url: string;
     mediaType: AssetMediaType;
@@ -467,12 +491,13 @@ export async function listAssetsAwaitingRights(
     ...r,
     role: r.role as AssetRole,
     mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
   }));
 }
 
 export interface AssetRightsRow {
   id: string;
-  rightsStatus: string;
+  rightsStatus: AssetRightsStatus;
 }
 
 /**
@@ -568,7 +593,7 @@ export async function listUnfiledAssets(
   Array<{
     assetId: string;
     role: AssetRole;
-    rightsStatus: string;
+    rightsStatus: AssetRightsStatus;
     caption: string | null;
     url: string;
     mediaType: AssetMediaType;
@@ -603,7 +628,77 @@ export async function listUnfiledAssets(
     .orderBy(sql`${assets.createdAt} DESC`)
     .limit(200);
 
-  return rows.map((r) => ({ ...r, role: r.role as AssetRole, mediaType: r.mediaType as AssetMediaType }));
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+  }));
+}
+
+/**
+ * `asset.list` — every asset this genome holds, newest first.
+ *
+ * The plain browse the library did not have. `asset.retrieve` is semantic: it
+ * ranks by similarity minus recency and usage penalties, which is right for
+ * "find me a picture that suits these words" and wrong for "show me what I
+ * own". An asset with a weak or zero embedding — the brand's own logo, for one
+ * — sorts below everything for every query, so it was in the table and absent
+ * from the only screen that could show it.
+ *
+ * Scoped by the same predicate as every other query here; the role filter is a
+ * convenience on top, never a substitute for it.
+ */
+export async function listAssets(
+  db: Database,
+  scope: Scope,
+  args: { roles?: AssetRole[]; limit?: number; offset?: number } = {},
+): Promise<
+  Array<{
+    assetId: string;
+    role: AssetRole;
+    rightsStatus: AssetRightsStatus;
+    caption: string | null;
+    url: string;
+    mediaType: AssetMediaType;
+    folderId: string | null;
+    filename: string | null;
+    sizeBytes: number | null;
+    createdAt: Date;
+  }>
+> {
+  assertScope(scope);
+  const rows = await db
+    .select({
+      assetId: assets.id,
+      role: assets.assetRole,
+      rightsStatus: assets.rightsStatus,
+      caption: assets.caption,
+      url: assets.storagePath,
+      mediaType: assets.mediaType,
+      folderId: assets.folderId,
+      filename: assets.filename,
+      sizeBytes: assets.sizeBytes,
+      createdAt: assets.createdAt,
+    })
+    .from(assets)
+    .where(
+      and(
+        scopePredicate('assets', scope),          // ← non-negotiable
+        isNull(assets.archivedAt),
+        ...(args.roles?.length ? [inArray(assets.assetRole, args.roles)] : []),
+      ),
+    )
+    .orderBy(sql`${assets.createdAt} DESC`)
+    .limit(Math.min(args.limit ?? 60, 200))
+    .offset(args.offset ?? 0);
+
+  return rows.map((r) => ({
+    ...r,
+    role: r.role as AssetRole,
+    mediaType: r.mediaType as AssetMediaType,
+    rightsStatus: r.rightsStatus as AssetRightsStatus,
+  }));
 }
 
 /** `asset.folder.rename`. Undefined when the id is out of scope — same "one outcome for both" rule as the rest of this file. */
@@ -948,7 +1043,15 @@ export async function listRenders(db: Database, scope: Scope, contentItemId: str
 export interface ContentMetricsRow {
   id: string;
   contentItemId: string;
-  platform: string;
+  /**
+   * `content_metrics.platform` is copied from `content_items.platform` by
+   * `analytics.sync` — it is never taken from the vendor response — and
+   * `content_items.platform` is written only by `publish.now`, whose input
+   * schema is `platform: Platform`. So the column holds a `Platform` or it
+   * holds nothing, and saying `string` here made every analytics tool hand the
+   * frontend a `string` to re-narrow.
+   */
+  platform: Platform;
   likes: number;
   comments: number;
   shares: number;
@@ -1026,7 +1129,13 @@ export async function upsertContentMetrics(
       },
     })
     .returning(contentMetricsColumns);
-  return row!;
+  /*
+   * The column is `text`, so Drizzle types it `string`. See `ContentMetricsRow`
+   * for why this layer knows it is a `Platform`: the only writer copies it from
+   * `content_items`, which only `publish.now` writes, against a `Platform`
+   * schema. Asserted here rather than in the four analytics tools that read it.
+   */
+  return { ...row!, platform: row!.platform as Platform };
 }
 
 /** Every platform's latest snapshot for one post — `analytics.post_metrics`'s future read, and `analytics.sync`'s own output. */
@@ -1035,10 +1144,11 @@ export async function getContentMetrics(
   scope: Scope,
   contentItemId: string,
 ): Promise<ContentMetricsRow[]> {
-  return db
+  const rows = await db
     .select(contentMetricsColumns)
     .from(contentMetrics)
     .where(and(scopePredicate('contentMetrics', scope), eq(contentMetrics.contentItemId, contentItemId)));
+  return rows.map((r) => ({ ...r, platform: r.platform as Platform }));
 }
 
 /**
@@ -1052,10 +1162,11 @@ export async function getContentMetricsForItems(
   contentItemIds: string[],
 ): Promise<ContentMetricsRow[]> {
   if (contentItemIds.length === 0) return [];
-  return db
+  const rows = await db
     .select(contentMetricsColumns)
     .from(contentMetrics)
     .where(and(scopePredicate('contentMetrics', scope), inArray(contentMetrics.contentItemId, contentItemIds)));
+  return rows.map((r) => ({ ...r, platform: r.platform as Platform }));
 }
 
 /**
@@ -1167,7 +1278,8 @@ export async function publishedWithMetrics(
   Array<{
     contentItemId: string;
     publishedAt: Date;
-    platform: string | null;
+    /** Nullable because `content_items.platform` is: it is set at publish. */
+    platform: Platform | null;
     impressions: number;
     likes: number;
     comments: number;
@@ -1215,7 +1327,7 @@ export async function publishedWithMetrics(
           {
             contentItemId: r.contentItemId,
             publishedAt: r.publishedAt,
-            platform: r.platform,
+            platform: r.platform as Platform | null,
             impressions: r.impressions ?? 0,
             likes: r.likes ?? 0,
             comments: r.comments ?? 0,
@@ -1233,9 +1345,14 @@ export interface EngagementMessageRow {
   resolvedAt: Date | null;
   id: string;
   genomeId: string;
-  platform: string;
+  /**
+   * `engage.ingest` is the only writer of either column, and its input has
+   * always validated both against exactly these vocabularies. Narrowed in
+   * `asEngagementRow` — ten projections share `engagementMessageColumns`.
+   */
+  platform: EngagementPlatform;
   externalId: string;
-  kind: string;
+  kind: EngagementKind;
   authorHandle: string;
   authorName: string | null;
   text: string;
@@ -1276,6 +1393,13 @@ const engagementMessageColumns = {
   sentAt: engagementMessages.sentAt,
   createdAt: engagementMessages.createdAt,
 };
+
+type RawEngagementRow = Omit<EngagementMessageRow, 'platform' | 'kind'> & { platform: string; kind: string };
+const asEngagementRow = (row: RawEngagementRow): EngagementMessageRow => ({
+  ...row,
+  platform: row.platform as EngagementPlatform,
+  kind: row.kind as EngagementKind,
+});
 
 /**
  * `engage.ingest`'s one write — an upsert keyed on
@@ -1328,7 +1452,7 @@ export async function ingestEngagementMessage(
       set: { text: values.text, authorName: values.authorName, threadKey: values.threadKey },
     })
     .returning(engagementMessageColumns);
-  return row!;
+  return asEngagementRow(row!);
 }
 
 /** Read side of {@link ingestEngagementMessage} — one row, scoped. */
@@ -1342,7 +1466,7 @@ export async function getEngagementMessage(
     .from(engagementMessages)
     .where(and(eq(engagementMessages.id, id), scopePredicate('engagementMessages', scope)))
     .limit(1);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.classify`'s write — the triage decision that sorts a message into the feed's tabs. */
@@ -1369,7 +1493,7 @@ export async function classifyEngagementMessage(
     })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.reply.send`'s write — flips `status` to `replied` once delivery succeeds. */
@@ -1391,7 +1515,7 @@ export async function markEngagementMessageReplied(
     .set({ status: 'replied', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /** `engage.autohandle`'s write — flips `status` to `auto_handled` once the unattended send succeeds. */
@@ -1409,7 +1533,7 @@ export async function markEngagementMessageAutoHandled(
     .set({ status: 'auto_handled', resolvedAt: now, ...(args.sentReply ? { sentReply: args.sentReply, sentAt: now } : {}) })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /**
@@ -1429,12 +1553,13 @@ export async function threadEngagementMessages(
   scope: Scope,
   args: { threadKey: string; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(and(scopePredicate('engagementMessages', scope), eq(engagementMessages.threadKey, args.threadKey)))
     .orderBy(asc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 /**
@@ -1455,7 +1580,7 @@ export async function markEngagementMessageEscalated(
     .set({ status: 'escalated', resolvedAt: new Date() })
     .where(and(eq(engagementMessages.id, args.id), scopePredicate('engagementMessages', scope)))
     .returning(engagementMessageColumns);
-  return row;
+  return row ? asEngagementRow(row) : undefined;
 }
 
 /**
@@ -1471,7 +1596,7 @@ export async function listEngagementMessages(
   scope: Scope,
   args: { status?: string; category?: string; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(
@@ -1483,6 +1608,7 @@ export async function listEngagementMessages(
     )
     .orderBy(desc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 /**
@@ -1497,7 +1623,7 @@ export async function auditEngagementMessages(
   scope: Scope,
   args: { statuses: string[]; since?: Date; until?: Date; limit: number },
 ): Promise<EngagementMessageRow[]> {
-  return db
+  const rows = await db
     .select(engagementMessageColumns)
     .from(engagementMessages)
     .where(
@@ -1510,6 +1636,7 @@ export async function auditEngagementMessages(
     )
     .orderBy(desc(engagementMessages.receivedAt))
     .limit(args.limit);
+  return rows.map(asEngagementRow);
 }
 
 export interface OpportunityRow {
@@ -1586,7 +1713,8 @@ export async function listOpportunities(
 ): Promise<
   Array<
     OpportunityRow & {
-      platform: string | null;
+      /** Nullable because the join is a `leftJoin`, not because the column is. */
+      platform: EngagementPlatform | null;
       authorHandle: string | null;
       authorName: string | null;
       messageText: string | null;
@@ -1595,7 +1723,7 @@ export async function listOpportunities(
     }
   >
 > {
-  return db
+  const rows = await db
     .select({
       ...opportunityColumns,
       platform: engagementMessages.platform,
@@ -1617,6 +1745,9 @@ export async function listOpportunities(
     .where(scopePredicate('opportunities', scope))
     .orderBy(desc(opportunities.createdAt))
     .limit(args.limit);
+  // Same narrowing as `asEngagementRow`, on the same column, for a projection
+  // that joins the table rather than selecting it whole.
+  return rows.map((r) => ({ ...r, platform: r.platform as EngagementPlatform | null }));
 }
 
 /** `engage.opportunity.route`'s write — updates `routed_to` on an existing row. */
@@ -1641,10 +1772,24 @@ export interface ContentDraftRow {
   genomeId: string;
   campaignId: string | null;
   playbookId: string | null;
-  mode: string | null;
-  pillar: string | null;
-  status: string;
-  platform: string | null;
+  /**
+   * Both come from the playbook a draft was created against — `createContentDraft`
+   * takes them from its caller, whose only sources are a `Playbook` record's
+   * `mode`/`content_pillar` or another draft's. Nullable because a calendar slot
+   * can exist before either is decided. Narrowed in `asDraftRow`.
+   */
+  mode: GenerationMode | null;
+  pillar: ContentPillar | null;
+  /** Every writer in this file sets a literal — see `ContentStatus`. Narrowed in `asDraftRow`. */
+  status: ContentStatus;
+  /**
+   * `Platform`, not `string`: the column is only ever written by
+   * `markContentPublished` (whose only caller is `publish.now`, input
+   * `platform: Platform`) and by slot placement, which intersects the
+   * campaign's accounts with the playbook's own `Platform[]`. See `asDraftRow`
+   * for where the cast is applied.
+   */
+  platform: Platform | null;
   externalId: string | null;
   publishVia: string | null;
   publishUrl: string | null;
@@ -1656,6 +1801,11 @@ export interface ContentDraftRow {
   variantGroupId: string | null;
   variantLabel: string | null;
   copy: unknown;
+  /**
+   * The post's hashtags, without the leading `#`. Null on every row written
+   * before the column existed, and on a platform whose budget is zero.
+   */
+  hashtags: string[] | null;
   why: unknown;
   scheduledAt: Date | null;
   createdAt: Date;
@@ -1681,6 +1831,7 @@ const contentDraftColumns = {
   variantGroupId: contentItems.variantGroupId,
   variantLabel: contentItems.variantLabel,
   copy: contentItems.copy,
+  hashtags: contentItems.hashtags,
   why: contentItems.why,
   scheduledAt: contentItems.scheduledAt,
   // PRD §5's "time to first post" measures from campaign start to here, so the
@@ -1688,6 +1839,28 @@ const contentDraftColumns = {
   publishedAt: contentItems.publishedAt,
   createdAt: contentItems.createdAt,
 };
+
+/**
+ * The one place `content_items.platform` is narrowed to `Platform`.
+ *
+ * Drizzle types the column `string` because Postgres types it `text`. Seven
+ * projections share `contentDraftColumns`, so asserting at each of them would
+ * be seven chances to forget; this is the single seam, and the reason
+ * `ContentDraftRow` above is allowed to promise the union.
+ */
+type RawDraftRow = Omit<ContentDraftRow, 'platform' | 'status' | 'mode' | 'pillar'> & {
+  platform: string | null;
+  status: string;
+  mode: string | null;
+  pillar: string | null;
+};
+const asDraftRow = (row: RawDraftRow): ContentDraftRow => ({
+  ...row,
+  platform: row.platform as Platform | null,
+  status: row.status as ContentStatus,
+  mode: row.mode as GenerationMode | null,
+  pillar: row.pillar as ContentPillar | null,
+});
 
 /**
  * A brand-new draft — `content.draft`'s ad-hoc path (CC-02), where no
@@ -1701,9 +1874,11 @@ export async function createContentDraft(
   scope: Scope,
   args: {
     playbookId: string;
-    mode: string;
+    mode: GenerationMode;
     pillar?: string;
     copy: unknown;
+    /** Written whole or not at all — `undefined` leaves the column null. */
+    hashtags?: string[];
     why: unknown;
     campaignId?: string;
     recipeId?: string;
@@ -1734,10 +1909,11 @@ export async function createContentDraft(
       // (`draft`) is right for everything else.
       ...(args.scheduledAt ? { scheduledAt: args.scheduledAt, status: 'scheduled' } : {}),
       copy: args.copy as object,
+      ...(args.hashtags ? { hashtags: args.hashtags } : {}),
       why: args.why as object,
     })
     .returning(contentDraftColumns);
-  return row!;
+  return asDraftRow(row!);
 }
 
 /**
@@ -1758,7 +1934,7 @@ export async function tagContentVariant(
     .set({ variantGroupId: args.variantGroupId, variantLabel: args.variantLabel })
     .where(and(eq(contentItems.id, args.id), scopePredicate('contentItems', scope)))
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1774,11 +1950,12 @@ export async function contentVariantGroup(
   scope: Scope,
   variantGroupId: string,
 ): Promise<ContentDraftRow[]> {
-  return db
+  const rows = await db
     .select(contentDraftColumns)
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.variantGroupId, variantGroupId)))
     .orderBy(asc(contentItems.variantLabel));
+  return rows.map(asDraftRow);
 }
 
 /** Read side of {@link createContentDraft}/{@link updateContentDraft} — one row, scoped. */
@@ -1788,7 +1965,7 @@ export async function getContentItem(db: Database, scope: Scope, id: string): Pr
     .from(contentItems)
     .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
     .limit(1);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1801,12 +1978,18 @@ export async function getContentItem(db: Database, scope: Scope, id: string): Pr
 export async function updateContentDraft(
   db: Database,
   scope: Scope,
-  args: { id: string; copy: unknown; why: unknown },
+  args: { id: string; copy: unknown; hashtags?: string[]; why: unknown },
 ): Promise<ContentDraftRow | undefined> {
   assertScope(scope);
   const [row] = await db
     .update(contentItems)
-    .set({ copy: args.copy as object, why: args.why as object })
+    /*
+     * `hashtags` is omitted rather than nulled when absent. A redraft that
+     * could not write them — a budget of zero, or a writer with no hashtag
+     * support — must not silently erase tags a person edited by hand on the
+     * previous pass.
+     */
+    .set({ copy: args.copy as object, ...(args.hashtags ? { hashtags: args.hashtags } : {}), why: args.why as object })
     .where(
       and(
         eq(contentItems.id, args.id),
@@ -1815,7 +1998,7 @@ export async function updateContentDraft(
       ),
     )
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1849,7 +2032,7 @@ export async function scheduleContentItem(
       ),
     )
     .returning(contentDraftColumns);
-  return row;
+  return row ? asDraftRow(row) : undefined;
 }
 
 /**
@@ -1865,7 +2048,7 @@ export async function listContentForGenome(
   scope: Scope,
   args: { status?: string; limit: number },
 ): Promise<ContentDraftRow[]> {
-  return db
+  const rows = await db
     .select(contentDraftColumns)
     .from(contentItems)
     .where(
@@ -1876,6 +2059,7 @@ export async function listContentForGenome(
     )
     .orderBy(desc(contentItems.createdAt))
     .limit(args.limit);
+  return rows.map(asDraftRow);
 }
 
 /**
@@ -1983,11 +2167,89 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
     .limit(args.limit) as Promise<DueContentItem[]>;
 }
 
+/** A post whose pixels have not been made yet — `startRenderQueue`'s input. */
+export interface UnrenderedContentItem {
+  id: string;
+  orgId: string;
+  genomeId: string;
+  playbookId: string | null;
+  copy: unknown;
+}
+
+/**
+ * Posts in a live campaign that have copy and no rendered file.
+ *
+ * ── Why this query exists ─────────────────────────────────────────────────
+ *
+ * Drafting writes the script; `compose.render` makes the file, and nothing
+ * called it. It is reachable from exactly one place — a button in the Draft
+ * Panel — so a thirty-day campaign produced eleven scripts and zero pixels
+ * until somebody opened each post and pressed render. The calendar said
+ * "video", the campaign said "video", and there was no video, with nothing
+ * anywhere saying so.
+ *
+ * Deliberately narrow on three axes:
+ *
+ *   - **`copy is not null`**. A calendar slot exists long before it is written;
+ *     rendering an empty one would produce a blank frame and charge for it.
+ *   - **`mode <> 'direct_finish'`**. Those posts are waiting on footage from a
+ *     person, not on a renderer.
+ *   - **no existing render**. A re-render is a deliberate act — `compose.render`
+ *     says so itself and is non-idempotent — so this only ever makes the first
+ *     one.
+ *
+ * Campaign status is checked rather than assumed: a paused campaign's posts
+ * must not keep spending. `campaign_id` may be null for an ad-hoc post, and
+ * those are excluded — nothing has promised to render them.
+ */
+export async function findUnrenderedContentItems(
+  db: Database,
+  args: { limit: number; excludePlaybookIds?: string[] },
+): Promise<UnrenderedContentItem[]> {
+  return db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      playbookId: contentItems.playbookId,
+      copy: contentItems.copy,
+    })
+    .from(contentItems)
+    .innerJoin(campaigns, eq(campaigns.id, contentItems.campaignId))
+    .where(
+      and(
+        eq(campaigns.status, 'active'),
+        isNotNull(contentItems.copy),
+        ne(contentItems.mode, 'direct_finish'),
+        notExists(
+          db.select({ one: sql`1` }).from(renders).where(eq(renders.contentItemId, contentItems.id)),
+        ),
+        /*
+         * Formats with no pixels are excluded HERE, not by the caller skipping
+         * them afterwards.
+         *
+         * Skipping in the loop looked equivalent and was not: the batch is
+         * small and ordered by date, so two old text posts sat at the head of
+         * the queue and consumed the whole batch on every tick, forever.
+         * Nothing renderable behind them was ever reached — a head-of-line
+         * block that is indistinguishable from a queue doing nothing at all.
+         * Found by watching a live queue render nothing for ten minutes with
+         * ten eligible posts waiting.
+         */
+        ...(args.excludePlaybookIds?.length
+          ? [notInArray(contentItems.playbookId, args.excludePlaybookIds)]
+          : []),
+      ),
+    )
+    .orderBy(asc(contentItems.scheduledAt))
+    .limit(args.limit) as Promise<UnrenderedContentItem[]>;
+}
+
 export interface CalendarSlotRow {
   campaignId: string;
   playbookId: string;
-  mode: string;
-  pillar: string;
+  mode: GenerationMode;
+  pillar: ContentPillar;
   scheduledAt: Date;
   /** `CMP-01.4`'s chosen account for this slot. Null keeps the playbook fallback. */
   platform?: string;
@@ -2050,9 +2312,9 @@ export async function campaignSlots(
   Array<{
     id: string;
     playbookId: string | null;
-    mode: string | null;
-    pillar: string | null;
-    status: string;
+    mode: GenerationMode | null;
+    pillar: ContentPillar | null;
+    status: ContentStatus;
     scheduledAt: Date | null;
     /**
      * Set at placement time by `CMP-01.4`'s account selection, and null for a
@@ -2061,10 +2323,10 @@ export async function campaignSlots(
      * column existed and this projection never read it, so the calendar could
      * not group by the thing it schedules to.
      */
-    platform: string | null;
+    platform: Platform | null;
   }>
 > {
-  return db
+  const rows = await db
     .select({
       id: contentItems.id,
       playbookId: contentItems.playbookId,
@@ -2077,6 +2339,15 @@ export async function campaignSlots(
     .from(contentItems)
     .where(and(scopePredicate('contentItems', scope), eq(contentItems.campaignId, campaignId)))
     .orderBy(asc(contentItems.scheduledAt));
+  // Same narrowing as `asDraftRow`, on the same column, for a projection that
+  // does not share `contentDraftColumns`.
+  return rows.map((r) => ({
+    ...r,
+    mode: r.mode as GenerationMode | null,
+    pillar: r.pillar as ContentPillar | null,
+    status: r.status as ContentStatus,
+    platform: r.platform as Platform | null,
+  }));
 }
 
 /** Read helper for {@link lookupIdempotentToolCall}-style lookups is intentionally absent here —
@@ -2320,7 +2591,8 @@ export async function listMutedTrendSources(db: Database, scope: Scope): Promise
 export interface LearningArmRow {
   id: string;
   genomeId: string;
-  pillar: string;
+  /** The only writer is `recordLearningOutcome` below, from a content item's own pillar. */
+  pillar: ContentPillar;
   alpha: number;
   beta: number;
   observations: number;
@@ -2338,8 +2610,15 @@ const learningArmColumns = {
 };
 
 export async function listLearningArms(db: Database, scope: Scope): Promise<LearningArmRow[]> {
-  return db.select(learningArmColumns).from(learningArms).where(scopePredicate('learningArms', scope));
+  const rows = await db.select(learningArmColumns).from(learningArms).where(scopePredicate('learningArms', scope));
+  return rows.map(asArmRow);
 }
+
+/** `learning_arms.pillar` is `text`; this is the one place it is narrowed. */
+const asArmRow = (row: Omit<LearningArmRow, 'pillar'> & { pillar: string }): LearningArmRow => ({
+  ...row,
+  pillar: row.pillar as ContentPillar,
+});
 
 /**
  * `learning.reset` — deletes every arm AND every outcome for this genome, not
@@ -2367,7 +2646,7 @@ export async function resetLearning(db: Database, scope: Scope): Promise<void> {
 export async function recordLearningOutcome(
   db: Database,
   scope: Scope,
-  args: { contentItemId: string; pillar: string; reward: number },
+  args: { contentItemId: string; pillar: ContentPillar; reward: number },
 ): Promise<{ recorded: boolean; arm: LearningArmRow }> {
   assertScope(scope);
   return db.transaction(async (tx) => {
@@ -2414,7 +2693,7 @@ export async function recordLearningOutcome(
       .limit(1);
     if (!arm) throw new ToolError('UPSTREAM_FAILED', 'Failed to update the learning arm.', { pillar: args.pillar });
 
-    return { recorded, arm };
+    return { recorded, arm: asArmRow(arm) };
   });
 }
 
@@ -2842,6 +3121,7 @@ export interface OAuthConnectionRow {
   accountLabel: string | null;
   /** The platform's stable account id — the engagement webhook's join key. */
   accountId: string | null;
+  accountAvatarUrl: string | null;
   expiryNotifiedAt: Date | null;
 }
 
@@ -2862,6 +3142,7 @@ const oauthConnectionColumns = {
   scopes: oauthConnections.scopes,
   accountLabel: oauthConnections.accountLabel,
   accountId: oauthConnections.accountId,
+  accountAvatarUrl: oauthConnections.accountAvatarUrl,
   expiryNotifiedAt: oauthConnections.expiryNotifiedAt,
 };
 
@@ -2879,6 +3160,7 @@ export async function saveOAuthConnection(
     accountLabel?: string;
     /** The platform's stable account id — the engagement webhook's route back to this genome. */
     accountId?: string;
+    accountAvatarUrl?: string;
   },
 ): Promise<OAuthConnectionRow> {
   assertScope(scope);
@@ -2895,6 +3177,7 @@ export async function saveOAuthConnection(
       ...(args.scopes ? { scopes: args.scopes } : {}),
       ...(args.accountLabel ? { accountLabel: args.accountLabel } : {}),
       ...(args.accountId ? { accountId: args.accountId } : {}),
+      ...(args.accountAvatarUrl ? { accountAvatarUrl: args.accountAvatarUrl } : {}),
     })
     .onConflictDoUpdate({
       target: [oauthConnections.genomeId, oauthConnections.provider],
@@ -2906,6 +3189,13 @@ export async function saveOAuthConnection(
         scopes: args.scopes ?? null,
         accountLabel: args.accountLabel ?? null,
         accountId: args.accountId ?? null,
+        /*
+         * Cleared when absent, like every other field here. A reconnection is a
+         * fresh statement of the account, and keeping a previous avatar would
+         * leave the wrong face on a connection that now points somewhere else —
+         * which is exactly the confusion the avatar exists to prevent.
+         */
+        accountAvatarUrl: args.accountAvatarUrl ?? null,
         // Reconnecting re-arms the §10 expiry alert. The new token has a new
         // expiry, so the next warning is a new fact, not a repeat of the one
         // that prompted this reconnection.
@@ -2957,6 +3247,45 @@ export async function findExpiringOAuthConnections(
         isNotNull(oauthConnections.expiresAt),
         lte(oauthConnections.expiresAt, args.before),
         isNull(oauthConnections.expiryNotifiedAt),
+      ),
+    )
+    .orderBy(asc(oauthConnections.expiresAt))
+    .limit(args.limit);
+}
+
+/**
+ * Connections due a token refresh — the refresher's one read.
+ *
+ * Deliberately NOT `findExpiringOAuthConnections` with a different window.
+ * That one exists to *notify a human once*, so it filters on
+ * `expiryNotifiedAt IS NULL` and goes quiet after the first warning. A
+ * refresher must keep seeing a connection on every tick until it is actually
+ * renewed, and it must see the ones a human has already been warned about —
+ * those are precisely the ones most in need of repair.
+ *
+ * `refresh_token IS NOT NULL` is the other half: a connection with no refresh
+ * token cannot be renewed by anything but a person, and selecting it would make
+ * every tick retry a failure that is not going to change.
+ *
+ * Cross-tenant for the same reason as `findExpiringOAuthConnections` and
+ * `findDueContentItems`: the caller is a clock, and a clock has no session.
+ * Every row carries its own `orgId`/`genomeId` so the write that follows goes
+ * back through the scoped layer.
+ */
+export async function findRefreshableOAuthConnections(
+  db: Database,
+  args: { before: Date; providers: string[]; limit: number },
+): Promise<OAuthConnectionRow[]> {
+  if (args.providers.length === 0) return [];
+  return db
+    .select(oauthConnectionColumns)
+    .from(oauthConnections)
+    .where(
+      and(
+        isNotNull(oauthConnections.expiresAt),
+        lte(oauthConnections.expiresAt, args.before),
+        isNotNull(oauthConnections.refreshToken),
+        inArray(oauthConnections.provider, args.providers),
       ),
     )
     .orderBy(asc(oauthConnections.expiresAt))

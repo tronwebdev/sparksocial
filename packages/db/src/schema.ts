@@ -339,6 +339,25 @@ export const contentItems = pgTable(
     variantLabel: text('variant_label'),
     copy: jsonb('copy'),
     /**
+     * The post's hashtags, without the leading `#`.
+     *
+     * A column rather than another beat, and the distinction is not
+     * bookkeeping: a `kind: 'text'` beat is rendered by
+     * `packages/compose/src/composition.ts` as a full-screen type card, so
+     * hashtags-as-a-beat would burn "#coldbrew #huila" into the middle of every
+     * video. Hashtags are caption furniture — they belong to the post, not to
+     * its structure, and they never appear in the pixels.
+     *
+     * Stored without the `#` so the column holds the tag and not its
+     * punctuation; the single place that renders them adds it back. A tag is
+     * also then greppable and groupable without every query stripping a prefix.
+     *
+     * Null on every row written before this existed, and on posts for platforms
+     * where hashtags do nothing (Google Business) or read as a mistake (Reddit)
+     * — see `hashtagBudget`.
+     */
+    hashtags: text('hashtags').array(),
+    /**
      * The copy's embedding at publish time — the guardrail layer's `duplicate`
      * check (§10) compares a new draft against the trailing 90 days of these.
      * Computed once, here, rather than re-embedding historical copy on every
@@ -1953,6 +1972,20 @@ export const oauthConnections = pgTable(
      */
     accountId: text('account_id'),
     /**
+     * The connected account's profile picture, when the provider gives one.
+     *
+     * Stored rather than fetched on demand: a brand's Settings screen lists
+     * fourteen platforms, and resolving each avatar per render would be fourteen
+     * vendor calls on a page load, against tokens that may be expired and rate
+     * limits that are not ours.
+     *
+     * Nullable, and often null: several providers return no avatar at all, and
+     * the ones that do sometimes sign the URL so it stops resolving later. Every
+     * reader falls back to the platform mark, which is why a stale one is a
+     * cosmetic problem rather than a broken screen.
+     */
+    accountAvatarUrl: text('account_avatar_url'),
+    /**
      * ── PRD §10's connection alerts ────────────────────────────────────────
      *
      * §10 pairs "connection health indicators" with "alerts + retry flows"
@@ -1982,5 +2015,142 @@ export const oauthConnections = pgTable(
     // The watcher's one cross-tenant read: "which connections are near expiry",
     // ordered by when. Without this it is a full scan on every tick.
     index('oauth_connections_expiry_idx').on(t.expiresAt),
+  ],
+);
+
+/**
+ * ── THE AGENCY'S SALES PIPELINE ──────────────────────────────────────────
+ *
+ * `leads` and `proposals` are the two tables in this file that are **not
+ * about a brand**. A lead is a business that is not a client yet: no genome,
+ * no brand row, nothing of theirs to isolate. So both are org-scoped, both
+ * filter on `org_id` in every query, and neither is in `SCOPED_TABLE_NAMES` —
+ * there is no client material in them to leak between clients.
+ *
+ * `lead.convert` is the bridge: a won lead gets a brand, `converted_brand_id`
+ * records which, and from then on everything about that client is
+ * genome-scoped like any other.
+ */
+export const leads = pgTable(
+  'leads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+
+    /**
+     * Third-party text. Whatever eventually renders a lead into a model prompt
+     * must wrap these in `untrusted()` first — a business name is a place a
+     * prompt injection can arrive, and a CSV is an unauthenticated channel in
+     * exactly the way the WhatsApp capture loop is.
+     */
+    businessName: text('business_name').notNull(),
+    contactName: text('contact_name'),
+    email: text('email'),
+    phone: text('phone'),
+    location: text('location'),
+    website: text('website'),
+    /** What they asked about, in their words. Also untrusted. */
+    interest: text('interest'),
+    notes: text('notes'),
+
+    /**
+     * The agency's own rating of the lead, 0–5, matching the design's "Ranking"
+     * column. Nullable and never inferred: there is no signal in this product
+     * that could rank a business we know nothing about, so an empty column is
+     * the honest state until somebody scores it.
+     */
+    rating: real('rating'),
+
+    source: text('source').notNull(), // LeadSource
+    status: text('status').notNull().default('new'), // LeadStatus
+
+    /**
+     * `leadDedupeKey()`'s output. Stored rather than computed at query time so
+     * the unique index can do the work — re-importing the same sheet is the
+     * normal case, not the exception, and dedupe that depends on the importer
+     * remembering to check is not dedupe.
+     */
+    dedupeKey: text('dedupe_key').notNull(),
+
+    /** Set once by `lead.convert`. Its presence is what makes `won` terminal. */
+    convertedBrandId: text('converted_brand_id'),
+
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /**
+     * The dedupe guarantee, per org. Scoped to the org and not global because
+     * two agencies pitching the same business is not a conflict — it is two
+     * separate sales, and a global key would leak the existence of one
+     * agency's pipeline into the other's import result.
+     */
+    uniqueIndex('leads_dedupe_idx').on(t.orgId, t.dedupeKey),
+    // The pipeline table's own read: this org's leads, filtered by stage.
+    index('leads_status_idx').on(t.orgId, t.status),
+    // "Newest first" within an org, which is the list's default order.
+    index('leads_recent_idx').on(t.orgId, t.createdAt),
+  ],
+);
+
+/**
+ * A proposal sent to a lead.
+ *
+ * `line_items` is `jsonb` rather than a child table on purpose. A proposal is
+ * a **document**: what matters is what it said when it was sent, and normalising
+ * its lines into rows invites a later edit to a service's name or price to
+ * rewrite history in every proposal that referenced it. Storing the lines as
+ * they were quoted is the same reasoning that keeps `accepted` terminal.
+ *
+ * The totals are stored alongside them for the same reason — they are what the
+ * client agreed to, not a live recomputation against today's `proposalTotals`.
+ */
+export const proposals = pgTable(
+  'proposals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgId: text('org_id').notNull(),
+    leadId: uuid('lead_id').notNull(),
+
+    title: text('title').notNull(),
+    currency: text('currency').notNull().default('USD'),
+    status: text('status').notNull().default('draft'), // ProposalStatus
+    termMonths: integer('term_months').notNull(),
+
+    /** `ProposalLineItem[]`, exactly as quoted. See the header. */
+    lineItems: jsonb('line_items').notNull(),
+    monthlyCents: integer('monthly_cents').notNull(),
+    oneOffCents: integer('one_off_cents').notNull(),
+    totalContractCents: integer('total_contract_cents').notNull(),
+
+    notes: text('notes'),
+
+    /**
+     * `proposal.share`'s credential — 256 random bits, the same discipline as
+     * `review_links.token`, because it grants an unauthenticated reader sight
+     * of a priced offer. Nullable: a proposal is not shared until it is.
+     */
+    shareToken: text('share_token'),
+    shareExpiresAt: timestamp('share_expires_at', { withTimezone: true }),
+    shareRevokedAt: timestamp('share_revoked_at', { withTimezone: true }),
+
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+
+    createdBy: text('created_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('proposals_org_status_idx').on(t.orgId, t.status),
+    // Every proposal for one lead — the lead detail panel's read.
+    index('proposals_lead_idx').on(t.orgId, t.leadId),
+    /**
+     * The public resolve. Unique and unconditional so a token collision is a
+     * write-time failure rather than an ambiguous read, and so the
+     * unauthenticated lookup is an index hit with no `org_id` to present.
+     */
+    uniqueIndex('proposals_share_token_idx').on(t.shareToken),
   ],
 );

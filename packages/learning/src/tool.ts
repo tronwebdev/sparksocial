@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { ContentPillar, Explanation, ToolError } from '@sparksocial/shared';
 
 /**
  * `learning.*` — THE LEARNING LOOP, plan §6.7 / §12 P6.
@@ -38,7 +38,7 @@ const MIN_QUALIFYING_ARMS = 2;
 const CONFIDENCE_TARGET_OBSERVATIONS = 25;
 
 const ArmOut = z.object({
-  pillar: z.string(),
+  pillar: ContentPillar,
   alpha: z.number(),
   beta: z.number(),
   observations: z.number(),
@@ -46,7 +46,7 @@ const ArmOut = z.object({
   qualifies: z.boolean(),
 });
 
-function shapeArm(a: { pillar: string; alpha: number; beta: number; observations: number }) {
+function shapeArm(a: { pillar: ContentPillar; alpha: number; beta: number; observations: number }) {
   return {
     pillar: a.pillar,
     alpha: a.alpha,
@@ -66,7 +66,7 @@ export const LearningRecordOutcomeInput = z.object({
 
 export const LearningRecordOutcomeOutput = z.object({
   recorded: z.boolean(),
-  pillar: z.string(),
+  pillar: ContentPillar,
   reward: z.number(),
   arm: ArmOut,
   why: Explanation,

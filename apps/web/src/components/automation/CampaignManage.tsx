@@ -68,8 +68,8 @@ export function CampaignManage({
           className="absolute left-[648px] top-[52px] w-[512px] max-w-[calc(100%-80px)] rounded-[16px] px-[26px] py-[20px] max-xl:left-[40px]"
           style={{ background: 'rgba(40,36,52,0.85)', backdropFilter: 'blur(10px)' }}
         >
-          <p className="text-[19px] font-bold text-white">Hello,</p>
-          <p className="mt-[6px] text-[15.5px] font-normal text-white/80">
+          <p className="text-19 font-bold text-white">Hello,</p>
+          <p className="mt-[6px] text-16 font-normal text-white/80">
             These are all your {meta.name} posts, sent and in review
           </p>
           <div className="mt-[12px] flex flex-wrap items-center gap-[10px] text-15 font-semibold" style={{ color: '#C08CF6' }}>
@@ -89,7 +89,7 @@ export function CampaignManage({
       {/* ── title row ────────────────────────────────────────────────────── */}
       <div className="mt-[38px] flex max-w-auto-wide flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[27px] font-bold text-ink">Campaign Automations for: {meta.name}</h1>
+          <h1 className="text-28 font-bold text-ink">Campaign Automations for: {meta.name}</h1>
           <p className="mt-[10px] text-16 font-normal" style={{ color: '#838383' }}>
             {recipes.length === 0
               ? 'No recipe of this kind yet.'
@@ -123,7 +123,7 @@ export function CampaignManage({
               style={{ boxShadow: '0 16px 44px -34px rgba(12,12,12,0.3)' }}
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[18px] font-bold text-ink">{r.name}</p>
+                <p className="truncate text-18 font-bold text-ink">{r.name}</p>
                 <p className="mt-[4px] text-15" style={{ color: '#838383' }}>
                   {r.status === 'active' ? 'Active' : r.status === 'paused' ? 'Paused' : 'Finished'}
                   {r.intervalMinutes ? ` · every ${Math.round(r.intervalMinutes / 60)}h` : ''}
@@ -209,7 +209,7 @@ export function CampaignManage({
                           Status:
                         </span>
                         <span
-                          className="inline-flex h-[40px] items-center rounded-[9px] px-[15px] text-[14.5px] font-semibold"
+                          className="inline-flex h-[40px] items-center rounded-[9px] px-[15px] text-15 font-semibold"
                           style={{ background: row.chip.bg, boxShadow: `inset 0 0 0 1.06px ${row.chip.ring}`, color: row.chip.color }}
                         >
                           {row.chip.label}
@@ -217,7 +217,7 @@ export function CampaignManage({
                       </span>
                     </div>
 
-                    <p className="mt-[14px] line-clamp-3 text-[16.5px] font-medium leading-[1.45]" style={{ color: '#3B3B3B' }}>
+                    <p className="mt-[14px] line-clamp-3 text-17 font-medium leading-[1.45]" style={{ color: '#3B3B3B' }}>
                       {row.caption}
                     </p>
 
@@ -263,7 +263,7 @@ export function CampaignManage({
                           became, and there is nothing to draft one from. Saying
                           so beats a tick that always errors. */}
                       {row.canDecide && !row.playbookId ? (
-                        <span className="text-[13.5px]" style={{ color: '#838383' }}>
+                        <span className="text-14" style={{ color: '#838383' }}>
                           No format picked — nothing to draft from
                         </span>
                       ) : null}
@@ -294,7 +294,7 @@ export function CampaignManage({
 
                 {isOpen ? (
                   <div className="border-t px-[44px] py-[22px]" style={{ borderColor: 'rgba(131,131,131,0.15)' }}>
-                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-[20px] text-[13.5px] font-bold tracking-[0.08em] max-md:grid-cols-1" style={{ color: '#838383' }}>
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-[20px] text-14 font-bold tracking-[0.08em] max-md:grid-cols-1" style={{ color: '#838383' }}>
                       <span>RECIPE</span>
                       <span>DETAIL</span>
                     </div>
@@ -302,7 +302,7 @@ export function CampaignManage({
                       <span className="truncate text-17 font-medium" style={{ color: '#5B5B5B' }}>
                         {row.recipeName}
                       </span>
-                      <span className="text-[15.5px] font-medium leading-[1.4]" style={{ color: '#3B3B3B' }}>
+                      <span className="text-16 font-medium leading-[1.4]" style={{ color: '#3B3B3B' }}>
                         {row.detail}
                       </span>
                     </div>

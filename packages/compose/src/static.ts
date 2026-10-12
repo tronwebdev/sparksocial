@@ -109,7 +109,7 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
       const assetIds = resolvedBeats.filter((b): b is Extract<ResolvedBeat, { kind: 'asset' }> => b.kind === 'asset').map((b) => b.assetId);
       const assetInfo = assetIds.length ? await ctx.db.assets.info(assetIds, input.genomeId, ctx.orgId) : {};
 
-      const timeline = zipTimeline({ resolvedBeats, playbookBeats: playbook.structure.beats, assetInfo });
+      const timeline = zipTimeline({ resolvedBeats, playbookBeats: playbook.structure.beats, assetInfo, mediaType });
       const aspects = playbook.output.aspect_ratios;
       const renders: Array<{ aspect: string; url: string; beatId?: string }> = [];
       const brandKit = await brandKitFor(ctx);

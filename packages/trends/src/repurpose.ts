@@ -1,4 +1,4 @@
-import { assetRoleWordList } from '@sparksocial/shared';
+import { assetRoleWordList, type ContentPillar, type GenerationMode } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { resolve, type AssetInventory, type ResolvedPlaybook } from '@sparksocial/playbooks';
 import type { Trend } from './trend.js';
@@ -26,8 +26,9 @@ import type { Trend } from './trend.js';
 export interface RepurposeSuggestion {
   playbookId: string;
   playbookName: string;
-  pillar: string;
-  mode: string;
+  /** Both read straight off the `Playbook` record the resolver returned. */
+  pillar: ContentPillar;
+  mode: GenerationMode;
   intent: string;
   unlockable: boolean;
   missingRoles: string[];

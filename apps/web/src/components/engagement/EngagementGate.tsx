@@ -154,29 +154,29 @@ export function EngagementGate({
 
       {state.kind === 'ineligible' && showLearningNotice ? (
         <section className="rounded-xl border border-border bg-surface-muted p-6">
-          <h2 className="text-[18px] font-semibold text-ink">SPARK is still learning your voice</h2>
-          <p className="mt-1 max-w-prose text-[14px] text-ink-muted">{state.eligibility.reason}</p>
+          <h2 className="text-18 font-semibold text-ink">SPARK is still learning your voice</h2>
+          <p className="mt-1 max-w-prose text-14 text-ink-muted">{state.eligibility.reason}</p>
 
           {/* Concrete progress, not a spinner. "Still learning" with no numbers
               reads as broken; with numbers it reads as a process. */}
           <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
             <div>
-              <dt className="text-[12px] uppercase tracking-wide text-ink-muted">Days running</dt>
-              <dd className="text-[20px] font-medium tabular-nums text-ink">
+              <dt className="text-12 uppercase tracking-wide text-ink-muted">Days running</dt>
+              <dd className="text-20 font-medium tabular-nums text-ink">
                 {state.eligibility.daysSinceStart}
-                <span className="text-[14px] text-ink-muted"> / 14</span>
+                <span className="text-14 text-ink-muted"> / 14</span>
               </dd>
             </div>
             <div>
-              <dt className="text-[12px] uppercase tracking-wide text-ink-muted">Posts published</dt>
-              <dd className="text-[20px] font-medium tabular-nums text-ink">
+              <dt className="text-12 uppercase tracking-wide text-ink-muted">Posts published</dt>
+              <dd className="text-20 font-medium tabular-nums text-ink">
                 {state.eligibility.publishedCount}
-                <span className="text-[14px] text-ink-muted"> / 5</span>
+                <span className="text-14 text-ink-muted"> / 5</span>
               </dd>
             </div>
           </dl>
 
-          <p className="mt-3 text-[13px] text-ink-muted">
+          <p className="mt-3 text-13 text-ink-muted">
             Messages still arrive below and you can answer them yourself. SPARK will not reply on its own
             until both of these are met.
           </p>
@@ -186,8 +186,8 @@ export function EngagementGate({
 
       {state.kind === 'unconfigured' ? (
         <section className="rounded-xl border border-primary/40 bg-surface p-6">
-          <h2 className="text-[18px] font-semibold text-ink">Ready — decide how much SPARK may do</h2>
-          <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">Ready — decide how much SPARK may do</h2>
+          <p className="mt-1 max-w-prose text-14 text-ink-muted">
             {state.eligibility.reason} Until you choose, every reply SPARK drafts waits for your approval.
           </p>
           <Button asChild className="mt-4">

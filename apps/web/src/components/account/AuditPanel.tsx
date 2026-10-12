@@ -160,8 +160,8 @@ export function AuditPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Audit log</h2>
-          <p className="mt-1 max-w-prose text-[14px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">Audit log</h2>
+          <p className="mt-1 max-w-prose text-14 text-ink-muted">
             Everything SPARK and everybody else did, including what was refused and why. Inputs and outputs are
             never recorded — only what happened.
           </p>
@@ -184,7 +184,7 @@ export function AuditPanel() {
             role="tab"
             aria-selected={tab === id}
             onClick={() => setTab(id)}
-            className={`rounded-full border px-3 py-1.5 text-[13px] ${
+            className={`rounded-full border px-3 py-1.5 text-13 ${
               tab === id
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border text-ink hover:bg-surface-muted'
@@ -199,7 +199,7 @@ export function AuditPanel() {
       <div className="mt-4 flex flex-wrap items-end gap-3">
         {tab === 'calls' ? (
           <div className="min-w-[180px]">
-            <label className="block text-[12px] text-ink-muted" htmlFor="audit-tool">
+            <label className="block text-12 text-ink-muted" htmlFor="audit-tool">
               Tool
             </label>
             <Input
@@ -212,26 +212,26 @@ export function AuditPanel() {
           </div>
         ) : null}
         <div>
-          <label className="block text-[12px] text-ink-muted" htmlFor="audit-since">
+          <label className="block text-12 text-ink-muted" htmlFor="audit-since">
             From
           </label>
           <Input id="audit-since" type="date" value={since} onChange={(e) => setSince(e.target.value)} className="mt-1" />
         </div>
         <div>
-          <label className="block text-[12px] text-ink-muted" htmlFor="audit-until">
+          <label className="block text-12 text-ink-muted" htmlFor="audit-until">
             To
           </label>
           <Input id="audit-until" type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="mt-1" />
         </div>
         <div>
-          <label className="block text-[12px] text-ink-muted" htmlFor="audit-limit">
+          <label className="block text-12 text-ink-muted" htmlFor="audit-limit">
             Rows
           </label>
           <select
             id="audit-limit"
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-ink"
+            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
           >
             {LIMITS.map((n) => (
               <option key={n} value={n}>
@@ -241,14 +241,14 @@ export function AuditPanel() {
           </select>
         </div>
         {tab === 'calls' ? (
-          <label className="flex items-center gap-2 pb-2 text-[13px] text-ink">
+          <label className="flex items-center gap-2 pb-2 text-13 text-ink">
             <input type="checkbox" checked={refusalsOnly} onChange={(e) => setRefusalsOnly(e.target.checked)} />
             Refusals only
           </label>
         ) : null}
       </div>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       {/* ── Every action ────────────────────────────────────────────────── */}
       {tab === 'calls' ? (
@@ -256,14 +256,14 @@ export function AuditPanel() {
           {calls === null && !error ? (
             <Skeleton className="h-48 w-full rounded-lg" />
           ) : shown.length === 0 ? (
-            <p className="text-[14px] text-ink-muted">
+            <p className="text-14 text-ink-muted">
               {refusalsOnly ? 'Nothing was refused in this range — which is the good outcome.' : 'No calls in this range.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
+              <table className="w-full border-collapse text-13">
                 <thead>
-                  <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-ink-muted">
+                  <tr className="border-b border-border text-left text-11 uppercase tracking-wide text-ink-muted">
                     <th className="py-2 pr-3 font-medium">When</th>
                     <th className="py-2 pr-3 font-medium">Tool</th>
                     <th className="py-2 pr-3 font-medium">By</th>
@@ -294,15 +294,15 @@ export function AuditPanel() {
                           identifier is what a support conversation needs. */}
                       <td className="py-2 pr-3">
                         <span className="block text-ink">{toolLabel(c.tool)}</span>
-                        <span className="block font-mono text-[11px] text-ink-muted">{c.tool}</span>
+                        <span className="block font-mono text-11 text-ink-muted">{c.tool}</span>
                       </td>
                       <td className="py-2 pr-3 text-ink-muted">{c.caller === 'agent' ? 'SPARK' : 'a person'}</td>
                       <td className="py-2 pr-3">
                         <Badge variant={decisionTone(c.decision)}>{DECISION_LABEL[c.decision] ?? c.decision}</Badge>
                         {c.ruleId ? (
-                          <span className="ml-2 font-mono text-[11px] text-ink-muted">{c.ruleId}</span>
+                          <span className="ml-2 font-mono text-11 text-ink-muted">{c.ruleId}</span>
                         ) : null}
-                        {c.reason ? <p className="mt-0.5 text-[12px] text-ink-muted">{c.reason}</p> : null}
+                        {c.reason ? <p className="mt-0.5 text-12 text-ink-muted">{c.reason}</p> : null}
                       </td>
                       <td className="py-2 pr-3 text-ink-muted">{c.status}</td>
                       <td className="py-2 pr-3 text-right tabular-nums text-ink-muted">{money(c.costCents)}</td>
@@ -321,13 +321,13 @@ export function AuditPanel() {
           {engagement === null && !error ? (
             <Skeleton className="h-48 w-full rounded-lg" />
           ) : (engagement ?? []).length === 0 ? (
-            <p className="text-[14px] text-ink-muted">Nothing has been replied to, escalated or dismissed in this range.</p>
+            <p className="text-14 text-ink-muted">Nothing has been replied to, escalated or dismissed in this range.</p>
           ) : (
             <ul className="grid grid-cols-1 gap-2">
               {(engagement ?? []).map((m) => (
                 <li key={m.id} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-[13px] font-medium text-ink">
+                    <p className="text-13 font-medium text-ink">
                       {m.authorName ?? m.authorHandle}{' '}
                       <span className="font-normal text-ink-muted">
                         on {m.platform} · {m.kind.replace(/_/g, ' ')}
@@ -336,14 +336,14 @@ export function AuditPanel() {
                     <div className="flex shrink-0 items-center gap-2">
                       {m.category ? <Badge variant="neutral">{m.category}</Badge> : null}
                       <Badge variant={m.status === 'escalated' ? 'warn' : 'success'}>{m.status.replace(/_/g, ' ')}</Badge>
-                      <span className="text-[12px] text-ink-muted">
+                      <span className="text-12 text-ink-muted">
                         {new Date(m.receivedAt).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
                       </span>
                     </div>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-[13px] text-ink-muted">{m.text}</p>
+                  <p className="mt-1 line-clamp-2 text-13 text-ink-muted">{m.text}</p>
                   {m.suggestedReply ? (
-                    <p className="mt-1 text-[12px] text-ink-muted">
+                    <p className="mt-1 text-12 text-ink-muted">
                       <span className="font-medium text-ink">Sent:</span> {m.suggestedReply}
                     </p>
                   ) : null}

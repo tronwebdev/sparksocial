@@ -151,7 +151,7 @@ export function AccountPicker({
         <p className="text-15 font-medium text-ink">{loadError}</p>
         {brandMissing ? (
           <>
-            <p className="mt-[4px] text-[13.5px]" style={{ color: '#5B5B5B' }}>
+            <p className="mt-[4px] text-14" style={{ color: '#5B5B5B' }}>
               Your accounts are held per brand, and this session has not recorded which brand it is
               working on yet.
             </p>
@@ -206,7 +206,7 @@ export function AccountPicker({
                     {r.accountLabel ?? platformLabel(r.platform)}
                   </span>
                   {note ? (
-                    <span className="block whitespace-nowrap text-[12.5px]" style={{ color: r.status === 'expired' ? 'var(--ss-auto-failed)' : 'var(--ss-amber-500)' }}>
+                    <span className="block whitespace-nowrap text-13" style={{ color: r.status === 'expired' ? 'var(--ss-auto-failed)' : 'var(--ss-amber-500)' }}>
                       {r.status === 'expired' ? 'Expired' : 'Expiring soon'}
                     </span>
                   ) : null}
@@ -251,7 +251,7 @@ export function AccountPicker({
                 <span className="min-w-0 flex-1">
                   <span className="block text-16 font-semibold text-ink">{platformLabel(r.platform)}</span>
                   {notes[r.platform] ? (
-                    <span className="mt-[2px] block text-[13px]" style={{ color: '#5B5B5B' }}>
+                    <span className="mt-[2px] block text-13" style={{ color: '#5B5B5B' }}>
                       {notes[r.platform]}
                     </span>
                   ) : null}
@@ -272,7 +272,7 @@ export function AccountPicker({
       ) : null}
 
       {awaiting ? (
-        <p className="mt-[12px] text-[13.5px]" style={{ color: '#5B5B5B' }}>
+        <p className="mt-[12px] text-14" style={{ color: '#5B5B5B' }}>
           Finish on the platform&rsquo;s tab, then come back — this list refreshes itself.
         </p>
       ) : null}

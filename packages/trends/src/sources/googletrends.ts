@@ -126,6 +126,25 @@ export function createGoogleTrendsSource(config: GoogleTrendsSourceConfig = {}):
 
     async fetch({ limit, region, keywords, excludeKeywords }) {
       const geo = (region ?? defaultRegion).toUpperCase();
+      /*
+       * One region, not a list.
+       *
+       * `GOOGLE_TREND_REGION` is the single fallback geo; `TREND_REGIONS` is the
+       * multi-region breakdown, and the wrapper around the composite asks each
+       * region separately. A copy of the `TREND_REGIONS` line landing in this
+       * variable sent `geo=US,GB,NZ,FR,IN,ES`, which Google answers with a bare
+       * 400 — and the composite swallows a source's failure by design, so the
+       * feed simply ran without Google for as long as nobody looked.
+       *
+       * Named here rather than left to the HTTP error, because the 400 says
+       * nothing about which variable is wrong or which one they meant.
+       */
+      if (geo.includes(',')) {
+        throw new Error(
+          `Google Trends takes one region, got "${geo}". GOOGLE_TREND_REGION is a single geo code; ` +
+            `the multi-region breakdown is TREND_REGIONS, which is asked one region at a time.`,
+        );
+      }
       const res = await timedFetch(
         `https://trends.google.com/trending/rss?geo=${encodeURIComponent(geo)}`,
         { headers: { accept: 'application/rss+xml, application/xml, text/xml' } },

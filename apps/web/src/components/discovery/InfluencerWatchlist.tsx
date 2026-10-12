@@ -155,25 +155,25 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
 
   return (
     <div className="mt-4 grid grid-cols-1 gap-4">
-      <p className="text-[14px] text-ink-muted">
+      <p className="text-14 text-ink-muted">
         Accounts worth studying — competitors, customers, anyone whose formats you want to learn from. SPARK
         scores what they post the same way it scores any other trend: by whether you could credibly make
         something like it.
       </p>
 
-      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
       {/* ── Add ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-4">
         <div>
-          <label className="block text-[12px] text-ink-muted" htmlFor="inf-platform">
+          <label className="block text-12 text-ink-muted" htmlFor="inf-platform">
             Where
           </label>
           <select
             id="inf-platform"
             value={platform}
             onChange={(e) => setPlatform(e.target.value as Platform)}
-            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-ink"
+            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
           >
             {PLATFORMS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -183,7 +183,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
           </select>
         </div>
         <div className="min-w-[160px]">
-          <label className="block text-[12px] text-ink-muted" htmlFor="inf-handle">
+          <label className="block text-12 text-ink-muted" htmlFor="inf-handle">
             Handle
           </label>
           <Input
@@ -195,7 +195,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
           />
         </div>
         <div className="min-w-[180px] flex-1">
-          <label className="block text-[12px] text-ink-muted" htmlFor="inf-note">
+          <label className="block text-12 text-ink-muted" htmlFor="inf-note">
             Why (optional)
           </label>
           <Input
@@ -215,7 +215,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
       {watchlist === null ? (
         <Skeleton className="h-24 w-full rounded-lg" />
       ) : watchlist.length === 0 ? (
-        <p className="text-[14px] text-ink-muted">
+        <p className="text-14 text-ink-muted">
           No accounts watched yet. Add the two or three whose posts you already check by hand.
         </p>
       ) : (
@@ -227,15 +227,15 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
                 className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-medium text-ink">@{w.handle}</p>
-                  <p className="text-[12px] capitalize text-ink-muted">{w.platform.replace('_', ' ')}</p>
-                  {w.note ? <p className="mt-1 text-[12px] text-ink-muted">{w.note}</p> : null}
+                  <p className="truncate text-14 font-medium text-ink">@{w.handle}</p>
+                  <p className="text-12 capitalize text-ink-muted">{w.platform.replace('_', ' ')}</p>
+                  {w.note ? <p className="mt-1 text-12 text-ink-muted">{w.note}</p> : null}
                 </div>
                 <button
                   type="button"
                   onClick={() => void remove(w)}
                   disabled={busy !== null}
-                  className="shrink-0 text-[12px] text-ink-muted hover:text-ink disabled:opacity-50"
+                  className="shrink-0 text-12 text-ink-muted hover:text-ink disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -254,8 +254,8 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
       {/* ── The review ──────────────────────────────────────────────────── */}
       {reviewBlocked ? (
         <div className="rounded-lg border border-warn/40 bg-warn/10 p-3">
-          <p className="text-[13px] font-medium text-ink">SPARK cannot read their posts yet</p>
-          <p className="mt-1 text-[13px] text-ink-muted">{reviewBlocked}</p>
+          <p className="text-13 font-medium text-ink">SPARK cannot read their posts yet</p>
+          <p className="mt-1 text-13 text-ink-muted">{reviewBlocked}</p>
         </div>
       ) : null}
 
@@ -268,9 +268,9 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
               {review.posts.map((p) => (
                 <li key={`${p.handle}:${p.trendId}`} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-[14px] text-ink">{p.topic}</p>
+                    <p className="text-14 text-ink">{p.topic}</p>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-[12px] text-ink-muted">@{p.handle}</span>
+                      <span className="text-12 text-ink-muted">@{p.handle}</span>
                       <Badge variant={p.score >= 0.5 ? 'success' : 'neutral'}>{pct(p.score)} match</Badge>
                       {/* Flagged, not filtered — same choice `trend.rank` makes.
                           A competitor doing something this brand must not do is
@@ -279,26 +279,26 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
                     </div>
                   </div>
                   {p.unsafeBecause ? (
-                    <p className={cn('mt-1 text-[12px] text-warn')}>{p.unsafeBecause}</p>
+                    <p className={cn('mt-1 text-12 text-warn')}>{p.unsafeBecause}</p>
                   ) : null}
-                  <p className="mt-1 text-[12px] text-ink-muted">
+                  <p className="mt-1 text-12 text-ink-muted">
                     Relevance {pct(p.relevance)} · opportunity {pct(p.opportunity)}
                   </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-[14px] text-ink-muted">Nothing they posted scored high enough to suggest.</p>
+            <p className="mt-3 text-14 text-ink-muted">Nothing they posted scored high enough to suggest.</p>
           )}
 
           {review.quiet.length > 0 ? (
             <div className="mt-3 rounded-lg border border-border bg-surface-muted p-3">
-              <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
+              <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
                 {review.quiet.length} account{review.quiet.length === 1 ? '' : 's'} with nothing to show
               </p>
               <ul className="mt-1 grid grid-cols-1 gap-1">
                 {review.quiet.map((q) => (
-                  <li key={`${q.platform}:${q.handle}`} className="text-[13px] text-ink-muted">
+                  <li key={`${q.platform}:${q.handle}`} className="text-13 text-ink-muted">
                     <span className="text-ink">@{q.handle}</span> — {q.because}
                   </li>
                 ))}

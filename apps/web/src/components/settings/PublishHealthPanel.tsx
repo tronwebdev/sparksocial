@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
+import { CredentialConnectModal } from './CredentialConnectModal';
+import { expiresInWords } from '@sparksocial/shared';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 
@@ -36,6 +38,21 @@ interface PlatformStatus {
   hoursUntilExpiry: number | null;
   supported: boolean;
   via: string | null;
+  /**
+   * How this platform connects. `credentials` takes a handle and an app
+   * password rather than a browser redirect, so its Connect button opens a form
+   * instead of a popup — sending it to `integration.connect` is what produced
+   * "bluesky isn't configured for native publishing yet". Served by the tool so
+   * this component does not hardcode which platforms are which.
+   */
+  connectMethod: 'oauth' | 'credentials' | 'derived';
+  /**
+   * Set when this platform posts through another's connection — Instagram
+   * Stories through Instagram, YouTube long-form through YouTube Shorts. There
+   * is nothing to connect here and no developer app to register, so the row
+   * says where it comes from instead of offering a button that cannot work.
+   */
+  connectedVia?: string;
 }
 
 interface Attention {
@@ -61,12 +78,14 @@ const STATUS_BADGE: Record<ConnectionStatus, { variant: 'success' | 'warn' | 'de
 function expiryNote(p: PlatformStatus): string | null {
   if (p.status === 'expired') return 'Access expired — posts to this account will fail until you reconnect.';
   if (p.status !== 'expiring' || p.hoursUntilExpiry === null) return null;
-  const days = Math.round(p.hoursUntilExpiry / 24);
-  // Under a day is stated in hours: "expires in 0 days" is the kind of rounding
-  // that makes a warning easy to dismiss on the one day it matters most.
-  return days >= 1
-    ? `Expires in ${days} day${days === 1 ? '' : 's'} — reconnect before it does.`
-    : `Expires in under ${Math.max(1, Math.round(p.hoursUntilExpiry))} hours — reconnect now.`;
+  // `expiresInWords` is shared with `integration.health`'s banner and the
+  // connection watcher's notification. This panel had the only correct version
+  // of this rounding and rendered the tool's incorrect one directly above it.
+  const left = expiresInWords(p.hoursUntilExpiry * 3_600_000);
+  if (!left) return null;
+  return left.startsWith('under')
+    ? `Expires in ${left} — reconnect now.`
+    : `Expires in ${left} — reconnect before it does.`;
 }
 
 
@@ -78,6 +97,7 @@ export function PublishHealthPanel() {
   const [loading, setLoading] = useState(false);
   const [busyPlatform, setBusyPlatform] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [credentialFor, setCredentialFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,9 +107,13 @@ export function PublishHealthPanel() {
       setPlatforms(res.output.platforms);
       setAttention(res.output.needsAttention);
       setError(null);
-    } else {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      // Returned, not just stored: the connect confirmation below needs to name
+      // the account that was actually connected, and `platforms` state is not
+      // readable yet in the same tick.
+      return res.output.platforms;
     }
+    setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+    return null;
   }, []);
 
   useEffect(() => {
@@ -102,15 +126,50 @@ export function PublishHealthPanel() {
     if (!social) return;
     const provider = params.get('provider');
     const label = provider ? platformLabel(provider) : 'Platform';
-    if (social === 'connected') setMessage({ kind: 'ok', text: `${label} connected.` });
-    else if (social === 'denied') setMessage({ kind: 'err', text: 'Connection was cancelled.' });
-    else if (social === 'failed') setMessage({ kind: 'err', text: 'Connection failed — check apps/api logs for the vendor error.' });
     window.history.replaceState(null, '', window.location.pathname);
-    void load();
+
+    if (social === 'denied') {
+      setMessage({ kind: 'err', text: 'Connection was cancelled.' });
+      void load();
+      return;
+    }
+    if (social === 'failed') {
+      setMessage({ kind: 'err', text: 'Connection failed — check apps/api logs for the vendor error.' });
+      void load();
+      return;
+    }
+
+    /*
+     * Name the account, not just the platform.
+     *
+     * Only Google offers an account chooser — X, TikTok, LinkedIn, Reddit and
+     * the rest connect whichever account the browser is already signed in to,
+     * with no prompt and no documented way to ask for one. So "X connected." is
+     * the one message that cannot tell you the thing most worth knowing: an
+     * agency connecting a client's account from their own laptop gets their own
+     * account, silently, and the confirmation reads as success.
+     *
+     * The handle is already fetched at connect time and stored as
+     * `accountLabel`; this reads it back off the health call that follows and
+     * puts it in front of the person while they can still undo it.
+     */
+    void (async () => {
+      const fresh = await load();
+      const account = fresh?.find((p) => p.platform === provider)?.accountLabel;
+      setMessage({
+        kind: 'ok',
+        text: account ? `${label} connected as ${account}.` : `${label} connected.`,
+      });
+    })();
   }, [load]);
 
   async function connect(platform: string) {
     if (!genome) return;
+    // A credential platform has no authorize URL to open — see the modal.
+    if (platforms?.find((p) => p.platform === platform)?.connectMethod === 'credentials') {
+      setCredentialFor(platform);
+      return;
+    }
     setBusyPlatform(platform);
     setMessage(null);
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId: genome.genomeId, provider: platform });
@@ -140,10 +199,22 @@ export function PublishHealthPanel() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Publishing health</h2>
-          <p className="mt-1 text-[13px] text-ink-muted">
+          <h2 className="text-18 font-semibold text-ink">Publishing health</h2>
+          <p className="mt-1 text-13 text-ink-muted">
             Connect this brand&rsquo;s own account per platform, and see which adapter (native once connected, the
             stub otherwise) and how much posting budget is left today.
+          </p>
+          {/*
+            Only Google offers an account chooser. Every other platform connects
+            whichever account this browser is already signed in to and never
+            asks — so an agency connecting a client's account from their own
+            laptop gets their own, with nothing on screen to say so. Naming the
+            connected account in the confirmation catches it after the fact;
+            this is what stops it happening in the first place.
+          */}
+          <p className="mt-1 text-12 text-ink-muted">
+            Except for Google, platforms connect whichever account this browser is signed in to, without asking.
+            To use a different one, sign out of that platform first or connect from a private window.
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}>
@@ -151,9 +222,9 @@ export function PublishHealthPanel() {
         </Button>
       </div>
 
-      {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       {message ? (
-        <p className={`mt-3 text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
+        <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
       ) : null}
 
       {/* Above the list, not inside it: a connection three days from expiry is
@@ -162,10 +233,10 @@ export function PublishHealthPanel() {
           sends, so the two never say different things. */}
       {attention.length > 0 ? (
         <div className="mt-4 rounded-lg border border-warn/40 bg-warn/10 p-3">
-          <p className="text-[13px] font-medium text-ink">
+          <p className="text-13 font-medium text-ink">
             {attention.length === 1 ? 'One connection needs attention' : `${attention.length} connections need attention`}
           </p>
-          <ul className="mt-1 list-inside list-disc text-[13px] text-ink-muted">
+          <ul className="mt-1 list-inside list-disc text-13 text-ink-muted">
             {attention.map((a) => (
               <li key={a.platform}>{a.detail}</li>
             ))}
@@ -188,13 +259,20 @@ export function PublishHealthPanel() {
                  instead, which is legible at every width. */
               <li key={p.platform} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded border border-border p-3">
                 <div className="min-w-[9rem] flex-1 break-words">
-                  <p className="text-[14px] font-medium text-ink">{platformLabel(p.platform)}</p>
-                  <p className="mt-0.5 text-[12px] text-ink-muted">
+                  <p className="text-14 font-medium text-ink">{platformLabel(p.platform)}</p>
+                  <p className="mt-0.5 text-12 text-ink-muted">
                     {p.connected ? `Connected${p.accountLabel ? ` — ${p.accountLabel}` : ''}` : 'Not connected'}
                     {p.supported ? ` · via ${p.via}` : ' · no adapter configured'}
                   </p>
+                  {p.connectedVia ? (
+                    <p className="mt-0.5 text-12 text-ink-muted">
+                      {p.connected
+                        ? `Comes with your ${platformLabel(p.connectedVia)} connection.`
+                        : `Connect ${platformLabel(p.connectedVia)} and this comes with it.`}
+                    </p>
+                  ) : null}
                   {expiryNote(p) ? (
-                    <p className={`mt-0.5 text-[12px] ${p.status === 'expired' ? 'text-destructive' : 'text-warn'}`}>{expiryNote(p)}</p>
+                    <p className={`mt-0.5 text-12 ${p.status === 'expired' ? 'text-destructive' : 'text-warn'}`}>{expiryNote(p)}</p>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -210,16 +288,21 @@ export function PublishHealthPanel() {
                           size="sm"
                           variant="outline"
                           disabled={busyPlatform === p.platform || !genome}
-                          onClick={() => void connect(p.platform)}
+                          onClick={() => void connect(p.connectedVia ?? p.platform)}
                         >
                           {busyPlatform === p.platform ? 'Redirecting…' : 'Reconnect'}
                         </Button>
                       ) : null}
-                      <Button size="sm" variant="ghost" disabled={busyPlatform === p.platform} onClick={() => void disconnect(p.platform)}>
-                        Disconnect
-                      </Button>
+                      {/* No Disconnect on a derived row: it would revoke the
+                          parent's connection and silently take the parent down
+                          with it. Disconnect Instagram to drop Instagram Stories. */}
+                      {p.connectedVia ? null : (
+                        <Button size="sm" variant="ghost" disabled={busyPlatform === p.platform} onClick={() => void disconnect(p.platform)}>
+                          Disconnect
+                        </Button>
+                      )}
                     </>
-                  ) : (
+                  ) : p.connectedVia ? null : (
                     <Button size="sm" variant="outline" disabled={busyPlatform === p.platform || !genome} onClick={() => void connect(p.platform)}>
                       {busyPlatform === p.platform ? 'Redirecting…' : 'Connect'}
                     </Button>
@@ -230,6 +313,21 @@ export function PublishHealthPanel() {
           </ul>
         )}
       </div>
+
+      {credentialFor && genome ? (
+        <CredentialConnectModal
+          platform={credentialFor}
+          genomeId={genome.genomeId}
+          onClose={() => setCredentialFor(null)}
+          onConnected={(accountLabel) => {
+            setCredentialFor(null);
+            // Named, like every other connect confirmation — see the `?social=`
+            // handler above for why the account and not just the platform.
+            setMessage({ kind: 'ok', text: `${platformLabel(credentialFor)} connected as ${accountLabel}.` });
+            void load();
+          }}
+        />
+      ) : null}
     </section>
   );
 }

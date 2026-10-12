@@ -67,38 +67,67 @@ painful to retrofit and cheap to write first.
 
 ---
 
-## Infrastructure — Azure (supersedes the plan's Vercel/Fly/Neon/R2 stack)
+## Infrastructure — Render (supersedes both the plan's stack and the Azure one)
 
-The master plan §2.2 targets Vercel + Fly.io + Neon + Cloudflare R2. **This project runs on
-Azure.** The substitutions below are the only stack deviations from the plan; everything
-above the infrastructure line is unchanged.
+The master plan §2.2 targets Vercel + Fly.io + Neon + Cloudflare R2. This project ran on
+Azure, and is **moving to Render + Cloudflare R2**. The substitutions below are the only
+stack deviations from the plan; everything above the infrastructure line is unchanged.
 
-| Plan §2.2 choice        | Azure replacement                                             |
+**Status, so nobody writes against the wrong one.** The code is ready and the deployment is
+not. `packages/storage/src/r2.ts` and `render.yaml` exist and are tested; no service has
+been cut over yet, and `infra/azure/` is still the live deployment until it is. Write new
+infrastructure code against Render. Do not add anything new that depends on Azure, and do
+not delete the Azure path until the cut-over is proven — `infra/render/MIGRATION.md` is the
+runbook, and §7 is the order the steps actually have to happen in.
+
+| Plan §2.2 choice        | Render replacement                                            |
 | ----------------------- | ------------------------------------------------------------- |
-| Vercel (web)            | **Azure Container Apps** (Next.js standalone) + **Front Door** |
-| Fly.io (agent, capture, FFmpeg) | **Azure Container Apps** — one app per workload        |
-| Neon Postgres           | **Azure Database for PostgreSQL Flexible Server** + `pgvector` |
-| Cloudflare R2           | **Azure Blob Storage**                                        |
-| Upstash Redis           | **Azure Cache for Redis**                                     |
-| — (secrets)             | **Azure Key Vault** + Managed Identity                         |
-| — (queues)              | **Azure Storage Queues** / Service Bus                         |
+| Vercel (web)            | **Render Web Service** (Docker, Next.js standalone)           |
+| Fly.io (agent, capture, FFmpeg) | **Render Web Service** — `apps/api/Dockerfile`         |
+| Neon Postgres           | **Render Postgres** + `pgvector`                              |
+| Cloudflare R2           | **Cloudflare R2** — as the plan originally specified          |
+| Upstash Redis           | **Render Key Value**                                          |
+| — (secrets)             | **Render env group** — no vault, no managed identity          |
+| — (queues)              | *nothing* — not provisioned; Trigger.dev is unchanged         |
 
 Unchanged, because they are provider-agnostic SaaS: Trigger.dev (durable workflows), Mux
 (video delivery), Clerk (auth), Langfuse, PostHog, Sentry, HeyGen, ElevenLabs, fal, Canva,
 AssemblyAI, WhatsApp Cloud API, Dub.
 
-**Cost note the plan's R2 rationale does not survive:** R2 was chosen for zero egress, which
-is the dominant cost lever for a media product. Blob Storage *does* charge egress, so serve
-all media through **Front Door** (cached) and keep Mux in front of video. Budget this
-explicitly — it is a real difference, not a like-for-like swap.
+**The plan's R2 rationale is back.** R2 was chosen for zero egress, which is the dominant
+cost lever for a media product. Azure Blob charges egress, which is why the Azure note here
+used to mandate serving all media through a cached Front Door. On R2 that requirement is
+obsolete rather than merely inaccurate — there is no egress bill to design around. Mux stays
+in front of video for delivery reasons, not cost ones.
 
 **Operational rules:**
-- The Claude Code sandbox cannot reach Azure (network allowlist). Anything Azure-side runs
-  from the developer machine via `az login` + the Azure CLI.
-- `pgvector` must be allow-listed as a server parameter on the Flexible Server *before*
-  running migrations, or `CREATE EXTENSION vector` fails.
-- **Never** commit tokens, PATs, or connection strings. Key Vault + Managed Identity in
-  cloud; local CLI auth in dev.
+- The Claude Code sandbox cannot reach the cloud (network allowlist). Anything provider-side
+  runs from the developer machine.
+- `pgvector` needs one `CREATE EXTENSION IF NOT EXISTS vector;` before migrations. Unlike
+  the Flexible Server there is no allow-list step, but run it **before** restoring any dump
+  or every `vector` column fails to restore.
+- **Secrets are environment variables in an env group, set by a human.** There is no Key
+  Vault and no managed identity: nothing resolves a secret at revision start, and anyone
+  with dashboard access can read every value. That is a genuine reduction in posture
+  compared with Azure. It is normal for Render and survivable; say it out loud rather than
+  discovering it at an audit.
+- **Leave unconfigured keys out of the env group entirely. Never add blank placeholders.**
+  `defineTool` registration is gated on `envSet(...)`, so an absent key leaves its tool
+  cleanly unregistered and the button simply is not there. An empty string registers the tool
+  and fails at call time, which reads to a customer as "the product is broken" rather than
+  "this is not configured". `infra/azure/secrets.manifest` is the only place the
+  required/optional semantics are written down — the env group has no equivalent concept, so
+  keep that file whatever happens to the rest of `infra/azure/`.
+- **Migrations run in CI, never in `preDeployCommand`.** Render's pre-deploy command runs
+  inside the deployed image, which installs `npm ci --omit=dev`, and `drizzle-kit` is a
+  devDependency of `packages/db` — it will not be there. Schema before code, and turn off
+  auto-deploy on the API or the deploy races the migration.
+- **The API cannot run on a free or starter instance.** Its image carries Debian, ffmpeg,
+  Chromium and fonts because Playwright crawls sites during onboarding and Remotion renders
+  video. A render on 512MB OOMs, and free instances spin down when idle, which silently
+  breaks the WhatsApp webhook and every OAuth callback.
+- **Never** commit tokens, PATs, or connection strings. R2 keys and every other secret live
+  in the env group; `apps/api/.env` is gitignored for local work.
 
 ## Scope for the Aug 29 alpha — "Design Partner Alpha", not GA
 

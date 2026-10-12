@@ -525,7 +525,7 @@ export function CalendarBoard({
   if ((error || genomeError) && !view) {
     return (
       <div className="rounded border border-border bg-surface p-6">
-        <p className="text-[14px] text-ink-muted">{error ?? genomeError}</p>
+        <p className="text-14 text-ink-muted">{error ?? genomeError}</p>
       </div>
     );
   }
@@ -541,6 +541,7 @@ export function CalendarBoard({
      */
     return (
       <EmptyCard
+        title="You don't have an active campaign"
         body="A campaign is what fills this calendar — a goal, a window, and the accounts to post to. Start one from your home screen and it will appear here."
       />
     );
@@ -575,8 +576,8 @@ export function CalendarBoard({
       <section className="rounded border border-border bg-surface p-5">
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-[16px] font-medium text-ink">{view.name}</h2>
-            <p className="mt-0.5 text-[13px] text-ink-muted">
+            <h2 className="text-16 font-medium text-ink">{view.name}</h2>
+            <p className="mt-0.5 text-13 text-ink-muted">
               {view.slots.length} posts · for {view.objective}
             </p>
           </div>
@@ -609,14 +610,14 @@ export function CalendarBoard({
           </div>
         ) : null}
 
-        {previewing ? <p className="mt-2 text-[13px] text-ink-muted">Working out what that would change…</p> : null}
+        {previewing ? <p className="mt-2 text-13 text-ink-muted">Working out what that would change…</p> : null}
 
         {mixPreview ? (
           <div className="mt-3 rounded-lg border border-border bg-surface-muted p-4">
-            <p className="text-[13px] text-ink">{mixPreview.why.summary}</p>
+            <p className="text-13 text-ink">{mixPreview.why.summary}</p>
             <WhyPopover why={mixPreview.why} label="What this change is based on" />
             {mixPreview.wouldChange ? (
-              <p className="mt-1 text-[13px] text-ink-muted">
+              <p className="mt-1 text-13 text-ink-muted">
                 {mixPreview.currentSlotCount} → <b className="text-ink">{mixPreview.proposedSlotCount}</b> posts
               </p>
             ) : null}
@@ -625,14 +626,14 @@ export function CalendarBoard({
                 const before = mixPreview.mixBefore.find((b) => b.pillar === m.pillar)?.count ?? 0;
                 const style = pillarStyle(m.pillar);
                 return (
-                  <span key={m.pillar} className={cn('rounded border px-2 py-1 text-[12px] font-medium', style.chip)}>
+                  <span key={m.pillar} className={cn('rounded border px-2 py-1 text-12 font-medium', style.chip)}>
                     {style.label} · {before} → {m.count}
                   </span>
                 );
               })}
             </div>
             {mixPreview.unfilledPillars.length > 0 ? (
-              <p className="mt-2 text-[12px] text-warn">
+              <p className="mt-2 text-12 text-warn">
                 Would leave {mixPreview.unfilledPillars.map((u) => `${pillarStyle(u.pillar).label} short ${u.count}`).join(', ')} — not
                 enough cleared assets to fill it.
               </p>
@@ -655,7 +656,7 @@ export function CalendarBoard({
           </div>
         ) : null}
 
-        {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       </section>
 
       {/* CAL-02 for a day with nothing on it yet — the grid below only ever
@@ -663,7 +664,7 @@ export function CalendarBoard({
           entry point. */}
       {SHOW_POST_PICKER ? (
         <section className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface p-4">
-          <span className="text-[13px] font-medium text-ink-muted">What would you like to post, and when?</span>
+          <span className="text-13 font-medium text-ink-muted">What would you like to post, and when?</span>
           <Input
             type="date"
             value={pickerDate}
@@ -678,7 +679,7 @@ export function CalendarBoard({
       ) : null}
 
       {undo ? (
-        <div className="flex items-center gap-3 rounded border border-border bg-surface-muted px-4 py-2 text-[13px] text-ink-muted">
+        <div className="flex items-center gap-3 rounded border border-border bg-surface-muted px-4 py-2 text-13 text-ink-muted">
           <span>Moved &ldquo;{undo.label}&rdquo;.</span>
           <button type="button" onClick={() => void undoMove()} className="font-medium text-brand-purple underline">
             Undo
@@ -703,7 +704,7 @@ export function CalendarBoard({
                 key={l}
                 type="button"
                 onClick={() => setLayoutOwn(l)}
-                className={`rounded px-3 py-1.5 text-[13px] capitalize ${
+                className={`rounded px-3 py-1.5 text-13 capitalize ${
                   layout === l ? 'bg-ink text-surface' : 'text-ink-muted'
                 }`}
               >
@@ -755,6 +756,27 @@ export function CalendarBoard({
         genomeId={genome?.genomeId}
         contentItemId={draftPanel.contentItemId}
         open={draftPanel.open}
+        /*
+          The drawer's Current Focus card. Every value is one this board has
+          already loaded — the campaign's name and objective come straight off
+          `calendar.get`, and the duration is the span its own slots cover,
+          which is the honest answer for a campaign whose window rarely lines up
+          with a calendar month.
+        */
+        focus={
+          view
+            ? {
+                campaignName: view.name,
+                goal: view.objective,
+                campaignType: leadingPillar(view.mixActual),
+                duration: slotSpan(view.slots),
+                source: 'Calendar',
+                brandName: genome?.name,
+                production: productionByType(view.slots, draftPanel.pinDate),
+                platforms: platformsOn(view.slots, draftPanel.pinDate),
+              }
+            : undefined
+        }
         onDraftCreated={onDraftCreated}
         onClose={() => {
           setDraftPanel({ open: false });
@@ -794,7 +816,7 @@ function MonthGrid({
 
   return (
     <section className={cn('rounded border border-border bg-surface p-5', busy && 'opacity-60')}>
-      <h3 className="mb-4 text-[14px] font-medium text-ink">The month</h3>
+      <h3 className="mb-4 text-14 font-medium text-ink">The month</h3>
       <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[...byDay.entries()].map(([day, daySlots]) => (
           <li
@@ -810,7 +832,7 @@ function MonthGrid({
             className="rounded border border-border p-3"
           >
             <div className="flex items-center justify-between">
-              <p className="text-[12px] uppercase tracking-wide text-ink-muted">
+              <p className="text-12 uppercase tracking-wide text-ink-muted">
                 {day === 'unscheduled'
                   ? 'Unscheduled'
                   : new Date(`${day}T00:00:00Z`).toLocaleDateString('en', {
@@ -825,7 +847,7 @@ function MonthGrid({
                   type="button"
                   onClick={() => onAddToDay(day)}
                   aria-label={`Add a post to ${day}`}
-                  className="text-[13px] font-medium text-brand-purple hover:underline"
+                  className="text-13 font-medium text-brand-purple hover:underline"
                 >
                   + Add
                 </button>
@@ -844,19 +866,19 @@ function MonthGrid({
                   >
                     <span
                       className={cn(
-                        'inline-flex w-fit items-center rounded border px-2 py-0.5 text-[11px] font-medium',
+                        'inline-flex w-fit items-center rounded border px-2 py-0.5 text-11 font-medium',
                         style.chip,
                       )}
                     >
                       {style.label}
                     </span>
-                    <span className="truncate text-[13px] text-ink" title={slot.playbookName ?? undefined}>
+                    <span className="truncate text-13 text-ink" title={slot.playbookName ?? undefined}>
                       {slot.playbookName ?? slot.playbookId ?? 'Unassigned'}
                     </span>
                     {/* Mode matters to the owner: `direct_finish` is the one
                         that will ask them to film something. */}
                     {slot.mode === 'direct_finish' ? (
-                      <span className="text-[11px] text-warn">needs filming</span>
+                      <span className="text-11 text-warn">needs filming</span>
                     ) : null}
                   </li>
                 );
@@ -919,7 +941,7 @@ function SlotFilters({
 
   return (
     <section className="flex flex-wrap items-end gap-3 rounded border border-border bg-surface p-4">
-      <span className="pb-2 text-[13px] font-medium text-ink-muted">Show</span>
+      <span className="pb-2 text-13 font-medium text-ink-muted">Show</span>
 
       {statuses.length > 1 ? (
         <FilterSelect
@@ -953,13 +975,13 @@ function SlotFilters({
 
       {active ? (
         <div className="flex items-center gap-3 pb-1.5">
-          <span className="text-[13px] tabular-nums text-ink-muted">
+          <span className="text-13 tabular-nums text-ink-muted">
             {shown} of {slots.length}
           </span>
           <button
             type="button"
             onClick={() => onChange({ status: 'all', platform: 'all', mediaType: 'all' })}
-            className="text-[13px] font-medium text-brand-purple underline"
+            className="text-13 font-medium text-brand-purple underline"
           >
             Clear
           </button>
@@ -984,14 +1006,14 @@ function FilterSelect({
 }) {
   return (
     <div>
-      <label className="block text-[12px] text-ink-muted" htmlFor={id}>
+      <label className="block text-12 text-ink-muted" htmlFor={id}>
         {label}
       </label>
       <select
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-[13px] capitalize text-ink"
+        className="mt-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-13 capitalize text-ink"
       >
         <option value="all">All</option>
         {options.map((o) => (
@@ -1056,7 +1078,7 @@ function SlotList({
 
   if (slots.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-[13px] text-ink-muted">
+      <p className="rounded-xl border border-dashed border-border px-6 py-8 text-center text-13 text-ink-muted">
         Nothing matches those filters.
       </p>
     );
@@ -1074,7 +1096,7 @@ function SlotList({
                 onClick={() => onOpenSlot(slot.id)}
                 className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface-muted"
               >
-                <span className="w-[7.5rem] shrink-0 text-[13px] tabular-nums text-ink-muted">
+                <span className="w-[7.5rem] shrink-0 text-13 tabular-nums text-ink-muted">
                   {slot.scheduledAt
                     ? new Date(slot.scheduledAt).toLocaleDateString('en', {
                         weekday: 'short',
@@ -1083,18 +1105,18 @@ function SlotList({
                       })
                     : 'Unscheduled'}
                 </span>
-                <span className="min-w-0 flex-1 text-[14px] text-ink">
+                <span className="min-w-0 flex-1 text-14 text-ink">
                   {slot.playbookName ?? slot.playbookId ?? 'Post'}
                 </span>
-                <span className={cn('shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium', style.chip)}>
+                <span className={cn('shrink-0 rounded border px-2 py-0.5 text-11 font-medium', style.chip)}>
                   {style.label}
                 </span>
                 {slot.platform ? (
-                  <span className="shrink-0 text-[12px] capitalize text-ink-muted">
+                  <span className="shrink-0 text-12 capitalize text-ink-muted">
                     {slot.platform.replace('_', ' ')}
                   </span>
                 ) : null}
-                <span className="shrink-0 text-[12px] capitalize text-ink-muted">{slot.status}</span>
+                <span className="shrink-0 text-12 capitalize text-ink-muted">{slot.status}</span>
               </button>
             </li>
           );
@@ -1102,4 +1124,78 @@ function SlotList({
       </ul>
     </div>
   );
+}
+
+/**
+ * How long the campaign runs, from its own slots.
+ *
+ * `calendar.get` returns no duration field, and the campaign's window is
+ * whatever its scheduled days span — so this counts inclusive days between the
+ * first and last scheduled slot rather than reporting a number nothing stores.
+ * Unscheduled slots carry no date and are skipped.
+ */
+function slotSpan(slots: Slot[]): string | undefined {
+  const days = slots.map((s) => s.scheduledAt).filter((d): d is string => Boolean(d)).sort();
+  if (days.length === 0) return undefined;
+  const first = Date.parse(`${days[0].slice(0, 10)}T00:00:00Z`);
+  const last = Date.parse(`${days[days.length - 1].slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(first) || Number.isNaN(last)) return undefined;
+  const n = Math.round((last - first) / 86_400_000) + 1;
+  return n === 1 ? '1 day' : `${n} days`;
+}
+
+/**
+ * The campaign's "Type" — its leading pillar.
+ *
+ * `calendar.get` returns no type field. What a campaign *is* shows in the shape
+ * of what it posts, and the mix is exactly that, so the pillar with the most
+ * slots answers the question the design is asking. Undefined when the calendar
+ * is empty, which is honest: a campaign with no posts has no shape yet.
+ */
+function leadingPillar(mix: MixSlice[]): string | undefined {
+  const top = [...mix].sort((a, b) => b.count - a.count)[0];
+  if (!top || top.count === 0) return undefined;
+  return top.pillar.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * The four post types, and what each is doing on one date.
+ *
+ * This is the design's chip row — "Generating", "Completed", "No post", "No
+ * post" — read as what it plainly is: one chip per type in the drawer's rail,
+ * in the rail's order, describing that day. Every value comes from slots the
+ * board already loaded, so a type with nothing scheduled says "No post" because
+ * there is genuinely no post, not because a slot was left blank.
+ */
+function productionByType(
+  slots: Slot[],
+  day?: string,
+): Array<{ label: string; state: string; tone: 'work' | 'done' | 'idle' }> {
+  const onDay = day ? slots.filter((s) => (s.scheduledAt ?? '').slice(0, 10) === day) : slots;
+
+  return (['image', 'video', 'carousel', 'text'] as const).map((type) => {
+    const mine = onDay.filter((s) => s.mediaType === type);
+    if (mine.length === 0) return { label: type, state: 'No post', tone: 'idle' as const };
+    // "Completed" only when every post of that type is out; one still in flight
+    // keeps the whole type in progress, which is what the chip is for.
+    if (mine.every((s) => s.status === 'published')) {
+      return { label: type, state: 'Completed', tone: 'done' as const };
+    }
+    if (mine.some((s) => s.status === 'scheduled' || s.status === 'needs_review')) {
+      return { label: type, state: 'Scheduled', tone: 'work' as const };
+    }
+    return { label: type, state: 'Drafting', tone: 'work' as const };
+  });
+}
+
+/**
+ * The accounts one date is posting to, in the order they appear.
+ *
+ * A slot carries `platform: string | null`, and null is a real state — a slot
+ * placed on a day has no account until one is chosen. Those are dropped rather
+ * than shown as an unnamed circle.
+ */
+function platformsOn(slots: Slot[], day?: string): string[] {
+  const onDay = day ? slots.filter((s) => (s.scheduledAt ?? '').slice(0, 10) === day) : slots;
+  return [...new Set(onDay.map((s) => s.platform).filter((p): p is string => Boolean(p)))];
 }

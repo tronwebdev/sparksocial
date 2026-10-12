@@ -1,5 +1,6 @@
 import { invokeTool, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import { EXPIRY_WARNING_MS } from '@sparksocial/publish';
+import { expiresInWords } from '@sparksocial/shared';
 import { makeSystemCtx } from './system-ctx.js';
 
 /**
@@ -155,6 +156,6 @@ function expiryMessage(
   if (!conn.expiresAt || conn.expiresAt.getTime() <= now.getTime()) {
     return `Your ${label} connection has expired — anything scheduled for it will fail until you reconnect it in Settings → Connections.`;
   }
-  const days = Math.max(1, Math.round((conn.expiresAt.getTime() - now.getTime()) / 86_400_000));
-  return `Your ${label} connection expires in ${days} day${days === 1 ? '' : 's'}. Reconnect it in Settings → Connections so scheduled posts keep going out.`;
+  const left = expiresInWords(conn.expiresAt.getTime() - now.getTime()) ?? 'under 1 hour';
+  return `Your ${label} connection expires in ${left}. Reconnect it in Settings → Connections so scheduled posts keep going out.`;
 }

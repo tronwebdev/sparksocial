@@ -146,7 +146,7 @@ export function DraftList({
 
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
-      <h2 className="text-[18px] font-semibold text-ink">Drafts</h2>
+      <h2 className="text-18 font-semibold text-ink">Drafts</h2>
 
       {items === null ? (
         <div className="mt-4 grid grid-cols-1 gap-2">
@@ -155,9 +155,9 @@ export function DraftList({
           ))}
         </div>
       ) : error ? (
-        <p className="mt-2 text-[14px] text-ink-muted">{error}</p>
+        <p className="mt-2 text-14 text-ink-muted">{error}</p>
       ) : items.length === 0 ? (
-        <p className="mt-2 text-[14px] text-ink-muted">Nothing drafted yet — try "New post" or ask Spark for one.</p>
+        <p className="mt-2 text-14 text-ink-muted">Nothing drafted yet — try "New post" or ask Spark for one.</p>
       ) : (
         <ul className="mt-4 grid grid-cols-1 gap-2">
           {items.map((item) => {
@@ -170,8 +170,8 @@ export function DraftList({
                   className="flex w-full items-center justify-between gap-3 p-3 text-left hover:bg-surface-muted"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-medium text-ink">{item.playbookName}</p>
-                    <p className="truncate text-[13px] text-ink-muted">{item.summary}</p>
+                    <p className="truncate text-14 font-medium text-ink">{item.playbookName}</p>
+                    <p className="truncate text-13 text-ink-muted">{item.summary}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {/* An arm of a test is not an ordinary post, and the row is
@@ -186,12 +186,12 @@ export function DraftList({
                 {item.status === 'published' ? (
                   <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2">
                     {snapshot ? (
-                      <p className="text-[12px] text-ink-muted">
+                      <p className="text-12 text-ink-muted">
                         {snapshot.likes} likes · {snapshot.comments} comments · {snapshot.shares} shares ·{' '}
                         {snapshot.views} views · {snapshot.impressions} impressions
                       </p>
                     ) : (
-                      <span className="text-[12px] text-ink-muted">No metrics synced yet</span>
+                      <span className="text-12 text-ink-muted">No metrics synced yet</span>
                     )}
                     <Button
                       size="sm"
@@ -205,7 +205,7 @@ export function DraftList({
                       {syncing === item.contentItemId ? 'Syncing…' : snapshot ? 'Re-sync' : 'Sync metrics'}
                     </Button>
                     {syncErrors[item.contentItemId] ? (
-                      <span className="text-[12px] text-destructive">{syncErrors[item.contentItemId]}</span>
+                      <span className="text-12 text-destructive">{syncErrors[item.contentItemId]}</span>
                     ) : null}
                     <Button
                       size="sm"
@@ -228,12 +228,12 @@ export function DraftList({
                 {item.status === 'published' && expandedId === item.contentItemId ? (
                   <div className="border-t border-border px-3 py-2">
                     {metricsError[item.contentItemId] ? (
-                      <p className="text-[12px] text-destructive">{metricsError[item.contentItemId]}</p>
+                      <p className="text-12 text-destructive">{metricsError[item.contentItemId]}</p>
                     ) : postMetrics[item.contentItemId] ? (
                       postMetrics[item.contentItemId]!.platforms.length > 0 ? (
                         <div className="grid grid-cols-1 gap-1">
                           {postMetrics[item.contentItemId]!.platforms.map((p) => (
-                            <div key={p.platform} className="flex items-center justify-between text-[12px] text-ink-muted">
+                            <div key={p.platform} className="flex items-center justify-between text-12 text-ink-muted">
                               <span className="capitalize text-ink">{p.platform.replace('_', ' ')}</span>
                               <span>
                                 {p.likes} likes · {p.comments} comments · {p.shares} shares
@@ -244,11 +244,11 @@ export function DraftList({
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[12px] text-ink-muted">No synced snapshot yet — try Sync metrics above first.</p>
+                        <p className="text-12 text-ink-muted">No synced snapshot yet — try Sync metrics above first.</p>
                       )
                     ) : null}
                     {ctaTraffic[item.contentItemId] && ctaTraffic[item.contentItemId]!.links.length > 0 ? (
-                      <p className="mt-1 text-[12px] text-ink-muted">
+                      <p className="mt-1 text-12 text-ink-muted">
                         {ctaTraffic[item.contentItemId]!.totalClicks} link click
                         {ctaTraffic[item.contentItemId]!.totalClicks === 1 ? '' : 's'}
                       </p>

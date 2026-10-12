@@ -293,7 +293,7 @@ export function UploadFilesModal({
       onClose={close}
     >
       <div className="px-[32px] pt-[38px]">
-        <p className="text-[23px] font-bold text-ink">Upload Files</p>
+        <p className="text-24 font-bold text-ink">Upload Files</p>
         <p className="mt-[14px] text-18 font-normal" style={{ color: '#5B5B5B' }}>
           Drag &amp; Drop to upload files instantly
         </p>
@@ -326,7 +326,7 @@ export function UploadFilesModal({
             </span>
           </span>
 
-          <span className="mt-[6px] text-[19px] font-semibold text-ink">Drag &amp; Drop files here or</span>
+          <span className="mt-[6px] text-19 font-semibold text-ink">Drag &amp; Drop files here or</span>
           <span
             className="flex h-[46px] items-center rounded-[9px] bg-white px-[20px] text-16 font-medium"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.3)', color: '#3B3B3B' }}
@@ -386,7 +386,7 @@ export function UploadFilesModal({
             </label>
 
             {!rightsCleared ? (
-              <p className="w-full text-[13.5px] text-ink-muted">
+              <p className="w-full text-14 text-ink-muted">
                 Retrieval only returns rights-cleared assets, so anything uploaded without this stays out of the
                 library and out of every draft until it is cleared.
               </p>
@@ -403,11 +403,11 @@ export function UploadFilesModal({
             <div className="min-w-0 flex-1">
               <p className="truncate text-17 font-semibold text-ink">Uploading…</p>
               <div className="mt-[6px] flex items-center gap-[9px]">
-                <span className="text-[14.5px] font-medium" style={{ color: '#5B5B5B' }}>
+                <span className="text-15 font-medium" style={{ color: '#5B5B5B' }}>
                   sending to storage
                 </span>
                 <span className="block h-[11px] w-[11px] rounded-full" style={{ background: '#A341FF' }} />
-                <span className="text-[14.5px] font-medium" style={{ color: '#3B3B3B' }}>
+                <span className="text-15 font-medium" style={{ color: '#3B3B3B' }}>
                   Uploading
                 </span>
               </div>
@@ -433,11 +433,11 @@ export function UploadFilesModal({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-17 font-semibold text-ink">{f.name}</p>
                   <div className="mt-[4px] flex items-center gap-[9px]">
-                    <span className="text-[14.5px] font-medium" style={{ color: '#5B5B5B' }}>
+                    <span className="text-15 font-medium" style={{ color: '#5B5B5B' }}>
                       {formatBytes(f.file.size)}
                     </span>
                     {f.error ? (
-                      <span className="truncate text-[14.5px] font-medium text-destructive" title={f.error}>
+                      <span className="truncate text-15 font-medium text-destructive" title={f.error}>
                         {f.error}
                       </span>
                     ) : (
@@ -514,11 +514,11 @@ export function UploadFilesModal({
                       style={{ backgroundImage: `url(${f.preview})` }}
                     />
                   )}
-                  <span className="absolute left-[74px] right-[40px] top-[14px] truncate text-[15.5px] font-semibold text-ink">
+                  <span className="absolute left-[74px] right-[40px] top-[14px] truncate text-16 font-semibold text-ink">
                     {f.name}
                   </span>
                   <span className="absolute left-[74px] top-[41px] flex items-center gap-[8px]">
-                    <span className="text-[13.5px] font-medium" style={{ color: '#5B5B5B' }}>
+                    <span className="text-14 font-medium" style={{ color: '#5B5B5B' }}>
                       {formatBytes(f.file.size)}
                     </span>
                     {f.assetId ? (
@@ -542,7 +542,7 @@ export function UploadFilesModal({
               {isPdf(sel.file) ? (
                 <span className="absolute inset-[12px] flex flex-col items-center justify-center gap-[10px] rounded-[10px] bg-white">
                   <PdfGlyph size={40} />
-                  <span className="max-w-[80%] truncate text-[13.5px] font-medium" style={{ color: '#5B5B5B' }}>
+                  <span className="max-w-[80%] truncate text-14 font-medium" style={{ color: '#5B5B5B' }}>
                     {sel.name}
                   </span>
                 </span>
@@ -553,14 +553,14 @@ export function UploadFilesModal({
                 />
               )}
               <span
-                className="absolute left-[22px] top-[22px] flex h-[28px] items-center rounded-[7px] px-[10px] text-[12.5px] font-semibold text-white"
+                className="absolute left-[22px] top-[22px] flex h-[28px] items-center rounded-[7px] px-[10px] text-13 font-semibold text-white"
                 style={{ background: 'rgba(12,12,12,0.75)' }}
               >
                 {formatBytes(sel.file.size)}
               </span>
             </div>
 
-            <label className="mt-[18px] block text-[15.5px] font-semibold text-ink" htmlFor="lib-upload-name">
+            <label className="mt-[18px] block text-16 font-semibold text-ink" htmlFor="lib-upload-name">
               File Name
             </label>
             <input
@@ -569,11 +569,11 @@ export function UploadFilesModal({
               onChange={(e) =>
                 setFiles((prev) => prev.map((f, i) => (i === selected ? { ...f, name: e.target.value } : f)))
               }
-              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-[15.5px] font-medium text-ink outline-none"
+              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-16 font-medium text-ink outline-none"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
             />
 
-            <label className="mt-[18px] block text-[15.5px] font-semibold text-ink" htmlFor="lib-upload-meta">
+            <label className="mt-[18px] block text-16 font-semibold text-ink" htmlFor="lib-upload-meta">
               Meta Description
             </label>
             <input
@@ -583,10 +583,10 @@ export function UploadFilesModal({
                 setFiles((prev) => prev.map((f, i) => (i === selected ? { ...f, meta: e.target.value } : f)))
               }
               placeholder="Enter text"
-              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-[15.5px] font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
+              className="mt-[8px] h-[54px] w-full rounded-xl bg-white px-[18px] text-16 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
             />
-            <p className="mt-[8px] text-[13.5px] text-ink-muted">
+            <p className="mt-[8px] text-14 text-ink-muted">
               This becomes the asset&rsquo;s caption, which is what retrieval searches — leave it blank and SPARK
               keeps the one it wrote itself.
             </p>

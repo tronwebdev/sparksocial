@@ -1,14 +1,6 @@
 import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
-import {
-  ContentPillar,
-  Explanation,
-  GenerationMode,
-  Objective,
-  ToolError,
-  rungFromBrandAutonomy,
-  type EngagementRung,
-} from '@sparksocial/shared';
+import { CampaignStatus, ContentPillar, ContentStatus, Explanation, GenerationMode, Objective, Platform, ToolError, rungFromBrandAutonomy, type EngagementRung } from '@sparksocial/shared';
 import { byId, type AssetInventory, type Playbook } from '@sparksocial/playbooks';
 import { planCampaign } from './plan.js';
 import { placeCalendar } from './calendar.js';
@@ -54,7 +46,7 @@ export const CampaignCreateInput = z.object({
    * here is what stops the scheduler having to guess: see `campaigns.platforms`
    * in `schema.ts` on why it was guessing.
    */
-  platforms: z.array(z.string().min(1).max(40)).max(15).default([]),
+  platforms: z.array(Platform).max(15).default([]),
   /**
    * PRD §7.2's per-campaign approval scope — the fourth of the four scopes it
    * lists, and the one that had no representation.
@@ -254,10 +246,10 @@ export const CampaignListOutput = z.object({
     z.object({
       campaignId: z.string(),
       name: z.string(),
-      objective: z.string(),
+      objective: Objective,
       windowDays: z.number(),
       startAt: z.string(),
-      status: z.string(),
+      status: CampaignStatus,
     }),
   ),
 });
@@ -425,7 +417,7 @@ export const CalendarImpactPreviewInput = z.object({
   mixOverride: z.record(ContentPillar, z.number().min(0).max(MIX_OVERRIDE_MAX)).optional(),
 });
 
-const PillarCount = z.object({ pillar: z.string(), count: z.number() });
+const PillarCount = z.object({ pillar: ContentPillar, count: z.number() });
 
 export const CalendarImpactPreviewOutput = z.object({
   campaignId: z.string(),
@@ -438,8 +430,10 @@ export const CalendarImpactPreviewOutput = z.object({
   why: Explanation,
 });
 
-function countByPillar(slots: Array<{ pillar: string | null }>): Array<{ pillar: string; count: number }> {
-  const counts = new Map<string, number>();
+function countByPillar(
+  slots: Array<{ pillar: ContentPillar | null }>,
+): Array<{ pillar: ContentPillar; count: number }> {
+  const counts = new Map<ContentPillar, number>();
   for (const s of slots) {
     if (!s.pillar) continue;
     counts.set(s.pillar, (counts.get(s.pillar) ?? 0) + 1);
@@ -522,26 +516,28 @@ export const CalendarGetInput = z.object({ campaignId: z.string().min(1) });
 export const CalendarGetOutput = z.object({
   campaignId: z.string(),
   name: z.string(),
-  objective: z.string(),
-  status: z.string(),
+  objective: Objective,
+  /* The campaign's own state. The `status` on each slot below is a content
+   * item's, which is a different vocabulary on a different table. */
+  status: CampaignStatus,
   /** Counts by pillar — the level §6.8 Step 4 says the user reviews at. */
-  mixActual: z.array(z.object({ pillar: z.string(), count: z.number() })),
+  mixActual: z.array(PillarCount),
   slots: z.array(
     z.object({
       id: z.string(),
       scheduledAt: z.string().nullable(),
-      pillar: z.string().nullable(),
+      pillar: ContentPillar.nullable(),
       playbookId: z.string().nullable(),
       playbookName: z.string().nullable(),
-      mode: z.string().nullable(),
-      status: z.string(),
+      mode: GenerationMode.nullable(),
+      status: ContentStatus,
       /**
        * §8.7's platform filter. Null for a slot placed on a day rather than on
        * an account — the date-picker and drag-and-drop paths place a post
        * without choosing where it goes, and a fabricated default here would
        * make the filter lie about them.
        */
-      platform: z.string().nullable(),
+      platform: Platform.nullable(),
       /**
        * §8.7's content-type filter, resolved from the playbook rather than
        * stored: `content.draft` computes it the same way for the same reason —
@@ -577,7 +573,7 @@ export const calendarGet = defineTool({
 
     const slots = await ctx.db.campaigns.slots(campaign.id, ctx.orgId, campaign.genomeId);
 
-    const counts = new Map<string, number>();
+    const counts = new Map<ContentPillar, number>();
     for (const s of slots) {
       if (!s.pillar) continue;
       counts.set(s.pillar, (counts.get(s.pillar) ?? 0) + 1);

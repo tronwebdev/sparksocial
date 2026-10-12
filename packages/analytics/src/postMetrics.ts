@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { ToolError } from '@sparksocial/shared';
+import { Platform, ToolError } from '@sparksocial/shared';
 
 /**
  * `analytics.post_metrics` — the read `analytics.sync`'s write has never had.
@@ -16,7 +16,7 @@ export const AnalyticsPostMetricsInput = z.object({
 });
 
 const PlatformSnapshot = z.object({
-  platform: z.string(),
+  platform: Platform,
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),

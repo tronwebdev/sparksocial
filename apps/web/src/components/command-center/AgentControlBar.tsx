@@ -103,14 +103,14 @@ export function AgentControlBar({
     <section className="rounded border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-4">
         <Badge variant={status.paused ? 'warn' : 'success'}>{status.paused ? 'Paused' : 'Running'}</Badge>
-        <p className="min-w-0 flex-1 text-[13px] text-ink-muted">{status.effect}</p>
+        <p className="min-w-0 flex-1 text-13 text-ink-muted">{status.effect}</p>
         <Button variant={status.paused ? 'primary' : 'outline'} disabled={busy} onClick={() => void toggle()}>
           {busy ? 'Working…' : status.paused ? 'Resume agent' : 'Pause agent'}
         </Button>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
-        <span className="text-[13px] text-ink-muted">Posting frequency</span>
+        <span className="text-13 text-ink-muted">Posting frequency</span>
         <Input
           type="number"
           min={1}
@@ -120,7 +120,7 @@ export function AgentControlBar({
           className="h-9 w-20"
           aria-label="Posts per week"
         />
-        <span className="text-[13px] text-ink-muted">posts / week</span>
+        <span className="text-13 text-ink-muted">posts / week</span>
         <Button
           size="sm"
           variant="outline"
@@ -129,10 +129,10 @@ export function AgentControlBar({
         >
           Update
         </Button>
-        {freqNote ? <span className="text-[12px] text-ink-muted">{freqNote}</span> : null}
+        {freqNote ? <span className="text-12 text-ink-muted">{freqNote}</span> : null}
       </div>
 
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </section>
   );
 }

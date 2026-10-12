@@ -163,7 +163,7 @@ export function regionFlag(code: string): string {
 const CARD = 'rounded-[15px] bg-white';
 const CARD_RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.22)' } as const;
 const PICKER =
-  'flex h-[40px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-[14.5px] font-medium transition-shadow';
+  'flex h-[40px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium transition-shadow';
 const PICKER_RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#5B5B5B' } as const;
 
 function Chevron() {
@@ -211,7 +211,7 @@ function SaturationChart({ series, trajectory }: { series: SeriesPoint[]; trajec
         className="flex h-full items-center justify-center rounded-xl px-10 text-center"
         style={{ background: '#FCFCFC', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.12)' }}
       >
-        <p className="text-[15px] font-medium text-ink-muted">
+        <p className="text-15 font-medium text-ink-muted">
           {series.length === 0
             ? 'No history for this trend yet.'
             : 'Only one reading so far — not enough to show a direction.'}{' '}
@@ -390,8 +390,8 @@ export function TrendDetail({
   if (error) {
     return (
       <div className="rounded-[20px] bg-white p-[40px]">
-        <p className="text-[17px] font-medium text-ink-muted">{error}</p>
-        <button type="button" onClick={onClose} className="mt-4 text-[15px] font-semibold text-ink underline">
+        <p className="text-17 font-medium text-ink-muted">{error}</p>
+        <button type="button" onClick={onClose} className="mt-4 text-15 font-semibold text-ink underline">
           Back to trends
         </button>
       </div>
@@ -453,7 +453,7 @@ export function TrendDetail({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-[40px] shrink-0 items-center gap-[11px] rounded-lg px-4 text-[15px] font-semibold transition-colors hover:bg-white"
+              className="flex h-[40px] shrink-0 items-center gap-[11px] rounded-lg px-4 text-15 font-semibold transition-colors hover:bg-white"
               style={{ background: 'rgba(255,255,255,0.6)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#5B5B5B' }}
             >
               <svg width="8" height="15" viewBox="0 0 8 16" fill="none" aria-hidden>
@@ -461,7 +461,7 @@ export function TrendDetail({
               </svg>
               Back to Discovery
             </button>
-            <h2 className="truncate text-[22px] font-bold text-ink">{view.trend.topic}</h2>
+            <h2 className="truncate text-22 font-bold text-ink">{view.trend.topic}</h2>
           </div>
 
           <div className="relative">
@@ -489,7 +489,7 @@ export function TrendDetail({
                       setWindowOpen(false);
                     }}
                     className={cn(
-                      'flex h-[36px] w-full items-center rounded-lg px-[10px] text-left text-[14.5px] font-medium',
+                      'flex h-[36px] w-full items-center rounded-lg px-[10px] text-left text-15 font-medium',
                       d === days ? 'bg-[rgba(131,131,131,0.1)] text-ink' : 'text-ink-muted hover:bg-[rgba(131,131,131,0.07)]',
                     )}
                   >
@@ -543,7 +543,7 @@ export function TrendDetail({
           <button
             type="button"
             onClick={() => setModal('repurpose')}
-            className="flex h-[40px] items-center rounded-lg px-[15px] text-[14.5px] font-semibold text-ink transition-colors"
+            className="flex h-[40px] items-center rounded-lg px-[15px] text-15 font-semibold text-ink transition-colors"
             style={{ background: '#6CE8FF' }}
           >
             + Create Draft
@@ -554,10 +554,10 @@ export function TrendDetail({
 
         {!view.safety.safe ? (
           <div className="mx-[28px] mt-[22px] rounded-[14px] px-[22px] py-[14px]" style={{ background: '#FFF1DF', boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.35)' }}>
-            <p className="text-[16px] font-semibold" style={{ color: '#8A4B12' }}>
+            <p className="text-16 font-semibold" style={{ color: '#8A4B12' }}>
               SPARK would not join this trend — {view.safety.detail ?? view.safety.reasons.join(', ')}
             </p>
-            <p className="mt-1 text-[14.5px] font-medium" style={{ color: '#8A4B12' }}>
+            <p className="mt-1 text-15 font-medium" style={{ color: '#8A4B12' }}>
               Everything below still works; the verdict is a default, not a lock.
             </p>
           </div>
@@ -567,7 +567,7 @@ export function TrendDetail({
           {/* ── left column, 706 ─────────────────────────────────────── */}
           <div className="w-full xl:w-[706px]">
             <div className="flex items-center gap-[10px]">
-              <p className="text-[19px] font-bold text-ink">Trend Metrics</p>
+              <p className="text-19 font-bold text-ink">Trend Metrics</p>
               <InfoGlyph title="Ranked on how much of the trend is left times how credibly this brand can join it. Volume is context, never the signal on its own." />
               <div className="ml-auto">
                 <WhyPopover why={view.why} label={`Score ${pct(view.score)}`} />
@@ -583,7 +583,7 @@ export function TrendDetail({
               {tiles.map((t) => (
                 <div key={t.label} className="relative h-[82px] w-[136px] shrink-0 rounded-xl bg-white" style={CARD_RING} title={t.title}>
                   <p className="absolute left-[14px] top-[12px] whitespace-nowrap text-14 font-medium text-ink-muted">{t.label}</p>
-                  <p className="absolute left-[14px] top-[40px] whitespace-nowrap text-[19px] font-bold" style={{ color: t.color }}>
+                  <p className="absolute left-[14px] top-[40px] whitespace-nowrap text-19 font-bold" style={{ color: t.color }}>
                     {t.value}
                   </p>
                   {t.up ? (
@@ -630,7 +630,7 @@ export function TrendDetail({
                     const at = new Date(view.series[idx]!.at);
                     const intraday = (view.trajectory?.spanHours ?? 0) < 48;
                     return (
-                      <span key={i} className="text-[13.5px] font-medium text-ink-muted">
+                      <span key={i} className="text-14 font-medium text-ink-muted">
                         {intraday
                           ? at.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })
                           : at.toLocaleDateString('en', { month: 'short', day: 'numeric' })}
@@ -638,7 +638,7 @@ export function TrendDetail({
                     );
                   })
                 ) : (
-                  <span className="text-[13.5px] font-medium text-ink-muted">
+                  <span className="text-14 font-medium text-ink-muted">
                     Saturation, 0–100%. The dashed line is the 70% mark, past which the window is closing.
                   </span>
                 )}
@@ -666,7 +666,7 @@ export function TrendDetail({
 
                 <div className="absolute inset-x-[22px] bottom-[74px] top-[60px] overflow-y-auto">
                   {regions.length === 0 ? (
-                    <p className="text-[15px] font-medium text-ink-muted">
+                    <p className="text-15 font-medium text-ink-muted">
                       This source reports no region — Reddit, Hacker News and Product Hunt are single global feeds,
                       so there is nothing to break down. YouTube, TikTok, X and Google Trends all answer per
                       country.
@@ -685,10 +685,10 @@ export function TrendDetail({
                           return (
                             <div key={r.code}>
                               <div className="flex items-baseline justify-between">
-                                <span className="text-[15px] font-semibold text-ink">
+                                <span className="text-15 font-semibold text-ink">
                                   {regionFlag(r.code)} {r.code}
                                 </span>
-                                <span className="text-[15px] font-bold text-ink">
+                                <span className="text-15 font-bold text-ink">
                                   {r.volume !== undefined ? compactVolume(r.volume) : 'trending'}
                                 </span>
                               </div>
@@ -705,14 +705,14 @@ export function TrendDetail({
                         })}
                       </div>
                       {regions.every((r) => r.volume === undefined) ? (
-                        <p className="mt-[14px] text-[14px] font-medium text-ink-muted">
+                        <p className="mt-[14px] text-14 font-medium text-ink-muted">
                           This source reports one global figure per trend ({compactVolume(m.volume)}), not a
                           per-country split — so these are the countries it is trending in, without a number
                           attached to each.
                         </p>
                       ) : null}
                       {regions.length === 1 ? (
-                        <p className="mt-[14px] text-[14px] font-medium text-ink-muted">
+                        <p className="mt-[14px] text-14 font-medium text-ink-muted">
                           One region because that is all the fetch asked for. Set{' '}
                           <span className="font-semibold text-ink">TREND_REGIONS</span> to compare countries — it
                           costs one request per region per rank.
@@ -732,13 +732,13 @@ export function TrendDetail({
                     {regions[0] ? (
                       <>
                         <span className="text-14">{regionFlag(regions[0].code)}</span>
-                        <span className="text-[15px] font-bold text-ink">
+                        <span className="text-15 font-bold text-ink">
                           {regions[0].code}
                           {regions[0].volume !== undefined ? ` · ${compactVolume(regions[0].volume)}` : ''}
                         </span>
                       </>
                     ) : (
-                      <span className="text-[15px] font-bold text-ink">
+                      <span className="text-15 font-bold text-ink">
                         {view.trend.language} · global
                       </span>
                     )}
@@ -748,7 +748,7 @@ export function TrendDetail({
 
               <div className={cn(CARD, 'relative h-[400px] w-full sm:w-[282px]')} style={CARD_RING}>
                 <p className="absolute left-[22px] top-[20px] text-18 font-bold text-ink">Top Segments</p>
-                <p className="absolute inset-x-[22px] top-[64px] text-[15px] font-medium text-ink-muted">
+                <p className="absolute inset-x-[22px] top-[64px] text-15 font-medium text-ink-muted">
                   Nothing in <span className="font-semibold text-ink">trend.*</span> classifies who is posting a
                   trend, so there are no audience segments to list. Your own audience segments live on Performance
                   &amp; Learning, where the posts are ours and the metrics are real.
@@ -756,17 +756,17 @@ export function TrendDetail({
               </div>
             </div>
 
-            <p className="mt-[28px] text-[19px] font-bold text-ink">Related Topics &amp; Entities</p>
+            <p className="mt-[28px] text-19 font-bold text-ink">Related Topics &amp; Entities</p>
             <div className="mt-[16px] flex flex-wrap gap-[12px]">
               {view.trend.tags.length === 0 ? (
-                <p className="text-[15px] font-medium text-ink-muted">
+                <p className="text-15 font-medium text-ink-muted">
                   This source returned no descriptors, so relevance was scored on the topic alone.
                 </p>
               ) : (
                 view.trend.tags.map((t) => (
                   <span
                     key={t}
-                    className="flex h-[44px] items-center whitespace-nowrap rounded-[10px] bg-white px-[17px] text-[15.5px] font-medium"
+                    className="flex h-[44px] items-center whitespace-nowrap rounded-[10px] bg-white px-[17px] text-16 font-medium"
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', color: '#3B3B3B' }}
                   >
                     {t}
@@ -778,13 +778,13 @@ export function TrendDetail({
 
           {/* ── right column, 848 ────────────────────────────────────── */}
           <div className="min-w-0 flex-1">
-            <p className="text-[19px] font-bold text-ink">Samples &amp; Content Pack</p>
+            <p className="text-19 font-bold text-ink">Samples &amp; Content Pack</p>
 
             <div className={cn(CARD, 'relative mt-[16px] h-[526px] w-full overflow-hidden')} style={CARD_RING}>
               <p className="px-[24px] pt-[24px] text-18 font-bold text-ink">Top Examples</p>
 
               {view.trend.samples.length === 0 ? (
-                <p className="px-[24px] pt-[18px] text-[15px] font-medium text-ink-muted">
+                <p className="px-[24px] pt-[18px] text-15 font-medium text-ink-muted">
                   This source returned no example posts for the trend — Pinterest&rsquo;s growing-keywords endpoint
                   reports keywords with no posts attached, which is the one source that does this.
                 </p>
@@ -813,14 +813,14 @@ export function TrendDetail({
 
                         <div className="min-w-0 flex-1">
                           <span
-                            className="flex h-[32px] w-fit items-center gap-[8px] rounded-2xl px-3 text-[14.5px] font-semibold text-ink"
+                            className="flex h-[32px] w-fit items-center gap-[8px] rounded-2xl px-3 text-15 font-semibold text-ink"
                             style={{ background: '#FBDFFB' }}
                           >
                             {view.trend.source === 'youtube' ? 'Video' : view.trend.source === 'reddit' ? 'Thread' : 'Post'}
                             <span aria-hidden className="h-[4px] w-[4px] rounded-full bg-[#838383]" />
                             <span className="font-medium capitalize">{view.trend.source}</span>
                           </span>
-                          <p className="mt-[10px] truncate text-[17px] font-semibold text-ink">
+                          <p className="mt-[10px] truncate text-17 font-semibold text-ink">
                             {sm.caption ?? sm.url}
                           </p>
                         </div>
@@ -873,8 +873,8 @@ export function TrendDetail({
                     style={{ background: r.bg, boxShadow: `inset 0 0 0 1px ${r.ring}` }}
                   >
                     <div className="min-w-[240px] flex-1">
-                      <p className="text-[19px] font-bold text-ink">{r.kind}</p>
-                      <p className="mt-[10px] text-[17px] font-medium" style={{ color: '#5B5B5B' }}>
+                      <p className="text-19 font-bold text-ink">{r.kind}</p>
+                      <p className="mt-[10px] text-17 font-medium" style={{ color: '#5B5B5B' }}>
                         {r.desc}
                       </p>
                     </div>
@@ -882,7 +882,7 @@ export function TrendDetail({
                       <button
                         type="button"
                         onClick={r.action}
-                        className="flex h-[44px] shrink-0 items-center rounded-xl bg-ink px-[20px] text-[15px] font-semibold text-white transition-colors hover:bg-[#242424]"
+                        className="flex h-[44px] shrink-0 items-center rounded-xl bg-ink px-[20px] text-15 font-semibold text-white transition-colors hover:bg-[#242424]"
                       >
                         {r.cta}
                       </button>

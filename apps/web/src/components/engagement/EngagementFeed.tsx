@@ -122,7 +122,7 @@ export function EngagementFeed() {
   if (genomeError || !genomeId) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-[14px] text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
+        <p className="text-14 text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
       </section>
     );
   }
@@ -171,10 +171,10 @@ export function EngagementFeed() {
       <div className="relative flex flex-wrap items-center gap-x-[38px] gap-y-4">
         <div className="flex items-center gap-3">
           {/* 36 in the design; its filter row below sits on 32. */}
-          <h2 className="text-[24px] font-semibold leading-[1.27] text-ink xl:ml-[4px]">Command Center</h2>
+          <h2 className="text-24 font-semibold leading-[1.27] text-ink xl:ml-[4px]">Command Center</h2>
           <span
             title="Comments, DMs and story replies from the audience, sorted by what each one needs."
-            className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+            className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
             style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
           >
             i
@@ -321,19 +321,19 @@ export function EngagementFeed() {
                         author photo on a message, so it is the initial. */}
                     <span className="relative block h-[41px] w-[41px] shrink-0">
                       <span
-                        className="flex h-[36.2px] w-[36.2px] items-center justify-center rounded-full text-[14px] font-semibold uppercase text-ink"
+                        className="flex h-[36.2px] w-[36.2px] items-center justify-center rounded-full text-14 font-semibold uppercase text-ink"
                         style={{ background: '#F8F8F8' }}
                       >
                         {(item.authorName || item.authorHandle || '?').slice(0, 1)}
                       </span>
                       <span
-                        className="absolute bottom-0 right-0 flex h-[17px] w-[17px] items-center justify-center rounded-full bg-white text-[8px] font-semibold uppercase text-ink"
+                        className="absolute bottom-0 right-0 flex h-[17px] w-[17px] items-center justify-center rounded-full bg-white text-8 font-semibold uppercase text-ink"
                         style={{ boxShadow: '0 0 0 0.8px rgba(12,12,12,0.12)' }}
                       >
                         {(item.platform ?? '').slice(0, 2)}
                       </span>
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">
+                    <span className="min-w-0 flex-1 truncate text-15 font-semibold text-ink">
                       {item.authorName || item.authorHandle}
                     </span>
                     <span className="shrink-0 text-14 text-ink-muted">
@@ -349,8 +349,8 @@ export function EngagementFeed() {
                   {item.suggestedReply ? (
                     <>
                       <div className="mt-[14px] flex flex-col items-end gap-[3px]">
-                        <span className="text-[12.73px] text-ink-muted">Agent recommended response</span>
-                        <span className="text-[14.55px] font-semibold text-ink">
+                        <span className="text-13 text-ink-muted">Agent recommended response</span>
+                        <span className="text-15 font-semibold text-ink">
                           {KIND_LABEL[item.kind] ?? item.kind}
                         </span>
                       </div>
@@ -402,7 +402,7 @@ export function EngagementFeed() {
                     <button
                       type="button"
                       onClick={() => setOpenThread(item.id)}
-                      className="mt-2 text-[12px] font-medium text-brand-purple underline decoration-dotted underline-offset-2 hover:no-underline"
+                      className="mt-2 text-12 font-medium text-brand-purple underline decoration-dotted underline-offset-2 hover:no-underline"
                     >
                       See the conversation
                     </button>
@@ -457,7 +457,7 @@ function EiFilter({
         value={value}
         disabled={inert}
         onChange={(e) => onChange(e.target.value)}
-        className="min-w-0 flex-1 appearance-none border-0 bg-transparent text-[17px] font-medium text-ink outline-none disabled:cursor-not-allowed"
+        className="min-w-0 flex-1 appearance-none border-0 bg-transparent text-17 font-medium text-ink outline-none disabled:cursor-not-allowed"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>

@@ -105,7 +105,7 @@ export function CreateFolderModal({
       label="Create a new folder"
       onClose={onClose}
     >
-      <p className="pt-[74px] text-center text-[30px] font-bold text-ink">Create New Folder</p>
+      <p className="pt-[74px] text-center text-32 font-bold text-ink">Create New Folder</p>
 
       <div className="px-[120px] pt-[36px]">
         <label htmlFor="lib-folder-name" className="block text-18 font-medium text-ink">

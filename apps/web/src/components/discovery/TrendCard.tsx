@@ -147,10 +147,10 @@ export function saturationWord(saturation: number): 'Low' | 'Med' | 'HIGH' {
   return 'Low';
 }
 
-const CELL = 'flex items-center justify-center whitespace-nowrap text-center text-[14.5px]';
+const CELL = 'flex items-center justify-center whitespace-nowrap text-center text-15';
 const DIVIDER = 'h-full w-px shrink-0 bg-[rgba(131,131,131,0.15)]';
 const GHOST_BTN =
-  'flex h-[42px] shrink-0 items-center gap-[8px] whitespace-nowrap rounded-[10px] bg-white px-[13px] text-[14.5px] font-semibold text-ink transition-shadow';
+  'flex h-[42px] shrink-0 items-center gap-[8px] whitespace-nowrap rounded-[10px] bg-white px-[13px] text-15 font-semibold text-ink transition-shadow';
 const GHOST_RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' } as const;
 
 export function TrendCard({
@@ -237,12 +237,12 @@ export function TrendCard({
     >
       {/* The title truncates rather than wrapping — the design pins the strip at
           66, so a second line would run under it. */}
-      <p className="absolute left-[20px] right-[150px] top-[22px] truncate text-[21px] font-bold text-ink">
+      <p className="absolute left-[20px] right-[150px] top-[22px] truncate text-22 font-bold text-ink">
         {trend.topic}
       </p>
 
       <div
-        className="absolute right-4 top-4 flex h-[36px] items-center rounded-[9px] bg-white px-3 text-[14.5px] font-semibold text-ink"
+        className="absolute right-4 top-4 flex h-[36px] items-center rounded-[9px] bg-white px-3 text-15 font-semibold text-ink"
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
       >
         Velocity: {velocityPct > 0 ? '+' : ''}
@@ -340,10 +340,10 @@ export function TrendCard({
           </button>
         ) : suggestion || repurposeError ? (
           <div className={cn('h-full overflow-y-auto px-[4px] py-[6px]', trend.because && 'pt-[38px]')}>
-            <p className="text-[18px] font-bold leading-[1.3] text-ink">
+            <p className="text-18 font-bold leading-[1.3] text-ink">
               {suggestion ? `Re-purpose as ${suggestion.playbookName}` : 'No re-purpose for this one'}
             </p>
-            <p className="mt-[10px] text-[14.5px] leading-[1.4]" style={{ color: '#3B3B3B' }}>
+            <p className="mt-[10px] text-15 leading-[1.4]" style={{ color: '#3B3B3B' }}>
               {suggestion ? suggestion.intent : repurposeError}
             </p>
             <button
@@ -352,27 +352,27 @@ export function TrendCard({
                 setSuggestion(null);
                 setRepurposeError(null);
               }}
-              className="mt-[12px] text-[14.5px] font-semibold text-ink underline"
+              className="mt-[12px] text-15 font-semibold text-ink underline"
             >
               Back to why it ranked
             </button>
           </div>
         ) : (
           <div className={cn('h-full overflow-y-auto px-[4px] py-[6px]', trend.because && 'pt-[38px]')}>
-            <p className="text-[18px] font-bold leading-[1.3] text-ink">
+            <p className="text-18 font-bold leading-[1.3] text-ink">
               {trend.because
                 ? `Would have ranked ${Math.round(trend.score * 100)}%`
                 : `Ranked ${Math.round(trend.score * 100)}% for this brand`}
             </p>
             {trend.factors.length === 0 ? (
-              <p className="mt-[10px] text-[14.5px] leading-[1.4]" style={{ color: '#3B3B3B' }}>
+              <p className="mt-[10px] text-15 leading-[1.4]" style={{ color: '#3B3B3B' }}>
                 No factors recorded for this trend.
               </p>
             ) : (
               trend.factors.map((f, i) => (
                 <p
                   key={`${f.label}-${i}`}
-                  className={cn('text-[14.5px] leading-[1.4]', i === 0 ? 'mt-[10px]' : 'mt-[8px]')}
+                  className={cn('text-15 leading-[1.4]', i === 0 ? 'mt-[10px]' : 'mt-[8px]')}
                   style={{ color: '#3B3B3B' }}
                 >
                   <span className="font-semibold text-ink">{f.label}</span>
@@ -408,7 +408,7 @@ export function TrendCard({
       {trend.because ? (
         <p
           title={`Skipped — ${trend.because}`}
-          className="absolute left-[24px] right-[24px] top-[134px] flex items-center gap-[7px] truncate rounded-lg px-[10px] py-[6px] text-[13.5px] font-semibold"
+          className="absolute left-[24px] right-[24px] top-[134px] flex items-center gap-[7px] truncate rounded-lg px-[10px] py-[6px] text-14 font-semibold"
           style={{ background: 'rgba(255,241,223,0.94)', color: '#8A4B12' }}
         >
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden className="shrink-0">
@@ -424,7 +424,7 @@ export function TrendCard({
           <button
             type="button"
             onClick={onOpen}
-            className="flex h-[42px] shrink-0 items-center gap-[9px] whitespace-nowrap rounded-[10px] bg-ink px-[14px] text-[14.5px] font-semibold text-white transition-colors hover:bg-[#242424]"
+            className="flex h-[42px] shrink-0 items-center gap-[9px] whitespace-nowrap rounded-[10px] bg-ink px-[14px] text-15 font-semibold text-white transition-colors hover:bg-[#242424]"
           >
             <svg width="17" height="13" viewBox="0 0 19 15" fill="none" aria-hidden>
               <path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#FFFFFF" strokeWidth="1.4" strokeLinejoin="round" />

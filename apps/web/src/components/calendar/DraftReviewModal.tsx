@@ -85,22 +85,22 @@ export function DraftReviewModal({
   return (
     <CalendarModal kind="review" label="Draft review" onClose={onClose}>
       <div className="px-[50px] pt-[44px]">
-        <p className="text-center text-[28px] font-bold leading-[1.2] text-ink">Draft Review</p>
+        <p className="text-center text-28 font-bold leading-[1.2] text-ink">Draft Review</p>
         <p className="mt-[14px] text-center text-18 font-normal text-ink-muted">
           Review Sparks generated content before publishing
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-[28px] gap-y-2 px-[50px] pt-[30px]">
-        <p className="text-[19px] font-bold text-ink">
+        <p className="text-19 font-bold text-ink">
           Draft: {it ? (STATUS_WORD[it.status] ?? it.status) : '—'}
         </p>
         {it ? (
           <>
-            <p className="text-[19px] font-medium text-ink-muted">
+            <p className="text-19 font-medium text-ink-muted">
               {postKindLabel(it.platform, it.mediaType)}
             </p>
-            <p className="text-[19px] font-medium text-ink-muted">
+            <p className="text-19 font-medium text-ink-muted">
               {it.scheduledAt
                 ? `Scheduled: ${new Date(it.scheduledAt).toLocaleString('en', {
                     month: 'long',
@@ -120,7 +120,7 @@ export function DraftReviewModal({
           className="mt-[12px] max-h-[196px] overflow-y-auto rounded-2xl bg-white px-[26px] py-[22px]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.08)' }}
         >
-          <p className="text-[20px] font-bold leading-[1.35] text-ink">
+          <p className="text-20 font-bold leading-[1.35] text-ink">
             {item === null
               ? 'Loading…'
               : item === 'missing'
@@ -133,7 +133,7 @@ export function DraftReviewModal({
       </div>
 
       <div className="px-[50px] pt-[24px]">
-        <p className="text-[19px] font-semibold text-ink">Agent Notes</p>
+        <p className="text-19 font-semibold text-ink">Agent Notes</p>
         <div
           className="mt-[12px] max-h-[120px] overflow-y-auto rounded-2xl bg-white px-[26px] py-[18px]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.08)' }}
@@ -153,7 +153,7 @@ export function DraftReviewModal({
             onOpenPanel(contentItemId);
             onClose();
           }}
-          className="flex h-[52px] items-center rounded-xl bg-white px-[22px] text-[17px] font-semibold text-ink"
+          className="flex h-[52px] items-center rounded-xl bg-white px-[22px] text-17 font-semibold text-ink"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.2)' }}
         >
           Open in Draft Panel
@@ -162,7 +162,7 @@ export function DraftReviewModal({
           type="button"
           disabled
           title="Approving is keyed on the held call, not the post — approval.decide takes a callId, so this cannot approve a draft from here. The review queue on the Command Center can."
-          className="flex h-[52px] cursor-not-allowed items-center rounded-xl bg-ink px-[26px] text-[17px] font-semibold text-white opacity-50"
+          className="flex h-[52px] cursor-not-allowed items-center rounded-xl bg-ink px-[26px] text-17 font-semibold text-white opacity-50"
         >
           Approve &amp; Schedule
         </button>

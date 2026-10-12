@@ -26,6 +26,19 @@
       "autoPort": false
     },
     {
+      "//web-prod": "`next start` against the .next-build output, which is the mode the product is actually deployed in \u2014 and the one that avoids next dev's stale-chunk failures after files are added or removed. Requires `npm run build:web` first; it serves a build, it does not make one.",
+      "name": "web-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "@sparksocial/web"
+      ],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
       "name": "web-verify",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

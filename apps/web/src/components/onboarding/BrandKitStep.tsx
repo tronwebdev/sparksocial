@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
@@ -108,9 +108,53 @@ interface Governance {
   claimsToAvoid: string[];
 }
 
-export function BrandKitStep() {
+export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Promise<boolean>) => void } = {}) {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
+  /** Undo for the picker listener, so a remount does not stack a second one. */
+  const detach = useRef<(() => void) | null>(null);
+
+  /**
+   * The custom-colour tile commits once, on `change` — not on React's `onChange`.
+   *
+   * React's `onChange` for an input is the native **`input`** event, which a
+   * colour picker fires continuously: once per pixel as the cursor drags across
+   * the spectrum, and once per keystroke in the hex field. Appending on every
+   * one of those meant picking a single colour added dozens — dragging red to
+   * blue filled the row with every shade it passed through.
+   *
+   * The native `change` event is the one that means "this is the colour": it
+   * fires when the dialog is committed or dismissed, once. React has no prop for
+   * it on inputs, so it is bound by hand.
+   *
+   * ── A callback ref, not `useRef` + a mount effect ─────────────────────────
+   *
+   * The first version of this used `useRef` with a `[]`-dependency effect, and
+   * bound nothing at all. This component returns a loading line until `loaded`
+   * is true, so the input does not exist on the first render: the effect ran
+   * once, found `current === null`, and never ran again. The flood was gone and
+   * so was the colour — picking one did nothing.
+   *
+   * A callback ref runs when the node mounts, whenever that is, and runs again
+   * with `null` when it unmounts. There is no render-order assumption left to
+   * get wrong.
+   *
+   * `setColors` takes the updater form because this closure is created once per
+   * mount and would otherwise capture that render's `colors`.
+   */
+  const bindPicker = useCallback((el: HTMLInputElement | null) => {
+    if (detach.current) {
+      detach.current();
+      detach.current = null;
+    }
+    if (!el) return;
+    const commit = () => {
+      const hex = el.value.toUpperCase();
+      setColors((prev) => (prev.includes(hex) ? prev : [...prev, hex]));
+    };
+    el.addEventListener('change', commit);
+    detach.current = () => el.removeEventListener('change', commit);
+  }, []);
   const [fonts, setFonts] = useState<{ display?: string; body?: string }>({});
   const [voice, setVoice] = useState<string>('');
   const [timezone, setTimezone] = useState('');
@@ -186,6 +230,24 @@ export function BrandKitStep() {
     return res.status === 'succeeded';
   }
 
+  /*
+   * Hand `save` up so Continue can call it.
+   *
+   * The only other trigger is `onBlur` on the container below, which fires when
+   * focus leaves whatever the owner last touched. That covers the ordinary path
+   * and nothing else: a control that never takes focus, or a value set without
+   * one, leaves this screen looking filled in and saves nothing — and `save`
+   * carries all seven settings here, so the silent loss is colours, fonts,
+   * voice, timezone, strict mode and both guardrail lists together.
+   *
+   * Registered on every render rather than once, deliberately: `save` closes
+   * over this render's state, and a stale closure would post the values as they
+   * were when the step mounted.
+   */
+  useEffect(() => {
+    registerSave?.(save);
+  });
+
   if (!loaded) return <p className="text-14 text-ink-muted">Reading what SPARK already has…</p>;
 
   const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
@@ -204,7 +266,14 @@ export function BrandKitStep() {
     splitList(current).filter((v) => v !== value).join(', ');
 
   const countries = [...new Set(ZONES.map((z) => z.split('/')[0]))];
-  const region = timezone.includes('/') ? timezone.split('/')[0] : countries[0];
+  /*
+   * A zone with no slash — `UTC` — is its own region.
+   *
+   * This fell through to `countries[0]`, so a brand already set to UTC opened
+   * this screen showing its country as "Africa" and the matching zone list,
+   * misreporting a setting the owner had chosen.
+   */
+  const region = timezone.includes('/') ? timezone.split('/')[0] : (ZONES.includes(timezone) ? timezone : countries[0]);
 
   /*
     `…193155` at the prototype's own numbers: two 432-wide columns 27px apart,
@@ -255,6 +324,7 @@ export function BrandKitStep() {
                   `EyeDropper` API is Chromium-only and a throwing button is worse. */}
               <label
                 style={{
+                  position: 'relative',
                   width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
                   boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -263,7 +333,23 @@ export function BrandKitStep() {
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
                   <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <input type="color" aria-label="Pick a custom colour" style={{ display: 'none' }} onChange={(e) => setColors([...colors, e.target.value.toUpperCase()])} />
+                {/*
+                  Hidden by opacity, not by `display: none`.
+
+                  `display: none` removes the layout box, and the native colour
+                  picker is positioned against the input's box — with none, Chrome
+                  has nothing to anchor to and the dialog never opens, so the tile
+                  looked interactive and did nothing. A 1×1 transparent input keeps
+                  the box and anchors the dialog to the tile it belongs to.
+
+                  No `onChange` here on purpose: see `bindPicker` above.
+                */}
+                <input
+                  ref={bindPicker}
+                  type="color"
+                  aria-label="Pick a custom colour"
+                  style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
+                />
               </label>
             </div>
           </div>
@@ -337,7 +423,19 @@ export function BrandKitStep() {
                 <SmallSelect
                   ariaLabel="Country"
                   value={region ?? ''}
-                  onChange={(r: string) => setTimezone(ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone)}
+                  /*
+                   * `UTC` is a zone, not a region — it is the one entry in
+                   * `ZONES` with no slash in it.
+                   *
+                   * Picking it searched for a zone starting `UTC/`, found none,
+                   * and fell back to the previous timezone. The select bounced
+                   * straight back to whatever was chosen before, and the
+                   * Timezone list beside it stayed empty, so the option was
+                   * visibly offered and quietly unselectable.
+                   */
+                  onChange={(r: string) =>
+                    setTimezone(r.includes('/') || !ZONES.includes(r) ? (ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone) : r)
+                  }
                   options={countries.map((c) => ({ value: c as string, label: c as string }))}
                 />
               </div>
@@ -350,7 +448,13 @@ export function BrandKitStep() {
                   value={timezone}
                   placeholder="Select"
                   onChange={setTimezone}
-                  options={ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))}
+                  /* A region with no sub-zones is itself the only choice — `UTC`
+                     has no `UTC/...` entries, so it lists itself rather than nothing. */
+                  options={
+                    ZONES.some((z) => z.startsWith(`${region}/`))
+                      ? ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))
+                      : ZONES.filter((z) => z === region).map((z) => ({ value: z, label: z }))
+                  }
                 />
               </div>
             </div>

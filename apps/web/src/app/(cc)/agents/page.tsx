@@ -196,7 +196,7 @@ function CommandCenter() {
     ) : tab === 'overview' ? (
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[28px] font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
+          <h1 className="text-28 font-semibold leading-[1.27] text-ink">Agent Command Center</h1>
           {/* `text-16` bakes in `line-height:100%`, so the box measured 16
               where the design's unstyled 16px line is 20.5 — which left the
               two columns starting on 236.5 instead of 241. */}

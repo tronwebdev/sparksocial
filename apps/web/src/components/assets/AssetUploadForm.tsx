@@ -179,14 +179,14 @@ export function AssetUploadForm({
     >
       <div className="flex flex-wrap items-end gap-3">
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted" htmlFor="upload-role">
+        <label className="text-12 font-medium text-ink-muted" htmlFor="upload-role">
           Role
         </label>
         <select
           id="upload-role"
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className="h-10 rounded border border-border bg-surface px-3 text-[14px] text-ink"
+          className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink"
         >
           {ASSET_ROLES.map((r) => (
             <option key={r.value} value={r.value}>
@@ -196,7 +196,7 @@ export function AssetUploadForm({
         </select>
       </div>
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted" htmlFor="upload-file">
+        <label className="text-12 font-medium text-ink-muted" htmlFor="upload-file">
           File
         </label>
         <input
@@ -210,7 +210,7 @@ export function AssetUploadForm({
             const files = [...(e.target.files ?? [])];
             if (files.length) void uploadMany(files);
           }}
-          className="text-[13px] text-ink-muted file:mr-3 file:h-10 file:rounded file:border-0 file:bg-primary file:px-3 file:text-[13px] file:font-medium file:text-primary-foreground"
+          className="text-13 text-ink-muted file:mr-3 file:h-10 file:rounded file:border-0 file:bg-primary file:px-3 file:text-13 file:font-medium file:text-primary-foreground"
         />
       </div>
       {/* `min-h-10`, not `h-10`. The row is a flex line with the role select and
@@ -219,7 +219,7 @@ export function AssetUploadForm({
           to three lines inside a 40px box and spills over whatever follows. Seen
           overlapping the upload error at 280px. */}
       <label
-        className="flex min-h-10 items-center gap-2 text-[13px] text-ink-muted"
+        className="flex min-h-10 items-center gap-2 text-13 text-ink-muted"
         htmlFor="upload-rights-cleared"
       >
         <input
@@ -233,7 +233,7 @@ export function AssetUploadForm({
       </label>
       {busy ? <Button size="sm" disabled>Uploading…</Button> : null}
       {message ? (
-        <span className={`text-[13px] ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</span>
+        <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</span>
       ) : null}
       </div>
 
@@ -245,7 +245,7 @@ export function AssetUploadForm({
         accept at all (documents go through the brand-knowledge flow), and
         promising it would produce a rejection with no explanation.
       */}
-      <p className="mt-2 text-[12px] text-ink-muted">
+      <p className="mt-2 text-12 text-ink-muted">
         {dragging ? 'Drop to upload.' : 'Drag files here, or use Choose file.'} JPEG, PNG, WebP, HEIC,
         MP4, MOV, WebM, MP3, M4A or WAV, up to 512MB each. Several at once upload one after another.
       </p>

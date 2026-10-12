@@ -78,7 +78,7 @@ export function AgencyStage({
           {/* ── chrome ─────────────────────────────────────────────────── */}
           <Link
             href="/home"
-            className="absolute left-[46px] top-[48px] text-[26px] font-extrabold leading-none text-ink"
+            className="absolute left-[46px] top-[48px] text-26 font-extrabold leading-none text-ink"
           >
             Sparksocial
           </Link>
@@ -93,7 +93,7 @@ export function AgencyStage({
               href="/settings"
               role="tab"
               aria-selected={false}
-              className="absolute left-[6px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] px-[15px] text-[15.5px] font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]"
+              className="absolute left-[6px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] px-[15px] text-16 font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]"
               style={{ color: 'rgb(91,91,91)' }}
             >
               <svg width="17" height="17" viewBox="0 0 22 22" fill="none" aria-hidden className="block">
@@ -106,7 +106,7 @@ export function AgencyStage({
             <span
               role="tab"
               aria-selected
-              className="absolute left-[194px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] bg-ink px-[16px] text-[15.5px] font-semibold text-white"
+              className="absolute left-[194px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] bg-ink px-[16px] text-16 font-semibold text-white"
             >
               <svg width="16" height="15" viewBox="0 0 16 15" fill="none" aria-hidden className="block">
                 <rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#FFFFFF" strokeWidth="1.4" />
@@ -129,7 +129,7 @@ export function AgencyStage({
               <button
                 type="button"
                 onClick={onBack}
-                className="absolute left-[46px] top-[100px] flex h-[44px] w-[96px] items-center justify-center gap-[8px] rounded-[11px] text-[15.5px] font-medium transition-colors hover:bg-white"
+                className="absolute left-[46px] top-[100px] flex h-[44px] w-[96px] items-center justify-center gap-[8px] rounded-[11px] text-16 font-medium transition-colors hover:bg-white"
                 style={{ background: 'rgba(255,255,255,0.7)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)', color: 'rgb(131,131,131)' }}
               >
                 <svg width="7" height="13" viewBox="0 0 8 14" fill="none" aria-hidden>
@@ -148,7 +148,7 @@ export function AgencyStage({
                   </svg>
                 </span>
               ) : null}
-              <h1 className="absolute left-[212px] top-[106px] whitespace-nowrap text-[25px] font-bold leading-none text-ink">
+              <h1 className="absolute left-[212px] top-[106px] whitespace-nowrap text-26 font-bold leading-none text-ink">
                 {toolTitle}
               </h1>
               <div aria-hidden className="absolute left-[46px] top-[164px] h-px w-ag-tool-wide" style={{ background: 'rgba(131,131,131,0.2)' }} />
@@ -216,7 +216,7 @@ function AgencyProfile() {
           style={{ background: 'var(--ss-green-500)', boxShadow: '0 0 0 2px #FFFFFF' }}
         />
       </span>
-      <span className="ml-[12px] max-w-[92px] truncate text-[16.5px] font-bold text-ink">{name}</span>
+      <span className="ml-[12px] max-w-[92px] truncate text-17 font-bold text-ink">{name}</span>
       <svg width="4" height="17" viewBox="0 0 4 17" fill="rgb(91,91,91)" className="ml-auto mr-[18px] shrink-0" aria-hidden>
         <circle cx="2" cy="2" r="1.8" />
         <circle cx="2" cy="8.5" r="1.8" />

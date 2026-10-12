@@ -166,7 +166,7 @@ export function AutomationRecipes() {
   if (genomeError || !genomeId) {
     return (
       <section className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-[14px] text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
+        <p className="text-14 text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
       </section>
     );
   }
@@ -175,8 +175,8 @@ export function AutomationRecipes() {
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-[18px] font-semibold text-ink">Automation Recipes</h2>
-          <p className="mt-1 text-[14px] text-ink-muted">Work that runs unattended — every output waits for review before anything is drafted.</p>
+          <h2 className="text-18 font-semibold text-ink">Automation Recipes</h2>
+          <p className="mt-1 text-14 text-ink-muted">Work that runs unattended — every output waits for review before anything is drafted.</p>
         </div>
         {tab === 'recipes' ? (
           <Button size="sm" onClick={() => setShowForm((s) => !s)}>
@@ -197,7 +197,7 @@ export function AutomationRecipes() {
             type="button"
             onClick={() => setTab(t.key)}
             className={cn(
-              'rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors',
+              'rounded-full px-3 py-1.5 text-13 font-medium transition-colors',
               tab === t.key ? 'bg-ink text-surface' : 'bg-surface-muted text-ink-muted hover:text-ink',
             )}
           >
@@ -226,16 +226,16 @@ export function AutomationRecipes() {
               ))}
             </div>
           ) : error ? (
-            <p className="mt-4 text-[14px] text-ink-muted">{error}</p>
+            <p className="mt-4 text-14 text-ink-muted">{error}</p>
           ) : recipes.length === 0 ? (
-            <p className="mt-4 text-[14px] text-ink-muted">No recipes yet — create one above.</p>
+            <p className="mt-4 text-14 text-ink-muted">No recipes yet — create one above.</p>
           ) : (
             <ul className="mt-4 grid grid-cols-1 gap-3">
               {recipes.map((r) => (
                 <li key={r.id} className="rounded-lg border border-border p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-[14px] font-medium text-ink">{r.name}</p>
+                      <p className="text-14 font-medium text-ink">{r.name}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge variant="neutral">{KIND_LABEL[r.kind]}</Badge>
                         <Badge variant={r.status === 'active' ? 'success' : 'neutral'}>{r.status}</Badge>
@@ -266,12 +266,12 @@ export function AutomationRecipes() {
                   {r.status === 'completed' ? (
                     // Otherwise "completed" reads as a failure, or as something the
                     // owner did. It is the recipe's own end date arriving.
-                    <p className="mt-2 text-[12px] text-ink-muted">
+                    <p className="mt-2 text-12 text-ink-muted">
                       Past its end date, so it is no longer being run. Edit it to set a new one.
                     </p>
                   ) : null}
                   {r.lastRunAt ? (
-                    <p className="mt-2 text-[12px] text-ink-muted">
+                    <p className="mt-2 text-12 text-ink-muted">
                       Last ran {new Date(r.lastRunAt).toLocaleString('en', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   ) : null}
@@ -299,17 +299,17 @@ export function AutomationRecipes() {
           ))}
         </div>
       ) : error ? (
-        <p className="mt-4 text-[14px] text-ink-muted">{error}</p>
+        <p className="mt-4 text-14 text-ink-muted">{error}</p>
       ) : outputs.length === 0 ? (
-        <p className="mt-4 text-[14px] text-ink-muted">Nothing waiting for review.</p>
+        <p className="mt-4 text-14 text-ink-muted">Nothing waiting for review.</p>
       ) : (
         <ul className="mt-4 grid grid-cols-1 gap-3">
           {outputs.map((o) => (
             <li key={o.id} className="rounded-lg border border-border p-4">
-              <p className="text-[14px] font-medium text-ink">{o.preview.title ?? 'Untitled'}</p>
-              {o.preview.intent ? <p className="mt-1 text-[13px] text-ink-muted">{o.preview.intent}</p> : null}
+              <p className="text-14 font-medium text-ink">{o.preview.title ?? 'Untitled'}</p>
+              {o.preview.intent ? <p className="mt-1 text-13 text-ink-muted">{o.preview.intent}</p> : null}
               {o.preview.sourceUrl ? (
-                <a href={o.preview.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-[12px] text-brand-purple hover:underline">
+                <a href={o.preview.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 block truncate text-12 text-brand-purple hover:underline">
                   {o.preview.sourceUrl}
                 </a>
               ) : null}
@@ -322,7 +322,7 @@ export function AutomationRecipes() {
                 </Button>
               </div>
               {!o.preview.playbookId ? (
-                <p className="mt-2 text-[12px] text-ink-muted">No matching playbook — open Command Center to draft this one by hand, then reject it here.</p>
+                <p className="mt-2 text-12 text-ink-muted">No matching playbook — open Command Center to draft this one by hand, then reject it here.</p>
               ) : null}
             </li>
           ))}
@@ -399,7 +399,7 @@ function NewRecipeForm({
   return (
     <div className="mt-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface-muted p-4">
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Kind</label>
+        <label className="text-12 font-medium text-ink-muted">Kind</label>
         <div className="flex flex-wrap gap-2">
           {(['rss', 'auto_trend', 'bulk_connector'] as const).map((k) => (
             <button
@@ -407,7 +407,7 @@ function NewRecipeForm({
               type="button"
               onClick={() => setKind(k)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-[13px]',
+                'rounded-full border px-3 py-1.5 text-13',
                 kind === k ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface',
               )}
             >
@@ -418,23 +418,23 @@ function NewRecipeForm({
       </div>
 
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Name</label>
+        <label className="text-12 font-medium text-ink-muted">Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Industry blog watch"
-          className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
       </div>
 
       {kind === 'rss' ? (
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted">Feed URL</label>
+          <label className="text-12 font-medium text-ink-muted">Feed URL</label>
           <input
             value={feedUrl}
             onChange={(e) => setFeedUrl(e.target.value)}
             placeholder="https://example.com/feed.xml"
-            className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+            className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
       ) : kind === 'auto_trend' ? (
@@ -447,9 +447,9 @@ function NewRecipeForm({
             sources={sources}
           />
           <div className="grid grid-cols-1 gap-1">
-            <label className="text-[12px] font-medium text-ink-muted">Minimum match score ({Math.round(minScore * 100)}%)</label>
+            <label className="text-12 font-medium text-ink-muted">Minimum match score ({Math.round(minScore * 100)}%)</label>
             <input type="range" min={0} max={1} step={0.05} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} />
-            <p className="text-[12px] text-ink-muted">
+            <p className="text-12 text-ink-muted">
               How close a trend has to be to this brand before SPARK will build a post from it. A keyword that
               matches but scores below this produces nothing, and the run says so.
             </p>
@@ -457,7 +457,7 @@ function NewRecipeForm({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2">
-          <label className="text-[12px] font-medium text-ink-muted">Source</label>
+          <label className="text-12 font-medium text-ink-muted">Source</label>
           <div className="flex flex-wrap gap-2">
             {(['csv', 'drive', 'canva'] as const).map((s) => (
               <button
@@ -465,7 +465,7 @@ function NewRecipeForm({
                 type="button"
                 onClick={() => setBulkSource(s)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-[13px] capitalize',
+                  'rounded-full border px-3 py-1.5 text-13 capitalize',
                   bulkSource === s ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface',
                 )}
               >
@@ -479,7 +479,7 @@ function NewRecipeForm({
               value={csvUrl}
               onChange={(e) => setCsvUrl(e.target.value)}
               placeholder="https://example.com/rows.csv"
-              className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+              className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
             />
           ) : bulkSource === 'drive' ? (
             <>
@@ -487,9 +487,9 @@ function NewRecipeForm({
                 value={driveFolderId}
                 onChange={(e) => setDriveFolderId(e.target.value)}
                 placeholder="Drive folder id (from its share link)"
-                className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+                className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
               />
-              <p className="text-[12px] text-ink-muted">
+              <p className="text-12 text-ink-muted">
                 The folder must be shared &quot;Anyone with the link can view&quot; — this reads through one shared,
                 restricted API key, not your own Google account.
               </p>
@@ -500,9 +500,9 @@ function NewRecipeForm({
                 value={canvaFolderId}
                 onChange={(e) => setCanvaFolderId(e.target.value)}
                 placeholder="Canva folder id"
-                className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+                className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
               />
-              <p className="text-[12px] text-ink-muted">
+              <p className="text-12 text-ink-muted">
                 Needs this brand&apos;s own Canva account connected first — see Connections in Settings.
               </p>
             </>
@@ -511,18 +511,18 @@ function NewRecipeForm({
       )}
 
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Run every (minutes, optional — manual only if blank)</label>
+        <label className="text-12 font-medium text-ink-muted">Run every (minutes, optional — manual only if blank)</label>
         <input
           type="number"
           min={15}
           value={intervalMinutes}
           onChange={(e) => setIntervalMinutes(e.target.value ? Number(e.target.value) : '')}
           placeholder="e.g. 1440 for daily"
-          className="h-9 w-40 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+          className="h-9 w-40 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
       </div>
 
-      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="text-13 text-destructive">{error}</p> : null}
       <Button size="sm" disabled={busy || !name.trim()} onClick={() => void create()} className="w-fit">
         {busy ? 'Creating…' : 'Create recipe'}
       </Button>
@@ -574,35 +574,35 @@ function KeywordFields({
   return (
     <div className="grid grid-cols-1 gap-3">
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Keywords</label>
+        <label className="text-12 font-medium text-ink-muted">Keywords</label>
         <input
           value={keywords}
           onChange={(e) => onKeywords(e.target.value)}
           placeholder="marketing, sales, AI agents"
-          className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
-        <p className="text-[12px] text-ink-muted">
+        <p className="text-12 text-ink-muted">
           {/* OR, and said so: the intersection of three topics is almost always
               empty, which would make the control look broken. */}
           Comma separated. A trend matching <em>any</em> of these counts. Leave empty to take whatever is
           trending.
         </p>
         {words.length > 10 ? (
-          <p className="text-[12px] text-warn">
+          <p className="text-12 text-warn">
             Ten at most — past that a keyword list stops narrowing anything, which is the same as none.
           </p>
         ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Exclude keywords</label>
+        <label className="text-12 font-medium text-ink-muted">Exclude keywords</label>
         <input
           value={excludeKeywords}
           onChange={(e) => onExcludeKeywords(e.target.value)}
           placeholder="politics, crypto"
-          className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
-        <p className="text-[12px] text-ink-muted">
+        <p className="text-12 text-ink-muted">
           Applied after everything else, and by SPARK rather than by the platform — no source&rsquo;s search
           accepts a negation, so this is the half none of them can do.
         </p>
@@ -611,7 +611,7 @@ function KeywordFields({
             {excluded.map((word) => (
               <span
                 key={word}
-                className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-[12px] text-ink"
+                className="rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-12 text-ink"
               >
                 {word}
               </span>
@@ -626,7 +626,7 @@ function KeywordFields({
       {sources ? (
         <p
           className={cn(
-            'rounded-lg border p-3 text-[12px]',
+            'rounded-lg border p-3 text-12',
             sources.anyKeywordSearch ? 'border-border text-ink-muted' : 'border-warn/40 bg-warn/5 text-ink',
           )}
         >
@@ -645,7 +645,7 @@ function KeywordFields({
         version of that, because its default would misdescribe the protection the
         brand already has.
       */}
-      <p className="text-[12px] text-ink-muted">
+      <p className="text-12 text-ink-muted">
         Brand safety is always on: a trend that trips this brand&rsquo;s guardrails is dropped before it can
         become a draft, and there is no setting that turns that off.
       </p>
@@ -758,26 +758,26 @@ function EditRecipeForm({
 
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface-muted p-4">
-      <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">
+      <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
         Editing &mdash; {KIND_LABEL[recipe.kind]}
       </p>
 
       <div className="grid grid-cols-1 gap-1">
-        <label className="text-[12px] font-medium text-ink-muted">Name</label>
+        <label className="text-12 font-medium text-ink-muted">Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink"
+          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink"
         />
       </div>
 
       {recipe.kind === 'rss' ? (
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted">Feed URL</label>
+          <label className="text-12 font-medium text-ink-muted">Feed URL</label>
           <input
             value={feedUrl}
             onChange={(e) => setFeedUrl(e.target.value)}
-            className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink"
+            className="h-9 rounded border border-border bg-input px-3 text-13 text-ink"
           />
         </div>
       ) : null}
@@ -792,7 +792,7 @@ function EditRecipeForm({
             sources={sources}
           />
           <div className="grid grid-cols-1 gap-1">
-            <label className="text-[12px] font-medium text-ink-muted">
+            <label className="text-12 font-medium text-ink-muted">
               Minimum match score ({Math.round(minScore * 100)}%)
             </label>
             <input type="range" min={0} max={1} step={0.05} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} />
@@ -804,7 +804,7 @@ function EditRecipeForm({
           recipe's whole identity, and pointing one at a different folder is a
           different recipe. The fields survive the edit untouched via the spread. */}
       {recipe.kind === 'bulk_connector' ? (
-        <p className="text-[12px] text-ink-muted">
+        <p className="text-12 text-ink-muted">
           Its source and folder are not editable &mdash; pointing a connector at different files is a
           different recipe. Name, schedule and end date can be changed here.
         </p>
@@ -812,33 +812,33 @@ function EditRecipeForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted">Runs every (minutes)</label>
+          <label className="text-12 font-medium text-ink-muted">Runs every (minutes)</label>
           <input
             type="number"
             min={15}
             value={intervalMinutes}
             onChange={(e) => setIntervalMinutes(e.target.value === '' ? '' : Number(e.target.value))}
             placeholder="Leave empty for manual only"
-            className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink placeholder:text-ink-placeholder"
+            className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 gap-1">
-          <label className="text-[12px] font-medium text-ink-muted">End date</label>
+          <label className="text-12 font-medium text-ink-muted">End date</label>
           <input
             type="date"
             value={endAt}
             onChange={(e) => setEndAt(e.target.value)}
-            className="h-9 rounded border border-border bg-input px-3 text-[13px] text-ink"
+            className="h-9 rounded border border-border bg-input px-3 text-13 text-ink"
           />
           {recipe.status === 'completed' ? (
-            <p className="text-[12px] text-ink-muted">
+            <p className="text-12 text-ink-muted">
               Moving this forward is what restarts the recipe &mdash; it stopped because this date passed.
             </p>
           ) : null}
         </div>
       </div>
 
-      {error ? <p className="text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={busy || !name.trim()} onClick={() => void save()}>

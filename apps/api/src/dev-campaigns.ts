@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ToolError } from '@sparksocial/shared';
+import { ToolError, type ContentPillar, type ContentStatus, type GenerationMode, type Platform } from '@sparksocial/shared';
 import type { CampaignRecord, CampaignStore } from '@sparksocial/tools/defineTool';
 
 /**
@@ -17,11 +17,11 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
     Array<{
       id: string;
       playbookId: string | null;
-      mode: string | null;
-      pillar: string | null;
-      status: string;
+      mode: GenerationMode | null;
+      pillar: ContentPillar | null;
+      status: ContentStatus;
       scheduledAt: Date | null;
-      platform: string | null;
+      platform: Platform | null;
     }>
   >();
 
@@ -87,7 +87,7 @@ export function createDevCampaignStore(): CampaignStore & { size(): number } {
           playbookId: s.playbookId,
           mode: s.mode,
           pillar: s.pillar,
-          status: 'scheduled',
+          status: 'scheduled' as const,
           scheduledAt: s.scheduledAt,
           // Carried through rather than dropped: `CampaignSlotInput` has
           // supplied it since `CMP-01.4`, and losing it here made the dev store

@@ -165,7 +165,17 @@ export function AgentActivityFeed({
       <section>
         <SectionHeading />
         <div className="mt-dash-label-gap rounded-lg bg-white">
-          <EmptyCard body={<>Create your first campaign to get started and view agent activities</>} />
+          {/*
+            Empty because no agent run exists — not because no campaign does.
+            Drafting a post through the tools does not create a run, so a brand
+            mid-campaign lands here and used to be told to create the campaign
+            it already had.
+          */}
+          <EmptyCard
+            title="Your agent hasn't run yet"
+            body={<>When your agent plans, drafts or publishes, each step it takes appears here with the reason it took it.</>}
+            action={{ label: 'Open Command Center', href: '/home' }}
+          />
         </div>
       </section>
     );
@@ -248,7 +258,7 @@ function SectionHeading() {
       <h2 className="text-18 font-semibold leading-[1.28] text-ink-muted">Agent Activity</h2>
       <span
         title="Every piece of work your agent does, newest first. Each row can be replayed step by step from the Timeline."
-        className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-[11px] text-ink-muted"
+        className="flex h-[18px] w-[18px] cursor-help items-center justify-center rounded-full text-11 text-ink-muted"
         style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.6)' }}
       >
         i

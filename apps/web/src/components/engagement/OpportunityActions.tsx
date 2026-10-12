@@ -96,13 +96,13 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
   if (!opportunityId) {
     return (
       <div className="mt-3 rounded border border-border bg-surface-muted p-3">
-        <p className="text-[12px] font-medium uppercase tracking-wide text-ink-muted">Raise as an opportunity</p>
+        <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Raise as an opportunity</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
             value={temperature}
             onChange={(e) => setTemperature(e.target.value as Temperature)}
             disabled={busy}
-            className="h-9 rounded border border-border bg-surface px-2 text-[13px] text-ink disabled:opacity-50"
+            className="h-9 rounded border border-border bg-surface px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Temperature"
           >
             <option value="hot">Hot</option>
@@ -114,13 +114,13 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
             onChange={(e) => setRecommendedAction(e.target.value)}
             disabled={busy}
             placeholder="Recommended action, e.g. Call within the hour"
-            className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button size="sm" disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
             {busy ? 'Creating…' : 'Create opportunity'}
           </Button>
         </div>
-        {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+        {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
       </div>
     );
   }
@@ -129,7 +129,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
     return (
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Badge variant="success">Opportunity raised</Badge>
-        <span className="text-[13px] text-ink-muted">
+        <span className="text-13 text-ink-muted">
           {routedByRule
             ? /* Naming the rule matters: the next question anybody asks is
                  "why there", and the answer is a setting they can change. */
@@ -144,19 +144,19 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
     <div className="mt-3 rounded border border-border bg-surface-muted p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="success">Opportunity raised</Badge>
-        <span className="text-[12px] text-ink-muted">{temperature}</span>
+        <span className="text-12 text-ink-muted">{temperature}</span>
       </div>
       {/* Why it is still here. `nurture_only` and `save_notify` both mean "keep
           it in this tab", and `crm_notify` reaching this branch means the rule
           wanted to send it but no destination is configured — which is worth
           saying, because it looks identical to "kept deliberately". */}
       {handoff === 'crm_notify' ? (
-        <p className="mt-1.5 text-[12px] text-warn">
+        <p className="mt-1.5 text-12 text-warn">
           This brand sends {temperature} leads on, but no destination is set — add one in Settings, or route
           it by hand below.
         </p>
       ) : handoff ? (
-        <p className="mt-1.5 text-[12px] text-ink-muted">
+        <p className="mt-1.5 text-12 text-ink-muted">
           This brand keeps {temperature} leads here. Route it by hand if this one is different.
         </p>
       ) : null}
@@ -166,13 +166,13 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
           onChange={(e) => setRoutedTo(e.target.value)}
           disabled={busy}
           placeholder="Route to — a person, email, or CRM reference"
-          className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-[13px] text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+          className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
         />
         <Button size="sm" variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
           {busy ? 'Routing…' : 'Route'}
         </Button>
       </div>
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }

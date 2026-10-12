@@ -227,7 +227,7 @@ function GateCard({
           boxShadow: '0 30px 70px -28px rgba(12,12,12,0.45)',
         }}
       >
-        <span aria-hidden className="absolute left-[20px] top-[20px] block h-[20px] w-[20px] rounded-full text-[13px] font-bold leading-[20px]" style={{ color: '#9A9A9A', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.5)' }}>
+        <span aria-hidden className="absolute left-[20px] top-[20px] block h-[20px] w-[20px] rounded-full text-13 font-bold leading-[20px]" style={{ color: '#9A9A9A', boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.5)' }}>
           i
         </span>
         <button
@@ -259,13 +259,13 @@ function GateCard({
           )}
         </span>
 
-        <p className="mt-[20px] text-[24px] font-semibold leading-[1.32] text-ink">{children}</p>
-        {detail ? <p className="mt-[14px] text-[16px] leading-[1.5] text-ink-muted">{detail}</p> : null}
+        <p className="mt-[20px] text-24 font-semibold leading-[1.32] text-ink">{children}</p>
+        {detail ? <p className="mt-[14px] text-16 leading-[1.5] text-ink-muted">{detail}</p> : null}
 
         <button
           type="button"
           onClick={action.onClick}
-          className="mt-[26px] h-[48px] rounded-[10px] bg-white px-[28px] text-[16px] font-medium text-ink transition-colors hover:bg-[#F4F5F7]"
+          className="mt-[26px] h-[48px] rounded-[10px] bg-white px-[28px] text-16 font-medium text-ink transition-colors hover:bg-[#F4F5F7]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
         >
           {action.label}

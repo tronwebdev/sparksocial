@@ -60,11 +60,11 @@ function ChoiceCard({
       }}
     >
       <span className="absolute left-1/2 top-[30px] block -translate-x-1/2">{icon}</span>
-      <span className="absolute inset-x-0 top-[87px] block whitespace-nowrap text-center text-[18px] font-semibold leading-none text-ink">
+      <span className="absolute inset-x-0 top-[87px] block whitespace-nowrap text-center text-18 font-semibold leading-none text-ink">
         {title}
       </span>
       <span
-        className="absolute left-[35.5px] top-[118px] block w-[181px] text-center text-[16px] font-medium leading-[0.9986]"
+        className="absolute left-[35.5px] top-[118px] block w-[181px] text-center text-16 font-medium leading-[0.9986]"
         style={{ color: 'rgb(131,131,131)' }}
       >
         {desc}
@@ -150,10 +150,10 @@ export function GoalStep({
   return (
     <>
       <StepPanel x={220} y={235} w={596} h={551} clip={PANEL_CLIP.s12}>
-        <h2 className="absolute left-[37px] top-[42px] whitespace-nowrap text-[25px] font-semibold leading-[1.43] text-black">
+        <h2 className="absolute left-[37px] top-[42px] whitespace-nowrap text-26 font-semibold leading-[1.43] text-black">
           What&rsquo;s your campaign goal?
         </h2>
-        <p className="absolute left-[37px] top-[85px] whitespace-nowrap text-[18px] font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
+        <p className="absolute left-[37px] top-[85px] whitespace-nowrap text-18 font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
           Could you share what matters most to you right now?
         </p>
 
@@ -181,7 +181,7 @@ export function GoalStep({
         would cost the product three kinds of campaign.
       */}
       <div className="absolute left-[220px] top-[800px] flex w-[596px] items-center gap-[12px]">
-        <span className="whitespace-nowrap text-[15px] font-medium" style={{ color: 'rgb(131,131,131)' }}>
+        <span className="whitespace-nowrap text-15 font-medium" style={{ color: 'rgb(131,131,131)' }}>
           Something else?
         </span>
         {EXTRA_OBJECTIVES.map((o) => (
@@ -190,7 +190,7 @@ export function GoalStep({
             type="button"
             onClick={() => onPickExtra(o.value)}
             aria-pressed={goalKey === null && objective === o.value}
-            className="h-[34px] cursor-pointer rounded-[9.26px] bg-white px-[14px] text-[14.267px] font-medium transition-shadow"
+            className="h-[34px] cursor-pointer rounded-[9.26px] bg-white px-[14px] text-14 font-medium transition-shadow"
             style={{
               color: goalKey === null && objective === o.value ? 'var(--ss-ink-900)' : 'rgb(131,131,131)',
               boxShadow:
@@ -211,10 +211,10 @@ export function GoalStep({
 export function TypeStep({ value, onPick }: { value: CampaignType; onPick: (t: CampaignType) => void }) {
   return (
     <StepPanel x={220} y={236} w={596} h={551} clip={PANEL_CLIP.s12}>
-      <h2 className="absolute left-[37px] top-[31px] whitespace-nowrap text-[25px] font-semibold leading-[1.43] text-black">
+      <h2 className="absolute left-[37px] top-[31px] whitespace-nowrap text-26 font-semibold leading-[1.43] text-black">
         Select a campaign type
       </h2>
-      <p className="absolute left-[37px] top-[68px] w-[474px] text-[18px] font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="absolute left-[37px] top-[68px] w-[474px] text-18 font-normal leading-[0.9987]" style={{ color: 'rgb(131,131,131)' }}>
         I&rsquo;ve chosen a type for you based on your goal, but feel free to pick a different one if you prefer:
       </p>
 

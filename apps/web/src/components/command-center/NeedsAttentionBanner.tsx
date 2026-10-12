@@ -51,7 +51,7 @@ export function NeedsAttentionBanner({ count, href = '?attention=1' }: { count: 
         </svg>
       </span>
 
-      <span className="ml-[7.2px] min-w-0 truncate text-[16.65px] leading-[1.28] text-warn">
+      <span className="ml-[7.2px] min-w-0 truncate text-17 leading-[1.28] text-warn">
         <b className="font-bold">Needs Attention:</b>{' '}
         <span className="font-medium">
           {count === 1 ? 'Approval required for one queued post' : `Approval required for ${count} queued posts`}
@@ -62,7 +62,7 @@ export function NeedsAttentionBanner({ count, href = '?attention=1' }: { count: 
           design and fluid here, and both controls hang off its right edge. */}
       <a
         href={href}
-        className="ml-auto flex shrink-0 items-center gap-[10.5px] text-[16.65px] font-normal text-ink"
+        className="ml-auto flex shrink-0 items-center gap-[10.5px] text-17 font-normal text-ink"
       >
         Review
         <span

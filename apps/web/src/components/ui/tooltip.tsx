@@ -17,7 +17,7 @@ const TooltipContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 rounded-md bg-[--ss-ink-900] px-3 py-2 text-[14px] font-medium text-white shadow-card',
+        'z-50 rounded-md bg-[--ss-ink-900] px-3 py-2 text-14 font-medium text-white shadow-card',
         'animate-menu-in motion-reduce:animate-none',
         className,
       )}

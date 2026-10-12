@@ -94,7 +94,7 @@ export function MemberChecklist({
   if (team === null) return <p className="py-[16px] text-15 text-ink-muted">Loading the team…</p>;
 
   if (team.length === 0) {
-    return <p className="py-[16px] text-[14px] leading-[1.5] text-ink-muted">{error ?? emptyHint}</p>;
+    return <p className="py-[16px] text-14 leading-[1.5] text-ink-muted">{error ?? emptyHint}</p>;
   }
 
   return (
@@ -112,14 +112,14 @@ export function MemberChecklist({
             >
               <span
                 aria-hidden
-                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-ink"
+                className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full text-13 font-semibold text-ink"
                 style={{ background: '#E7EEF6' }}
               >
                 {initials(m)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-ink">{memberName(m)}</span>
-                <span className="block truncate text-[12.5px]" style={{ color: '#838383' }}>
+                <span className="block truncate text-15 font-semibold text-ink">{memberName(m)}</span>
+                <span className="block truncate text-13" style={{ color: '#838383' }}>
                   {m.orgRole}
                   {m.email && m.name ? ` · ${m.email}` : ''}
                 </span>
@@ -149,7 +149,7 @@ export function MemberChecklist({
 /** The note that stops an assignment being mistaken for a permission. */
 export function AssignmentNote() {
   return (
-    <p className="mt-[12px] text-[12.5px] leading-[1.5]" style={{ color: '#838383' }}>
+    <p className="mt-[12px] text-13 leading-[1.5]" style={{ color: '#838383' }}>
       Assigning someone marks who looks after this folder. It does not change what they can see —
       everyone on the brand can already open every folder — and it does not change their access to
       the brand, which is set in Settings → Team.
@@ -216,7 +216,7 @@ export function FolderMembersModal({
       label="Folder members"
       onClose={onClose}
     >
-      <p className="pt-[46px] text-center text-[26px] font-bold text-ink">Assign Team members</p>
+      <p className="pt-[46px] text-center text-26 font-bold text-ink">Assign Team members</p>
       <p className="mt-[6px] truncate px-[40px] text-center text-15 text-ink-muted" title={folder.name}>
         {folder.name}
       </p>

@@ -262,3 +262,66 @@ describe('placeCalendar', () => {
     }
   });
 });
+
+/**
+ * Format balance across the whole month, not within one pillar.
+ *
+ * The real campaign that prompted this came out 9 image / 1 text / 1 video /
+ * 0 carousel across thirty days. Every pillar had rotated its own formats
+ * correctly; nothing was counting media types across pillars, so the month as
+ * a whole was almost entirely stills for a brand that could make all four.
+ *
+ * What somebody scrolling the account sees is the month, so that is the level
+ * the guarantee has to hold at.
+ */
+describe('placeCalendar — format balance', () => {
+  const mediaOf = (slots: Array<{ playbookId: string }>) =>
+    slots.reduce<Record<string, number>>((acc, s) => {
+      const type = byId(s.playbookId)!.output.media_type;
+      acc[type] = (acc[type] ?? 0) + 1;
+      return acc;
+    }, {});
+
+  /*
+   * A first version of this asserted "every available media type appears at
+   * least once". It passed with the balancing removed, because rotating
+   * within a pillar already reaches every type eventually — so it documented
+   * a property without guarding it. What balancing actually changes is the
+   * *proportion* across the month, which is what the next test measures and
+   * what the reported failure was about.
+   */
+  it('does not let one media type take more than it has to', () => {
+    const playbooks = PLAYBOOKS.filter((p) =>
+      ['educational', 'personality', 'product'].includes(p.content_pillar ?? ''),
+    );
+    const { slots } = placeCalendar({
+      mix: mix({ educational: 3, personality: 3, product: 3 }),
+      playbooks,
+      windowDays: 30,
+      startAt: START,
+    });
+
+    const spread = mediaOf(slots);
+    const counts = Object.values(spread);
+    const types = Object.keys(spread).length;
+    // With balancing, no type should hold more than half the month when three
+    // or more types are available to those pillars.
+    if (types >= 3) expect(Math.max(...counts)).toBeLessThanOrEqual(Math.ceil(slots.length / 2));
+  });
+
+  it('still rotates playbooks within a pillar', () => {
+    // Balancing is the second guarantee, not a replacement: dropping recency
+    // would trade a monotonous mix of formats for a monotonous mix of
+    // playbooks, which is the bug this file already guarded against.
+    const playbooks = forPillar('educational');
+    const { slots } = placeCalendar({
+      mix: mix({ educational: 4 }),
+      playbooks,
+      windowDays: 30,
+      startAt: START,
+    });
+    if (playbooks.length > 1) {
+      expect(new Set(slots.map((s) => s.playbookId)).size).toBeGreaterThan(1);
+    }
+  });
+});

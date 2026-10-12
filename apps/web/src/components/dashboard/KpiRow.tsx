@@ -81,7 +81,7 @@ export function KpiRow({ series }: { series: BrandSeries }) {
         >
           <p className="text-18 font-medium leading-[1.28] text-ink-muted">{c.label}</p>
           <div className="mt-[13px] flex items-center gap-3">
-            <span className="text-[35px] font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
+            <span className="text-36 font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>
           {/*
@@ -120,7 +120,7 @@ function Pill({ up, children, title }: { up: boolean; children: React.ReactNode;
       className="inline-flex h-9 items-center gap-[3px] rounded-[11.59px] bg-white px-[9px]"
       style={{ boxShadow: 'inset 0 0 0 0.77px rgba(12,12,12,0.1)' }}
     >
-      <span className="text-[17px] font-medium leading-none" style={{ color: up ? '#13D711' : '#F35525' }}>
+      <span className="text-17 font-medium leading-none" style={{ color: up ? '#13D711' : '#F35525' }}>
         {up ? '+' : '\u2212'}
       </span>
       <span className="text-18 font-medium leading-[1.28] text-ink">{children}</span>

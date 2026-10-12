@@ -5,6 +5,8 @@ import {
   createCreditRepository,
   createRunRecorder,
   createDueContentSource,
+  createUnrenderedContentSource,
+  type UnrenderedContentItem,
   createOutcomeCandidateSource,
   createAccountLookup,
   lookupToolCall,
@@ -35,6 +37,8 @@ export function connectPostgresStore(): {
   lookupCall: (callId: string, orgId: string) => Promise<ToolCallRecord | undefined>;
   /** The scheduler's read — see scheduler.ts. */
   findDue: (before: Date, limit: number) => Promise<DueContentItem[]>;
+  /** The render queue's read — posts in a live campaign with copy and no file. */
+  findUnrendered: (limit: number) => Promise<UnrenderedContentItem[]>;
   /** The learning loop's two cross-tenant reads — see outcome-observer.ts. */
   outcomes: OutcomeCandidateSource;
   /** The engagement webhook's tenant resolution — see engage-webhook.ts. */
@@ -49,6 +53,7 @@ export function connectPostgresStore(): {
     runRecorder: createRunRecorder(db),
     lookupCall: (callId, orgId) => lookupToolCall(db, callId, orgId),
     findDue: createDueContentSource(db).findDue,
+    findUnrendered: createUnrenderedContentSource(db).findUnrendered,
     outcomes: createOutcomeCandidateSource(db),
     accounts: createAccountLookup(db),
     close: () => pool.end(),
