@@ -58,19 +58,18 @@ services:
           property: connectionString
       # Every secret, from the group. See the note at the top of this file.
       - fromGroup: sparksocial-secrets
-      # `/health` reports which commit is serving. On Azure this was stamped
-      # from the build SHA; Render sets `RENDER_GIT_COMMIT` on every service, so
-      # this is a rename rather than a lookup.
+      # `REVISION` — which commit `/health` reports — is deliberately absent.
       #
-      # `envVarKey`, not `property`: `property` takes host/port/connectionString
-      # — a *service* attribute. A default environment variable is read with
-      # `envVarKey`, and `property: commit` is rejected at sync with "cannot
-      # refer to commit against service sparksocial-api of type web".
-      - key: REVISION
-        fromService:
-          type: web
-          name: sparksocial-api
-          envVarKey: RENDER_GIT_COMMIT
+      # Azure's workflow stamped it from the build SHA. Render sets
+      # `RENDER_GIT_COMMIT` itself, and there is no need to copy it: this is the
+      # api service, so that variable is already in its own environment.
+      # Copying it was in fact impossible — `fromService` with
+      # `envVarKey: RENDER_GIT_COMMIT` fails at sync with `environment variable
+      # not found`, because Render's built-in variables are present in the
+      # running process but are not readable as a service's *configuration*,
+      # which is what `fromService` looks up. `apps/api/src/env.ts`'s
+      # `revision()` reads `REVISION` first and falls back to
+      # `RENDER_GIT_COMMIT`, so it works on both platforms with no entry here.
       #
       # ── Cross-service URLs ───────────────────────────────────────────────
       #
@@ -101,11 +100,10 @@ services:
           type: web
           name: sparksocial-web
           envVarKey: RENDER_EXTERNAL_URL
-      - key: LOCAL_STORAGE_PUBLIC_URL
-        fromService:
-          type: web
-          name: sparksocial-api
-          envVarKey: RENDER_EXTERNAL_URL
+      # `LOCAL_STORAGE_PUBLIC_URL` is absent for the same reason: it would be
+      # this service's own `RENDER_EXTERNAL_URL`, which `apps/api/src/tools.ts`
+      # now reads directly as the fallback base URL. It only matters when no
+      # cloud store is configured — R2 and Azure both return absolute URLs.
       - key: SOCIAL_REDIRECT_URI
         value: https://sparksocial-api.onrender.com/oauth/social/callback
       - key: CANVA_REDIRECT_URI

@@ -818,7 +818,22 @@ export function registerAlphaTools(): void {
 let localStore: LocalDiskBlobStore | undefined;
 
 function localPublicBaseUrl(): string {
-  return envStr('LOCAL_STORAGE_PUBLIC_URL', `http://localhost:${envNum('PORT', 8080)}`);
+  /*
+   * `RENDER_EXTERNAL_URL` between the explicit setting and localhost.
+   *
+   * Render sets it on every web service — the full `https://…` origin — and it
+   * cannot be copied onto the service by a Blueprint: `fromService` with
+   * `envVarKey` fails at sync with `environment variable not found`, because a
+   * platform default is present in the running environment rather than readable
+   * as another service's configuration. Reading it here needs no Blueprint
+   * entry at all.
+   *
+   * Only reached when no cloud store is configured, since R2 and Azure both
+   * hand out their own absolute URLs. That is the case this matters for: a
+   * local-disk store on a deployed host otherwise advertises `http://localhost`
+   * to a browser that is not on that host.
+   */
+  return envStr('LOCAL_STORAGE_PUBLIC_URL', envStr('RENDER_EXTERNAL_URL', `http://localhost:${envNum('PORT', 8080)}`));
 }
 
 function localBlobStore(): LocalDiskBlobStore {

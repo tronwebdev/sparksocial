@@ -97,3 +97,22 @@ export function envBool(name: string, fallback: boolean): boolean {
   console.warn(`[warn] ${name}="${raw}" is not a recognised true/false value — using ${fallback}.`);
   return fallback;
 }
+
+/**
+ * The commit this process is running, whatever the platform calls it.
+ *
+ * Azure's deploy workflow stamped `REVISION` from the SHA. Render sets
+ * `RENDER_GIT_COMMIT` on every service for free — but a Blueprint cannot copy
+ * it across with `fromService`/`envVarKey`, which fails at sync with
+ * `environment variable not found: "RENDER_GIT_COMMIT"`. Render's built-in
+ * variables are present in the running environment and are not readable as
+ * another service's configuration, which is a distinction the Blueprint spec
+ * does not draw anywhere.
+ *
+ * Reading both here is simpler than either platform's plumbing, and it means
+ * `/health` answers "did the deploy land?" on both without a branch at the call
+ * site. Empty when neither is set, which is the honest answer locally.
+ */
+export function revision(): string | undefined {
+  return envStr('REVISION', '') || envStr('RENDER_GIT_COMMIT', '') || undefined;
+}

@@ -35,17 +35,18 @@ import { createDevCreditStore } from './dev-credits.js';
 import { createDevApprovalStore } from './dev-approvals.js';
 import { makeApprovalExecutor, withApprovalQueue } from './approval-wiring.js';
 import { registerApprovalTools } from './tools.js';
-import { envList, envNum, envSet, envStr } from './env.js';
+import { envList, envNum, envSet, envStr, revision } from './env.js';
 import { describeModelVendors } from './model-client.js';
 import { describeEngageWebhook } from './engage-webhook.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
  *
- * `PORT` is supplied by the platform; default 8080 matches the Container Apps
- * ingress convention. `REVISION` is stamped by the deploy workflow from the
- * commit SHA so `/health` can confirm which build is actually live — the cheapest
- * possible answer to "did the deploy land?".
+ * `PORT` is supplied by the platform; default 8080 on Render and matching the
+ * Container Apps ingress convention before it. The commit `/health` reports
+ * comes from `revision()`, which reads Azure's stamped `REVISION` or Render's
+ * built-in `RENDER_GIT_COMMIT` — the cheapest possible answer to "did the
+ * deploy land?".
  */
 
 const port = envNum('PORT', 8080);
@@ -546,7 +547,7 @@ const app = createApp({
   telemetry: telemetry.status(),
   ...(whatsappWebhook ? { whatsappWebhook } : {}),
   ...(engageWebhook ? { engageWebhook } : {}),
-  ...(process.env.REVISION ? { revision: process.env.REVISION } : {}),
+  ...(revision() ? { revision: revision()! } : {}),
   ...(agentConfigured
     ? {
         agent: {

@@ -57,9 +57,9 @@ export function createTelemetry(env: NodeJS.ProcessEnv = process.env): Telemetry
     Sentry.init({
       dsn: sentryDsn,
       environment: env.NODE_ENV ?? 'development',
-      // The deploy workflow stamps this from the commit SHA, so an error in
-      // production is traceable to a build without guessing.
-      release: env.REVISION || undefined,
+      // Which build an error came from, without guessing. Azure's workflow
+      // stamped `REVISION`; Render sets `RENDER_GIT_COMMIT` itself.
+      release: env.REVISION || env.RENDER_GIT_COMMIT || undefined,
       tracesSampleRate: 0,
     });
   }
