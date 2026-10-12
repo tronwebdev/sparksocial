@@ -1,0 +1,168 @@
+# Render Blueprint — SparkSocial
+#
+# Companion to `infra/render/MIGRATION.md`, which explains the reasoning. This
+# file is the executable half; read §0 of that document first, because one of
+# its two blockers is a code change and this file cannot help with it.
+#
+# ── Before this works ─────────────────────────────────────────────────────
+#
+#   1. An R2 bucket (or any S3-compatible store) exists, and the env group
+#      carries R2_ACCOUNT_ID / R2_BUCKET / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY.
+#      `apps/api/src/tools.ts::blobStore()` picks R2 ahead of Azure, and falls
+#      back to local disk when neither is set — which on Render means a disk that
+#      disappears with the instance.
+#   2. `CREATE EXTENSION vector` has been run on the database.
+#   3. The env group `sparksocial-secrets` exists, populated from
+#      `infra/azure/secrets.manifest` — 3 required, 46 optional.
+#
+# ── The rule that matters most about the env group ────────────────────────
+#
+# Leave unconfigured keys OUT. Never add them as blank placeholders. `defineTool`
+# registration is gated on `envSet(...)`: an absent key leaves its tool cleanly
+# unregistered and the button is simply not there, where an empty string
+# registers the tool and fails at call time — which reads to a customer as "the
+# product is broken" rather than "this is not configured".
+
+services:
+  # ── API ─────────────────────────────────────────────────────────────────
+  #
+  # Public because OAuth callbacks and the WhatsApp webhook need ingress.
+  #
+  # `plan: standard` is a floor, not a preference. This image installs Debian,
+  # ffmpeg, Chromium and Liberation fonts — Playwright crawls sites during
+  # onboarding and Remotion renders video — and a render on a 512MB instance
+  # will OOM. Free instances also spin down when idle, which silently breaks the
+  # webhook and every OAuth callback.
+  - type: web
+    name: sparksocial-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: standard
+    healthCheckPath: /health
+    # Off on purpose: migrations run in CI and must land before the new code
+    # does. See `infra/render/MIGRATION.md` §6 — with auto-deploy on, the deploy
+    # races the migration and new code meets an old schema.
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sparksocial-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: sparksocial-cache
+          property: connectionString
+      # Every secret, from the group. See the note at the top of this file.
+      - fromGroup: sparksocial-secrets
+      # `/health` reports which commit is serving. On Azure this was stamped
+      # from the build SHA; Render exposes its own.
+      - key: REVISION
+        fromService:
+          type: web
+          name: sparksocial-api
+          property: commit
+      #
+      # ── Cross-service URLs ───────────────────────────────────────────────
+      #
+      # Hardcoded, and that is a considered choice rather than laziness. The
+      # Azure workflow resolved these at deploy time off the live ingress FQDN
+      # precisely so they could not drift; Render's `fromService: { property:
+      # host }` returns a bare hostname with no scheme, so it cannot build an
+      # `https://…` value on its own.
+      #
+      # Render hostnames are stable, so this is safe — but renaming a service
+      # now breaks sign-in silently. `CLERK_AUTHORIZED_PARTIES` is the one to
+      # watch: `apps/api/src/index.ts` defaults it to `http://localhost:3000`,
+      # which does not throw, it just rejects every sign-in from the deployed
+      # origin. Point all of these at your custom domains once you attach them.
+      - key: WEB_APP_URL
+        value: https://sparksocial-web.onrender.com
+      - key: CLERK_AUTHORIZED_PARTIES
+        value: https://sparksocial-web.onrender.com
+      - key: SOCIAL_REDIRECT_URI
+        value: https://sparksocial-api.onrender.com/oauth/social/callback
+      - key: CANVA_REDIRECT_URI
+        value: https://sparksocial-api.onrender.com/oauth/canva/callback
+      - key: LOCAL_STORAGE_PUBLIC_URL
+        value: https://sparksocial-api.onrender.com
+
+  # ── Web ─────────────────────────────────────────────────────────────────
+  #
+  # A Next.js `output: 'standalone'` build, cheap next to the API.
+  #
+  # The `NEXT_PUBLIC_*` values below are baked into the client bundle at BUILD
+  # time: Render injects a service's env vars as Docker build args and
+  # `apps/web/Dockerfile` already declares each one as an `ARG`. That also means
+  # changing one needs a rebuild, not a restart — a runtime env var will not move
+  # a value that is already in the JavaScript.
+  - type: web
+    name: sparksocial-web
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SPARK_API_URL
+        value: https://sparksocial-api.onrender.com
+      # `sync: false` means "set this in the dashboard" — the value never enters
+      # the repo. Required: without it the web app cannot start a session.
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_URL
+        value: /sign-in
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
+        value: /sign-up
+      - key: NEXT_PUBLIC_SOCIAL_PROVIDERS
+        value: google
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      - key: NEXT_PUBLIC_POSTHOG_KEY
+        sync: false
+      - key: NEXT_PUBLIC_POSTHOG_HOST
+        value: https://eu.i.posthog.com
+
+  # ── Key Value (Redis) ───────────────────────────────────────────────────
+  #
+  # Optional. `REDIS_URL` is `optional` in the manifest and the app runs without
+  # it — but rate limits are then per-replica, so the effective budget
+  # multiplies by replica count. Fine at one instance; not fine once the API
+  # scales out. Delete this service and the API's REDIS_URL together if you do
+  # not want it: an empty REDIS_URL is worse than an absent one.
+  - type: keyvalue
+    name: sparksocial-cache
+    plan: starter
+    maxmemoryPolicy: allkeys_lru
+    ipAllowList: []            # private network only — no public access
+
+
+databases:
+  # `postgresMajorVersion: 16` for pgvector, which needs PG 13+. Unlike Azure
+  # there is no allow-list step: run `CREATE EXTENSION vector` once, before
+  # restoring any dump, or every `vector` column fails to restore.
+  #
+  # Check the plan's connection limit against `packages/db/src/client.ts`, whose
+  # ceiling is `max × replicas` (10 per replica by default). The small plans
+  # allow fewer than the Flexible Server this was sized against.
+  - name: sparksocial-db
+    plan: standard
+    postgresMajorVersion: "16"
+
+envVarGroups:
+  # Populated by hand in the dashboard, from `infra/azure/secrets.manifest`.
+  # Deliberately empty here: a value committed to this file is a value in git.
+  #
+  # Required (3): DATABASE_URL — supplied above from the database, so not needed
+  # here — CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY.
+  #
+  # Plus R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, which
+  # post-date that manifest and are what make object storage work at all here.
+  - name: sparksocial-secrets
+    envVars: []

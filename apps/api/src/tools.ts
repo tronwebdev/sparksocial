@@ -36,6 +36,7 @@ import {
 } from '@sparksocial/assetgraph';
 import {
   createAzureBlobStore,
+  createR2BlobStore,
   createLocalDiskBlobStore,
   LOCAL_STORAGE_ROUTE_PREFIX,
   type BlobStore,
@@ -847,18 +848,45 @@ function localUrlPrefix(): string {
  * surface as a wall of Azure credential text under an upload button.
  */
 export function blobStore(): BlobStore {
+  /*
+   * R2 before Azure, local last.
+   *
+   * Two cloud stores exist because the deploy target is moving: Azure signs with
+   * a managed identity that only exists inside Container Apps, and R2 signs with
+   * a static key that works anywhere — see `infra/render/MIGRATION.md` §0.1 on
+   * why Render cannot run the Azure path at all.
+   *
+   * Ordered rather than exclusive so a migration can run both for a window: set
+   * the R2 variables and the next boot writes to R2 while the Azure account is
+   * still there to read from. Whichever is checked first wins, and R2 is first
+   * because it is the destination, not the origin.
+   */
+  if (envSet('R2_ACCOUNT_ID')) {
+    return createR2BlobStore({
+      accountId: envStr('R2_ACCOUNT_ID', ''),
+      bucket: envStr('R2_BUCKET', 'assets'),
+      accessKeyId: envStr('R2_ACCESS_KEY_ID', ''),
+      secretAccessKey: envStr('R2_SECRET_ACCESS_KEY', ''),
+      ...(envSet('R2_PUBLIC_BASE_URL') ? { publicBaseUrl: envStr('R2_PUBLIC_BASE_URL', '') } : {}),
+    });
+  }
   if (!envSet('AZURE_STORAGE_ACCOUNT')) return localBlobStore();
   const account = envStr('AZURE_STORAGE_ACCOUNT', '');
   return createAzureBlobStore({ account, container: envStr('AZURE_STORAGE_CONTAINER', 'assets') });
 }
 
+/** Whether any real object store is configured — local disk is the fallback, not a store. */
+function cloudStoreConfigured(): boolean {
+  return envSet('R2_ACCOUNT_ID') || envSet('AZURE_STORAGE_ACCOUNT');
+}
+
 /**
  * Exposed so `index.ts` can mount the PUT/GET routes a local-disk store's
- * URLs point at. `undefined` when Azure is configured — those URLs are real
- * Blob Storage SAS links and need no local route.
+ * URLs point at. `undefined` when a cloud store is configured — those URLs are
+ * real presigned links (Blob SAS or R2 SigV4) and need no local route.
  */
 export function localBlobStoreForRoutes(): LocalDiskBlobStore | undefined {
-  return envSet('AZURE_STORAGE_ACCOUNT') ? undefined : localBlobStore();
+  return cloudStoreConfigured() ? undefined : localBlobStore();
 }
 
 /**
