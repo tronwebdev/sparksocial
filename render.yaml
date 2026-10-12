@@ -162,7 +162,17 @@ services:
   # not want it: an empty REDIS_URL is worse than an absent one.
   - type: keyvalue
     name: sparksocial-cache
-    plan: starter
+    # `free` alongside the database, and the trade is sharper here: a free Key
+    # Value instance is **in-memory only**, so every restart loses the lot.
+    #
+    # That is survivable for exactly what this holds — publish rate-limit
+    # counters — because losing them resets a budget rather than corrupting
+    # anything. It would not be survivable for a queue or a session store, so do
+    # not let anything of that shape move in here while it is free.
+    #
+    # 25 MB, 50 connections, one free instance per workspace. `256mb` is the
+    # paid step up, which is what the legacy name `starter` mapped to.
+    plan: free
     # Hyphens, not underscores — Render takes the Redis spelling, and rejects
     # `allkeys_lru` at sync. This is also the default, kept explicit because an
     # eviction policy is a thing worth stating rather than inheriting.
@@ -179,14 +189,24 @@ databases:
   # ceiling is `max × replicas` (10 per replica by default). The small plans
   # allow fewer than the Flexible Server this was sized against.
   - name: sparksocial-db
-    # `1c-2g`, not `standard`. Render retired the legacy Postgres plan names for
-    # new databases and sizes them by compute now; their own mapping table puts
-    # the old `standard` at `1c-2g` — 1 CPU, 2 GB — so this is the same machine
-    # under the name it answers to today.
+    # `free` while this is a test deployment. 0.1 CPU, 256 MB, 1 GB of storage,
+    # and 100 connections — which is the number that actually matters here,
+    # since `packages/db/src/client.ts` opens up to `max × replicas` and `max`
+    # is 10. There is plenty of headroom.
     #
-    # Web services and Key Value still take the legacy names, which is why only
-    # this line changed. Expect that to catch up eventually.
-    plan: 1c-2g
+    # ── Three things the free plan does that a paid one does not ───────────
+    #
+    #   1. **It expires 30 days after creation**, then gives a 14-day grace
+    #      period to upgrade. After that Render deletes it and everything in it.
+    #      Put a reminder somewhere that is not this file.
+    #   2. One free database per workspace. A second Blueprint cannot have one.
+    #   3. 1 GB fixed. Rendered video does not live here — that is R2 — but
+    #      `tool_calls` and `agent_steps` grow quickly under real use.
+    #
+    # Moving to a paid plan later is a one-line change to `1c-2g`, which is what
+    # the retired `standard` name mapped to. Moving *back* is not possible once
+    # a database leaves a legacy instance type.
+    plan: free
     postgresMajorVersion: "16"
 
 envVarGroups:
