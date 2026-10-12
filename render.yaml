@@ -59,36 +59,57 @@ services:
       # Every secret, from the group. See the note at the top of this file.
       - fromGroup: sparksocial-secrets
       # `/health` reports which commit is serving. On Azure this was stamped
-      # from the build SHA; Render exposes its own.
+      # from the build SHA; Render sets `RENDER_GIT_COMMIT` on every service, so
+      # this is a rename rather than a lookup.
+      #
+      # `envVarKey`, not `property`: `property` takes host/port/connectionString
+      # — a *service* attribute. A default environment variable is read with
+      # `envVarKey`, and `property: commit` is rejected at sync with "cannot
+      # refer to commit against service sparksocial-api of type web".
       - key: REVISION
         fromService:
           type: web
           name: sparksocial-api
-          property: commit
+          envVarKey: RENDER_GIT_COMMIT
       #
       # ── Cross-service URLs ───────────────────────────────────────────────
       #
-      # Hardcoded, and that is a considered choice rather than laziness. The
-      # Azure workflow resolved these at deploy time off the live ingress FQDN
-      # precisely so they could not drift; Render's `fromService: { property:
-      # host }` returns a bare hostname with no scheme, so it cannot build an
-      # `https://…` value on its own.
+      # Resolved, not hardcoded. An earlier version of this file hardcoded them
+      # and argued that it had to, because `fromService: { property: host }`
+      # returns a bare hostname with no scheme. That is true of `property` and
+      # irrelevant: `RENDER_EXTERNAL_URL` is a default environment variable
+      # carrying the full `https://…` URL, and `envVarKey` reads it.
       #
-      # Render hostnames are stable, so this is safe — but renaming a service
-      # now breaks sign-in silently. `CLERK_AUTHORIZED_PARTIES` is the one to
-      # watch: `apps/api/src/index.ts` defaults it to `http://localhost:3000`,
-      # which does not throw, it just rejects every sign-in from the deployed
-      # origin. Point all of these at your custom domains once you attach them.
+      # Worth the correction rather than a hardcode that works. The Azure
+      # workflow resolved these off the live ingress FQDN at deploy time
+      # precisely so a rename could not break them, and that property is kept
+      # here. `CLERK_AUTHORIZED_PARTIES` is the one that makes it matter:
+      # `apps/api/src/index.ts` defaults it to `http://localhost:3000`, which
+      # does not throw — it silently rejects every sign-in from the deployed
+      # origin.
+      #
+      # The two redirect URIs still have to be built by hand, because they are a
+      # URL *plus a path* and the Blueprint spec has no way to concatenate. They
+      # are the two to re-point first when you attach custom domains.
       - key: WEB_APP_URL
-        value: https://sparksocial-web.onrender.com
+        fromService:
+          type: web
+          name: sparksocial-web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: CLERK_AUTHORIZED_PARTIES
-        value: https://sparksocial-web.onrender.com
+        fromService:
+          type: web
+          name: sparksocial-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: LOCAL_STORAGE_PUBLIC_URL
+        fromService:
+          type: web
+          name: sparksocial-api
+          envVarKey: RENDER_EXTERNAL_URL
       - key: SOCIAL_REDIRECT_URI
         value: https://sparksocial-api.onrender.com/oauth/social/callback
       - key: CANVA_REDIRECT_URI
         value: https://sparksocial-api.onrender.com/oauth/canva/callback
-      - key: LOCAL_STORAGE_PUBLIC_URL
-        value: https://sparksocial-api.onrender.com
 
   # ── Web ─────────────────────────────────────────────────────────────────
   #
@@ -109,7 +130,10 @@ services:
       - key: NODE_ENV
         value: production
       - key: SPARK_API_URL
-        value: https://sparksocial-api.onrender.com
+        fromService:
+          type: web
+          name: sparksocial-api
+          envVarKey: RENDER_EXTERNAL_URL
       # `sync: false` means "set this in the dashboard" — the value never enters
       # the repo. Required: without it the web app cannot start a session.
       - key: CLERK_SECRET_KEY
@@ -139,7 +163,10 @@ services:
   - type: keyvalue
     name: sparksocial-cache
     plan: starter
-    maxmemoryPolicy: allkeys_lru
+    # Hyphens, not underscores — Render takes the Redis spelling, and rejects
+    # `allkeys_lru` at sync. This is also the default, kept explicit because an
+    # eviction policy is a thing worth stating rather than inheriting.
+    maxmemoryPolicy: allkeys-lru
     ipAllowList: []            # private network only — no public access
 
 
