@@ -219,12 +219,26 @@ export function storageUnavailable(cause: unknown, bucket: string): ToolError {
   const text = cause instanceof Error ? cause.message : String(cause);
   const name = cause instanceof Error ? cause.name : '';
 
-  const badKey = /InvalidAccessKeyId|SignatureDoesNotMatch|CredentialsProviderError/i.test(`${name} ${text}`);
+  /*
+   * `Unauthorized` belongs here, and its absence cost a debugging session.
+   *
+   * The three names below are what S3 returns. R2 answers an unrecognised
+   * credential pair with a bare `Unauthorized` and HTTP 401 on every operation —
+   * `HeadBucket` included, which needs no permissions at all — and none of the
+   * S3 spellings appear in it. So a deployment with a stale access key fell
+   * through to the generic branch and told the operator the bucket "could not be
+   * reached", which is the one thing that was definitely not true: it answered
+   * immediately, three times, to say no.
+   */
+  const badKey = /InvalidAccessKeyId|SignatureDoesNotMatch|CredentialsProviderError|Unauthorized/i.test(
+    `${name} ${text}`,
+  );
   const noBucket = /NoSuchBucket|NotFound/i.test(`${name} ${text}`);
 
   const operator = badKey
-    ? `R2 rejected the credentials for bucket "${bucket}". Check R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY, and ` +
-      `that the token is scoped to this bucket with Object Read & Write.`
+    ? `R2 rejected the credentials for bucket "${bucket}". Check R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY ` +
+      `are from the same token and that it still exists — a 401 means the pair is not recognised at all, ` +
+      `where a token merely lacking write would answer 403. Scope it to this bucket with Object Read & Write.`
     : noBucket
       ? `Bucket "${bucket}" does not exist on this account. Check R2_BUCKET and R2_ACCOUNT_ID.`
       : `R2 could not be reached for bucket "${bucket}".`;

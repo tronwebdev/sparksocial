@@ -213,3 +213,34 @@ describe('normaliseAccountId', () => {
     expect(normaliseAccountId('https://abc.r2.cloudflarestorage.com/sparksocial-assets')).toBe('abc');
   });
 });
+
+describe('what an operator is told when the credentials are refused', () => {
+  /*
+   * R2 answers an unrecognised credential pair with a bare `Unauthorized` and a
+   * 401 on every operation, `HeadBucket` included. None of S3's own spellings
+   * appear in it, so this used to fall through to the generic branch and report
+   * that the bucket "could not be reached" — the one thing that was definitely
+   * not true. Measured against the staging bucket with a stale key.
+   */
+  it('recognises R2 own 401 wording, not just S3 own', () => {
+    const err = storageUnavailable(Object.assign(new Error('Unauthorized'), { name: 'Unauthorized' }), 'b');
+
+    expect(String(err.meta?.operator)).toMatch(/rejected the credentials/i);
+    expect(String(err.meta?.operator)).not.toMatch(/could not be reached/i);
+  });
+
+  it('still says so for S3 own spellings', () => {
+    for (const name of ['InvalidAccessKeyId', 'SignatureDoesNotMatch', 'CredentialsProviderError']) {
+      const err = storageUnavailable(Object.assign(new Error(name), { name }), 'b');
+      expect(String(err.meta?.operator)).toMatch(/rejected the credentials/i);
+    }
+  });
+
+  it('tells the operator a 401 and a 403 mean different things', () => {
+    const err = storageUnavailable(Object.assign(new Error('Unauthorized'), { name: 'Unauthorized' }), 'b');
+    // The distinction that matters: 401 is "this pair is not recognised",
+    // 403 is "recognised, but not allowed to do that" — different remedies.
+    expect(String(err.meta?.operator)).toMatch(/401/);
+    expect(String(err.meta?.operator)).toMatch(/403/);
+  });
+});

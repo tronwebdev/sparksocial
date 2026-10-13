@@ -109,7 +109,23 @@ try {
   console.log(`Leftover test object: ${key} — delete it from the dashboard if you like.`);
 } catch (e) {
   console.error();
+  /*
+   * The operator detail, not the customer sentence.
+   *
+   * `ToolError`'s `message` is written for whoever is uploading a logo — it says
+   * nothing is wrong with their file and to try again — and `storageUnavailable`
+   * puts the part an operator needs in `meta.operator` and `meta.cause`, because
+   * `app.ts` serialises only code and message to the client. Printing just the
+   * message here reproduced that split in a tool whose entire purpose is to show
+   * the other half, which is how the first run of this script reported a failure
+   * and withheld the reason.
+   */
   console.error('FAIL —', e instanceof Error ? e.message : String(e));
+  const meta = e && typeof e === 'object' && 'meta' in e ? e.meta : undefined;
+  if (meta && typeof meta === 'object') {
+    if ('operator' in meta && meta.operator) console.error('       ', meta.operator);
+    if ('cause' in meta && meta.cause) console.error('  cause:', meta.cause);
+  }
   console.error();
   console.error('What the usual causes look like:');
   console.error('  InvalidAccessKeyId / SignatureDoesNotMatch  the key or secret is wrong, or the');
