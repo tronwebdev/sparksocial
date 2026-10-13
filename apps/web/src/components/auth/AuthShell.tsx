@@ -1,5 +1,6 @@
 'use client';
 
+import type { ClipboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { Wordmark } from '@/components/brand/Wordmark';
@@ -236,6 +237,40 @@ export function OtpInput({
     el?.select();
   }
 
+  /**
+   * Paste, read off the clipboard rather than out of the input.
+   *
+   * ── Why `onChange` could never have done this ─────────────────────────
+   *
+   * The `onChange` below has a branch for a multi-character value, with a
+   * comment saying a paste "lands as several characters in one box". It does
+   * not, and that branch has never run: `maxLength={1}` is enforced by the
+   * browser *before* the input event, so a pasted "123456" is truncated to
+   * "1". And if the box already held a digit it is already at its limit, so
+   * the paste is dropped entirely and nothing at all happens — which is what
+   * someone copying a code out of their email actually sees.
+   *
+   * Reading `clipboardData` sidesteps `maxLength` completely, because the value
+   * is never typed into the box.
+   *
+   * Pasting a full-length code fills from the first box wherever the caret is,
+   * since that is what someone pasting a whole code means. A shorter fragment
+   * fills from the box they are in.
+   */
+  function onPaste(e: ClipboardEvent<HTMLInputElement>, i: number) {
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '');
+    if (!digits) return;
+    e.preventDefault();
+
+    const start = digits.length >= length ? 0 : i;
+    const next = chars.slice();
+    for (let k = 0; k < digits.length && start + k < length; k++) {
+      next[start + k] = digits[k]!;
+    }
+    onChange(next.join('').slice(0, length));
+    focusBox(Math.min(length - 1, start + digits.length));
+  }
+
   return (
     <div className="flex gap-[10px]">
       {chars.map((ch, i) => (
@@ -248,10 +283,14 @@ export function OtpInput({
           autoComplete="one-time-code"
           aria-label={`Digit ${i + 1}`}
           maxLength={1}
+          onPaste={(e) => onPaste(e, i)}
           onChange={(e) => {
             const v = e.target.value.replace(/\D/g, '');
             if (!v) return setAt(i, '');
-            // A paste lands as several characters in one box — spread it.
+            /* Kept for the one case that does deliver several characters
+               through an input event rather than a paste event: Android
+               autofill of an SMS/email code. `maxLength` does not apply to a
+               programmatic autofill the way it does to a paste. */
             if (v.length > 1) {
               onChange((value.slice(0, i) + v).slice(0, length));
               focusBox(Math.min(length - 1, i + v.length));

@@ -22,12 +22,27 @@ import { useEffect, useRef, useState } from 'react';
  * Only the two splash screens use this. The stepped onboarding screens keep the
  * responsive chrome, which is what the brief asked to leave alone.
  */
+/** The stage canvas, at the prototype's own numbers. */
+const STAGE_WIDTH = 1728;
+
+/**
+ * How far to scale the canvas so it fits inside the viewport.
+ *
+ * Pure and exported so the fit rule is testable without a DOM: the bug it
+ * encodes is arithmetic, not rendering. Taking the smaller of the two ratios is
+ * the whole fix — scaling on width alone is what made a 1728x1117 canvas ask
+ * for 930px of height inside an 800px window and scroll.
+ */
+export function stageScale(viewportWidth: number, viewportHeight: number, contentHeight: number): number {
+  return Math.min(1, viewportWidth / STAGE_WIDTH, viewportHeight / contentHeight);
+}
+
 export function Stage({
   background,
   children,
   contentHeight = 1117,
 }: {
-  /** Painted behind and around the stage, so short viewports letterbox cleanly. */
+  /** Painted behind and around the stage, so either axis letterboxes cleanly. */
   background: string;
   children: React.ReactNode;
   /** Overridable for a screen whose art runs past the canvas. */
@@ -36,36 +51,65 @@ export function Stage({
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
+    /*
+     * Fit to **both** axes, so the stage always lands inside the viewport.
+     *
+     * This used to scale on width alone and then reserve `contentHeight * scale`
+     * with a spacer, which made the page scroll whenever the window was shorter
+     * than the scaled canvas. On a laptop that is most of the time: the canvas
+     * is 1728x1117, so a maximised 1440x900 window scales to 0.83 and still
+     * wants 930px of height in roughly 800px of viewport. These are splash
+     * screens — "Meet Spark" and the completion screen — and a splash screen
+     * that scrolls has failed at the one thing it does, which is present itself
+     * whole. Taking the smaller of the two ratios letterboxes on the other axis
+     * instead, which is what the background colour was always there for.
+     *
+     * Still never upscales past 1:1.
+     */
     const fit = () => {
-      // Width-driven, as the prototype is: the design is wider than it is tall
-      // relative to most windows, and letterboxing vertically is the behaviour
-      // the stage already implies. Never upscales past 1:1.
-      setScale(Math.min(1, window.innerWidth / 1728));
+      setScale(stageScale(window.innerWidth, window.innerHeight, contentHeight));
     };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, []);
+    /* iOS reports a stale `innerHeight` while the URL bar animates; the visual
+       viewport fires its own resize when the usable area actually settles. */
+    window.visualViewport?.addEventListener('resize', fit);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('resize', fit);
+    };
+  }, [contentHeight]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '100vh', overflow: 'hidden', background }}>
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        /* `dvh` over `vh`: on mobile `100vh` is the height with the browser
+           chrome *hidden*, so a `vh`-sized stage overflows by the height of the
+           address bar — the exact scrolling this change exists to remove.
+           `height`, not `minHeight`, because nothing may grow past the fold. */
+        height: '100dvh',
+        overflow: 'hidden',
+        background,
+      }}
+    >
       <div
         style={{
           position: 'absolute',
-          top: 0,
+          top: '50%',
           left: '50%',
-          width: 1728,
+          width: STAGE_WIDTH,
           height: contentHeight,
-          transform: `translateX(-50%) scale(${scale})`,
-          transformOrigin: 'top center',
+          /* Centred on both axes, so whichever axis letterboxes splits its
+             margin evenly rather than hanging the art off the bottom. */
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: 'center center',
           background,
         }}
       >
         {children}
       </div>
-      {/* Reserves the scaled height so the page scrolls rather than clipping when
-          the window is shorter than the canvas. */}
-      <div aria-hidden style={{ height: contentHeight * scale }} />
     </div>
   );
 }
