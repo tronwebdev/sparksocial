@@ -232,7 +232,12 @@ describe('failureFor — why a crawl found nothing', () => {
   it('groups statuses by the action they imply, not by HTTP semantics', () => {
     // 401 and 403 differ to a protocol and are identical to an owner: someone
     // has to let us in. 429 belongs with them for the same reason.
-    expect(explainCrawlFailure('https://x.example', 'blocked')).toMatch(/blocked us/i);
+    // Matched loosely on purpose: what this pins is that a blocked site is told
+    // it was refused, not that it had no content. The exact wording has already
+    // changed once — it used to name Cloudflare, and the first site measured
+    // doing this was behind plain nginx — and pinning prose would make every
+    // such correction look like a regression.
+    expect(explainCrawlFailure('https://x.example', 'blocked')).toMatch(/refused|block/i);
     expect(explainCrawlFailure('https://x.example', 'not_found')).toMatch(/no page at/i);
     expect(explainCrawlFailure('https://x.example', 'server_error')).toMatch(/may be down/i);
     expect(explainCrawlFailure('https://x.example', 'unreachable')).toMatch(/could not reach/i);

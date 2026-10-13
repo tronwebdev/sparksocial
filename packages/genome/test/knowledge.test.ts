@@ -79,7 +79,9 @@ describe('knowledge.ingest_site', () => {
     const out = await tool.handler({ genomeId: 'gen_1', url: 'https://example.com', maxPages: 5 }, ctx());
 
     expect(out.attached).toEqual([]);
-    expect(out.failure).toContain('blocked us');
+    // Loose for the same reason as `crawl.test.ts`'s: the point is that the
+    // reason reaches the caller at all, not which words carry it.
+    expect(out.failure).toMatch(/refused|block/i);
   });
 
   it('one page failing to attach does not lose the rest of the crawl', async () => {

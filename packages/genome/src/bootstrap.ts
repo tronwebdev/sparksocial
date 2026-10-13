@@ -41,7 +41,27 @@ export function explainCrawlFailure(url: string, failure: CrawlFailure | undefin
 
   switch (failure) {
     case 'blocked':
-      return `${host} blocked us from reading it — that is usually a firewall like Cloudflare, not anything you did. You can set your brand up by answering a few questions instead.`;
+      /*
+       * Vendor-neutral, and it says what the reader can actually do.
+       *
+       * This used to name Cloudflare. Measured against a site that really did
+       * block us, the filter was plain nginx at the host — so the one vendor it
+       * named was the wrong one, and naming any vendor sends somebody to the
+       * wrong dashboard.
+       *
+       * The bigger omission was the remedy. This fires during onboarding, where
+       * the site being read is almost always the owner's own, so "a firewall
+       * blocked us" was telling somebody their own front door was locked and
+       * leaving it there. Allowlisting is the durable fix — see the note on the
+       * user agent in `crawl.ts`, which is self-identifying precisely so this
+       * sentence can exist.
+       */
+      return (
+        `${host} refused our request — a security filter on the site is blocking automated readers, ` +
+        `not anything you did. If the site is yours, allowlisting "SparkSocialBot" with your host or ` +
+        `security plugin lets us read it. Either way, you can set your brand up by answering a few ` +
+        `questions instead.`
+      );
     case 'not_found':
       return `There is no page at ${url}. Check the address, or set your brand up by answering a few questions instead.`;
     case 'server_error':
