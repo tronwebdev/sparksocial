@@ -1,0 +1,16 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://sparksocial-web.onrender.com",
+          "http://localhost:3000"
+        ],
+        "methods": ["PUT", "GET", "HEAD"],
+        "headers": ["*"]
+      },
+      "exposeHeaders": ["ETag"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
