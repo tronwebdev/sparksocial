@@ -9,6 +9,7 @@ export * from './schedule.js';
 export * from './image.js';
 export * from './avatar.js';
 export * from './voice.js';
+export * from './voicePreview.js';
 export * from './broll.js';
 export * from './dubbing.js';
 export * from './variantTest.js';

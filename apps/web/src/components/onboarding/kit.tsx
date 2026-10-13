@@ -414,8 +414,13 @@ export function DropZone({
    * (logo, avatar, audio) keep the fill.
    */
   outlined?: boolean;
-  /** `document` swaps the image glyph for the prototype's file-with-fold. */
-  glyph?: 'image' | 'document';
+  /**
+   * `document` swaps the image glyph for the prototype's file-with-fold;
+   * `audio` for its microphone. Taken from the prototype's own SVGs rather than
+   * approximated — the voice drop zone in "SparkSocial Onboarding.dc.html"
+   * draws a mic, and an image icon over "Drop audio files here" reads as a bug.
+   */
+  glyph?: 'image' | 'document' | 'audio';
 }) {
   const id = `dz-${prompt.replace(/\W+/g, '-').toLowerCase()}`;
   const positioned = left !== undefined && top !== undefined;
@@ -440,7 +445,13 @@ export function DropZone({
       }}
     >
       <svg width="32" height="31" viewBox="0 0 32 31" fill="none" style={{ position: 'absolute', left: width / 2 - 16, top: 22, display: 'block' }} aria-hidden>
-        {glyph === 'document' ? (
+        {glyph === 'audio' ? (
+          <>
+            <rect x="12" y="1.5" width="8" height="15" rx="4" stroke="#0C0C0C" strokeWidth="1.8" />
+            <path d="M6.5 12a9.5 9.5 0 0 0 19 0M16 21.5V25" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M10 28.5h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
+          </>
+        ) : glyph === 'document' ? (
           <>
             <path d="M8 4h10.5L26 11.5V25a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z" stroke="#0C0C0C" strokeWidth="1.7" strokeLinejoin="round" />
             <path d="M18 4v8h8" stroke="#0C0C0C" strokeWidth="1.7" strokeLinejoin="round" />

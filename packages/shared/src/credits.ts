@@ -87,6 +87,13 @@ const CATEGORY_BY_TOOL: Record<string, CreditCategory> = {
   'content.generate_dub': 'render',
   'content.generate_voiceover': 'render',
   'direct.media.ingest': 'render',
+  /*
+   * Speaking a test line is the same vendor call as narrating a beat — it is
+   * `render` for the same reason `content.generate_voiceover` is, even though
+   * nothing is being rendered *into* yet. Categorising by what the money bought,
+   * not by the name prefix.
+   */
+  'voice.preview': 'render',
 
   /* ── AI generation: a model call ─────────────────────────────────────── */
   'content.draft': 'ai_generation',
@@ -100,6 +107,18 @@ const CATEGORY_BY_TOOL: Record<string, CreditCategory> = {
   'engage.classify': 'ai_generation',
   'engage.reply.draft': 'ai_generation',
   'genome.bootstrap_from_url': 'ai_generation',
+  /*
+   * Setting up the agent's face and voice. `genome.avatar.generate` is a model
+   * call that produces a portrait, so `ai_generation` is unambiguous. The other
+   * two are listed at zero — a photo upload and a voice clone are not metered by
+   * their vendors — but they still belong here rather than nowhere: the row has
+   * to exist from day one (CLAUDE.md), and if either vendor starts charging, the
+   * spend lands in a category that already adds up instead of silently widening
+   * the gap between the headline total and the rows beneath it.
+   */
+  'genome.avatar.generate': 'ai_generation',
+  'genome.avatar.from_image': 'ai_generation',
+  'genome.voice.clone_from_sample': 'ai_generation',
   'genome.create': 'ai_generation',
   'asset.caption.set': 'ai_generation',
   'asset.retrieve': 'ai_generation',

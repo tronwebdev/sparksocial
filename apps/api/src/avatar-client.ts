@@ -23,6 +23,8 @@ export interface AvatarClientOptions {
 }
 
 const BASE_URL = 'https://api.heygen.com';
+/** Uploads go to a different host from the rest of the API. */
+const UPLOAD_BASE_URL = 'https://upload.heygen.com';
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 5 * 60_000;
 
@@ -61,13 +63,27 @@ export function createAvatarClient(opts: AvatarClientOptions): AvatarClient {
   }
 
   return {
-    async generate({ avatarId, script, aspectRatio }): Promise<{ url: string }> {
+    async generate({ avatarId, script, aspectRatio, avatarKind = 'avatar' }): Promise<{ url: string }> {
       const submitted = (await heygenFetch('/v2/video/generate', {
         method: 'POST',
         body: JSON.stringify({
           video_inputs: [
             {
-              character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
+              /*
+               * Two shapes, not one with a different id.
+               *
+               * A trained avatar and a photo-derived one are different
+               * character types in HeyGen's API, with different id fields.
+               * This used to be hardcoded to `avatar`, which was correct while
+               * ids only ever came from `genome.avatar_config.set` — a human
+               * pasting one from the vendor dashboard. `genome.avatar.from_image`
+               * mints `talking_photo_id`s, and putting one in `avatar_id`
+               * fails at render, minutes in, not at submit.
+               */
+              character:
+                avatarKind === 'talking_photo'
+                  ? { type: 'talking_photo', talking_photo_id: avatarId }
+                  : { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
               voice: { type: 'text', input_text: script },
             },
           ],
@@ -99,6 +115,57 @@ export function createAvatarClient(opts: AvatarClientOptions): AvatarClient {
       }
 
       throw new ToolError('UPSTREAM_FAILED', `HeyGen render did not complete within ${timeoutMs}ms.`, { videoId });
+    },
+
+    /**
+     * Photo → `talking_photo_id`, via `upload.heygen.com/v1/talking_photo`.
+     *
+     * A different host from every other call in this file, and a raw binary
+     * body rather than JSON — `heygenFetch` sets `content-type: application/json`
+     * on everything, so this deliberately does not use it.
+     *
+     * HeyGen requires exactly one clearly visible face occupying more than
+     * 200x200 pixels. It rejects anything else, and the rejection is the only
+     * place that gets checked: there is no point pre-validating here with a
+     * face detector we do not have.
+     */
+    async fromImage({ imageUrl, contentType }): Promise<{ talkingPhotoId: string }> {
+      const source = await doFetch(imageUrl);
+      if (!source.ok) {
+        throw new ToolError('UPSTREAM_FAILED', 'Could not read the uploaded photo.', {
+          status: source.status,
+          operator: `GET on the image URL returned ${source.status}; a presigned read URL may have expired.`,
+        });
+      }
+      const bytes = new Uint8Array(await source.arrayBuffer());
+      if (bytes.length === 0) {
+        throw new ToolError('UPSTREAM_FAILED', 'The uploaded photo was empty.', {});
+      }
+
+      const response = await doFetch(`${UPLOAD_BASE_URL}/v1/talking_photo`, {
+        method: 'POST',
+        headers: { 'x-api-key': opts.apiKey, 'content-type': contentType },
+        body: bytes,
+      });
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new ToolError('UPSTREAM_FAILED', `HeyGen rejected the photo (${response.status}).`, {
+          status: response.status,
+          detail: detail.slice(0, 200),
+        });
+      }
+
+      const body = (await response.json()) as { data?: { talking_photo_id?: unknown } };
+      const id = body.data?.talking_photo_id;
+      if (typeof id !== 'string' || id.length === 0) {
+        throw new ToolError(
+          'UPSTREAM_FAILED',
+          'HeyGen accepted the photo but returned no avatar id. This usually means no single clear face was found.',
+          {},
+        );
+      }
+      return { talkingPhotoId: id };
     },
   };
 }

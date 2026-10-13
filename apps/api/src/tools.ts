@@ -8,6 +8,9 @@ import { genomeCreate } from '@sparksocial/genome/create';
 import { genomeList } from '@sparksocial/genome/list';
 import { consentGrant, consentRevoke, consentList } from '@sparksocial/genome/consent';
 import { avatarConfigSet } from '@sparksocial/genome/avatarConfig';
+import { makeAvatarFromImage } from '@sparksocial/genome/avatarFromImage';
+import { makeAvatarGenerate } from '@sparksocial/genome/avatarGenerate';
+import { makeVoiceCloneFromSample } from '@sparksocial/genome/voiceClone';
 import { genomeComplianceClassify } from '@sparksocial/genome/compliance';
 import { genomeAvatarOverrideSet } from '@sparksocial/genome/avatarOverride';
 import { makeKnowledgeIngestSite, makeKnowledgeIngestDocs, knowledgeGroundClaim, knowledgeList } from '@sparksocial/genome/knowledge';
@@ -65,6 +68,7 @@ import {
   makeContentGenerateDub,
   makeContentGenerateAvatarVideo,
   makeContentGenerateVoiceover,
+  makeVoicePreview,
   contentGet,
   contentList,
   contentSchedule,
@@ -454,6 +458,26 @@ export function registerAlphaTools(): void {
   if (avatars) register(makeContentGenerateAvatarVideo(avatars));
   const voices = voiceClient(blobStore());
   if (voices) register(makeContentGenerateVoiceover(voices));
+  /*
+   * The onboarding agent screen's three live controls.
+   *
+   * Gated on the *method*, not just the client, because `clone` and `fromImage`
+   * are optional on their interfaces — a client that cannot do it says so by not
+   * having it. Narrowing here is what lets the tools take a non-optional
+   * function and skip a runtime branch there is no error code for.
+   *
+   * `voice.preview` needs only `generate`, so it registers with any voice
+   * client; it is the test box on that screen, and it is also the only
+   * generation tool reachable before a brand has any content.
+   */
+  if (voices) register(makeVoicePreview(voices));
+  if (voices?.clone) register(makeVoiceCloneFromSample({ ...voices, clone: voices.clone }));
+  if (avatars?.fromImage) register(makeAvatarFromImage({ ...avatars, fromImage: avatars.fromImage }));
+  // "Generate Avatar" needs both vendors — an image model for the face, HeyGen
+  // to animate it — so it registers only when both are configured.
+  if (images && avatars?.fromImage) {
+    register(makeAvatarGenerate(images, { ...avatars, fromImage: avatars.fromImage }));
+  }
   const dubbing = dubbingClient(blobStore());
   if (dubbing) register(makeContentGenerateDub(dubbing));
 

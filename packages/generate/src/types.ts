@@ -150,7 +150,35 @@ export interface VideoClient {
  * `ImageClient` — a stand-in face would be a worse lie than a missing one.
  */
 export interface AvatarClient {
-  generate(args: { avatarId: string; script: string; aspectRatio: string }): Promise<{ url: string }>;
+  generate(args: {
+    avatarId: string;
+    script: string;
+    aspectRatio: string;
+    /**
+     * Which kind of HeyGen character `avatarId` names.
+     *
+     * HeyGen has two, and they are **not interchangeable in the request**: a
+     * trained avatar is `{ type: 'avatar', avatar_id }`, a photo-derived one is
+     * `{ type: 'talking_photo', talking_photo_id }`. Sending a talking-photo id
+     * in the `avatar_id` field is not a validation error — it is an upstream
+     * failure at render time, long after the id was accepted and stored.
+     *
+     * Defaults to `'avatar'`, so every existing caller keeps its behaviour and
+     * only the photo path has to say what it is.
+     */
+    avatarKind?: 'avatar' | 'talking_photo';
+  }): Promise<{ url: string }>;
+
+  /**
+   * Turn an uploaded photo into a reusable HeyGen character id.
+   *
+   * Optional for the same reason `TextWriter.hashtags` is: a client that cannot
+   * do it says so by not having it, and `apps/api/src/tools.ts` leaves
+   * `genome.avatar.from_image` unregistered rather than registering a tool that
+   * throws. A fake would be worse — it would hand back an id that renders
+   * nothing.
+   */
+  fromImage?(args: { imageUrl: string; contentType: string }): Promise<{ talkingPhotoId: string }>;
 }
 
 /**
@@ -160,6 +188,22 @@ export interface AvatarClient {
  */
 export interface VoiceClient {
   generate(args: { voiceId: string; script: string }): Promise<{ url: string }>;
+
+  /**
+   * Clone a voice from one or more audio samples, returning the vendor's new
+   * voice id.
+   *
+   * Optional, like `AvatarClient.fromImage`, and for the same reason. Note what
+   * this costs that `generate` does not: an ElevenLabs account has a finite
+   * number of voice slots, so each call consumes a durable resource on the
+   * vendor side rather than just compute. The tool above it is `human_only`
+   * partly for that, and mostly because cloning a voice is a likeness decision
+   * (`genome.consent.grant`), not a generation one.
+   */
+  clone?(args: {
+    name: string;
+    samples: { url: string; contentType: string }[];
+  }): Promise<{ voiceId: string; requiresVerification: boolean }>;
 }
 
 /**

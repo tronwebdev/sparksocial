@@ -116,7 +116,20 @@ export function makeContentGenerateAvatarVideo(avatar: AvatarClient) {
         );
       }
 
-      const { url } = await avatar.generate({ avatarId, script: input.script, aspectRatio: input.aspectRatio });
+      /*
+       * The kind travels with the id, because the two HeyGen character types
+       * are not interchangeable in the request. Absent means `avatar`: every
+       * genome written before `genome.avatar.from_image` existed holds an id a
+       * person pasted from the vendor dashboard, which is always that kind.
+       */
+      const { url } = await avatar.generate({
+        avatarId,
+        script: input.script,
+        aspectRatio: input.aspectRatio,
+        ...(genome.constraints.heygen_avatar_kind
+          ? { avatarKind: genome.constraints.heygen_avatar_kind }
+          : {}),
+      });
 
       const nextBeats = [...beats];
       nextBeats[index] = { ...keepStructure(beats[index]!), kind: 'generated_video', beatId: input.beatId, url, script: input.script };

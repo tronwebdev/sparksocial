@@ -102,6 +102,9 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
       if (patch.heygenAvatarId !== undefined) {
         constraints = sql`jsonb_set(${constraints}, '{heygen_avatar_id}', ${JSON.stringify(patch.heygenAvatarId)}::jsonb)`;
       }
+      if (patch.heygenAvatarKind !== undefined) {
+        constraints = sql`jsonb_set(${constraints}, '{heygen_avatar_kind}', ${JSON.stringify(patch.heygenAvatarKind)}::jsonb)`;
+      }
       if (patch.elevenlabsVoiceId !== undefined) {
         constraints = sql`jsonb_set(${constraints}, '{elevenlabs_voice_id}', ${JSON.stringify(patch.elevenlabsVoiceId)}::jsonb)`;
       }

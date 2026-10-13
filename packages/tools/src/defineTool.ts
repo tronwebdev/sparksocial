@@ -94,6 +94,8 @@ export interface ScopedDb {
       orgId: string;
       patch: {
         heygenAvatarId?: string;
+        /** See `heygen_avatar_kind` in the shared genome schema. */
+        heygenAvatarKind?: 'avatar' | 'talking_photo';
         elevenlabsVoiceId?: string;
         complianceProfile?: ComplianceProfile;
         avatarEnabled?: boolean;

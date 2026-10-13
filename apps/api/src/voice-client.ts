@@ -68,7 +68,86 @@ export function createVoiceClient(opts: VoiceClientOptions): VoiceClient {
       });
       return { url };
     },
+
+    /**
+     * Instant Voice Clone — `POST /v1/voices/add`, multipart.
+     *
+     * The samples are fetched here rather than streamed from the browser,
+     * because the browser never had them: the recorder and the file picker both
+     * upload through `asset.upload_url` first, so what arrives is a storage URL.
+     * Fetching it server-side also means the vendor never sees a URL into our
+     * bucket, only bytes.
+     *
+     * ── Why `requires_verification` is returned rather than swallowed ───────
+     *
+     * ElevenLabs accepts the clone and sets this flag when the account has not
+     * verified it may clone that voice. The id is real and usable for some
+     * operations, but narration can fail later with a permissions error. The
+     * tool surfaces it in `why` instead of discovering it during the first
+     * render of a customer's post.
+     */
+    async clone({ name, samples }) {
+      if (samples.length === 0) {
+        throw new ToolError('INVALID_INPUT', 'A voice clone needs at least one audio sample.', {});
+      }
+
+      const form = new FormData();
+      form.set('name', name);
+      for (const [i, sample] of samples.entries()) {
+        const res = await doFetch(sample.url);
+        if (!res.ok) {
+          throw new ToolError('UPSTREAM_FAILED', 'Could not read the uploaded voice sample.', {
+            status: res.status,
+            operator: `GET on the sample URL returned ${res.status}. If storage is R2 the presigned read URL may have expired.`,
+          });
+        }
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        if (bytes.length === 0) {
+          throw new ToolError('UPSTREAM_FAILED', 'The uploaded voice sample was empty.', { index: i });
+        }
+        form.append('files', new Blob([bytes], { type: sample.contentType }), `sample-${i}.${extFor(sample.contentType)}`);
+      }
+
+      // No `content-type` header: `fetch` sets it from the FormData, including
+      // the multipart boundary. Setting it by hand omits the boundary and the
+      // request is rejected as malformed.
+      const response = await doFetch(`${BASE_URL}/voices/add`, {
+        method: 'POST',
+        headers: { 'xi-api-key': opts.apiKey },
+        body: form,
+      });
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new ToolError('UPSTREAM_FAILED', `Voice cloning failed (${response.status}).`, {
+          status: response.status,
+          detail: detail.slice(0, 200),
+          operator:
+            response.status === 401
+              ? 'ELEVENLABS_API_KEY was rejected.'
+              : response.status === 403
+                ? 'The ElevenLabs plan does not allow voice cloning, or every voice slot is in use.'
+                : undefined,
+        });
+      }
+
+      const body = (await response.json()) as { voice_id?: unknown; requires_verification?: unknown };
+      if (typeof body.voice_id !== 'string' || body.voice_id.length === 0) {
+        throw new ToolError('UPSTREAM_FAILED', 'ElevenLabs accepted the sample but returned no voice id.', {});
+      }
+
+      return { voiceId: body.voice_id, requiresVerification: body.requires_verification === true };
+    },
   };
+}
+
+/** A filename extension the vendor will accept; the name itself is cosmetic. */
+function extFor(contentType: string): string {
+  if (contentType.includes('wav')) return 'wav';
+  if (contentType.includes('webm')) return 'webm';
+  if (contentType.includes('ogg')) return 'ogg';
+  if (contentType.includes('mp4')) return 'm4a';
+  return 'mp3';
 }
 
 /**

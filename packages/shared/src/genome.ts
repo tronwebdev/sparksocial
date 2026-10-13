@@ -111,6 +111,21 @@ export const GenomeConstraints = z.object({
    * would silently produce someone else's likeness, not this brand's.
    */
   heygen_avatar_id: z.string().optional(),
+  /**
+   * Which kind of HeyGen character `heygen_avatar_id` names.
+   *
+   * HeyGen has two and they take different request shapes: a trained avatar is
+   * `{ type: 'avatar', avatar_id }`, one derived from a photo is
+   * `{ type: 'talking_photo', talking_photo_id }`. Before
+   * `genome.avatar.from_image` existed every id came from a person pasting one
+   * from the vendor dashboard, so `avatar` could be assumed. It no longer can,
+   * and guessing wrong does not fail at submit — it fails minutes later, mid
+   * render.
+   *
+   * Absent means `avatar`, so every genome written before this field keeps
+   * working without a backfill.
+   */
+  heygen_avatar_kind: z.enum(['avatar', 'talking_photo']).optional(),
   elevenlabs_voice_id: z.string().optional(),
   /**
    * Set only by `genome.avatar_override.set` — a person's explicit call to
