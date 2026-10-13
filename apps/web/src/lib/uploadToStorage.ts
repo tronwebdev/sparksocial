@@ -81,11 +81,25 @@ export async function uploadToStorage(
     /**
      * The request did not complete. The browser will not say why.
      *
-     * Logged with the host, because the single most likely cause is that the
-     * storage account does not allow this origin — and that is fixed by
-     * `infra/azure/bootstrap.sh`'s "Blob CORS" step, not by anything in this
-     * codebase. An environment provisioned without it looks entirely healthy
-     * until the first upload.
+     * Logged with the host, because the host is usually the answer.
+     *
+     * Two causes, and they are told apart by looking at it:
+     *
+     *   * **The bucket does not allow this origin.** Nothing in this codebase
+     *     fixes that — it is a CORS rule on the bucket, allowing PUT and
+     *     OPTIONS. An environment provisioned without one looks entirely
+     *     healthy until the first upload.
+     *   * **The host is wrong**, and then no CORS rule can help. R2 has two
+     *     ways to get this: a doubled domain
+     *     (`<id>.r2.cloudflarestorage.com.r2.cloudflarestorage.com`, from
+     *     pasting the whole endpoint into `R2_ACCOUNT_ID`) and a bucket
+     *     prepended as a subdomain (`<bucket>.<id>.r2...`, which the wildcard
+     *     certificate does not cover and which Chrome reports as an SSL error).
+     *     Both are handled in `packages/storage/src/r2.ts`; both were observed
+     *     in the browser before they were.
+     *
+     * So the message prints the host and says to read it, rather than naming
+     * one cause and sending everyone to the same dead end.
      */
     let host = 'storage';
     try {
@@ -95,9 +109,10 @@ export async function uploadToStorage(
     }
     console.error(
       `[upload] the PUT to ${host} never completed (${e instanceof Error ? e.message : String(e)}). ` +
-        `If this is a deployed environment, check the storage account's CORS rules allow ${
+        `Check that host first — a repeated domain or a bucket name in front of it means the storage ` +
+        `configuration is wrong, not the CORS rules. If the host is right, the bucket must allow ${
           typeof window === 'undefined' ? 'this origin' : window.location.origin
-        } for PUT and OPTIONS — see infra/azure/bootstrap.sh, step "Blob CORS".`,
+        } for PUT and OPTIONS.`,
     );
     return {
       ok: false,

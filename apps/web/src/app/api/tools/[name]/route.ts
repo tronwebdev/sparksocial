@@ -33,7 +33,16 @@ import { forwardableGenomeId } from '@/lib/selectedGenome';
  *    a generic error would let a client mistake "held for approval" for "done".
  */
 
-const API_URL = process.env.SPARK_API_URL ?? 'http://localhost:8080';
+/**
+ * `||`, not `??`.
+ *
+ * `??` falls back only on `undefined`, and the value that actually shows up in a
+ * misconfigured deployment is the **empty string** — a platform variable that
+ * resolved to nothing, or a dashboard field saved blank. An empty base makes the
+ * request URL `/v1/tools/draft`, which has no origin, so `fetch` rejects with
+ * `Failed to parse URL` before any request leaves the process.
+ */
+const API_URL = process.env.SPARK_API_URL || 'http://localhost:8080';
 
 export async function POST(req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
@@ -46,15 +55,50 @@ export async function POST(req: Request, { params }: { params: Promise<{ name: s
 
   const genomeId = forwardableGenomeId(req.headers.get('cookie'), orgId);
 
-  const upstream = await fetch(`${API_URL}/v1/tools/${encodeURIComponent(name)}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      ...(genomeId ? { 'x-genome-id': genomeId } : {}),
-    },
-    body: await req.text(),
-  });
+  /*
+   * The upstream call, with its own failure made legible.
+   *
+   * This used to be a bare `await fetch(...)`. Transport failures — the API
+   * still starting, a container restarted mid-request, a long tool call cut off,
+   * a base URL that is empty or wrong — reject the promise, and an uncaught
+   * rejection in a route handler is a Next 500 with no code and no message a
+   * client can act on. A 500 is also the one status this proxy is not supposed
+   * to produce: every *governance* outcome already arrives as a status from the
+   * API, so an unlabelled 500 is indistinguishable from the tool itself blowing
+   * up, and sends whoever is debugging it to the wrong layer.
+   *
+   * Catching turns it into the thing it actually is — the proxy could not reach
+   * the API — with the base URL named, because "which API did it try" is the
+   * first question and the answer is a deployment setting, not a secret.
+   *
+   * Still no interpretation of a response that *does* arrive: that rule is
+   * unchanged, and the `catch` cannot see one.
+   */
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${API_URL}/v1/tools/${encodeURIComponent(name)}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        ...(genomeId ? { 'x-genome-id': genomeId } : {}),
+      },
+      body: await req.text(),
+    });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error('[tools proxy] could not reach the API', { name, apiUrl: API_URL, detail });
+    return Response.json(
+      {
+        status: 'failed',
+        error: {
+          code: 'UPSTREAM_FAILED',
+          message: `Could not reach the SparkSocial API at ${API_URL}. ${detail}`,
+        },
+      },
+      { status: 502 },
+    );
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,

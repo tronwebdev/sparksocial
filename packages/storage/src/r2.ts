@@ -31,7 +31,12 @@ import type { BlobStore, PresignedUpload } from './types.js';
  * audit. Scope the token to the one bucket, and rotate it on a schedule.
  */
 export interface R2Options {
-  /** Cloudflare account id — the `<id>` in `<id>.r2.cloudflarestorage.com`. */
+  /**
+   * Cloudflare account id — the `<id>` in `<id>.r2.cloudflarestorage.com`.
+   *
+   * The full endpoint URL is accepted too, because that is what the dashboard
+   * displays — see `normaliseAccountId`.
+   */
   accountId: string;
   bucket: string;
   accessKeyId: string;
@@ -63,6 +68,33 @@ const LONG_READ_TTL_SEC = 7 * 24 * 3600;
  */
 const MAX_PRESIGN_TTL_SEC = 7 * 24 * 3600;
 
+/**
+ * The account id, however it was pasted.
+ *
+ * Cloudflare's dashboard shows the **whole S3 endpoint** —
+ * `https://<id>.r2.cloudflarestorage.com` — under a heading that reads like an
+ * address, so pasting that into `R2_ACCOUNT_ID` is the obvious thing to do and
+ * nothing anywhere said not to. The template below then appended the domain a
+ * second time and produced
+ * `<bucket>.<id>.r2.cloudflarestorage.com.r2.cloudflarestorage.com`, which does
+ * not resolve to anything and fails in the browser as an SSL error rather than
+ * as a DNS one — so the message points at certificates and the cause is a
+ * config field.
+ *
+ * Accepting both forms is better than validating one. There is exactly one
+ * correct interpretation of either string, the cost of being wrong is a failed
+ * upload at the end of onboarding, and a regex that merely *rejected* the
+ * endpoint form would still leave somebody staring at a field they filled in
+ * with the value their vendor showed them.
+ */
+export function normaliseAccountId(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/\.r2\.cloudflarestorage\.com$/i, '');
+}
+
 export function createR2BlobStore(opts: R2Options): BlobStore {
   const client =
     opts.client ??
@@ -70,7 +102,26 @@ export function createR2BlobStore(opts: R2Options): BlobStore {
       // R2 ignores region but the SDK requires one; `auto` is Cloudflare's own
       // documented value.
       region: 'auto',
-      endpoint: `https://${opts.accountId}.r2.cloudflarestorage.com`,
+      endpoint: `https://${normaliseAccountId(opts.accountId)}.r2.cloudflarestorage.com`,
+      /**
+       * Path-style addressing: `<endpoint>/<bucket>/<key>`, not
+       * `<bucket>.<endpoint>/<key>`.
+       *
+       * The SDK defaults to virtual-hosted style, which is right for S3 and
+       * breaks on R2 for a reason that has nothing to do with S3 compatibility:
+       * Cloudflare serves `*.r2.cloudflarestorage.com`, and a wildcard
+       * certificate matches **one** label. `<account>.r2.cloudflarestorage.com`
+       * is covered; `<bucket>.<account>.r2.cloudflarestorage.com` is two labels
+       * deep and is not. The browser refuses the connection before any request
+       * is made, with `ERR_SSL_VERSION_OR_CIPHER_MISMATCH` — a message that
+       * sends whoever is debugging it to look at TLS, which is fine, and then at
+       * CORS, which is also fine, while the actual fault is this flag.
+       *
+       * It matters most for presigned URLs, because the host is baked into the
+       * signature: a URL minted the wrong way cannot be repaired by the caller,
+       * only re-minted.
+       */
+      forcePathStyle: true,
       credentials: { accessKeyId: opts.accessKeyId, secretAccessKey: opts.secretAccessKey },
     });
 

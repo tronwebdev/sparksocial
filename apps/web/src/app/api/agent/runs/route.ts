@@ -25,7 +25,8 @@ import { forwardableGenomeId } from '@/lib/selectedGenome';
  * drawer shows a "thinking" state for the duration.
  */
 
-const API_URL = process.env.SPARK_API_URL ?? 'http://localhost:8080';
+/** `||`, not `??` — see the note in `api/tools/[name]/route.ts`. */
+const API_URL = process.env.SPARK_API_URL || 'http://localhost:8080';
 
 export async function POST(req: Request) {
   const { getToken, orgId } = await auth();
@@ -41,15 +42,27 @@ export async function POST(req: Request) {
   // stale claim here fails the whole run rather than one call.
   const genomeId = forwardableGenomeId(req.headers.get('cookie'), orgId);
 
-  const upstream = await fetch(`${API_URL}/v1/agent/runs`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${token}`,
-      ...(genomeId ? { 'x-genome-id': genomeId } : {}),
-    },
-    body: await req.text(),
-  });
+  // Same transport guard as the tool proxy, for the same reason: an uncaught
+  // rejection here is a Next 500 with nothing in it to act on.
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${API_URL}/v1/agent/runs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        ...(genomeId ? { 'x-genome-id': genomeId } : {}),
+      },
+      body: await req.text(),
+    });
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error('[agent proxy] could not reach the API', { apiUrl: API_URL, detail });
+    return Response.json(
+      { error: { code: 'UPSTREAM_FAILED', message: `Could not reach the SparkSocial API at ${API_URL}. ${detail}` } },
+      { status: 502 },
+    );
+  }
 
   return new Response(upstream.body, {
     status: upstream.status,

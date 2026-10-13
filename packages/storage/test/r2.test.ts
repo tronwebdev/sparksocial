@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { S3Client } from '@aws-sdk/client-s3';
 import { ToolError } from '@sparksocial/shared/types';
-import { createR2BlobStore, storageUnavailable } from '../src/r2.js';
+import { createR2BlobStore, normaliseAccountId, storageUnavailable } from '../src/r2.js';
 
 /**
  * R2 — the store that exists so the app can run somewhere without a managed
@@ -127,5 +127,89 @@ describe('R2 blob store', () => {
     const missing = storageUnavailable(Object.assign(new Error('nope'), { name: 'NoSuchBucket' }), 'assets');
     expect(String((missing.meta as { operator?: string }).operator)).toMatch(/does not exist/);
     expect(String((missing.meta as { operator?: string }).operator)).not.toMatch(/ACCESS_KEY/);
+  });
+});
+
+/**
+ * The URL this store actually mints — the two ways it was wrong in production.
+ *
+ * Both were found in a browser console during onboarding, after these tests
+ * were green, because every test above injects its own client and so never
+ * exercised the one line that builds the endpoint. That is the gap these close:
+ * they construct the store the way `apps/api` does, with no client passed.
+ */
+describe('the endpoint it builds', () => {
+  /** Mint a presigned URL through a store built from configuration, not injection. */
+  async function hostFor(accountId: string): Promise<string> {
+    const store = createR2BlobStore({
+      accountId,
+      bucket: 'sparksocial-assets',
+      accessKeyId: 'AKIAEXAMPLE',
+      secretAccessKey: 'secret',
+    });
+    const { uploadUrl } = await store.presignUpload({ key: 'a/b.png', contentType: 'image/png' });
+    return new URL(uploadUrl).host;
+  }
+
+  /*
+   * Virtual-hosted style puts the bucket in front of the endpoint, and
+   * Cloudflare's wildcard certificate covers one label — so
+   * `<bucket>.<account>.r2.cloudflarestorage.com` is two deep and uncovered.
+   * Chrome refuses it as ERR_SSL_VERSION_OR_CIPHER_MISMATCH before sending
+   * anything, which reads as a TLS or CORS problem and is neither.
+   */
+  it('addresses the bucket by path, never as a subdomain', async () => {
+    const host = await hostFor('abc123');
+
+    expect(host).toBe('abc123.r2.cloudflarestorage.com');
+    expect(host.startsWith('sparksocial-assets.')).toBe(false);
+  });
+
+  it('puts the bucket in the path instead', async () => {
+    const store = createR2BlobStore({
+      accountId: 'abc123',
+      bucket: 'sparksocial-assets',
+      accessKeyId: 'AKIAEXAMPLE',
+      secretAccessKey: 'secret',
+    });
+    const { uploadUrl } = await store.presignUpload({ key: 'a/b.png', contentType: 'image/png' });
+
+    expect(new URL(uploadUrl).pathname).toBe('/sparksocial-assets/a/b.png');
+  });
+
+  /*
+   * The dashboard shows the whole endpoint under a heading that reads like an
+   * address, so this is the value people paste. Appending the domain to it a
+   * second time produced a host that resolves to nothing.
+   */
+  it('accepts the whole endpoint pasted as the account id', async () => {
+    expect(await hostFor('f2a2ad8045e04105da0e9db0d60da5bf.r2.cloudflarestorage.com')).toBe(
+      'f2a2ad8045e04105da0e9db0d60da5bf.r2.cloudflarestorage.com',
+    );
+    expect(await hostFor('https://f2a2ad8045e04105da0e9db0d60da5bf.r2.cloudflarestorage.com')).toBe(
+      'f2a2ad8045e04105da0e9db0d60da5bf.r2.cloudflarestorage.com',
+    );
+  });
+
+  it('never doubles the domain, whatever it was given', async () => {
+    for (const given of [
+      'abc123',
+      'abc123.r2.cloudflarestorage.com',
+      'https://abc123.r2.cloudflarestorage.com',
+      'https://abc123.r2.cloudflarestorage.com/',
+      '  abc123  ',
+    ]) {
+      expect(await hostFor(given)).toBe('abc123.r2.cloudflarestorage.com');
+    }
+  });
+});
+
+describe('normaliseAccountId', () => {
+  it('leaves a bare account id alone', () => {
+    expect(normaliseAccountId('f2a2ad8045e04105da0e9db0d60da5bf')).toBe('f2a2ad8045e04105da0e9db0d60da5bf');
+  });
+
+  it('strips the scheme, the domain and any path', () => {
+    expect(normaliseAccountId('https://abc.r2.cloudflarestorage.com/sparksocial-assets')).toBe('abc');
   });
 });

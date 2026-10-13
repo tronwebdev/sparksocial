@@ -7,6 +7,8 @@ import {
   createDueContentSource,
   createUnrenderedContentSource,
   type UnrenderedContentItem,
+  createUndraftedContentSource,
+  type UndraftedContentItem,
   createOutcomeCandidateSource,
   createAccountLookup,
   lookupToolCall,
@@ -39,6 +41,8 @@ export function connectPostgresStore(): {
   findDue: (before: Date, limit: number) => Promise<DueContentItem[]>;
   /** The render queue's read — posts in a live campaign with copy and no file. */
   findUnrendered: (limit: number) => Promise<UnrenderedContentItem[]>;
+  /** The draft queue's read — slots due soon in a live campaign with no copy. */
+  findUndrafted: (before: Date, limit: number) => Promise<UndraftedContentItem[]>;
   /** The learning loop's two cross-tenant reads — see outcome-observer.ts. */
   outcomes: OutcomeCandidateSource;
   /** The engagement webhook's tenant resolution — see engage-webhook.ts. */
@@ -54,6 +58,7 @@ export function connectPostgresStore(): {
     lookupCall: (callId, orgId) => lookupToolCall(db, callId, orgId),
     findDue: createDueContentSource(db).findDue,
     findUnrendered: createUnrenderedContentSource(db).findUnrendered,
+    findUndrafted: createUndraftedContentSource(db).findUndrafted,
     outcomes: createOutcomeCandidateSource(db),
     accounts: createAccountLookup(db),
     close: () => pool.end(),

@@ -2245,6 +2245,78 @@ export async function findUnrenderedContentItems(
     .limit(args.limit) as Promise<UnrenderedContentItem[]>;
 }
 
+/** A scheduled post with no copy yet — `startDraftQueue`'s input. */
+export interface UndraftedContentItem {
+  id: string;
+  orgId: string;
+  genomeId: string;
+  playbookId: string | null;
+  intent: string | null;
+  scheduledAt: Date | null;
+}
+
+/**
+ * Slots in a live campaign that are due soon and have no copy yet.
+ *
+ * ── Why drafting ahead needs its own query ───────────────────────────────
+ *
+ * The publish scheduler already drafts a slot with no copy — but only once it is
+ * *due*, and then it publishes it in the same tick (`apps/api/src/scheduler.ts`).
+ * The render queue only selects rows where `copy IS NOT NULL`. So a slot whose
+ * copy never arrives early is drafted and published in one breath, minutes after
+ * the render queue last looked and without ever being eligible for it: the post
+ * goes out as text that was supposed to carry a video.
+ *
+ * Nothing was wrong with either worker. The gap was that nobody wrote the copy
+ * until the last possible moment, so there was never a window in which pixels
+ * could be made. This query opens that window.
+ *
+ * ── The predicates, and what each one is keeping out ─────────────────────
+ *
+ * `status = 'scheduled'` — a draft a person is editing is not ours to rewrite.
+ * `copy IS NULL` — never overwrite words somebody already has, whoever wrote
+ *   them. This is the one that makes the whole worker safe to run repeatedly.
+ * `campaigns.status = 'active'` — same gate the render queue uses. A campaign in
+ *   draft is a plan, and planning is not permission to spend money on copy.
+ * `scheduled_at <= now + lookahead` — bounded work. Without it, activating a
+ *   ninety-day campaign would draft ninety days of posts in the first few ticks,
+ *   each a model call, for a calendar the owner is still likely to change.
+ * `scheduled_at IS NOT NULL` — an unscheduled slot has no deadline to be ahead
+ *   of, so it is not this worker's business.
+ * `mode <> 'direct_finish'` — its copy comes from a capture session, not a model.
+ *
+ * Deliberately *not* excluding text-only playbooks, unlike the render queue:
+ * they need copy exactly as much, they simply need no pixels afterwards.
+ */
+export async function findUndraftedContentItems(
+  db: Database,
+  args: { before: Date; limit: number },
+): Promise<UndraftedContentItem[]> {
+  return db
+    .select({
+      id: contentItems.id,
+      orgId: contentItems.orgId,
+      genomeId: contentItems.genomeId,
+      playbookId: contentItems.playbookId,
+      intent: contentItems.intent,
+      scheduledAt: contentItems.scheduledAt,
+    })
+    .from(contentItems)
+    .innerJoin(campaigns, eq(campaigns.id, contentItems.campaignId))
+    .where(
+      and(
+        eq(campaigns.status, 'active'),
+        eq(contentItems.status, 'scheduled'),
+        isNull(contentItems.copy),
+        isNotNull(contentItems.scheduledAt),
+        lte(contentItems.scheduledAt, args.before),
+        ne(contentItems.mode, 'direct_finish'),
+      ),
+    )
+    .orderBy(asc(contentItems.scheduledAt))
+    .limit(args.limit) as Promise<UndraftedContentItem[]>;
+}
+
 export interface CalendarSlotRow {
   campaignId: string;
   playbookId: string;

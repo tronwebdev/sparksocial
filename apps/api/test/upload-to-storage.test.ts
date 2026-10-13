@@ -85,7 +85,18 @@ describe('uploadToStorage — the request never completed', () => {
     const logged = spy.mock.calls.map((c) => String(c[0])).join('\n');
     expect(logged).toContain('sparksocialstagingst.blob.core.windows.net');
     expect(logged).toMatch(/CORS/);
-    expect(logged).toMatch(/bootstrap\.sh/);
+    /*
+     * The host, and an instruction to read it.
+     *
+     * This used to assert the message named `infra/azure/bootstrap.sh`. That
+     * pointed at the only cause the message knew about — a missing CORS rule —
+     * and on R2 it is no longer even the likely one: the first real failure
+     * there was a *wrong host*, from an account id pasted as a full endpoint and
+     * a bucket addressed as a subdomain, and no CORS rule anywhere would have
+     * helped. A message naming one remedy sends everybody to it; naming the host
+     * and saying to check it first does not.
+     */
+    expect(logged).toMatch(/host/i);
   });
 
   it('reports the kind, so a caller could branch without parsing prose', async () => {

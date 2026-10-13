@@ -112,7 +112,7 @@ describe('genome.voice.clone_from_sample', () => {
     );
 
     expect(out.requiresVerification).toBe(true);
-    expect(out.why.factors.some((f) => /verif/i.test(f.label) || /verif/i.test(f.detail))).toBe(true);
+    expect(out.why.factors.some((f) => /verif/i.test(f.label) || /verif/i.test(f.detail ?? ''))).toBe(true);
   });
 
   it('refuses a genomeId that is not the active one', async () => {

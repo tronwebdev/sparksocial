@@ -25,6 +25,7 @@ import { sceneBrief } from './scene-brief.js';
 import { connectPostgresStore } from './pg-store.js';
 import { startScheduler } from './scheduler.js';
 import { startRenderQueue } from './render-queue.js';
+import { startDraftQueue } from './draft-queue.js';
 import { startRecipeScheduler } from './recipe-scheduler.js';
 import { startTrendObserver } from './trend-observer.js';
 import { startConnectionWatcher } from './connection-watcher.js';
@@ -467,6 +468,43 @@ const renderQueue = pg
     )
   : undefined;
 
+/**
+ * DRAFT QUEUE — writes a scheduled post's copy before it is due.
+ *
+ * The gap the render queue could not close on its own. `calendar.generate`
+ * writes slots with no copy; the publish scheduler drafts a slot only once it is
+ * *due* and publishes it in the same tick; the render queue only selects posts
+ * that already have copy. So a slot nobody opened in the Draft Panel was drafted
+ * and published minutes after the render queue last looked, never once eligible
+ * for it, and went out as a caption where the playbook called for a video —
+ * silently, with the calendar showing a published post.
+ *
+ * This loop writes the copy a few days early so there is a window in which
+ * pixels can be made. The scheduler keeps its due-time draft as the backstop.
+ *
+ * Postgres only, like the render queue: the dev store cannot answer "which
+ * slots have no copy" across tenants.
+ *
+ * Two minutes, and seventy-two hours ahead. The interval is short because a
+ * draft is one model call, not a render; the horizon is three days because that
+ * is comfortably longer than the render queue needs to catch up (5-minute ticks,
+ * two at a time) and short enough that a calendar the owner is still editing has
+ * not been written in full and paid for.
+ */
+const draftQueue = pg
+  ? startDraftQueue(
+      {
+        source: { findUndrafted: pg.findUndrafted },
+        db: scopedDb,
+        invoke: invokeDeps,
+        loadBrandGovernance: makeBrandGovernance(scopedDb),
+        credits,
+      },
+      envNum('DRAFT_QUEUE_INTERVAL_MS', 120_000),
+      envNum('DRAFT_LOOKAHEAD_HOURS', 72) * 3_600_000,
+    )
+  : undefined;
+
 const trendObserver = startTrendObserver(
   {
     db: scopedDb,
@@ -679,6 +717,7 @@ for (const sig of ['SIGTERM', 'SIGINT'] as const) {
     recipeScheduler.stop();
     trendObserver.stop();
     renderQueue?.stop();
+    draftQueue?.stop();
     connectionWatcher.stop();
     tokenRefresher.stop();
     outcomeObserver.stop();
