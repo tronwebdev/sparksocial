@@ -172,7 +172,18 @@ export function createR2BlobStore(opts: R2Options): BlobStore {
       }
 
       const readUrl = await signGet(key, ttlSec);
-      return { uploadUrl, readUrl, key, expiresAt: new Date(Date.now() + clampTtl(ttlSec) * 1000) };
+      return {
+        uploadUrl,
+        readUrl,
+        key,
+        expiresAt: new Date(Date.now() + clampTtl(ttlSec) * 1000),
+        /*
+         * Signed above as `IfNoneMatch`, so it is part of the signature: a PUT
+         * without it is not merely missing a guard, it is a different request
+         * and R2 refuses it outright.
+         */
+        requiredHeaders: { 'if-none-match': '*' },
+      };
     },
 
     async readUrl(key, ttlSec = DEFAULT_UPLOAD_TTL_SEC) {

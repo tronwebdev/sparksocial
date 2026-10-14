@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 
 /**
  * `F6`'s "Brand Details" — the prototype's second screen, and `M8`'s logo.
@@ -141,7 +141,7 @@ export function BrandDetailsStep({
     setUploading(true);
     setMessage(null);
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
       filename: file.name,
       contentType: file.type,
@@ -156,7 +156,7 @@ export function BrandDetailsStep({
       return;
     }
 
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, file.type);
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, file.type, presigned.output.headers);
     if (!put.ok) {
       setUploading(false);
       setMessage({ kind: 'err', text: put.message });

@@ -22,6 +22,7 @@ export function createMemoryBlobStore(base = 'https://memory.blob.local'): BlobS
         readUrl: `${base}/${encodeURI(key)}?${q}&sp=r`,
         key,
         expiresAt,
+        requiredHeaders: {},
       };
     },
     async readUrl(key, ttlSec = 900) {

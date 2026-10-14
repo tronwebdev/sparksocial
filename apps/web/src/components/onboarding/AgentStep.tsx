@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { invalidateAgentIdentity } from '@/lib/useAgentIdentity';
 import { DropZone, SectionLabel } from './kit';
 import { ProtoScale } from './Stage';
@@ -50,13 +50,6 @@ import { ProtoScale } from './Stage';
  */
 
 type Busy = null | 'avatar-generate' | 'avatar-upload' | 'voice-upload' | 'recording' | 'preview';
-
-/** What `asset.upload_url` hands back. */
-interface Presigned {
-  uploadUrl: string;
-  readUrl: string;
-  key: string;
-}
 
 export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName: string }) {
   const [name, setName] = useState('');
@@ -161,7 +154,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
    * takes. Returns `null` and sets the error, so callers read as a straight line.
    */
   async function putBytes(file: Blob, filename: string, contentType: string): Promise<string | null> {
-    const presigned = await invoke<Presigned>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
       filename,
       contentType,
@@ -174,7 +167,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     // `uploadToStorage` owns the failure wording, because `fetch`'s own is the
     // literal string "Failed to fetch" — which is what a missing CORS rule on
     // the bucket shows a user beside a drop zone.
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType);
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
       setError(put.message);
       return null;

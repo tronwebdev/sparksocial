@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
 
@@ -86,7 +86,7 @@ export function AssetUploadForm({
     setBusy(true);
     setMessage(null);
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string; key: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId: genome.genomeId,
       filename: file.name,
       contentType,
@@ -103,7 +103,7 @@ export function AssetUploadForm({
     // because `fetch`'s own is the literal string "Failed to fetch" — which is
     // what a missing CORS rule on the storage account showed a user beside
     // "Choose Files".
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType);
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
       setBusy(false);
       setMessage({ kind: 'err', text: put.message });

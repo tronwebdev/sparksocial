@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 
@@ -186,7 +186,7 @@ export function KnowledgePanel() {
     setBusyDoc(true);
     setNote(null);
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId: genome.genomeId,
       filename: file.name,
       contentType: 'application/pdf',
@@ -201,7 +201,7 @@ export function KnowledgePanel() {
       return;
     }
 
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, 'application/pdf');
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, 'application/pdf', presigned.output.headers);
     if (!put.ok) {
       setBusyDoc(false);
       setNote({ kind: 'err', text: put.message });

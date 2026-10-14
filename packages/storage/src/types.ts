@@ -15,6 +15,27 @@ export interface PresignedUpload {
   readUrl: string;
   key: string;
   expiresAt: Date;
+  /**
+   * Headers the client **must** send with the PUT, verbatim.
+   *
+   * ── Why the store declares these instead of the uploader knowing them ───
+   *
+   * Every vendor wants something different, and the browser cannot guess:
+   * Azure requires `x-ms-blob-type: BlockBlob` or it rejects the write, and R2
+   * signs `if-none-match` into the signature for the create-only guard, so a
+   * client that omits it computes a different signature and is refused.
+   *
+   * Both facts used to live in `apps/web/src/lib/uploadToStorage.ts`, which
+   * hardcoded the Azure header and did not know about the R2 one. On Render that
+   * produced a 403 whose body never reaches the browser — R2's error responses
+   * carry no `Access-Control-Allow-Origin`, so Chrome reports a signature
+   * failure as a CORS failure, and three days went into the wrong layer. The
+   * same `curl` with `if-none-match: *` returned 200 on the first try.
+   *
+   * Declaring them here means a new store cannot forget to say what it needs,
+   * and the uploader never has to know which vendor it is talking to.
+   */
+  requiredHeaders: Record<string, string>;
 }
 
 export interface BlobStore {

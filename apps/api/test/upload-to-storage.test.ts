@@ -159,17 +159,52 @@ describe('uploadToStorage — storage answered', () => {
     expect(res.ok === false && res.kind).toBe('refused');
   });
 
-  it('sends the header Azure requires on a SAS PUT', async () => {
-    // Omitting `x-ms-blob-type` 400s, so it is not a detail — and it is the one
-    // header that also has to be on the account's CORS allow-list.
+  /*
+   * This used to assert that the uploader sent `x-ms-blob-type: BlockBlob`,
+   * hardcoded, because Azure was the only store and omitting it 400s.
+   *
+   * That hardcode is the bug. R2 signs `if-none-match` into the signature for
+   * its create-only guard, so a PUT without it is a *different request* and is
+   * refused with 403 — and R2 error responses carry no
+   * `Access-Control-Allow-Origin`, so the browser reported a signature failure
+   * as a CORS failure. Every upload on R2 failed, invisibly, while this test
+   * stayed green asserting the one vendor it knew about.
+   *
+   * What is pinned now is that the uploader sends whatever the *store* said to
+   * send and invents nothing. `asset.upload_url` carries those headers up from
+   * `PresignedUpload.requiredHeaders`.
+   */
+  it('sends exactly the headers the store asked for, and no vendor guesses of its own', async () => {
     const f = respondingFetch(201);
     vi.stubGlobal('fetch', f);
 
-    await uploadToStorage(URL_WITH_SAS, new Blob(['x']), 'image/png');
+    await uploadToStorage(URL_WITH_SAS, new Blob(['x']), 'image/png', { 'x-ms-blob-type': 'BlockBlob' });
 
     const init = (f.mock.calls[0] as unknown[])[1] as RequestInit;
     expect(init.method).toBe('PUT');
     expect((init.headers as Record<string, string>)['x-ms-blob-type']).toBe('BlockBlob');
     expect((init.headers as Record<string, string>)['content-type']).toBe('image/png');
+  });
+
+  it("sends R2's signed if-none-match when that is what the store requires", async () => {
+    const f = respondingFetch(200);
+    vi.stubGlobal('fetch', f);
+
+    await uploadToStorage(URL_WITH_SAS, new Blob(['x']), 'image/png', { 'if-none-match': '*' });
+
+    const headers = ((f.mock.calls[0] as unknown[])[1] as RequestInit).headers as Record<string, string>;
+    expect(headers['if-none-match']).toBe('*');
+    // The Azure header is gone unless a store asks for it — the whole point.
+    expect(headers['x-ms-blob-type']).toBeUndefined();
+  });
+
+  it('sends only content-type when a store requires nothing, as the local disk store does', async () => {
+    const f = respondingFetch(200);
+    vi.stubGlobal('fetch', f);
+
+    await uploadToStorage(URL_WITH_SAS, new Blob(['x']), 'image/png');
+
+    const headers = ((f.mock.calls[0] as unknown[])[1] as RequestInit).headers as Record<string, string>;
+    expect(Object.keys(headers)).toEqual(['content-type']);
   });
 });

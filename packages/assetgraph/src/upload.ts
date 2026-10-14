@@ -72,6 +72,14 @@ export const AssetUploadUrlOutput = z.object({
   readUrl: z.string().url(),
   key: z.string(),
   expiresAt: z.string(),
+  /**
+   * Headers the caller must send with the PUT, exactly as given.
+   *
+   * The store decides these, not the client — see `PresignedUpload` in
+   * `packages/storage/src/types.ts` for what each vendor needs and for the
+   * failure that made passing them explicit necessary.
+   */
+  headers: z.record(z.string()),
 });
 
 export function makeAssetUploadUrl(store: BlobStore) {
@@ -122,6 +130,7 @@ export function makeAssetUploadUrl(store: BlobStore) {
         readUrl: presigned.readUrl,
         key: presigned.key,
         expiresAt: presigned.expiresAt.toISOString(),
+        headers: presigned.requiredHeaders,
       };
     },
   });

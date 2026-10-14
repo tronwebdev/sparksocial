@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PanelSkeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { BrandFontPicker } from './BrandFontPicker';
@@ -201,7 +201,7 @@ export function GovernancePanel() {
     setUploading(true);
     setMessage(null);
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
       filename: file.name,
       contentType,
@@ -216,7 +216,7 @@ export function GovernancePanel() {
       return;
     }
 
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType);
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
       setUploading(false);
       setMessage({ kind: 'err', text: put.message });

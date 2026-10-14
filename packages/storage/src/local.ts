@@ -83,7 +83,8 @@ export function createLocalDiskBlobStore(opts: LocalDiskBlobStoreOptions): Local
       // GET to read at the same path, unlike Blob's separate SAS-signed
       // upload/read permissions.
       const url = urlFor(key);
-      return { uploadUrl: url, readUrl: url, key, expiresAt: new Date(Date.now() + ttlSec * 1000) };
+      // Its own route accepts a plain PUT; nothing extra is required.
+      return { uploadUrl: url, readUrl: url, key, expiresAt: new Date(Date.now() + ttlSec * 1000), requiredHeaders: {} };
     },
 
     async readUrl(key) {

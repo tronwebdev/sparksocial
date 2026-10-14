@@ -93,7 +93,15 @@ export function createAzureBlobStore(opts: AzureBlobOptions): BlobStore {
       // else's asset in place rather than merely adding one.
       const uploadUrl = await sign(key, 'c', ttlSec, contentType);
       const readUrl = await sign(key, 'r', ttlSec);
-      return { uploadUrl, readUrl, key, expiresAt: new Date(Date.now() + ttlSec * 1000) };
+      return {
+        uploadUrl,
+        readUrl,
+        key,
+        expiresAt: new Date(Date.now() + ttlSec * 1000),
+        // Blob Storage rejects a PUT without it. This used to be hardcoded in
+        // the browser uploader, which is how R2's own requirement went missing.
+        requiredHeaders: { 'x-ms-blob-type': 'BlockBlob' },
+      };
     },
 
     async readUrl(key, ttlSec = DEFAULT_UPLOAD_TTL_SEC) {

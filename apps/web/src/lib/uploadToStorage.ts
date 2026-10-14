@@ -62,19 +62,57 @@ export interface UploadFailure {
 
 export type UploadResult = { ok: true } | ({ ok: false } & UploadFailure);
 
-/** The header Azure requires on a SAS PUT. Omitting it 400s, so it is not optional. */
-const BLOB_TYPE_HEADER = 'x-ms-blob-type';
+/**
+ * What `asset.upload_url` returns — one declaration, shared by every caller.
+ *
+ * Six components used to hand-write this inline, each a slightly different
+ * subset, and a hand-written type parameter on `invoke<T>` is asserted rather
+ * than checked: adding `headers` to the tool changed nothing anywhere, and the
+ * compiler had no opinion about six call sites that silently dropped it. The
+ * same shape of mistake is documented in `AgentStep.tsx`, where an asserted
+ * field that the response never contained read as `undefined` for weeks.
+ *
+ * Declared beside the function that consumes it so the two cannot drift.
+ */
+export interface PresignedUpload {
+  uploadUrl: string;
+  readUrl: string;
+  key: string;
+  /** Pass straight to `uploadToStorage` — see its `requiredHeaders`. */
+  headers: Record<string, string>;
+}
 
 export async function uploadToStorage(
   uploadUrl: string,
   file: Blob,
   contentType: string,
+  /**
+   * Straight from `asset.upload_url`'s `headers`. Defaulted so the six existing
+   * call sites compile, but every one of them should pass it: an empty default
+   * is correct only for the local-disk store, and getting it wrong on a real one
+   * fails at the vendor rather than here.
+   */
+  requiredHeaders: Record<string, string> = {},
 ): Promise<UploadResult> {
   let response: Response;
   try {
     response = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: { 'content-type': contentType, [BLOB_TYPE_HEADER]: 'BlockBlob' },
+      /*
+       * `requiredHeaders` comes from `asset.upload_url`, which gets it from the
+       * store that signed the URL.
+       *
+       * This used to hardcode Azure's `x-ms-blob-type: BlockBlob` and nothing
+       * else, because Azure was the only store. R2 signs `if-none-match` into
+       * the signature for its create-only guard, so omitting it does not skip a
+       * guard — it computes a different signature, and R2 answers 403 with a
+       * body the browser never sees, because its error responses carry no
+       * `Access-Control-Allow-Origin`. Chrome then reports a signature failure
+       * as a CORS failure, which is where the debugging went.
+       *
+       * `content-type` first so a store can override it if it ever needs to.
+       */
+      headers: { 'content-type': contentType, ...requiredHeaders },
       body: file,
     });
   } catch (e) {

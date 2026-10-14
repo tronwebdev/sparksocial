@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { DropZone, PreviewTile } from './kit';
 import { ProtoScale } from './Stage';
-import { uploadToStorage } from '@/lib/uploadToStorage';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 
 /**
  * `F6` — "Upload company Docs (PDF)", with the sample guideline beside it.
@@ -70,7 +70,7 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
 
     setBusy(true);
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
       filename: file.name,
       contentType: ACCEPT,
@@ -82,7 +82,7 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       return;
     }
 
-    const put = await uploadToStorage(presigned.output.uploadUrl, file, ACCEPT);
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, ACCEPT, presigned.output.headers);
     if (!put.ok) {
       setBusy(false);
       setError(put.message);

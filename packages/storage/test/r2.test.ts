@@ -244,3 +244,55 @@ describe('what an operator is told when the credentials are refused', () => {
     expect(String(err.meta?.operator)).toMatch(/403/);
   });
 });
+
+describe('the headers it tells a client to send', () => {
+  /*
+   * The bug this pins, in full.
+   *
+   * `presignUpload` signs `IfNoneMatch: '*'` for the create-only guard, which
+   * puts `if-none-match` in `X-Amz-SignedHeaders`. A client that does not send
+   * that header is not skipping a guard — it is making a *different* request,
+   * and R2 refuses it with 403 AccessDenied.
+   *
+   * The browser uploader hardcoded Azure's `x-ms-blob-type` and nothing else,
+   * because Azure was once the only store. So every upload on R2 failed, and
+   * failed invisibly: R2 error responses carry no `Access-Control-Allow-Origin`,
+   * so Chrome reported a signature failure as a CORS failure. The same request
+   * from `curl` with `if-none-match: *` returned 200 first time.
+   *
+   * These two assertions together are the whole fix: the signature must demand
+   * the header, and the store must say so.
+   */
+  it('signs if-none-match, and says the client must send it', async () => {
+    const store = createR2BlobStore({
+      accountId: 'abc123',
+      bucket: 'sparksocial-assets',
+      accessKeyId: 'AKIAEXAMPLE',
+      secretAccessKey: 'secret',
+    });
+
+    const presigned = await store.presignUpload({ key: 'a/b.png', contentType: 'image/png' });
+
+    const signed = new URL(presigned.uploadUrl).searchParams.get('X-Amz-SignedHeaders') ?? '';
+    expect(signed).toContain('if-none-match');
+    expect(presigned.requiredHeaders['if-none-match']).toBe('*');
+  });
+
+  it('names every signed header it expects back, so none can be forgotten', async () => {
+    const store = createR2BlobStore({
+      accountId: 'abc123',
+      bucket: 'sparksocial-assets',
+      accessKeyId: 'AKIAEXAMPLE',
+      secretAccessKey: 'secret',
+    });
+
+    const presigned = await store.presignUpload({ key: 'a/b.png', contentType: 'image/png' });
+    const signed = (new URL(presigned.uploadUrl).searchParams.get('X-Amz-SignedHeaders') ?? '').split(';');
+    const declared = Object.keys(presigned.requiredHeaders).map((h) => h.toLowerCase());
+
+    // `host` is the one a client cannot set and the browser always sends.
+    for (const header of signed.filter((h) => h && h !== 'host')) {
+      expect(declared).toContain(header);
+    }
+  });
+});
