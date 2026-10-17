@@ -799,6 +799,13 @@ export function createDevStore(
         row.blockedReason = reason;
       },
 
+      async markFailed({ id, orgId: org, reason }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org) return;
+        row.status = 'failed';
+        row.blockedReason = reason;
+      },
+
       /**
        * Increments and returns, like the SQL one. Deliberately does not touch
        * `status`: whether the count has reached a ceiling is the scheduler's

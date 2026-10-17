@@ -921,6 +921,25 @@ export async function markContentBlocked(
 }
 
 /**
+ * We broke, as against `markContentBlocked`'s we refused.
+ *
+ * Same column, same scoping, different status — see `ContentStatus` for why the
+ * two are worth telling apart. `blocked_reason` carries both: it was named for
+ * the only status that used it, and renaming a column to match a distinction
+ * this late would cost a migration to say nothing new.
+ */
+export async function markContentFailed(
+  db: Database,
+  scope: Pick<Scope, 'orgId'>,
+  args: { id: string; reason: string },
+): Promise<void> {
+  await db
+    .update(contentItems)
+    .set({ status: 'failed', blockedReason: args.reason })
+    .where(and(eq(contentItems.id, args.id), eq(contentItems.orgId, scope.orgId)));
+}
+
+/**
  * One failed publish attempt, counted — PRD §10's retry flow needs an end.
  *
  * `publish_attempts + 1` in SQL rather than read-modify-write: two scheduler

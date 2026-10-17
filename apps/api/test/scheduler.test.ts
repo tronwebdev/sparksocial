@@ -138,6 +138,7 @@ function makeDeps(
     // re-selecting and re-holding it once a minute forever.
     content: {
       markBlocked: async () => {},
+      markFailed: async () => {},
       // §10's retry counter. One attempt by default: every existing test in
       // this file exercises a *first* failure, and returning the ceiling here
       // would make all of them assert give-up behaviour they were not written
@@ -234,53 +235,53 @@ describe('scheduler', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('skips an item whose genome no longer exists, without calling publish.now — and marks it blocked so it stops being retried', async () => {
+  it('skips an item whose genome no longer exists, without calling publish.now — and marks it failed so it stops being retried', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => undefined }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => undefined }, content: { ...publishable(), markFailed } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(calls).toHaveLength(0);
-    expect(markBlocked).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
+    expect(markFailed).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
     vi.restoreAllMocks();
   });
 
-  it('skips an item with no playbookId — and marks it blocked', async () => {
+  it('skips an item with no playbookId — and marks it failed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ playbookId: null })],
-      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markFailed } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(calls).toHaveLength(0);
-    expect(markBlocked).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
+    expect(markFailed).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
     vi.restoreAllMocks();
   });
 
-  it('skips an item whose playbookId no longer resolves and has no explicit platform — and marks it blocked', async () => {
+  it('skips an item whose playbookId no longer resolves and has no explicit platform — and marks it failed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ playbookId: 'pb_does_not_exist' })],
-      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markFailed } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(calls).toHaveLength(0);
-    expect(markBlocked).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
+    expect(markFailed).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
     vi.restoreAllMocks();
   });
 
@@ -335,23 +336,23 @@ describe('scheduler', () => {
     expect(calls[0]).toMatchObject({ text: 'copy SPARK wrote' });
   });
 
-  it('blocks an item only once drafting itself has failed', async () => {
+  it('fails an item only once drafting itself has failed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();
     register(tool);
     // No `content.draft` registered at all, so the draft attempt fails hard.
     // A hard failure is terminal for the same reason a guardrail block is: it
     // will fail identically on every future tick.
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
       items: [dueItem({ copy: [{ kind: 'asset', beatId: 'b1', assetId: 'a1', role: 'social_proof', caption: null }] })],
-      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
+      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markFailed } } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(calls).toHaveLength(0);
-    expect(markBlocked).toHaveBeenCalledWith(
+    expect(markFailed).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'item_1', orgId: 'org_1', reason: expect.stringContaining('could not draft') }),
     );
     vi.restoreAllMocks();
@@ -379,18 +380,65 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  it('marks a guardrail-blocked item blocked, so it stops being retried', async () => {
+  /*
+   * `blocked` and `failed` are different answers, and this pair is the whole
+   * distinction (PRD §7 rule 4).
+   *
+   * **`blocked` means we refused**: a guardrail decided this must not go out,
+   * the content has to change, and retrying it unchanged refuses identically
+   * forever. **`failed` means we broke**: the content is fine, something on our
+   * side or the platform's did not work, and rescheduling once the cause is
+   * fixed is the remedy.
+   *
+   * They were one status until 17 Oct, with the difference carried only in a
+   * reason string — so a customer could not tell "we refused you" from "we fell
+   * over", and neither could anyone reading the calendar. The two assertions
+   * below are what stops them collapsing back together: each names the status
+   * it must use *and* that it must not use the other.
+   */
+  it('marks a guardrail-blocked item blocked — we refused, so the content must change', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { tool } = fakePublishNow({ guardrailBlocked: true });
     register(tool);
     const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
-      db: { genomes: { get: async () => genome() }, content: { ...publishable(), markBlocked } } as unknown as ScopedDb,
+      db: {
+        genomes: { get: async () => genome() },
+        content: { ...publishable(), markBlocked, markFailed },
+      } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
     expect(markBlocked).toHaveBeenCalledWith({ id: 'item_1', orgId: 'org_1', reason: 'claim_grounding' });
+    expect(markFailed).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('marks an item whose publish broke failed, not blocked — nothing is wrong with the post', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Not a guardrail: a plain upstream failure, retried to the ceiling.
+    const { tool } = fakePublishNow({ throws: true });
+    register(tool);
+    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: {
+          ...publishable(),
+          markBlocked,
+          markFailed,
+          recordPublishFailure: async () => ({ attempts: 5 }),
+        },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(markFailed).toHaveBeenCalledWith(expect.objectContaining({ id: 'item_1', orgId: 'org_1' }));
+    expect(markBlocked).not.toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 
@@ -455,24 +503,24 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  it('stops retrying at the ceiling and blocks the item with the last error', async () => {
+  it('stops retrying at the ceiling and fails the item with the last error', async () => {
     // The gap this closes: before the ceiling, an item whose platform
     // connection had died failed identically on every tick forever, logging to
     // a console nobody reads while the calendar still showed it going out.
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { tool } = fakePublishNow({ throws: true });
     register(tool);
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { ...publishable(), markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markFailed, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
     await runOnce(deps);
 
-    expect(markBlocked).toHaveBeenCalledWith(
+    expect(markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'item_1',
         orgId: 'org_1',
@@ -508,7 +556,7 @@ describe('scheduler', () => {
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { ...publishable(), markBlocked: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markFailed: async () => {}, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
@@ -519,7 +567,7 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
-  it('leaves the item blocked even when the notification cannot be sent', async () => {
+  it('leaves the item failed even when the notification cannot be sent', async () => {
     // Losing the block because the notification channel is down would put the
     // row straight back into the infinite loop the ceiling exists to end.
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -541,16 +589,16 @@ describe('scheduler', () => {
         },
       }),
     );
-    const markBlocked = vi.fn(async () => {});
+    const markFailed = vi.fn(async () => {});
     const { deps } = makeDeps({
       db: {
         genomes: { get: async () => genome() },
-        content: { ...publishable(), markBlocked, recordPublishFailure: async () => ({ attempts: 5 }) },
+        content: { ...publishable(), markFailed, recordPublishFailure: async () => ({ attempts: 5 }) },
       } as unknown as ScopedDb,
     });
 
     await expect(runOnce(deps)).resolves.toBeUndefined();
-    expect(markBlocked).toHaveBeenCalled();
+    expect(markFailed).toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 

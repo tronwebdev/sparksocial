@@ -125,8 +125,28 @@ export type CampaignStatus = z.infer<typeof CampaignStatus>;
  * `markContentBlocked` move it to `blocked`. Adding `failed` would name a state
  * nothing can reach and imply the retry counter had a second home.
  */
+/**
+ * PRD §7 rule 4's status set.
+ *
+ * ── `failed` and `blocked` are different answers ──────────────────────────
+ *
+ * The PRD names both and the code had only `blocked`, so every technical
+ * failure — a scheduler that exhausted its five attempts, a dead platform
+ * connection, a playbook that stopped resolving, a draft that produced no copy
+ * — landed beside genuine policy refusals with the difference carried only in a
+ * reason string nobody reads until they open the post.
+ *
+ * They need different things from a person. **`blocked` means we refused**: a
+ * guardrail decided this must not go out, the content has to change, and
+ * retrying it unchanged will refuse identically forever. **`failed` means we
+ * broke**: the content is fine, something on our side or the platform's did not
+ * work, and rescheduling it once the cause is fixed is the whole remedy.
+ *
+ * `rolled_back` is ours, not the PRD's: a post that went out and was pulled
+ * back is neither of the above and the receipt is kept rather than cleared.
+ */
 export const ContentStatus = z.enum([
-  'draft', 'needs_review', 'approved', 'scheduled', 'published', 'blocked', 'rolled_back',
+  'draft', 'needs_review', 'approved', 'scheduled', 'published', 'blocked', 'failed', 'rolled_back',
 ]);
 export type ContentStatus = z.infer<typeof ContentStatus>;
 

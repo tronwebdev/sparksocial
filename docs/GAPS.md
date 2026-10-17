@@ -147,14 +147,24 @@ Each verified against the registry, not inferred from a comment.
       alternative, a handler calling `invokeTool` on `publish.now`, would have been the first
       reentrant tool in the codebase. Two honest calls instead. The scheduler now shares the
       same three assembly functions rather than owning the only copy.
-- [ ] **The content status set does not match PRD §7 rule 4.** The PRD names *Draft → Needs
+- [x] **Status set — closed 17 Oct.** `failed` added beside `blocked`, and the scheduler
+      splits them: a guardrail refusal stays `blocked` (the content must change), while a
+      genome that vanished, a playbook that stopped resolving, a draft that produced no copy
+      and five exhausted publish attempts are now `failed` (the content is fine; fix the
+      cause and reschedule). `status` is a plain `text` column, so no migration. The `Failed`
+      chip `PlanQueue` already drew is now reachable, and `DraftsList` offers "Retry" against
+      `blocked`'s "Resume".
+- [ ] ~~**The content status set does not match PRD §7 rule 4.**~~ *(superseded by the entry
+      above; kept one release for anyone reading an older checkout)* The PRD names *Draft → Needs
       Review → Approved → Scheduled → Published, Failed / Blocked*. `ContentStatus` is
       `draft, needs_review, approved, scheduled, published, blocked, rolled_back` — no
       `failed`, plus a `rolled_back` the PRD does not name. Every technical failure
       (`markBlocked` after the scheduler's five attempts, a dead platform connection, a
       playbook that no longer resolves) lands in `blocked` beside genuine policy blocks, with
       the distinction carried only in a reason string.
-- [ ] **`PlanQueue` renders a `Failed` chip the backend cannot produce.** The status chip map
+- [x] ~~**`PlanQueue` renders a `Failed` chip the backend cannot produce.**~~ Closed by the
+      same change — the chip now has a status behind it.
+- [ ] ~~**`PlanQueue` renders a `Failed` chip the backend cannot produce.**~~ The status chip map
       includes `failed: { label: 'Failed', … }`; nothing ever sets it. A dead branch today,
       and a half-built answer to the item above — whoever adds `failed` should check this
       first, because the UI is already waiting for it.

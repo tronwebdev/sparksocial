@@ -65,7 +65,13 @@ function stageOf(item: ContentListItem): { label: string; hue: string; action: s
     case 'needs_review':
       return { label: 'Generated — needs review', hue: 'var(--ss-scene-cta)', action: 'Review', actionable: true };
     case 'blocked':
-      return { label: item.blockedReason ? 'Blocked' : 'Blocked', hue: 'var(--ss-scene-override)', action: 'Resume', actionable: true };
+      return { label: 'Blocked', hue: 'var(--ss-scene-override)', action: 'Resume', actionable: true };
+    /* Distinct from blocked on purpose: "we refused" and "we broke" need
+       different things from the reader. Same hue — both want attention — and a
+       different verb, because a failed post is rescheduled once its cause is
+       fixed where a blocked one has to be changed first. */
+    case 'failed':
+      return { label: 'Failed', hue: 'var(--ss-scene-override)', action: 'Retry', actionable: true };
     case 'rolled_back':
       return { label: 'Rolled back', hue: 'var(--ss-fg-muted)', action: 'Resume', actionable: true };
     default:

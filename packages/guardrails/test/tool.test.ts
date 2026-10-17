@@ -63,6 +63,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markPublished: async () => {},
         markRolledBack: async () => {},
         markBlocked: async () => {},
+        markFailed: async () => {},
         recordPublishFailure: async () => ({ attempts: 1 }),
         variantGroup: async () => [],
         tagVariant: async () => undefined,

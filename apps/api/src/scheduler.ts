@@ -127,12 +127,12 @@ async function publishOne(
     // of leaving the row `scheduled` to be silently re-selected and
     // re-skipped on every future tick.
     console.warn('[warn] scheduler: genome not found, skipping', { contentItemId: item.id });
-    await deps.db.content.markBlocked({ id: item.id, orgId: item.orgId, reason: 'This content item’s genome no longer exists.' });
+    await deps.db.content.markFailed({ id: item.id, orgId: item.orgId, reason: 'This content item’s genome no longer exists.' });
     return;
   }
   if (!item.playbookId) {
     console.warn('[warn] scheduler: no playbook on this item, skipping', { contentItemId: item.id });
-    await deps.db.content.markBlocked({ id: item.id, orgId: item.orgId, reason: 'No playbook is set on this content item.' });
+    await deps.db.content.markFailed({ id: item.id, orgId: item.orgId, reason: 'No playbook is set on this content item.' });
     return;
   }
   const playbook = byId(item.playbookId);
@@ -153,7 +153,7 @@ async function publishOne(
   const platform = item.platform ?? playbook?.output.platforms[0];
   if (!platform) {
     console.warn('[warn] scheduler: no platform available for this item, skipping', { contentItemId: item.id });
-    await deps.db.content.markBlocked({
+    await deps.db.content.markFailed({
       id: item.id,
       orgId: item.orgId,
       reason: playbook ? 'This playbook declares no platforms and none was set on the item.' : 'This item’s playbook no longer resolves.',
@@ -236,7 +236,7 @@ async function publishOne(
       // `scheduled` and retried, since the approval may land before the post
       // stops being worth making.
       if (drafted.status === 'failed') {
-        await deps.db.content.markBlocked({
+        await deps.db.content.markFailed({
           id: item.id,
           orgId: item.orgId,
           reason: `SPARK could not draft this post: ${why}`,
@@ -252,7 +252,7 @@ async function publishOne(
     text = writtenText(beats);
     if (!text) {
       console.warn('[warn] scheduler: drafting produced no written copy', { contentItemId: item.id });
-      await deps.db.content.markBlocked({
+      await deps.db.content.markFailed({
         id: item.id,
         orgId: item.orgId,
         reason: 'No written copy — drafting this playbook produced no text beats.',
@@ -327,7 +327,14 @@ async function publishOne(
       const reason =
         `Publishing failed ${attempts} times and has stopped retrying. Last error: ${result.error.code} — ` +
         `${result.error.message}. Reschedule it once the cause is fixed.`;
-      await deps.db.content.markBlocked({ id: item.id, orgId: item.orgId, reason });
+      /*
+       * `failed`, not `blocked`. Five attempts against a dead connection or a
+       * down adapter is us breaking, not us refusing — the content is fine and
+       * rescheduling once the cause is fixed is the whole remedy, which is
+       * exactly what this reason string tells the reader to do. The guardrail
+       * branch above keeps `blocked`, where the content itself is the problem.
+       */
+      await deps.db.content.markFailed({ id: item.id, orgId: item.orgId, reason });
       console.error('[error] scheduler: giving up on this item', { contentItemId: item.id, attempts });
 
       /**

@@ -81,6 +81,10 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       await scoped.markContentBlocked(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
     },
 
+    async markFailed(args) {
+      await scoped.markContentFailed(db, { orgId: args.orgId }, { id: args.id, reason: args.reason });
+    },
+
     async recordPublishFailure(args) {
       return scoped.recordContentPublishFailure(db, { orgId: args.orgId }, { id: args.id, error: args.error });
     },

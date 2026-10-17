@@ -288,7 +288,14 @@ export function DraftPanel({
        * something to do to somebody on open, without asking — the same call the
        * storyboard's redraft guard makes.
        */
-      const stalled = res.output.status === 'blocked' || res.output.status === 'needs_review';
+      /* `failed` belongs here with `blocked`: both mean this post is not moving
+         on its own and auto-drafting over it would hide why. They differ in the
+         remedy — change the content, versus fix the cause and reschedule — which
+         is what the panel's own notice says, not whether to stop. */
+      const stalled =
+        res.output.status === 'blocked' ||
+        res.output.status === 'failed' ||
+        res.output.status === 'needs_review';
 
       /**
        * A third exclusion: a playbook the library no longer has.
@@ -1497,7 +1504,7 @@ export function DraftPanel({
             </div>
           ) : null}
 
-          {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'needs_review') ? (
+          {phase === 'editor' && draft && (draft.status === 'blocked' || draft.status === 'failed' || draft.status === 'needs_review') ? (
             <StallNotice
               draft={draft}
               rescheduling={rescheduling}

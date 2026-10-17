@@ -1114,6 +1114,14 @@ export interface ContentStore {
    * *why* it stalled, via `reason`, not just that it's editable again).
    */
   markBlocked(args: { id: string; orgId: string; reason: string }): Promise<void>;
+  /**
+   * We broke, as against `markBlocked`'s we refused — see `ContentStatus`.
+   *
+   * Same row, same reason column; only the status differs, because the remedy
+   * does: a failed post is rescheduled once its cause is fixed, a blocked one
+   * has to be changed first.
+   */
+  markFailed(args: { id: string; orgId: string; reason: string }): Promise<void>;
 
   /**
    * Records one failed publish attempt and returns the running total — PRD

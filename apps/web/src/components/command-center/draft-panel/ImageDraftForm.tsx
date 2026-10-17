@@ -623,6 +623,7 @@ function statusLabel(status: string): string {
   if (status === 'published') return 'Published';
   if (status === 'scheduled') return 'Scheduled';
   if (status === 'blocked') return 'Blocked';
+  if (status === 'failed') return 'Failed';
   if (status === 'needs_review') return 'Waiting for approval';
   return 'Draft';
 }
