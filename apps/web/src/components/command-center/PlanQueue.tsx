@@ -125,6 +125,8 @@ export function PlanQueue({
   const [filters, setFilters] = useState<QueueFilterState>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** The row being sent, so only its own button shows the in-flight state. */
+  const [sending, setSending] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
@@ -179,6 +181,68 @@ export function PlanQueue({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Publish a scheduled post now, ahead of its slot.
+   *
+   * Two calls, deliberately. `content.publish_payload` decides what actually
+   * goes out — which beats are copy, which assets are attachments, which account
+   * — and `publish.now` publishes it under the guardrails it declares.
+   *
+   * The assembly is not done here, and that is the point. `publish.now` runs
+   * `claim_grounding` and `compliance_profile` against its *input*, so the
+   * caption has to arrive already written; and a copy of the assembly rule in
+   * the browser would be free to drift from the publish scheduler's, which would
+   * mean the same post going out differently depending on who sent it. See the
+   * header of `packages/generate/src/publishPayload.ts`.
+   */
+  async function sendNow(item: PlanItem) {
+    if (!genomeId || sending) return;
+    setSending(item.contentItemId);
+    setError(null);
+    try {
+      const payload = await invoke<{
+        playbookId: string;
+        platform: string;
+        text: string;
+        referencedAssetIds: string[];
+        mediaUrls: string[];
+      }>('content.publish_payload', { contentItemId: item.contentItemId, genomeId });
+
+      if (payload.status !== 'succeeded') {
+        setError(
+          payload.status === 'failed' ? payload.error.message : 'Reading that post for publishing was gated.',
+        );
+        return;
+      }
+
+      const published = await invoke(
+        'publish.now',
+        { contentItemId: item.contentItemId, genomeId, ...payload.output },
+        /*
+         * Keyed on the post and its account, matching the scheduler's own
+         * `scheduled:<id>:<platform>` shape but distinct from it: a person
+         * sending early and the clock sending on time are two different
+         * decisions, and collapsing them would let one silently answer for the
+         * other. Publishing is irreversible, so the key is what stops a double
+         * click becoming two posts.
+         */
+        `send-now:${item.contentItemId}:${payload.output.platform}`,
+      );
+
+      if (published.status !== 'succeeded') {
+        setError(
+          published.status === 'failed'
+            ? published.error.message
+            : 'That post is held for approval — it will go out once approved.',
+        );
+        return;
+      }
+      await load();
+    } finally {
+      setSending(null);
+    }
+  }
 
   if (!genomeId) return null;
 
@@ -604,10 +668,14 @@ export function PlanQueue({
                   </RowAction>
                 ) : item.status === 'scheduled' ? (
                   <RowAction
-                    disabled
-                                        label="Send now"
-                    title="Publishing early needs a tool that assembles the caption server-side; for now a post goes out on its scheduled slot."
-                    style={{ background: '#9CEFFF', opacity: 0.45 }}
+                    label={sending === item.contentItemId ? 'Sending…' : 'Send now'}
+                    title="Publish this post now, ahead of its scheduled slot. This cannot be undone."
+                    onClick={() => void sendNow(item)}
+                    disabled={sending !== null}
+                    style={{
+                      background: '#9CEFFF',
+                      opacity: sending !== null && sending !== item.contentItemId ? 0.45 : 1,
+                    }}
                   >
                     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
                       <path d="M14.5 1.5 1.5 6.8l5 2 2 5 6-12.3Z" stroke="#0C0C0C" strokeWidth="1.5" strokeLinejoin="round" />

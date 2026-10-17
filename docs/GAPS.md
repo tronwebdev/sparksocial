@@ -139,12 +139,25 @@ Each verified against the registry, not inferred from a comment.
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
       `asset.archive`, `recipe.delete` — show the shape it should take.
-- [ ] **No `content.publish_now`.** "Send now" is disabled, and the real obstacle is narrow:
-      `publish.now` wants the finished caption, the queue row has beats, and assembling one is
-      `scheduler.ts`'s `writtenText` — a domain decision about what actually gets published.
-      Doing it in the browser would put a second copy of that rule where it can drift from the
-      scheduler's, so the same post could go out differently depending on which sent it. A
-      thin tool that assembles server-side and delegates is the fix.
+- [x] **"Send now" — closed 17 Oct** by `content.publish_payload`, which assembles what
+      `publish.now` takes and stops there. Not `content.publish_now`, deliberately: the invoke
+      layer runs `claim_grounding` and `compliance_profile` against a tool's **input**, so a
+      tool taking only `{ contentItemId }` would publish with those guards blind — and
+      `compliance.ts` says of its verticals *"do not ship these without this in place"*. The
+      alternative, a handler calling `invokeTool` on `publish.now`, would have been the first
+      reentrant tool in the codebase. Two honest calls instead. The scheduler now shares the
+      same three assembly functions rather than owning the only copy.
+- [ ] **The content status set does not match PRD §7 rule 4.** The PRD names *Draft → Needs
+      Review → Approved → Scheduled → Published, Failed / Blocked*. `ContentStatus` is
+      `draft, needs_review, approved, scheduled, published, blocked, rolled_back` — no
+      `failed`, plus a `rolled_back` the PRD does not name. Every technical failure
+      (`markBlocked` after the scheduler's five attempts, a dead platform connection, a
+      playbook that no longer resolves) lands in `blocked` beside genuine policy blocks, with
+      the distinction carried only in a reason string.
+- [ ] **`PlanQueue` renders a `Failed` chip the backend cannot produce.** The status chip map
+      includes `failed: { label: 'Failed', … }`; nothing ever sets it. A dead branch today,
+      and a half-built answer to the item above — whoever adds `failed` should check this
+      first, because the UI is already waiting for it.
 - [ ] **Nothing proposes a brand palette from a crawl.** The brand kit's "generated preset"
       control is inert. `genome.bootstrap_from_url` already reads the site; extracting a
       palette from it is the missing half.

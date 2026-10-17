@@ -69,6 +69,7 @@ import {
   makeContentGenerateAvatarVideo,
   makeContentGenerateVoiceover,
   makeVoicePreview,
+  contentPublishPayload,
   contentGet,
   contentList,
   contentSchedule,
@@ -446,6 +447,10 @@ export function registerAlphaTools(): void {
   register(sceneLowerThird);
   register(contentList);
   register(contentSchedule);
+  // What `publish.now` needs, assembled server-side — the Plan Queue's "Send
+  // now" and anything else that publishes a drafted post early. Read-only and
+  // needs no vendor key, so it is always registered.
+  register(contentPublishPayload);
   const images = imageClient();
   if (images) register(makeContentGenerateImage(images));
   // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.

@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { invokeTool, type CreditStore, type InvokeDeps, type InvokeRequest, type ScopedDb } from '@sparksocial/tools';
 import { byId } from '@sparksocial/playbooks';
-import { ResolvedBeat } from '@sparksocial/generate';
+import {
+  ResolvedBeat,
+  mediaUrls,
+  referencedAssetIds,
+  writtenText,
+} from '@sparksocial/generate';
 import type { DueContentSource } from '@sparksocial/db';
 import { makeDevResolveCtx } from './dev-auth.js';
 
@@ -255,15 +260,18 @@ async function publishOne(
       return;
     }
   }
-  const referencedAssetIds = beats
-    .filter((b): b is Extract<ResolvedBeat, { kind: 'asset' }> => b.kind === 'asset')
-    .map((b) => b.assetId);
-  const mediaUrls = beats
-    .filter(
-      (b): b is Extract<ResolvedBeat, { kind: 'generated_image' | 'generated_video' | 'generated_audio' | 'generated_broll' | 'dubbed_media' }> =>
-        b.kind === 'generated_image' || b.kind === 'generated_video' || b.kind === 'generated_audio' || b.kind === 'generated_broll' || b.kind === 'dubbed_media',
-    )
-    .map((b) => b.url);
+  /*
+   * The same three derivations `content.publish_payload` makes, from the same
+   * functions.
+   *
+   * They used to be written out here, and this was the only copy — which is why
+   * the Plan Queue's "Send now" could not be built without either a second copy
+   * in the browser or a tool to ask. Shared now, so a change to what gets
+   * published lands on both paths at once, and a post cannot go out differently
+   * depending on whether a person or the clock sent it.
+   */
+  const assetIds = referencedAssetIds(beats);
+  const media = mediaUrls(beats);
 
   const result = await invokeTool(
     {
@@ -274,8 +282,8 @@ async function publishOne(
         playbookId: item.playbookId,
         platform,
         text,
-        referencedAssetIds,
-        mediaUrls,
+        referencedAssetIds: assetIds,
+        mediaUrls: media,
       },
       caller: 'agent',
       ctx,
@@ -397,12 +405,4 @@ async function publishOne(
 function parseBeats(copy: unknown): ResolvedBeat[] {
   const parsed = z.array(ResolvedBeat).safeParse(copy);
   return parsed.success ? parsed.data : [];
-}
-
-/** The publishable text of a draft: every written beat, in order. */
-function writtenText(beats: ResolvedBeat[]): string {
-  return beats
-    .filter((b): b is Extract<ResolvedBeat, { kind: 'text' }> => b.kind === 'text')
-    .map((b) => b.text)
-    .join('\n\n');
 }
