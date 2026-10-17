@@ -7,20 +7,29 @@ tick it. The previous version of this file was a chronological log in which fini
 accumulated as `[x]` entries, 380 of 461 lines describing things that already worked, which
 made it useless for the one question it exists to answer.
 
-**Every claim below was verified against the tree on 21 Aug 2026** by reading source or
-grepping for absence — not carried forward from the previous version. That matters because
-one entry *was* carried forward without checking and was wrong; see the correction at the
-bottom.
+**Re-audited 17 Oct 2026** against the tree and the deployed manifest. The 21 Aug entries
+below were re-checked rather than carried forward; what changed is marked.
 
 **Re-running the audit:**
 
 ```bash
-curl -s http://localhost:8080/v1/tools
+curl -s https://sparksocial-api.onrender.com/v1/tools
 ```
 
-…compared against the tool names in `MASTER_BUILD_PLAN.md` (lines ~191–245), then each
-apparent gap confirmed by reading the source. Most name-level mismatches are deliberate
-consolidations documented in `STATUS.md`, not missing capabilities.
+Diff that against the names declared in source — `grep -rhoE "name: '[a-z_]+\.[a-z_.]+'"
+packages/*/src/*.ts` — and anything defined but not live is gated on a missing key in
+`apps/api/src/tools.ts`. On 17 Oct that diff was **one** tool. Then confirm each apparent
+gap by reading the source: most name-level mismatches are deliberate consolidations
+documented in `STATUS.md`, not missing capabilities.
+
+Two things that look like evidence and are not:
+
+- **A disabled control's tooltip is not a gap report.** `PlanQueue`'s "Send now" said *"No
+  publish-now tool exists"* for weeks. `publish.now` exists and the scheduler calls it on
+  every post; the comment had searched for `content.publish_now` and reasoned from its
+  absence. Check the registry, not the prose.
+- **`STATUS.md` and this file go stale fast.** Both sat untouched from late August while the
+  product moved. If the dates at the top are old, measure before you believe.
 
 ## Where the work stands
 
@@ -72,7 +81,10 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       deliberately has no web surface: the loop *is* WhatsApp, and a page in the middle would
       defeat it.
 - [ ] **The agency portal's three capabilities (§8.13)** — website wizard, lead/job finder,
-      trainings. §8.13 names them and then says their outputs are *"defined by separate PRD if
+      trainings. Concretely, as of 17 Oct: no tool writes an agency identity or brand theme,
+      no domain can be bound (`whitelabel.link.create` exists, domain binding does not), and
+      no job source is connected. "Find Clients" is **deliberately** inert — it is prospecting
+      by harvesting, and that was a decision, not an omission. §8.13 names them and then says their outputs are *"defined by separate PRD if
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a
       decision rather than on time, and the decision is yours.**
@@ -85,8 +97,15 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
 - [ ] **Clerk dashboard config** — six custom org roles and the OAuth providers.
       Dashboard-only, no code path. `team.invite` / `team.role.set` make real Clerk calls that
       have deliberately never been fired at a real recipient.
-- [ ] **Azure Blob storage** — code-ready, unprovisioned; local disk stands in. Per CLAUDE.md
-      the sandbox cannot reach Azure, so this runs from a developer machine.
+- [x] **Object storage — resolved 13–17 Oct.** Azure Blob is no longer the target; staging
+      runs on Cloudflare R2 (`packages/storage/src/r2.ts`), provisioned and writing. Getting
+      there turned up four separate faults worth remembering, because each masked the next and
+      three of them presented as the same browser error: a doubled endpoint domain, the bucket
+      addressed as a subdomain (which Chrome reports as an SSL error), a missing bucket CORS
+      policy, and finally a signed `if-none-match` the browser never sent. **R2 error
+      responses carry no `Access-Control-Allow-Origin`, so every one of them reaches the
+      console as "blocked by CORS policy".** Trust `scripts/check-r2.mjs` over the browser: it
+      is not subject to CORS and separates credentials from configuration in one command.
 - [ ] **Compliance vertical decision, and pricing from real cost data.** Which verticals
       (health, finance, legal) to support and how strictly — `genome.compliance.classify` exists
       and is the thing that decision configures. And `tool_calls.cost_cents` carries real
@@ -111,6 +130,36 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       script against dev Postgres can validate correctness under concurrency (idempotency and
       budget races) but cannot produce capacity numbers.
 - [ ] **Incident runbooks** — not started.
+
+## Found by the 17 Oct audit — small, real, and nobody's blocker
+
+Each verified against the registry, not inferred from a comment.
+
+- [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
+      both disable it. Removing a planned post is a thing the PRD's calendar flows assume
+      (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
+      `asset.archive`, `recipe.delete` — show the shape it should take.
+- [ ] **No `content.publish_now`.** "Send now" is disabled, and the real obstacle is narrow:
+      `publish.now` wants the finished caption, the queue row has beats, and assembling one is
+      `scheduler.ts`'s `writtenText` — a domain decision about what actually gets published.
+      Doing it in the browser would put a second copy of that rule where it can drift from the
+      scheduler's, so the same post could go out differently depending on which sent it. A
+      thin tool that assembles server-side and delegates is the fix.
+- [ ] **Nothing proposes a brand palette from a crawl.** The brand kit's "generated preset"
+      control is inert. `genome.bootstrap_from_url` already reads the site; extracting a
+      palette from it is the missing half.
+- [ ] **`analytics.sync` is the only tool not live** — gated on `AYRSHARE_API_KEY`. Until it
+      is set, every performance surface shows its empty state truthfully and the learning loop
+      has no outcomes to learn from. This is the key with the widest blast radius.
+- [ ] **Sora Cameo** has no public API to build against. The onboarding control is drawn,
+      disabled and says so. Listed here because it is the one disabled control in onboarding
+      that is *not* going to be fixed by writing code.
+- [ ] **Clerk is on development keys against a public domain.** Dev instances authenticate via
+      a `__clerk_db_jwt` dev-browser cookie rather than a first-party session, which browsers
+      increasingly restrict — the visible signature is page navigations working while `fetch`
+      calls to `/api/*` intermittently 404 (`__clerk_hs_reason=dev-browser-missing`). A
+      production instance with the deployed domain registered is the fix, and it should land
+      before design partners touch staging.
 
 ## Verification owed
 

@@ -555,10 +555,28 @@ export function PlanQueue({
 
                   `approval.decide` is keyed on a held **callId**, not a content
                   item - approving is the review list's job - and there is no
-                  `content.publish_now` or `content.delete` in the registry at
-                  all. So whichever one shows is drawn disabled and says what is
-                  missing, and preview opens the draft panel, which is a real
-                  route to everything the other two would do.
+                  `content.delete` in the registry at all.
+
+                  "Send now" is a different case, and this comment used to get it
+                  wrong: it looked for `content.publish_now`, found nothing, and
+                  concluded no such capability existed. `publish.now` does exist
+                  and is exactly this operation — the publish scheduler calls it
+                  on every post that goes out.
+
+                  What is missing is smaller and real. `publish.now` takes the
+                  finished `text`, and this row has beats, not a caption;
+                  assembling one is `scheduler.ts`'s `writtenText`, a domain
+                  decision about what actually gets published. Doing it here
+                  would put a second copy of that rule in the browser, free to
+                  drift from the one the scheduler uses — so a post sent from
+                  this button could differ from the same post sent by the clock.
+                  The right fix is a thin `content.publish_now { contentItemId,
+                  genomeId }` that assembles server-side and delegates, which is
+                  what invariant 1 asks for anyway.
+
+                  So the button stays disabled and now says the true reason, and
+                  preview opens the draft panel, which is a real route to
+                  everything the other two would do.
                 */}
                 {/*
                   Right-anchored, not pinned at x=985/1032/1079.
@@ -588,7 +606,7 @@ export function PlanQueue({
                   <RowAction
                     disabled
                                         label="Send now"
-                    title="No publish-now tool exists - a post goes out on its scheduled slot."
+                    title="Publishing early needs a tool that assembles the caption server-side; for now a post goes out on its scheduled slot."
                     style={{ background: '#9CEFFF', opacity: 0.45 }}
                   >
                     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>

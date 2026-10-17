@@ -129,21 +129,35 @@ in front of video for delivery reasons, not cost ones.
 - **Never** commit tokens, PATs, or connection strings. R2 keys and every other secret live
   in the env group; `apps/api/.env` is gitignored for local work.
 
-## Scope for the Aug 29 alpha — "Design Partner Alpha", not GA
+## Scope — what is built (audited 17 October 2026)
 
-The binding constraint is **platform approvals, not code** (plan §8). LinkedIn is
-weeks-to-months and will not clear by Aug 29.
+The binding constraint remains **platform approvals, not code** (plan §8), and it is now the
+*only* one of consequence: the adapters are written and waiting on paperwork.
 
-**In:** tool layer + SPARK runtime (P1), genome + five-question onboarding, Asset Graph with
-retrieval, ~15 playbooks with resolver + mix engine, the Assemble pipeline end-to-end, the
-Direct+Finish capture loop over WhatsApp, and **aggregator publishing** (Ayrshare/Blotato
-class) behind the `PlatformAdapter` interface.
+**This section used to say P4–P6 were out of scope** — trend discovery, automation recipes,
+engagement intelligence, the learning loop, agency multi-tenancy. All five are built, and have
+been for some time. Anyone who read that line to decide what to work next on was misled by it,
+which is the only reason it is worth recording that it was wrong.
 
-**Out (P4–P6):** trend discovery, automation recipes, engagement intelligence, the learning
-loop, agency multi-tenancy. Native platform adapters land behind the aggregator as approvals
-clear.
+Measured against the registry and the deployed manifest, not from memory:
 
-Note this keeps the plan's "do not reorder P2" rule intact: the capture loop stays in scope.
+- **212 tools defined, 211 live.** Only `analytics.sync` is unregistered, gated on
+  `AYRSHARE_API_KEY`. Nothing else is held back by configuration.
+- **36 of 37 PRD flow IDs have code.** The three without their ID in a comment are built
+  anyway: `AUTH-04` is `/meet-spark`, `AGT-01` is `/agents`, `AUTO-03` is the
+  `bulk_connector` recipe kind.
+- **All 12 native publish adapters exist** — Instagram, Facebook, Threads, TikTok, LinkedIn,
+  X, YouTube, Pinterest, Reddit, Bluesky, Google Business — behind `PlatformAdapter`, with
+  the aggregator still in front.
+
+What is genuinely absent is in `docs/GAPS.md`, which is the file to keep current. The short
+version: no `content.delete`, no Sora Cameo (no public API), agency identity/theme generation
+and domain binding, palette-from-crawl, and analytics ingestion while Ayrshare is unset.
+
+**Verification owed:** this audit was structural — routes, registry, flow-ID references,
+inert-control markers. It did **not** diff each screen against its `.dc.html` at a matching
+viewport, which the frontend rules below require and which is the only check that catches
+fidelity drift rather than missing function.
 
 ## Frontend rules (`apps/web`)
 
