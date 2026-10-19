@@ -3,6 +3,7 @@ import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { ResolvedBeat, keepStructure } from './draft.js';
 import type { ImageClient } from './types.js';
+import { brandImageClause } from './brandContext.js';
 
 /**
  * `content.generate_image` — the second, deliberately separate half of
@@ -99,17 +100,54 @@ export function makeContentGenerateImage(image: ImageClient) {
         });
       }
 
-      const { url } = await image.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio });
+      /*
+       * The caller's prompt is the *subject*; the brand is added here.
+       *
+       * This tool used to pass `input.prompt` through untouched, and the Draft
+       * Panel's button sends the beat's bare copy — so a post image knew the
+       * sentence and nothing else, and the model supplied the rest: the wrong
+       * accent colour, a stock presenter for a brand with nobody on camera,
+       * and in one measured case an invented company called "LeadNova" with
+       * its own wordmark on the card.
+       *
+       * Read here rather than asked for, because a caller that had to pass the
+       * palette is a caller that can forget to — which is the bug.
+       */
+      const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+
+      const clause = brandImageClause({
+        name: genome?.identity?.business_name,
+        category: genome?.identity?.category,
+        oneLiner: genome?.identity?.one_liner,
+        colors: brand?.brandColors,
+        talent: genome?.dimensions?.talent_availability,
+      });
+
+      /*
+       * Subject first, brand second. The sentence being illustrated is what
+       * the picture is *of*; everything after it is constraint, and a model
+       * reading top-down should meet the subject before the rules about it.
+       */
+      const prompt = clause ? `${input.prompt}
+
+${clause}` : input.prompt;
+
+      const { url } = await image.generate({ prompt, aspectRatio: input.aspectRatio });
 
       const nextBeats = [...beats];
       // Attach or replace — see `attach` on the input.
       nextBeats[index] = input.attach
         ? { ...beats[index]!, backdrop: { kind: 'image', urls: [url] } }
-        : { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt: input.prompt };
+        : { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt };
 
       const why: Explanation = {
         summary: `Generated an image for "${input.beatId}".`,
-        factors: [{ label: 'prompt', detail: input.prompt }, { label: 'aspect ratio', detail: input.aspectRatio }],
+        factors: [
+          { label: 'subject', detail: input.prompt },
+          ...(clause ? [{ label: 'brand context', detail: clause }] : []),
+          { label: 'aspect ratio', detail: input.aspectRatio },
+        ],
         evidence: [],
         alternatives: [],
       };

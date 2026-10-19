@@ -37,3 +37,4 @@ export * from './agentIdentity.js';
 export * from './hashtags.js';
 export * from './timezones.js';
 export * from './audioPeaks.js';
+export * from './article.js';

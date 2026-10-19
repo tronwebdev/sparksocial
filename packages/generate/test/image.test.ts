@@ -9,13 +9,23 @@ const draftBeats = [
   { kind: 'asset' as const, beatId: 'proof', assetId: 'a1', role: 'social_proof' as const, caption: null },
 ];
 
+/**
+ * The genome and the brand are read by the handler now, so the fake store has
+ * to have them — in production `ScopedDb` always does. `brandId` is set for
+ * the same reason: without it the governance read is skipped and the palette
+ * never reaches the prompt, which is the bug under test.
+ */
 function ctx(over: {
   get?: ScopedDb['content']['get'];
   updateDraft?: ScopedDb['content']['updateDraft'];
+  genome?: unknown;
+  governance?: unknown;
+  brandId?: string | undefined;
 } = {}): ToolCtx {
   return {
     orgId: 'org_1',
     genomeId: 'gen_saas',
+    brandId: 'brandId' in over ? over.brandId : 'brand_1',
     role: 'owner',
     approvalMode: 'autopublish',
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
@@ -35,6 +45,24 @@ function ctx(over: {
             id: args.id, genomeId: args.genomeId, playbookId: 'pb_generated_quote_card', mode: 'synthesize',
             status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
           })),
+      },
+      genomes: {
+        get: async () =>
+          'genome' in over
+            ? over.genome
+            : {
+                genome_id: 'gen_saas',
+                identity: {
+                  business_name: 'Clientforce',
+                  category: 'B2B SaaS',
+                  one_liner: 'An AI revenue workforce you hire against an outcome.',
+                },
+                dimensions: { talent_availability: 'no' },
+              },
+      },
+      brands: {
+        get: async () =>
+          'governance' in over ? over.governance : { brandId: 'brand_1', name: 'Clientforce', brandColors: ['#0097FD'] },
       },
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -74,10 +102,20 @@ describe('content.generate_image', () => {
     );
 
     expect(res.url).toBe('https://fal.example/card.png');
-    expect(image.generate).toHaveBeenCalledWith({ prompt: 'a bold quote card', aspectRatio: '1:1' });
+    /* The subject leads; the brand clause follows it. Asserted as a prefix
+       rather than an exact match, because the clause is composed from the
+       genome and is covered on its own in `brandContext.test.ts`. */
+    expect(image.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: expect.stringMatching(/^a bold quote card/), aspectRatio: '1:1' }),
+    );
 
     const savedCopy = updateDraft.mock.calls[0]![0].copy as typeof draftBeats;
-    expect(savedCopy[0]).toEqual({ kind: 'generated_image', beatId: 'hook', url: 'https://fal.example/card.png', prompt: 'a bold quote card' });
+    /* The beat records the prompt that *made* the image, brand clause and all
+       — not the fragment the caller passed. Regenerating from a stored prompt
+       that was never the one used would quietly produce a different picture. */
+    expect(savedCopy[0]).toMatchObject({ kind: 'generated_image', beatId: 'hook', url: 'https://fal.example/card.png' });
+    expect((savedCopy[0] as unknown as { prompt: string }).prompt).toMatch(/^a bold quote card/);
+    expect((savedCopy[0] as unknown as { prompt: string }).prompt).toContain('Clientforce');
     expect(savedCopy[1]).toEqual(draftBeats[1]); // the asset beat is untouched
   });
 
@@ -113,11 +151,13 @@ describe('content.generate_image', () => {
       }),
     );
 
-    expect((updateDraft.mock.calls[0]![0].copy as unknown[])[0]).toEqual({
+    /* `prompt` is matched separately: it now carries the brand clause, and
+       what this test is about is the scene structure surviving the change of
+       kind. */
+    expect((updateDraft.mock.calls[0]![0].copy as unknown[])[0]).toMatchObject({
       kind: 'generated_image',
       beatId: 'hook',
       url: 'https://fal.example/card.png',
-      prompt: 'a bold quote card',
       durationSec: 7,
       label: 'Cover',
       voice: 'brand',
@@ -166,5 +206,91 @@ describe('content.generate_image', () => {
       ),
     ).rejects.toMatchObject({ code: 'UPSTREAM_FAILED' });
     expect(updateDraft).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The brand reaches the picture.
+ *
+ * Measured on the deployed site before this existed: the tool passed the
+ * caller's prompt to the vendor untouched, the Draft Panel's button sends the
+ * beat's bare copy, and the model filled the silence — purple instead of the
+ * brand's `#0097FD`, a stock presenter for a brand that had answered "no one
+ * is going on camera", and from a vaguer prompt an invented company called
+ * "LeadNova" with its own wordmark on the card.
+ */
+describe('the prompt that actually reaches the vendor', () => {
+  const sentPrompt = (img: ImageClient) =>
+    (img.generate as unknown as { mock: { calls: [{ prompt: string }][] } }).mock.calls[0]![0].prompt;
+
+  it('still leads with the caller’s subject', async () => {
+    const img = stubImage();
+    await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx(),
+    );
+    expect(sentPrompt(img).startsWith('a quote card')).toBe(true);
+  });
+
+  it('names the brand, so the model does not invent one', async () => {
+    const img = stubImage();
+    await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx(),
+    );
+    expect(sentPrompt(img)).toContain('Clientforce');
+    expect(sentPrompt(img)).toMatch(/do not invent or draw a logo/i);
+  });
+
+  it('carries the brand palette', async () => {
+    const img = stubImage();
+    await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx(),
+    );
+    expect(sentPrompt(img)).toContain('#0097FD');
+  });
+
+  it('forbids people when the brand said nobody is on camera', async () => {
+    const img = stubImage();
+    await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx(),
+    );
+    expect(sentPrompt(img)).toMatch(/no people/i);
+  });
+
+  it('allows people when the brand has somebody', async () => {
+    const img = stubImage();
+    await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx({ genome: { identity: { business_name: 'X' }, dimensions: { talent_availability: 'yes_licensed' } } }),
+    );
+    expect(sentPrompt(img)).not.toMatch(/no people/i);
+  });
+
+  /*
+   * A brand with no genome row must still get an image. The brand clause is an
+   * improvement to the prompt, not a precondition for having one.
+   */
+  it('still generates for a brand it knows nothing about', async () => {
+    const img = stubImage();
+    const out = await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx({ genome: undefined, governance: undefined, brandId: undefined }),
+    );
+    expect(out.url).toBe('https://fal.example/img.png');
+    expect(sentPrompt(img)).toContain('a quote card');
+  });
+
+  it('records the brand context in `why`, so the Why popover shows what was sent', async () => {
+    const img = stubImage();
+    const out = await makeContentGenerateImage(img).handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a quote card', aspectRatio: '1:1' },
+      ctx(),
+    );
+    const labels = out.why.factors.map((f) => f.label);
+    expect(labels).toContain('subject');
+    expect(labels).toContain('brand context');
   });
 });

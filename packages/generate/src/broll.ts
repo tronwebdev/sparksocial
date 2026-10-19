@@ -3,6 +3,7 @@ import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
 import { ResolvedBeat, keepStructure } from './draft.js';
 import type { VideoClient } from './types.js';
+import { brandImageClause } from './brandContext.js';
 
 /**
  * `content.generate_broll` — the video counterpart to `content.generate_image`.
@@ -126,7 +127,29 @@ export function makeContentGenerateBroll(video: VideoClient) {
         });
       }
 
-      const { url } = await video.generate({ prompt: input.prompt, aspectRatio: input.aspectRatio, durationSec: input.durationSec });
+      /*
+       * Same brand clause as `content.generate_image`, for the same reason.
+       *
+       * B-roll had the identical passthrough, and `autoIllustrate` picks
+       * between the two on `wantsVideo` alone — so without this, whether a
+       * post's imagery respected the brand's palette and its "nobody on
+       * camera" answer depended on whether the playbook happened to want a
+       * moving picture.
+       */
+      const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      const clause = brandImageClause({
+        name: genome?.identity?.business_name,
+        category: genome?.identity?.category,
+        oneLiner: genome?.identity?.one_liner,
+        colors: brand?.brandColors,
+        talent: genome?.dimensions?.talent_availability,
+      });
+      const prompt = clause ? `${input.prompt}
+
+${clause}` : input.prompt;
+
+      const { url } = await video.generate({ prompt, aspectRatio: input.aspectRatio, durationSec: input.durationSec });
 
       const nextBeats = [...beats];
       /*
@@ -144,7 +167,7 @@ export function makeContentGenerateBroll(video: VideoClient) {
               urls: [...(beats[index]!.backdrop?.kind === 'video' ? beats[index]!.backdrop!.urls : []), url],
             },
           }
-        : { ...keepStructure(beats[index]!), kind: 'generated_broll', beatId: input.beatId, url, prompt: input.prompt };
+        : { ...keepStructure(beats[index]!), kind: 'generated_broll', beatId: input.beatId, url, prompt };
 
       const why: Explanation = {
         summary: `Generated a ${input.durationSec}s b-roll clip for "${input.beatId}".`,

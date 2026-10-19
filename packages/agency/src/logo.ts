@@ -53,23 +53,17 @@ export const BrandLogoGenerateOutput = z.object({
   why: Explanation,
 });
 
-/**
- * "an AI agency", not "a AI agency".
+/*
+ * `article` moved to `@sparksocial/shared`.
  *
- * The category is free text from the genome, so it is as likely to start with a
- * vowel as not, and the article was hardcoded to "a". It appeared in every logo
- * prompt for every vowel-initial niche — "a AI agency", "a esthetician", "a
- * optician" — which is small, and is the sort of small that makes a product
- * read as machine-written.
- *
- * Letters, not phonetics: "an hour" and "a university" are the exceptions this
- * deliberately gets wrong rather than shipping a pronunciation dictionary for
- * one word in one prompt. The common case is a category like "AI agency" or
- * "accounting firm", and those it gets right.
+ * `content.generate_image`'s brand clause needs the same "an AI agency, not a
+ * AI agency" rule, and `packages/generate` importing from `packages/agency`
+ * would invert the build order in CLAUDE.md. Re-exported rather than moved
+ * silently, because this file's own prompt reads better with the name in
+ * scope and other callers already import it from here.
  */
-export function article(noun: string): string {
-  return /^[aeiou]/i.test(noun.trim()) ? 'an' : 'a';
-}
+import { article } from '@sparksocial/shared';
+export { article };
 
 export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: string) => Promise<number[]>) {
   return defineTool({

@@ -15,6 +15,7 @@ function ctx(over: {
 } = {}): ToolCtx {
   return {
     orgId: 'org_1',
+    brandId: 'brand_1',
     genomeId: 'gen_saas',
     role: 'owner',
     approvalMode: 'autopublish',
@@ -36,6 +37,16 @@ function ctx(over: {
             status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
           })),
       },
+      /* The genome and brand are read for the brand clause, as in
+         `image.test.ts` — production's `ScopedDb` always has both. */
+      genomes: {
+        get: async () => ({
+          genome_id: 'gen_saas',
+          identity: { business_name: 'Clientforce', category: 'B2B SaaS', one_liner: 'An AI revenue workforce.' },
+          dimensions: { talent_availability: 'no' },
+        }),
+      },
+      brands: { get: async () => ({ brandId: 'brand_1', name: 'Clientforce', brandColors: ['#0097FD'] }) },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -80,10 +91,25 @@ describe('content.generate_broll', () => {
     );
 
     expect(res.url).toBe('https://fal.example/factory.mp4');
-    expect(video.generate).toHaveBeenCalledWith({ prompt: 'a factory floor at dawn', aspectRatio: '9:16', durationSec: 4 });
+    /* The subject leads and the brand clause follows, same as
+       `content.generate_image`; the clause itself is covered in
+       `brandContext.test.ts`. */
+    expect(video.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringMatching(/^a factory floor at dawn/),
+        aspectRatio: '9:16',
+        durationSec: 4,
+      }),
+    );
+    expect((video.generate as unknown as { mock: { calls: [{ prompt: string }][] } }).mock.calls[0]![0].prompt)
+      .toContain('Clientforce');
 
     const savedCopy = updateDraft.mock.calls[0]![0].copy as typeof draftBeats;
-    expect(savedCopy[0]).toEqual({ kind: 'generated_broll', beatId: 'hook', url: 'https://fal.example/factory.mp4', prompt: 'a factory floor at dawn' });
+    /* The beat stores the prompt that made the clip, brand clause included —
+       regenerating from a prompt that was never the one used would quietly
+       produce a different video. */
+    expect(savedCopy[0]).toMatchObject({ kind: 'generated_broll', beatId: 'hook', url: 'https://fal.example/factory.mp4' });
+    expect((savedCopy[0] as unknown as { prompt: string }).prompt).toMatch(/^a factory floor at dawn/);
     expect(savedCopy[1]).toEqual(draftBeats[1]); // the asset beat is untouched
   });
 
