@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AssetUploadUrlInput } from '../src/upload.js';
+import { AssetUploadUrlInput, makeAssetUploadUrl } from '../src/upload.js';
 
 /**
  * `asset.upload_url`'s content-type allowlist.
@@ -69,5 +69,70 @@ describe('asset.upload_url content types', () => {
       'application/zip;codecs=none']) {
       expect(AssetUploadUrlInput.safeParse({ ...base, contentType }).success).toBe(false);
     }
+  });
+});
+
+/**
+ * The signed content type has to reach the client.
+ *
+ * Normalising `audio/webm;codecs=opus` down to `audio/webm` fixed the input
+ * schema and created a worse bug one layer down: S3 and R2 sign `content-type`
+ * into the presigned URL, so a browser echoing its own unnormalised string
+ * gets `SignatureDoesNotMatch`. That is a 403 carrying no CORS headers, which
+ * a browser reports as a CORS error next to a drop zone — the exact failure
+ * this repo already spent a day on once.
+ *
+ * So the tool hands back the type it signed, and `uploadToStorage` spreads the
+ * returned headers *after* the caller's own so this one wins.
+ */
+describe('asset.upload_url returns the type it signed', () => {
+  const store = {
+    presignUpload: async ({ key, contentType }: { key: string; contentType: string }) => ({
+      uploadUrl: `https://bucket.test/${key}?sig`,
+      readUrl: `https://bucket.test/${key}`,
+      key,
+      expiresAt: new Date('2026-10-19T12:00:00Z'),
+      requiredHeaders: { 'if-none-match': '*' },
+      signedContentType: contentType,
+    }),
+  };
+
+  const ctx = {
+    orgId: 'org_1',
+    genomeId: 'gen_1',
+    role: 'owner',
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+    trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
+  } as unknown as Parameters<ReturnType<typeof makeAssetUploadUrl>['handler']>[1];
+
+  /*
+   * Parsed through the schema first, because that is what production does:
+   * `invoke.ts:208` runs `tool.input.parse(req.input)` and hands the handler
+   * the result. Calling `handler` with a raw object skips the normalisation
+   * and tests a path no caller takes — which is how the first version of this
+   * test "failed" against correct code.
+   */
+  it('tells the client to send the normalised type, not the one it offered', async () => {
+    const tool = makeAssetUploadUrl(store as never);
+    const input = AssetUploadUrlInput.parse({
+      genomeId: 'gen_1',
+      filename: 'recording.webm',
+      contentType: 'audio/webm;codecs=opus',
+      sizeBytes: 2048,
+    });
+    const out = await tool.handler(input, ctx);
+
+    expect(out.headers['content-type']).toBe('audio/webm');
+  });
+
+  it('still passes through the store’s own required headers', async () => {
+    const tool = makeAssetUploadUrl(store as never);
+    const out = await tool.handler(
+      { genomeId: 'gen_1', filename: 'a.png', contentType: 'image/png', sizeBytes: 10 },
+      ctx,
+    );
+
+    expect(out.headers['if-none-match']).toBe('*');
+    expect(out.headers['content-type']).toBe('image/png');
   });
 });

@@ -156,7 +156,25 @@ export function makeAssetUploadUrl(store: BlobStore) {
         readUrl: presigned.readUrl,
         key: presigned.key,
         expiresAt: presigned.expiresAt.toISOString(),
-        headers: presigned.requiredHeaders,
+        headers: {
+          /*
+           * The content type the URL was *signed* for, handed back so the
+           * client sends exactly that.
+           *
+           * `input.contentType` has been through `baseMediaType`, so a
+           * recorder's `audio/webm;codecs=opus` is signed as `audio/webm`.
+           * S3 and R2 include `content-type` in the signature, so a client
+           * echoing its own unnormalised string would be refused with
+           * `SignatureDoesNotMatch` — a 403 with no CORS headers on it, which
+           * presents in a browser as a CORS failure beside a drop zone.
+           *
+           * Normalising the input without telling the client would have moved
+           * that failure later and made it look like something else. The
+           * store's own headers still win, which is why they are spread last.
+           */
+          'content-type': input.contentType,
+          ...presigned.requiredHeaders,
+        },
       };
     },
   });
