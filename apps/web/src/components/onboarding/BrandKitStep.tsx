@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
   guardrailSuggestions,
-  BrandColorPicker,
 } from './kit';
 import { ProtoScale } from './Stage';
+import { TimezoneField } from '@/components/common/TimezoneField';
 import { invoke } from '@/lib/tools';
 
 /**
@@ -75,27 +75,6 @@ const VOICE_PRESETS: ReadonlyArray<{
   },
 ];
 
-/** The same short list the Brand Kit panel offers, for the same reason: 600 zones is not a select. */
-const ZONES = [
-  'Europe/London',
-  'Europe/Dublin',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Africa/Lagos',
-  'Africa/Johannesburg',
-  'Africa/Nairobi',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Sao_Paulo',
-  'Asia/Dubai',
-  'Asia/Kolkata',
-  'Asia/Singapore',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-  'UTC',
-];
 
 
 interface Governance {
@@ -108,7 +87,22 @@ interface Governance {
   claimsToAvoid: string[];
 }
 
-export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Promise<boolean>) => void } = {}) {
+export function BrandKitStep({
+  registerSave,
+  crawledKit,
+}: {
+  registerSave?: (save: () => Promise<boolean>) => void;
+  /**
+   * What the crawl read off the site, when there was a crawl.
+   *
+   * `genome.bootstrap_from_url` already wrote these into governance, so the
+   * values below would show them either way — this says where they came
+   * from, which is the difference between the step's own promise ("generated
+   * from your URL") and a palette the owner picked by hand on the step
+   * before.
+   */
+  crawledKit?: { colors: string[]; fonts?: { display?: string; body?: string }; logoUrl?: string };
+} = {}) {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
   const [fonts, setFonts] = useState<{ display?: string; body?: string }>({});
@@ -221,15 +215,42 @@ export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Pro
   const removeFrom = (current: string, value: string) =>
     splitList(current).filter((v) => v !== value).join(', ');
 
-  const countries = [...new Set(ZONES.map((z) => z.split('/')[0]))];
   /*
-   * A zone with no slash — `UTC` — is its own region.
+   * The preset, and what it replaced.
    *
-   * This fell through to `countries[0]`, so a brand already set to UTC opened
-   * this screen showing its country as "Africa" and the matching zone list,
-   * misreporting a setting the owner had chosen.
+   * `ownKit` remembers the colours and fonts as this screen first found them,
+   * so turning the toggle off has something to go back to. It is captured on
+   * load rather than on first toggle: by the time anyone can press it the
+   * crawl's values are already in governance, so "before" has to mean "before
+   * this screen opened", not "before the press".
    */
-  const region = timezone.includes('/') ? timezone.split('/')[0] : (ZONES.includes(timezone) ? timezone : countries[0]);
+  const hasPreset = Boolean(crawledKit && (crawledKit.colors.length > 0 || crawledKit.fonts));
+  const ownKit = useRef<{ colors: string[]; fonts: { display?: string; body?: string } } | null>(null);
+  const [usingPreset, setUsingPreset] = useState(false);
+
+  function applyPreset(next: boolean) {
+    if (!crawledKit) return;
+    if (next) {
+      ownKit.current = { colors, fonts };
+      if (crawledKit.colors.length > 0) setColors(crawledKit.colors);
+      if (crawledKit.fonts) setFonts(crawledKit.fonts);
+    } else if (ownKit.current) {
+      setColors(ownKit.current.colors);
+      setFonts(ownKit.current.fonts);
+    }
+    setUsingPreset(next);
+    /*
+     * No `save()` here on purpose.
+     *
+     * `save` closes over `colors` and `fonts` from the current render, so
+     * calling it in the same handler as `setColors` would persist the palette
+     * this press just replaced — the previous one — and the screen would then
+     * show one thing and have stored another. Every other control in this
+     * block behaves the same way: the container saves on blur and `Continue`
+     * flushes through `registerSave`, both of which run on a later render
+     * where the new values are the ones in scope.
+     */
+  }
 
   /*
     `…193155` at the prototype's own numbers: two 432-wide columns 27px apart,
@@ -245,18 +266,29 @@ export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Pro
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
           <span style={{ fontSize: 18, color: '#0C0C0C' }}>This is your brand kit generated from your URL</span>
           {/*
-            Drawn in both sources, inert in both senses: nothing generates a
-            palette from a crawl, so there is no preset to switch to. Kept
-            visible because hiding it would hide a real gap.
+            The toggle used to be permanently off and disabled, because
+            nothing proposed a palette from a crawl. `crawl.ts` now reads the
+            site's own custom properties, button fills, fonts and logo, and
+            `genome.bootstrap_from_url` writes them into governance.
+
+            So the control is live — and it only switches *back*. Turning it
+            off restores whatever the owner had chosen before the crawl
+            proposed anything, which is the only second state that honestly
+            exists: the preset is already applied by the time this screen
+            opens.
           */}
           <span style={{ display: 'flex', alignItems: 'center', gap: 14, height: 57, padding: '0 20px', borderRadius: 10, background: '#FFFFFF' }}>
             <span style={{ fontSize: 18, fontWeight: 500, color: '#0C0C0C' }}>Use This Brand Preset</span>
             <Toggle
-              checked={false}
-              disabled
-              onChange={() => {}}
+              checked={usingPreset}
+              disabled={!hasPreset}
+              onChange={applyPreset}
               label="Use this brand preset"
-              title="No generated preset exists — nothing proposes a palette from a crawl."
+              title={
+                hasPreset
+                  ? 'Switch between the colours and fonts read from your site and your own.'
+                  : 'We could not read a palette or fonts from your site, so there is no preset to switch to.'
+              }
             />
           </span>
         </div>
@@ -264,10 +296,33 @@ export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Pro
         <div style={{ display: 'grid', gridTemplateColumns: '432px 432px', columnGap: 27, rowGap: 38 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             <SectionLabel>Color Theme</SectionLabel>
-            {/* The same control the Brand Details step offers beside the logo —
-                see `BrandColorPicker`. Whichever is used first, this one opens
-                on what governance already holds. */}
-            <BrandColorPicker colors={colors} onChange={setColors} />
+            {/*
+              Shown, not edited.
+              
+              This was a second `BrandColorPicker`, bound to the same
+              `brandColors` field as the one on the Brand Details step — the
+              same control, twice, two screens apart, with no way to tell
+              which one you had already used. The palette is chosen there,
+              beside the logo that is generated from it; here it is the kit
+              being confirmed.
+            */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 12, width: 432, height: 132, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)', padding: '0 20px', flexWrap: 'wrap' }}
+            >
+              {colors.length === 0 ? (
+                <span style={{ fontSize: 17, color: '#838383' }}>No colours chosen yet.</span>
+              ) : (
+                colors.map((hex) => (
+                  <span key={hex} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      aria-hidden
+                      style={{ width: 34, height: 34, borderRadius: 9, background: hex, boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.12)' }}
+                    />
+                    <span style={{ fontSize: 15, color: '#5B5B5B' }}>{hex}</span>
+                  </span>
+                ))
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -334,44 +389,21 @@ export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Pro
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             <SectionLabel weight={700}>Pick a timezone</SectionLabel>
             <div style={{ position: 'relative', width: 432, height: 123, borderRadius: 10, background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }}>
-              <span style={{ position: 'absolute', left: 23, top: 17, fontSize: 18, color: '#838383' }}>Country</span>
-              <div style={{ position: 'absolute', left: 20, top: 55 }}>
-                <SmallSelect
-                  ariaLabel="Country"
-                  value={region ?? ''}
-                  /*
-                   * `UTC` is a zone, not a region — it is the one entry in
-                   * `ZONES` with no slash in it.
-                   *
-                   * Picking it searched for a zone starting `UTC/`, found none,
-                   * and fell back to the previous timezone. The select bounced
-                   * straight back to whatever was chosen before, and the
-                   * Timezone list beside it stayed empty, so the option was
-                   * visibly offered and quietly unselectable.
-                   */
-                  onChange={(r: string) =>
-                    setTimezone(r.includes('/') || !ZONES.includes(r) ? (ZONES.find((z) => z.startsWith(`${r}/`)) ?? timezone) : r)
-                  }
-                  options={countries.map((c) => ({ value: c as string, label: c as string }))}
-                />
-              </div>
+              {/*
+                The design labels this pair "Country / Timezone". It says
+                "Region" because the left select has only ever offered IANA
+                region prefixes — Europe, Africa, America — and calling that a
+                country is why the control read as broken: you cannot find
+                Nigeria in a list whose entries are continents. A real country
+                list is a dataset rather than a computation; see
+                `packages/shared/src/timezones.ts`.
+              */}
+              <span style={{ position: 'absolute', left: 23, top: 17, fontSize: 18, color: '#838383' }}>Region</span>
               <span style={{ position: 'absolute', left: 226, top: 17, fontSize: 18, color: '#838383' }}>Timezone</span>
-              <div style={{ position: 'absolute', left: 223, top: 55 }}>
-                {/* Only `timezone` reaches the tool: Country filters this list and
-                    is not stored, since an IANA zone already implies its region. */}
-                <SmallSelect
-                  ariaLabel="Timezone"
-                  value={timezone}
-                  placeholder="Select"
-                  onChange={setTimezone}
-                  /* A region with no sub-zones is itself the only choice — `UTC`
-                     has no `UTC/...` entries, so it lists itself rather than nothing. */
-                  options={
-                    ZONES.some((z) => z.startsWith(`${region}/`))
-                      ? ZONES.filter((z) => z.startsWith(`${region}/`)).map((z) => ({ value: z, label: z.split('/').slice(1).join('/') }))
-                      : ZONES.filter((z) => z === region).map((z) => ({ value: z, label: z }))
-                  }
-                />
+              {/* Only `timezone` reaches the tool: Region filters this list and
+                  is not stored, since an IANA zone already implies its region. */}
+              <div style={{ position: 'absolute', left: 20, top: 55, display: 'flex', gap: 13 }}>
+                <TimezoneField value={timezone} onChange={setTimezone} Select={SmallSelect} />
               </div>
             </div>
           </div>

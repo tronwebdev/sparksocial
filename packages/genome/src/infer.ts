@@ -10,6 +10,7 @@ import {
   type GenomeDimensions,
 } from '@sparksocial/shared/types';
 import { renderUntrustedCorpus } from '@sparksocial/shared/untrustedRender';
+import { ShapeMismatch, withShapeRetry } from '@sparksocial/shared/shapeRetry';
 import type { Logger } from '@sparksocial/tools/defineTool';
 
 /**
@@ -133,21 +134,57 @@ export async function inferGenome(
     throw new ToolError('UPSTREAM_FAILED', `Nothing readable at ${args.sourceUrl}.`, { url: args.sourceUrl });
   }
 
-  const raw = await client.infer({
-    prompt: buildPrompt(args.corpus, args.sourceUrl),
-    sourceUrl: args.sourceUrl,
-  });
+  /**
+   * The call and the *content* check, together, so a bad draw gets a retry.
+   *
+   * `anthropicInferenceClient` already wraps itself in `withShapeRetry`, but
+   * what it validates is only that a `tool_use` block came back at all — it
+   * returns `block.input` unread. The schema check that matters is this one,
+   * and it sat outside every retry: one malformed answer ended the crawl.
+   *
+   * Observed on clientforce.io, where the model returned its own tool-call
+   * markup as a string — `identity: "
+<parameter name=\"businessName\">…"`
+   * with the remaining fields hoisted to the top level. Exactly the coin-flip
+   * `shapeRetry.ts` was written for, and exactly the sort the header comment
+   * there already claims "the crawl interpreter" is covered against.
+   *
+   * The nesting is real — four vendor calls in the worst case — and bounded.
+   * The two layers catch disjoint failures (no block at all; a block whose
+   * contents are wrong), and collapsing them would mean this module importing
+   * the client's loop or the client importing this module's schema, the
+   * separation the `SCHEMA` comment in `inference-client.ts` argues for.
+   */
+  const { identity, dimensions, voice, chips } = await withShapeRetry(async () => {
+    const raw = await client.infer({
+      prompt: buildPrompt(args.corpus, args.sourceUrl),
+      sourceUrl: args.sourceUrl,
+    });
 
-  const parsed = InferenceResponse.safeParse(raw);
-  if (!parsed.success) {
+    const parsed = InferenceResponse.safeParse(raw);
+    if (parsed.success) return parsed.data;
+
+    /*
+     * Logged as well as thrown. `app.ts` serialises only `code` and `message`,
+     * so `issues` never reaches the browser — which left this failure with
+     * no diagnosable trace anywhere, in either the UI or the logs. The field
+     * paths are ours; the offending values are not logged, because they are
+     * model output derived from an untrusted page.
+     */
+    args.logger.warn('inference shape rejected', {
+      url: args.sourceUrl,
+      paths: parsed.error.issues.slice(0, 8).map((i) => i.path.join('.') || '(root)'),
+      codes: [...new Set(parsed.error.issues.map((i) => i.code))],
+    });
+
     // A malformed inference is an upstream failure, not a genome. Persisting a
     // half-parsed one would seed every downstream decision from garbage.
-    throw new ToolError('UPSTREAM_FAILED', 'The inference pass returned an unusable shape.', {
-      issues: parsed.error.issues.slice(0, 5),
-    });
-  }
-
-  const { identity, dimensions, voice, chips } = parsed.data;
+    throw new ShapeMismatch(
+      new ToolError('UPSTREAM_FAILED', 'The inference pass returned an unusable shape.', {
+        issues: parsed.error.issues.slice(0, 5),
+      }),
+    );
+  });
 
   // Drop low-confidence chips into `unresolved` rather than keeping them. A
   // wrong confident chip costs more trust than an honest question, and the

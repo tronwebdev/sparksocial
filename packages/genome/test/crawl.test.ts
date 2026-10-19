@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admit, crawlerUserAgent, dedupeChrome, screen } from '../src/crawl.js';
+import { admit, crawlerUserAgent, dedupeChrome, screen, textFloorFor } from '../src/crawl.js';
 import { explainCrawlFailure } from '../src/bootstrap.js';
 
 /**
@@ -329,5 +329,50 @@ describe('crawlerUserAgent — what the site sees', () => {
 
   it('still names SparkSocialBot at the end, so an owner can allowlist us', () => {
     expect(ua).toMatch(/ SparkSocialBot\/1\.0 \(\+https:\/\/sparksocial\.ai\/bot\)$/);
+  });
+});
+
+describe('textFloorFor — an error page is not content', () => {
+  /*
+   * The measurement that set the number. clientforce.io answers the crawler
+   * with an nginx 403 whose entire visible body is
+   *
+   *     "403 - Forbidden bg_error_lines circle_dots 403 - Forbidden
+   *      Access to this page is forbidden. clouds_shape"
+   *
+   * — 105 characters, twenty-five over the ordinary 80-character floor. It was
+   * therefore counted as a crawled page, which discarded the `blocked` failure
+   * (only reported when nothing was crawled at all) and sent "Forbidden" to the
+   * inference pass as though it were a business's website.
+   */
+  const NGINX_403_BODY_LENGTH = 105;
+
+  it('refuses the 105-character error page that caused this', () => {
+    expect(NGINX_403_BODY_LENGTH).toBeLessThan(textFloorFor(403));
+  });
+
+  it('keeps the ordinary bar for a page served 200', () => {
+    expect(textFloorFor(200)).toBe(80);
+    expect(NGINX_403_BODY_LENGTH).toBeGreaterThan(textFloorFor(200));
+  });
+
+  it('applies to every status that means "we were refused or it broke"', () => {
+    for (const status of [401, 403, 429, 500, 503]) {
+      expect(textFloorFor(status)).toBeGreaterThan(textFloorFor(200));
+    }
+  });
+
+  /*
+   * Deliberately still possible. Some sites serve a real page under a 403 or a
+   * 404, which is why a failure status does not disqualify a page outright —
+   * it only has to be substantial before it is believed.
+   */
+  it('still admits a substantial page served under a failure status', () => {
+    const realPageUnder403 = 4_000;
+    expect(realPageUnder403).toBeGreaterThan(textFloorFor(403));
+  });
+
+  it('treats an unreachable page (no status) as a failure too', () => {
+    expect(textFloorFor(undefined)).toBeGreaterThan(textFloorFor(200));
   });
 });

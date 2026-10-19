@@ -57,13 +57,39 @@ const ALLOWED_CONTENT_TYPES = [
   'audio/mpeg',
   'audio/mp4',
   'audio/wav',
+  /*
+   * `audio/webm` was missing while `video/webm` was present, which made the
+   * "Tap to Record" control in onboarding impossible to use: `MediaRecorder`
+   * in Chrome and Firefox produces WebM/Opus and nothing else, so every
+   * recording was refused at the input schema before a byte was uploaded.
+   * `audio/ogg` for the same reason — it is Firefox's other default.
+   */
+  'audio/webm',
+  'audio/ogg',
   'application/pdf',
 ] as const;
+
+/**
+ * Strip the parameters off a media type before it is matched against the list.
+ *
+ * `MediaRecorder` reports its output as `audio/webm;codecs=opus`, never bare
+ * `audio/webm` — the codec parameter is part of RFC 2045 and a perfectly
+ * well-formed media type, and `z.enum` compares strings. So the recorder hit
+ * `Invalid enum value … received 'audio/webm;codecs=opus'` even once
+ * `audio/webm` was on the list, which is a confusing way to be told "no": the
+ * type the browser named *is* the type we accept.
+ *
+ * Normalising rather than widening the enum keeps one spelling in storage. The
+ * codec is a property of the bytes and the bytes are unchanged by dropping it
+ * from the label.
+ */
+const baseMediaType = (value: unknown): unknown =>
+  typeof value === 'string' ? value.split(';')[0]!.trim().toLowerCase() : value;
 
 export const AssetUploadUrlInput = z.object({
   genomeId: z.string(),
   filename: z.string().min(1).max(255),
-  contentType: z.enum(ALLOWED_CONTENT_TYPES),
+  contentType: z.preprocess(baseMediaType, z.enum(ALLOWED_CONTENT_TYPES)),
   sizeBytes: z.number().int().positive().max(MAX_BYTES),
 });
 

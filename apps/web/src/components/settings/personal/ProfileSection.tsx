@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { SettingsSaveBar } from '../SettingsShell';
 import { PersonalField, PersonalSelect } from './fields';
+import { guessTimezone, zonesIncluding } from '@sparksocial/shared';
 
 /**
  * `Settings PS Profile`.
@@ -208,20 +209,14 @@ export function ProfileSection() {
                 value={form.timezone ?? ''}
                 onChange={(v) => set({ timezone: v })}
                 aria-label="Timezone"
-                options={Array.from(
-                  new Set([
-                    form.timezone ?? '',
-                    Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    'UTC',
-                    'America/Los_Angeles',
-                    'America/New_York',
-                    'Europe/London',
-                    'Europe/Berlin',
-                    'Africa/Lagos',
-                    'Asia/Singapore',
-                    'Australia/Sydney',
-                  ]),
-                ).filter(Boolean)}
+                /*
+                 * Every zone, not the seven that happened to be listed here.
+                 * `zonesIncluding` keeps whatever the person already has
+                 * selectable even when it is an `Etc/*` alias that
+                 * `supportedValuesOf` omits — which is what the old
+                 * `resolvedOptions()` entry in this list was reaching for.
+                 */
+                options={zonesIncluding(form.timezone || guessTimezone())}
               />
             </PersonalField>
             <PersonalField label="Pronouns" className="min-w-[240px] flex-1">

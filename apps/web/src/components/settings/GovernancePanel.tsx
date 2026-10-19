@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { BrandFontPicker } from './BrandFontPicker';
 import { KitSection, KitRow } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
+import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@sparksocial/shared';
 
 /**
  * Palette presets.
@@ -60,35 +61,6 @@ const TONE_AXES = [
   { key: 'bold', label: 'Bold', low: 'Measured', high: 'Bold' },
 ] as const;
 
-/**
- * A short list of zones, plus whatever the brand already has.
- *
- * Not the full IANA set — that is ~600 entries and a `<select>` of 600 is worse
- * than a text field. The tool validates against the runtime's real zone
- * database, so a brand outside this list is set once via the API and then round
- * -trips correctly here (the current value is always an option, below).
- */
-const COMMON_ZONES = [
-  'UTC',
-  'Europe/London',
-  'Europe/Dublin',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Lisbon',
-  'Africa/Lagos',
-  'Africa/Johannesburg',
-  'Africa/Nairobi',
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Sao_Paulo',
-  'Asia/Dubai',
-  'Asia/Kolkata',
-  'Asia/Singapore',
-  'Asia/Tokyo',
-  'Australia/Sydney',
-];
 
 interface Governance {
   brandId: string;
@@ -321,7 +293,19 @@ export function GovernancePanel() {
     });
   }
 
-  const zoneOptions = COMMON_ZONES.includes(timezone) ? COMMON_ZONES : [timezone, ...COMMON_ZONES];
+  /*
+   * Every zone the runtime knows, grouped by region, rather than the
+   * nineteen-entry `COMMON_ZONES` that used to live here.
+   *
+   * The old comment argued a 600-entry `<select>` was worse than a short list,
+   * and it would be — as a flat list. Grouped into `<optgroup>`s it is the
+   * ordinary native control every operating system ships, and the short list
+   * was not a smaller version of it but a different, wrong answer for anyone
+   * in Karachi or Jakarta. `zonesIncluding` keeps the "whatever the brand
+   * already has" guarantee the old code got from its concatenation.
+   */
+  const zoneOptions = zonesIncluding(timezone);
+  const zoneRegions = timezoneRegions(zoneOptions);
 
   return (
     <div className="grid grid-cols-1 gap-[27px]">
@@ -777,11 +761,23 @@ export function GovernancePanel() {
                     onChange={(e) => setTimezone(e.target.value)}
                     className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
                   >
-                    {zoneOptions.map((z) => (
-                      <option key={z} value={z}>
-                        {z}
-                      </option>
-                    ))}
+                    {zoneRegions.map((r) => {
+                      const members = zonesInRegion(r, zoneOptions);
+                      // `UTC` has no members under a slash; it is its own entry.
+                      return members.length === 0 ? (
+                        <option key={r} value={r}>
+                          {zoneLabel(r)}
+                        </option>
+                      ) : (
+                        <optgroup key={r} label={r}>
+                          {members.map((z) => (
+                            <option key={z} value={z}>
+                              {zoneLabel(z)}
+                            </option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
                   </select>
                 </div>
 

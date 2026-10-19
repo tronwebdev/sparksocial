@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
+import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { GenomeDimensions, Explanation, untrusted, ToolError } from '@sparksocial/shared/types';
 import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import { crawl as defaultCrawl, type CrawlFailure, type CrawlOptions, type CrawlResult } from './crawl.js';
 import { inferGenome, type GenomeInferenceClient } from './infer.js';
+import type { CrawledKit } from './brandKit.js';
 
 /**
  * REFERENCE TOOL — copy this shape for every other tool in the registry.
@@ -136,6 +137,20 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         editable: z.boolean().default(true),
       })),
       unresolved: z.array(z.string()),  // dimensions the crawl could not determine
+      /**
+       * The site's own palette, fonts and logo, when the crawl could read
+       * them. Absent rather than empty when it could not, so the Brand Kit
+       * step can tell "this site has no discernible kit" from "we did not
+       * look" — the toggle it drives says "Use this brand preset", and
+       * offering a preset made of nothing is worse than not offering one.
+       */
+      kit: z
+        .object({
+          colors: z.array(z.string()),
+          fonts: z.object({ display: z.string().optional(), body: z.string().optional() }).optional(),
+          logoUrl: z.string().optional(),
+        })
+        .optional(),
       why: Explanation,
     }),
 
@@ -148,7 +163,7 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
 
     async handler(input, ctx) {
       return ctx.trace.span('genome.bootstrap_from_url', async () => {
-        const { pages, failure, reason } = await crawl(input.url, { maxPages: input.maxPages });
+        const { pages, failure, reason, kit } = await crawl(input.url, { maxPages: input.maxPages });
         if (pages.length === 0) {
           /**
            * `unavailable` is an operator's incident, so it is logged at `error`
@@ -246,7 +261,8 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
             pages: pages.length,
           });
 
-          return bootstrapOutput(input, existing.id, inferred, pages);
+          await saveKit(ctx, input.brandId, kit);
+          return bootstrapOutput(input, existing.id, inferred, pages, kit);
         }
 
         const draft = await ctx.db.genomes.createDraft({
@@ -274,26 +290,62 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         businessName: inferred.identity.businessName,
       });
 
-      return {
-        draftGenomeId: draft.id,
-        identity: inferred.identity,
-        dimensions: inferred.dimensions,
-        chips: inferred.chips.sort((a, b) => a.confidence - b.confidence),
-        unresolved: inferred.unresolved,
-        why: {
-          summary: `Read ${pages.length} pages from ${new URL(input.url).hostname} and inferred the profile.`,
-          factors: inferred.factors,
-          evidence: pages.slice(0, 5).map((p) => ({
-            kind: 'knowledge_chunk' as const,
-            id: p.url,
-            note: p.title,
-          })),
-          alternatives: inferred.alternatives,
-        },
-      };
+      /*
+       * The shared helper, not a second hand-written copy of it.
+       *
+       * This branch had its own inline object — the exact drift the comment
+       * on `bootstrapOutput` warns about, and the reason `kit` would have
+       * been returned on a re-crawl and silently missing on a first one.
+       */
+      await saveKit(ctx, input.brandId, kit);
+      return bootstrapOutput(input, draft.id, inferred, pages, kit);
     });
   },
   });
+}
+
+/**
+ * Write the crawled kit onto the brand, without overwriting a human.
+ *
+ * Only fills fields governance does not already hold. A re-crawl must not
+ * silently repaint a palette the owner picked by hand two screens earlier —
+ * the whole point of proposing a kit is that it is a proposal, and the Brand
+ * Kit step's toggle is where it is accepted.
+ *
+ * Failure is swallowed to a log. The genome is what `genome.bootstrap_from_url`
+ * promises; a palette is a bonus, and losing the entire onboarding crawl
+ * because a governance write failed would be a bad trade.
+ */
+async function saveKit(
+  ctx: { orgId: string; db: ToolCtx['db']; logger: ToolCtx['logger'] },
+  brandId: string,
+  kit: CrawledKit | undefined,
+): Promise<void> {
+  if (!kit) return;
+
+  try {
+    const existing = await ctx.db.brands.get(brandId, ctx.orgId);
+    const patch: Record<string, unknown> = {};
+
+    if (kit.colors.length > 0 && !(existing.brandColors?.length)) patch.brandColors = kit.colors;
+    if (kit.logoUrl && !existing.logoUrl) patch.logoUrl = kit.logoUrl;
+    if (kit.fonts && !existing.brandFonts) patch.brandFonts = kit.fonts;
+
+    if (Object.keys(patch).length === 0) return;
+
+    await ctx.db.brands.setGovernance({ brandId, orgId: ctx.orgId, patch });
+    ctx.logger.info('brand kit proposed from crawl', {
+      brandId,
+      colors: kit.colors.length,
+      logo: Boolean(kit.logoUrl),
+      fonts: Boolean(kit.fonts),
+    });
+  } catch (e) {
+    ctx.logger.warn('could not store the crawled brand kit', {
+      brandId,
+      cause: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 /**
@@ -308,9 +360,11 @@ function bootstrapOutput(
   draftGenomeId: string,
   inferred: Awaited<ReturnType<typeof inferGenome>>,
   pages: Array<{ url: string; title: string }>,
+  kit?: CrawledKit,
 ) {
   return {
     draftGenomeId,
+    ...(kit ? { kit } : {}),
     identity: inferred.identity,
     dimensions: inferred.dimensions,
     chips: [...inferred.chips].sort((a, b) => a.confidence - b.confidence),

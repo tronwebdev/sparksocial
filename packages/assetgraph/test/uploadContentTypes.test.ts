@@ -33,10 +33,40 @@ describe('asset.upload_url content types', () => {
     }
   });
 
+  /*
+   * The browser recorder, which could not upload anything at all.
+   *
+   * `MediaRecorder` produces WebM/Opus in Chrome and Firefox and reports it as
+   * `audio/webm;codecs=opus`. Two separate reasons that failed: `audio/webm`
+   * was not on the list (though `video/webm` was), and the codec parameter is
+   * part of a well-formed media type that `z.enum` compares as an opaque
+   * string. Both halves are needed — fixing either alone leaves the control
+   * broken.
+   */
+  it('accepts what the browser recorder actually produces, codec parameter and all', () => {
+    const parsed = AssetUploadUrlInput.safeParse({ ...base, contentType: 'audio/webm;codecs=opus' });
+    expect(parsed.success).toBe(true);
+    // Normalised, so one spelling reaches storage.
+    expect(parsed.success && parsed.data.contentType).toBe('audio/webm');
+  });
+
+  it('accepts the bare recorder types too', () => {
+    for (const contentType of ['audio/webm', 'audio/ogg'] as const) {
+      expect(AssetUploadUrlInput.safeParse({ ...base, contentType }).success).toBe(true);
+    }
+  });
+
+  it('normalises case and spacing, which are legal in a media type', () => {
+    const parsed = AssetUploadUrlInput.safeParse({ ...base, contentType: 'IMAGE/PNG; charset=binary' });
+    expect(parsed.success && parsed.data.contentType).toBe('image/png');
+  });
+
   it('is still an allowlist, not a free-for-all', () => {
     // The whole point of the enum: the container must not become general file
     // hosting for whatever a caller names.
-    for (const contentType of ['application/zip', 'text/html', 'application/x-msdownload']) {
+    for (const contentType of ['application/zip', 'text/html', 'application/x-msdownload',
+      // Stripping parameters must not become a way past the list.
+      'application/zip;codecs=none']) {
       expect(AssetUploadUrlInput.safeParse({ ...base, contentType }).success).toBe(false);
     }
   });

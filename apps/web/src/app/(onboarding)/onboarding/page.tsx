@@ -143,6 +143,15 @@ interface Draft {
    * and only the genuinely unknown ones are asked. Empty on the manual path.
    */
   dimensions?: Answers;
+  /**
+   * The palette, fonts and logo the crawl read off the site.
+   *
+   * Carried so the Brand Kit step can tell a kit that came from the URL from
+   * one the owner typed in — the two look identical in governance, because
+   * the crawl writes into the same fields, and the step's own copy promises
+   * "generated from your URL".
+   */
+  kit?: { colors: string[]; fonts?: { display?: string; body?: string }; logoUrl?: string };
 }
 
 export default function OnboardingPage() {
@@ -273,6 +282,7 @@ export default function OnboardingPage() {
       unresolved: string[];
       /** `GenomeDimensions.partial()` — single-valued for objective and talent. */
       dimensions?: Record<string, string | string[] | undefined>;
+      kit?: { colors: string[]; fonts?: { display?: string; body?: string }; logoUrl?: string };
     }>('genome.bootstrap_from_url', {
       url: url.trim(),
       brandId,
@@ -300,6 +310,7 @@ export default function OnboardingPage() {
       businessName: result.output.identity?.businessName ?? brandName,
       ...(result.output.identity?.category ? { category: result.output.identity.category } : {}),
       dimensions: normaliseInferred(result.output.dimensions),
+      ...(result.output.kit ? { kit: result.output.kit } : {}),
     });
     setStep(DETAILS);
   }
@@ -648,7 +659,10 @@ export default function OnboardingPage() {
           void kitSave.current?.().finally(() => setStep(AGENT));
         }}
       >
-        <BrandKitStep registerSave={(fn) => { kitSave.current = fn; }} />
+        <BrandKitStep
+          registerSave={(fn) => { kitSave.current = fn; }}
+          crawledKit={draft?.kit}
+        />
       </StepShell>
     );
   }

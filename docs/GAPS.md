@@ -156,6 +156,48 @@ Each verified against the registry, not inferred from a comment.
       effect was written to prevent. Not a one-line fix: no registered read returns a
       genome's `constraints` (`genome.list` carries only id, brand, name and timestamp), so
       closing this means adding a `genome.get` tool rather than renaming a call.
+- [x] **The crawl could hand an error page to the inference pass — closed 19 Oct.** An
+      nginx 403 body is 105 characters, and the bar for "this page has content" was 80. So
+      the error page counted as a crawled page, which discarded the `blocked` failure (only
+      reported when *nothing* was crawled), and the model was asked to infer a brand from
+      the word "Forbidden". Pages whose own status says they failed now have to clear a much
+      higher bar before they are believed.
+- [x] **A malformed inference ended onboarding outright — closed 19 Oct.** The client's
+      `withShapeRetry` only checks that a `tool_use` block came back and returns its contents
+      unread, so the schema check that matters sat outside every retry. Reproduced live: the
+      model answered with its own tool-call markup as a string
+      (`identity: "
+<parameter name=\"businessName\">…"`). One bad draw was fatal. The
+      call and the content check are now retried together, and the rejected field paths are
+      logged — `app.ts` serialises only `code` and `message`, so the Zod issues reached
+      neither the customer nor the log.
+- [x] **HeyGen blamed the customer's photo for our billing — closed 19 Oct.** Every failed
+      `talking_photo` upload said "HeyGen rejected the photo (400)". The live 400 was
+      `{"code": 400133, "message": "Insufficient credit…"}`. Mapped by cause now; only a
+      genuine image rejection mentions the image.
+- [ ] **HeyGen's `v1/talking_photo` is a legacy endpoint.** Its own responses carry a notice
+      that it is removed on **2026-10-31**. Not acted on from that text alone — it arrived
+      inside an API response rather than from the documentation — but it wants checking
+      against HeyGen's docs and migrating before the date, because avatar-from-photo stops
+      working entirely when it goes.
+- [x] **The browser recorder could not upload at all — closed 19 Oct.** `MediaRecorder`
+      emits `audio/webm;codecs=opus`; `audio/webm` was missing from the allowlist (while
+      `video/webm` was present) and the enum compared the parameterised string literally.
+      Both halves fixed. The same file's doc comment already recorded the same class of bug
+      shipping once before, for `application/pdf`.
+- [x] **Timezones: eighteen of them, four times over — closed 19 Oct.** Onboarding, the
+      governance panel, the agency wizard and the personal profile each carried their own
+      short list, together covering five regions, and the first select was labelled
+      *Country* while its options were IANA region prefixes. A brand in Karachi, Jakarta,
+      Mexico City, Istanbul or Seoul could not state where it was — and `campaign.calendar`
+      passes this zone straight to `Intl`, so it places every scheduled post. One module now,
+      418 zones from the runtime, offsets computed live. The label says Region, because a
+      real country mapping is a dataset and `Intl.Locale.prototype.getTimeZones` is absent
+      from Safari and from the Node this repo builds on.
+- [x] **Two brand-colour pickers, two screens apart — closed 19 Oct.** The Brand Kit step
+      and the Brand Details step both rendered `BrandColorPicker` bound to the same
+      `brandColors` field. The palette is chosen on Brand Details, beside the logo generated
+      from it; the Brand Kit step now shows it rather than offering a second way to set it.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
@@ -189,9 +231,21 @@ Each verified against the registry, not inferred from a comment.
       includes `failed: { label: 'Failed', … }`; nothing ever sets it. A dead branch today,
       and a half-built answer to the item above — whoever adds `failed` should check this
       first, because the UI is already waiting for it.
-- [ ] **Nothing proposes a brand palette from a crawl.** The brand kit's "generated preset"
-      control is inert. `genome.bootstrap_from_url` already reads the site; extracting a
-      palette from it is the missing half.
+- [x] **Brand palette from a crawl — closed 19 Oct.** `crawl.ts` now runs a probe on the
+      entry page that reads the site's `--brand*` custom properties, its button and header
+      fills, its heading and body typefaces and its masthead logo;
+      `genome.bootstrap_from_url` returns them and writes them onto brand governance where
+      nothing had been chosen yet. The "Use this brand preset" toggle is live and switches
+      back to the owner's own choices. Measured, not assumed: stripe.com yields
+      `#533afd` + `sohne-var`, clientforce.io `#146b33` + `Schibsted Grotesk` and its real
+      logo. The judgement — which colours are the brand's and which are the paper — is pure
+      and unit-tested in `packages/genome/test/brandKit.test.ts`; the probe itself needs a
+      browser and therefore decides nothing.
+      *Found on the way:* `page.evaluate(fn)` of anything with a named inner function died
+      with `ReferenceError: __name is not defined`, because tsx compiles named functions to
+      esbuild's `keepNames` helper and that helper does not exist inside the page. The
+      existing `page.evaluate` calls survived only by being single anonymous arrows. Shimmed
+      in `crawl.ts` via `addInitScript`.
 - [ ] **`analytics.sync` is the only tool not live** — gated on `AYRSHARE_API_KEY`. Until it
       is set, every performance surface shows its empty state truthfully and the learning loop
       has no outcomes to learn from. This is the key with the widest blast radius.

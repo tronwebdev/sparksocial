@@ -150,10 +150,7 @@ export function createAvatarClient(opts: AvatarClientOptions): AvatarClient {
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        throw new ToolError('UPSTREAM_FAILED', `HeyGen rejected the photo (${response.status}).`, {
-          status: response.status,
-          detail: detail.slice(0, 200),
-        });
+        throw heygenUploadError(response.status, detail);
       }
 
       const body = (await response.json()) as { data?: { talking_photo_id?: unknown } };
@@ -168,6 +165,92 @@ export function createAvatarClient(opts: AvatarClientOptions): AvatarClient {
       return { talkingPhotoId: id };
     },
   };
+}
+
+/**
+ * What a failed `talking_photo` upload actually means.
+ *
+ * ── Why this is not one message ──────────────────────────────────────────
+ *
+ * It used to be: `HeyGen rejected the photo (400)`, for every 400. Measured
+ * against the live account, the 400 that onboarding was hitting was
+ *
+ *     {"code": 400133, "message": "Insufficient credit.
+ *      This operation requires 'api' credits."}
+ *
+ * — a billing state on our side, reported to the customer as a verdict on the
+ * photo they had just chosen. They can crop, relight and re-upload that photo
+ * all afternoon without moving. Telling somebody their face is the problem
+ * when the problem is our invoice is the worst version of a vague error: it is
+ * specific, confident and wrong.
+ *
+ * The body carries the distinction, and we were reading it only to truncate it
+ * into `meta.detail`, which `app.ts` never serialises. So nothing reached
+ * either the customer or the operator.
+ *
+ * `meta.operator` carries the vendor's own words for the log; the message does
+ * not, because a customer should not be shown an account error they cannot
+ * act on. Same split as `STORAGE_UNAVAILABLE` in `packages/storage/src/r2.ts`.
+ */
+export function heygenUploadError(status: number, body: string): ToolError {
+  let vendorMessage = '';
+  let vendorCode: unknown;
+  try {
+    const parsed = JSON.parse(body) as { code?: unknown; message?: unknown };
+    vendorCode = parsed.code;
+    vendorMessage = typeof parsed.message === 'string' ? parsed.message : '';
+  } catch {
+    // Not JSON. The text still goes to the operator field below.
+  }
+
+  const meta = {
+    status,
+    ...(vendorCode !== undefined ? { vendorCode } : {}),
+    operator: `HeyGen talking_photo returned ${status}: ${(vendorMessage || body).slice(0, 200)}`,
+  };
+
+  /*
+   * Billing, not the photo. Matched on the vendor's text as well as its code
+   * because the code is undocumented and a numeric match alone would silently
+   * stop working if they renumber it — whereas the two together degrade to
+   * "one of them still caught it".
+   */
+  if (vendorCode === 400133 || /insufficient credit|quota|not enough credit/i.test(vendorMessage)) {
+    return new ToolError(
+      'UPSTREAM_FAILED',
+      'Avatar generation is temporarily unavailable on this workspace. Nothing is wrong with your photo — ' +
+        'try again later, or continue and set an avatar afterwards.',
+      meta,
+    );
+  }
+
+  if (status === 401 || status === 403) {
+    return new ToolError(
+      'UPSTREAM_FAILED',
+      'Avatar generation is not configured for this workspace.',
+      meta,
+    );
+  }
+
+  if (status === 429) {
+    return new ToolError('RATE_LIMITED', 'The avatar service is busy. Try again in a moment.', meta);
+  }
+
+  if (status >= 500) {
+    return new ToolError('UPSTREAM_FAILED', 'The avatar service is having trouble. Try again shortly.', meta);
+  }
+
+  /*
+   * Only here is the photo actually implicated — and this is the one case
+   * where naming HeyGen's requirement is useful, because it is the thing the
+   * person can do something about.
+   */
+  return new ToolError(
+    'UPSTREAM_FAILED',
+    'That photo could not be used. It needs one clearly visible face, larger than 200x200 pixels, ' +
+      'facing the camera.',
+    meta,
+  );
 }
 
 function sleep(ms: number): Promise<void> {

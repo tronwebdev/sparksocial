@@ -1,5 +1,6 @@
 import { chromium, type Browser } from 'playwright';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
+import { kitProbe, rankKit, type CrawledKit } from './brandKit.js';
 
 /**
  * Site crawl for genome bootstrap (`ONB-01`).
@@ -42,6 +43,15 @@ export type CrawlFailure = 'blocked' | 'not_found' | 'server_error' | 'unreachab
 
 export interface CrawlResult {
   pages: CrawledPage[];
+  /**
+   * The site's own palette, fonts and logo, read off the entry page.
+   *
+   * Entry page only. A brand kit is a property of the site, not of each page,
+   * and the homepage is where a business puts its strongest statement of it —
+   * running the probe on five pages would cost five times as much to average
+   * away the one page that matters.
+   */
+  kit?: CrawledKit;
   /** Set only when `pages` is empty. */
   failure?: CrawlFailure;
   /**
@@ -93,6 +103,48 @@ const TOTAL_BUDGET_MS = 90_000;
 /** Text shorter than this is a nav stub or a cookie wall, not a page worth inferring from. */
 const MIN_TEXT = 80;
 
+/**
+ * The bar a page must clear when its own status code says it is an error.
+ *
+ * Some sites really do serve a good page under a 403 or a 404, which is why a
+ * failure status alone does not disqualify a page. But an error page is also a
+ * page, and a short one clears `MIN_TEXT` easily: clientforce.io's nginx 403
+ * body is *105 characters* — "403 - Forbidden Access to this page is
+ * forbidden." and two decorative class names — twenty-five characters over
+ * the bar.
+ *
+ * That is the whole of the bug this constant exists to close. The crawler
+ * counted that error page as content, so `failure` was discarded (it is only
+ * reported when nothing at all was crawled), the inference pass was handed a
+ * hundred characters of "Forbidden", the model returned something malformed
+ * from having nothing to describe, and the owner was told **"The inference
+ * pass returned an unusable shape"** — a sentence about our parser, for a
+ * site that had simply refused us. The `blocked` message two files over, which
+ * names the cause and the remedy, was sitting right there unused.
+ */
+const ERROR_PAGE_MIN_TEXT = 600;
+
+/**
+ * How much text a page must have before it counts as content, given its own
+ * HTTP status.
+ *
+ * Pure and exported for the same reason `failureFor` and `crawlerUserAgent`
+ * are: the crawl itself needs a Chromium and is not unit-testable, so every
+ * decision inside it that can be a function is one.
+ *
+ * The status test is written out rather than delegated to `failureFor`, which
+ * answers a different question: *why did a crawl find nothing*, and so returns
+ * `'empty'` — truthy — for a perfectly good 200. Reusing it here put every
+ * successful page behind the error-page bar, which the tests caught
+ * immediately. Two similar-looking predicates, one asking "did this request
+ * fail" and one asking "what do I tell the owner", and they are not
+ * interchangeable.
+ */
+export function textFloorFor(status: number | undefined): number {
+  const refusedOrBroken = status === undefined || status >= 400;
+  return refusedOrBroken ? ERROR_PAGE_MIN_TEXT : MIN_TEXT;
+}
+
 /** Per-page cap. Enough for a long about-page, far below anything that bloats a prompt. */
 const MAX_TEXT = 20_000;
 
@@ -130,6 +182,7 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
    * refused us") has an obvious next step and the false one has none.
    */
   let entryFailure: CrawlFailure | undefined;
+  let kit: CrawledKit | undefined;
 
   let browser: Browser | undefined;
   try {
@@ -164,6 +217,25 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
       // The whole reason for a browser rather than `fetch` — see the header.
       javaScriptEnabled: true,
     });
+    /*
+     * A shim for esbuild's `keepNames` helper, as a *string*.
+     *
+     * `page.evaluate(fn)` serialises `fn.toString()` and runs it in the page.
+     * tsx/esbuild compile every named inner function to `__name(fn, "name")`
+     * to preserve `Function.name` — so the source that reaches the browser
+     * calls a helper that only exists back in the bundle, and the probe died
+     * with `ReferenceError: __name is not defined`. The existing
+     * `page.evaluate` calls in this file survive only because they are single
+     * anonymous arrows with nothing named inside them.
+     *
+     * Written as a string literal on purpose: a function here would itself be
+     * compiled, which is the problem it is fixing. `addInitScript` puts it in
+     * before any document script runs, on every page in the context.
+     */
+    await context.addInitScript({
+      content: 'globalThis.__name = globalThis.__name || function (f) { return f; };',
+    });
+
     await context.route('**/*', (route) => {
       const decision = screen(route.request().url(), route.request().resourceType());
       return decision === 'continue' ? route.continue() : route.abort('blockedbyclient');
@@ -180,7 +252,8 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
 
         // Only the entry URL's failure is worth reporting. A 404 on a footer
         // link is normal and says nothing about the business.
-        if (next === entryUrl) entryFailure = failureFor(response?.status());
+        const status = response?.status();
+        if (next === entryUrl) entryFailure = failureFor(status);
 
         // `domcontentloaded` fires before a script-rendered page has mounted:
         // clientforce.io has 0 characters of visible text at that point and its
@@ -198,8 +271,30 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
         const title = (await page.title().catch(() => '')) ?? '';
         const text = clean(await page.evaluate(() => (globalThis as unknown as BrowserGlobals).document?.body?.innerText ?? ''));
 
-        if (text.length >= MIN_TEXT) {
+        /*
+         * A page whose status says "error" has to be substantial before it is
+         * believed, because the alternative is inferring a brand from the word
+         * "Forbidden". A page served 200 keeps the ordinary bar.
+         */
+        if (text.length >= textFloorFor(status)) {
           pages.push({ url: next, title, text: text.slice(0, MAX_TEXT) });
+        }
+
+        /*
+         * The brand kit, from the entry page only, and only once we believe
+         * the page: running the probe against an error page would propose a
+         * palette made of nginx's default stylesheet.
+         *
+         * Failure here is not failure of the crawl. A site that renders its
+         * stylesheets from an origin we cannot read, or throws inside
+         * `getComputedStyle`, still has perfectly good text — and a genome is
+         * worth far more than a palette.
+         */
+        if (next === entryUrl && pages.length > 0 && !kit) {
+          kit = await page
+            .evaluate(kitProbe)
+            .then(rankKit)
+            .catch(() => undefined);
         }
 
         if (pages.length < opts.maxPages) {
@@ -235,9 +330,15 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
   }
 
   const crawled = dedupeChrome(pages);
-  // A page that loaded and had text overrides any status-based guess: some
-  // sites serve a perfectly good page under a 404 or 403 status.
-  return { pages: crawled, ...(crawled.length === 0 && entryFailure ? { failure: entryFailure } : {}) };
+  // A page that loaded and had *enough* text overrides any status-based guess:
+  // some sites serve a perfectly good page under a 404 or 403 status, and
+  // `ERROR_PAGE_MIN_TEXT` is where "perfectly good page" stops meaning "the
+  // error page itself".
+  return {
+    pages: crawled,
+    ...(kit && (kit.colors.length > 0 || kit.logoUrl || kit.fonts) ? { kit } : {}),
+    ...(crawled.length === 0 && entryFailure ? { failure: entryFailure } : {}),
+  };
 }
 
 /**

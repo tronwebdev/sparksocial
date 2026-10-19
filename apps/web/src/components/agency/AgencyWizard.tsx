@@ -1,5 +1,7 @@
 'use client';
 
+import { TimezoneField } from '@/components/common/TimezoneField';
+
 
 /**
  * `Agency Launch Wizard` — four steps in one modal.
@@ -409,37 +411,27 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
         {/* The design's timezone pair, in its own 150-tall bordered panel. */}
         <Field label="Pick a timezone">
           <div className="h-[150px] rounded-[12px] p-[20px]" style={RING}>
+            {/*
+              Region, not Country.
+              
+              This used to be a ten-country map hard-coded in this file — India,
+              Nigeria, the UK, the US, Canada, Australia, Germany, South Africa,
+              Kenya, Singapore — which meant an agency could not onboard a
+              client anywhere else on earth. `country` was never submitted; it
+              only filtered the zone list, which is exactly what a region does.
+              See `packages/shared/src/timezones.ts` for why a real country list
+              is a dataset rather than a computation.
+            */}
             <div className="flex gap-[28px]">
               <div className="w-[180px]">
-                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Country</span>
-                <select
-                  value={draft.country}
-                  onChange={(e) => set({ country: e.target.value, timezone: '' })}
-                  aria-label="Country"
-                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none"
-                  style={{ background: '#F2F3F5', color: draft.country ? 'rgb(59,59,59)' : '#9B9B9B' }}
-                >
-                  <option value="">Select</option>
-                  {Object.keys(ZONES).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="w-[180px]">
-                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Timezone</span>
-                <select
-                  value={draft.timezone}
-                  onChange={(e) => set({ timezone: e.target.value })}
-                  aria-label="Timezone"
-                  disabled={!draft.country}
-                  className="mt-[12px] h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ background: '#F2F3F5', color: draft.timezone ? 'rgb(59,59,59)' : '#9B9B9B' }}
-                >
-                  <option value="">Select</option>
-                  {(ZONES[draft.country] ?? []).map((z) => (
-                    <option key={z} value={z}>{z}</option>
-                  ))}
-                </select>
+                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Region</span>
+                <div className="mt-[12px]">
+                  <TimezoneField
+                    value={draft.timezone}
+                    onChange={(timezone: string) => set({ timezone })}
+                    Select={WizardSelect}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -511,19 +503,45 @@ function GenerateWithAi() {
   );
 }
 
-/** Enough of a spread to be useful without shipping a tz database in the bundle. */
-const ZONES: Record<string, string[]> = {
-  India: ['Asia/Kolkata'],
-  Nigeria: ['Africa/Lagos'],
-  'United Kingdom': ['Europe/London'],
-  'United States': ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'],
-  Canada: ['America/Toronto', 'America/Vancouver'],
-  Australia: ['Australia/Sydney', 'Australia/Perth'],
-  Germany: ['Europe/Berlin'],
-  'South Africa': ['Africa/Johannesburg'],
-  Kenya: ['Africa/Nairobi'],
-  Singapore: ['Asia/Singapore'],
-};
+
+/**
+ * The wizard's own select, handed to `TimezoneField`.
+ *
+ * The shared control owns which zones exist and how they are grouped; each
+ * screen keeps its own paint. Passing the component in rather than importing
+ * one is what lets onboarding's 190px field and this 180px one share a list
+ * without either being dragged to the other's measurements.
+ */
+function WizardSelect({
+  value,
+  onChange,
+  options,
+  ariaLabel,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  ariaLabel: string;
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
+      className="h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none"
+      style={{ background: '#F2F3F5', color: value ? 'rgb(59,59,59)' : '#9B9B9B' }}
+    >
+      {placeholder ? <option value="">{placeholder}</option> : null}
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
