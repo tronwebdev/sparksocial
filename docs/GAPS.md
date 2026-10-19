@@ -198,6 +198,21 @@ Each verified against the registry, not inferred from a comment.
       and the Brand Details step both rendered `BrandColorPicker` bound to the same
       `brandColors` field. The palette is chosen on Brand Details, beside the logo generated
       from it; the Brand Kit step now shows it rather than offering a second way to set it.
+- [ ] **`PersonalizeStep` is not rendered anywhere, so onboarding never records consent.**
+      It is the only component that calls `genome.consent.grant`, and nothing imports it.
+      The consequence is quiet and specific: the Agent step lets somebody clone their voice
+      and set an avatar, `voice.preview` plays it back (it has no consent gate), and then
+      `content.voice.generate` and `content.avatar.generate` both refuse at generation time
+      with `FORBIDDEN` because no `voice_clone` / `avatar_clone` record exists. The guardrail
+      is correct; the flow that was meant to satisfy it is orphaned. `Settings → Brand Kits
+      → ConsentPanel` can grant it, so this is a missing step rather than a missing
+      capability.
+- [ ] **The Agent step can only clone a voice, never pick one.** `STOCK_VOICES` holds five
+      real ElevenLabs premade ids and `brands.stockVoiceId` stores a choice, but the only
+      picker is in `Settings → GovernancePanel`. Onboarding offers upload and record and
+      nothing else, so a brand that does not want to clone anybody's voice has no way to
+      answer the question on the screen that asks it. `voice.preview`'s own error says "or
+      paste an existing voice id", which no control on that screen offers.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
