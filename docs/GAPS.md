@@ -248,6 +248,20 @@ Each verified against the registry, not inferred from a comment.
       renders 65 seconds as `0:65`. The 280-character cap moved under the textarea, since
       the design leaves the player no room for it and `voice.preview` enforces the ceiling
       because ElevenLabs bills per character.
+- [ ] **Nothing in the pipeline enforces the rules of hooks.** `eslint-plugin-react-hooks`
+      is not configured, and `next build` prints "Skipping linting", so a hook placed after
+      an early return type-checks, builds, and then throws React error #310 at runtime —
+      during render, which takes the whole app down to the "client-side exception" screen
+      rather than degrading. It happened in `BrandKitStep` on 19 Oct and was found only by
+      walking the deployed flow in a browser. `apps/web` has no component tests either, so
+      there are currently three layers that all pass a component that cannot render.
+- [x] **The crawled brand kit reaches the screen that uses it — closed 20 Oct.**
+      `genome.bootstrap_from_url` wrote the palette, fonts and logo onto governance and
+      `BrandDetailsStep` initialised both to empty and never read them back, so the crawl
+      found `#146b33` and the brand's real wordmark and the very next screen showed an empty
+      swatch row and an empty logo tile. Not cosmetic: "Generate logo" is on that screen and
+      takes the palette, so a logo was generated against no colours while the real ones sat
+      in the database, and anything picked there overwrote them unseen.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

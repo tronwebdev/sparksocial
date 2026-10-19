@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
@@ -86,6 +86,39 @@ export function BrandDetailsStep({
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  /**
+   * Open on whatever the crawl already found.
+   *
+   * Both of these were initialised empty and never read back, which was
+   * harmless while nothing populated them server-side. It stopped being
+   * harmless the moment `genome.bootstrap_from_url` started writing a palette,
+   * fonts and a logo onto governance: the crawl would read `#146b33` and the
+   * brand's real wordmark off the site, store both, and this screen — the very
+   * next one — would show an empty swatch row and an empty logo tile.
+   *
+   * Worse than cosmetic. "Generate logo" is on this screen and takes the
+   * palette, so a logo would be generated against no colours while the brand's
+   * actual colours sat in the database; and anything picked here would
+   * overwrite what the crawl found without anyone seeing what was lost.
+   *
+   * Found by walking the deployed flow, not by a test: the tool returned the
+   * right kit and the screen below it was blank.
+   */
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const res = await invoke<{ brandColors?: string[]; logoUrl?: string }>('brand.governance.get', {});
+      if (!live || res.status !== 'succeeded') return;
+      /* Only seed what is empty: a person who has already typed on this screen
+         outranks anything a crawl proposed. */
+      if (res.output.brandColors?.length) setColors((c) => (c.length ? c : res.output.brandColors!));
+      if (res.output.logoUrl) setLogoUrl((u) => u || res.output.logoUrl!);
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
 
   /**
    * The niche actually recorded, from either half of the control.

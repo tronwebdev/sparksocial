@@ -122,6 +122,23 @@ export function BrandKitStep({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
+  /*
+   * ── These two live here, with the other hooks, and must stay here ──────
+   *
+   * They were below `if (!loaded) return …` further down, which is an early
+   * return: the first render (nothing loaded yet) ran fewer hooks than the
+   * second, and React refuses that — error #310, "rendered more hooks than
+   * during the previous render". It does not degrade, it throws, and because
+   * it throws during render it takes the whole app down to the Next.js
+   * "client-side exception" screen. Every brand reaching this step hit it.
+   *
+   * Nothing in the build catches this: `tsc` is happy, the production build
+   * compiles, and `apps/web` has no component tests. It was found by walking
+   * the deployed flow in a browser, which is the only thing that would have.
+   */
+  const ownKit = useRef<{ colors: string[]; fonts: { display?: string; body?: string } } | null>(null);
+  const [usingPreset, setUsingPreset] = useState(false);
+
   useEffect(() => {
     void (async () => {
       const res = await invoke<Governance>('brand.governance.get', {});
@@ -225,8 +242,6 @@ export function BrandKitStep({
    * this screen opened", not "before the press".
    */
   const hasPreset = Boolean(crawledKit && (crawledKit.colors.length > 0 || crawledKit.fonts));
-  const ownKit = useRef<{ colors: string[]; fonts: { display?: string; body?: string } } | null>(null);
-  const [usingPreset, setUsingPreset] = useState(false);
 
   function applyPreset(next: boolean) {
     if (!crawledKit) return;
