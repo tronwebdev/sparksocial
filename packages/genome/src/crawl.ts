@@ -78,6 +78,15 @@ interface BrowserGlobals {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/** How long to wait for a script-rendered page to produce text after `domcontentloaded`. */
+const RENDER_WAIT_MS = 5_000;
+
+/**
+ * An unrendered template placeholder in a URL — `{{ it.u }}`, `${slug}`.
+ * Read before the page's script swaps them out, these are links to nowhere.
+ */
+const TEMPLATE = /\{\{|\}\}|\$\{/;
+
 /** Total wall-clock ceiling. P2's exit criterion is a genome in under 3 minutes. */
 const TOTAL_BUDGET_MS = 90_000;
 
@@ -148,23 +157,10 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
     } catch (e) {
       return { pages: [], failure: 'unavailable', reason: e instanceof Error ? e.message : String(e) };
     }
-    /**
-     * One context for the whole crawl, identifying itself honestly.
-     *
-     * This comment used to claim the custom UA defeats bot walls. Measured
-     * across four sites, it does not: on the one site that blocked us, a
-     * *real Chrome* UA was blocked identically and only Playwright's own
-     * headless default got through — so the string is not the lever the
-     * comment assumed, and picking a UA to evade a WAF would be over-fitting
-     * to one vendor's rules.
-     *
-     * It stays self-identifying because that is what lets a site owner
-     * allowlist us deliberately, which is the durable fix when the crawl
-     * target belongs to the customer asking us to read it.
-     */
+    // One context for the whole crawl. See `crawlerUserAgent` for why the
+    // version comes from the running browser rather than a constant.
     const context = await browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (compatible; SparkSocialBot/1.0; +https://sparksocial.ai/bot) Chrome/120 Safari/537.36',
+      userAgent: crawlerUserAgent(browser.version()),
       // The whole reason for a browser rather than `fetch` — see the header.
       javaScriptEnabled: true,
     });
@@ -185,6 +181,19 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
         // Only the entry URL's failure is worth reporting. A 404 on a footer
         // link is normal and says nothing about the business.
         if (next === entryUrl) entryFailure = failureFor(response?.status());
+
+        // `domcontentloaded` fires before a script-rendered page has mounted:
+        // clientforce.io has 0 characters of visible text at that point and its
+        // full copy a moment later. Wait briefly for real text, and read
+        // whatever is there if it never comes — a genuinely thin page still
+        // falls to MIN_TEXT below.
+        await page
+          .waitForFunction(
+            (min) => ((globalThis as unknown as BrowserGlobals).document?.body?.innerText?.trim().length ?? 0) >= min,
+            MIN_TEXT,
+            { timeout: RENDER_WAIT_MS },
+          )
+          .catch(() => {});
 
         const title = (await page.title().catch(() => '')) ?? '';
         const text = clean(await page.evaluate(() => (globalThis as unknown as BrowserGlobals).document?.body?.innerText ?? ''));
@@ -229,6 +238,29 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
   // A page that loaded and had text overrides any status-based guess: some
   // sites serve a perfectly good page under a 404 or 403 status.
   return { pages: crawled, ...(crawled.length === 0 && entryFailure ? { failure: entryFailure } : {}) };
+}
+
+/**
+ * The crawler's user agent: the real browser's own Chrome token, with
+ * `SparkSocialBot` appended so a site owner can still allowlist us by name.
+ *
+ * The version must be the one actually running, never a constant. This used
+ * to hard-code `Chrome/120`, and hosts commonly 403 an outdated Chrome version
+ * as a scraper fingerprint. Measured against clientforce.io (nginx): any UA
+ * carrying `Chrome/120` was refused, including a byte-perfect real Chrome 120
+ * string, while the same string at a current version — with or without the
+ * bot suffix — got a 200. A constant goes stale the same way again in a year;
+ * `browser.version()` moves with the Chromium the container ships.
+ *
+ * Linux platform token because the crawler only runs in the Debian image (and
+ * locally, where the token is cosmetic). Pure and exported so it is testable
+ * without launching Chromium.
+ */
+export function crawlerUserAgent(browserVersion: string): string {
+  return (
+    `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) ` +
+    `Chrome/${browserVersion} Safari/537.36 SparkSocialBot/1.0 (+https://sparksocial.ai/bot)`
+  );
 }
 
 /**
@@ -359,10 +391,20 @@ export function admit(href: string, origin: string, seen: Set<string>): string |
   if (seen.has(normalise(candidate))) return undefined;
   if (ASSET.test(parsed.pathname)) return undefined;
   if (SKIP.test(parsed.pathname)) return undefined;
+  if (TEMPLATE.test(safeDecode(parsed.pathname + parsed.search))) return undefined;
 
   // The guard runs last so its cost is only paid for links that were otherwise
   // going to be visited.
   return checkPublicHttpUrl(candidate).ok ? candidate : undefined;
+}
+
+/** `URL` percent-encodes braces; a malformed escape is left as-is rather than thrown. */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
 }
 
 /** Trailing slashes and fragments are not distinct pages. */
