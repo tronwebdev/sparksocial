@@ -1,6 +1,8 @@
 import { ToolError } from '@sparksocial/shared';
 import type { ImageClient } from '@sparksocial/generate';
 import { envSet, envStr } from './env.js';
+import type { BlobStore } from '@sparksocial/storage';
+import { fallbackImageClient } from './openai-image-client.js';
 
 /**
  * Production image generation for `content.generate_image` — fal.ai's
@@ -25,6 +27,47 @@ const DEFAULT_MODEL = 'fal-ai/flux/schnell';
 /** A queued image is minutes at worst, not the ten a video can take. */
 const QUEUE_POLL_INTERVAL_MS = 2_000;
 const QUEUE_POLL_ATTEMPTS = 90;
+
+/**
+ * What a person reads when image generation does not work, and what an operator
+ * needs, kept apart.
+ *
+ * This used to throw `Image generation failed (403).` — a status code, to
+ * somebody who pressed "Generate logo". It names no cause they can act on, and
+ * the one cause it usually has is not theirs: 403 from fal means the account is
+ * out of credit or locked, which is a billing fact about *us*. Telling a
+ * customer "403" invites them to retry, and the retry fails identically.
+ *
+ * Same split `storageUnavailable` makes in `packages/storage/src/r2.ts`: the
+ * message is for the person holding the mouse, `meta.operator` is for whoever
+ * reads the audit row, and `app.ts` serialises only `code` and `message` to the
+ * client.
+ */
+export function imageUnavailable(status: number, detail: string): ToolError {
+  const body = detail.toLowerCase();
+  const outOfCredit = status === 403 || /exhausted|balance|locked|quota/.test(body);
+  const badKey = status === 401;
+  const rateLimited = status === 429;
+
+  const message = outOfCredit
+    ? 'Image generation is paused because the image service has run out of credit. Nothing is wrong with ' +
+      'what you entered — upload an image instead, or try again once it is topped up.'
+    : badKey
+      ? 'Image generation is not configured correctly, so nothing could be made. This is our side, not yours.'
+      : rateLimited
+        ? 'Image generation is busy right now. Wait a minute and try again, or upload an image instead.'
+        : 'Image generation did not work just now. Try again shortly, or upload an image instead.';
+
+  const operator = outOfCredit
+    ? `fal returned ${status}: the account is out of credit or locked. Top up at fal.ai; FAL_API_KEY is otherwise fine.`
+    : badKey
+      ? 'fal rejected FAL_API_KEY. Check the key, and that it is not revoked.'
+      : rateLimited
+        ? 'fal rate-limited this account. Back off, or raise the plan limit.'
+        : `fal returned ${status}.`;
+
+  return new ToolError('UPSTREAM_FAILED', message, { status, operator, detail: detail.slice(0, 200) });
+}
 
 export function createImageClient(opts: ImageClientOptions): ImageClient {
   const model = opts.model ?? DEFAULT_MODEL;
@@ -82,10 +125,7 @@ export function createImageClient(opts: ImageClientOptions): ImageClient {
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        throw new ToolError('UPSTREAM_FAILED', `Image generation failed (${response.status}).`, {
-          status: response.status,
-          detail: detail.slice(0, 200),
-        });
+        throw imageUnavailable(response.status, detail);
       }
 
       const body = (await response.json()) as {
@@ -203,18 +243,85 @@ function falImageSize(aspectRatio: string): string {
  */
 let memo: ImageClient | undefined | null = null;
 
-export function imageClient(): ImageClient | undefined {
-  if (memo === null) memo = buildImageClient();
+export function imageClient(blobs: BlobStore): ImageClient | undefined {
+  if (memo === null) memo = buildImageClient(blobs);
   return memo;
 }
 
-function buildImageClient(): ImageClient | undefined {
-  if (!envSet('FAL_API_KEY')) {
-    console.warn('[warn] FAL_API_KEY unset — content.generate_image is not registered. Drafts get copy, not images.');
+/**
+ * fal, then OpenAI, then give up — see `withFallback`.
+ *
+ * Either vendor alone is enough to register the image tools. fal stays first
+ * because it is cheaper and faster for this workload; OpenAI exists so that an
+ * exhausted fal balance stops being the end of the story.
+ */
+function buildImageClient(blobs: BlobStore): ImageClient | undefined {
+  const primary = envSet('FAL_API_KEY')
+    ? createImageClient({
+        apiKey: envStr('FAL_API_KEY', ''),
+        ...(envSet('FAL_MODEL') ? { model: envStr('FAL_MODEL', '') } : {}),
+      })
+    : undefined;
+  const backup = fallbackImageClient(blobs);
+
+  if (!primary && !backup) {
+    console.warn(
+      '[warn] neither FAL_API_KEY nor OPENAI_API_KEY is set — content.generate_image is not registered. ' +
+        'Drafts get copy, not images.',
+    );
     return undefined;
   }
-  return createImageClient({
-    apiKey: envStr('FAL_API_KEY', ''),
-    ...(envSet('FAL_MODEL') ? { model: envStr('FAL_MODEL', '') } : {}),
-  });
+  if (!primary) {
+    console.warn('[warn] FAL_API_KEY unset — images come from OpenAI, which is slower and dearer for this.');
+    return backup;
+  }
+  if (!backup) {
+    console.warn(
+      '[warn] OPENAI_API_KEY unset — image generation has no backup. An exhausted fal balance stops it entirely.',
+    );
+    return primary;
+  }
+  return withFallback(primary, backup);
+}
+
+/**
+ * Try `primary`; on a vendor failure, try `backup` once.
+ *
+ * ── What counts as worth retrying elsewhere ──────────────────────────────
+ *
+ * Only `UPSTREAM_FAILED`. A `GUARDRAIL_BLOCKED` or an `INVALID_INPUT` means the
+ * *request* is the problem, and asking a second vendor the same bad question
+ * wastes money to get the same answer — twice as slowly. An exhausted balance,
+ * a rate limit, a vendor outage: those are about the vendor, and a different
+ * vendor is the only retry that can succeed.
+ *
+ * ── Why the first error is what surfaces if both fail ────────────────────
+ *
+ * The backup's failure is almost always less interesting — it is the second
+ * thing tried, often unconfigured or rejecting for its own unrelated reason —
+ * while the primary's carries the cause anyone would act on ("fal is out of
+ * credit"). Both are logged; one is thrown.
+ */
+export function withFallback(primary: ImageClient, backup: ImageClient): ImageClient {
+  return {
+    async generate(args) {
+      try {
+        return await primary.generate(args);
+      } catch (e) {
+        if (!(e instanceof ToolError) || e.code !== 'UPSTREAM_FAILED') throw e;
+        console.warn('[warn] image: the primary provider failed, trying the backup', {
+          reason: e.message,
+          operator: (e.meta as { operator?: string } | undefined)?.operator,
+        });
+        try {
+          return await backup.generate(args);
+        } catch (second) {
+          console.error('[error] image: the backup provider failed too', {
+            reason: second instanceof Error ? second.message : String(second),
+          });
+          throw e;
+        }
+      }
+    },
+  };
 }

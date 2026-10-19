@@ -351,7 +351,19 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
 
         {/* Content Avatar */}
         <div style={{ position: 'absolute', left: 452, top: 0 }}>
-          <SectionLabel>Content Avatar</SectionLabel>
+          {/*
+            The constraint lives here, not in the drop zone's `formats` line.
+
+            That line reads "Png, Jpeg up to 500MB" because `Onboarding.dc.html`
+            says so, and CLAUDE.md makes the `.dc.html` the source of truth for
+            copy as much as for spacing. It had been rewritten to "one clear
+            face" while wiring this up — true, useful, and not the design's text
+            to change. `info` is the app's own affordance, so the vendor's rule
+            goes there instead of overwriting a designed string.
+          */}
+          <SectionLabel info="HeyGen needs exactly one clearly visible face, larger than 200x200 pixels.">
+            Content Avatar
+          </SectionLabel>
         </div>
         <button
           type="button"
@@ -391,7 +403,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
             top={17}
             width={255}
             accept="image/png,image/jpeg"
-            formats="Png, Jpeg — one clear face"
+            formats="Png, Jpeg up to 500MB"
             onFile={(f) => void uploadAvatar(f)}
             busy={busy === 'avatar-upload'}
             disabled={busy !== null && busy !== 'avatar-upload'}
@@ -435,7 +447,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
 
         {/* Agent Voice */}
         <div style={{ position: 'absolute', left: 4, top: 271 }}>
-          <SectionLabel info="Upload or record a voice sample — Spark clones it for video voiceovers.">
+          <SectionLabel info="Upload or record a voice sample — Spark clones it for video voiceovers. Thirty seconds of clear speech is enough; more does not improve it.">
             Agent Voice (for media)
           </SectionLabel>
         </div>
@@ -452,7 +464,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
             height={151}
             accept="audio/*"
             prompt="Drop audio files here or browse"
-            formats="Mp3, Wav — 30 seconds is plenty"
+            formats="Mp3, Wav up to 500MB"
             glyph="audio"
             onFile={(f) => void uploadVoice(f)}
             busy={busy === 'voice-upload'}

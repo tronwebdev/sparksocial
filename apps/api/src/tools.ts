@@ -451,7 +451,7 @@ export function registerAlphaTools(): void {
   // now" and anything else that publishes a drafted post early. Read-only and
   // needs no vendor key, so it is always registered.
   register(contentPublishPayload);
-  const images = imageClient();
+  const images = imageClient(blobStore());
   if (images) register(makeContentGenerateImage(images));
   // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
   if (images) register(makeBrandLogoGenerate(images, (t) => embed.embed(t)));

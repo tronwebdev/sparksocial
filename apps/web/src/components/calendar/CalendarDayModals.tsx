@@ -38,7 +38,7 @@ import type { BoardActions } from './CalendarBoard';
  * level. `calendar.recommend_slot` returns `{ date, create?, move? }` and puts
  * all three under `create`, so every read here was `undefined`: the panel showed
  * an empty recommendation, the Preview fell back to its placeholder, and
- * "Accept & Draft" stayed enabled while passing `undefined` as the playbook id.
+ * the accept button stayed enabled while passing `undefined` as the playbook id.
  * `DayActionSheet` — the other reader of this same tool — had the shape right
  * all along, which is what two hand-written types for one schema buys you.
  */
@@ -179,7 +179,11 @@ export function AskAgentModal({
           onClose();
         }}
       >
-        Accept &amp; Draft
+        {/* `Calendar.dc.html`'s own label for this button. It read "Accept &
+            Draft", which is shorter and loses the noun the PRD uses: §8.6 calls
+            what this produces a *draft pack*, and the button is the only place
+            the flow names it. */}
+        Accept &amp; Generate Draft Pack
       </Primary>
     </CalendarModal>
   );

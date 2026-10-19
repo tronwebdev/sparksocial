@@ -78,16 +78,26 @@ export function SelectField({
   width?: number;
 }) {
   return (
-    <div style={{ position: 'relative', width, height: 57 }}>
+    <div style={{ position: 'relative', width, height: 63 }}>
       <select
         value={value}
         aria-label={ariaLabel}
         onChange={(e) => onChange(e.target.value)}
         style={{
           width: '100%',
-          height: 57,
+          /*
+            `#F3F4F8` and 63px tall, from `Onboarding.dc.html`'s `SelectField`
+            (547x63, radius 10, background #F3F4F8).
+
+            It was `#FFFFFF` at 57px. White on the white step card means the
+            field has no edge at all — the control reads as a stray line of text
+            with a chevron beside it, which is what it looked like on staging.
+            The design never draws a border on these; the fill *is* the
+            boundary, so losing the fill loses the control.
+          */
+          height: 63,
           borderRadius: 10,
-          background: '#FFFFFF',
+          background: '#F3F4F8',
           border: 'none',
           outline: 'none',
           appearance: 'none',

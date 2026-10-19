@@ -196,7 +196,15 @@ export function BrandDetailsStep({
           aria-label={`What ${brandName || 'your brand'} does`}
           placeholder="We create intelligent AI agents that simplify tasks and enhance productivity for businesses."
           style={{
-            width: 547, borderRadius: 10, background: '#FFFFFF', border: 'none', outline: 'none',
+            /*
+              `#F3F4F8`, from the design's `NotchCard` for this field — 547x143,
+              radius 10, filled. It was `#FFFFFF`: invisible on a white step
+              card, so the brand description looked like loose placeholder text
+              rather than something you type into. Same fault as the niche
+              select beneath it; the design gives neither a border, because the
+              fill is what makes them fields.
+            */
+            width: 547, borderRadius: 10, background: '#F3F4F8', border: 'none', outline: 'none',
             padding: '18px 19px', fontSize: 18, lineHeight: 1.5, color: '#0C0C0C', resize: 'none',
           }}
         />
