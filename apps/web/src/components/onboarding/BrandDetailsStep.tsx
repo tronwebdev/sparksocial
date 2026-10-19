@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { invoke } from '@/lib/tools';
-import { DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
+import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 
@@ -71,6 +71,16 @@ export function BrandDetailsStep({
   const [niche, setNiche] = useState(initialNiche ?? '');
   /** What they typed after choosing "Something else" — see `effectiveNiche`. */
   const [otherNiche, setOtherNiche] = useState('');
+  /**
+   * The brand palette, here rather than only on the brand-kit step.
+   *
+   * `brand.logo.generate` reads the palette off governance, and the brand kit
+   * is **two steps after** this one — so every logo generated during onboarding
+   * was made before the brand had a colour, and telling the model to use the
+   * palette changed nothing on the path people actually take. The kit still
+   * owns colours; it opens on whatever was chosen here.
+   */
+  const [colors, setColors] = useState<string[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const [savingText, setSavingText] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -129,6 +139,12 @@ export function BrandDetailsStep({
    * `brand.governance.set({ logoUrl })` as an upload, so both paths leave the
    * brand row in one shape.
    */
+  /** Persisted immediately: the logo reads it from governance, not from here. */
+  async function saveColors(next: string[]) {
+    setColors(next);
+    await invoke('brand.governance.set', { brandColors: next.length ? next : null });
+  }
+
   async function generateLogo() {
     setMessage(null);
     setGenerating(true);
@@ -281,6 +297,23 @@ export function BrandDetailsStep({
               }}
             />
           ) : null}
+        </div>
+
+        {/*
+          Above the logo, because the logo is generated from it.
+
+          Not a duplicate of the brand-kit step so much as the same control
+          where it is first needed: that step is two ahead of this one, and a
+          palette chosen after the logo cannot reach it. Both write
+          `brandColors` through `brand.governance.set`, and the kit loads from
+          governance on mount, so whichever is touched first is what the other
+          opens on.
+        */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <SectionLabel info="Used when SPARK generates a logo, and by every rendered post afterwards.">
+            Brand Colours
+          </SectionLabel>
+          <BrandColorPicker colors={colors} onChange={(next) => void saveColors(next)} width={547} />
         </div>
 
         <UploadSection width={547} height={263}>

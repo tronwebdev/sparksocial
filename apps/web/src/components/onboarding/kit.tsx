@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useRef } from 'react';
+
 /**
  * The onboarding form parts, at `ui build/SparkSocial Onboarding.dc.html`'s own
  * numbers.
@@ -752,4 +754,111 @@ export const guardrailSuggestions = {
 };
 
 /** The prototype's seven palette entries. The fourth is `--ss-cyan`. */
+
+/**
+ * The brand palette control — swatches, the preset row, and the custom picker.
+ *
+ * Extracted from `BrandKitStep` so `BrandDetailsStep` can offer it beside the
+ * logo. It had to exist in both places for a reason worth recording:
+ * `brand.logo.generate` reads the palette off governance, and the brand kit —
+ * the only place a colour could be chosen — comes **two steps after** the
+ * Generate logo button. So every logo generated during onboarding was made
+ * before the brand had a colour, and asking the model to use the palette
+ * changed nothing at all on the path people actually take.
+ *
+ * One component rather than two copies, because the custom picker carries two
+ * fixes that are invisible until they are missing, and a second copy would
+ * have neither:
+ *
+ *   * the input is hidden with `opacity`, not `display: none` — a display-none
+ *     input has no layout box, so Chrome has nothing to anchor the native
+ *     colour dialog to and it silently never opens;
+ *   * the binding is a **callback ref** listening for the native `change`
+ *     event, not React's `onChange`. React's `onChange` on a colour input is
+ *     the native `input` event, which fires continuously while the cursor is
+ *     dragged across the gradient — so every colour touched on the way was
+ *     committed. `change` fires once, on commit.
+ */
+export function BrandColorPicker({
+  colors,
+  onChange,
+  width = 432,
+}: {
+  colors: string[];
+  onChange: (next: string[]) => void;
+  width?: number;
+}) {
+  const detach = useRef<(() => void) | null>(null);
+
+  /*
+   * A callback ref, not `useRef` + a mount effect. The first version used the
+   * latter and bound nothing: a parent that returns a loading line first means
+   * the input does not exist on the first render, so the effect ran once,
+   * found `null`, and never ran again.
+   *
+   * `onChange` is read through a ref so this closure — created once per mount —
+   * cannot capture a stale `colors`.
+   */
+  const latest = useRef({ colors, onChange });
+  latest.current = { colors, onChange };
+
+  const bindPicker = useCallback((el: HTMLInputElement | null) => {
+    if (detach.current) {
+      detach.current();
+      detach.current = null;
+    }
+    if (!el) return;
+    const commit = () => {
+      const hex = el.value.toUpperCase();
+      const { colors: current, onChange: emit } = latest.current;
+      if (!current.includes(hex)) emit([...current, hex]);
+    };
+    el.addEventListener('change', commit);
+    detach.current = () => el.removeEventListener('change', commit);
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 14, width, height: 57,
+          borderRadius: 10, background: '#FFFFFF', padding: '0 18px',
+        }}
+      >
+        <span style={{ fontSize: 18.3, color: '#0C0C0C', whiteSpace: 'nowrap' }}>Selected Colors</span>
+        <span style={{ display: 'flex', gap: 10 }}>
+          {colors.map((c, idx) => (
+            <Swatch key={c + idx} hex={c} onRemove={() => onChange(colors.filter((_, j) => j !== idx))} />
+          ))}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, width }}>
+        {PALETTE.map((c) => (
+          <PaletteSwatch key={c} hex={c} onPick={() => onChange(colors.includes(c) ? colors : [...colors, c])} />
+        ))}
+        {/* The prototype's eyedropper tile. A colour input, because the
+            `EyeDropper` API is Chromium-only and a throwing button is worse. */}
+        <label
+          style={{
+            position: 'relative',
+            width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
+            boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
+            <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <input
+            ref={bindPicker}
+            type="color"
+            aria-label="Pick a custom colour"
+            style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export const PALETTE = ['#0097FD', '#1AFB06', '#6C71FF', '#6CE8FF', '#DAFF6C', '#FF6CBA', '#41FFDC'] as const;
