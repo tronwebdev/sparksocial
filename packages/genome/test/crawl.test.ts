@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admit, dedupeChrome, screen } from '../src/crawl.js';
+import { admit, crawlerUserAgent, dedupeChrome, screen } from '../src/crawl.js';
 import { explainCrawlFailure } from '../src/bootstrap.js';
 
 /**
@@ -70,6 +70,16 @@ describe('screen — every request, including redirect hops', () => {
 });
 
 describe('admit — which discovered links get queued', () => {
+  it('rejects unrendered template placeholders', () => {
+    // Read before the page's script runs, clientforce.io's menu links are
+    // literally `{{ it.u }}` — which `URL` percent-encodes into a real-looking
+    // same-origin path that 404s and burns a page of the budget.
+    expect(admit(`${ORIGIN}/{{ it.u }}`, ORIGIN, fresh())).toBeUndefined();
+    expect(admit(`${ORIGIN}/%7B%7B%20p.u%20%7D%7D`, ORIGIN, fresh())).toBeUndefined();
+    expect(admit(`${ORIGIN}/services/\${slug}`, ORIGIN, fresh())).toBeUndefined();
+    expect(admit(`${ORIGIN}/pricing.html`, ORIGIN, fresh())).toBe(`${ORIGIN}/pricing.html`);
+  });
+
   it('rejects a link into the metadata service', () => {
     // The confused-deputy case: we were pointed at a legitimate site and its
     // markup links to IMDS. Note this is rejected by *same-origin* — see the
@@ -297,5 +307,27 @@ describe('failureFor — why a crawl found nothing', () => {
       // check their own DNS for a fault in our image.
       expect(explainCrawlFailure('https://x.example', 'unavailable')).not.toMatch(/could not reach/i);
     });
+  });
+});
+
+describe('crawlerUserAgent — what the site sees', () => {
+  const ua = crawlerUserAgent('141.0.7390.37');
+
+  it('carries the running browser version, not a constant', () => {
+    // A hard-coded `Chrome/120` is what clientforce.io refused: hosts 403
+    // outdated Chrome versions as a scraper fingerprint.
+    expect(ua).toContain('Chrome/141.0.7390.37 ');
+    expect(crawlerUserAgent('150.0.1.2')).toContain('Chrome/150.0.1.2 ');
+    expect(ua).not.toContain('Chrome/120');
+  });
+
+  it('is shaped like a real Chrome UA, so it is not filtered as malformed', () => {
+    expect(ua).toMatch(
+      /^Mozilla\/5\.0 \([^)]+\) AppleWebKit\/537\.36 \(KHTML, like Gecko\) Chrome\/[\d.]+ Safari\/537\.36 /,
+    );
+  });
+
+  it('still names SparkSocialBot at the end, so an owner can allowlist us', () => {
+    expect(ua).toMatch(/ SparkSocialBot\/1\.0 \(\+https:\/\/sparksocial\.ai\/bot\)$/);
   });
 });
