@@ -5,6 +5,7 @@ import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { invalidateAgentIdentity } from '@/lib/useAgentIdentity';
 import { DropZone, SectionLabel, SelectField } from './kit';
+import { VoiceWaveform } from '@/components/common/VoiceWaveform';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
 import { ProtoScale } from './Stage';
 
@@ -96,6 +97,23 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  /**
+   * The take, before it is cloned.
+   *
+   * Recording and uploading both land here rather than going straight to the
+   * vendor. The screen had no step between "stop" and "a voice exists": a
+   * muted microphone and a good take were indistinguishable until ElevenLabs
+   * answered, minutes later and one screen away. Now the clip is drawn and
+   * playable, and nothing leaves the browser until somebody says use it.
+   */
+  const [captured, setCaptured] = useState<{ blob: Blob; name: string; type: string } | null>(null);
+  const [clipUrl, setClipUrl] = useState<string | null>(null);
+  const [clipProgress, setClipProgress] = useState(0);
+  const [clipPlaying, setClipPlaying] = useState(false);
+  const clipRef = useRef<HTMLAudioElement | null>(null);
+  /** The live stream while recording, for the analyser. */
+  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
+
   /** The brand's chosen stock voice — what its videos are narrated in without a clone. */
   const [stockVoiceId, setStockVoiceId] = useState(DEFAULT_STOCK_VOICE_ID);
 
@@ -164,6 +182,24 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       if (c?.elevenlabs_voice_id) setHasVoice(true);
     })();
   }, [genomeId]);
+
+  /**
+   * One object URL per clip, revoked when it is replaced.
+   *
+   * Without the revoke each re-record leaks a blob for the life of the tab,
+   * and a voice sample is megabytes rather than kilobytes.
+   */
+  useEffect(() => {
+    if (!captured) {
+      setClipUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(captured.blob);
+    setClipUrl(url);
+    setClipProgress(0);
+    setClipPlaying(false);
+    return () => URL.revokeObjectURL(url);
+  }, [captured]);
 
   /** Stop any playing preview when the step unmounts, or it keeps talking. */
   useEffect(() => {
@@ -376,9 +412,39 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     );
   }
 
-  async function uploadVoice(file: File) {
+  /*
+   * An uploaded file takes the same route as a recording: look at it, hear it,
+   * then decide. A file picked from disk is the one somebody is *most* likely
+   * to be wrong about — it is named rather than heard — so skipping the
+   * review for uploads would skip it in the case that needs it most.
+   */
+  function uploadVoice(file: File) {
+    setError(null);
+    setNotice(null);
+    setCaptured({ blob: file, name: file.name, type: file.type || 'audio/mpeg' });
+  }
+
+  /** The take is good: upload it, take consent, clone. */
+  async function useCaptured() {
+    if (!captured) return;
     begin('voice-upload');
-    await cloneVoice(file, file.name, file.type || 'audio/mpeg');
+    const clip = captured;
+    setCaptured(null);
+    await cloneVoice(clip.blob, clip.name, clip.type);
+  }
+
+  /** Play or pause the take. Separate from the test-voice player below — different audio, different element. */
+  function toggleClip() {
+    const el = clipRef.current;
+    if (!el) return;
+    if (el.paused) void el.play().catch(() => setError('That clip could not be played back.'));
+    else el.pause();
+  }
+
+  function discardCaptured() {
+    setCaptured(null);
+    setError(null);
+    setNotice(null);
   }
 
   /**
@@ -394,25 +460,30 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       return;
     }
     begin('recording');
+    setCaptured(null);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       setBusy(null);
+      setLiveStream(null);
       setError('No microphone available, or permission was declined. You can upload a file instead.');
       return;
     }
 
+    setLiveStream(stream);
     const recorder = new MediaRecorder(stream);
     chunksRef.current = [];
     recorder.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
     recorder.onstop = () => {
       stream.getTracks().forEach((t) => t.stop());
       recorderRef.current = null;
+      setLiveStream(null);
       const type = recorder.mimeType || 'audio/webm';
       const blob = new Blob(chunksRef.current, { type });
-      setBusy('voice-upload');
-      void cloneVoice(blob, `recording.${type.includes('mp4') ? 'm4a' : 'webm'}`, type);
+      setBusy(null);
+      // Review, not upload. Nothing leaves the browser until it is heard.
+      setCaptured({ blob, name: `recording.${type.includes('mp4') ? 'm4a' : 'webm'}`, type });
     };
     recorderRef.current = recorder;
     recorder.start();
@@ -652,28 +723,129 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
               boxShadow: 'inset 0 0 0 1.26px rgba(12,12,12,0.1)',
             }}
           >
+            {/*
+              ── The record control, in three states ─────────────────────
+
+              Idle is the design's own: a 144x38.65 button centred at x125 in
+              the 397x101 box, untouched. Recording and review are not in the
+              design — there is no waveform in `SparkSocial Onboarding.dc.html`
+              — so they are built inside the same box rather than next to it,
+              and the button keeps its measurements and simply moves left to
+              make room.
+
+              Two small things here ARE the design and were missed first time:
+              the label while recording is "Recording…" (not "Stop recording"),
+              and the mic glyph pulses — `recordAnim: 'ss-pulse 1s ease-in-out
+              infinite'`.
+            */}
             <button
               type="button"
               onClick={() => void toggleRecord()}
-              disabled={busy !== null && !recording}
+              disabled={(busy !== null && !recording) || captured !== null}
               aria-pressed={recording}
+              aria-label={recording ? 'Stop recording' : 'Start recording'}
               style={{
-                position: 'absolute', left: 125, top: 31, width: 144, height: 38.65, borderRadius: 12,
+                position: 'absolute',
+                left: recording || captured ? 10 : 125,
+                top: recording || captured ? 31 : 31,
+                width: 144, height: 38.65, borderRadius: 12,
                 background: recording ? '#F01C1C' : '#FFFFFF', border: 'none',
                 boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                 cursor: busy && !recording ? 'not-allowed' : 'pointer',
-                opacity: busy && !recording ? 0.45 : 1,
-                transition: 'background 0.2s ease',
+                opacity: (busy && !recording) || captured ? 0.45 : 1,
+                transition: 'background 0.2s ease, left 0.25s cubic-bezier(0.22,1,0.36,1)',
               }}
             >
-              <svg width="14" height="19" viewBox="0 0 14 19" fill="none" style={{ position: 'absolute', left: 15, top: 10, display: 'block' }} aria-hidden>
+              <svg
+                width="14" height="19" viewBox="0 0 14 19" fill="none" aria-hidden
+                style={{
+                  position: 'absolute', left: 15, top: 10, display: 'block',
+                  animation: recording ? 'ss-pulse 1s ease-in-out infinite' : 'none',
+                }}
+              >
                 <rect x="4" y="0.9" width="6" height="10.5" rx="3" stroke={recording ? '#FFFFFF' : '#0C0C0C'} strokeWidth="1.6" />
                 <path d="M1 8.5a6 6 0 0 0 12 0M7 14.5v3" stroke={recording ? '#FFFFFF' : '#0C0C0C'} strokeWidth="1.6" strokeLinecap="round" />
               </svg>
               <span style={{ position: 'absolute', left: 39, top: 11, fontSize: 13.6, color: recording ? '#FFFFFF' : '#838383' }}>
-                {recording ? 'Stop recording' : 'Tap to Record'}
+                {recording ? 'Recording…' : 'Tap to Record'}
               </span>
             </button>
+
+            {/* Live level, so a muted microphone is visible while it is still fixable. */}
+            {recording ? (
+              <div style={{ position: 'absolute', left: 166, top: 31, width: 221, height: 38.65, display: 'flex', alignItems: 'center' }}>
+                <VoiceWaveform mode="live" stream={liveStream} width={221} height={38} color="#F01C1C" />
+              </div>
+            ) : null}
+
+            {/* The take: look at it, hear it, then decide. */}
+            {captured && !recording ? (
+              <>
+                <button
+                  type="button"
+                  onClick={toggleClip}
+                  aria-label={clipPlaying ? 'Pause the recording' : 'Play the recording'}
+                  style={{
+                    position: 'absolute', left: 166, top: 36, width: 28, height: 28, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: '#FFFFFF', border: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', cursor: 'pointer',
+                  }}
+                >
+                  {clipPlaying ? (
+                    <svg width="9" height="11" viewBox="0 0 12 15" fill="none" aria-hidden>
+                      <rect x="0.5" width="3.8" height="15" rx="1.4" fill="#A341FF" />
+                      <rect x="7.7" width="3.8" height="15" rx="1.4" fill="#A341FF" />
+                    </svg>
+                  ) : (
+                    <svg width="9" height="10" viewBox="0 0 11 12" fill="none" aria-hidden>
+                      <path d="M1 1.5v9l9-4.5-9-4.5Z" fill="#A341FF" />
+                    </svg>
+                  )}
+                </button>
+
+                <div style={{ position: 'absolute', left: 202, top: 33, width: 185, height: 34 }}>
+                  <VoiceWaveform mode="clip" blob={captured.blob} progress={clipProgress} width={185} height={34} />
+                </div>
+
+                <div style={{ position: 'absolute', left: 10, top: 74, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => void useCaptured()}
+                    style={{
+                      height: 23, padding: '0 12px', borderRadius: 7, background: '#0C0C0C', border: 'none',
+                      fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer',
+                    }}
+                  >
+                    Use this recording
+                  </button>
+                  <button
+                    type="button"
+                    onClick={discardCaptured}
+                    style={{ height: 23, padding: '0 10px', borderRadius: 7, background: 'transparent', border: 'none', fontSize: 12, color: '#838383', cursor: 'pointer' }}
+                  >
+                    Discard
+                  </button>
+                  <span style={{ fontSize: 12, color: '#838383' }}>{captured.name}</span>
+                </div>
+
+                {clipUrl ? (
+                  <audio
+                    ref={clipRef}
+                    src={clipUrl}
+                    onTimeUpdate={(e) => {
+                      const el = e.currentTarget;
+                      setClipProgress(el.duration > 0 ? el.currentTime / el.duration : 0);
+                    }}
+                    onPlay={() => setClipPlaying(true)}
+                    onPause={() => setClipPlaying(false)}
+                    onEnded={() => {
+                      setClipPlaying(false);
+                      setClipProgress(0);
+                    }}
+                  />
+                ) : null}
+              </>
+            ) : null}
           </div>
 
           <div style={{ position: 'absolute', left: 458, top: 20, width: 288, fontSize: 18, lineHeight: 1.28, color: '#838383' }}>

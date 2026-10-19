@@ -219,11 +219,25 @@ Each verified against the registry, not inferred from a comment.
       a broken button on the last screen of onboarding. The markup is kept commented with
       its coordinates so restoring it is a two-marker deletion. **The gap itself is still
       open** — see the Sora entry below.
-- [ ] **No waveform on either audio control.** Neither the voice drop zone nor the recorder
-      draws one, and the recorder gives no feedback at all beyond the button turning red —
-      no level meter, no elapsed time, no playback of what was captured before it is sent to
-      be cloned. So the first evidence that a recording was usable is whether ElevenLabs
-      accepted it. Nothing is broken; it is simply a silent control.
+- [x] **The voice controls have a waveform — closed 19 Oct.** The recorder gave no feedback
+      beyond the button turning red, and nothing could be heard before it was cloned, so a
+      muted microphone and a good take were indistinguishable until ElevenLabs answered
+      minutes later on another screen. Now: a live level drawn from the `MediaStream` while
+      recording, and a waveform of the captured or uploaded clip with playback before
+      anything leaves the browser — an uploaded file goes through the same review, since a
+      file picked from disk is named rather than heard and is the case most likely to be
+      wrong. Built on `AnalyserNode` and `decodeAudioData` rather than a waveform library;
+      the bar-height reduction is pure, in `packages/shared/src/audioPeaks.ts`, and tested.
+      *Also corrected against the design while in there:* the recording label is
+      **"Recording…"**, not "Stop recording", and the mic glyph pulses —
+      `recordAnim: 'ss-pulse 1s ease-in-out infinite'` in `SparkSocial Onboarding.dc.html`.
+      The keyframes already existed in `tokens.css` and matched.
+- [ ] **The test-voice player is not the one the design draws.** `SparkSocial
+      Onboarding.dc.html`'s `VoicePlayer` at 457,236 is a full transport: a 32px play circle,
+      elapsed time at x41, a seekable 281x17.9 track with a gradient progress fill and a
+      17.9px knob, and the duration at x354. What is built is a static pill showing a
+      character count. Found while adding the waveform; not fixed, because it is a different
+      control from the one that was asked for.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
