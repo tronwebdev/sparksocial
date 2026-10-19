@@ -232,12 +232,22 @@ Each verified against the registry, not inferred from a comment.
       **"Recording…"**, not "Stop recording", and the mic glyph pulses —
       `recordAnim: 'ss-pulse 1s ease-in-out infinite'` in `SparkSocial Onboarding.dc.html`.
       The keyframes already existed in `tokens.css` and matched.
-- [ ] **The test-voice player is not the one the design draws.** `SparkSocial
-      Onboarding.dc.html`'s `VoicePlayer` at 457,236 is a full transport: a 32px play circle,
-      elapsed time at x41, a seekable 281x17.9 track with a gradient progress fill and a
-      17.9px knob, and the duration at x354. What is built is a static pill showing a
-      character count. Found while adding the waveform; not fixed, because it is a different
-      control from the one that was asked for.
+- [x] **The test-voice player is the one the design draws — closed 19 Oct.** `VoicePlayer`
+      at 457,236 built to its own measurements: the 32px play circle at 10,7 with the
+      design's own glyph path, elapsed at 41,17 in 10.5/500, the seekable 281x17.9 track at
+      65,14 with its black bar, gradient fill and 17.9px knob, and the duration at 354,17.
+      What was there was the pill, the button, and one status string where the whole
+      transport should have been — so the control whose only job is to let you listen to
+      something could not say where you were in it, go back three seconds, or report how
+      long it was. Click-to-seek is the design's; drag and arrow keys are not, and are here
+      because a drawn knob that cannot be dragged is a control lying about what it is.
+      Seek verified against a real 20-second clip: clicking at 75% lands at 15.02s, dragging
+      past the right-hand end clamps to exactly 1.0.
+      The clock is `clockMMSS` in `packages/shared`, not the design's
+      `"0:" + floor(t).padStart(2,'0')` — which is right for its own 46-second mock and
+      renders 65 seconds as `0:65`. The 280-character cap moved under the textarea, since
+      the design leaves the player no room for it and `voice.preview` enforces the ceiling
+      because ElevenLabs bills per character.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

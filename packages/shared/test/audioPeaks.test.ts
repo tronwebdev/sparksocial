@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reduceToPeaks } from '../src/audioPeaks.js';
+import { clockMMSS, reduceToPeaks } from '../src/audioPeaks.js';
 
 /**
  * The bar heights behind the voice waveform.
@@ -95,5 +95,38 @@ describe('the awkward inputs', () => {
     // tone to roughly nothing.
     const peaks = reduceToPeaks([-1, -1, -1, -1], 1);
     expect(peaks[0]).toBeCloseTo(1, 5);
+  });
+});
+
+describe('clockMMSS', () => {
+  it('pads the seconds', () => {
+    expect(clockMMSS(0)).toBe('0:00');
+    expect(clockMMSS(7)).toBe('0:07');
+    expect(clockMMSS(46)).toBe('0:46');
+  });
+
+  /*
+   * The reason this is not the design's one-liner. `SparkSocial
+   * Onboarding.dc.html` does `"0:" + floor(t).padStart(2,"0")`, which is right
+   * for its own 46-second mock and renders 65 seconds as "0:65".
+   */
+  it('rolls over into minutes instead of printing 0:65', () => {
+    expect(clockMMSS(65)).toBe('1:05');
+    expect(clockMMSS(600)).toBe('10:00');
+  });
+
+  it('floors rather than rounds, so a clock never shows a time not yet reached', () => {
+    expect(clockMMSS(9.99)).toBe('0:09');
+  });
+
+  /*
+   * `audio.duration` is NaN until metadata loads, and the knob is positioned
+   * from it. `NaN:NaN` is not a time, and `left: NaN` is dropped by the
+   * browser — the knob silently disappears rather than erroring.
+   */
+  it('is 0:00 for the values an <audio> element reports before it is ready', () => {
+    expect(clockMMSS(Number.NaN)).toBe('0:00');
+    expect(clockMMSS(Number.POSITIVE_INFINITY)).toBe('0:00');
+    expect(clockMMSS(-4)).toBe('0:00');
   });
 });

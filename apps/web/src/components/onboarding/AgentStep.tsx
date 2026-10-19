@@ -6,7 +6,7 @@ import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { invalidateAgentIdentity } from '@/lib/useAgentIdentity';
 import { DropZone, SectionLabel, SelectField } from './kit';
 import { VoiceWaveform } from '@/components/common/VoiceWaveform';
-import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
+import { clockMMSS as clock, DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
 import { ProtoScale } from './Stage';
 
 /**
@@ -88,6 +88,11 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hasAvatar, setHasAvatar] = useState(false);
   const [hasVoice, setHasVoice] = useState(false);
+
+  /** Transport state for the test-voice player: seconds, not a fraction, so the clock is the source. */
+  const [previewAt, setPreviewAt] = useState(0);
+  const [previewLength, setPreviewLength] = useState(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
 
   /** The last `voice.preview` result, played by the pill player. */
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -319,6 +324,30 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     return presigned.output.readUrl;
   }
 
+  /**
+   * Seek to the point on the track that was pressed.
+   *
+   * The design binds this to a click on the 281px track. The knob is also
+   * draggable here, which the design does not specify — but it draws a knob,
+   * and a knob that cannot be dragged is a control lying about what it is.
+   */
+  function seekTo(clientX: number) {
+    const el = trackRef.current;
+    const audio = audioRef.current;
+    if (!el || !audio || !Number.isFinite(audio.duration) || audio.duration === 0) return;
+
+    const box = el.getBoundingClientRect();
+    const fraction = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
+    audio.currentTime = fraction * audio.duration;
+    setPreviewAt(audio.currentTime);
+  }
+
+  function startScrub(e: React.PointerEvent<HTMLDivElement>) {
+    if (!previewUrl) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    seekTo(e.clientX);
+  }
+
   /** Clear both banners; every action starts from a clean slate. */
   function begin(next: Busy) {
     setError(null);
@@ -527,6 +556,17 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   }
 
   const recording = busy === 'recording';
+
+  /*
+   * How far through the clip, 0..1. Guarded on the duration rather than the
+   * elapsed time: `audio.duration` is `NaN` until metadata loads, and
+   * `0 / NaN` is `NaN`, which would put the knob at `leftNaN` — removed by the
+   * browser, so it simply vanishes rather than erroring.
+   */
+  const previewFraction =
+    previewLength > 0 && Number.isFinite(previewLength)
+      ? Math.min(1, Math.max(0, previewAt / previewLength))
+      : 0;
 
   /*
     `…193231` and the prototype's Agent Setup screen, at its own numbers: a
@@ -863,6 +903,39 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
               fontSize: 18, fontWeight: 500, color: '#0C0C0C',
             }}
           />
+          {/*
+            ── The test-voice player, as the design draws it ───────────────
+
+            `SparkSocial Onboarding.dc.html`'s `VoicePlayer`, measured: the
+            391x46 pill at 457,236 radius 100; a 32px play circle at 10,7;
+            elapsed at 41,17 in 10.5/500 `#000`; a seekable 281x17.9 track at
+            65,14 — a black 281x7 bar at top 6, a gradient fill over it, and a
+            17.9px white knob with a 0.78px inset ring; the duration at 354,17.
+
+            What was here instead was the pill, the play button, and a single
+            status string where the whole transport should have been. So the
+            one control on this screen whose entire job is to let you *listen*
+            to something had no way to see where you were in it, no way to go
+            back three seconds, and no idea how long the clip was.
+          */}
+          {/*
+            The 280-character cap, which the design does not draw and the
+            player no longer has room for.
+
+            Not decoration: `voice.preview` enforces the ceiling at its schema
+            because ElevenLabs bills per character, so a line that silently
+            stops at 280 is a bill the writer cannot see. Right-aligned in the
+            26px gap the design leaves between the textarea and the player.
+          */}
+          <span
+            style={{
+              position: 'absolute', left: 457, top: 214, width: 391, textAlign: 'right',
+              fontSize: 12, color: testLine.length >= 280 ? '#F01C1C' : '#838383',
+            }}
+          >
+            {testLine.length}/280
+          </span>
+
           <div style={{ position: 'absolute', left: 457, top: 236, width: 391, height: 46, borderRadius: 100, background: '#F3F4F8', boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)' }}>
             <button
               type="button"
@@ -876,28 +949,96 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
               }}
             >
               {playing ? (
-                <svg width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden>
+                <svg width="12" height="15" viewBox="0 0 12 15" fill="none" aria-hidden style={{ display: 'block' }}>
                   <rect x="0.5" width="3.8" height="15" rx="1.4" fill="#A341FF" />
                   <rect x="7.7" width="3.8" height="15" rx="1.4" fill="#A341FF" />
                 </svg>
               ) : (
-                <svg width="11" height="12" viewBox="0 0 11 12" fill="none" aria-hidden>
-                  <path d="M1 1.5v9l9-4.5-9-4.5Z" fill={busy === 'preview' ? '#838383' : '#A341FF'} />
+                /* The design's own play glyph, not an approximated triangle. */
+                <svg width="15" height="18" viewBox="0 0 17 20" fill="none" aria-hidden style={{ display: 'block', marginLeft: 2 }}>
+                  <path
+                    d="M3.2.3C2.6-.1 1.8-.1 1.1.3.4.6 0 1.4 0 2.1v15.6c0 .8.4 1.5 1.1 1.9.7.4 1.5.4 2.1 0l12.8-7.8c.6-.4 1-1.1 1-1.8s-.4-1.4-1-1.8L3.2.3Z"
+                    fill={busy === 'preview' ? '#838383' : '#A341FF'}
+                  />
                 </svg>
               )}
             </button>
-            <span style={{ position: 'absolute', left: 50, top: 15, fontSize: 13, color: '#838383' }}>
-              {busy === 'preview' ? 'Synthesising…' : previewUrl ? 'Ready — press play' : `${testLine.length}/280`}
+
+            <span style={{ position: 'absolute', left: 41, top: 17, fontSize: 10.5, fontWeight: 500, color: '#000000' }}>
+              {clock(previewAt)}
+            </span>
+
+            <div
+              ref={trackRef}
+              role="slider"
+              tabIndex={previewUrl ? 0 : -1}
+              aria-label="Position in the test clip"
+              aria-valuemin={0}
+              aria-valuemax={Math.round(previewLength)}
+              aria-valuenow={Math.round(previewAt)}
+              aria-valuetext={`${clock(previewAt)} of ${clock(previewLength)}`}
+              onPointerDown={startScrub}
+              onPointerMove={(e) => e.currentTarget.hasPointerCapture(e.pointerId) && seekTo(e.clientX)}
+              onKeyDown={(e) => {
+                /* Arrow keys, because a slider nobody can reach without a
+                   mouse is not a control. Five seconds is the usual nudge. */
+                const audio = audioRef.current;
+                if (!audio || !Number.isFinite(audio.duration)) return;
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const delta = e.key === 'ArrowLeft' ? -5 : 5;
+                  audio.currentTime = Math.min(audio.duration, Math.max(0, audio.currentTime + delta));
+                  setPreviewAt(audio.currentTime);
+                }
+              }}
+              style={{
+                position: 'absolute', left: 65, top: 14, width: 281, height: 17.9,
+                cursor: previewUrl ? 'pointer' : 'default', touchAction: 'none',
+              }}
+            >
+              <div aria-hidden style={{ position: 'absolute', left: 0, top: 6, width: 281, height: 7, borderRadius: 13.1, background: '#0C0C0C' }} />
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute', left: 0.8, top: 6.45, height: 6, borderRadius: 18.8,
+                  background: 'linear-gradient(90deg,#6CE8FF 0%,#F56BFF 27.26%,#A341FF 66.83%,#FEDEB5 100%)',
+                  /* 279 and 263, the design's own numbers: the fill is inset by
+                     0.8 at each end, and the knob's travel stops at the track's
+                     width minus its own 17.9. */
+                  width: Math.round(previewFraction * 279),
+                }}
+              />
+              <div
+                aria-hidden
+                style={{
+                  position: 'absolute', left: Number((previewFraction * 263).toFixed(1)), top: 0,
+                  width: 17.9, height: 17.9, borderRadius: '50%', background: '#FFFFFF',
+                  boxShadow: 'inset 0 0 0 0.78px #000000',
+                }}
+              />
+            </div>
+
+            <span style={{ position: 'absolute', left: 354, top: 17, fontSize: 10.5, fontWeight: 500, color: '#000000' }}>
+              {clock(previewLength)}
             </span>
           </div>
+
           {previewUrl ? (
             <audio
               ref={audioRef}
               src={previewUrl}
               autoPlay
+              onLoadedMetadata={(e) => setPreviewLength(e.currentTarget.duration)}
+              onTimeUpdate={(e) => setPreviewAt(e.currentTarget.currentTime)}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
-              onEnded={() => setPlaying(false)}
+              onEnded={() => {
+                setPlaying(false);
+                /* Back to the start, so the next press replays rather than
+                   doing nothing at a finished clip. */
+                setPreviewAt(0);
+                if (audioRef.current) audioRef.current.currentTime = 0;
+              }}
             />
           ) : null}
         </div>
@@ -979,9 +1120,20 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
           </div>
         ) : null}
 
+        {/*
+          `Synthesising…` used to live inside the player, in the slot the
+          design gives to the elapsed time. It moved here rather than being
+          dropped: the greyed play glyph alone is too quiet for a wait that is
+          a paid vendor call, and the design has no room for a status string
+          between a clock and a seek track.
+        */}
         {error ? (
           <p role="alert" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#F01C1C' }}>
             {error}
+          </p>
+        ) : busy === 'preview' ? (
+          <p role="status" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#838383' }}>
+            Synthesising…
           </p>
         ) : notice ? (
           <p role="status" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#838383' }}>

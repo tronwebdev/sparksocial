@@ -69,3 +69,22 @@ export function reduceToPeaks(samples: ArrayLike<number>, buckets: number): numb
 
   return loudest > 0 ? out.map((v) => Math.min(1, v / loudest)) : out;
 }
+
+/**
+ * Seconds as `m:ss`, for a transport clock.
+ *
+ * Written properly rather than copied from the design, which does
+ * `"0:" + String(Math.floor(playT)).padStart(2, "0")` — correct for the mock's
+ * own 46-second clip and wrong as a format: at 65 seconds it renders `0:65`.
+ * The voice preview is capped at 280 characters and so will not reach a
+ * minute, which makes the design's shortcut *currently* true and a trap for
+ * whoever reuses this clock on something longer.
+ *
+ * Non-finite input is `0:00`, because `audio.duration` is `NaN` until metadata
+ * loads and `NaN:NaN` is not a time.
+ */
+export function clockMMSS(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
