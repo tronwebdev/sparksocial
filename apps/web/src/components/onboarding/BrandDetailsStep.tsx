@@ -69,15 +69,38 @@ export function BrandDetailsStep({
 }) {
   const [oneLiner, setOneLiner] = useState('');
   const [niche, setNiche] = useState(initialNiche ?? '');
+  /** What they typed after choosing "Something else" — see `effectiveNiche`. */
+  const [otherNiche, setOtherNiche] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [savingText, setSavingText] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  /**
+   * The niche actually recorded, from either half of the control.
+   *
+   * "Something else" used to save *nothing*: the list's own words went in and
+   * that option was filtered out, so choosing it left `category` empty and the
+   * logo prompt a word shorter — with no sign on screen that picking it had
+   * been the same as picking nothing. It now reveals a text field, and whatever
+   * is typed there is the category.
+   */
+  const effectiveNiche = niche === 'Something else' ? otherNiche.trim() : niche;
+
+  /**
+   * Both fields, because both are what the logo is generated from.
+   *
+   * `brand.logo.generate` reads `identity.one_liner` and `identity.category`
+   * and nothing else about the brand. Without them the prompt degrades to "a
+   * flat vector logo mark for {name}" — which still costs ~4¢ and still
+   * produces a mark, just a generic one, with nothing on screen explaining why.
+   */
+  const canGenerateLogo = oneLiner.trim().length > 0 && effectiveNiche.length > 0;
+
   async function saveText() {
     const line = oneLiner.trim();
-    if (!line && !niche) return;
+    if (!line && !effectiveNiche) return;
 
     setSavingText(true);
     setMessage(null);
@@ -85,9 +108,10 @@ export function BrandDetailsStep({
       genomeId,
       identity: {
         ...(line ? { one_liner: line } : {}),
-        // The list's own words go in — `category` is display-only and nothing in
-        // the engine branches on it, so a readable label beats a slug.
-        ...(niche && niche !== 'Something else' ? { category: niche } : {}),
+        // The list's own words, or theirs — `category` is display-only and
+        // nothing in the engine branches on it (CLAUDE.md invariant 5), so a
+        // readable label beats a slug and free text is as good as a listed one.
+        ...(effectiveNiche ? { category: effectiveNiche } : {}),
       },
     });
     setSavingText(false);
@@ -222,6 +246,41 @@ export function BrandDetailsStep({
             }}
             options={NICHES.map((n) => ({ value: n, label: n }))}
           />
+
+          {/*
+            "Something else" asks a question and used to ignore the answer.
+
+            It is in the list precisely for the brands the short list does not
+            cover, and choosing it saved no category at all — so the one option
+            for an unusual business was the one that told the engine least about
+            it. The field is the answer to the question the option asks.
+
+            Same fill as the select above it, because it is the same control
+            continued; the design has no state for this, so it follows the
+            field it extends rather than inventing a treatment.
+          */}
+          {niche === 'Something else' ? (
+            <input
+              type="text"
+              value={otherNiche}
+              onChange={(e) => setOtherNiche(e.target.value)}
+              onBlur={() => void saveText()}
+              aria-label="Describe your business niche"
+              placeholder="e.g. mobile car valeting"
+              style={{
+                width: 547,
+                height: 63,
+                borderRadius: 10,
+                background: '#F3F4F8',
+                border: 'none',
+                outline: 'none',
+                padding: '0 21px',
+                fontSize: 18,
+                fontWeight: 500,
+                color: '#0C0C0C',
+              }}
+            />
+          ) : null}
         </div>
 
         <UploadSection width={547} height={263}>
@@ -233,7 +292,16 @@ export function BrandDetailsStep({
             top={16.9}
             label={generating ? 'Generating…' : 'Generate logo'}
             onClick={() => void generateLogo()}
-            disabled={generating}
+            disabled={generating || !canGenerateLogo}
+            title={
+              canGenerateLogo
+                ? 'Generate a logo from what your brand does and its niche.'
+                : !oneLiner.trim() && !effectiveNiche
+                  ? 'Add what your brand does and choose a niche first — the logo is generated from them.'
+                  : !oneLiner.trim()
+                    ? 'Add what your brand does first — the logo is generated from it.'
+                    : 'Choose a niche first — the logo is generated from it.'
+            }
           />
           <SectionRule top={71} />
           <DropZone
