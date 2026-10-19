@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BRAND_FONTS } from '@sparksocial/shared';
 import {
   SectionLabel, SelectField, SmallSelect, Toggle, TagChip, Suggestions, TextInput,
   guardrailSuggestions,
-  Swatch, PaletteSwatch, PALETTE,
+  BrandColorPicker,
 } from './kit';
 import { ProtoScale } from './Stage';
 import { invoke } from '@/lib/tools';
@@ -111,50 +111,6 @@ interface Governance {
 export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Promise<boolean>) => void } = {}) {
   const [loaded, setLoaded] = useState(false);
   const [colors, setColors] = useState<string[]>([]);
-  /** Undo for the picker listener, so a remount does not stack a second one. */
-  const detach = useRef<(() => void) | null>(null);
-
-  /**
-   * The custom-colour tile commits once, on `change` — not on React's `onChange`.
-   *
-   * React's `onChange` for an input is the native **`input`** event, which a
-   * colour picker fires continuously: once per pixel as the cursor drags across
-   * the spectrum, and once per keystroke in the hex field. Appending on every
-   * one of those meant picking a single colour added dozens — dragging red to
-   * blue filled the row with every shade it passed through.
-   *
-   * The native `change` event is the one that means "this is the colour": it
-   * fires when the dialog is committed or dismissed, once. React has no prop for
-   * it on inputs, so it is bound by hand.
-   *
-   * ── A callback ref, not `useRef` + a mount effect ─────────────────────────
-   *
-   * The first version of this used `useRef` with a `[]`-dependency effect, and
-   * bound nothing at all. This component returns a loading line until `loaded`
-   * is true, so the input does not exist on the first render: the effect ran
-   * once, found `current === null`, and never ran again. The flood was gone and
-   * so was the colour — picking one did nothing.
-   *
-   * A callback ref runs when the node mounts, whenever that is, and runs again
-   * with `null` when it unmounts. There is no render-order assumption left to
-   * get wrong.
-   *
-   * `setColors` takes the updater form because this closure is created once per
-   * mount and would otherwise capture that render's `colors`.
-   */
-  const bindPicker = useCallback((el: HTMLInputElement | null) => {
-    if (detach.current) {
-      detach.current();
-      detach.current = null;
-    }
-    if (!el) return;
-    const commit = () => {
-      const hex = el.value.toUpperCase();
-      setColors((prev) => (prev.includes(hex) ? prev : [...prev, hex]));
-    };
-    el.addEventListener('change', commit);
-    detach.current = () => el.removeEventListener('change', commit);
-  }, []);
   const [fonts, setFonts] = useState<{ display?: string; body?: string }>({});
   const [voice, setVoice] = useState<string>('');
   const [timezone, setTimezone] = useState('');
@@ -308,50 +264,10 @@ export function BrandKitStep({ registerSave }: { registerSave?: (save: () => Pro
         <div style={{ display: 'grid', gridTemplateColumns: '432px 432px', columnGap: 27, rowGap: 38 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             <SectionLabel>Color Theme</SectionLabel>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, width: 432, height: 57, borderRadius: 10, background: '#FFFFFF', padding: '0 18px' }}>
-              <span style={{ fontSize: 18.3, color: '#0C0C0C', whiteSpace: 'nowrap' }}>Selected Colors</span>
-              <span style={{ display: 'flex', gap: 10 }}>
-                {colors.map((c, idx) => (
-                  <Swatch key={c + idx} hex={c} onRemove={() => setColors(colors.filter((_, j) => j !== idx))} />
-                ))}
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: 432 }}>
-              {PALETTE.map((c) => (
-                <PaletteSwatch key={c} hex={c} onPick={() => setColors(colors.includes(c) ? colors : [...colors, c])} />
-              ))}
-              {/* The prototype's eyedropper tile. A colour input, because the
-                  `EyeDropper` API is Chromium-only and a throwing button is worse. */}
-              <label
-                style={{
-                  position: 'relative',
-                  width: 42.7, height: 42.7, borderRadius: 11.85, background: '#FFFFFF',
-                  boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.4)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden style={{ display: 'block' }}>
-                  <path d="m11.8 4.2 4 4M3 17l.7-3.7a2 2 0 0 1 .55-1.05l8.4-8.4a2 2 0 0 1 2.83 0l1.67 1.67a2 2 0 0 1 0 2.83l-8.4 8.4a2 2 0 0 1-1.05.55L4 18l-1-1Z" stroke="#838383" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {/*
-                  Hidden by opacity, not by `display: none`.
-
-                  `display: none` removes the layout box, and the native colour
-                  picker is positioned against the input's box — with none, Chrome
-                  has nothing to anchor to and the dialog never opens, so the tile
-                  looked interactive and did nothing. A 1×1 transparent input keeps
-                  the box and anchors the dialog to the tile it belongs to.
-
-                  No `onChange` here on purpose: see `bindPicker` above.
-                */}
-                <input
-                  ref={bindPicker}
-                  type="color"
-                  aria-label="Pick a custom colour"
-                  style={{ position: 'absolute', left: '50%', top: '50%', width: 1, height: 1, opacity: 0, border: 'none', padding: 0 }}
-                />
-              </label>
-            </div>
+            {/* The same control the Brand Details step offers beside the logo —
+                see `BrandColorPicker`. Whichever is used first, this one opens
+                on what governance already holds. */}
+            <BrandColorPicker colors={colors} onChange={setColors} />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
