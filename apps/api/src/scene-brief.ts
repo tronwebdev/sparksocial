@@ -97,6 +97,15 @@ export interface SceneBriefRequest {
   tone?: string;
   /** Where the business is, so the world in frame is plausibly theirs. */
   place?: string;
+  /**
+   * This slide's place in a multi-slide post, and what the slides either side
+   * say.
+   *
+   * Absent for a single image or a video — a video's beats are moments in one
+   * continuous piece, not panels in a set, and `auto-illustrate.ts` already
+   * varies those by shot angle.
+   */
+  slide?: { index: number; of: number; before?: string; after?: string };
 }
 
 export interface SceneBrief {
@@ -178,7 +187,7 @@ export function createSceneBrief(opts: { anthropic?: Anthropic; model?: string }
   const model = opts.model ?? MODEL;
 
   return {
-    async describe({ copy, brand, kind, role, seconds, format, objective, products, pillar, priceTier, tone, place }) {
+    async describe({ copy, brand, kind, role, seconds, format, objective, products, pillar, priceTier, tone, place, slide }) {
       const words = copy.trim();
       if (!words) return undefined;
 
@@ -212,7 +221,7 @@ export function createSceneBrief(opts: { anthropic?: Anthropic; model?: string }
                 renderUntrusted(untrusted(brand, 'genome:identity')),
                 'The post says:',
                 renderUntrusted(untrusted(words.slice(0, 600), 'draft:beat')),
-                facts({ role, seconds, format, objective, products, pillar, priceTier, tone, place }),
+                facts({ role, seconds, format, objective, products, pillar, priceTier, tone, place, slide }),
                 kind === 'video'
                   ? 'Write the prompt for a short moving clip.'
                   : 'Write the prompt for a still photograph.',
@@ -274,6 +283,7 @@ function facts(f: {
   priceTier?: string | undefined;
   tone?: string | undefined;
   place?: string | undefined;
+  slide?: { index: number; of: number; before?: string; after?: string } | undefined;
 }): string {
   const lines = [
     f.format ? `The format of this post: ${f.format}` : '',
@@ -286,6 +296,22 @@ function facts(f: {
     f.priceTier ? `The business sits in the ${f.priceTier} price tier.` : '',
     f.tone ? `Its voice is ${f.tone}.` : '',
     f.place ? `It works in ${f.place}.` : '',
+    /*
+     * The neighbours, so the set reads as a set.
+     *
+     * Without this every slide arrived as `format: carousel` with its own words
+     * and no idea it had neighbours — and three near-identical lines produced
+     * three near-identical shots. Naming the position asks for a different
+     * composition; naming what sits either side is what lets the subject,
+     * setting and light stay continuous across them.
+     */
+    f.slide ? `This is slide ${f.slide.index} of ${f.slide.of} in a set the viewer swipes through.` : '',
+    f.slide?.before ? `The slide before it says: "${f.slide.before.slice(0, 120)}"` : '',
+    f.slide?.after ? `The slide after it says: "${f.slide.after.slice(0, 120)}"` : '',
+    f.slide
+      ? 'Keep the subject, setting, light and grade continuous with those slides, and change the composition — ' +
+        'a different angle, distance or arrangement — so the set does not read as one picture posted several times.'
+      : '',
   ].filter(Boolean);
   return lines.length > 0 ? lines.join('\n') : '';
 }

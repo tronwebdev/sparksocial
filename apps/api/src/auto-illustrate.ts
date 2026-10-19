@@ -222,9 +222,27 @@ export async function autoIllustrate(args: {
    */
   const budget = { left: MAX_CLIPS_PER_POST };
 
-  for (const beat of needing.slice(0, MAX_BEATS)) {
+  const shown = needing.slice(0, MAX_BEATS);
+  for (const [slideIndex, beat] of shown.entries()) {
     const at = out.findIndex((b) => b.beatId === beat.beatId);
     if (at < 0) continue;
+
+    /*
+     * Only for a post whose beats are slides.
+     *
+     * A video's beats are moments in one continuous piece and the shot angle
+     * already varies them; telling the brief "slide 2 of 4" there would invite
+     * it to compose for a grid that does not exist.
+     */
+    const slide =
+      !wantsVideo && shown.length > 1
+        ? {
+            index: slideIndex + 1,
+            of: shown.length,
+            ...(shown[slideIndex - 1] ? { before: shown[slideIndex - 1]!.text } : {}),
+            ...(shown[slideIndex + 1] ? { after: shown[slideIndex + 1]!.text } : {}),
+          }
+        : undefined;
 
     /*
      * How many clips this beat needs to be covered rather than looped.
@@ -269,6 +287,7 @@ export async function autoIllustrate(args: {
         register,
         clip,
         of: wanted,
+        ...(slide ? { slide } : {}),
       });
       if (!made) break;
       urls.push(made);
@@ -411,6 +430,20 @@ async function generateBackdrop(args: {
   /** Which slice of the beat this clip covers, and how many there are. */
   clip: number;
   of: number;
+  /**
+   * Where this beat sits in the post, and what the beats either side say.
+   *
+   * A carousel's beats *are* its slides, and the brief could not tell them
+   * apart: every slide arrived as `format: carousel` with its own words and no
+   * idea it had neighbours. Given three near-identical lines — which is what a
+   * three-pairs-under-£20 carousel is — it wrote three near-identical shots, so
+   * the carousel read as one picture posted three times.
+   *
+   * Passing the position and the neighbours lets it vary the composition
+   * deliberately and keep the subject, setting and light continuous, which is
+   * what makes a set of slides read as one set.
+   */
+  slide?: { index: number; of: number; before?: string; after?: string };
 }): Promise<string | undefined> {
   /*
    * A description of a picture, not the post's copy.
@@ -430,6 +463,7 @@ async function generateBackdrop(args: {
     kind: args.wantsVideo ? 'video' : 'image',
     ...(args.beat.label ? { role: args.beat.label } : args.beat.beatId ? { role: args.beat.beatId } : {}),
     ...(args.beat.durationSec ? { seconds: args.beat.durationSec } : {}),
+    ...(args.slide ? { slide: args.slide } : {}),
     ...args.register,
   });
 
