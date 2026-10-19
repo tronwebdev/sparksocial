@@ -40,6 +40,7 @@ interface Over {
   createDraft?: ScopedDb['genomes']['createDraft'];
   patchIdentity?: ScopedDb['genomes']['patchIdentity'];
   patchDimensions?: ScopedDb['genomes']['patchDimensions'];
+  mergeDimensions?: ScopedDb['genomes']['mergeDimensions'];
   patchVoice?: ScopedDb['genomes']['patchVoice'];
 }
 
@@ -54,6 +55,7 @@ function ctx(over: Over = {}): ToolCtx {
         createDraft: over.createDraft ?? (async () => ({ id: 'gen_new' })),
         patchIdentity: over.patchIdentity ?? (async ({ genomeId }) => ({ id: genomeId, version: 2 })),
         patchDimensions: over.patchDimensions ?? (async ({ genomeId }) => ({ id: genomeId, version: 3 })),
+        mergeDimensions: over.mergeDimensions ?? (async ({ genomeId }) => ({ id: genomeId, version: 3 })),
         patchVoice: over.patchVoice ?? (async ({ genomeId }) => ({ id: genomeId, version: 4 })),
         patchConstraints: async () => ({ id: 'g', version: 1 }),
         get: async () => undefined,
@@ -87,6 +89,7 @@ describe('genome.bootstrap_from_url — one genome per brand', () => {
     const createDraft = vi.fn(async () => ({ id: 'gen_new' }));
     const patchIdentity = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 2 }));
     const patchDimensions = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 3 }));
+    const mergeDimensions = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 3 }));
     const patchVoice = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 4 }));
 
     const res = await tool().handler(
@@ -96,6 +99,7 @@ describe('genome.bootstrap_from_url — one genome per brand', () => {
         createDraft,
         patchIdentity,
         patchDimensions,
+        mergeDimensions,
         patchVoice,
       } as Over),
     );
@@ -104,7 +108,22 @@ describe('genome.bootstrap_from_url — one genome per brand', () => {
     expect(res.draftGenomeId).toBe('gen_existing');
     // All three parts the crawl produces, onto the genome the brand already has.
     expect(patchIdentity).toHaveBeenCalledTimes(1);
-    expect(patchDimensions).toHaveBeenCalledTimes(1);
+    /*
+     * Merging, never replacing — and this is the whole of the bug.
+     *
+     * `patchDimensions` replaces the column and therefore requires every
+     * dimension. A crawl can never establish `talent_availability` (the
+     * `avatarEnabled: false` beside this call says exactly that), so re-crawling
+     * a brand that already had a genome failed with
+     * `"genome.bootstrap_from_url" returned a malformed result:
+     * talent_availability: Required` — on the second attempt, never the first,
+     * because the first had no genome to patch.
+     *
+     * Replacing with the partial would have been worse than the error: it would
+     * have deleted whatever the question screens had already collected.
+     */
+    expect(mergeDimensions).toHaveBeenCalledTimes(1);
+    expect(patchDimensions).not.toHaveBeenCalled();
     expect(patchVoice).toHaveBeenCalledTimes(1);
   });
 
@@ -128,16 +147,19 @@ describe('genome.bootstrap_from_url — one genome per brand', () => {
    * screen says otherwise.
    */
   it('never turns the avatar on from a crawl', async () => {
-    const patchDimensions = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 3 }));
+    // On `mergeDimensions` now — the write this path makes. The assertion is
+    // unchanged and still the point: a crawl can suggest a person is the proof
+    // asset and can never establish that they licensed their likeness.
+    const mergeDimensions = vi.fn(async ({ genomeId }: { genomeId: string }) => ({ id: genomeId, version: 3 }));
     await tool().handler(
       input,
       ctx({
         listForOrg: (async () => [{ id: 'gen_existing', brandId: 'brand_1' }]) as never,
-        patchDimensions,
+        mergeDimensions,
       } as Over),
     );
 
-    expect(patchDimensions.mock.calls[0]![0]).toMatchObject({ avatarEnabled: false });
+    expect(mergeDimensions.mock.calls[0]![0]).toMatchObject({ avatarEnabled: false });
   });
 
   it('returns the same shape whichever genome it landed on', async () => {

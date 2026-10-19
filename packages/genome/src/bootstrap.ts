@@ -215,7 +215,17 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         const existing = (await ctx.db.genomes.listForOrg(ctx.orgId)).find((g) => g.brandId === input.brandId);
         if (existing) {
           await ctx.db.genomes.patchIdentity({ genomeId: existing.id, orgId: ctx.orgId, identity });
-          await ctx.db.genomes.patchDimensions({
+          /*
+           * Merge, not replace.
+           *
+           * This called `patchDimensions`, which replaces the whole set and
+           * therefore requires all of it — so a re-crawl of a brand that
+           * already had a genome failed with `talent_availability: Required`.
+           * A crawl can never establish that field (see `avatarEnabled` just
+           * below, which says so), and replacing with what it *did* infer would
+           * delete whatever the question screens had already collected.
+           */
+          await ctx.db.genomes.mergeDimensions({
             genomeId: existing.id,
             orgId: ctx.orgId,
             dimensions: inferred.dimensions,

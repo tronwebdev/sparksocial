@@ -30,6 +30,7 @@ function ctx(over: Over = {}): ToolCtx {
       genomes: {
         createDraft: over.createDraft ?? (async () => ({ id: 'gen_new' })),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         patchConstraints: async () => ({ id: 'g', version: 1 }),
         patchIdentity: over.patchIdentity ?? (async ({ genomeId }) => ({ id: genomeId, version: 3 })),
         get: async () => undefined,

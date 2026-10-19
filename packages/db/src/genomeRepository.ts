@@ -92,6 +92,33 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
       return updated;
     },
 
+    /**
+     * The merging sibling of `patchDimensions` — see the interface comment.
+     *
+     * `||` is Postgres' jsonb concatenation, which overwrites the keys present
+     * on the right and keeps the rest. Same single-UPDATE discipline as every
+     * other patch here: reading the row first and writing it back would race a
+     * concurrent write and silently drop one.
+     */
+    async mergeDimensions({ genomeId, orgId, dimensions, avatarEnabled }) {
+      const merge = GenomeDimensions.partial().parse(dimensions);
+      const [updated] = await db
+        .update(genomes)
+        .set({
+          version: sql`${genomes.version} + 1`,
+          dimensions: sql`${genomes.dimensions} || ${JSON.stringify(merge)}::jsonb`,
+          constraints: sql`jsonb_set(${genomes.constraints}, '{avatar_enabled}', ${JSON.stringify(avatarEnabled)}::jsonb)`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(genomes.id, genomeId), eq(genomes.orgId, orgId)))
+        .returning({ id: genomes.id, version: genomes.version });
+
+      if (!updated) {
+        throw new ToolError('NOT_FOUND', `No genome ${genomeId} in org ${orgId}.`, { genomeId, orgId });
+      }
+      return updated;
+    },
+
     async patchConstraints({ genomeId, orgId, patch }) {
       // Same single-UPDATE merge as patchDimensions, for the same reason:
       // reading-then-writing constraints would race a concurrent patch (this

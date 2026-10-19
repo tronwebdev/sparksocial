@@ -313,6 +313,19 @@ export function createDevStore(
         return { id };
       },
 
+      async mergeDimensions({ genomeId, orgId: org, dimensions, avatarEnabled }) {
+        const row = genomes.get(genomeId);
+        if (!row || row.orgId !== org) return { id: genomeId, version: 1 };
+        row.genome = {
+          ...row.genome,
+          version: row.genome.version + 1,
+          // Shallow, like Postgres' `||`: the keys given win, the rest stay.
+          dimensions: { ...row.genome.dimensions, ...(dimensions as object) } as Genome['dimensions'],
+          constraints: { ...row.genome.constraints, avatar_enabled: avatarEnabled },
+        };
+        return { id: genomeId, version: row.genome.version };
+      },
+
       async patchDimensions({ genomeId, orgId: org, dimensions, avatarEnabled }) {
         const row = genomes.get(genomeId);
         if (!row || row.orgId !== org) return { id: genomeId, version: 1 };

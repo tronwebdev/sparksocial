@@ -22,6 +22,7 @@ function ctx(over: { patchVoice?: ScopedDb['genomes']['patchVoice']; role?: stri
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         patchConstraints: async () => ({ id: 'g', version: 1 }),
         patchIdentity: async () => ({ id: 'g', version: 1 }),
         patchOffer: async () => ({ id: 'g', version: 1 }),

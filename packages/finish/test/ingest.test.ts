@@ -13,6 +13,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
       genomes: {
         createDraft: async () => ({ id: 'gen_draft' }),
         patchDimensions: async () => ({ id: 'gen_1', version: 1 }),
+        mergeDimensions: async () => ({ id: 'gen_1', version: 1 }),
         patchConstraints: async () => ({ id: 'gen_1', version: 1 }),
         patchIdentity: async () => ({ id: 'gen_1', version: 1 }),
         patchOffer: async () => ({ id: 'gen_1', version: 1 }),

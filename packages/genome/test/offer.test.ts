@@ -20,6 +20,7 @@ function ctx(over: { patchOffer?: ScopedDb['genomes']['patchOffer'] } = {}): Too
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         patchConstraints: async () => ({ id: 'g', version: 1 }),
         patchIdentity: async () => ({ id: 'g', version: 1 }),
         patchOffer: over.patchOffer ?? (async ({ genomeId }) => ({ id: genomeId, version: 2 })),

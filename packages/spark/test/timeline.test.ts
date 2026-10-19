@@ -42,6 +42,7 @@ function ctx(runs: Partial<ToolCtx['db']['runs']>, over: Partial<ToolCtx> = {}):
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         get: async () => undefined,
         listForOrg: async () => [],
       },

@@ -46,6 +46,7 @@ function ctx(over: {
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         get: over.genomeGet ?? (async () => withCta),
         listForOrg: async () => [],
       },

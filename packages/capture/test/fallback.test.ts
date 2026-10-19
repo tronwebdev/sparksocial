@@ -32,6 +32,7 @@ function ctx(over: { genome?: unknown; inventory?: Record<string, number>; notFo
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         get: async () => (over.notFound ? undefined : (over.genome ?? saas.genome)),
         listForOrg: async () => [],
       },

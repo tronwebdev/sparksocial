@@ -39,6 +39,7 @@ function ctx(over: { get?: ScopedDb['genomes']['get']; patchConstraints?: Scoped
       genomes: {
         createDraft: async () => ({ id: 'g' }),
         patchDimensions: async () => ({ id: 'g', version: 1 }),
+        mergeDimensions: async () => ({ id: 'g', version: 1 }),
         patchConstraints: over.patchConstraints ?? (async ({ genomeId }) => ({ id: genomeId, version: 2 })),
         get: over.get ?? (async () => genome()),
         listForOrg: async () => [],

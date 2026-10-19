@@ -84,6 +84,27 @@ export interface ScopedDb {
       avatarEnabled: boolean;
     }): Promise<{ id: string; version: number }>;
     /**
+     * Merges the fields given and leaves the rest alone — `patchDimensions`
+     * replaces the whole set.
+     *
+     * For a writer that knows *some* dimensions and genuinely cannot know the
+     * others. `genome.bootstrap_from_url` is the case: a crawl can suggest a
+     * proof asset and can never establish `talent_availability`, as its own
+     * comment says, so it had nothing complete to write and `patchDimensions`
+     * rejected it — `"genome.bootstrap_from_url" returned a malformed result:
+     * talent_availability: Required`, on every re-crawl of a brand that already
+     * had a genome.
+     *
+     * Replacing with a partial object was never the alternative: that would
+     * delete the answers the question screens had already collected.
+     */
+    mergeDimensions(args: {
+      genomeId: string;
+      orgId: string;
+      dimensions: unknown;
+      avatarEnabled: boolean;
+    }): Promise<{ id: string; version: number }>;
+    /**
      * Merges a partial constraints patch without touching `dimensions` or the
      * rest of `constraints` — `patchDimensions`'s sibling for fields
      * `dimensions.set` has no business setting, starting with the vendor
