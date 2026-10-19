@@ -71,6 +71,24 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
     async get(brandId, orgId, name) {
       return copy(upsert(brandId, orgId, name));
     },
+
+    /*
+     * Deletion, as far as this store can honestly report it.
+     *
+     * This map holds governance rows and nothing else — no assets, no content,
+     * no genomes — so every count here is genuinely zero rather than unknown.
+     * Returning zeros is not a stub standing in for real numbers: in the
+     * development store there is no content to count, and the confirmation
+     * dialog saying "0 assets" is accurate for it.
+     */
+    async countContents() {
+      return { assets: 0, contentItems: 0, campaigns: 0, recipes: 0, genomes: 0 };
+    },
+    async deleteCascade(brandId, orgId) {
+      const row = rows.get(brandId);
+      if (row && row.orgId === orgId) rows.delete(brandId);
+      return { assets: 0, contentItems: 0, campaigns: 0, recipes: 0, genomes: 0 };
+    },
     async setApprovalMode(brandId, orgId, mode) {
       const row = upsert(brandId, orgId);
       row.approvalMode = mode;

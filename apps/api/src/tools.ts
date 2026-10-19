@@ -134,6 +134,8 @@ import {
   makeBrandKnowledgeAttachDocument,
   brandExport,
   brandImport,
+  brandDeletionPreview,
+  brandDelete,
   makeTeamInvite,
   makeTeamRoleSet,
   makeTeamList,
@@ -1040,6 +1042,8 @@ export function registerAgencyTools(deps: {
   register(makeBrandKnowledgeAttachDocument({ embed: embedClient(), reader: createDocumentReader() }));
   register(brandExport);
   register(brandImport);
+  register(brandDeletionPreview);
+  register(brandDelete);
 
   if (deps.clerk) {
     register(makeTeamInvite({ clerk: deps.clerk }));

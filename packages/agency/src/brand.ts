@@ -511,3 +511,138 @@ export const brandImport = defineTool({
     return { brandId, genomeId: genome.id, name };
   },
 });
+
+/* ── brand.deletion.preview / brand.delete ───────────────────────────── */
+
+/**
+ * Deleting a brand, in two tools rather than one.
+ *
+ * ── Why a preview exists at all ──────────────────────────────────────────
+ *
+ * "Delete this brand" and "delete 148 assets, 32 posts and six months of
+ * engagement history" are the same operation and a different decision, and the
+ * second is the true one. The preview is what the confirmation dialog shows
+ * while the person can still say no; `brand.delete` refuses to guess at it.
+ *
+ * ── Why the name has to be typed ─────────────────────────────────────────
+ *
+ * `confirmName` is checked here, against the stored name, rather than only in
+ * the dialog. A confirmation enforced solely in the UI is the same mistake as a
+ * tenant filter enforced solely in the UI: it protects the path somebody
+ * happened to build a screen for and nothing else — and this tool is also
+ * reachable from the agent and from a generated client.
+ *
+ * Typed names are compared case-insensitively and with surrounding whitespace
+ * dropped. The point of the exercise is to make the person look at *which*
+ * brand they are deleting, and a capital letter has no bearing on whether they
+ * did; rejecting " Acme " would only teach them to paste harder.
+ */
+const nameMatches = (typed: string, actual: string): boolean =>
+  typed.trim().toLocaleLowerCase() === actual.trim().toLocaleLowerCase();
+
+const DeletionCounts = z.object({
+  assets: z.number().int().nonnegative(),
+  contentItems: z.number().int().nonnegative(),
+  campaigns: z.number().int().nonnegative(),
+  recipes: z.number().int().nonnegative(),
+  genomes: z.number().int().nonnegative(),
+});
+
+export const brandDeletionPreview = defineTool({
+  name: 'brand.deletion.preview',
+  version: 1,
+
+  summary:
+    'Count what deleting a brand would destroy — assets, posts, campaigns, recipes, genomes — without ' +
+    'deleting anything. The confirmation dialog reads this before it will accept a deletion.',
+
+  input: z.object({ brandId: z.string().min(1) }),
+  output: z.object({ brandId: z.string(), name: z.string(), counts: DeletionCounts }),
+
+  effect: 'read',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin'],
+  idempotent: true,
+
+  async handler(input, ctx) {
+    const gov = await ctx.db.brands.get(input.brandId, ctx.orgId);
+    const counts = await ctx.db.brands.countContents(input.brandId, ctx.orgId);
+    return { brandId: input.brandId, name: gov.name, counts };
+  },
+});
+
+export const brandDelete = defineTool({
+  name: 'brand.delete',
+  version: 1,
+
+  summary:
+    "Permanently delete a brand and everything made for it — genomes, assets, posts, campaigns, recipes, " +
+    'engagement history, knowledge and memories. The audit trail and the credit ledger are kept. This ' +
+    'cannot be undone, and the brand name must be typed to confirm it.',
+
+  input: z.object({
+    brandId: z.string().min(1),
+    /** The brand's own name, typed by the person deleting it. */
+    confirmName: z.string().min(1),
+  }),
+  output: z.object({ deleted: z.literal(true), brandId: z.string(), name: z.string(), counts: DeletionCounts }),
+
+  /*
+   * `destructive`, which policy rule 5 routes to an approval unconditionally —
+   * including for an owner pressing the button. That is the intended cost: it
+   * puts a second, attributable act between the request and twenty-seven
+   * irreversible deletes, and leaves two rows in `tool_calls` (held, then
+   * released by a named person) where a single-step delete would leave one.
+   *
+   * `autonomy: 'human_only'` on top of it, because the gate and the question
+   * are different. The gate says this needs a signature; `human_only` says
+   * SPARK may not be the one asking. Nothing in this product is a reason for
+   * the agent to propose erasing a client — rule 5 alone would leave it able
+   * to raise the request and merely require someone to sign it off.
+   */
+  effect: 'destructive',
+  autonomy: 'human_only',
+  // Not `approver`: releasing somebody else's held work is a different
+  // authority from deciding a client should cease to exist.
+  scopes: ['owner', 'admin'],
+  /*
+   * Idempotent. A replay finds nothing left to delete and returns the same
+   * shape with zero counts — which is the true answer to "is this brand gone",
+   * and better than the alternative of a second call failing `NOT_FOUND` on a
+   * delete that did succeed.
+   */
+  idempotent: true,
+
+  async handler(input, ctx) {
+    const gov = await ctx.db.brands.get(input.brandId, ctx.orgId);
+
+    /*
+     * `brands.get` upserts on first read, so an unknown id comes back as a
+     * blank-named row rather than as undefined. An empty name must therefore
+     * be rejected outright: otherwise the check would pass for `confirmName`
+     * of any non-empty string against a brand that was never there.
+     */
+    if (!gov.name.trim()) {
+      throw new ToolError('NOT_FOUND', 'No such brand.', { brandId: input.brandId });
+    }
+
+    if (!nameMatches(input.confirmName, gov.name)) {
+      throw new ToolError(
+        'NEEDS_CONFIRMATION',
+        `That name does not match. Type “${gov.name}” exactly to delete this brand.`,
+        { brandId: input.brandId },
+      );
+    }
+
+    const counts = await ctx.db.brands.deleteCascade(input.brandId, ctx.orgId);
+
+    ctx.logger.info('brand deleted', {
+      orgId: ctx.orgId,
+      brandId: input.brandId,
+      name: gov.name,
+      ...counts,
+    });
+
+    return { deleted: true as const, brandId: input.brandId, name: gov.name, counts };
+  },
+});

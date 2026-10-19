@@ -226,6 +226,8 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         clear: async () => {},
       },
       brands: {
+        countContents: async () => { throw new Error('brands.countContents not stubbed in this test'); },
+        deleteCascade: async () => { throw new Error('brands.deleteCascade not stubbed in this test'); },
         get: async (brandId: string) => ({
           brandId, name: '', approvalMode: 'autopublish' as const,
           createdAt: new Date('2026-01-01T00:00:00Z'), agentPaused: false, postsPerWeek: 3,

@@ -1,4 +1,4 @@
-import { and, asc, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, sql, type SQL } from 'drizzle-orm';
 import {
   ToolError,
   type AssetMediaType,
@@ -3799,4 +3799,98 @@ export async function capabilitiesForUser(db: Database, orgId: string, userId: s
   const union = new Set<string>();
   for (const row of rows) for (const capability of row.capabilities ?? []) union.add(capability);
   return [...union].sort();
+}
+
+/**
+ * ERASURE — every scoped row belonging to a set of genomes, deleted.
+ *
+ * ── Why this is here and not in `brandDeletion.ts` ───────────────────────
+ *
+ * It was written there first, and `test/isolation.test.ts` rejected it on the
+ * first run: that file imported `assets`, `contentItems`, `memories` and the
+ * rest directly, which is precisely what this module exists to be the only
+ * place doing. The test was right and the fix is this function, not an
+ * exception in the test — a delete is the *last* operation that should be
+ * allowed to assemble its own tenant predicate by hand.
+ *
+ * ── Two predicates, not one ──────────────────────────────────────────────
+ *
+ * Every statement filters on `orgId` **and** `genomeId`. The genome ids are
+ * read from this org's own `genomes` rows a few lines up in the caller, so the
+ * org term is redundant in the strict sense — and it stays, because "redundant
+ * given how the caller currently works" is the exact shape of a predicate that
+ * stops being redundant after an innocuous refactor.
+ *
+ * ── `campaigns` and `consentRecords` are not here ────────────────────────
+ *
+ * Neither is in `SCOPED_TABLES`, so neither belongs to this module. The caller
+ * deletes them alongside the brand's own rows.
+ *
+ * `db` is typed as the database rather than a transaction, so a caller can
+ * hand it either. It should hand it a transaction: twenty-odd deletes that
+ * half-succeed leave a brand that is partly gone.
+ */
+export async function deleteEverythingForGenomes(
+  db: Database,
+  scope: OrgScope & { genomeIds: string[] },
+): Promise<void> {
+  assertOrgScope(scope);
+  if (scope.genomeIds.length === 0) return;
+
+  /*
+   * Ordered content-first so that a failure part-way through leaves the
+   * *containers* behind rather than the contents: a surviving empty folder is
+   * recoverable by deleting it again, whereas a surviving asset whose folder
+   * is gone is an orphan nothing lists.
+   */
+  const order = [
+    'contentLinks', 'contentMetrics', 'renders', 'contentItems',
+    'engagementMessages', 'opportunities',
+    'knowledgeChunks', 'memories',
+    'assets', 'assetFolders',
+    'trendWatchlist', 'trendSourceMutes', 'influencerWatchlist',
+    'learningOutcomes', 'learningArms',
+    'recipeOutputs', 'recipeRuns', 'recipes',
+    'oauthConnections',
+  ] as const satisfies readonly ScopedTable[];
+
+  for (const name of order) {
+    const table = SCOPED_TABLES[name];
+    await db
+      .delete(table)
+      .where(and(eq(table.orgId, scope.orgId), inArray(table.genomeId, scope.genomeIds)));
+  }
+}
+
+/**
+ * How many rows the erase above would take, for the confirmation that precedes
+ * it.
+ *
+ * Here rather than in the caller for the same reason the delete is: these are
+ * scoped tables, and counting them is a read of them. Only the four a person
+ * recognises — assets, posts, automations, and the genomes themselves —
+ * because the point is a sentence somebody can weigh, not a table dump.
+ * `contentMetrics` has more rows than any of them and means nothing to the
+ * person being asked.
+ */
+export async function countEverythingForGenomes(
+  db: Database,
+  scope: OrgScope & { genomeIds: string[] },
+): Promise<{ assets: number; contentItems: number; recipes: number }> {
+  assertOrgScope(scope);
+  if (scope.genomeIds.length === 0) return { assets: 0, contentItems: 0, recipes: 0 };
+
+  const one = async (table: typeof assets | typeof contentItems | typeof recipes) => {
+    const [row] = await db
+      .select({ n: count() })
+      .from(table)
+      .where(and(eq(table.orgId, scope.orgId), inArray(table.genomeId, scope.genomeIds)));
+    return row?.n ?? 0;
+  };
+
+  return {
+    assets: await one(assets),
+    contentItems: await one(contentItems),
+    recipes: await one(recipes),
+  };
 }

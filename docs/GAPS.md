@@ -135,6 +135,27 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
 
 Each verified against the registry, not inferred from a comment.
 
+- [x] **Brand deletion — closed 19 Oct.** Was not on this list, which is its own small
+      finding: the agency table drew the design's "remove workspace" action and quietly
+      pointed it at Settings under a comment saying no tool deleted a brand. `brand.delete`
+      and `brand.deletion.preview` now exist. `effect: 'destructive'`, so policy rule 5 holds
+      it for an approval even for an owner, and the panel releases it with `approval.decide`
+      — two attributable rows rather than one. The brand's name must be typed, checked in
+      the tool and not only in the dialog. The cascade lives in `scoped.ts` because
+      `test/isolation.test.ts` rejected the first version for importing `assets` directly,
+      and is covered against real Postgres in `postgres.integration.test.ts`, including a
+      second tenant holding rows under the same genome id. `tool_calls`, `credit_ledger`,
+      `leads` and `idempotency_reservations` survive; `brandDeletion.ts` says why for each.
+      Not yet diffed against a design — the prototype has `Settings WS Add Client` and no
+      counterpart, so the panel borrows the Assets Library's confirmation frame.
+- [ ] **`AgentStep` calls `genome.get`, which is not a registered tool.** Added earlier in
+      the same session that closed the onboarding agent screen, and caught afterwards by
+      `scripts/check-tool-inputs.mjs`. It fails quietly — the effect early-returns on a
+      non-`succeeded` result — so the only symptom is that returning to the Agent step shows
+      an empty avatar/voice state even when both are set, which is exactly the thing the
+      effect was written to prevent. Not a one-line fix: no registered read returns a
+      genome's `constraints` (`genome.list` carries only id, brand, name and timestamp), so
+      closing this means adding a `genome.get` tool rather than renaming a call.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

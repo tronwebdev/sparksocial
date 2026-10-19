@@ -26,6 +26,8 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     ...initial,
   };
   return {
+    countContents: async () => { throw new Error('brands.countContents not stubbed in this test'); },
+    deleteCascade: async () => { throw new Error('brands.deleteCascade not stubbed in this test'); },
     get: async () => row,
     setApprovalMode: async (_b, _o, mode) => ((row = { ...row, approvalMode: mode }), row),
     setFrequency: async ({ postsPerWeek }) => ((row = { ...row, postsPerWeek }), row),

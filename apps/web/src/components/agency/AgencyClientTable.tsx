@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { useAuth } from '@clerk/nextjs';
+import { DeleteBrandModal } from './DeleteBrandModal';
 import type { RosterBrand } from './useAgencyRoster';
 
 /**
@@ -56,14 +57,18 @@ export function AgencyClientTable({
   brands,
   windowDays,
   onOpenRow,
+  onDeleted,
 }: {
   top: number;
   brands: RosterBrand[];
   windowDays: number;
   /** Lifted so the stage can grow by 100 when a row expands, as the design does. */
   onOpenRow: (open: boolean) => void;
+  /** Re-reads the roster once a brand is gone, so the row it was on disappears. */
+  onDeleted: () => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<RosterBrand | null>(null);
   const { orgId } = useAuth();
 
   /* Row tops, walked in order — an open row is 88 taller and pushes the rest. */
@@ -175,26 +180,25 @@ export function AgencyClientTable({
           </Link>
 
           {/*
-            The design's second action removes the workspace. Deleting a brand
-            is not a tool — nothing in the registry deletes one, deliberately,
-            since it would take every campaign and asset with it — so this opens
-            the brand's own settings, where its posture is actually changed.
+            The design's second action removes the workspace, and now it does.
+            This used to open Settings instead, under a comment explaining that
+            nothing in the registry deleted a brand — which was true when it was
+            written and is the reason the substitution is worth recording rather
+            than silently dropping: `brand.delete` exists, so the orange ring
+            means what the design meant by it.
           */}
-          <Link
-            href="/settings"
-            onClick={() => {
-              if (orgId) writeSelectedGenome(orgId, b.genomeId);
-            }}
-            aria-label={`Settings for ${b.name}`}
-            title={`Settings for ${b.name}`}
+          <button
+            type="button"
+            onClick={() => setDeleting(b)}
+            aria-label={`Delete ${b.name}`}
+            title={`Delete ${b.name}`}
             className="absolute top-[38px] flex h-[40px] w-[40px] items-center justify-center rounded-[10px] transition-colors hover:bg-white"
             style={{ left: 1556, boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.55)' }}
           >
-            <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
-              <circle cx="9" cy="9" r="2.6" stroke="#F35525" strokeWidth="1.5" />
-              <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M14.3 3.7l-1.4 1.4M5.1 12.9l-1.4 1.4" stroke="#F35525" strokeWidth="1.5" strokeLinecap="round" />
+            <svg width="16" height="17" viewBox="0 0 16 17" fill="none" aria-hidden>
+              <path d="M1.8 4.2h12.4M6.1 1.8h3.8M3.3 4.2l.8 10a1 1 0 0 0 1 1h5.8a1 1 0 0 0 1-1l.8-10M6.5 7.2v5.2M9.5 7.2v5.2" stroke="#F35525" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </Link>
+          </button>
 
           <button
             type="button"
@@ -280,6 +284,16 @@ export function AgencyClientTable({
           </svg>
         </span>
       ))}
+      {deleting ? (
+        <DeleteBrandModal
+          brandId={deleting.brandId}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setDeleting(null);
+            onDeleted();
+          }}
+        />
+      ) : null}
     </section>
   );
 }

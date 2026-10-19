@@ -588,8 +588,43 @@ export interface BrandGovernance {
  * mode set must still land somewhere defined, and the safe default is the
  * conservative rung, not the permissive one.
  */
+/** What {@link BrandGovernanceStore.countContents} reports, per brand. */
+export interface BrandDeletionCounts {
+  assets: number;
+  contentItems: number;
+  campaigns: number;
+  recipes: number;
+  genomes: number;
+}
+
 export interface BrandGovernanceStore {
   get(brandId: string, orgId: string, name?: string): Promise<BrandGovernance>;
+
+  /**
+   * What a delete would destroy — read before anything is touched, so the
+   * confirmation can name it.
+   *
+   * Separate from {@link deleteCascade} rather than something it returns,
+   * because the point is to show the numbers to a person *while they can still
+   * say no*. A count that comes back with the deletion is a receipt, not a
+   * warning.
+   */
+  countContents(brandId: string, orgId: string): Promise<BrandDeletionCounts>;
+
+  /**
+   * Erase the brand, its genomes, and everything made under them, in one
+   * transaction.
+   *
+   * Irreversible, and the store offers no soft-delete: there is no `deletedAt`
+   * column on any of these tables, so a "recoverable" delete here would mean
+   * rows that are invisible to every list and still counted by every quota —
+   * which is the worst of both. The guard is the confirmation in front of it,
+   * not a state to come back from.
+   *
+   * The audit trail and the credit ledger survive; see `brandDeletion.ts` for
+   * which tables are left alone and why.
+   */
+  deleteCascade(brandId: string, orgId: string): Promise<BrandDeletionCounts>;
   setApprovalMode(brandId: string, orgId: string, mode: ApprovalMode): Promise<BrandGovernance>;
   /**
    * Stops or restarts the agent for one brand.

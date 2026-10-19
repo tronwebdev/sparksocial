@@ -54,7 +54,7 @@ export function AgencyPortalScreen() {
   /** The design's Search Workspace box, filtering the roster by brand name. */
   const [query, setQuery] = useState('');
 
-  const { roster, error } = useAgencyRoster();
+  const { roster, error, reload } = useAgencyRoster();
   const { toast } = useNotifications();
   const accounts = useConnectedAccounts();
 
@@ -126,6 +126,7 @@ export function AgencyPortalScreen() {
             brands={visible}
             windowDays={roster?.windowDays ?? 30}
             onOpenRow={setRowOpen}
+            onDeleted={() => void reload()}
           />
 
           {/*

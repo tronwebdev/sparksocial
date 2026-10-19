@@ -9,6 +9,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { Database } from '../src/client.js';
 import { createGenomeRepository } from '../src/genomeRepository.js';
+import { countBrandContents, deleteBrandCascade } from '../src/brandDeletion.js';
 import { createAssetRepository } from '../src/assetRepository.js';
 import { createContentRepository, markPublished } from '../src/contentRepository.js';
 import { createAnalyticsRepository } from '../src/analyticsRepository.js';
@@ -109,7 +110,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations', 'oauth_connections']) {
+  for (const table of ['agent_steps', 'agent_runs', 'tool_calls', 'content_metrics', 'engagement_messages', 'content_items', 'assets', 'genomes', 'consent_records', 'trend_observations', 'oauth_connections', 'brands', 'memories', 'knowledge_chunks', 'campaigns', 'recipes', 'renders', 'approvals', 'human_messages']) {
     await pg.exec(`TRUNCATE TABLE ${table}`);
   }
 });
@@ -1392,5 +1393,189 @@ describe('content drafts — real SQL', () => {
       id: created.id, genomeId: 'gen_1', orgId: 'org_EVIL', scheduledAt: new Date('2026-09-01T09:00:00.000Z'),
     });
     expect(attempted).toBeUndefined();
+  });
+});
+
+describe('brand deletion — the cascade, against real SQL', () => {
+  /*
+   * This is the test the fakes in `packages/agency/test/brandDelete.test.ts`
+   * cannot be: that suite proves the tool refuses the wrong name, and a mock
+   * `deleteCascade` will happily report success against a `WHERE` clause that
+   * deletes the wrong org's rows or nothing at all. Twenty-odd DELETE
+   * statements with a hand-written predicate each is exactly the code whose
+   * bugs only appear against a query planner.
+   *
+   * The fixture is deliberately two brands in ONE org. A cascade keyed on the
+   * wrong column — or on org alone, which is the plausible slip — passes every
+   * "the brand is gone" assertion and destroys the neighbour. That is the
+   * assertion that matters here.
+   */
+  const identity = {
+    business_name: 'Doomed Co',
+    category: 'barbershop',
+    one_liner: 'x',
+    geography: { scope: 'local', locale: 'en-NG', radius_km: 10 },
+    languages: ['en'],
+    price_tier: 'mid',
+  };
+  const dimensions = {
+    proof_asset: ['physical_craft'],
+    capture_capability: ['space'],
+    objective: 'bookings',
+    secondary_objectives: [],
+    talent_availability: 'yes_unlicensed',
+  };
+  const voice = {
+    tone_vector: { formal: 0.3, playful: 0.5, technical: 0.1, bold: 0.4 },
+    pov_statements: [],
+    banned_phrases: [],
+    required_disclaimers: [],
+    reading_level: 8,
+  };
+
+  /** A brand with a genome and one asset, post and memory under it. */
+  async function seedBrand(brandId: string, orgId: string, name: string) {
+    await db.insert(schema.brands).values({ id: brandId, orgId, name });
+    const { id: genomeId } = await createGenomeRepository(db).createDraft({
+      brandId, orgId, identity: { ...identity, business_name: name }, dimensions, voice, source: 'user',
+    });
+
+    await createAssetRepository(db).create({
+      genomeId, orgId, url: `https://x/${brandId}.jpg`, assetRole: 'product_shot',
+      mediaType: 'image', rightsStatus: 'cleared', caption: name, embedding: [0.1], source: 'test',
+    });
+    await db.insert(schema.contentItems).values({
+      genomeId, orgId, platform: 'instagram', pillar: 'educate',
+      status: 'draft', copy: { caption: name },
+    });
+    await db.insert(schema.memories).values({
+      genomeId, orgId, kind: 'preference', text: `${name} likes short captions`, embedding: null,
+    });
+
+    return { brandId, genomeId };
+  }
+
+  const countRows = async (table: string, genomeId: string) => {
+    const res = await pg.query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM ${table} WHERE genome_id = $1`, [genomeId],
+    );
+    return res.rows[0]?.n ?? 0;
+  };
+
+  it('counts what it would destroy before destroying anything', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+
+    const counts = await countBrandContents(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    expect(counts).toEqual({ assets: 1, contentItems: 1, campaigns: 0, recipes: 0, genomes: 1 });
+    // The count is a read: everything is still there.
+    expect(await countRows('assets', doomed.genomeId)).toBe(1);
+  });
+
+  it('removes the brand, its genome, and its scoped rows', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+
+    await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    expect(await countRows('assets', doomed.genomeId)).toBe(0);
+    expect(await countRows('content_items', doomed.genomeId)).toBe(0);
+    expect(await countRows('memories', doomed.genomeId)).toBe(0);
+
+    const genomes = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM genomes WHERE brand_id = $1', ['brand_doomed'],
+    );
+    expect(genomes.rows[0]!.n).toBe(0);
+
+    const brandRow = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM brands WHERE id = $1', ['brand_doomed'],
+    );
+    expect(brandRow.rows[0]!.n).toBe(0);
+  });
+
+  it('leaves a sibling brand in the SAME org completely untouched', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+    const keeper = await seedBrand('brand_keeper', 'org_1', 'Keeper Co');
+
+    await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    expect(await countRows('assets', doomed.genomeId)).toBe(0);
+    expect(await countRows('assets', keeper.genomeId)).toBe(1);
+    expect(await countRows('content_items', keeper.genomeId)).toBe(1);
+    expect(await countRows('memories', keeper.genomeId)).toBe(1);
+
+    const brandRow = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM brands WHERE id = $1', ['brand_keeper'],
+    );
+    expect(brandRow.rows[0]!.n).toBe(1);
+  });
+
+  it('will not delete a brand from another org, even with the right brand id', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+
+    await deleteBrandCascade(db, { orgId: 'org_SOMEBODY_ELSE', brandId: 'brand_doomed' });
+
+    // Nothing happened: the org predicate matched no genomes, so no scoped
+    // delete ran, and `brands` is filtered on the org too.
+    expect(await countRows('assets', doomed.genomeId)).toBe(1);
+    const brandRow = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM brands WHERE id = $1', ['brand_doomed'],
+    );
+    expect(brandRow.rows[0]!.n).toBe(1);
+  });
+
+  it('keeps the audit trail — a deleted brand is still answerable for what it did', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+    await createAuditRepository(db).writeToolCall({
+      id: randomUUID(), at: new Date(), tool: 'content.generate', version: 1,
+      caller: 'user', orgId: 'org_1', brandId: 'brand_doomed', genomeId: doomed.genomeId,
+      role: 'owner', input: {}, output: { ok: true }, effect: 'write',
+      status: 'succeeded', decision: 'allow', costCents: 12,
+    });
+
+    await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    const calls = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM tool_calls WHERE brand_id = $1', ['brand_doomed'],
+    );
+    expect(calls.rows[0]!.n).toBe(1);
+  });
+
+  /*
+   * The test that makes the org predicate inside `deleteEverythingForGenomes`
+   * load-bearing.
+   *
+   * Written after dropping that predicate on purpose and watching every other
+   * test in this block still pass — which they do, because the genome lookup
+   * above is itself org-filtered, so a wrong-org delete never reaches the
+   * scoped statements at all. That makes the predicate redundant *given the
+   * caller*, and this is the fixture where it stops being: another tenant
+   * holding a row under the same genome id. Genome ids are uuids but they are
+   * not secret, and `assets` is already tested for exactly this leak.
+   */
+  it('a second tenant’s rows under the same genome id survive the delete', async () => {
+    const doomed = await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+
+    // Another org, same genome id — the shape the asset isolation tests guard.
+    await createAssetRepository(db).create({
+      genomeId: doomed.genomeId, orgId: 'org_OTHER_TENANT', url: 'https://x/theirs.jpg',
+      assetRole: 'product_shot', mediaType: 'image', rightsStatus: 'cleared',
+      caption: 'another tenant', embedding: [0.1], source: 'test',
+    });
+
+    await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    const theirs = await pg.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM assets WHERE org_id = $1', ['org_OTHER_TENANT'],
+    );
+    expect(theirs.rows[0]!.n).toBe(1);
+  });
+
+  it('is replayable — a second delete finds nothing and reports zeros', async () => {
+    await seedBrand('brand_doomed', 'org_1', 'Doomed Co');
+
+    await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+    const second = await deleteBrandCascade(db, { orgId: 'org_1', brandId: 'brand_doomed' });
+
+    expect(second).toEqual({ assets: 0, contentItems: 0, campaigns: 0, recipes: 0, genomes: 0 });
   });
 });

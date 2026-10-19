@@ -57,6 +57,8 @@ const LABELS: Record<string, string> = {
   'brand.settings.patch': 'Change brand settings',
   'brand.governance.get': 'Read brand settings',
   'brand.governance.set': 'Change brand settings',
+  'brand.deletion.preview': 'Check what deleting a brand would remove',
+  'brand.delete': 'Delete a brand and everything in it',
   'brand.export': 'Export a brand',
   'brand.import': 'Import a brand',
   'brand.logo.generate': 'Generate a placeholder logo',

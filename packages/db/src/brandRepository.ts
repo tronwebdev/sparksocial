@@ -2,6 +2,7 @@
 import type { ApprovalMode, BrandGovernance, BrandGovernanceStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { brands } from './schema.js';
+import { countBrandContents, deleteBrandCascade } from './brandDeletion.js';
 
 /**
  * `brands` backed by Postgres — the approval ladder's storage (PRD §7.1, §9).
@@ -13,6 +14,19 @@ import { brands } from './schema.js';
  */
 export function createBrandRepository(db: Database): BrandGovernanceStore {
   return {
+    /*
+     * Both delegate to `brandDeletion.ts`. The cascade is long enough, and its
+     * list of what survives load-bearing enough, that it earns its own file
+     * with the reasoning next to the table list rather than buried in the
+     * middle of the governance repository.
+     */
+    countContents(brandId, orgId) {
+      return countBrandContents(db, { orgId, brandId });
+    },
+    deleteCascade(brandId, orgId) {
+      return deleteBrandCascade(db, { orgId, brandId });
+    },
+
     async get(brandId, orgId, name) {
       const [row] = await db
         .select()

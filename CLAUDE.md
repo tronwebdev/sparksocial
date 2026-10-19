@@ -141,8 +141,13 @@ which is the only reason it is worth recording that it was wrong.
 
 Measured against the registry and the deployed manifest, not from memory:
 
-- **212 tools defined, 211 live.** Only `analytics.sync` is unregistered, gated on
-  `AYRSHARE_API_KEY`. Nothing else is held back by configuration.
+- **216 tools defined, 215 live.** Only `analytics.sync` is unregistered, gated on
+  `AYRSHARE_API_KEY`. Nothing else is held back by configuration. The count comes from
+  `npm run generate:tool-types`, which walks every `defineTool` in the source and so counts
+  what is *defined* regardless of env gating — it read 214 before `brand.delete` and
+  `brand.deletion.preview` were added, so the "212" this line used to carry had already
+  drifted by two. Re-read it from the generator rather than incrementing this number by
+  hand.
 - **36 of 37 PRD flow IDs have code.** The three without their ID in a comment are built
   anyway: `AUTH-04` is `/meet-spark`, `AGT-01` is `/agents`, `AUTO-03` is the
   `bulk_connector` recipe kind.
