@@ -262,6 +262,18 @@ Each verified against the registry, not inferred from a comment.
       swatch row and an empty logo tile. Not cosmetic: "Generate logo" is on that screen and
       takes the palette, so a logo was generated against no colours while the real ones sat
       in the database, and anything picked there overwrote them unseen.
+- [ ] **The palette extractor discards a neutral brand and keeps accidental blue.** Measured
+      on missoma.com, whose identity is gold, cream and off-white: the crawl returned
+      `#0000ee, #0a4563, #1a73e8`. `#0000ee` is the *browser default unvisited-link colour* —
+      not a design decision at all — and `#1a73e8` is Google blue off an embedded widget.
+      Two causes, both in `packages/genome/src/brandKit.ts`. `isNeutral` throws away anything
+      low-chroma as "the paper", which is right for a page background and wrong for a brand
+      whose palette genuinely *is* neutral — very common in jewellery, fashion and interiors,
+      and exactly the brands where the palette matters most. And nothing blacklists UA
+      defaults, so an unstyled anchor outranks the real identity. The result is confidently
+      wrong rather than absent, and it now flows into every generated image via the brand
+      clause. A good fix probably needs area-weighting (how much of the page is this colour)
+      rather than chroma alone.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
