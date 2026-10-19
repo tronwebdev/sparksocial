@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { DEFAULT_STOCK_VOICE_ID, Explanation, ToolError, voiceLabel } from '@sparksocial/shared';
 import type { VoiceClient } from './types.js';
 
 /**
@@ -41,6 +41,15 @@ export const VoicePreviewInput = z.object({
 export const VoicePreviewOutput = z.object({
   url: z.string(),
   voiceId: z.string(),
+  /**
+   * Which voice was actually spoken, so the screen can say so.
+   *
+   * Without this the preview is ambiguous in the one way that matters: a brand
+   * that has not cloned anything still hears a voice, and "that is your agent"
+   * and "that is the stock voice you picked" are different claims.
+   */
+  source: z.enum(['cloned', 'stock']),
+  label: z.string(),
   why: Explanation,
 });
 
@@ -85,21 +94,31 @@ export function makeVoicePreview(voice: VoiceClient) {
         throw new ToolError('NOT_FOUND', 'No such brand.', { genomeId: input.genomeId });
       }
 
-      const voiceId = genome.constraints.elevenlabs_voice_id;
-      if (!voiceId) {
-        throw new ToolError(
-          'INVALID_INPUT',
-          'This brand has no voice yet. Record or upload a sample first, or paste an existing voice id.',
-          { genomeId: input.genomeId },
-        );
-      }
+      /*
+       * Resolved the same way `content.voice.generate` resolves it: the
+       * brand's own clone if it has one, otherwise the stock voice it chose,
+       * otherwise the default.
+       *
+       * This used to refuse outright when there was no clone — "This brand has
+       * no voice yet… or paste an existing voice id", pointing at a control
+       * that exists on no screen. It was also wrong about the product: a brand
+       * with no clone does not have *no voice*, it has the stock one, and that
+       * is exactly what its videos would be narrated in. A preview that cannot
+       * play the voice you would actually get is not previewing anything.
+       */
+      const cloned = genome.constraints.elevenlabs_voice_id;
+      const brand = ctx.brandId ? await ctx.db.brands.get(ctx.brandId, ctx.orgId) : undefined;
+      const voiceId = cloned ?? brand?.stockVoiceId ?? DEFAULT_STOCK_VOICE_ID;
+      const source = cloned ? ('cloned' as const) : ('stock' as const);
+      const label = cloned ? 'this brand’s own voice' : voiceLabel(voiceId);
 
       const { url } = await voice.generate({ voiceId, script: input.text });
 
       const why: Explanation = {
-        summary: `Spoke ${input.text.length} characters in this brand's registered voice.`,
+        summary: `Spoke ${input.text.length} characters in ${label}.`,
         factors: [
           { label: 'voice id', detail: voiceId },
+          { label: 'source', detail: source === 'cloned' ? 'the brand’s cloned voice' : 'a stock voice' },
           { label: 'characters', detail: String(input.text.length) },
         ],
         evidence: [],
@@ -108,7 +127,7 @@ export function makeVoicePreview(voice: VoiceClient) {
 
       ctx.logger.info('voice preview generated', { genomeId: input.genomeId, voiceId, chars: input.text.length });
 
-      return { url, voiceId, why };
+      return { url, voiceId, source, label, why };
     },
   });
 }

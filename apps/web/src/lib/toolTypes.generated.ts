@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 216 tools.
+ * 217 tools.
  */
 
 export interface ToolIO {
@@ -515,6 +515,10 @@ export interface ToolIO {
     input: { genomeId: string; proof_asset: Array<"person" | "product_ui" | "physical_craft" | "finished_work" | "physical_product" | "data_outcomes">; capture_capability: Array<"screen" | "space" | "work_artifacts" | "product" | "nothing">; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; secondary_objectives?: Array<"leads" | "bookings" | "trials" | "sales" | "audience" | "hiring">; talent_availability: "yes_licensed" | "yes_unlicensed" | "no" };
     output: { genomeId: string; version: number; availableModes: { synthesize: boolean; assemble: boolean; direct_finish: boolean }; avatarEnabled: boolean; blockedModes: Array<{ mode: "synthesize" | "assemble" | "direct_finish"; because: string }>; why: { summary: string; factors: Array<{ label: string; detail?: string }>; evidence: Array<{ kind: "rule"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
+  "genome.get": {
+    input: { genomeId: string };
+    output: { genome: { genomeId: string; brandId: string; version: number; identity: Record<string, unknown>; dimensions: Record<string, unknown>; constraints: Record<string, unknown> } };
+  };
   "genome.identity.set": {
     input: { genomeId: string; identity: { business_name?: string; category?: string; sub_category?: string; one_liner?: string; geography?: { scope: "global" | "national" | "local"; locale: string; radius_km: (number) | (null) }; languages?: Array<string>; price_tier?: "budget" | "mid" | "premium" | "enterprise" } };
     output: { genomeId: string; version: number };
@@ -865,7 +869,7 @@ export interface ToolIO {
   };
   "voice.preview": {
     input: { genomeId: string; text: string };
-    output: { url: string; voiceId: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { url: string; voiceId: string; source: "cloned" | "stock"; label: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "whatsapp.receive": {
     input: { from: string; body: string; channelMessageId: string; inReplyTo?: string };

@@ -6,6 +6,7 @@ import { genomeOfferSet } from '@sparksocial/genome/offer';
 import { genomeVoiceSet } from '@sparksocial/genome/voice';
 import { genomeCreate } from '@sparksocial/genome/create';
 import { genomeList } from '@sparksocial/genome/list';
+import { genomeGet } from '@sparksocial/genome/get';
 import { consentGrant, consentRevoke, consentList } from '@sparksocial/genome/consent';
 import { avatarConfigSet } from '@sparksocial/genome/avatarConfig';
 import { makeAvatarFromImage } from '@sparksocial/genome/avatarFromImage';
@@ -330,6 +331,7 @@ export function registerAlphaTools(): void {
   register(genomeVoiceSet);
   // Reads before a genome is selected — the brand switcher's source.
   register(genomeList);
+  register(genomeGet);
   // §10 likeness consent — what backs `rights()`'s `avatarEnabled` input.
   register(consentGrant);
   register(consentRevoke);

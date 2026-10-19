@@ -148,14 +148,12 @@ Each verified against the registry, not inferred from a comment.
       `leads` and `idempotency_reservations` survive; `brandDeletion.ts` says why for each.
       Not yet diffed against a design — the prototype has `Settings WS Add Client` and no
       counterpart, so the panel borrows the Assets Library's confirmation frame.
-- [ ] **`AgentStep` calls `genome.get`, which is not a registered tool.** Added earlier in
-      the same session that closed the onboarding agent screen, and caught afterwards by
-      `scripts/check-tool-inputs.mjs`. It fails quietly — the effect early-returns on a
-      non-`succeeded` result — so the only symptom is that returning to the Agent step shows
-      an empty avatar/voice state even when both are set, which is exactly the thing the
-      effect was written to prevent. Not a one-line fix: no registered read returns a
-      genome's `constraints` (`genome.list` carries only id, brand, name and timestamp), so
-      closing this means adding a `genome.get` tool rather than renaming a call.
+- [x] **`genome.get` exists — closed 19 Oct.** `AgentStep` had been calling it; nothing was
+      registered under that name, so every call returned `NOT_FOUND`, the effect
+      early-returned, and the step showed an empty avatar/voice state for a brand that had
+      both. A label for the name was already sitting in `toolLabel.ts` with no tool behind
+      it, so the expectation predates the call. `scripts/check-tool-inputs.mjs` now reports
+      all 337 call sites matching the registry.
 - [x] **The crawl could hand an error page to the inference pass — closed 19 Oct.** An
       nginx 403 body is 105 characters, and the bar for "this page has content" was 80. So
       the error page counted as a crawled page, which discarded the `blocked` failure (only
@@ -198,21 +196,34 @@ Each verified against the registry, not inferred from a comment.
       and the Brand Details step both rendered `BrandColorPicker` bound to the same
       `brandColors` field. The palette is chosen on Brand Details, beside the logo generated
       from it; the Brand Kit step now shows it rather than offering a second way to set it.
-- [ ] **`PersonalizeStep` is not rendered anywhere, so onboarding never records consent.**
-      It is the only component that calls `genome.consent.grant`, and nothing imports it.
-      The consequence is quiet and specific: the Agent step lets somebody clone their voice
-      and set an avatar, `voice.preview` plays it back (it has no consent gate), and then
-      `content.voice.generate` and `content.avatar.generate` both refuse at generation time
-      with `FORBIDDEN` because no `voice_clone` / `avatar_clone` record exists. The guardrail
-      is correct; the flow that was meant to satisfy it is orphaned. `Settings → Brand Kits
-      → ConsentPanel` can grant it, so this is a missing step rather than a missing
-      capability.
-- [ ] **The Agent step can only clone a voice, never pick one.** `STOCK_VOICES` holds five
-      real ElevenLabs premade ids and `brands.stockVoiceId` stores a choice, but the only
-      picker is in `Settings → GovernancePanel`. Onboarding offers upload and record and
-      nothing else, so a brand that does not want to clone anybody's voice has no way to
-      answer the question on the screen that asks it. `voice.preview`'s own error says "or
-      paste an existing voice id", which no control on that screen offers.
+- [x] **Onboarding records consent — closed 19 Oct.** `PersonalizeStep` was the only caller
+      of `genome.consent.grant` and nothing imported it, so a voice cloned in onboarding
+      played back in preview and then refused at generation time with `FORBIDDEN`. The
+      attestation is now asked by `AgentStep` at the moment a likeness is about to be
+      created — consent written first, clone second, so a failed grant cannot leave a genome
+      pointing at a likeness nobody agreed to. It asks for a name rather than a tick, because
+      the rights guardrail checks consent per subject. `genome.avatar.generate` still never
+      asks: no real person is involved.
+      `PersonalizeStep` itself stays unrendered and is now genuinely dead — it asks for
+      pasted HeyGen and ElevenLabs ids, which is the interface `AgentStep` replaced. Worth
+      deleting once somebody confirms nothing else wants it.
+- [x] **The Agent step can pick a stock voice — closed 19 Oct.** It offered only "clone a
+      real person's voice", though five real ElevenLabs ids and a `stockVoiceId` field to
+      store the choice both existed, reachable only from Settings. The picker sits in the
+      slot Sora Cameo vacated. `voice.preview` now resolves the way `content.voice.generate`
+      always has — clone, then the brand's stock pick, then the default — instead of
+      refusing with "no voice yet… or paste an existing voice id", which named a control on
+      no screen and was wrong about the product: a brand without a clone is not voiceless.
+- [x] **Sora Cameo is commented out — 19 Oct.** OpenAI publishes no Cameo API. It had been
+      drawn disabled with a tooltip, which reads to the team as a note and to a customer as
+      a broken button on the last screen of onboarding. The markup is kept commented with
+      its coordinates so restoring it is a two-marker deletion. **The gap itself is still
+      open** — see the Sora entry below.
+- [ ] **No waveform on either audio control.** Neither the voice drop zone nor the recorder
+      draws one, and the recorder gives no feedback at all beyond the button turning red —
+      no level meter, no elapsed time, no playback of what was captured before it is sent to
+      be cloned. So the first evidence that a recording was usable is whether ElevenLabs
+      accepted it. Nothing is broken; it is simply a silent control.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

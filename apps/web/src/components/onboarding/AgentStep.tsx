@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { invalidateAgentIdentity } from '@/lib/useAgentIdentity';
-import { DropZone, SectionLabel } from './kit';
+import { DropZone, SectionLabel, SelectField } from './kit';
+import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
 import { ProtoScale } from './Stage';
 
 /**
@@ -42,11 +43,34 @@ import { ProtoScale } from './Stage';
  * storage from the browser, then the resulting URL handed to the tool. Bytes
  * never transit the API container.
  *
- * ── The one control still inert ───────────────────────────────────────────
+ * ── Sora Cameo, commented out ─────────────────────────────────────────────
  *
- * Sora Cameo. There is no integration and no vendor API to write one against;
- * it stays drawn, disabled and labelled Optional rather than being quietly
- * deleted from a design somebody approved.
+ * It used to be drawn, disabled and labelled Optional, on the argument that
+ * hiding it would hide a real gap. The counter-argument won: a permanently
+ * dead control on the last screen of onboarding is not a note to the team, it
+ * is a thing a customer tries to click. OpenAI publishes no Cameo API, so
+ * there is no date on which this becomes live by itself.
+ *
+ * The markup is kept in place, commented, with its coordinates — so restoring
+ * it is a deletion of two comment markers rather than an archaeology exercise
+ * — and `docs/GAPS.md` holds the gap. Its slot now carries the stock voice
+ * picker.
+ *
+ * ── Consent is captured where the likeness is made ────────────────────────
+ *
+ * `guard.rights` refuses any avatar or voice format without an active consent
+ * record for the person being cloned, and nothing in onboarding was creating
+ * one: `PersonalizeStep`, the only component that called
+ * `genome.consent.grant`, was never rendered by anything. So a brand could
+ * clone a voice here, hear it play back in the test box, and then be refused
+ * at generation time with no record of why.
+ *
+ * The attestation is asked at the moment the likeness is about to be created
+ * rather than as a field sitting on the page, because that is when it is
+ * truthful: "I have this person's permission" is a statement about an act, and
+ * a checkbox ticked five minutes earlier on a different part of the screen is
+ * not the same statement. `genome.avatar.generate` never asks, because no real
+ * person is involved — its own summary says so.
  */
 
 type Busy = null | 'avatar-generate' | 'avatar-upload' | 'voice-upload' | 'recording' | 'preview';
@@ -72,6 +96,22 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  /** The brand's chosen stock voice — what its videos are narrated in without a clone. */
+  const [stockVoiceId, setStockVoiceId] = useState(DEFAULT_STOCK_VOICE_ID);
+
+  /**
+   * A likeness waiting on its attestation.
+   *
+   * Holds the work to run *after* consent is granted, so the upload and the
+   * grant cannot get out of order: nothing is cloned until there is a record
+   * naming whose likeness it is.
+   */
+  const [pendingConsent, setPendingConsent] = useState<
+    | { kind: 'avatar_clone' | 'voice_clone'; what: string; run: (subject: string) => Promise<void> }
+    | null
+  >(null);
+  const [subject, setSubject] = useState('');
+
   /**
    * Read once, because somebody may have named it already and an empty field
    * would read as "not set".
@@ -92,10 +132,10 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
    */
   useEffect(() => {
     void (async () => {
-      const res = await invoke<{ agentIdentity?: { name: string; named: boolean } }>(
-        'brand.governance.get',
-        {},
-      );
+      const res = await invoke<{
+        agentIdentity?: { name: string; named: boolean };
+        stockVoiceId?: string;
+      }>('brand.governance.get', {});
       if (res.status !== 'succeeded') return;
       /* `named` distinguishes a real name from the `UNNAMED_AGENT` fallback the
          tool substitutes — putting "Your agent" in the box as if somebody had
@@ -105,6 +145,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
         setName(id.name);
         setSaved(id.name);
       }
+      if (res.output.stockVoiceId) setStockVoiceId(res.output.stockVoiceId);
     })();
   }, []);
 
@@ -147,6 +188,73 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
        say so. Without it the orb keeps the old name until the tab reloads.
        See `lib/useAgentIdentity.ts`. */
     invalidateAgentIdentity(genomeId);
+  }
+
+  /** The stock voice is a governance setting, saved on pick rather than on blur. */
+  async function saveStockVoice(next: string) {
+    setStockVoiceId(next);
+    /* A new pick invalidates the cached preview — otherwise pressing play
+       replays the previous voice and the picker looks like it did nothing. */
+    setPreviewUrl(null);
+    setError(null);
+    const res = await invoke('brand.governance.set', { stockVoiceId: next });
+    if (res.status !== 'succeeded') {
+      setError(res.status === 'failed' ? res.error.message : 'Changing the voice needs approval first.');
+      return;
+    }
+    setNotice('Voice set. Type a line on the right to hear it.');
+  }
+
+  /**
+   * Record the attestation, then do the thing it was for.
+   *
+   * Consent first and the clone second: if the order were reversed and the
+   * consent write failed, the genome would point at a likeness nobody had
+   * agreed to — configured, and refused at generation time with no record of
+   * why. `PersonalizeStep` had this ordering right; it was simply never
+   * rendered.
+   */
+  async function grantAndRun() {
+    const who = subject.trim();
+    if (!pendingConsent || !who) return;
+
+    const { kind, run } = pendingConsent;
+    setPendingConsent(null);
+    setSubject('');
+    setError(null);
+
+    const granted = await invoke(
+      'genome.consent.grant',
+      { kind, subject: who },
+      /*
+       * The key is mandatory, not a nicety. `genome.consent.grant` is
+       * `idempotent: false` — a second grant is a second attestation — so the
+       * invoke middleware refuses the call outright without one. Omitting it
+       * is what made `PersonalizeStep` fail every single time it ran, and no
+       * unit test would have caught it: the refusal is in the middleware, not
+       * in the tool. Fresh per press, so a double click is neither replayed as
+       * a no-op nor rejected.
+       */
+      crypto.randomUUID(),
+    );
+    if (granted.status !== 'succeeded') {
+      setBusy(null);
+      setError(
+        granted.status === 'failed'
+          ? granted.error.message
+          : 'Recording consent needs approval first.',
+      );
+      return;
+    }
+
+    await run(who);
+  }
+
+  /** Abandon the pending likeness rather than leaving the upload half-done. */
+  function cancelConsent() {
+    setPendingConsent(null);
+    setSubject('');
+    setBusy(null);
   }
 
   /**
@@ -195,6 +303,15 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     setNotice('Generated a presenter and set it as your avatar.');
   }
 
+  /**
+   * A photo is a real person's face, so it asks before it clones.
+   *
+   * The bytes go up first and the clone waits behind the attestation: the
+   * upload is harmless on its own (nothing enters the Asset Graph until a tool
+   * is called with a role), and asking for a name before the file has even
+   * transferred would mean collecting a legal statement about an upload that
+   * might then fail.
+   */
   async function uploadAvatar(file: File) {
     const contentType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
     begin('avatar-upload');
@@ -203,6 +320,15 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       setBusy(null);
       return;
     }
+    setPendingConsent({
+      kind: 'avatar_clone',
+      what: 'this photo',
+      run: () => setAvatarFrom(file, url, contentType),
+    });
+  }
+
+  async function setAvatarFrom(file: File, url: string, contentType: string) {
+    setBusy('avatar-upload');
     const res = await invoke('genome.avatar.from_image', { genomeId, imageUrl: url, contentType }, crypto.randomUUID());
     setBusy(null);
     if (res.status !== 'succeeded') {
@@ -223,6 +349,15 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       setBusy(null);
       return;
     }
+    setPendingConsent({
+      kind: 'voice_clone',
+      what: 'this recording',
+      run: () => runClone(url, contentType),
+    });
+  }
+
+  async function runClone(url: string, contentType: string) {
+    setBusy('voice-upload');
     const res = await invoke<{ requiresVerification: boolean }>(
       'genome.voice.clone_from_sample',
       { genomeId, name: `${brandName} — agent voice`, samples: [{ url, contentType }] },
@@ -427,22 +562,63 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
           </div>
         </div>
 
-        {/* Cameo — the one control with nothing behind it. */}
-        <div style={{ position: 'absolute', left: 4, top: 135, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <SectionLabel info="Import your Sora cameo likeness for AI video posts.">Connect Cameo Account</SectionLabel>
-          <span style={{ fontSize: 16, color: '#838383', opacity: 0.6 }}>Optional</span>
-        </div>
-        <div
-          title="No Cameo integration exists yet — there is no public API to build one against."
-          style={{
-            position: 'absolute', left: 3, top: 169, width: 431, height: 71, borderRadius: 19.14,
-            background: '#F3F4F8', boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)', opacity: 0.55,
-          }}
-        >
-          <span style={{ position: 'absolute', left: 24, top: 25, fontSize: 18, fontWeight: 500, color: '#838383' }}>Sora Avatar Cameo Import</span>
-          <div style={{ position: 'absolute', left: 303, top: 13, width: 113, height: 44, borderRadius: 10.38, background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.69px rgba(12,12,12,0.1)' }}>
-            <span style={{ position: 'absolute', left: 35, top: 13, fontSize: 16, fontWeight: 500, color: '#838383' }}>+ Connect</span>
+        {/*
+          ── Sora Cameo, commented out ───────────────────────────────────
+
+          OpenAI publishes no Cameo API, so this had no integration behind it
+          and no date on which it would get one. It was drawn disabled at 55%
+          opacity with a tooltip saying so, which reads to the team as a note
+          and to a customer as a broken button on the last screen of
+          onboarding.
+
+          Kept here verbatim with its coordinates — left 3, top 169, 431x71,
+          radius 19.14 — so restoring it means removing two comment markers.
+          The slot now carries the stock voice picker below.
+
+          <div style={{ position: 'absolute', left: 4, top: 135, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SectionLabel info="Import your Sora cameo likeness for AI video posts.">Connect Cameo Account</SectionLabel>
+            <span style={{ fontSize: 16, color: '#838383', opacity: 0.6 }}>Optional</span>
           </div>
+          <div
+            title="No Cameo integration exists yet — there is no public API to build one against."
+            style={{
+              position: 'absolute', left: 3, top: 169, width: 431, height: 71, borderRadius: 19.14,
+              background: '#F3F4F8', boxShadow: 'inset 0 0 0 1.28px rgba(12,12,12,0.1)', opacity: 0.55,
+            }}
+          >
+            <span style={{ position: 'absolute', left: 24, top: 25, fontSize: 18, fontWeight: 500, color: '#838383' }}>Sora Avatar Cameo Import</span>
+            <div style={{ position: 'absolute', left: 303, top: 13, width: 113, height: 44, borderRadius: 10.38, background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.69px rgba(12,12,12,0.1)' }}>
+              <span style={{ position: 'absolute', left: 35, top: 13, fontSize: 16, fontWeight: 500, color: '#838383' }}>+ Connect</span>
+            </div>
+          </div>
+        */}
+
+        {/*
+          ── The stock voice, in Cameo's slot ────────────────────────────
+
+          Not in the design, and the screen was incoherent without it: it asks
+          what your agent sounds like and offered only "clone a real person's
+          voice". A brand that does not want to clone anybody had no answer,
+          though five real ElevenLabs ids and a `stockVoiceId` field to store
+          the choice both already existed — reachable only from Settings.
+
+          `content.voice.generate` already resolves `stockVoiceId` and falls
+          back to the same default, so picking one here changes what the
+          brand's videos actually sound like.
+        */}
+        <div style={{ position: 'absolute', left: 4, top: 135 }}>
+          <SectionLabel info="The voice your videos are narrated in when you have not cloned one. Spark uses this by default.">
+            Agent Voice (stock)
+          </SectionLabel>
+        </div>
+        <div style={{ position: 'absolute', left: 3, top: 172 }}>
+          <SelectField
+            value={stockVoiceId}
+            onChange={(v) => void saveStockVoice(v)}
+            ariaLabel="Stock voice"
+            width={431}
+            options={STOCK_VOICES.map((v) => ({ value: v.id, label: `${v.name} — ${v.character}` }))}
+          />
         </div>
 
         {/* Agent Voice */}
@@ -553,6 +729,83 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
             />
           ) : null}
         </div>
+
+        {/*
+          ── The attestation ─────────────────────────────────────────────
+
+          Shown over the step at the moment a likeness is about to be created,
+          because that is the moment the statement is about. It is not a
+          checkbox: `genome.consent.grant` records a *subject*, and the rights
+          guardrail checks consent per person, so a tick with nobody's name on
+          it would satisfy neither.
+
+          Cancelling abandons the upload. The bytes are already in storage and
+          are left there — nothing has entered the Asset Graph, because that
+          needs a tool call with a role, and deleting them would be a second
+          failure path guarding against no harm.
+        */}
+        {pendingConsent ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm consent"
+            style={{
+              position: 'absolute', inset: 0, zIndex: 10, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.82)',
+            }}
+          >
+            <div style={{ width: 520, borderRadius: 19.14, background: '#FFFFFF', boxShadow: '0 24px 60px -20px rgba(0,0,0,0.35)', padding: '28px 32px' }}>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0C0C0C' }}>
+                Whose {pendingConsent.kind === 'avatar_clone' ? 'face' : 'voice'} is this?
+              </p>
+              <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.5, color: '#5B5B5B' }}>
+                Spark records who gave permission before it copies a real person&rsquo;s{' '}
+                {pendingConsent.kind === 'avatar_clone' ? 'likeness' : 'voice'}. Without this,{' '}
+                {pendingConsent.what} is stored but never used in a post.
+              </p>
+              <input
+                type="text"
+                value={subject}
+                autoFocus
+                placeholder="Full name"
+                aria-label="Name of the person"
+                onChange={(e) => setSubject(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && subject.trim() && void grantAndRun()}
+                style={{
+                  marginTop: 18, width: '100%', height: 57, borderRadius: 10, background: '#F3F4F8',
+                  border: 'none', outline: 'none', padding: '0 20px', fontSize: 18, color: '#0C0C0C',
+                }}
+              />
+              <p style={{ margin: '14px 0 0', fontSize: 14, lineHeight: 1.45, color: '#838383' }}>
+                By continuing you confirm this person has agreed to their{' '}
+                {pendingConsent.kind === 'avatar_clone' ? 'likeness' : 'voice'} being used in this
+                brand&rsquo;s content. You can withdraw it at any time in Settings.
+              </p>
+              <div style={{ marginTop: 22, display: 'flex', justifyContent: 'flex-end', gap: 14 }}>
+                <button
+                  type="button"
+                  onClick={cancelConsent}
+                  style={{ height: 48, padding: '0 20px', borderRadius: 11, background: '#F3F4F8', border: 'none', fontSize: 17, fontWeight: 500, color: '#838383', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void grantAndRun()}
+                  disabled={!subject.trim()}
+                  style={{
+                    height: 48, padding: '0 22px', borderRadius: 11, background: '#0C0C0C', border: 'none',
+                    fontSize: 17, fontWeight: 600, color: '#FFFFFF',
+                    cursor: subject.trim() ? 'pointer' : 'not-allowed', opacity: subject.trim() ? 1 : 0.4,
+                  }}
+                >
+                  Confirm and continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <p role="alert" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#F01C1C' }}>

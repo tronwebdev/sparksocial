@@ -7,21 +7,34 @@ import { makeVoicePreview, VoicePreviewInput } from '../src/voicePreview.js';
  *
  * Two properties carry the weight. The character ceiling is the only thing
  * bounding spend on a tool reachable from onboarding, before a brand has done
- * anything; and the "no voice yet" path has to be a readable refusal rather than
- * an upstream error, because it is the state every brand is in when it first
- * sees this box.
+ * anything; and the voice it picks has to be the voice the brand would
+ * actually be narrated in.
+ *
+ * That second one is a behaviour change. This used to refuse when the genome
+ * had no clone — "This brand has no voice yet… or paste an existing voice id",
+ * naming a control that exists on no screen. It was also the wrong model of
+ * the product: a brand without a clone is not voiceless, it has the stock
+ * voice, and `content.voice.generate` has always fallen back to one. A preview
+ * that cannot play the voice you would actually get previews nothing.
  */
 
-function ctx(constraints: Record<string, unknown> = { elevenlabs_voice_id: 'voice_1' }): ToolCtx {
+function ctx(
+  constraints: Record<string, unknown> = { elevenlabs_voice_id: 'voice_1' },
+  governance: Record<string, unknown> = {},
+): ToolCtx {
   return {
     orgId: 'org_1',
     genomeId: 'gen_1',
+    brandId: 'brand_1',
     role: 'owner',
     approvalMode: 'autopublish',
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
     db: {
       genomes: {
         get: async (id: string) => ({ id, identity: {}, constraints }),
+      },
+      brands: {
+        get: async (brandId: string) => ({ brandId, name: 'Brand', ...governance }),
       },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -61,13 +74,44 @@ describe('voice.preview', () => {
     expect(out.voiceId).toBe('voice_1');
   });
 
-  it('refuses readably when the brand has no voice yet, rather than calling the vendor', async () => {
-    const client = voice();
-    await expect(
-      makeVoicePreview(client).handler({ genomeId: 'gen_1', text: 'Hello.' }, ctx({})),
-    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+  it('says the voice was the brand’s own, so the screen can make that claim', async () => {
+    const out = await makeVoicePreview(voice()).handler({ genomeId: 'gen_1', text: 'Hello.' }, ctx());
+    expect(out.source).toBe('cloned');
+  });
 
-    expect(client.generate).not.toHaveBeenCalled();
+  it('falls back to the stock voice the brand chose, rather than refusing', async () => {
+    const client = voice();
+    const out = await makeVoicePreview(client).handler(
+      { genomeId: 'gen_1', text: 'Hello.' },
+      ctx({}, { stockVoiceId: 'stock_chosen' }),
+    );
+
+    expect(client.generate).toHaveBeenCalledWith({ voiceId: 'stock_chosen', script: 'Hello.' });
+    expect(out.source).toBe('stock');
+  });
+
+  /*
+   * The brand's own clone wins over a stock pick. Both can be set — picking a
+   * stock voice does not delete a clone — and the clone is the more specific
+   * answer to "what does my agent sound like".
+   */
+  it('prefers the clone when the brand has both', async () => {
+    const client = voice();
+    await makeVoicePreview(client).handler(
+      { genomeId: 'gen_1', text: 'Hello.' },
+      ctx({ elevenlabs_voice_id: 'voice_1' }, { stockVoiceId: 'stock_chosen' }),
+    );
+
+    expect(client.generate).toHaveBeenCalledWith({ voiceId: 'voice_1', script: 'Hello.' });
+  });
+
+  it('still speaks when the brand has chosen nothing at all — that is the default it would get', async () => {
+    const client = voice();
+    const out = await makeVoicePreview(client).handler({ genomeId: 'gen_1', text: 'Hello.' }, ctx({}));
+
+    expect(client.generate).toHaveBeenCalled();
+    expect(out.source).toBe('stock');
+    expect(out.label).not.toBe('');
   });
 
   it('refuses a genomeId that is not the active one', async () => {
