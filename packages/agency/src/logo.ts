@@ -53,6 +53,24 @@ export const BrandLogoGenerateOutput = z.object({
   why: Explanation,
 });
 
+/**
+ * "an AI agency", not "a AI agency".
+ *
+ * The category is free text from the genome, so it is as likely to start with a
+ * vowel as not, and the article was hardcoded to "a". It appeared in every logo
+ * prompt for every vowel-initial niche — "a AI agency", "a esthetician", "a
+ * optician" — which is small, and is the sort of small that makes a product
+ * read as machine-written.
+ *
+ * Letters, not phonetics: "an hour" and "a university" are the exceptions this
+ * deliberately gets wrong rather than shipping a pronunciation dictionary for
+ * one word in one prompt. The common case is a category like "AI agency" or
+ * "accounting firm", and those it gets right.
+ */
+export function article(noun: string): string {
+  return /^[aeiou]/i.test(noun.trim()) ? 'an' : 'a';
+}
+
 export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: string) => Promise<number[]>) {
   return defineTool({
     name: 'brand.logo.generate',
@@ -90,6 +108,19 @@ export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: st
       const category = genome?.identity.category ?? '';
       const oneLiner = genome?.identity.one_liner ?? '';
 
+      /*
+       * The brand's own colours, when it has them.
+       *
+       * The prompt used to say "one solid colour" and leave the choice to the
+       * model — so the one asset a person most expects to match their brand was
+       * the one asset that ignored it, immediately after a step where they had
+       * just picked a palette. Read from governance rather than passed in,
+       * because `SET-WS-BRAND-KITS` is where the palette lives and the caller
+       * should not have to know that.
+       */
+      const brand = await ctx.db.brands.get(brandId, ctx.orgId);
+      const colours = (brand?.brandColors ?? []).filter((c) => /^#[0-9a-f]{3,8}$/i.test(c)).slice(0, 3);
+
       /**
        * `1:1`, because a logo is placed as a square mark by both renderers and a
        * non-square one would be letterboxed into the same box with less of it
@@ -97,9 +128,20 @@ export function makeBrandLogoGenerate(images: LogoImageClient, embed?: (text: st
        */
       const prompt = [
         'A single flat vector logo mark on a plain white background.',
-        'Simple geometric shape, one solid colour, thick strokes, high contrast, centred, generous margin.',
+        /*
+         * The colour clause is the one fragment that changes shape.
+         *
+         * With a palette, name it and say so firmly — image models drift off a
+         * stated colour unless it is the instruction rather than a mention.
+         * Without one, keep the original wording, which leaves the choice to
+         * the model and is the right answer when nobody has expressed one.
+         */
+        colours.length
+          ? `Simple geometric shape, thick strokes, high contrast, centred, generous margin. ` +
+            `Use only ${colours.length === 1 ? 'this exact colour' : 'these exact colours'}: ${colours.join(', ')}. Use no other colour.`
+          : 'Simple geometric shape, one solid colour, thick strokes, high contrast, centred, generous margin.',
         'No text, no letters, no words, no typography.',
-        `The business: ${name}${category ? `, a ${category}` : ''}.`,
+        `The business: ${name}${category ? `, ${article(category)} ${category}` : ''}.`,
         oneLiner ? `What they do: ${oneLiner}.` : '',
         input.hint ? `The owner suggests: ${input.hint}.` : '',
         'It must stay recognisable at very small sizes.',

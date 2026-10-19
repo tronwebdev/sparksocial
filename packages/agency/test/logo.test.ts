@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ToolCtx } from '@sparksocial/tools';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
-import { makeBrandLogoGenerate } from '../src/logo.js';
+import { article, makeBrandLogoGenerate } from '../src/logo.js';
 
 /**
  * `brand.logo.generate` — the Brand Kits screen's "Generate logo".
@@ -15,7 +15,12 @@ import { makeBrandLogoGenerate } from '../src/logo.js';
 const genome = GOLDEN_SET.find((c) => c.genome.genome_id === 'gen_saas')!.genome;
 
 function ctx(
-  over: { setGovernance?: unknown; inventory?: Record<string, number>; createAsset?: unknown } = {},
+  over: {
+    setGovernance?: unknown;
+    inventory?: Record<string, number>;
+    createAsset?: unknown;
+    brandColors?: string[];
+  } = {},
 ): ToolCtx {
   return {
     orgId: 'org_1',
@@ -29,6 +34,9 @@ function ctx(
       genomes: { get: async () => genome },
       brands: {
         setGovernance: over.setGovernance ?? (async () => ({ brandId: 'brand_1' })),
+        /* The palette lives on governance, which is where the brand kit writes
+           it — the tool reads it rather than taking it as an input. */
+        get: async () => ({ brandId: 'brand_1', brandColors: over.brandColors }),
       },
       // The logo is also the brand's `brand_kit` asset as of
       // `ensureBrandKitAsset`, so the tool now reads and writes this store.
@@ -188,5 +196,89 @@ describe('brand.logo.generate — the brand kit asset', () => {
       ctx({ createAsset: async () => { throw new Error('db down'); } }),
     );
     expect(out.logoUrl).toBeTruthy();
+  });
+});
+
+describe('article', () => {
+  /*
+   * The article was hardcoded to "a", so every vowel-initial category read
+   * "a AI agency", "a esthetician", "a optician" — in a string that goes into
+   * every logo generated for every such brand. Small, and exactly the kind of
+   * small that makes a product read as machine-written.
+   */
+  it('picks "an" before a vowel and "a" otherwise', () => {
+    expect(article('AI agency')).toBe('an');
+    expect(article('esthetician')).toBe('an');
+    expect(article('optician')).toBe('a' + 'n');
+    expect(article('b2b_saas')).toBe('a');
+    expect(article('barbershop')).toBe('a');
+  });
+
+  it('ignores leading whitespace rather than treating it as a consonant', () => {
+    expect(article('  AI agency')).toBe('an');
+  });
+
+  /*
+   * Letters, not phonetics. "an hour" and "a university" are wrong here, and
+   * deliberately so: a pronunciation dictionary for one word in one prompt is
+   * not worth carrying, and the common case — "AI agency", "accounting firm" —
+   * is right.
+   */
+  it('is spelling-based, which it says out loud rather than pretending otherwise', () => {
+    expect(article('hour')).toBe('a');
+    expect(article('university')).toBe('an');
+  });
+});
+
+describe('the prompt and the brand palette', () => {
+  /*
+   * The one asset a person most expects to match their brand was the one asset
+   * that ignored it: the prompt said "one solid colour" and left the choice to
+   * the model, immediately after a step where they had chosen a palette.
+   */
+  it('names the brand colours and forbids others when a palette exists', async () => {
+    const img = images();
+    await makeBrandLogoGenerate(img).handler({}, ctx({ brandColors: ['#D4A642', '#080808'] }));
+    const prompt = img.generate.mock.calls[0]![0].prompt;
+
+    expect(prompt).toContain('#D4A642');
+    expect(prompt).toContain('#080808');
+    expect(prompt).toMatch(/use no other colour/i);
+    // The old wording would have contradicted the instruction beside it.
+    expect(prompt).not.toMatch(/one solid colour/i);
+  });
+
+  it('keeps the original wording when there is no palette to honour', async () => {
+    const img = images();
+    await makeBrandLogoGenerate(img).handler({}, ctx());
+    const prompt = img.generate.mock.calls[0]![0].prompt;
+
+    expect(prompt).toMatch(/one solid colour/i);
+    expect(prompt).not.toMatch(/use no other colour/i);
+  });
+
+  /* Free text reaches governance from the brand kit, and a stray value must not
+     become a sentence instructing the model to paint in "red please". */
+  it('ignores anything that is not a hex colour', async () => {
+    const img = images();
+    await makeBrandLogoGenerate(img).handler({}, ctx({ brandColors: ['red please', '#112233'] }));
+    const prompt = img.generate.mock.calls[0]![0].prompt;
+
+    expect(prompt).toContain('#112233');
+    expect(prompt).not.toContain('red please');
+  });
+
+  /* Three is the cap: a logo made of six colours is not a logo, and a long list
+     reads to an image model as a palette to sample from rather than a rule. */
+  it('uses at most three colours', async () => {
+    const img = images();
+    await makeBrandLogoGenerate(img).handler(
+      {},
+      ctx({ brandColors: ['#111111', '#222222', '#333333', '#444444'] }),
+    );
+    const prompt = img.generate.mock.calls[0]![0].prompt;
+
+    expect(prompt).toContain('#333333');
+    expect(prompt).not.toContain('#444444');
   });
 });
