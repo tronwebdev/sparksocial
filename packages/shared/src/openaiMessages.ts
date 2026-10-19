@@ -62,11 +62,33 @@ export interface MessagesResponse {
  * about how much thinking the job deserves. Mapping tiers keeps that judgement
  * where it was made — a caption is a cheap call and the crawl is an expensive
  * one, whichever vendor serves them.
+ *
+ * ── Updated October 2026, and why it mattered ────────────────────────────
+ *
+ * This mapped to `gpt-4o` and `gpt-4o-mini`, which are two generations behind
+ * and no longer listed among OpenAI's text models. That is worse here than it
+ * looks: this file *is* the live language path while the Anthropic org is
+ * suspended, so a model id that stops resolving takes out drafting, captions,
+ * briefs and genome inference at once, with nothing to fall back to.
+ *
+ * The tiers now map by the intent they encode rather than collapsing two of
+ * them onto one model as before:
+ *
+ *   opus    gpt-6-astra   the flagship, for the calls worth paying for
+ *   sonnet  gpt-6.1-sol   the balance of cost and capability
+ *   haiku   gpt-6-luna    cheap and high-volume
+ *
+ * `OPENAI_FALLBACK_MODEL` still overrides all three, which is the escape hatch
+ * when an account lacks access to one of them — a config change, not a deploy.
+ *
+ * **Unverified:** OpenAI's model page documents these against the Responses
+ * API and does not mention Chat Completions, which is the endpoint below. If a
+ * call returns a 404 on the model, that is the first thing to check.
  */
 const MODEL_FOR_TIER: Record<'opus' | 'sonnet' | 'haiku', string> = {
-  opus: 'gpt-4o',
-  sonnet: 'gpt-4o',
-  haiku: 'gpt-4o-mini',
+  opus: 'gpt-6-astra',
+  sonnet: 'gpt-6.1-sol',
+  haiku: 'gpt-6-luna',
 };
 
 /**

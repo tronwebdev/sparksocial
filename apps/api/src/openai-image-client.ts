@@ -40,15 +40,34 @@ export interface OpenAiImageClientOptions {
   fetchImpl?: typeof fetch;
 }
 
-const DEFAULT_MODEL = 'gpt-image-1';
+/**
+ * `flare`, not `sunburst`.
+ *
+ * OpenAI's current image models are `gpt-image-2.5-sunburst` and
+ * `gpt-image-2.5-flare` (September 2026). Sunburst is the one tuned for
+ * editing precision; Flare is for fast, high-quality everyday generation,
+ * which is what this client does — one prompt, one picture, nothing to edit.
+ *
+ * This said `gpt-image-1` when it was written, which is simply out of date and
+ * would have been a 400 at the first fallback: a backup provider that fails on
+ * its own model id is worse than no backup, because it only shows up on the day
+ * the primary is already down. Overridable with `OPENAI_IMAGE_MODEL` so a model
+ * change needs no deploy.
+ */
+const DEFAULT_MODEL = 'gpt-image-2.5-flare';
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 
 /**
- * Aspect ratio to one of the sizes the endpoint accepts.
+ * Aspect ratio to a size the endpoint accepts.
  *
- * It takes a fixed set, not arbitrary dimensions, so anything unrecognised
- * lands on square — the shape `brand.logo.generate` asks for, and the one a
- * renderer can letterbox without cropping a face out of frame.
+ * These three are OpenAI's own recommended values. Custom `WIDTHxHEIGHT` is
+ * allowed — multiples of 16, between 1:3 and 3:1 — but there is nothing to gain
+ * here: the three cover portrait, landscape and square, and a bespoke size
+ * would only add a way to be rejected.
+ *
+ * Anything unrecognised lands on square: the shape `brand.logo.generate` asks
+ * for, and the one a renderer can letterbox without cropping a face out of
+ * frame.
  */
 function sizeFor(aspectRatio: string): string {
   switch (aspectRatio) {

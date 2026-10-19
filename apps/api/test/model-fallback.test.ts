@@ -103,8 +103,21 @@ describe('the OpenAI shim speaks Anthropic', () => {
     const dear = fakeFetch(toolReply);
     await shim(dear).messages.create({ model: 'claude-opus-5', messages: [{ role: 'user', content: 'x' }] });
 
-    expect(cheap.sent().model).toBe('gpt-4o-mini');
-    expect(dear.sent().model).toBe('gpt-4o');
+    /*
+     * Both halves matter, and they fail for different reasons.
+     *
+     * The ids catch a typo or a model that no longer exists — this test pinned
+     * `gpt-4o`/`gpt-4o-mini` for months after both left OpenAI's model list,
+     * and stayed green while the live fallback pointed at them.
+     *
+     * The inequality catches the thing the test is named for. The map used to
+     * send *opus and sonnet to the same model*, so "a cheap job stays cheap"
+     * held only because this compares haiku against opus; a tier that silently
+     * collapsed into its dearer neighbour would not have shown up here.
+     */
+    expect(cheap.sent().model).toBe('gpt-6-luna');
+    expect(dear.sent().model).toBe('gpt-6-astra');
+    expect(cheap.sent().model).not.toBe(dear.sent().model);
   });
 
   it('refuses a feature it does not implement rather than serving a different result', async () => {
