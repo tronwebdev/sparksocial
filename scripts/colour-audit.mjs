@@ -57,7 +57,31 @@ const HEX = /#[0-9a-fA-F]{6}\b/g;
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//g;
 const LINE_COMMENT = /^\s*\/\/.*$/gm;
 
-const hexes = (text) => (text.match(HEX) ?? []).map((h) => h.toLowerCase());
+const RGB = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g;
+
+/**
+ * Every colour in a file, as lowercase hex — **including `rgb()` forms**.
+ *
+ * Reading only `#rrggbb` was wrong, and wrong in the direction that invents
+ * work: 48 of the 61 prototypes write at least some colours as
+ * `background-color:rgb(183,241,252)`, and the audit called every one of them
+ * absent. `OverviewSection`'s banner cites `#B7F1FC` as measured and the
+ * design says `rgb(183,241,252)` — the same colour. `PostPreview`'s
+ * `#CFFCCF`/`#13AD12`, which this file previously reported as a measurement
+ * that existed nowhere, are `rgb(207,252,207)` and `rgb(19,173,18)` in
+ * `DP prevText.dc.html`.
+ *
+ * Alpha is dropped: a colour used at 15% is still that colour, and the hex a
+ * component writes is what this compares against.
+ */
+const toHex = (r, g, b) =>
+  '#' + [r, g, b].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('');
+
+const hexes = (text) => {
+  const out = (text.match(HEX) ?? []).map((h) => h.toLowerCase());
+  for (const m of text.matchAll(RGB)) out.push(toHex(m[1], m[2], m[3]));
+  return out;
+};
 
 /**
  * Comments are not paint.

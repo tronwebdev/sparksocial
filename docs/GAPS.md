@@ -311,28 +311,31 @@ Each verified against the registry, not inferred from a comment.
       **invented** (in no prototype at all). Only the second list is worth reading:
 
           screen           colours  borrowed  invented
-          settings              37        12        22
-          assets                25         1         7
-          command-center        64         5        16
-          onboarding            23         0         5
-          agency               102         1        20
-          discovery             37         8         5
-          calendar              19         0         2
-          automation            41         0         2
+          settings              41         8        20
+          command-center        64         6        14
+          discovery             41         7         7
+          agency               119         1        19
+          assets                28         1         3
+          calendar              22         0         2
           dashboard             25         1         1
-          engagement             8         6         0
+          automation            48         0         0
+          onboarding            23         5         0
+          engagement             8         2         0
+          draft-panel           12         0         0
 
       Splitting the two buckets changed the picture: `engagement` had read as 75% off-design
       and is 0% invented — every one of its six was the brand gradient borrowed from Auth.
       `discovery` fell from 40% to 14% the same way. The first version over-reported, badly.
-      **Done: onboarding, discovery, agency, command-center, assets.** Onboarding's five remaining are `PALETTE`, the
+      **Done: onboarding, discovery, agency, command-center, assets, automation, calendar,
+      dashboard, draft-panel, engagement.** Only `settings` is unread, and its 20 are
+      vendor brand hex (TikTok, Reddit, Bluesky) plus `COLOUR_PRESETS`, five named brand
+      kits a customer picks from — product data, not chrome. Onboarding's five remaining are `PALETTE`, the
       swatches a customer picks. Discovery's five are app-wide conventions used in 3–6 files
       each — muted-source amber, the metric tones — for states no prototype draws.
       Agency's chips now come from one `statusTints.ts` rather than four copies that had
       already diverged on the red, and its mark gradients say why four of the five are not
       in the prototype. Its remaining count is unchanged on purpose: the values are still
       off-design, but in one documented place instead of scattered.
-      **Unread: settings, draft-panel, calendar, automation, dashboard.**
       `settings` leads on invented count and most of it is vendor brand hex (Reddit's
       `#ff4500` and friends), so the true worklist there is smaller than 22.
       *Copy diffing is not worth repeating.* `scripts/design-copy.mjs` exists and mostly
@@ -351,12 +354,15 @@ Each verified against the registry, not inferred from a comment.
       being identical was its own small lie.
       The agency reds stay where they are — a declined proposal and a lost lead are ordinary
       outcomes, not errors.
-- [ ] **`PostPreview` cites a measurement that is in no prototype.** Its header records the
-      preview avatar as `63x63 · r76 · #CFFCCF, initials 27.9/500 #13AD12`, in the same
-      measured style as every other value on that screen — and neither hex appears in the
-      Draft Panel design, any `DP *` file, or anywhere else in `ui build/`. Either the
-      comment is wrong or it was taken from a source not in the repo. Worth asking whoever
-      wrote it before changing anything, since the numbers around it are right.
+- [x] **~~`PostPreview` cites a measurement that is in no prototype~~ — wrong, corrected
+      20 Oct.** It cites `#CFFCCF` / `#13AD12` and both are in `DP prevText.dc.html`, written
+      as `rgb(207,252,207)` and `rgb(19,173,18)`. The comment was right and the audit was
+      blind: `colour-audit.mjs` matched only `#rrggbb`, and **48 of the 61 prototypes write
+      at least some colours as `rgb()`**. Kept rather than deleted because an entry accusing
+      correct code of being wrong is worth leaving visible once it has been corrected.
+      Fixed in the script, which now reads both forms — and the line that reads `rgb()` had
+      its own bug: a `` written into the file as a literal backspace byte, so the regex
+      silently matched nothing and the first "fixed" run reported the identical numbers.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

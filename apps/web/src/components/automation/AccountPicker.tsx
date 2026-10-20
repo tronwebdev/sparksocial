@@ -198,7 +198,7 @@ export function AccountPicker({
                 className="flex h-[58px] items-center gap-[11px] rounded-[13px] bg-white pl-[9px] pr-[18px] transition-shadow"
                 style={{ boxShadow: on ? 'inset 0 0 0 1.4px #0C0C0C' : 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
               >
-                <span aria-hidden className="flex h-[41px] w-[41px] shrink-0 items-center justify-center rounded-full" style={{ background: '#F1F4F8' }}>
+                <span aria-hidden className="flex h-[41px] w-[41px] shrink-0 items-center justify-center rounded-full" style={{ background: '#F8F8F8' }}>
                   <PlatformIcon platform={r.platform} size={22} />
                 </span>
                 <span className="text-left">
@@ -245,7 +245,7 @@ export function AccountPicker({
                 className="flex flex-wrap items-center gap-[12px] rounded-[13px] bg-white px-[16px] py-[12px]"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.22)' }}
               >
-                <span aria-hidden className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full" style={{ background: '#F1F4F8' }}>
+                <span aria-hidden className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full" style={{ background: '#F8F8F8' }}>
                   <PlatformIcon platform={r.platform} size={19} />
                 </span>
                 <span className="min-w-0 flex-1">

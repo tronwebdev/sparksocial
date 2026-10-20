@@ -483,7 +483,10 @@ export function AutomationHome({
           <span className="text-16 font-medium" style={{ color: '#838383' }}>
             Page {pageCount === 0 ? 0 : page + 1} of {pageCount}
           </span>
-          <span className="text-14" style={{ color: '#9A9A9A' }}>
+          {/* `#838383`, the design's pager grey — and the only grey of that
+              family anywhere in `SparkSocial Automation.dc.html`. This was
+              `#9A9A9A`, a shade that file never uses. */}
+          <span className="text-14" style={{ color: '#838383' }}>
             {visible.length} of {rows?.length ?? 0} shown
           </span>
           <span className="ml-auto flex items-center gap-[8px]">

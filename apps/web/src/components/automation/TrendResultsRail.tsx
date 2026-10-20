@@ -134,7 +134,10 @@ export function TrendResultsRail({
               what tells you to change the keywords rather than wait. */}
           {trends.length === 0 && excluded.length > 0 ? (
             <div className="mt-[18px]">
-              <p className="text-13 font-semibold uppercase tracking-[0.06em]" style={{ color: '#9A9A9A' }}>
+              {/* `#838383` — the design's secondary grey, and already what the
+                  row beneath uses as `rgba(131,131,131,0.07)`. `#9A9A9A` was a
+                  third shade between it and `#B0B0B0`, in the same element. */}
+              <p className="text-13 font-semibold uppercase tracking-[0.06em]" style={{ color: '#838383' }}>
                 {excluded.length} passed over
               </p>
               <ul className="mt-[10px] flex flex-col gap-[10px]">
