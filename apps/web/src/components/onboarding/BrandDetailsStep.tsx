@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { NICHES, resolveNiche } from '@sparksocial/shared';
 import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
@@ -40,21 +41,6 @@ import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
  * guess can be corrected, not to route anything, so a taxonomy of two hundred
  * would be work for no effect.
  */
-const NICHES = [
-  'Trades and services',
-  'Food and drink',
-  'Health and fitness',
-  'Beauty and grooming',
-  'Retail and e-commerce',
-  'Professional services',
-  'Software',
-  'Property',
-  'Education',
-  'Hospitality',
-  'Creative and events',
-  'Something else',
-];
-
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function BrandDetailsStep({
@@ -68,9 +54,16 @@ export function BrandDetailsStep({
   initialNiche?: string;
 }) {
   const [oneLiner, setOneLiner] = useState('');
-  const [niche, setNiche] = useState(initialNiche ?? '');
+  /*
+   * Resolved, not taken raw.
+   *
+   * `initialNiche` is the crawl's free-text category — "Jewellery brand / DTC
+   * e-commerce" — which is not a member of `NICHES`, so assigning it directly
+   * left the select on "Choose one" and the crawl's answer invisible.
+   */
+  const [niche, setNiche] = useState(() => resolveNiche(initialNiche).niche);
   /** What they typed after choosing "Something else" — see `effectiveNiche`. */
-  const [otherNiche, setOtherNiche] = useState('');
+  const [otherNiche, setOtherNiche] = useState(() => resolveNiche(initialNiche).other);
   /**
    * The brand palette, here rather than only on the brand-kit step.
    *
@@ -108,17 +101,49 @@ export function BrandDetailsStep({
   useEffect(() => {
     let live = true;
     void (async () => {
-      const res = await invoke<{ brandColors?: string[]; logoUrl?: string }>('brand.governance.get', {});
-      if (!live || res.status !== 'succeeded') return;
+      const [gov, gen] = await Promise.all([
+        invoke<{ brandColors?: string[]; logoUrl?: string }>('brand.governance.get', {}),
+        invoke<{ genome?: { identity?: { one_liner?: string; category?: string } } }>('genome.get', { genomeId }),
+      ]);
+
+      if (!live) return;
+
       /* Only seed what is empty: a person who has already typed on this screen
          outranks anything a crawl proposed. */
-      if (res.output.brandColors?.length) setColors((c) => (c.length ? c : res.output.brandColors!));
-      if (res.output.logoUrl) setLogoUrl((u) => u || res.output.logoUrl!);
+      if (gov.status === 'succeeded') {
+        if (gov.output.brandColors?.length) setColors((c) => (c.length ? c : gov.output.brandColors!));
+        if (gov.output.logoUrl) setLogoUrl((u) => u || gov.output.logoUrl!);
+      }
+
+      /*
+       * The sentence the crawl wrote.
+       *
+       * It was never loaded, and the field's placeholder is a hard-coded
+       * example about AI agents — so a jewellery brand that had just been read
+       * correctly showed an empty box suggesting it sold software. Worse than
+       * blank: `canGenerateLogo` requires this field, so "Generate logo" sat
+       * disabled saying "Add what your brand does first" about a brand whose
+       * description was already in the database.
+       */
+      if (gen.status === 'succeeded') {
+        const line = gen.output.genome?.identity?.one_liner?.trim();
+        if (line) setOneLiner((v) => v || line);
+
+        /* The category too, for a reload that skipped the crawl screen. */
+        const category = gen.output.genome?.identity?.category;
+        if (category) {
+          const resolved = resolveNiche(category);
+          if (resolved.niche) {
+            setNiche((n) => n || resolved.niche);
+            setOtherNiche((o) => o || resolved.other);
+          }
+        }
+      }
     })();
     return () => {
       live = false;
     };
-  }, []);
+  }, [genomeId]);
 
   /**
    * The niche actually recorded, from either half of the control.

@@ -37,6 +37,7 @@
 interface ProbeElement {
   getAttribute(name: string): string | null;
   querySelectorAll(selector: string): ArrayLike<ProbeElement>;
+  getBoundingClientRect(): { width: number; height: number };
 }
 interface ProbeStyle {
   readonly length: number;
@@ -63,8 +64,26 @@ interface ProbeDocument {
 }
 interface ProbeWindow {
   document: ProbeDocument;
+  innerWidth: number;
+  innerHeight: number;
   getComputedStyle(element: ProbeElement): ProbeStyle;
   URL: { new (url: string, base?: string): { toString(): string } };
+}
+
+/**
+ * One observed colour, with the two things that decide whether to believe it.
+ *
+ * `declared` means the site named it in a `--brand*` custom property — its own
+ * statement, believed without further evidence. `area` is the share of the
+ * viewport it covers, which is what tells a cream background apart from a
+ * link's blue when saturation cannot.
+ */
+export interface Swatch {
+  color: string;
+  weight: number;
+  /** Fraction of the viewport, 0..1. Zero for text and borders. */
+  area: number;
+  declared: boolean;
 }
 
 /** What a crawl can observe about a site's visual identity. */
@@ -87,16 +106,29 @@ export interface CrawledKit {
  * {@link rankKit}, so the judgement calls are unit-testable without a browser.
  */
 export function kitProbe(): {
-  swatches: { color: string; weight: number }[];
+  swatches: Swatch[];
   fonts: { display?: string; body?: string };
   logos: string[];
 } {
   const view = globalThis as unknown as ProbeWindow;
   const doc = view.document;
   const getComputedStyle = (el: ProbeElement) => view.getComputedStyle(el);
-  const swatches: { color: string; weight: number }[] = [];
-  const push = (color: string | null | undefined, weight: number) => {
-    if (color) swatches.push({ color, weight });
+  const swatches: Swatch[] = [];
+  const push = (color: string | null | undefined, weight: number, extra: Partial<Swatch> = {}) => {
+    if (color) swatches.push({ color, weight, area: 0, declared: false, ...extra });
+  };
+
+  /*
+   * How much of the viewport an element covers, as a fraction.
+   *
+   * The signal that separates a brand colour from an accident. A link's blue
+   * is a few hundred pixels; a jewellery site's cream is most of the page.
+   * Chroma cannot tell those apart and area can.
+   */
+  const viewport = Math.max(1, view.innerWidth * view.innerHeight);
+  const areaOf = (el: ProbeElement): number => {
+    const r = el.getBoundingClientRect();
+    return Math.min(1, Math.max(0, (r.width * r.height) / viewport));
   };
 
   /*
@@ -123,7 +155,9 @@ export function kitProbe(): {
         seenVars.add(prop);
         const named = /brand|primary|accent|secondary|theme/i.test(prop);
         const value = rootStyle.getPropertyValue(prop).trim() || style.getPropertyValue(prop).trim();
-        push(value, named ? 100 : 12);
+        /* Declared in a stylesheet variable: the site stating its own palette,
+           which needs no area to be believed. */
+        push(value, named ? 100 : 12, { declared: named });
       }
     }
   }
@@ -146,9 +180,25 @@ export function kitProbe(): {
     const nodes = Array.from(doc.querySelectorAll(selector)).slice(0, 20);
     for (const node of nodes) {
       const style = getComputedStyle(node);
-      push(style.backgroundColor, weight);
+      const area = areaOf(node);
+      /* A fill covers the element; text and borders do not, so only the
+         background claims the area. */
+      push(style.backgroundColor, weight, { area });
       push(style.color, Math.round(weight / 3));
       push(style.borderTopColor, Math.round(weight / 4));
+    }
+  }
+
+  /*
+   * The page's own large surfaces, which is where a neutral identity lives.
+   *
+   * Nothing sampled these before, so a brand whose palette is cream and
+   * off-white had no chance of being read: its colours were only ever on
+   * `body` and the big section wrappers, and the probe was looking at buttons.
+   */
+  for (const selector of ['body', 'main', 'section', 'article', '[class*="hero"]']) {
+    for (const node of Array.from(doc.querySelectorAll(selector)).slice(0, 8)) {
+      push(getComputedStyle(node).backgroundColor, 6, { area: areaOf(node) });
     }
   }
 
@@ -235,9 +285,7 @@ export function toHex(value: string): string | undefined {
  * from "this is the paper".
  */
 export function isNeutral(hex: string): boolean {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const { r, g, b } = channels(hex);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
 
@@ -245,6 +293,63 @@ export function isNeutral(hex: string): boolean {
   if (max <= 24) return true;                   // effectively black
   if (min >= 238) return true;                  // effectively white
   return false;
+}
+
+/**
+ * Colours a browser supplies when a page has *not* chosen one.
+ *
+ * `#0000ee` is the UA default for an unvisited link. It is not a design
+ * decision, it is the absence of one — and it is strongly saturated, so it
+ * sails past `isNeutral` and outranks a real palette.
+ *
+ * Found on missoma.com, whose identity is gold and cream and whose extracted
+ * palette came back `#0000ee, #0a4563, #1a73e8`: browser link blue, and Google
+ * blue off an embedded widget. Nothing on that page is blue.
+ */
+const UA_DEFAULTS = new Set(['#0000ee', '#0000ff', '#551a8b', '#ee0000', '#1a73e8', '#4285f4']);
+
+/**
+ * How much of the page is painted in this colour, as a share of the viewport.
+ *
+ * The signal `isNeutral` was standing in for, badly. The question that
+ * actually separates a brand colour from the paper is not "is it saturated"
+ * but "how much of the page is it" — and the two disagree exactly where it
+ * matters: a jewellery brand's cream *is* its palette and a link's blue is
+ * not, while chroma says the opposite about both.
+ *
+ * So a neutral is kept when it covers enough of the page to be a deliberate
+ * choice, and a saturated colour has to earn its place either by being
+ * declared in a custom property or by covering some real area.
+ */
+const AREA_FLOOR = 0.015; // 1.5% of the viewport
+
+/**
+ * Plain white and plain black, which no amount of area makes a decision.
+ *
+ * Admitting large neutrals let a *tinted* neutral in — a jewellery brand's
+ * cream, which is what this was for — and also let `#ffffff` in, which then
+ * led the palette for both missoma.com and stripe.com. A palette beginning
+ * "white" is not wrong so much as useless: every page is mostly white, and
+ * nothing downstream can act on it.
+ *
+ * The distinction is the tint. `#f6f1e7` is a choice someone made; `#ffffff`
+ * and `#fafafa` are what you get for not making one. So: achromatic *and*
+ * extreme is paper, at any size.
+ */
+function isPaper(hex: string): boolean {
+  const { r, g, b } = channels(hex);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const achromatic = max - min <= 8;
+  return achromatic && (min >= 244 || max <= 12);
+}
+/** `#rrggbb` to its three channels. */
+function channels(hex: string): { r: number; g: number; b: number } {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
 }
 
 /** Two colours a person would not tell apart should not both be in a palette of six. */
@@ -268,10 +373,34 @@ const MAX_COLORS = 6;
 export function rankKit(probe: ReturnType<typeof kitProbe>): CrawledKit {
   const totals = new Map<string, number>();
 
-  for (const { color, weight } of probe.swatches) {
+  for (const { color, weight, area, declared } of probe.swatches) {
     const hex = toHex(color);
-    if (!hex || isNeutral(hex)) continue;
-    totals.set(hex, (totals.get(hex) ?? 0) + weight);
+    if (!hex) continue;
+
+    /* Never a design decision; see `UA_DEFAULTS` and `isPaper`. */
+    if (UA_DEFAULTS.has(hex) || isPaper(hex)) continue;
+
+    /*
+     * Three ways in, in order of how much they are worth believing:
+     *
+     *   1. the site declared it in a `--brand*` variable;
+     *   2. it covers enough of the page to be deliberate — which is how a
+     *      cream or off-white identity gets in, where `isNeutral` alone threw
+     *      it away as "the paper";
+     *   3. it is saturated enough to be an accent rather than a background.
+     *
+     * Chroma is now the *last* test rather than the only one. On missoma.com
+     * it was the only one, and it chose browser link blue over the brand.
+     */
+    const believable = declared || area >= AREA_FLOOR || !isNeutral(hex);
+    if (!believable) continue;
+
+    /*
+     * Area is worth weight, not just admission. A colour covering a third of
+     * the page is more the brand's than a button nobody scrolled to, and
+     * without this a large neutral would be admitted and then ranked last.
+     */
+    totals.set(hex, (totals.get(hex) ?? 0) + weight + Math.round(area * 120));
   }
 
   const ordered = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([hex]) => hex);

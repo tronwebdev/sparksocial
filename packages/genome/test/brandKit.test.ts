@@ -10,11 +10,19 @@ import { isNeutral, rankKit, toHex } from '../src/brandKit.js';
  * is the brand's, which is the paper, which two are the same colour twice.
  */
 
+/**
+ * `area` and `declared` default to "observed, small" — the shape most of these
+ * cases are about. Both are given explicitly where the test is about them.
+ */
 const probe = (
-  swatches: { color: string; weight: number }[],
+  swatches: Array<{ color: string; weight: number; area?: number; declared?: boolean }>,
   fonts: { display?: string; body?: string } = {},
   logos: string[] = [],
-) => ({ swatches, fonts, logos });
+) => ({
+  swatches: swatches.map((s) => ({ area: 0, declared: false, ...s })),
+  fonts,
+  logos,
+});
 
 describe('toHex', () => {
   it('reads the rgb() form a browser actually returns', () => {
@@ -134,5 +142,133 @@ describe('rankKit', () => {
 
   it('omits the logo rather than inventing one', () => {
     expect(rankKit(probe([])).logoUrl).toBeUndefined();
+  });
+});
+
+/**
+ * The missoma.com failure, and what fixed it.
+ *
+ * Measured on the deployed crawler, 20 Oct. Missoma's identity is gold, cream
+ * and off-white; the extracted palette came back
+ *
+ *     #0000ee, #0a4563, #1a73e8
+ *
+ * `#0000ee` is the browser's default unvisited-link colour — the absence of a
+ * design decision, and strongly saturated, so it sailed past `isNeutral` and
+ * outranked everything. `#1a73e8` is Google blue off an embedded widget.
+ * Nothing on that page is blue.
+ *
+ * Two causes, and chroma was both of them: it admitted an accident because it
+ * was saturated, and it discarded the real identity because it was not.
+ */
+describe('a brand whose palette is neutral', () => {
+  it('keeps a cream that covers a third of the page', () => {
+    const kit = rankKit(
+      probe([
+        { color: '#f6f1e7', weight: 6, area: 0.34 }, // the page, in cream
+        { color: '#0000ee', weight: 6 },             // an unstyled link
+      ]),
+    );
+    expect(kit.colors).toContain('#f6f1e7');
+  });
+
+  /*
+   * The whole point. Chroma says the link is the brand colour and the cream is
+   * paper; area says the opposite, and area is right.
+   */
+  it('ranks the cream above the link blue', () => {
+    const kit = rankKit(
+      probe([
+        { color: '#0000ee', weight: 40 },
+        { color: '#f6f1e7', weight: 6, area: 0.34 },
+      ]),
+    );
+    expect(kit.colors[0]).toBe('#f6f1e7');
+  });
+
+  it('still drops a neutral that covers almost nothing', () => {
+    const kit = rankKit(probe([{ color: '#fafafa', weight: 40, area: 0.001 }]));
+    expect(kit.colors).toEqual([]);
+  });
+});
+
+describe('colours a browser supplies when the page chose none', () => {
+  it('refuses the default link blue however it is weighted', () => {
+    expect(rankKit(probe([{ color: '#0000ee', weight: 500, declared: true }])).colors).toEqual([]);
+  });
+
+  it('refuses the other user-agent defaults too', () => {
+    for (const ua of ['#0000ff', '#551a8b', '#1a73e8']) {
+      expect(rankKit(probe([{ color: ua, weight: 100 }])).colors).toEqual([]);
+    }
+  });
+
+  /*
+   * The exact observation from missoma.com. Two of the three were accidents
+   * and the third is a real colour off the page, so it is the only survivor.
+   */
+  it('reduces the measured missoma palette to the one real colour in it', () => {
+    const kit = rankKit(
+      probe([
+        { color: '#0000ee', weight: 40 },
+        { color: '#1a73e8', weight: 25 },
+        { color: '#0a4563', weight: 12 },
+      ]),
+    );
+    expect(kit.colors).toEqual(['#0a4563']);
+  });
+});
+
+describe('a declared palette still wins', () => {
+  it('believes a --brand variable without needing area', () => {
+    const kit = rankKit(
+      probe([
+        { color: '#f6f1e7', weight: 6, area: 0.4 },
+        { color: '#b8860b', weight: 100, declared: true },
+      ]),
+    );
+    expect(kit.colors[0]).toBe('#b8860b');
+  });
+
+  it('believes a declared neutral, which area alone might not reach', () => {
+    const kit = rankKit(probe([{ color: '#efe9df', weight: 100, declared: true }]));
+    expect(kit.colors).toEqual(['#efe9df']);
+  });
+});
+
+/**
+ * Paper, which no amount of area makes a decision.
+ *
+ * Admitting large neutrals fixed the cream and immediately broke something
+ * else: `#ffffff` led the palette for both missoma.com and stripe.com. A
+ * palette beginning "white" is not wrong so much as unusable — every page is
+ * mostly white and nothing downstream can act on it.
+ *
+ * The line is the tint. `#f6f1e7` is a choice; `#ffffff` is what you get for
+ * not making one.
+ */
+describe('plain white and black are never the palette', () => {
+  it('rejects white however much of the page it covers', () => {
+    expect(rankKit(probe([{ color: '#ffffff', weight: 50, area: 0.9 }])).colors).toEqual([]);
+  });
+
+  it('rejects near-white and near-black too', () => {
+    for (const paper of ['#fefefe', '#fafafa', '#000000', '#060606']) {
+      expect(rankKit(probe([{ color: paper, weight: 50, area: 0.9 }])).colors).toEqual([]);
+    }
+  });
+
+  /*
+   * The case the area rule exists for, and the one that must survive it:
+   * clientforce.io's `#f2decd` is a warm cream and a real decision.
+   */
+  it('keeps a tinted neutral, which is a decision someone made', () => {
+    for (const tinted of ['#f6f1e7', '#f2decd', '#d9edf2']) {
+      expect(rankKit(probe([{ color: tinted, weight: 6, area: 0.3 }])).colors).toEqual([tinted]);
+    }
+  });
+
+  it('rejects white even when a stylesheet declared it', () => {
+    expect(rankKit(probe([{ color: '#ffffff', weight: 100, declared: true }])).colors).toEqual([]);
   });
 });

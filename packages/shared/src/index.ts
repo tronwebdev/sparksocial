@@ -38,3 +38,4 @@ export * from './hashtags.js';
 export * from './timezones.js';
 export * from './audioPeaks.js';
 export * from './article.js';
+export * from './niche.js';

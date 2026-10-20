@@ -262,18 +262,31 @@ Each verified against the registry, not inferred from a comment.
       swatch row and an empty logo tile. Not cosmetic: "Generate logo" is on that screen and
       takes the palette, so a logo was generated against no colours while the real ones sat
       in the database, and anything picked there overwrote them unseen.
-- [ ] **The palette extractor discards a neutral brand and keeps accidental blue.** Measured
-      on missoma.com, whose identity is gold, cream and off-white: the crawl returned
-      `#0000ee, #0a4563, #1a73e8`. `#0000ee` is the *browser default unvisited-link colour* —
-      not a design decision at all — and `#1a73e8` is Google blue off an embedded widget.
-      Two causes, both in `packages/genome/src/brandKit.ts`. `isNeutral` throws away anything
-      low-chroma as "the paper", which is right for a page background and wrong for a brand
-      whose palette genuinely *is* neutral — very common in jewellery, fashion and interiors,
-      and exactly the brands where the palette matters most. And nothing blacklists UA
-      defaults, so an unstyled anchor outranks the real identity. The result is confidently
-      wrong rather than absent, and it now flows into every generated image via the brand
-      clause. A good fix probably needs area-weighting (how much of the page is this colour)
-      rather than chroma alone.
+- [x] **The palette extractor reads a neutral brand — closed 20 Oct.** missoma.com, whose
+      identity is gold and cream, returned `#0000ee, #0a4563, #1a73e8`: browser default link
+      blue and Google blue off an embedded widget. Chroma was both causes — it admitted an
+      accident because it was saturated and discarded the identity because it was not.
+      Three changes. The probe now reports each colour's **share of the viewport**, which is
+      the signal chroma was standing in for: a link's blue is a few hundred pixels and a
+      cream background is a third of the page. UA defaults are refused outright. And plain
+      white and black are refused at any size, because admitting large neutrals fixed the
+      cream and immediately put `#ffffff` at the head of both missoma's and stripe's
+      palettes — the line is the tint, since `#f6f1e7` is a decision and `#ffffff` is what
+      you get for not making one.
+      Measured after, with the real crawler: missoma `#0a4563`; stripe `#0d1738, #533afd,
+      #e8e9ff…` (its navy and its purple); clientforce unchanged at `#146b33, #d9edf2,
+      #f2decd`, the warm cream surviving as a tinted neutral.
+- [x] **The crawl's niche and description reach the screen — closed 20 Oct.** Two separate
+      holes on Brand Details. `identity.category` is free text by design — the model
+      describes what the site says rather than picking from a list it has never seen — so
+      the real answers (`"Jewellery brand / DTC e-commerce"`, `"B2B SaaS"`) matched no option
+      and the select sat on "Choose one". `resolveNiche` in `packages/shared` maps it, and
+      falls back to "Something else" keeping the original wording rather than losing it.
+      `one_liner` was never loaded at all: the field's placeholder is a hard-coded example
+      about AI agents, so a jewellery brand that had just been read correctly showed an empty
+      box suggesting it sold software — and `canGenerateLogo` requires that field, so
+      "Generate logo" sat disabled saying "Add what your brand does first" about a brand
+      whose description was already in the database.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
