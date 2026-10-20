@@ -87,6 +87,10 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   /** The portrait currently representing the agent, for the preview tile. */
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hasAvatar, setHasAvatar] = useState(false);
+  /**
+   * Whether a voice has been *cloned* — a recording or upload that became an
+   * ElevenLabs voice. Not the same as "this brand can speak": see `canSpeak`.
+   */
   const [hasVoice, setHasVoice] = useState(false);
 
   /** Transport state for the test-voice player: seconds, not a fraction, so the clock is the source. */
@@ -121,6 +125,25 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
 
   /** The brand's chosen stock voice — what its videos are narrated in without a clone. */
   const [stockVoiceId, setStockVoiceId] = useState(DEFAULT_STOCK_VOICE_ID);
+
+  /**
+   * Whether there is any voice to speak the test line in.
+   *
+   * The test box used to read `hasVoice`, which is only ever set by a
+   * successful *clone*. Adding the stock picker above made that wrong on
+   * arrival: `stockVoiceId` defaults to Rachel, so every brand can already
+   * speak, and the box still said "Add a voice first, then type here" to
+   * someone who had done nothing wrong and had nothing left to do. The field
+   * was never actually disabled, and `content.voice.generate` resolves
+   * `stockVoiceId` perfectly well — so the copy was the only thing broken,
+   * which is the kind of wrong that reads as "this screen is stuck".
+   *
+   * Kept as a separate derived value rather than folded into `hasVoice`,
+   * because the two questions are genuinely different: the recorder's own
+   * controls care whether a clone exists, and only this box cares whether
+   * *anything* can talk.
+   */
+  const canSpeak = hasVoice || stockVoiceId.length > 0;
 
   /**
    * A likeness waiting on its attestation.
@@ -894,7 +917,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
           <textarea
             value={testLine}
             onChange={(e) => changeTestLine(e.target.value)}
-            placeholder={hasVoice ? 'Enter text' : 'Add a voice first, then type here'}
+            placeholder={canSpeak ? 'Enter text' : 'Add a voice first, then type here'}
             maxLength={280}
             aria-label="Test the agent voice"
             style={{

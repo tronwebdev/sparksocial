@@ -442,6 +442,76 @@ Each verified against the registry, not inferred from a comment.
       production instance with the deployed domain registered is the fix, and it should land
       before design partners touch staging.
 
+## Found by the 20 Oct browser pass — a full jewellery brand, onboarding to draft
+
+Run on the deployed build (`916dbe9`) against `www.missoma.com`, signed in, end to end:
+onboarding, campaign activation, a text draft and a generated image. What worked is not
+listed here; this is what it turned up.
+
+- **A crawled brand ends onboarding with zero assets, and therefore zero buildable posts.**
+  This is the biggest one, and it is a design gap rather than a bug. `genome.bootstrap_from_url`
+  writes `kit.colors` and `kit.logoUrl` into *governance*, and ingests nothing into the asset
+  graph — `asset.list` returned `count: 0` for a brand whose crawl had just found a logo and a
+  palette. `resolver.ts:149` gates on `(assets[role] ?? 0) < Math.max(1, pre.min_assets)`, so a
+  `required_asset_roles: ['brand_kit']` playbook needs **at least one** asset of that role even
+  where `min_assets: 0`. The consequence, verbatim from the calendar: "13 posts are planned, and
+  none of them can be built yet", with `brand kit — 7 of 14 resolvable posts` as the largest
+  bucket, filed under "FILES YOU PROBABLY ALREADY HAVE". SPARK already has them. Ingesting the
+  crawled logo as a `brand_kit` asset during bootstrap would unlock 7 of 14 formats with no user
+  action, and is the single highest-value change available to a brand's first week.
+
+  The empty state itself is exemplary and should not be touched — it explains precisely what is
+  missing, splits "upload" from "needs filming", and says "nothing about the campaign needs
+  redoing". The defect is that it is reporting a shortage the crawl had already solved.
+
+- **The crawled logo is a 32x32 thumbnail.** `kit.logoUrl` came back as
+  `...MISSOMAMONOGRAM-48x48_....webp?crop=center&height=32&v=...&width=32` — the site's own
+  header monogram at *display* size, Shopify CDN sizing parameters included. That is a favicon,
+  not a brand asset, and anything that scales it will show it. The params are the site's, not
+  ours, so the fix is to strip `width`/`height`/`crop` before storing rather than to crawl
+  differently.
+
+- **A replan rewinds the campaign wizard to step 2.** Saving a required format answer ("A Call
+  To Action") from step 3 returned the wizard to step 2. Nothing was lost — the CTA persisted and
+  the requirement panel was gone on return — so this is a wrinkle, not data loss. Worth noting
+  because the user has no way to tell those apart in the moment.
+
+- **`brandImageClause` says "a Jewellery".** The clause reads "This is for MISSOMA, a Jewellery."
+  because it applies `article()` to the genome's free-text `category`, which was the mass noun
+  `Jewellery` rather than a countable business noun. Left unchanged deliberately:
+  `brandContext.test.ts` pins "a barbershop" and "an esthetician studio", and every rephrasing
+  considered — a universal `business` head noun, an em-dash appositive, preferring `subCategory`
+  — fixes `Jewellery` by regressing one of those. It is cosmetic, it is visible in `WhyPopover`,
+  and it wants a decision rather than a quiet edit.
+
+- **`human.notifications` is polled hard enough to flood the network log.** 13,408 requests had
+  already been dropped from the tab's buffer during an ordinary onboarding pass, all of them
+  `POST /api/tools/human.notifications` returning 200. Not diagnosed further — it was in the way
+  of reading the log, which is how it was noticed. Worth a look before anything else is measured
+  on that surface.
+
+### Checked and *not* defects, recorded so they are not re-reported
+
+- **The timezone genuinely propagates.** `brand.governance.set` with `Europe/London` read back
+  from `brand.governance.get` and then appeared on the campaign wizard's offer step and its
+  autonomy step. An earlier `UTC` reading was an artifact of driving a React-controlled `<select>`
+  with synthetic events, not a product fault. Settings carries the full IANA list — 419 zones.
+- **`Etc/GMT-1` with the label `(GMT+1) GMT-1` is correct.** The browser pane resolves to that
+  zone and `Intl.supportedValuesOf('timeZone')` returns zero `Etc/*` entries, so the UI was
+  correctly re-adding the zone the enumeration omits, and the label is POSIX sign inversion.
+- **The brand voice picker works.** It is a multi-select chip adder: the `<select>` returns to its
+  placeholder by design and the choice appears as a `TagChip`. Real type-ahead input produced
+  "1 selected" and a `Story driven` chip.
+- **Step 3 has no "what is this campaign about" input, and should not.**
+  `SparkSocial Create Campaign.dc.html` carries that exact heading followed directly by the brand
+  card, so the card *is* the anchor. `CampaignWizard.tsx:316` already records the removal.
+- **"Primary CTA — None set" on the review step is accurate.** That field is the campaign's CTA
+  *url*, which was left unset; the "Shop the collection" line is a format requirement stored
+  separately, and it reached the draft word for word.
+- **The test-voice player needs two clicks.** The first generates, the second plays. Chrome
+  expires transient user activation during the ~4s synthesis, so requiring the second click is
+  more robust than auto-playing and being blocked.
+
 ## Verification owed
 
 **Done.** A signed-in browser pass ran on 2026-08-21 against the real API and dev Postgres,
