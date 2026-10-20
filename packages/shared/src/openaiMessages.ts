@@ -81,15 +81,23 @@ export interface MessagesResponse {
  * `OPENAI_FALLBACK_MODEL` still overrides all three, which is the escape hatch
  * when an account lacks access to one of them — a config change, not a deploy.
  *
- * **Unverified:** OpenAI's model page documents these against the Responses
- * API and does not mention Chat Completions, which is the endpoint below. If a
- * call returns a 404 on the model, that is the first thing to check.
+ * OpenAI's model page documents these against the Responses API and does not
+ * mention Chat Completions, which is the endpoint below. All three were called
+ * directly on 20 Oct and all three returned 200 for a plain text completion,
+ * so the ids do resolve here. What they do *not* all do is call a function —
+ * see `TOOL_CAPABLE_MODEL` below.
  */
 const MODEL_FOR_TIER: Record<'opus' | 'sonnet' | 'haiku', string> = {
   opus: 'gpt-6-astra',
   sonnet: 'gpt-6.1-sol',
   haiku: 'gpt-6-luna',
 };
+
+/**
+ * The only configured model that can serve a forced tool call on
+ * `/v1/chat/completions`. See the measurement table at the request body below.
+ */
+const TOOL_CAPABLE_MODEL = 'gpt-6-luna';
 
 /**
  * Anthropic-only parameters that are dropped rather than refused.
@@ -265,12 +273,44 @@ export function openAIMessages(opts: OpenAIMessagesOptions = {}): MessagesClient
         const forcedName =
           body.tool_choice?.type === 'tool' || body.tool_choice?.type === 'any' ? body.tool_choice.name : undefined;
 
+        /*
+         * A tool call has to go to the one model that can serve one.
+         *
+         * Measured against the live API, all three tiers, 20 Oct:
+         *
+         *            text only   + tools   + tools, effort 'none'
+         *   astra      200         400       400 (rejects 'none')
+         *   sol        200         400       400 (rejects 'none')
+         *   luna       200         400       200
+         *
+         * `400 Function tools with reasoning_effort are not supported for
+         * <model> in /v1/chat/completions. To use function tools, use
+         * /v1/responses or set reasoning_effort to 'none'.` — and astra and
+         * sol do not accept `'none'` at all, only low/medium/high/xhigh. So on
+         * this endpoint they cannot call a function, full stop.
+         *
+         * Every writer in this codebase forces a tool call, so without this
+         * the fallback could serve nothing except the agent loop's free-text
+         * turns. The cost is real and worth stating: a forced-tool call that
+         * falls back lands on the small model whatever tier it asked for.
+         * That is a quality drop, and it only happens while the primary vendor
+         * is already failing, where the alternative is a 400.
+         *
+         * `/v1/responses` is the other way and is a different request and
+         * response shape end to end; worth doing if the fallback ever becomes
+         * something other than a last resort.
+         */
+        const hasTools = (body.tools ?? []).length > 0;
+        const model = hasTools ? TOOL_CAPABLE_MODEL : substituteModel(body.model, modelOverride);
+
         const response = await doFetch(`${baseUrl}/chat/completions`, {
           method: 'POST',
           headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
           body: JSON.stringify({
-            model: substituteModel(body.model, modelOverride),
+            model,
             messages,
+            /* Required by the model above, and rejected by the other two. */
+            ...(hasTools ? { reasoning_effort: 'none' } : {}),
             /*
              * `max_completion_tokens`, not `max_tokens`.
              *

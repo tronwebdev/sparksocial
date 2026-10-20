@@ -145,3 +145,73 @@ describe('the request body the fallback actually sends', () => {
     expect(sent).not.toHaveProperty('max_tokens');
   });
 });
+
+/**
+ * A forced tool call has to reach a model that can serve one.
+ *
+ * Measured against the live API, 20 Oct, all three configured tiers:
+ *
+ *            text only   + tools   + tools, reasoning_effort 'none'
+ *   astra      200         400       400 (rejects 'none')
+ *   sol        200         400       400 (rejects 'none')
+ *   luna       200         400       200
+ *
+ * `Function tools with reasoning_effort are not supported for <model> in
+ * /v1/chat/completions` — and the two larger tiers do not accept `'none'`,
+ * only low/medium/high/xhigh. Every writer in this codebase forces a tool
+ * call, so before this the fallback could serve nothing but the agent loop's
+ * free-text turns, and onboarding showed `OpenAI fallback returned 400.`
+ * where a crawl had worked an hour before.
+ */
+describe('which model a fallback call is sent to', () => {
+  async function bodySentFor(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    setEnv({ OPENAI_API_KEY: 'sk-real' });
+    let sent: Record<string, unknown> = {};
+    const client = openAIMessages({
+      fetchImpl: (async (_url: string, init: { body: string }) => {
+        sent = JSON.parse(init.body) as Record<string, unknown>;
+        return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as unknown as typeof fetch,
+    });
+    await client!.messages.create(input as never);
+    return sent;
+  }
+
+  const withTools = {
+    model: 'claude-opus-4-20250514',
+    max_tokens: 64,
+    messages: [{ role: 'user', content: 'hi' }],
+    tools: [{ name: 'rec', description: 'record', input_schema: { type: 'object', properties: {} } }],
+    tool_choice: { type: 'tool', name: 'rec' },
+  };
+
+  it('sends a tool call to the one model that can serve one', async () => {
+    expect((await bodySentFor(withTools)).model).toBe('gpt-6-luna');
+  });
+
+  it('sets reasoning_effort to none, which that model requires for tools', async () => {
+    expect((await bodySentFor(withTools)).reasoning_effort).toBe('none');
+  });
+
+  /*
+   * The larger tiers reject `'none'` outright, so sending it on a text-only
+   * call would break the half of the fallback that currently works.
+   */
+  it('leaves a text-only call on its mapped tier, with no reasoning_effort', async () => {
+    const sent = await bodySentFor({
+      model: 'claude-opus-4-20250514',
+      max_tokens: 64,
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(sent.model).toBe('gpt-6-astra');
+    expect(sent).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('still forces the named tool', async () => {
+    const sent = await bodySentFor(withTools);
+    expect(sent.tool_choice).toEqual({ type: 'function', function: { name: 'rec' } });
+  });
+});

@@ -298,6 +298,24 @@ Each verified against the registry, not inferred from a comment.
       time, and onboarding showed `OpenAI fallback returned 400.` A fallback only runs when
       the primary is already failing, so nothing exercises it on a good day — the same
       "only shows up on the day you need it" shape as the stale `gpt-image-1` model id.
+- [ ] **The fallback cannot serve a forced tool call on the tier that was asked for.** Fixed
+      to the extent it can be on `/v1/chat/completions`, and the limitation is real.
+      Measured against the live API, all three configured tiers, 20 Oct:
+
+                     text only   + tools   + tools, reasoning_effort 'none'
+          astra        200         400       400 (rejects 'none')
+          sol          200         400       400 (rejects 'none')
+          luna         200         400       200
+
+      `Function tools with reasoning_effort are not supported for <model> in
+      /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort
+      to 'none'` — and the two larger tiers accept only low/medium/high/xhigh. So a forced
+      tool call now goes to `gpt-6-luna` with `reasoning_effort: 'none'` whatever tier it
+      asked for. Every writer in this codebase forces a tool call, so the alternative was a
+      fallback that could serve nothing but the agent loop's free-text turns.
+      The cost is a quality drop on exactly the calls that matter most, during an incident.
+      `/v1/responses` would let the larger tiers serve tools and is a different request and
+      response shape end to end — worth doing if the fallback ever stops being a last resort.
 - [ ] **Nothing exercises the OpenAI fallback on a good day.** The bug above shipped because
       the fallback path has no test that reaches a real vendor and no synthetic check at
       boot. A periodic one-token call against each configured tier would have caught it the
