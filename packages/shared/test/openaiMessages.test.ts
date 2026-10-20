@@ -97,3 +97,51 @@ describe('openAIMessages — resolving the fallback', () => {
       });
   });
 });
+
+/**
+ * The parameter that made the whole fallback dead.
+ *
+ * It sent `max_tokens`. Verified against the live API, every tier refuses it:
+ *
+ *   400 Unsupported parameter: 'max_tokens' is not supported with this model.
+ *       Use 'max_completion_tokens' instead.
+ *
+ * `gpt-6-astra`, `gpt-6.1-sol` and `gpt-6-luna` all 400 on `max_tokens` and
+ * all 200 on `max_completion_tokens`. So the one-shot retry that exists to
+ * survive a primary-vendor failure had never worked — and because it only runs
+ * when the primary is already failing, nothing exercised it on a good day.
+ * It surfaced in onboarding as `OpenAI fallback returned 400.`
+ */
+describe('the request body the fallback actually sends', () => {
+  async function bodySentFor(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    setEnv({ OPENAI_API_KEY: 'sk-real' });
+    let sent: Record<string, unknown> = {};
+    const client = openAIMessages({
+      fetchImpl: (async (_url: string, init: { body: string }) => {
+        sent = JSON.parse(init.body) as Record<string, unknown>;
+        return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }) as unknown as typeof fetch,
+    });
+    await client!.messages.create(input as never);
+    return sent;
+  }
+
+  it('sends max_completion_tokens', async () => {
+    const sent = await bodySentFor({ model: 'x', max_tokens: 64, messages: [{ role: 'user', content: 'hi' }] });
+    expect(sent.max_completion_tokens).toBe(64);
+  });
+
+  it('does not send max_tokens, which every model refuses', async () => {
+    const sent = await bodySentFor({ model: 'x', max_tokens: 64, messages: [{ role: 'user', content: 'hi' }] });
+    expect(sent).not.toHaveProperty('max_tokens');
+  });
+
+  it('omits the cap entirely when the caller set none', async () => {
+    const sent = await bodySentFor({ model: 'x', messages: [{ role: 'user', content: 'hi' }] });
+    expect(sent).not.toHaveProperty('max_completion_tokens');
+    expect(sent).not.toHaveProperty('max_tokens');
+  });
+});

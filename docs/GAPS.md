@@ -287,6 +287,23 @@ Each verified against the registry, not inferred from a comment.
       box suggesting it sold software — and `canGenerateLogo` requires that field, so
       "Generate logo" sat disabled saying "Add what your brand does first" about a brand
       whose description was already in the database.
+- [x] **The OpenAI fallback was dead, and nothing knew — closed 20 Oct.** It sent
+      `max_tokens`, which every configured tier refuses outright: *"Unsupported parameter:
+      'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead."*
+      Verified against the live API — `gpt-6-astra`, `gpt-6.1-sol` and `gpt-6-luna` all 400
+      on the old parameter and 200 on the new one. So the one-shot retry that exists to
+      survive a primary-vendor failure had never once worked.
+      Found the only way it could be: Anthropic hit `"Your credit balance is too low to
+      access the Anthropic API"` mid-session, the fallback fired for real for the first
+      time, and onboarding showed `OpenAI fallback returned 400.` A fallback only runs when
+      the primary is already failing, so nothing exercises it on a good day — the same
+      "only shows up on the day you need it" shape as the stale `gpt-image-1` model id.
+- [ ] **Nothing exercises the OpenAI fallback on a good day.** The bug above shipped because
+      the fallback path has no test that reaches a real vendor and no synthetic check at
+      boot. A periodic one-token call against each configured tier would have caught it the
+      day the parameter changed rather than the day Anthropic ran out of credit. Same
+      argument as `secrets.manifest`'s required/optional split: a dependency that is only
+      touched during an incident needs its own heartbeat.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

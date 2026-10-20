@@ -271,7 +271,27 @@ export function openAIMessages(opts: OpenAIMessagesOptions = {}): MessagesClient
           body: JSON.stringify({
             model: substituteModel(body.model, modelOverride),
             messages,
-            ...(body.max_tokens ? { max_tokens: body.max_tokens } : {}),
+            /*
+             * `max_completion_tokens`, not `max_tokens`.
+             *
+             * This sent `max_tokens`, which these models refuse outright:
+             *
+             *   400 Unsupported parameter: 'max_tokens' is not supported with
+             *       this model. Use 'max_completion_tokens' instead.
+             *
+             * Every tier refuses it — `gpt-6-astra`, `gpt-6.1-sol` and
+             * `gpt-6-luna` all verified against the live API — so the whole
+             * fallback was dead. Not degraded: dead. Anthropic failing for any
+             * reason produced `OpenAI fallback returned 400.` on the screen,
+             * and the one-shot retry that exists to survive a vendor outage
+             * had never once worked for these models.
+             *
+             * Invisible because the fallback only runs when the primary is
+             * already failing, so nothing exercised it on a good day — the
+             * same "only shows up on the day you need it" shape as the stale
+             * `gpt-image-1` id in `openai-image-client.ts`.
+             */
+            ...(body.max_tokens ? { max_completion_tokens: body.max_tokens } : {}),
             ...(tools.length > 0
               ? {
                   // Every tool, not just the first: the agent loop declares its
