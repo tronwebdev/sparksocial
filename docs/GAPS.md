@@ -477,13 +477,22 @@ listed here; this is what it turned up.
   governance save; it was left alone because it is a behaviour change to a tool that was not the
   one at fault.
 
-- **The crawled logo is a 32x32 thumbnail**, and now that it is ingested this is what the brand's
-  `brand_kit` asset points at. `kit.logoUrl` came back as
-  `...MISSOMAMONOGRAM-48x48_....webp?crop=center&height=32&v=...&width=32` — the site's own
-  header monogram at *display* size, Shopify CDN sizing parameters included. That is a favicon,
-  not a brand asset, and anything that scales it will show it. The params are the site's, not
-  ours, so the fix is to strip `width`/`height`/`crop` before storing rather than to crawl
-  differently.
+- **The crawled logo was a 32x32 thumbnail.** **Fixed.** `kit.logoUrl` came back as
+  `...MISSOMAMONOGRAM-48x48_....webp?crop=center&height=32&v=...&width=32` — the site's own header
+  monogram at *display* size, Shopify CDN sizing parameters included. Harmless while it was only a
+  governance field; once the mark became the brand's `brand_kit` asset it meant the asset was a
+  favicon, satisfying the role gate while being useless to anything that renders it.
+
+  Two halves, because neither covers the other. In the page, `kitProbe` now prefers the widest `w`
+  descriptor in an `<img srcset>` — the vendor-neutral answer, and the one that also handles
+  path-segment resizers like Cloudinary's `/w_32,h_32/`. Back in Node, `fullSizeLogo` strips the
+  sizing query parameters (`width`, `height`, `w`, `h`, `crop`, `size`, `fit`, `dpr`, `resize`),
+  which covers Shopify and Imgix without knowing which it is talking to. `v` stays — it is
+  Shopify's cache-busting version, not a dimension — and a URL carrying any signature parameter is
+  returned untouched, because editing a signed query yields a 403 rather than a bigger image.
+
+  Path rewriting is deliberately not attempted: guessing a vendor's URL grammar wrong gives a 404,
+  not a smaller picture, and `srcset` is the half that catches those cases.
 
 - **A replan rewinds the campaign wizard to step 2.** Saving a required format answer ("A Call
   To Action") from step 3 returned the wizard to step 2. Nothing was lost — the CTA persisted and

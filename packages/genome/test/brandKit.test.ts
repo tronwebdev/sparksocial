@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isNeutral, rankKit, toHex } from '../src/brandKit.js';
+import { fullSizeLogo, isNeutral, rankKit, toHex } from '../src/brandKit.js';
 
 /**
  * The brand-kit extractor's judgement, without a browser.
@@ -69,6 +69,24 @@ describe('isNeutral — the paper is not the brand', () => {
 });
 
 describe('rankKit', () => {
+  /*
+   * The wiring, not just the function.
+   *
+   * `fullSizeLogo` was unit-tested and `rankKit` did not call it, and both
+   * suites passed — the exact shape of gap this file's header warns about.
+   * This asserts the de-sizing actually reaches `CrawledKit.logoUrl`, which is
+   * the only value `saveKit` ever sees.
+   */
+  it('de-sizes the logo it returns, not merely the one it was given', () => {
+    const kit = rankKit(
+      probe([{ color: 'rgb(10,69,99)', weight: 5, area: 0.3, declared: true }], {}, [
+        'https://www.missoma.com/cdn/shop/files/MONOGRAM.webp?crop=center&height=32&v=174&width=32',
+      ]),
+    );
+
+    expect(kit.logoUrl).toBe('https://www.missoma.com/cdn/shop/files/MONOGRAM.webp?v=174');
+  });
+
   it('ranks a declared --brand variable above anything merely observed', () => {
     const kit = rankKit(
       probe([
@@ -270,5 +288,52 @@ describe('plain white and black are never the palette', () => {
 
   it('rejects white even when a stylesheet declared it', () => {
     expect(rankKit(probe([{ color: '#ffffff', weight: 100, declared: true }])).colors).toEqual([]);
+  });
+});
+
+/**
+ * THE LOGO AT ITS OWN SIZE, not at the masthead's.
+ *
+ * A header logo is served at header size. Missoma's is
+ * `.../MISSOMAMONOGRAM-48x48_<hash>.webp?crop=center&height=32&v=...&width=32`
+ * — a 32px favicon — and once `genome.bootstrap_from_url` began ingesting the
+ * mark as the brand's `brand_kit` asset, that thumbnail became the asset. It
+ * satisfied the role gate and was useless to anything that rendered it.
+ */
+describe('fullSizeLogo', () => {
+  it('drops the sizing parameters from the measured Shopify URL', () => {
+    const url =
+      'https://www.missoma.com/cdn/shop/files/MISSOMAMONOGRAM-48x48_af82cb.webp?crop=center&height=32&v=1747318795&width=32';
+
+    const full = fullSizeLogo(url);
+
+    expect(full).not.toContain('width=32');
+    expect(full).not.toContain('height=32');
+    expect(full).not.toContain('crop=');
+    // `v` is Shopify's cache-busting version, not a dimension. Dropping it
+    // changes which object is served, so it stays.
+    expect(full).toContain('v=1747318795');
+  });
+
+  it('covers the other vendors that use the same parameter names', () => {
+    expect(fullSizeLogo('https://x.test/l.png?w=64&h=64')).toBe('https://x.test/l.png');
+    expect(fullSizeLogo('https://x.test/l.png?fit=cover&size=48')).toBe('https://x.test/l.png');
+  });
+
+  /*
+   * The important negative. Editing the query of a signed URL does not return a
+   * bigger image, it returns a 403 — the signature covers the string.
+   */
+  it('leaves a signed URL exactly as found, even with a width in it', () => {
+    const signed =
+      'https://bucket.r2.cloudflarestorage.com/logo.png?width=32&X-Amz-Signature=abc123&X-Amz-Expires=604800';
+
+    expect(fullSizeLogo(signed)).toBe(signed);
+  });
+
+  it('leaves alone a URL with nothing to strip, and anything unparseable', () => {
+    expect(fullSizeLogo('https://x.test/logo.svg')).toBe('https://x.test/logo.svg');
+    expect(fullSizeLogo('https://x.test/logo.png?format=webp')).toBe('https://x.test/logo.png?format=webp');
+    expect(fullSizeLogo('not a url')).toBe('not a url');
   });
 });

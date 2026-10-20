@@ -228,11 +228,45 @@ export function kitProbe(): {
     }
   };
 
+  /*
+   * The widest candidate the markup offers, not the one the masthead happens
+   * to render.
+   *
+   * A header logo is served at header size — Missoma's is
+   * `...MISSOMAMONOGRAM-48x48_....webp?crop=center&height=32&width=32`, a 32px
+   * favicon — and storing that as the brand's mark gives every later render a
+   * 32px image to scale up. `srcset` is where a site lists the same image at
+   * its other sizes, so the largest `w` descriptor there is a free upgrade and
+   * is exactly what the standard is for. Falls back to `src` when there is no
+   * `srcset`, which is then de-sized back in Node by `fullSizeLogo`.
+   */
+  const widest = (el: ProbeElement): string => {
+    const src = el.getAttribute('src') ?? el.getAttribute('href') ?? '';
+    const srcset = el.getAttribute('srcset');
+    if (!srcset) return src;
+
+    let best = src;
+    let bestWidth = 0;
+    for (const entry of srcset.split(',')) {
+      const [url, descriptor] = entry.trim().split(/\s+/);
+      if (!url) continue;
+      /* `640w` is a width; `2x` is a density. Density-only sets carry no size
+         information worth ranking, so they keep the `src`. */
+      const match = /^(\d+)w$/.exec(descriptor ?? '');
+      const width = match?.[1] ? Number(match[1]) : 0;
+      if (width > bestWidth) {
+        bestWidth = width;
+        best = url;
+      }
+    }
+    return best;
+  };
+
   const masthead = doc.querySelector('header, nav, .navbar, .header') ?? doc.body;
   for (const img of Array.from(masthead?.querySelectorAll('img, svg image') ?? []).slice(0, 15)) {
     const src = img.getAttribute('src') ?? img.getAttribute('href') ?? '';
     const hint = `${src} ${img.getAttribute('alt') ?? ''} ${img.getAttribute('class') ?? ''}`;
-    if (/logo|brand|wordmark/i.test(hint)) addLogo(src);
+    if (/logo|brand|wordmark/i.test(hint)) addLogo(widest(img));
   }
   for (const link of Array.from(doc.querySelectorAll('link[rel~="apple-touch-icon"], link[rel~="icon"]'))) {
     addLogo(link.getAttribute('href'));
@@ -243,6 +277,57 @@ export function kitProbe(): {
 }
 
 /* ── ranking, back in Node, where it can be tested ────────────────────── */
+/** Query parameters that only ask a CDN to shrink the image. */
+const SIZING_PARAMS = new Set(['width', 'height', 'w', 'h', 'crop', 'size', 'fit', 'dpr', 'resize', 'max-w', 'max-h']);
+
+/**
+ * Parameters whose presence means the URL is signed, and must not be touched.
+ *
+ * Editing the query of a signed URL does not produce a bigger image, it
+ * produces a 403 — the signature covers the string. Better a small logo than a
+ * broken one, so anything that looks signed is returned exactly as found.
+ */
+const SIGNED_HINTS = /^(x-amz-|x-goog-|sig|signature|token|expires|se|sp|sv|key)/i;
+
+/**
+ * The logo at its own size, rather than at the size the masthead asked for.
+ *
+ * Measured: Missoma's header mark is stored as
+ * `.../MISSOMAMONOGRAM-48x48_<hash>.webp?crop=center&height=32&v=...&width=32`.
+ * That is the site's own display sizing, and ingesting it made the brand's
+ * `brand_kit` asset a 32px favicon — satisfying the role gate while being
+ * useless to anything that renders it.
+ *
+ * Only the sizing parameters go. `v` is Shopify's cache-busting version and
+ * `format` changes the encoding, not the dimensions; dropping either would
+ * either break the URL or change what comes back for no gain. Imgix and
+ * friends use the same `w`/`h` names, so this covers more than one vendor
+ * without knowing which it is talking to.
+ *
+ * Path-segment resizers (Cloudinary's `/w_32,h_32/`) are deliberately not
+ * handled: rewriting a path means guessing at a vendor's URL grammar, and
+ * guessing wrong yields a 404 rather than a smaller picture. `srcset` in the
+ * probe is the vendor-neutral half of this fix and catches those.
+ */
+export function fullSizeLogo(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  const keys = [...parsed.searchParams.keys()];
+  if (keys.some((k) => SIGNED_HINTS.test(k))) return url;
+
+  const sizing = keys.filter((k) => SIZING_PARAMS.has(k.toLowerCase()));
+  if (sizing.length === 0) return url;
+
+  for (const key of sizing) parsed.searchParams.delete(key);
+  return parsed.toString();
+}
+
+
 
 /**
  * `rgb(12, 34, 56)` / `#abc` / `#aabbcc` → `#aabbcc`.
@@ -423,6 +508,6 @@ export function rankKit(probe: ReturnType<typeof kitProbe>): CrawledKit {
   return {
     colors,
     ...(fonts.display || fonts.body ? { fonts } : {}),
-    ...(probe.logos[0] ? { logoUrl: probe.logos[0] } : {}),
+    ...(probe.logos[0] ? { logoUrl: fullSizeLogo(probe.logos[0]) } : {}),
   };
 }
