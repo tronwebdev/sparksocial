@@ -29,6 +29,73 @@ import type { Config } from 'tailwindcss';
  * `calc(1 * 100%)` returns the colour exactly as before.
  */
 const alpha = (token: string) => `color-mix(in srgb, var(${token}) calc(<alpha-value> * 100%), transparent)`;
+/* ── Fluid type ────────────────────────────────────────────────────────────
+ *
+ * Every size in the scale below is the value measured off a `.dc.html`
+ * capture, and every capture is drawn at one width. Held literally, as they
+ * were until now, a 32px heading is 32px on a 1728px monitor and 32px on a
+ * 390px phone — which is where the dashboard's agent name ended up 34px past
+ * the edge of its own card.
+ *
+ * `fluid` keeps the measured value as the **maximum** and reaches it at
+ * `canvas` (1300px), the width the captures describe. At or above that width
+ * nothing changes at all: every size clamps to exactly the number it is today,
+ * so the desktop fidelity the frontend rules ask for is untouched. Below it the
+ * size interpolates down to a floor at `FLUID_MIN_VW`.
+ *
+ * ── Why the preferred value keeps a rem term ──────────────────────────────
+ *
+ * `clamp(min, Xrem + Yvw, max)` rather than a bare `Yvw`. A font size defined
+ * purely in viewport units does not respond to browser zoom — the text stays
+ * the same physical size however much the reader asks for, which fails
+ * WCAG 1.4.4 and is the usual reason fluid type gets reverted. The rem term is
+ * what keeps zoom working.
+ *
+ * ── The floor is not proportional, on purpose ─────────────────────────────
+ *
+ * Body text barely shrinks and small text does not shrink at all: 16px and
+ * under is already at the readable limit, and scaling it with the viewport
+ * makes a phone worse, not better. Headings carry the reduction, because a
+ * heading has the most room to lose and the most to gain from fitting. So the
+ * floor is `16 + (size - 16) * FLUID_FLOOR_RATIO` — flat for small sizes,
+ * progressively deeper for large ones.
+ */
+
+/** The viewport at which a size reaches its floor. A small phone. */
+export const FLUID_MIN_VW = 390;
+/** The viewport at which it reaches the captured value — `screens.canvas`. */
+export const FLUID_MAX_VW = 1300;
+/** How much of a size's headroom above 16px is given up at `FLUID_MIN_VW`. */
+const FLUID_FLOOR_RATIO = 0.45;
+
+const rem = (px: number) => `${+(px / 16).toFixed(6)}rem`;
+
+/** What a size shrinks to on the narrowest supported screen. */
+export function floorOf(px: number): number {
+  return px <= 16 ? px : Math.round(16 + (px - 16) * FLUID_FLOOR_RATIO);
+}
+
+/**
+ * `clamp()` across the two widths above, with the capture's value as the cap.
+ *
+ * Returns a plain rem string when there is nothing to interpolate, so the
+ * small end of the scale stays as simple in the output as it is in intent.
+ */
+export function fluid(px: number): string {
+  const min = floorOf(px);
+  if (min >= px) return rem(px);
+
+  const slope = (px - min) / (FLUID_MAX_VW - FLUID_MIN_VW);
+  const interceptPx = min - slope * FLUID_MIN_VW;
+  /* Six decimals on the slope, not four: at four, a 28px size resolves to
+     27.9996 at `canvas` rather than 28. Invisible on screen — a browser cannot
+     render a ten-thousandth of a pixel — but the whole point of this scale is
+     that it lands on the captured number, and a test that has to be told to
+     ignore the difference is a test that would also ignore a real one. */
+  return `clamp(${rem(min)}, ${rem(interceptPx)} + ${+(slope * 100).toFixed(6)}vw, ${rem(px)})`;
+}
+
+
 const config: Config = {
   darkMode: ['class'],
   content: ['./src/**/*.{ts,tsx}'],
@@ -258,28 +325,28 @@ const config: Config = {
        * nearest step.
        */
       fontSize: {
-        8: ['0.5rem', { lineHeight: '1.45' }], // 8px at a 16px root
-        9: ['0.5625rem', { lineHeight: '1.45' }], // 9px at a 16px root
-        10: ['0.625rem', { lineHeight: '1.45' }], // 10px at a 16px root
-        11: ['0.6875rem', { lineHeight: '1.45' }], // 11px at a 16px root
-        12: ['0.75rem', { lineHeight: '1.45' }], // 12px at a 16px root
-        13: ['0.8125rem', { lineHeight: '1.45' }], // 13px at a 16px root
-        14: ['0.875rem', { lineHeight: '1.45' }], // 14px at a 16px root
-        15: ['0.9375rem', { lineHeight: '1.45' }], // 15px at a 16px root
-        16: ['1rem', { lineHeight: '1.4' }], // 16px at a 16px root
-        17: ['1.0625rem', { lineHeight: '1.4' }], // 17px at a 16px root
-        18: ['1.125rem', { lineHeight: '1.4' }], // 18px at a 16px root
-        19: ['1.1875rem', { lineHeight: '1.35' }], // 19px at a 16px root
-        20: ['1.25rem', { lineHeight: '1.3' }], // 20px at a 16px root
-        22: ['1.375rem', { lineHeight: '1.3' }], // 22px at a 16px root
-        24: ['1.5rem', { lineHeight: '1.25' }], // 24px at a 16px root
-        26: ['1.625rem', { lineHeight: '1.2' }], // 26px at a 16px root
-        28: ['1.75rem', { lineHeight: '1.2' }], // 28px at a 16px root
-        32: ['2rem', { lineHeight: '1.15' }], // 32px at a 16px root
-        36: ['2.25rem', { lineHeight: '1.1' }], // 36px at a 16px root
-        40: ['2.5rem', { lineHeight: '1.1' }], // 40px at a 16px root
-        48: ['3rem', { lineHeight: '1.05' }], // 48px at a 16px root
-        64: ['4rem', { lineHeight: '1.05' }], // 64px at a 16px root
+        8: [fluid(8), { lineHeight: '1.45' }], // 8px at canvas, fluid below
+        9: [fluid(9), { lineHeight: '1.45' }], // 9px at canvas, fluid below
+        10: [fluid(10), { lineHeight: '1.45' }], // 10px at canvas, fluid below
+        11: [fluid(11), { lineHeight: '1.45' }], // 11px at canvas, fluid below
+        12: [fluid(12), { lineHeight: '1.45' }], // 12px at canvas, fluid below
+        13: [fluid(13), { lineHeight: '1.45' }], // 13px at canvas, fluid below
+        14: [fluid(14), { lineHeight: '1.45' }], // 14px at canvas, fluid below
+        15: [fluid(15), { lineHeight: '1.45' }], // 15px at canvas, fluid below
+        16: [fluid(16), { lineHeight: '1.4' }], // 16px at canvas, fluid below
+        17: [fluid(17), { lineHeight: '1.4' }], // 17px at canvas, fluid below
+        18: [fluid(18), { lineHeight: '1.4' }], // 18px at canvas, fluid below
+        19: [fluid(19), { lineHeight: '1.35' }], // 19px at canvas, fluid below
+        20: [fluid(20), { lineHeight: '1.3' }], // 20px at canvas, fluid below
+        22: [fluid(22), { lineHeight: '1.3' }], // 22px at canvas, fluid below
+        24: [fluid(24), { lineHeight: '1.25' }], // 24px at canvas, fluid below
+        26: [fluid(26), { lineHeight: '1.2' }], // 26px at canvas, fluid below
+        28: [fluid(28), { lineHeight: '1.2' }], // 28px at canvas, fluid below
+        32: [fluid(32), { lineHeight: '1.15' }], // 32px at canvas, fluid below
+        36: [fluid(36), { lineHeight: '1.1' }], // 36px at canvas, fluid below
+        40: [fluid(40), { lineHeight: '1.1' }], // 40px at canvas, fluid below
+        48: [fluid(48), { lineHeight: '1.05' }], // 48px at canvas, fluid below
+        64: [fluid(64), { lineHeight: '1.05' }], // 64px at canvas, fluid below
       },
 
       // Measured across the prototype: 10px is the default by a wide margin

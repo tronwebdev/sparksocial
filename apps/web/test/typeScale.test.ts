@@ -23,6 +23,8 @@ import { describe, expect, it } from 'vitest';
  * Tailwind config being loadable in a bare vitest environment.
  */
 
+import { fluid } from '../tailwind.config';
+
 const config = readFileSync(new URL('../tailwind.config.ts', import.meta.url), 'utf8');
 const utils = readFileSync(new URL('../src/lib/utils.ts', import.meta.url), 'utf8');
 
@@ -45,14 +47,32 @@ describe('the type scale', () => {
 
   it('is expressed in rem, so the browser font-size setting does something', () => {
     /*
-     * The whole point of the change. In px a reader who has set large type gets
-     * the same 11px caption as everyone else, and the setting is inert across
-     * the entire product.
+     * The whole point of the original change. In px a reader who has set large
+     * type gets the same 11px caption as everyone else, and the setting is
+     * inert across the entire product.
+     *
+     * This used to read the source text, matching each step against a quoted
+     * literal like `'1.75rem'`. The scale is now `fluid(28)` — a `clamp()`
+     * built at config time — so there was no literal left to match and the
+     * regex found nothing, which the length guard caught rather than passing
+     * vacuously. It reads the produced values instead, which is what the
+     * property was ever about.
+     *
+     * A `clamp()` whose preferred value were pure `vw` would satisfy "contains
+     * rem" through its bounds alone and still ignore the reader entirely, so
+     * the preferred term is checked on its own. `fluidType.test.ts` carries the
+     * same property as arithmetic, and a browser confirmed it: at a 24px root,
+     * 16px text became 24px and 64px became 57.
      */
-    const block = config.match(/fontSize:\s*\{([\s\S]*?)\n {6}\},/)![1]!;
-    const sizes = [...block.matchAll(/^\s*\d+:\s*\['([^']+)'/gm)].map((m) => m[1]!);
+    const sizes = scaleFromConfig().map((px) => fluid(px));
     expect(sizes.length).toBeGreaterThan(0);
-    for (const size of sizes) expect(size).toMatch(/rem$/);
+
+    for (const size of sizes) {
+      expect(size).toMatch(/rem/);
+
+      const preferred = /^clamp\([^,]+, ([^,]+), [^)]+\)$/.exec(size)?.[1];
+      if (preferred) expect(preferred, size).toMatch(/rem/);
+    }
   });
 
   it('gives every step a real line-height', () => {
