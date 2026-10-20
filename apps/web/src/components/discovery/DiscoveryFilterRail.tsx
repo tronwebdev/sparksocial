@@ -170,7 +170,16 @@ export function DiscoveryFilterRail({
                           aria-label={item.mute.title}
                           title={item.mute.title}
                           className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(131,131,131,0.1)] disabled:opacity-50"
-                          style={item.mute.muted ? { background: '#FFF1DF' } : undefined}
+                          /* `#FDF1DF` is the design system's warm-amber chip
+                             tint — the Automation and Calendar prototypes both
+                             pair it with `rgba(228,137,21,0.35)`. This was
+                             `#FFF1DF`, two off on one channel: visually
+                             identical, and a second near-identical cream in a
+                             codebase that is supposed to have one. A muted
+                             source is a state no prototype draws, so the value
+                             had to come from somewhere; it should come from
+                             there. */
+                          style={item.mute.muted ? { background: '#FDF1DF' } : undefined}
                         >
                           <svg width="15" height="15" viewBox="0 0 18 18" fill="none" aria-hidden>
                             <path

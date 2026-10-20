@@ -306,9 +306,21 @@ export function RepurposeModal({
           <span
             aria-hidden
             className="mb-[22px] block h-[64px] w-[64px] shrink-0 rounded-full"
+            /*
+             * The Spark orb, in the one hue it is drawn in.
+             *
+             * This was `#E6D9FF → #BFD7FF → #A9CBFF` at `50% 40%` with a violet
+             * shadow — a different colour family from the orb on every other
+             * surface. `SparkSocial Discovery.dc.html` draws it as
+             * `circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%`, as do
+             * the Assets Library, Automation and Calendar prototypes, and
+             * `DiscoveryScreenChrome`, `AutomationHome` and
+             * `CalendarScreenChrome` already implement exactly that. This modal
+             * was the only place painting it violet.
+             */
             style={{
-              background: 'radial-gradient(circle at 50% 40%, #E6D9FF 0%, #BFD7FF 55%, #A9CBFF 100%)',
-              boxShadow: '0 10px 30px -12px rgba(120,120,255,0.55)',
+              background: 'radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%)',
+              boxShadow: '0 10px 30px -12px rgba(36,116,237,0.5)',
             }}
           />
 

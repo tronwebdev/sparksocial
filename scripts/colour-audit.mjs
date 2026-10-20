@@ -84,6 +84,21 @@ const byPrefix = (prefix) => readdirSync('ui build').filter((f) => f.startsWith(
 SCREENS.settings = ['SparkSocial Settings.dc.html', ...byPrefix('Settings ')];
 SCREENS['draft-panel'] = ['SparkSocial Draft Panel.dc.html', ...byPrefix('DP ')];
 
+/**
+ * Every colour in every prototype, for the second bucket below.
+ *
+ * A hex missing from *this* screen's design but present in another is usually
+ * a design-system value borrowed deliberately — `REGION_BAR` in `TrendDetail`
+ * takes its fills from the Calendar prototype and says so, and `#FDF1DF` is
+ * the warm chip tint shared by Automation and Calendar. Those are not drift.
+ * A hex in no prototype at all is the list actually worth reading.
+ */
+const EVERY_DESIGN = new Set(
+  readdirSync('ui build')
+    .filter((f) => f.endsWith('.dc.html'))
+    .flatMap((f) => hexes(readFileSync(join('ui build', f), 'utf8'))),
+);
+
 const rows = [];
 for (const [dir, files] of Object.entries(SCREENS)) {
   const design = new Set(files.flatMap((f) => hexes(readFileSync(join('ui build', f), 'utf8'))));
@@ -108,10 +123,17 @@ for (const [dir, files] of Object.entries(SCREENS)) {
   }
 
   const off = [...used.keys()].filter((h) => !design.has(h));
-  rows.push({ dir, total: used.size, off, design: design.size });
+  rows.push({
+    dir,
+    total: used.size,
+    off,
+    /* Borrowed from a sibling prototype, versus in no design at all. */
+    borrowed: off.filter((h) => EVERY_DESIGN.has(h)),
+    invented: off.filter((h) => !EVERY_DESIGN.has(h)),
+  });
 }
 
-rows.sort((a, b) => b.off.length / (b.total || 1) - a.off.length / (a.total || 1));
+rows.sort((a, b) => b.invented.length / (b.total || 1) - a.invented.length / (a.total || 1));
 
 const only = process.argv[2];
 if (only) {
@@ -121,13 +143,14 @@ if (only) {
     process.exit(1);
   }
   console.log(`${row.dir}: ${row.off.length} of ${row.total} not in its own design`);
-  for (const hex of row.off) console.log(` ${hex}`);
+  console.log(` borrowed from another prototype (${row.borrowed.length}): ${row.borrowed.join(' ')}`);
+  console.log(` in no prototype at all  (${row.invented.length}): ${row.invented.join(' ')}`);
 } else {
-  console.log('screen             colours  off-design    %');
+  console.log('screen             colours  borrowed  invented    %');
   for (const r of rows) {
-    const pct = r.total ? Math.round((r.off.length / r.total) * 100) : 0;
+    const pct = r.total ? Math.round((r.invented.length / r.total) * 100) : 0;
     console.log(
-      `${r.dir.padEnd(18)} ${String(r.total).padStart(5)}  ${String(r.off.length).padStart(10)}  ${String(pct).padStart(3)}%   ${r.off.slice(0, 4).join(' ')}`,
+      `${r.dir.padEnd(18)} ${String(r.total).padStart(5)}  ${String(r.borrowed.length).padStart(8)}  ${String(r.invented.length).padStart(8)}  ${String(pct).padStart(3)}%   ${r.invented.slice(0, 4).join(' ')}`,
     );
   }
   console.log('\nRun with a screen name for its full list. Read the header before acting on any of it.');

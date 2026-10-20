@@ -520,7 +520,7 @@ export function TrendDetail({
             className={cn(PICKER, 'disabled:opacity-50')}
             style={
               muted
-                ? { boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.45)', background: '#FFF1DF', color: '#8A4B12' }
+                ? { boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.45)', background: '#FDF1DF', color: '#8A4B12' }
                 : PICKER_RING
             }
           >
@@ -553,7 +553,7 @@ export function TrendDetail({
         <div className="mt-[24px] h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
         {!view.safety.safe ? (
-          <div className="mx-[28px] mt-[22px] rounded-[14px] px-[22px] py-[14px]" style={{ background: '#FFF1DF', boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.35)' }}>
+          <div className="mx-[28px] mt-[22px] rounded-[14px] px-[22px] py-[14px]" style={{ background: '#FDF1DF', boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.35)' }}>
             <p className="text-16 font-semibold" style={{ color: '#8A4B12' }}>
               SPARK would not join this trend — {view.safety.detail ?? view.safety.reasons.join(', ')}
             </p>
