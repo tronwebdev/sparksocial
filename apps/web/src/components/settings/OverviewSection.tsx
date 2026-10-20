@@ -79,16 +79,36 @@ export function OverviewSection() {
   useEffect(() => {
     if (!genomeId) return;
     void (async () => {
-      const [g, h, list] = await Promise.all([
+      /*
+       * `genome.get` is here because the description was write-only.
+       *
+       * This screen saves the one-liner through `genome.identity.set` and read
+       * it back from nothing: `genome.list` carries a name and a timestamp,
+       * `brand.governance.get` has no description at all, and the only tool
+       * that returns `identity.one_liner` was never called. So a brand whose
+       * crawl had written a perfectly good line — "Dishoom cafés serve Bombay
+       * comfort food…" — opened its own settings to "Not described yet", and
+       * the placeholder invited the owner to type one it already had.
+       */
+      const [g, h, list, genome] = await Promise.all([
         invoke<Governance>('brand.governance.get', {}),
         invoke<Health>('integration.health', {}),
         invoke<{ genomes: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string }> }>(
           'genome.list',
           {},
         ),
+        invoke<{ genome: { identity?: { one_liner?: string } } }>('genome.get', { genomeId }),
       ]);
       if (g.status === 'succeeded') setGov(g.output);
       if (h.status === 'succeeded') setHealth(h.output);
+      if (genome.status === 'succeeded') {
+        /* Empty rather than absent is the normal state for a brand that was set
+           up by answering questions instead of a crawl, so no line is not an
+           error — it just leaves the placeholder doing its job. */
+        const line = genome.output.genome.identity?.one_liner ?? '';
+        setOneLiner(line);
+        setInitial((state) => ({ ...state, oneLiner: line }));
+      }
       if (list.status === 'succeeded') {
         const row = list.output.genomes.find((x) => x.genomeId === genomeId);
         if (row) {
