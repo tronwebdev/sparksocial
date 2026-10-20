@@ -34,6 +34,30 @@ const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      /**
+       * THE CANVAS WIDTH — the width the `.dc.html` captures are drawn at.
+       *
+       * The prototypes are fixed-width pixel captures: `Settings WS Overview`
+       * lays its card out at 1350px inside a 1698px frame, and every screen
+       * built from one carries that geometry verbatim, which is what the
+       * frontend rules in CLAUDE.md ask for and what makes the app match the
+       * design at this width.
+       *
+       * What the captures do not say is what happens *below* it, and the
+       * answer until now was "nothing": a `min-w-[1300px]` card inside a
+       * container that does not scroll, so at 900px the Description field sat
+       * 436px off the right of the screen and could not be reached at all.
+       * Measured on the deployed build, not inferred.
+       *
+       * So `canvas` names the one width the design actually specifies.
+       * `canvas:` is "the design's own layout, untouched"; `max-canvas:` is
+       * "the part the design never drew", and every screen that reflows should
+       * use this name rather than picking a number, so the breakpoint stays one
+       * decision instead of forty.
+       */
+      screens: {
+        canvas: '1300px',
+      },
       colors: {
         // shadcn aliases → SparkSocial tokens
         background: alpha('--ss-bg'),

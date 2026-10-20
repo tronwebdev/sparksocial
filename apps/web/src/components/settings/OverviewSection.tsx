@@ -163,19 +163,43 @@ export function OverviewSection() {
 
   return (
     <div className="rounded-xl bg-white">
+      {/*
+        ── THE RESPONSIVE CONTRACT, of which this screen is the reference ──
+
+        At `canvas` (1300px) and above this is the capture, untouched: the
+        absolute geometry below matches `Settings WS Overview.dc.html` box for
+        box, which is what the frontend rules ask for and what a measurement at
+        1728px confirms — banner 1334x198 r20, fields 672x62 r10, description
+        543x177 r10, columns 672/33/543.
+
+        Below it, the same elements in the same order become a single flowing
+        column. That is new behaviour rather than a correction: the capture is a
+        fixed-width drawing and says nothing about narrower screens, and what
+        the build did with that silence was `min-w-[1300px]` inside a container
+        that does not scroll. Measured on the deployed site at 900px, the
+        Description field sat at x=793 with its right edge at 1336 — 436px past
+        the viewport, with `document.scrollWidth` at 885, so it could not be
+        scrolled to either. The field was not cramped; it was gone.
+
+        The rule this establishes for every screen that follows: fixed
+        *positions* are dropped below `canvas`, fixed *sizes* become maxima so
+        nothing can exceed the viewport, the type scale is left alone because it
+        is already in rem, and the acceptance test is that no element's right
+        edge passes the viewport at any width.
+      */}
       <div className="overflow-x-auto overflow-y-hidden">
-        <div className="relative min-w-[1300px]">
+        <div className="relative canvas:min-w-[1300px] max-canvas:px-[24px] max-canvas:pb-[8px]">
           {/* ── banner ─────────────────────────────────────────────────── */}
           <div
             aria-hidden
-            className="absolute left-[8px] right-[8px] top-[8px] h-[198px] rounded-xl"
+            className="absolute left-[8px] right-[8px] top-[8px] h-[198px] rounded-xl max-canvas:static max-canvas:mx-[-16px] max-canvas:mt-[8px] max-canvas:h-[120px]"
             style={{ background: '#B7F1FC' }}
           />
 
           {/* The brand's own mark, straddling the banner's lower edge. */}
           <span
             aria-hidden
-            className="absolute left-[47px] top-[82px] block h-[186px] w-[184px] rounded-full"
+            className="absolute left-[47px] top-[82px] block h-[186px] w-[184px] rounded-full max-canvas:static max-canvas:mt-[-56px] max-canvas:h-[112px] max-canvas:w-[112px]"
             style={{
               background: gov?.logoUrl
                 ? `url('${gov.logoUrl}') center/cover no-repeat`
@@ -187,7 +211,7 @@ export function OverviewSection() {
           <Link
             href="/settings/brand-kits"
             aria-label="Edit the brand kit"
-            className="absolute right-[24px] top-[25px] flex h-[39px] w-[39px] items-center justify-center rounded-full bg-white transition-colors hover:bg-surface-200"
+            className="absolute right-[24px] top-[25px] flex h-[39px] w-[39px] items-center justify-center rounded-full bg-white transition-colors hover:bg-surface-200 max-canvas:right-[32px] max-canvas:top-[24px]"
           >
             <svg width="17" height="16" viewBox="0 0 17 16" fill="none" aria-hidden>
               <path d="M11.6 1.4 15 4.8 5.8 14H2.4v-3.4L11.6 1.4Z" stroke="rgb(131,131,131)" strokeWidth="1.5" strokeLinejoin="round" />
@@ -201,10 +225,13 @@ export function OverviewSection() {
             aria-label="Brand name"
             placeholder="This brand"
             maxLength={120}
-            className="absolute left-[50px] top-[291px] h-[37px] w-[560px] bg-transparent text-28 font-semibold leading-[1.28] text-ink outline-none"
+            className="absolute left-[50px] top-[291px] h-[37px] w-[560px] bg-transparent text-28 font-semibold leading-[1.28] text-ink outline-none max-canvas:static max-canvas:mt-[16px] max-canvas:w-full"
           />
 
-          <span aria-hidden className="absolute left-[50px] top-[348px] block h-[40px] w-[91px]">
+          <span
+            aria-hidden
+            className="absolute left-[50px] top-[348px] block h-[40px] w-[91px] max-canvas:static max-canvas:mt-[14px] max-canvas:inline-block max-canvas:align-middle"
+          >
             {[0, 26, 52].map((x, i) => (
               <span
                 key={x}
@@ -221,7 +248,7 @@ export function OverviewSection() {
 
           {updatedAt ? (
             <span
-              className="absolute left-[152px] top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-15 font-medium"
+              className="absolute left-[152px] top-[352px] flex h-[34px] items-center rounded-[75.111px] px-[13px] text-15 font-medium max-canvas:static max-canvas:mt-[14px] max-canvas:ml-[12px] max-canvas:inline-flex max-canvas:align-middle"
               style={{ boxShadow: 'inset 0 0 0 0.851px rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
             >
               Updated {new Date(updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -229,7 +256,7 @@ export function OverviewSection() {
           ) : null}
 
           {/* ── the three facts ────────────────────────────────────────── */}
-          <dl className="absolute left-[796px] top-[256px] w-[520px] text-19 font-medium leading-[1.3]">
+          <dl className="absolute left-[796px] top-[256px] w-[520px] text-19 font-medium leading-[1.3] max-canvas:static max-canvas:mt-[24px] max-canvas:w-full">
             <div>
               <dt className="inline" style={{ color: 'rgba(131,131,131,0.8)' }}>Purpose:&nbsp;</dt>
               <dd className="inline text-ink">
@@ -253,7 +280,7 @@ export function OverviewSection() {
 
           {/* The design's cyan status chip. */}
           <span
-            className="absolute left-[1166px] top-[299px] flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink"
+            className="absolute left-[1166px] top-[299px] flex h-[32px] items-center gap-[8px] rounded-[88.266px] px-[10px] text-19 font-medium text-ink max-canvas:static max-canvas:mt-[10px] max-canvas:inline-flex"
             style={{ background: compliant ? 'var(--ss-cyan)' : 'rgba(131,131,131,0.18)' }}
           >
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
@@ -264,8 +291,8 @@ export function OverviewSection() {
           </span>
 
           {/* ── the three fields ───────────────────────────────────────── */}
-          <div className="absolute left-[47px] top-[447px] flex w-[1249px] gap-[33px]">
-            <div className="w-[672px] shrink-0">
+          <div className="absolute left-[47px] top-[447px] flex w-[1249px] gap-[33px] max-canvas:static max-canvas:mt-[28px] max-canvas:w-full max-canvas:flex-col max-canvas:gap-[20px]">
+            <div className="w-[672px] shrink-0 max-canvas:w-full max-canvas:shrink">
               <Field
                 label="Work Name"
                 icon={
@@ -305,7 +332,7 @@ export function OverviewSection() {
               </div>
             </div>
 
-            <div className="w-[543px] shrink-0">
+            <div className="w-[543px] shrink-0 max-canvas:w-full max-canvas:shrink">
               <label className="block text-18 font-medium text-ink">
                 Description <span style={{ color: 'rgb(131,131,131)' }}>(Optional)</span>
               </label>
@@ -322,8 +349,10 @@ export function OverviewSection() {
             </div>
           </div>
 
-          {/* The card's own height, so the absolute children have a box. */}
-          <div aria-hidden className="h-[700px]" />
+          {/* The card's own height, so the absolute children have a box. Below
+              `canvas` the children are in flow and size the card themselves, so
+              reserving 700px there would be 700px of blank. */}
+          <div aria-hidden className="h-[700px] max-canvas:hidden" />
         </div>
       </div>
 
