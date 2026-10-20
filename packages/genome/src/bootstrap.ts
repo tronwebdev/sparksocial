@@ -5,6 +5,7 @@ import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import { crawl as defaultCrawl, type CrawlFailure, type CrawlOptions, type CrawlResult } from './crawl.js';
 import { inferGenome, type GenomeInferenceClient } from './infer.js';
 import type { CrawledKit } from './brandKit.js';
+import { ensureBrandKitAsset } from '@sparksocial/agency/brandKitAsset';
 
 /**
  * REFERENCE TOOL — copy this shape for every other tool in the registry.
@@ -27,6 +28,16 @@ export interface GenomeBootstrapDeps {
   infer: GenomeInferenceClient;
   /** Defaults to the real crawl service; injected in tests. */
   crawl?: (url: string, opts: CrawlOptions) => Promise<CrawlResult>;
+  /**
+   * Embeds the brand-kit asset's caption, so a crawled logo is findable in the
+   * Assets Library rather than merely counted by the resolver.
+   *
+   * Optional: without it `ensureBrandKitAsset` writes a zero vector, which
+   * still unlocks the seven `brand_kit` playbooks. Losing the row because no
+   * embedder was wired would be the worse trade, and is the trade this used to
+   * make by not writing one at all.
+   */
+  embed?: (text: string) => Promise<number[]>;
 }
 
 /**
@@ -261,7 +272,11 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
             pages: pages.length,
           });
 
-          await saveKit(ctx, input.brandId, kit);
+          await saveKit(ctx, input.brandId, kit, {
+            genomeId: existing.id,
+            businessName: inferred.identity.businessName,
+            embed: deps.embed,
+          });
           return bootstrapOutput(input, existing.id, inferred, pages, kit);
         }
 
@@ -297,12 +312,47 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
        * on `bootstrapOutput` warns about, and the reason `kit` would have
        * been returned on a re-crawl and silently missing on a first one.
        */
-      await saveKit(ctx, input.brandId, kit);
+      await saveKit(ctx, input.brandId, kit, {
+        genomeId: draft.id,
+        businessName: inferred.identity.businessName,
+        embed: deps.embed,
+      });
       return bootstrapOutput(input, draft.id, inferred, pages, kit);
     });
   },
   });
 }
+
+/**
+ * What the brand-kit asset says it is.
+ *
+ * For a crawled brand this single row *is* the brand kit: there is no separate
+ * asset carrying the palette, and the colours and typeface live on governance
+ * where the Assets Library never looks. A caption of "MISSOMA logo" would make
+ * the library's only record of a brand's visual identity say nothing about it,
+ * and — since the caption is what gets embedded — would make it unfindable by
+ * any search an owner would actually type, "brand colours" included.
+ *
+ * Colours are capped for the same reason `brandImageClause` caps them: past a
+ * handful it stops being a description and becomes a list.
+ */
+function kitCaption(businessName: string, kit: CrawledKit): string {
+  const parts = [`${businessName} logo`];
+
+  const colors = kit.colors.slice(0, CAPTION_COLOURS);
+  if (colors.length > 0) parts.push(`brand palette ${colors.join(', ')}`);
+
+  /* `display` and `body` are usually the same face; naming it twice reads as a
+     mistake rather than as thoroughness. */
+  const fonts = [kit.fonts?.display, kit.fonts?.body].filter((f): f is string => Boolean(f));
+  const unique = [...new Set(fonts)];
+  if (unique.length > 0) parts.push(`typeface ${unique.join(' and ')}`);
+
+  return parts.join(' — ');
+}
+
+/** How many colours a caption names before it stops being a description. */
+const CAPTION_COLOURS = 4;
 
 /**
  * Write the crawled kit onto the brand, without overwriting a human.
@@ -315,11 +365,39 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
  * Failure is swallowed to a log. The genome is what `genome.bootstrap_from_url`
  * promises; a palette is a bonus, and losing the entire onboarding crawl
  * because a governance write failed would be a bad trade.
+ *
+ * ── It also registers the mark as the brand's `brand_kit` asset ───────────
+ *
+ * Seven playbooks list `brand_kit` in `required_asset_roles`, and
+ * `resolver.ts` gates on `Math.max(1, min_assets)` — so a required role needs
+ * at least one *asset*, whatever `min_assets` says. Governance fields do not
+ * count.
+ *
+ * Writing `logoUrl` here and stopping is therefore how a brand that had just
+ * been crawled successfully came out with nothing it could build. Measured on
+ * the deployed site against a real jewellery retailer: the crawl found a logo,
+ * a palette and a typeface, `asset.list` returned `count: 0`, and the calendar
+ * said "13 posts are planned, and none of them can be built yet" with
+ * "brand kit — 7 of 14 resolvable posts" listed under *files you probably
+ * already have*. SPARK already had it.
+ *
+ * `brand.governance.set` has done this since the upload path had the same bug,
+ * but only `if (patch.logoUrl)` — true when an owner uploads a logo through
+ * the tool, false here, because this writes governance through the repository
+ * directly, and false again on the Brand Kit step's own save, which sends
+ * colours and fonts and never re-sends a `logoUrl` that is already set. So the
+ * one path that produces a logo for most brands was the one path that never
+ * registered it.
  */
 async function saveKit(
   ctx: { orgId: string; db: ToolCtx['db']; logger: ToolCtx['logger'] },
   brandId: string,
   kit: CrawledKit | undefined,
+  asset?: {
+    genomeId: string;
+    businessName: string;
+    embed?: ((text: string) => Promise<number[]>) | undefined;
+  },
 ): Promise<void> {
   if (!kit) return;
 
@@ -340,6 +418,39 @@ async function saveKit(
       logo: Boolean(kit.logoUrl),
       fonts: Boolean(kit.fonts),
     });
+
+    /*
+     * Only when this call is what set the logo.
+     *
+     * `patch.logoUrl` is absent when governance already held one, and in that
+     * case the brand has either been crawled before or had a logo uploaded —
+     * both of which register their own asset. Keying off the patch rather than
+     * off `kit.logoUrl` keeps this from depending on `ensureBrandKitAsset`'s
+     * idempotence for correctness; the early return there is a backstop, not
+     * the mechanism.
+     */
+    if (asset && typeof patch.logoUrl === 'string') {
+      await ensureBrandKitAsset(ctx, {
+        genomeId: asset.genomeId,
+        url: patch.logoUrl,
+        businessName: asset.businessName,
+        source: 'genome.bootstrap_from_url',
+        caption: kitCaption(asset.businessName, kit),
+        ...(asset.embed ? { embed: asset.embed } : {}),
+      }).catch((err: unknown) => {
+        /*
+         * Bookkeeping must not fail the crawl. A brand without the asset row
+         * builds nothing until something else writes one, which is bad; a brand
+         * whose whole onboarding crawl was thrown away because a caption could
+         * not be embedded is worse, and recovers less well.
+         */
+        ctx.logger.warn('crawled logo not registered as a brand_kit asset', {
+          brandId,
+          genomeId: asset.genomeId,
+          cause: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
   } catch (e) {
     ctx.logger.warn('could not store the crawled brand kit', {
       brandId,

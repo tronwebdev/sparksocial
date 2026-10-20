@@ -448,23 +448,37 @@ Run on the deployed build (`916dbe9`) against `www.missoma.com`, signed in, end 
 onboarding, campaign activation, a text draft and a generated image. What worked is not
 listed here; this is what it turned up.
 
-- **A crawled brand ends onboarding with zero assets, and therefore zero buildable posts.**
-  This is the biggest one, and it is a design gap rather than a bug. `genome.bootstrap_from_url`
-  writes `kit.colors` and `kit.logoUrl` into *governance*, and ingests nothing into the asset
-  graph — `asset.list` returned `count: 0` for a brand whose crawl had just found a logo and a
-  palette. `resolver.ts:149` gates on `(assets[role] ?? 0) < Math.max(1, pre.min_assets)`, so a
-  `required_asset_roles: ['brand_kit']` playbook needs **at least one** asset of that role even
-  where `min_assets: 0`. The consequence, verbatim from the calendar: "13 posts are planned, and
-  none of them can be built yet", with `brand kit — 7 of 14 resolvable posts` as the largest
-  bucket, filed under "FILES YOU PROBABLY ALREADY HAVE". SPARK already has them. Ingesting the
-  crawled logo as a `brand_kit` asset during bootstrap would unlock 7 of 14 formats with no user
-  action, and is the single highest-value change available to a brand's first week.
+- **A crawled brand ended onboarding with zero assets, and therefore zero buildable posts.**
+  **Fixed.** `genome.bootstrap_from_url` wrote `kit.colors` and `kit.logoUrl` into *governance*
+  and ingested nothing into the asset graph — `asset.list` returned `count: 0` for a brand whose
+  crawl had just found a logo, a palette and a typeface. `resolver.ts:149` gates on
+  `(assets[role] ?? 0) < Math.max(1, pre.min_assets)`, so a `required_asset_roles: ['brand_kit']`
+  playbook needs at least one *asset* of that role even where `min_assets: 0`; governance fields
+  are not assets. The calendar's verdict, verbatim: "13 posts are planned, and none of them can be
+  built yet", with `brand kit — 7 of 14 resolvable posts` filed under "FILES YOU PROBABLY ALREADY
+  HAVE". SPARK already had it.
 
-  The empty state itself is exemplary and should not be touched — it explains precisely what is
-  missing, splits "upload" from "needs filming", and says "nothing about the campaign needs
-  redoing". The defect is that it is reporting a shortage the crawl had already solved.
+  `ensureBrandKitAsset` had existed since the *upload* path had the same bug, and
+  `brand.governance.set` calls it — but only `if (patch.logoUrl)`. That is false for the crawl,
+  which writes governance through the repository directly, and false again on the Brand Kit step's
+  own save, which sends colours and fonts and never re-sends a `logoUrl` already present. So the
+  one path that produces a logo for most brands was the one path that never registered it.
+  `saveKit` now calls the same helper, keyed off `patch.logoUrl` so it fires only when this crawl
+  is what set the mark. The caption carries the palette and typeface, because for a crawled brand
+  that single row *is* the brand kit and the caption is what gets embedded — a bare "<name> logo"
+  would leave the Assets Library's only record of a brand's identity unsearchable by colour.
 
-- **The crawled logo is a 32x32 thumbnail.** `kit.logoUrl` came back as
+  The empty state itself was exemplary and is untouched. It was reporting a shortage the crawl had
+  already solved.
+
+  **Still true after the fix:** brands crawled *before* it keeps their empty asset graph. The guard
+  in `brand.governance.set` remains "this call set the logo" rather than "the brand has a logo and
+  no asset", so nothing back-fills them. Widening it would self-heal every such brand on their next
+  governance save; it was left alone because it is a behaviour change to a tool that was not the
+  one at fault.
+
+- **The crawled logo is a 32x32 thumbnail**, and now that it is ingested this is what the brand's
+  `brand_kit` asset points at. `kit.logoUrl` came back as
   `...MISSOMAMONOGRAM-48x48_....webp?crop=center&height=32&v=...&width=32` — the site's own
   header monogram at *display* size, Shopify CDN sizing parameters included. That is a favicon,
   not a brand asset, and anything that scales it will show it. The params are the site's, not

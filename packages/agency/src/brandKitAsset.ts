@@ -39,12 +39,35 @@ import type { ToolCtx } from '@sparksocial/tools/defineTool';
  * beat asks for this role, so it cannot surface from the index either.
  */
 export async function ensureBrandKitAsset(
-  ctx: ToolCtx,
+  /*
+   * The two fields this actually touches, not the whole `ToolCtx`.
+   *
+   * `genome.bootstrap_from_url` reaches this from `saveKit`, whose own ctx is
+   * deliberately narrowed to what it needs; asking for a full `ToolCtx` there
+   * bought nothing except an `as ToolCtx` cast at the call site, which is the
+   * kind of cast that is correct on the day it is written and silently wrong
+   * after the next refactor. Every existing caller passes a real `ToolCtx`,
+   * which is assignable to this.
+   */
+  ctx: { orgId: string; db: ToolCtx['db'] },
   args: {
     genomeId: string;
     url: string;
     businessName: string;
     source: string;
+    /**
+     * What the asset says it is, when "<name> logo" is not the whole story.
+     *
+     * The crawl path supplies the palette and the typeface it found alongside
+     * the mark, because for a crawled brand this one row *is* the brand kit —
+     * there is no separate asset carrying the colours, and a caption of
+     * "MISSOMA logo" would make the Assets Library's only record of a brand's
+     * visual identity say nothing about it.
+     *
+     * Defaulted rather than required, so the upload and generate paths keep
+     * the caption they already write.
+     */
+    caption?: string;
     /**
      * Embeds the caption, so the mark is findable in the Assets Library.
      *
@@ -77,8 +100,8 @@ export async function ensureBrandKitAsset(
     assetRole: 'brand_kit',
     mediaType: 'image',
     rightsStatus: 'cleared',
-    caption: `${args.businessName} logo`,
-    embedding: await embedding(args.businessName, args.embed),
+    caption: args.caption ?? `${args.businessName} logo`,
+    embedding: await embedding(args.caption ?? `${args.businessName} logo`, args.embed),
     source: args.source,
   });
   return { created: true };
@@ -86,11 +109,11 @@ export async function ensureBrandKitAsset(
 
 /** The caption's vector, or zeros when no embedder was supplied. */
 async function embedding(
-  businessName: string,
+  caption: string,
   embed: ((text: string) => Promise<number[]>) | undefined,
 ): Promise<number[]> {
   if (!embed) return new Array<number>(EMBEDDING_DIM).fill(0);
   // Never lose the asset row to a failed embedding: the row is what the
   // resolver counts, and zeros only cost findability.
-  return embed(`${businessName} logo brand mark`).catch(() => new Array<number>(EMBEDDING_DIM).fill(0));
+  return embed(`${caption} brand mark`).catch(() => new Array<number>(EMBEDDING_DIM).fill(0));
 }

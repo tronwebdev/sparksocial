@@ -318,7 +318,7 @@ export function registerAlphaTools(): void {
   const embed = embedClient();
 
   // ONB-01 → ONB-06: the five-question onboarding.
-  register(makeGenomeBootstrap({ infer: inferenceClient() }));
+  register(makeGenomeBootstrap({ infer: inferenceClient(), embed: (t) => embedClient().embed(t) }));
   // The no-website path. `bootstrap_from_url` was the only way to make a
   // genome, so a site behind Cloudflare — or no site at all — blocked
   // onboarding entirely.
