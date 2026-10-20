@@ -513,6 +513,39 @@ listed here; this is what it turned up.
   of reading the log, which is how it was noticed. Worth a look before anything else is measured
   on that surface.
 
+### Verified on the deployed build, 20 Oct (`7dc593b`), with a second brand
+
+A restaurant — `www.dishoom.com` — onboarded from scratch, because neither crawl fix fires for a
+brand that already has a logo. Measured, not assumed:
+
+- `asset.list` → **1** asset, `assetRole: brand_kit`, `rightsStatus: cleared`, caption
+  `"Dishoom logo — brand palette #f0ece0, #353839, #151515, #007aff — typeface cheltenhamBT"`
+  (4 of the 6 crawled colours, which is `CAPTION_COLOURS`). Missoma, pre-fix, was `count: 0`.
+- `campaign.readiness` → "**9 formats resolve against the assets that exist**", ceiling 13.
+  Missoma was 0 buildable. The one remaining blocker is "Connected accounts: none", which is the
+  platform-approval constraint and not code.
+- The calendar placed **8 scheduled items** across four playbooks (`pb_voice_over_broll`,
+  `pb_offer_announcement`, `pb_carousel_teaching`, `pb_text_update`) where Missoma's said
+  "Nothing scheduled yet".
+- `content.draft` into a real slot returned `mode: "assemble"`, not `"synthesize"` — the asset is
+  feeding retrieval rather than the model writing blind — and the campaign CTA came through word
+  for word.
+- Scheduling honours the timezone: `2026-10-21T08:00:00Z` renders as "9:00 AM", which is BST.
+- The logo arrived as `logo-events-page-white.svg` — a full vector with no query string, so
+  `fullSizeLogo` correctly did nothing. **The sizing fix is therefore not yet exercised against a
+  real resizing CDN**; it is covered by unit tests against the measured Missoma URL and by the
+  `rankKit` wiring test, and that is all that can be claimed.
+- `StepShell`'s Continue is clickable again at 820px, and a click there advanced the step.
+
+Two things this turned up that are not yet recorded elsewhere:
+
+- **The chosen logo is the white variant.** `logo-events-page-white.svg` is drawn for a dark
+  background and is invisible on a light one. Candidate ranking prefers whatever matches
+  `logo|brand|wordmark` first and has no notion of a mark needing to be legible on paper.
+- **Abandoned onboarding leaves draft genomes behind.** `genome.list` returned 16 for this org,
+  mostly repeated `Missoma` and `Clientforce` drafts from testing. Harmless to the product and
+  noisy for anyone reading the data.
+
 ### Checked and *not* defects, recorded so they are not re-reported
 
 - **The timezone genuinely propagates.** `brand.governance.set` with `Europe/London` read back
