@@ -95,7 +95,27 @@ function FilterSelect({
   return (
     <div
       title={disabledReason ?? (options.length <= 1 ? `Nothing in the queue to filter by ${label.toLowerCase()}.` : undefined)}
-      className={`relative flex h-[54px] w-[194px] shrink-0 items-center gap-[11px] rounded bg-white px-4 transition-shadow ${
+      /*
+        194px is the capture's width and stays the *preferred* width at every
+        size; below `canvas` the dropdown is merely allowed to give way, down
+        to 160px.
+
+        The first attempt set `w-[calc(50%-0.5rem)]` below the breakpoint,
+        reaching for "two per row". It produced 418px dropdowns at a 900px
+        viewport — more than twice the design's width — because 50% of a wide
+        container is wide. Shrinking rather than resizing gets the wrapping for
+        free and keeps the capture's number: flexbox fills a line at 194px,
+        wraps what will not fit, then compresses within the line only when it
+        must.
+
+        That alone gave one filter per row at 430px — five stacked rows —
+        because flexbox wraps *before* it shrinks, so a single 194px item on a
+        382px line has nothing to shrink against. A 160px basis lets two fit
+        before the wrap and `grow` fills the line back out to 183 each, with
+        `max-w` holding the capture's 194 as a ceiling so growing cannot
+        overshoot it on a wider row.
+      */
+      className={`relative flex h-[54px] w-[194px] shrink-0 items-center gap-[11px] rounded bg-white px-4 transition-shadow max-canvas:min-w-[160px] max-canvas:max-w-[194px] max-canvas:shrink max-canvas:grow max-canvas:basis-[160px] ${
         inert ? 'opacity-55' : 'hover:shadow-[inset_0_0_0_1.4px_#838383]'
       }`}
       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
@@ -154,8 +174,28 @@ export function QueueFilters({
   const set = (patch: Partial<QueueFilterState>) => onChange({ ...value, ...patch });
 
   return (
-    <div className="ml-auto flex shrink-0 items-center gap-[16px]">
-      <span className="mr-[36px] flex shrink-0 items-center gap-[11px]">
+    /*
+      ── Five fixed dropdowns on one unshrinkable line ───────────────────
+
+      Five filters at 194px with 16px gaps is 1034px before the "Filters:"
+      label, in a row that was `shrink-0` and could not wrap. Measured on the
+      deployed calendar: at 900px ten elements past the viewport with the
+      furthest at x=1245, at 430px twenty of them reaching x=1229, and
+      `document.scrollWidth` equal to the viewport in both cases — so Channels,
+      Content type, By Status and By Account could not be reached at all.
+
+      The same failure the dashboard header had, which is worth noting: three
+      screens in, the catalogue is holding at stranded absolutes, non-folding
+      rows and pinned type rather than growing a new entry each time.
+
+      Fixed the same way and for the same reason — `flex-wrap` folds exactly
+      when the row stops fitting, so a 1200px laptop that shows all five today
+      keeps showing all five. `ml-auto` goes with it: pushing the block right
+      is what a single line wants, and once it wraps it should start where the
+      content does.
+    */
+    <div className="flex flex-wrap items-center gap-[16px] canvas:ml-auto canvas:flex-nowrap">
+      <span className="mr-[36px] flex shrink-0 items-center gap-[11px] max-canvas:mr-0">
         <svg width="24" height="17" viewBox="0 0 24 17" fill="none" aria-hidden>
           <path d="M1 2h22M4.5 8.5h15M9 15h6" stroke="#838383" strokeWidth="2" strokeLinecap="round" />
         </svg>

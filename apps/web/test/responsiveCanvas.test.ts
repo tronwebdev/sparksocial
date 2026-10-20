@@ -56,12 +56,23 @@ const CONVERTED: ReadonlyArray<readonly [string, string]> = [
   ['settings overview', 'src/components/settings/OverviewSection.tsx'],
   ['settings shell', 'src/components/settings/SettingsShell.tsx'],
   ['dashboard banner', 'src/components/dashboard/AgentBanner.tsx'],
+  ['calendar filters', 'src/components/command-center/QueueFilters.tsx'],
 ];
 
-/** Every `className="…"` in the file, comments stripped so prose does not count. */
+/**
+ * Every class string in the file, comments stripped so prose does not count.
+ *
+ * Both forms, because the second is where the interesting ones live: a
+ * conditional class list is written as `` className={`… ${cond ? a : b}`} ``,
+ * and a check that only read `className="…"` silently skipped every one of
+ * them. It passed on the calendar's filter dropdown — the exact element the
+ * test was added for — by not seeing it at all.
+ */
 function classNames(src: string): string[] {
   const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ');
-  return [...code.matchAll(/className="([^"]+)"/g)].map((m) => m[1]!);
+  const quoted = [...code.matchAll(/className="([^"]+)"/g)].map((m) => m[1]!);
+  const templated = [...code.matchAll(/className=\{`([^`]+)`\}/g)].map((m) => m[1]!);
+  return [...quoted, ...templated];
 }
 
 /**
@@ -220,5 +231,48 @@ describe('big type is allowed to wrap below canvas', () => {
     expect(BIG.test('text-28')).toBe(true);
     expect(BIG.test('text-16')).toBe(false);
     expect(BIG.test('text-15')).toBe(false);
+  });
+});
+
+/**
+ * The calendar's filter bar, which failed the dashboard's way.
+ *
+ * Five dropdowns at the capture's 194px with 16px gaps is 1034px before the
+ * "Filters:" label, in a row that was `shrink-0` and could not wrap. Measured
+ * on the deployed calendar: ten elements past the viewport at 900px with the
+ * furthest at x=1245, twenty at 430px reaching x=1229, and `scrollWidth` equal
+ * to the viewport both times — so four of the five filters could not be
+ * reached at all.
+ *
+ * Three screens in, the catalogue is holding: stranded absolutes, non-folding
+ * rows, pinned type. This is the second of the three, not a fourth kind.
+ */
+describe('the calendar filters fold instead of overflowing', () => {
+  const FILTERS = read('src/components/command-center/QueueFilters.tsx');
+  const all = classNames(FILTERS);
+
+  it('lets the filter row wrap, and keeps it on one line at canvas', () => {
+    const row = all.find((c) => c.includes('gap-[16px]') && c.includes('flex-wrap'));
+    expect(row, 'the filter row no longer wraps').toBeDefined();
+    // The capture draws them on one line, right-aligned. That is preserved
+    // above the breakpoint rather than traded away for the narrow case.
+    expect(row).toContain('canvas:flex-nowrap');
+    expect(row).toContain('canvas:ml-auto');
+  });
+
+  it('keeps the captured width as a ceiling when the dropdowns give way', () => {
+    const select = all.find((c) => c.includes('w-[194px]'));
+    expect(select).toBeDefined();
+
+    /*
+     * The first attempt used `w-[calc(50%-0.5rem)]` below the breakpoint and
+     * produced 418px dropdowns at 900px — more than twice the design's width,
+     * because 50% of a wide container is wide. The cap is what stops a `grow`
+     * overshooting the capture.
+     */
+    expect(select).toContain('max-canvas:max-w-[194px]');
+    expect(select).not.toContain('calc(50%');
+    expect(select).toContain('max-canvas:grow');
+    expect(select).toContain('max-canvas:basis-[160px]');
   });
 });
