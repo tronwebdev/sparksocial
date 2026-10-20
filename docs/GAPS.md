@@ -325,14 +325,14 @@ Each verified against the registry, not inferred from a comment.
       Splitting the two buckets changed the picture: `engagement` had read as 75% off-design
       and is 0% invented — every one of its six was the brand gradient borrowed from Auth.
       `discovery` fell from 40% to 14% the same way. The first version over-reported, badly.
-      **Done: onboarding, discovery, agency, command-center.** Onboarding's five remaining are `PALETTE`, the
+      **Done: onboarding, discovery, agency, command-center, assets.** Onboarding's five remaining are `PALETTE`, the
       swatches a customer picks. Discovery's five are app-wide conventions used in 3–6 files
       each — muted-source amber, the metric tones — for states no prototype draws.
       Agency's chips now come from one `statusTints.ts` rather than four copies that had
       already diverged on the red, and its mark gradients say why four of the five are not
       in the prototype. Its remaining count is unchanged on purpose: the values are still
       off-design, but in one documented place instead of scattered.
-      **Unread: settings, assets, draft-panel, calendar, automation, dashboard.**
+      **Unread: settings, draft-panel, calendar, automation, dashboard.**
       `settings` leads on invented count and most of it is vendor brand hex (Reddit's
       `#ff4500` and friends), so the true worklist there is smaller than 22.
       *Copy diffing is not worth repeating.* `scripts/design-copy.mjs` exists and mostly

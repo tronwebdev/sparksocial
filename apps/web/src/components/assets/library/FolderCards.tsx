@@ -208,11 +208,38 @@ export function UnfiledCard({ count, onOpen }: { count: number; onOpen: () => vo
       className="relative h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] bg-white text-left transition-shadow hover:shadow-[0_18px_46px_-28px_rgba(12,12,12,0.5)]"
       style={{ boxShadow: '0 16px 40px -32px rgba(12,12,12,0.35)', outline: '1.4px dashed rgba(131,131,131,0.4)', outlineOffset: '-6px' }}
     >
-      <span className="absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl" style={{ background: '#F6F6F7' }}>
-        <span aria-hidden className="relative block h-[76px] w-[96px] opacity-70">
-          <span className="absolute left-0 top-0 block h-[18px] w-[42px] rounded-t-[6px]" style={{ background: '#D9DDE0' }} />
-          <span className="absolute left-0 top-[8px] block h-[68px] w-[96px] rounded-lg" style={{ background: '#E4E7EA' }} />
-          <span className="absolute left-0 top-[20px] block h-[56px] w-[96px] rounded-lg" style={{ background: '#EFF1F3' }} />
+      {/*
+        The folder glyph, measured from `SparkSocial Assets Library.dc.html`:
+
+          thumb   224x132 r12 `#F3F4F6`, hover `#EDF6F8`
+          tab     42x18 r6 6 0 0 `#8FE3F2`
+          back    96x68 r8 `linear-gradient(180deg,#A9ECF8,#7ADCEF)`
+          front   96x56 r8 `linear-gradient(180deg,#CDF4FC,#94E5F3)`
+                  + `inset 0 1px 2px rgba(255,255,255,0.8)`
+
+        It was four flat greys at 70% opacity — `#F6F6F7`, `#D9DDE0`,
+        `#E4E7EA`, `#EFF1F3`, none of them in any prototype. The design's
+        folder is cyan, and the two sheets are gradients with a highlight on
+        the front one, which is what gives it the stacked-paper read. Grey and
+        flat it was just three rounded rectangles.
+      */}
+      <span
+        className="group/thumb absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl transition-colors"
+        style={{ background: '#F3F4F6' }}
+      >
+        <span aria-hidden className="relative block h-[76px] w-[96px]">
+          <span className="absolute left-0 top-0 block h-[18px] w-[42px] rounded-t-[6px]" style={{ background: '#8FE3F2' }} />
+          <span
+            className="absolute left-0 top-[8px] block h-[68px] w-[96px] rounded-lg"
+            style={{ background: 'linear-gradient(180deg, #A9ECF8 0%, #7ADCEF 100%)' }}
+          />
+          <span
+            className="absolute left-0 top-[20px] block h-[56px] w-[96px] rounded-lg"
+            style={{
+              background: 'linear-gradient(180deg, #CDF4FC 0%, #94E5F3 100%)',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.8)',
+            }}
+          />
         </span>
       </span>
       <span className="absolute left-0 top-[158px] block w-full truncate px-3 text-center text-17 font-bold text-ink">Unfiled</span>
