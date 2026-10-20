@@ -804,7 +804,17 @@ const STATUS_CHIP: Record<string, { label: string; bg: string; ring: string; fg:
    * design's own two display-only states, `regenerating` and `optimized`.
    */
   draft: { label: 'Draft', bg: '#F1F1F4', ring: 'rgba(12,12,12,0.18)', fg: '#5B5B5B' },
-  failed: { label: 'Failed', bg: '#FDE9E2', ring: '#F35525', fg: '#D2470F' },
+  /*
+   * The design's own Failed chip, measured from
+   * `SparkSocial Automation.dc.html` — the queue screen that draws one:
+   * `background:#FDECEC; box-shadow:inset 0 0 0 1px #F35525; color:#F35525`.
+   *
+   * This was `#FDE9E2` over `#D2470F`, which is the Dashboard prototype's
+   * **"Warm"** chip — a lead-temperature badge. Right family of orange,
+   * unrelated meaning, and it had the correct `#F35525` ring bolted onto it,
+   * which is what made it look deliberate.
+   */
+  failed: { label: 'Failed', bg: '#FDECEC', ring: '#F35525', fg: '#F35525' },
   needs_review: { label: 'Waiting for approval', bg: '#FFF0DC', ring: '#FFB453', fg: '#E48915' },
   approved: { label: 'Approved', bg: '#E9F9E7', ring: '#13D711', fg: '#13A711' },
   scheduled: { label: 'Scheduled', bg: '#EEEEFE', ring: '#5E64F4', fg: '#5E64F4' },

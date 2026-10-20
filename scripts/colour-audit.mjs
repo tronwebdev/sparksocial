@@ -69,11 +69,24 @@ const hexes = (text) => (text.match(HEX) ?? []).map((h) => h.toLowerCase());
  */
 const stripComments = (text) => text.replace(BLOCK_COMMENT, ' ').replace(LINE_COMMENT, ' ');
 
-function walk(dir, out = []) {
+/**
+ * Directories that are their own screen and must not be counted under their
+ * parent.
+ *
+ * `command-center/draft-panel/` sits inside the Command Center folder and is
+ * checked against the Draft Panel and `DP *` prototypes, not Command Center's.
+ * Without this its colours were compared to the wrong design file and reported
+ * as invented — `PostPreview`'s avatar among them.
+ */
+const NESTED = new Set(['draft-panel']);
+
+function walk(dir, out = [], top = true) {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);
-    if (statSync(path).isDirectory()) walk(path, out);
-    else if (/\.(tsx|ts|css)$/.test(entry)) out.push(path);
+    if (statSync(path).isDirectory()) {
+      if (top && NESTED.has(entry)) continue;
+      walk(path, out, false);
+    } else if (/\.(tsx|ts|css)$/.test(entry)) out.push(path);
   }
   return out;
 }
@@ -83,6 +96,9 @@ function walk(dir, out = []) {
 const byPrefix = (prefix) => readdirSync('ui build').filter((f) => f.startsWith(prefix));
 SCREENS.settings = ['SparkSocial Settings.dc.html', ...byPrefix('Settings ')];
 SCREENS['draft-panel'] = ['SparkSocial Draft Panel.dc.html', ...byPrefix('DP ')];
+
+/* `draft-panel` lives under `command-center/`, so its walk starts there. */
+const SCREEN_DIR = { 'draft-panel': 'command-center/draft-panel' };
 
 /**
  * Every colour in every prototype, for the second bucket below.
@@ -105,7 +121,7 @@ for (const [dir, files] of Object.entries(SCREENS)) {
 
   let paths;
   try {
-    paths = walk(join('apps/web/src/components', dir));
+    paths = walk(join('apps/web/src/components', SCREEN_DIR[dir] ?? dir));
   } catch (e) {
     /* Only a missing directory is expected. Anything else was being swallowed:
        a typo that left `stripComments` undefined made every screen throw, and

@@ -325,14 +325,14 @@ Each verified against the registry, not inferred from a comment.
       Splitting the two buckets changed the picture: `engagement` had read as 75% off-design
       and is 0% invented — every one of its six was the brand gradient borrowed from Auth.
       `discovery` fell from 40% to 14% the same way. The first version over-reported, badly.
-      **Done: onboarding, discovery, agency.** Onboarding's five remaining are `PALETTE`, the
+      **Done: onboarding, discovery, agency, command-center.** Onboarding's five remaining are `PALETTE`, the
       swatches a customer picks. Discovery's five are app-wide conventions used in 3–6 files
       each — muted-source amber, the metric tones — for states no prototype draws.
       Agency's chips now come from one `statusTints.ts` rather than four copies that had
       already diverged on the red, and its mark gradients say why four of the five are not
       in the prototype. Its remaining count is unchanged on purpose: the values are still
       off-design, but in one documented place instead of scattered.
-      **Unread: settings, assets, command-center, calendar, automation, dashboard.**
+      **Unread: settings, assets, draft-panel, calendar, automation, dashboard.**
       `settings` leads on invented count and most of it is vendor brand hex (Reddit's
       `#ff4500` and friends), so the true worklist there is smaller than 22.
       *Copy diffing is not worth repeating.* `scripts/design-copy.mjs` exists and mostly
@@ -342,15 +342,21 @@ Each verified against the registry, not inferred from a comment.
       design never drew; `CTA Clicks` became `Posts published` because
       `analytics.brand_series` has no click field, which `KpiRow` explains in place. The
       colour axis carries the signal.
-- [ ] **Four pale reds mean "this failed" and only one is the design's.** `SparkSocial
-      Automation.dc.html` draws the Failed chip as `#FDECEC` with a `#F35525` ring *and*
-      `#F35525` text. `PlanQueue` uses `#FDE9E2` / ring `#F35525` / `#D2470F` — right ring,
-      wrong fill and text, and clearly meant to be that chip. The agency pair is now one
-      value (`#FBE4E4` / `#A32626`) and deliberately *not* aligned to it: a declined
-      proposal and a lost lead are ordinary outcomes of a sales process, not errors, which
-      is the argument `AgencyClientFinder` already makes about `lost` being grey. So the
-      open item is `PlanQueue` only, and it is a one-line change once somebody confirms the
-      Failed chip should match its prototype.
+- [x] **The Failed chip is the design's — closed 20 Oct.** `PlanQueue` painted it
+      `#FDE9E2` over `#D2470F` with a `#F35525` ring. Those first two are the *Dashboard*
+      prototype's **"Warm"** chip — a lead-temperature badge — and the correct ring bolted
+      onto them is what made the whole thing look deliberate. `SparkSocial Automation.dc.html`
+      draws the real one: `#FDECEC`, ring `#F35525`, text `#F35525`. `blocked` ("Stopped")
+      keeps the warm pair on purpose: a guardrail hold is not a failure, and the two chips
+      being identical was its own small lie.
+      The agency reds stay where they are — a declined proposal and a lost lead are ordinary
+      outcomes, not errors.
+- [ ] **`PostPreview` cites a measurement that is in no prototype.** Its header records the
+      preview avatar as `63x63 · r76 · #CFFCCF, initials 27.9/500 #13AD12`, in the same
+      measured style as every other value on that screen — and neither hex appears in the
+      Draft Panel design, any `DP *` file, or anywhere else in `ui build/`. Either the
+      comment is wrong or it was taken from a source not in the repo. Worth asking whoever
+      wrote it before changing anything, since the numbers around it are right.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
