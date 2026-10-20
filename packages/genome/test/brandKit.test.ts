@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fullSizeLogo, isNeutral, rankKit, toHex } from '../src/brandKit.js';
+import { fullSizeLogo, isNeutral, pickLogo, rankKit, toHex } from '../src/brandKit.js';
+import type { LogoCandidate } from '../src/brandKit.js';
 
 /**
  * The brand-kit extractor's judgement, without a browser.
@@ -17,7 +18,7 @@ import { fullSizeLogo, isNeutral, rankKit, toHex } from '../src/brandKit.js';
 const probe = (
   swatches: Array<{ color: string; weight: number; area?: number; declared?: boolean }>,
   fonts: { display?: string; body?: string } = {},
-  logos: string[] = [],
+  logos: LogoCandidate[] = [],
 ) => ({
   swatches: swatches.map((s) => ({ area: 0, declared: false, ...s })),
   fonts,
@@ -80,7 +81,11 @@ describe('rankKit', () => {
   it('de-sizes the logo it returns, not merely the one it was given', () => {
     const kit = rankKit(
       probe([{ color: 'rgb(10,69,99)', weight: 5, area: 0.3, declared: true }], {}, [
-        'https://www.missoma.com/cdn/shop/files/MONOGRAM.webp?crop=center&height=32&v=174&width=32',
+        {
+          url: 'https://www.missoma.com/cdn/shop/files/MONOGRAM.webp?crop=center&height=32&v=174&width=32',
+          hint: 'MONOGRAM.webp logo',
+          kind: 'masthead',
+        },
       ]),
     );
 
@@ -153,9 +158,33 @@ describe('rankKit', () => {
     expect(kit.fonts).toEqual({ display: 'Satoshi', body: undefined });
   });
 
-  it('takes the first logo candidate, which the probe ordered by confidence', () => {
-    const kit = rankKit(probe([], {}, ['https://x.test/logo.svg', 'https://x.test/favicon.ico']));
+  /*
+   * This test used to say the probe "ordered by confidence" and assert the
+   * first element won. It did not order them — `pickLogo` does, and does it
+   * here rather than in the browser so it can be argued with.
+   */
+  it('picks the masthead logo over the favicon', () => {
+    const kit = rankKit(
+      probe([], {}, [
+        { url: 'https://x.test/favicon.ico', hint: 'favicon.ico', kind: 'icon' },
+        { url: 'https://x.test/logo.svg', hint: 'logo.svg logo', kind: 'masthead' },
+      ]),
+    );
     expect(kit.logoUrl).toBe('https://x.test/logo.svg');
+  });
+
+  it('skips the white variant Dishoom actually served', () => {
+    const kit = rankKit(
+      probe([], {}, [
+        {
+          url: 'https://www.dishoom.com/assets/header/logo-events-page-white.svg',
+          hint: 'logo-events-page-white.svg logo',
+          kind: 'masthead',
+        },
+        { url: 'https://www.dishoom.com/assets/header/logo.svg', hint: 'logo.svg logo', kind: 'masthead' },
+      ]),
+    );
+    expect(kit.logoUrl).toBe('https://www.dishoom.com/assets/header/logo.svg');
   });
 
   it('omits the logo rather than inventing one', () => {
@@ -331,9 +360,154 @@ describe('fullSizeLogo', () => {
     expect(fullSizeLogo(signed)).toBe(signed);
   });
 
+  /*
+   * Measured on www.dishoom.com while checking the logo ranking: a masthead
+   * mark served through Next.js's optimiser as
+   * `/_next/image?url=...&w=3840&q=75`. `w` is in the strip list and Next.js
+   * requires it — stripping it returns 400, turning a working logo into a
+   * broken one. The `w` is already the largest size on offer, so there was
+   * nothing to win either.
+   */
+  it('leaves an image proxy alone, because its size parameter is load-bearing', () => {
+    const proxied = 'https://www.dishoom.com/_next/image?url=%2Fassets%2Fheader%2Flogo.png&w=3840&q=75';
+    expect(fullSizeLogo(proxied)).toBe(proxied);
+  });
+
   it('leaves alone a URL with nothing to strip, and anything unparseable', () => {
     expect(fullSizeLogo('https://x.test/logo.svg')).toBe('https://x.test/logo.svg');
     expect(fullSizeLogo('https://x.test/logo.png?format=webp')).toBe('https://x.test/logo.png?format=webp');
     expect(fullSizeLogo('not a url')).toBe('not a url');
+  });
+});
+
+/**
+ * CHOOSING THE LOGO, rather than taking the first one in the DOM.
+ *
+ * `rankKit` used to return `probe.logos[0]` under a comment claiming the
+ * candidates were "best guess first". They were not ordered at all beyond the
+ * three groups they were collected in. Measured on the deployed build: Dishoom
+ * offered `logo-events-page-white.svg`, that is what became the brand's
+ * `brand_kit` asset, and a white mark is invisible on anything white.
+ */
+describe('pickLogo', () => {
+  const at = (url: string, over: Partial<LogoCandidate> = {}): LogoCandidate => ({
+    url,
+    hint: url,
+    kind: 'masthead',
+    ...over,
+  });
+
+  it('passes over the white variant for a sibling meant for paper', () => {
+    const chosen = pickLogo([
+      at('https://www.dishoom.com/assets/header/logo-events-page-white.svg'),
+      at('https://www.dishoom.com/assets/header/logo.svg'),
+    ]);
+
+    expect(chosen?.url).toBe('https://www.dishoom.com/assets/header/logo.svg');
+  });
+
+  /* The convention that reads backwards: `logo-dark` is dark *ink*, for a light
+     page — so it is the one to prefer, not the one to avoid. */
+  it('prefers the dark-ink variant, which is the one for a light page', () => {
+    const chosen = pickLogo([at('https://x.test/logo-white.svg'), at('https://x.test/logo-dark.svg')]);
+    expect(chosen?.url).toBe('https://x.test/logo-dark.svg');
+  });
+
+  it('reads the measured background, so an unnamed mark on a dark header loses', () => {
+    const chosen = pickLogo([
+      at('https://x.test/brand.svg', { background: 'rgb(21,21,21)' }),
+      at('https://x.test/other-brand.svg', { background: 'rgb(255,255,255)' }),
+    ]);
+
+    expect(chosen?.url).toBe('https://x.test/other-brand.svg');
+  });
+
+  /*
+   * The background is observation and the filename is convention, so when they
+   * disagree the measurement wins — including over `masthead`'s head start.
+   */
+  it('lets a measured dark surface outweigh a reassuring filename', () => {
+    const chosen = pickLogo([
+      at('https://x.test/logo-primary.svg', { background: 'rgb(0,0,0)' }),
+      at('https://x.test/icon.png', { kind: 'touch_icon' }),
+    ]);
+
+    expect(chosen?.url).toBe('https://x.test/icon.png');
+  });
+
+  it('judges a surface by perceived luminance, not by an average', () => {
+    // Pure blue averages to 85 and reads as dark; pure green averages the same
+    // and reads as light. A mean would call these the same surface.
+    const onBlue = pickLogo([at('https://x.test/a.svg', { background: 'rgb(0,0,255)' }), at('https://x.test/b.svg')]);
+    expect(onBlue?.url).toBe('https://x.test/b.svg');
+
+    const onGreen = pickLogo([at('https://x.test/a.svg', { background: 'rgb(0,255,0)' }), at('https://x.test/b.svg')]);
+    expect(onGreen?.url).toBe('https://x.test/a.svg');
+  });
+
+  it('keeps the documented order of sources when nothing else separates them', () => {
+    const chosen = pickLogo([
+      at('https://x.test/og.png', { kind: 'og_image' }),
+      at('https://x.test/icon.png', { kind: 'icon' }),
+      at('https://x.test/mark.svg', { kind: 'masthead' }),
+    ]);
+
+    expect(chosen?.url).toBe('https://x.test/mark.svg');
+  });
+
+  /*
+   * Penalties, never exclusions. `brand_kit` gates seven playbooks, so a brand
+   * that publishes one mark and draws it on a dark header should still get it —
+   * withholding it trades a working brand for a tidy one.
+   */
+  it('still returns a white logo when it is the only one there is', () => {
+    const chosen = pickLogo([at('https://x.test/logo-white.svg', { background: 'rgb(0,0,0)' })]);
+    expect(chosen?.url).toBe('https://x.test/logo-white.svg');
+  });
+
+  it('does not penalise a brand whose own name contains one of those words', () => {
+    const chosen = pickLogo([at('https://whitworths.test/assets/whitworths-logo.svg')]);
+    expect(chosen).toBeDefined();
+
+    // Beaten only by something genuinely better, not treated as an inverse.
+    const pair = pickLogo([
+      at('https://whitworths.test/assets/whitworths-logo.svg'),
+      at('https://whitworths.test/assets/icon.png', { kind: 'touch_icon' }),
+    ]);
+    expect(pair?.url).toBe('https://whitworths.test/assets/whitworths-logo.svg');
+  });
+
+  /*
+   * DISHOOM, AS THE SITE ACTUALLY SERVES IT.
+   *
+   * Read from www.dishoom.com on 20 Oct: the masthead offers two marks and
+   * *both* are white variants, so there is no dark sibling to fall back to —
+   * which is what the first test in this block assumes and real sites do not
+   * guarantee. The touch icon is then the best thing available: a full-colour
+   * square on its own background, which will at least be visible.
+   *
+   * Note the measured surface is cream, not dark. The background signal
+   * correctly says nothing here, and the filename is what carries it — the two
+   * signals exist precisely because either one alone would miss a case.
+   */
+  it('falls back to the touch icon when every masthead mark is a white one', () => {
+    const chosen = pickLogo([
+      at('https://www.dishoom.com/assets/header/logo-events-page-white.svg', {
+        hint: '/assets/header/logo-events-page-white.svg logo',
+        background: 'rgb(240, 236, 224)',
+      }),
+      at('https://www.dishoom.com/_next/image?url=logo-ramadan-white.png', {
+        hint: 'logo-ramadan-white.png logo',
+        background: 'rgb(240, 236, 224)',
+      }),
+      at('https://www.dishoom.com/apple-touch-icon.png', { hint: '/apple-touch-icon.png', kind: 'touch_icon' }),
+      at('https://www.dishoom.com/favicon-32x32.png', { hint: '/favicon-32x32.png', kind: 'icon' }),
+    ]);
+
+    expect(chosen?.url).toBe('https://www.dishoom.com/apple-touch-icon.png');
+  });
+
+  it('has nothing to say about an empty list', () => {
+    expect(pickLogo([])).toBeUndefined();
   });
 });

@@ -539,9 +539,33 @@ brand that already has a logo. Measured, not assumed:
 
 Two things this turned up that are not yet recorded elsewhere:
 
-- **The chosen logo is the white variant.** `logo-events-page-white.svg` is drawn for a dark
-  background and is invisible on a light one. Candidate ranking prefers whatever matches
-  `logo|brand|wordmark` first and has no notion of a mark needing to be legible on paper.
+- **The chosen logo was the white variant.** **Fixed.** `logo-events-page-white.svg` is drawn for
+  a dark background and is invisible on anything white, and it became Dishoom's `brand_kit` asset.
+  The cause was that nothing ranked the candidates: `rankKit` returned `probe.logos[0]` under a
+  comment claiming they were "best guess first", and a test asserted that premise as though it
+  were behaviour. They were only grouped by where they were found.
+
+  `pickLogo` now scores them. Two signals, because either alone misses cases: the filename
+  (`white`, `light`, `inverse`, `reverse`, `on-dark`, `knockout` penalised on word boundaries, so
+  Whitworth's and Lightspeed are not caught; `dark`, `black`, `primary`, `colour` rewarded, since
+  `logo-dark` means dark *ink* for a light page), and the surface the mark is actually drawn on,
+  which the probe measures by walking ancestors for the first opaque `background-color`. The
+  measurement outweighs the name and outweighs `masthead`'s own head start, because it is
+  observation rather than convention. Darkness is perceived luminance, not a mean — `rgb(0,0,255)`
+  is a dark surface and `rgb(0,255,0)` is not, and an average calls them the same.
+
+  Penalties, never exclusions: a brand that publishes one mark and draws it on a dark header still
+  gets that mark, because `brand_kit` gates seven playbooks and withholding it would trade a
+  working brand for a tidy one.
+
+  Read from the live site rather than assumed: Dishoom serves **two** masthead marks and both are
+  `-white`, so there is no dark sibling to switch to. The scoring reaches
+  `/apple-touch-icon.png` instead — a full-colour square on its own background — which is the best
+  thing actually on offer. Its measured surface is cream, not dark, so the background signal
+  correctly says nothing there and the filename carries the decision; that case is now a test.
+
+  Not attempted: reading the image's own pixels, which means fetching and decoding every candidate
+  during onboarding to answer what two cheap signals already answer.
 - **Abandoned onboarding leaves draft genomes behind.** `genome.list` returned 16 for this org,
   mostly repeated `Missoma` and `Clientforce` drafts from testing. Harmless to the product and
   noisy for anyone reading the data.

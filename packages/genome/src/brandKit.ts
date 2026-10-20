@@ -38,6 +38,8 @@ interface ProbeElement {
   getAttribute(name: string): string | null;
   querySelectorAll(selector: string): ArrayLike<ProbeElement>;
   getBoundingClientRect(): { width: number; height: number };
+  /** Walked to find the surface a logo is actually drawn on. */
+  readonly parentElement: ProbeElement | null;
 }
 interface ProbeStyle {
   readonly length: number;
@@ -86,6 +88,32 @@ export interface Swatch {
   declared: boolean;
 }
 
+/**
+ * A logo the markup offers, with what is needed to tell it apart from its
+ * siblings.
+ *
+ * Sites publish the same mark several times over — a dark one for paper, a
+ * white one for a dark header, a square app icon. The first match in DOM order
+ * is whichever the masthead happened to need, which is how Dishoom's
+ * `logo-events-page-white.svg` became a brand asset that is invisible on
+ * anything white.
+ */
+export interface LogoCandidate {
+  url: string;
+  /** `src`, `alt` and `class` joined — what the site calls this file. */
+  hint: string;
+  /** Where it was found, which is itself a quality signal. See `pickLogo`. */
+  kind: 'masthead' | 'touch_icon' | 'icon' | 'og_image';
+  /**
+   * The nearest opaque background behind it, as the browser computed it.
+   *
+   * The signal that does not depend on a filename convention: a mark drawn on
+   * a dark header is a light mark. Absent when every ancestor was transparent,
+   * which means the page default — paper.
+   */
+  background?: string;
+}
+
 /** What a crawl can observe about a site's visual identity. */
 export interface CrawledKit {
   /** Brand colours as `#rrggbb`, most prominent first. Never more than six. */
@@ -108,7 +136,7 @@ export interface CrawledKit {
 export function kitProbe(): {
   swatches: Swatch[];
   fonts: { display?: string; body?: string };
-  logos: string[];
+  logos: LogoCandidate[];
 } {
   const view = globalThis as unknown as ProbeWindow;
   const doc = view.document;
@@ -217,15 +245,36 @@ export function kitProbe(): {
    * square but often a mark rather than a wordmark; `og:image` is last because
    * it is usually a social share card with a photograph in it.
    */
-  const logos: string[] = [];
-  const addLogo = (value: string | null | undefined) => {
+  const logos: LogoCandidate[] = [];
+  const addLogo = (
+    value: string | null | undefined,
+    kind: LogoCandidate['kind'],
+    hint = '',
+    background?: string,
+  ) => {
     if (!value) return;
     try {
       const absolute = new view.URL(value, doc.baseURI).toString();
-      if (!logos.includes(absolute)) logos.push(absolute);
+      if (logos.some((l) => l.url === absolute)) return;
+      logos.push({ url: absolute, hint, kind, ...(background ? { background } : {}) });
     } catch {
       /* A malformed src is not a logo. */
     }
+  };
+
+  /*
+   * The surface the mark is drawn on, from the nearest ancestor that paints
+   * one. Transparent all the way up means the page default, which is paper.
+   */
+  const surfaceBehind = (el: ProbeElement): string | undefined => {
+    let node: ProbeElement | null = el;
+    for (let depth = 0; node && depth < 12; depth++) {
+      const bg = getComputedStyle(node).backgroundColor;
+      /* `rgba(...,0)` and `transparent` paint nothing — keep walking. */
+      if (bg && bg !== 'transparent' && !/,\s*0\s*\)$/.test(bg)) return bg;
+      node = node.parentElement;
+    }
+    return undefined;
   };
 
   /*
@@ -266,17 +315,130 @@ export function kitProbe(): {
   for (const img of Array.from(masthead?.querySelectorAll('img, svg image') ?? []).slice(0, 15)) {
     const src = img.getAttribute('src') ?? img.getAttribute('href') ?? '';
     const hint = `${src} ${img.getAttribute('alt') ?? ''} ${img.getAttribute('class') ?? ''}`;
-    if (/logo|brand|wordmark/i.test(hint)) addLogo(widest(img));
+    if (/logo|brand|wordmark/i.test(hint)) addLogo(widest(img), 'masthead', hint, surfaceBehind(img));
   }
   for (const link of Array.from(doc.querySelectorAll('link[rel~="apple-touch-icon"], link[rel~="icon"]'))) {
-    addLogo(link.getAttribute('href'));
+    const href = link.getAttribute('href');
+    const touch = (link.getAttribute('rel') ?? '').includes('apple-touch-icon');
+    addLogo(href, touch ? 'touch_icon' : 'icon', href ?? '');
   }
-  addLogo(doc.querySelector('meta[property="og:image"]')?.getAttribute('content'));
+  const og = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
+  addLogo(og, 'og_image', og ?? '');
 
   return { swatches, fonts, logos };
 }
 
 /* ── ranking, back in Node, where it can be tested ────────────────────── */
+/**
+ * Names a site gives the copy of its logo drawn for a *dark* surface.
+ *
+ * `reverse` and `inverse` are the trade's words for it; `white`, `light` and
+ * `on-dark` are the plain ones. Matched on word boundaries so a brand whose
+ * name contains one of them — Whitworth's, Lightspeed — is not penalised for
+ * it.
+ */
+const INVERSE_NAME = /(^|[^a-z])(white|light|inverse|inverted|reverse|reversed|on-?dark|knockout)([^a-z]|$)/i;
+
+/**
+ * And the names for the copy drawn for paper, which is the one we want.
+ *
+ * `dark` means dark *ink*, not a dark background — `logo-dark.svg` is the mark
+ * for a light page. It reads backwards at first glance and is the convention.
+ */
+const POSITIVE_NAME = /(^|[^a-z])(dark|black|primary|colou?r|full|main|default)([^a-z]|$)/i;
+
+/** Where a candidate was found, as a starting score. */
+const KIND_SCORE: Record<LogoCandidate['kind'], number> = {
+  /* The site's own markup calling it a logo is the strongest evidence. */
+  masthead: 40,
+  /* A clean square, usually full-colour on its own background — but often a
+     mark rather than a wordmark, so below a real logo. */
+  touch_icon: 25,
+  icon: 15,
+  /* Usually a social share card with a photograph in it. */
+  og_image: 5,
+};
+
+/**
+ * CHOOSE THE LOGO, rather than taking whichever the masthead happened to need.
+ *
+ * ── The defect ───────────────────────────────────────────────────────────
+ *
+ * This was `probe.logos[0]` — first match in DOM order — under a comment
+ * claiming the candidates were "best guess first". They were not ordered at
+ * all beyond the three groups they were collected in. Measured on the deployed
+ * build: Dishoom's crawl chose `logo-events-page-white.svg`, which is a white
+ * mark for a dark header, and registered it as the brand's `brand_kit` asset.
+ * Rendered on anything white it is not there.
+ *
+ * ── Two signals, because a filename is a convention and not a fact ────────
+ *
+ * The name is the obvious one and it is only a hint: `-white` is a very strong
+ * tell, but plenty of sites do not say. So the probe also measures the surface
+ * the mark is actually drawn on, by walking its ancestors for the first opaque
+ * `background-color`. A logo sitting on a dark header is a light logo whatever
+ * it is called — that is observation rather than convention, and it is why the
+ * background outweighs the name here.
+ *
+ * Deliberately *not* reading the image's own pixels: it means fetching and
+ * decoding every candidate during onboarding, to answer a question two cheap
+ * signals already answer.
+ *
+ * ── A white logo is still better than no logo ─────────────────────────────
+ *
+ * Penalties, never exclusions. A brand that publishes exactly one mark and
+ * draws it on a dark header should still get that mark — `brand_kit` is the
+ * gate on seven playbooks, and withholding it to avoid an awkward render would
+ * trade a working brand for a tidy one.
+ */
+export function pickLogo(candidates: readonly LogoCandidate[]): LogoCandidate | undefined {
+  let best: LogoCandidate | undefined;
+  let bestScore = -Infinity;
+
+  for (const candidate of candidates) {
+    let score = KIND_SCORE[candidate.kind];
+
+    if (INVERSE_NAME.test(candidate.hint)) score -= 50;
+    else if (POSITIVE_NAME.test(candidate.hint)) score += 10;
+
+    /*
+     * Outweighs the name, and outweighs `masthead`'s own head start: a mark
+     * measured on a dark surface is light, whatever the file is called and
+     * however well-placed it is.
+     */
+    if (candidate.background && isDarkSurface(candidate.background)) score -= 60;
+
+    /* Ties go to the earlier candidate, which preserves DOM order as the
+       tie-break the old code used by accident. */
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Whether a surface is dark enough that a mark on it is a light mark.
+ *
+ * Perceived luminance, not a mean: the eye reads green as far brighter than
+ * blue, so `rgb(0,0,255)` is a dark surface and `rgb(0,255,0)` is not, and an
+ * average calls them the same. Threshold at 0.5 — this only has to separate
+ * "needs a white logo" from "needs a dark one", which is exactly the question
+ * a midpoint answers.
+ */
+function isDarkSurface(color: string): boolean {
+  const hex = toHex(color);
+  if (!hex) return false;
+
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+}
+
 /** Query parameters that only ask a CDN to shrink the image. */
 const SIZING_PARAMS = new Set(['width', 'height', 'w', 'h', 'crop', 'size', 'fit', 'dpr', 'resize', 'max-w', 'max-h']);
 
@@ -288,6 +450,22 @@ const SIZING_PARAMS = new Set(['width', 'height', 'w', 'h', 'crop', 'size', 'fit
  * broken one, so anything that looks signed is returned exactly as found.
  */
 const SIGNED_HINTS = /^(x-amz-|x-goog-|sig|signature|token|expires|se|sp|sv|key)/i;
+
+/**
+ * Parameters that mean this URL is an image *proxy* wrapping another image.
+ *
+ * Found on the live site while checking something else: Dishoom serves a
+ * masthead mark through Next.js's optimiser as
+ * `/_next/image?url=%2Fassets%2F...png&w=3840&q=75`. `w` is in the strip list
+ * above, and Next.js *requires* it — removing it returns 400, so de-sizing
+ * would have turned a working logo into a broken one. The `w` is already 3840
+ * there, which is to say already the largest size on offer, so there was
+ * nothing to gain either.
+ *
+ * Leaving proxies alone rather than unwrapping them to the inner `url`: the
+ * inner address may be relative, and may not be served publicly at all.
+ */
+const PROXY_PARAMS = new Set(['url', 'src', 'image', 'uri']);
 
 /**
  * The logo at its own size, rather than at the size the masthead asked for.
@@ -319,6 +497,7 @@ export function fullSizeLogo(url: string): string {
 
   const keys = [...parsed.searchParams.keys()];
   if (keys.some((k) => SIGNED_HINTS.test(k))) return url;
+  if (keys.some((k) => PROXY_PARAMS.has(k.toLowerCase()))) return url;
 
   const sizing = keys.filter((k) => SIZING_PARAMS.has(k.toLowerCase()));
   if (sizing.length === 0) return url;
@@ -505,9 +684,11 @@ export function rankKit(probe: ReturnType<typeof kitProbe>): CrawledKit {
   const keep = (family: string | undefined) => (family && !generic.test(family) ? family : undefined);
   const fonts = { display: keep(probe.fonts.display), body: keep(probe.fonts.body) };
 
+  const logo = pickLogo(probe.logos);
+
   return {
     colors,
     ...(fonts.display || fonts.body ? { fonts } : {}),
-    ...(probe.logos[0] ? { logoUrl: fullSizeLogo(probe.logos[0]) } : {}),
+    ...(logo ? { logoUrl: fullSizeLogo(logo.url) } : {}),
   };
 }
