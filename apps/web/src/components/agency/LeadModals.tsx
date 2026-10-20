@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { parseLeadCsv, type LeadCsvPreview, type LeadImportRow } from './leadCsv';
 import type { ImportResult } from './useLeads';
+import { TINT } from './statusTints';
 
 /**
  * The Client Finder's two ways of getting leads in: a spreadsheet, or one at a
@@ -307,11 +308,7 @@ function Stat({ label, value, muted }: { label: string; value: number; muted?: b
 
 function Pill({ tone, children }: { tone: 'good' | 'warn' | 'bad'; children: ReactNode }) {
   const style =
-    tone === 'good'
-      ? { background: '#D8F5E6', color: '#1F7A46' }
-      : tone === 'warn'
-        ? { background: '#FBE4C2', color: '#8A5A12' }
-        : { background: '#FBD9D9', color: '#A32626' };
+    tone === 'good' ? TINT.good : tone === 'warn' ? TINT.warn : TINT.bad;
   return (
     <span className="flex h-[30px] items-center rounded-[8px] px-[11px] text-14 font-semibold" style={style}>
       {children}

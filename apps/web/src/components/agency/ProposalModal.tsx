@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { DraftInput, Proposal } from './useProposals';
 import { majorUnits, money, parseMoney, proposalToText } from './proposalText';
+import { TINT, type StatusTint } from './statusTints';
 
 /**
  * The proposals for one lead — opened from its expanded row.
@@ -49,12 +50,12 @@ const STATUS_LABEL: Record<ProposalStatus, string> = {
   withdrawn: 'Withdrawn',
 };
 
-const STATUS_TINT: Record<ProposalStatus, { background: string; color: string }> = {
-  draft: { background: '#EFEFEF', color: 'rgb(91,91,91)' },
-  sent: { background: '#E4EEFB', color: '#2B5EA7' },
-  accepted: { background: '#D8F5E6', color: '#1F7A46' },
-  declined: { background: '#FBE4E4', color: '#A32626' },
-  withdrawn: { background: '#EFEFEF', color: '#8A8A8A' },
+const STATUS_TINT: Record<ProposalStatus, StatusTint> = {
+  draft: TINT.neutral,
+  sent: TINT.info,
+  accepted: TINT.good,
+  declined: TINT.bad,
+  withdrawn: TINT.muted,
 };
 
 const SERVICES = Object.keys(PROPOSAL_SERVICE_LABELS) as ProposalService[];

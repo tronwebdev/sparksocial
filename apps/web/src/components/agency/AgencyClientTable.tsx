@@ -40,6 +40,22 @@ import type { RosterBrand } from './useAgencyRoster';
  * billing is recorded per brand — and say so.
  */
 
+/**
+ * The per-brand mark gradients.
+ *
+ * The first is the prototype's, measured: `SparkSocial Agency Portal.dc.html`
+ * paints all three of its mocked rows in `#F06BF5 → #D24ED9` and draws no
+ * second gradient. The four after it are not in any prototype.
+ *
+ * They exist because the mock has three rows and an agency has forty. One
+ * magenta repeated down a roster of forty clients is a column of identical
+ * circles, and the initial inside each is then the only thing telling them
+ * apart — which is the opposite of what a per-brand mark is for.
+ *
+ * Recorded because an audit cannot tell a deliberate extension from a hex
+ * somebody typed from memory, and this file had nothing to say either way.
+ * See `scripts/colour-audit.mjs`.
+ */
 const MARKS = [
   'linear-gradient(140deg, #F06BF5 0%, #D24ED9 100%)',
   'linear-gradient(140deg, #6CE8FF 0%, #3AA7E8 100%)',

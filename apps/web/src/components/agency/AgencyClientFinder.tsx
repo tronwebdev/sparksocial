@@ -10,6 +10,7 @@ import { ProposalModal } from './ProposalModal';
 import { useProposals } from './useProposals';
 import { money } from './proposalText';
 import { leadsToCsv } from './leadCsv';
+import { TINT, type StatusTint } from './statusTints';
 
 /**
  * `Client Finder` / `Client Finder Saved Leads` — the agency's lead pipeline,
@@ -76,12 +77,12 @@ const STATUS_LABEL: Record<LeadStatus, string> = {
  * progress, won is the roster's own green, lost is grey rather than red — a
  * lost lead is a normal outcome, not an error.
  */
-const STATUS_TINT: Record<LeadStatus, { background: string; color: string }> = {
-  new: { background: '#E4EEFB', color: '#2B5EA7' },
-  contacted: { background: '#DCF6E3', color: '#26A344' },
-  qualified: { background: '#E6E0FB', color: '#6C4BE0' },
-  won: { background: '#D8F5E6', color: '#1F7A46' },
-  lost: { background: '#EFEFEF', color: 'rgb(91,91,91)' },
+const STATUS_TINT: Record<LeadStatus, StatusTint> = {
+  new: TINT.info,
+  contacted: TINT.contacted,
+  qualified: TINT.progress,
+  won: TINT.good,
+  lost: TINT.neutral,
 };
 
 const SOURCE_LABEL: Record<LeadSource, string> = {
