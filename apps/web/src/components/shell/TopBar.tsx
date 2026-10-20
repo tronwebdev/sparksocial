@@ -52,7 +52,26 @@ export interface TopBarProps {
 export function TopBar({ title, subtitle, actions, className, askSpark = true }: TopBarProps) {
   return (
     <header className={cn('border-b border-border px-4 pb-5 pt-5 sm:px-dash-gutter sm:pb-dash-head-bottom sm:pt-dash-head-top', className)}>
-      <div className="flex items-start justify-between gap-3 sm:gap-4">
+      {/*
+        ── Wrapping, rather than a breakpoint ───────────────────────────────
+
+        The actions row was `shrink-0` inside a row that could not wrap, so it
+        could neither compress nor fold. Measured on the deployed dashboard at
+        430px: twelve elements past the viewport, the furthest at x=638 — 208px
+        over — with `document.scrollWidth` equal to the viewport, so Create
+        Campaign, the notifications button and Ask Spark were all unreachable.
+        A different failure from the settings card's stranded absolutes, and the
+        same outcome: controls that exist and cannot be used.
+
+        This one wants no `canvas` rule. `flex-wrap` is self-adjusting — the
+        actions drop to a second line exactly when they stop fitting and not a
+        pixel sooner — whereas a breakpoint at 1300px would stack the header on
+        a 1200px laptop where it fits perfectly well today. The contract says
+        fixed sizes become fluid below the canvas; it does not say every fix
+        needs the breakpoint, and reaching for one here would make the header
+        worse at the widths it currently handles.
+      */}
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 md:hidden">
             <MobileNav />
@@ -66,8 +85,13 @@ export function TopBar({ title, subtitle, actions, className, askSpark = true }:
             {subtitle ? <p className="mt-[3px] truncate text-14 font-normal leading-[1.28] text-ink-muted sm:text-18">{subtitle}</p> : null}
           </div>
         </div>
+        {/*
+          `shrink-0` is gone and the row wraps internally too: the actions block
+          is one flex child, so without this it would drop to its own line still
+          610px wide and still overflow a phone.
+        */}
         {actions || askSpark ? (
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             {actions}
             {askSpark ? <AskSpark /> : null}
           </div>

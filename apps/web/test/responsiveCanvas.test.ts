@@ -39,10 +39,24 @@ import { describe, expect, it } from 'vitest';
  * element's right edge past the viewport at any of the others.
  */
 
-const SOURCE = readFileSync(
-  join(__dirname, '../src/components/settings/OverviewSection.tsx'),
-  'utf8',
-);
+const read = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8');
+
+const SOURCE = read('src/components/settings/OverviewSection.tsx');
+
+/**
+ * Every screen converted to the contract so far.
+ *
+ * A list rather than a glob: the rule is not "no component may position
+ * anything", it is "a screen that has been converted stays converted". Adding a
+ * file here is the act of adopting the contract, and the check then holds it to
+ * it. A glob would fail the 230-odd screens that have not been converted yet
+ * and teach everyone to ignore the suite.
+ */
+const CONVERTED: ReadonlyArray<readonly [string, string]> = [
+  ['settings overview', 'src/components/settings/OverviewSection.tsx'],
+  ['settings shell', 'src/components/settings/SettingsShell.tsx'],
+  ['dashboard banner', 'src/components/dashboard/AgentBanner.tsx'],
+];
 
 /** Every `className="…"` in the file, comments stripped so prose does not count. */
 function classNames(src: string): string[] {
@@ -126,5 +140,85 @@ describe('the canvas breakpoint is declared once, as shared vocabulary', () => {
    */
   it('names the width the captures are drawn at', () => {
     expect(CONFIG).toMatch(/screens:\s*\{[^}]*canvas:\s*'1300px'/s);
+  });
+});
+
+describe('every converted screen keeps its canvas-scale offsets reachable', () => {
+  for (const [name, rel] of CONVERTED) {
+    it(`${name} strands nothing below canvas`, () => {
+      const stranded = classNames(read(rel)).filter(
+        (c) => /(^|\s)absolute(\s|$)/.test(c) && !c.includes('max-canvas:') && canvasScaleOffsets(c).length > 0,
+      );
+
+      expect(stranded, [rel, ...stranded].join('\n')).toEqual([]);
+    });
+  }
+});
+
+/**
+ * The dashboard header, which failed differently and wanted a different fix.
+ *
+ * The settings card stranded absolutely-positioned children off the side of the
+ * screen. The header did it with a `shrink-0` row that could neither compress
+ * nor fold: measured at 430px, twelve elements past the viewport, the furthest
+ * at x=638, with `scrollWidth` equal to the viewport so none of them could be
+ * scrolled to. Create Campaign, notifications and Ask Spark all existed and
+ * none could be used.
+ *
+ * Deliberately fixed without a `canvas` rule. `flex-wrap` folds exactly when
+ * the row stops fitting, where a 1300px breakpoint would stack the header on a
+ * 1200px laptop that handles it perfectly well today — so the contract's
+ * breakpoint is a tool, not a tax on every fix.
+ */
+describe('the top bar folds instead of overflowing', () => {
+  const TOPBAR = read('src/components/shell/TopBar.tsx');
+  const rows = classNames(TOPBAR).filter((c) => c.includes('justify-between') || c.includes('justify-end'));
+
+  it('lets the header row wrap', () => {
+    expect(rows.some((c) => c.includes('justify-between') && c.includes('flex-wrap'))).toBe(true);
+  });
+
+  it('lets the actions row wrap and stops it refusing to shrink', () => {
+    const actions = rows.find((c) => c.includes('justify-end'));
+    expect(actions).toBeDefined();
+    expect(actions).toContain('flex-wrap');
+    // `shrink-0` here is what made a 610px block refuse to fold on a 430px screen.
+    expect(actions).not.toMatch(/(^|\s)shrink-0(\s|$)/);
+  });
+});
+
+/**
+ * Large type that refuses to wrap is the third way to put content off-screen,
+ * and the offset rule above does not see it.
+ *
+ * The dashboard's agent name is `whitespace-nowrap text-32`, which is the
+ * capture's own treatment and correct inside a 1248px card. Measured at 430px
+ * it ran to x=464 inside a 179px parent — 34px past the viewport, clipped by
+ * the card that contains it. Nothing is absolutely positioned there, so
+ * `canvasScaleOffsets` finds nothing and the screen still loses its heading.
+ *
+ * Small nowrap text is left alone: a chip, a date, a button label is meant not
+ * to break, and is narrow enough that it never has to. The rule is about type
+ * big enough that one word can outrun a column.
+ */
+describe('big type is allowed to wrap below canvas', () => {
+  const BIG = /text-(2[89]|3\d|4\d)/;
+
+  for (const [name, rel] of CONVERTED) {
+    it(`${name} does not pin large type to one line`, () => {
+      const pinned = classNames(read(rel)).filter(
+        (c) => c.includes('whitespace-nowrap') && BIG.test(c) && !c.includes('max-canvas:whitespace-normal'),
+      );
+
+      expect(pinned, [rel, ...pinned].join('\n')).toEqual([]);
+    });
+  }
+
+  it('recognises the sizes it is about', () => {
+    // A bug in the predicate would make every case above pass silently.
+    expect(BIG.test('text-32 whitespace-nowrap')).toBe(true);
+    expect(BIG.test('text-28')).toBe(true);
+    expect(BIG.test('text-16')).toBe(false);
+    expect(BIG.test('text-15')).toBe(false);
   });
 });

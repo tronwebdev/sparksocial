@@ -182,7 +182,18 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               same 30px type and the same box. Nothing moves, and the state the
               design does not draw costs the layout nothing.
             */}
-            <span className="mt-[6.4px] whitespace-nowrap text-32 font-semibold leading-[1.27] text-white">
+            {/*
+              `whitespace-nowrap` is the capture's own treatment — the agent's
+              name sits on one line at 32px in a card 1248px wide, where it
+              always fits. Below `canvas` it does not: measured at 430px, the
+              name ran to x=464 inside a 179px parent, 34px past the viewport
+              and clipped by the card.
+
+              Wrapping is the only honest answer. The alternative, shrinking the
+              type, would make the one thing this banner exists to say the
+              smallest text on it.
+            */}
+            <span className="mt-[6.4px] whitespace-nowrap text-32 font-semibold leading-[1.27] text-white max-canvas:whitespace-normal">
               {name ?? (
                 <Link
                   href="/settings/brand-kit"

@@ -188,7 +188,17 @@ function SettingsTreeSwitch({ tree }: { tree: 'brand' | 'personal' }) {
   ];
   return (
     <div
-      className="mt-[26px] flex h-set-pill-h w-set-pill-w shrink-0 items-center rounded-[92.405px] bg-white p-[4px]"
+      /*
+        A fixed 435px pill becomes a 435px *maximum* below `canvas`.
+        Measured on the deployed site at 430px: it ran to 461, 31px past the
+        viewport, clipping "Personal Settings" to "Personal Settin". The width
+        is kept as a cap rather than dropped, or the two segments would stretch
+        across a 1200px screen that is merely below the canvas width.
+
+        `max-w-[var(--ss-set-pill-w)]` reads the same token the fixed width
+        does, so the cap cannot drift from it.
+      */
+      className="mt-[26px] flex h-set-pill-h w-set-pill-w shrink-0 items-center rounded-[92.405px] bg-white p-[4px] max-canvas:w-full max-canvas:max-w-[var(--ss-set-pill-w)] max-canvas:shrink"
       style={{ boxShadow: 'var(--ss-set-pill-shadow)' }}
       role="tablist"
       aria-label="Settings scope"
