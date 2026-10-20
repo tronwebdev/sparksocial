@@ -1059,6 +1059,31 @@ export async function listRenders(db: Database, scope: Scope, contentItemId: str
     .orderBy(desc(renders.createdAt));
 }
 
+/**
+ * Every render for any of these content items, this genome only.
+ *
+ * Batched for the same reason `listContentLinksForItems` is: the caller is a
+ * *list*, and asking per row turns one screen into N queries. `content.list`
+ * uses it to put a thumbnail on a calendar cell, which previously had no media
+ * available to it at all — the list row carried a summary and a media type and
+ * nothing to look at.
+ *
+ * Newest first within each item, so a caller taking the first match per aspect
+ * gets the current one rather than whichever render happened to land first.
+ */
+export async function listRendersForItems(
+  db: Database,
+  scope: Scope,
+  contentItemIds: string[],
+): Promise<RenderRow[]> {
+  if (contentItemIds.length === 0) return [];
+  return db
+    .select()
+    .from(renders)
+    .where(and(scopePredicate('renders', scope), inArray(renders.contentItemId, contentItemIds)))
+    .orderBy(desc(renders.createdAt));
+}
+
 export interface ContentMetricsRow {
   id: string;
   contentItemId: string;

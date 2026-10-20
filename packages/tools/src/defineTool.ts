@@ -1289,6 +1289,15 @@ export interface ContentStore {
 
   /** Every render already produced for a content item, newest first. */
   listRenders(contentItemId: string, genomeId: string, orgId: string): Promise<RenderRecord[]>;
+
+  /**
+   * The same, for many items at once — `content.list`'s thumbnails.
+   *
+   * Separate from `listRenders` rather than a loop over it: a calendar month
+   * is thirty-odd rows, and one query per cell is how a list turns into a
+   * stall. Newest first within each item.
+   */
+  listRendersForItems(contentItemIds: string[], genomeId: string, orgId: string): Promise<RenderRecord[]>;
 }
 
 /** One `renders` row — `compose.render`'s output for a single aspect ratio. */

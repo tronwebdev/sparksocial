@@ -122,6 +122,11 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       const rows = await scoped.listRenders(db, { orgId, brandId: orgId, genomeId }, contentItemId);
       return rows.map(toRender);
     },
+
+    async listRendersForItems(contentItemIds, genomeId, orgId) {
+      const rows = await scoped.listRendersForItems(db, { orgId, brandId: orgId, genomeId }, contentItemIds);
+      return rows.map(toRender);
+    },
   };
 }
 

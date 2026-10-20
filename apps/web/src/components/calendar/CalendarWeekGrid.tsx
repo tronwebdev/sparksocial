@@ -219,15 +219,29 @@ export function CalendarWeekGrid({
                           </span>
                         </span>
 
-                        <button
-                          type="button"
-                          onClick={() => onOpenDraft(posts[0]!.contentItemId)}
-                          title={posts[0]!.summary}
-                          className="mt-[6px] truncate rounded-[6px] bg-white/70 px-[7px] py-[4px] text-left text-12 font-medium text-ink"
-                          style={{ boxShadow: `inset 0 0 0 1.1px ${tint.chipRing}` }}
-                        >
-                          {posts.length > 1 ? `${posts.length} posts` : posts[0]!.summary || posts[0]!.playbookName}
-                        </button>
+                        {/* Same thumbnail as the month cell, at the same 9:16;
+                            the week column is narrower, so it sits above the
+                            chip rather than beside it. */}
+                        <span className="mt-[6px] flex items-start gap-[6px]">
+                          {posts[0]!.thumbnailUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={posts[0]!.thumbnailUrl}
+                              alt=""
+                              className="h-[36px] w-[20px] shrink-0 rounded-[4px] object-cover"
+                              style={{ background: 'rgba(131,131,131,0.08)' }}
+                            />
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => onOpenDraft(posts[0]!.contentItemId)}
+                            title={posts[0]!.summary}
+                            className="min-w-0 flex-1 truncate rounded-[6px] bg-white/70 px-[7px] py-[4px] text-left text-12 font-medium text-ink"
+                            style={{ boxShadow: `inset 0 0 0 1.1px ${tint.chipRing}` }}
+                          >
+                            {posts.length > 1 ? `${posts.length} posts` : posts[0]!.summary || posts[0]!.playbookName}
+                          </button>
+                        </span>
 
                         <span className="mt-auto truncate text-12" style={{ color: '#5B5B5B' }}>
                           {formats.join(', ')}

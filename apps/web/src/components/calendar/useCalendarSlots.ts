@@ -27,6 +27,15 @@ export interface CalendarSlot {
   status: string;
   summary: string;
   scheduledAt?: string;
+  /**
+   * A frame to show the post by, from `content.list`.
+   *
+   * The 9:16 render where there is one — the vertical render had been produced
+   * on every render pass and surfaced nowhere, and a calendar tile is the one
+   * place in the product shaped like it. Absent for a slot that is planned but
+   * not yet written, which is most of a fresh calendar.
+   */
+  thumbnailUrl?: string;
 }
 
 export interface CalendarSlots {

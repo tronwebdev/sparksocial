@@ -66,6 +66,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         markRejected: async () => {},
         recordRender: async () => ({ id: 'render_test', contentItemId: 'c1', aspect: '9:16', storageUrl: 'https://example.com/r.mp4', engine: 'remotion', costCents: 0, createdAt: new Date() }),
         listRenders: async () => [],
+        listRendersForItems: () => Promise.resolve([]),
       },
       analytics: {
         record: async () => { throw new Error('analytics.record not stubbed in this test'); },

@@ -61,6 +61,15 @@ interface Slot {
   status: string;
   summary: string;
   scheduledAt?: string;
+  /**
+   * A frame to show the post by, from `content.list`.
+   *
+   * The 9:16 render where there is one — the vertical render had been produced
+   * on every render pass and surfaced nowhere, and a calendar tile is the one
+   * place in the product shaped like it. Absent for a slot that is planned but
+   * not yet written, which is most of a fresh calendar.
+   */
+  thumbnailUrl?: string;
 }
 
 const NO_COPY = '(no copy yet)';
@@ -422,8 +431,31 @@ export function CalendarMonthGrid({
                         </span>
                       </span>
 
+                      {/*
+                        The post's own picture, 9:16 as the prototype draws a
+                        post thumbnail (38x64 in its reschedule card, scaled to
+                        27x48 to sit beside the chip rather than above it).
+
+                        The cell used to print the word "Image" where the image
+                        should be — `content.list` carried a media *type* and
+                        nothing to look at. The chip gives up the width rather
+                        than the thumbnail overlapping it, and gives up nothing
+                        at all on a slot with no picture yet.
+                      */}
+                      {post.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={post.thumbnailUrl}
+                          alt=""
+                          className="absolute right-[16px] top-[94px] h-[48px] w-[27px] rounded-[4px] object-cover"
+                          style={{ background: 'rgba(131,131,131,0.08)' }}
+                        />
+                      ) : null}
+
                       <span
-                        className="absolute left-[16px] right-[16px] top-[94px] flex h-[37px] items-center rounded-[9px] px-[12px]"
+                        className={`absolute left-[16px] top-[94px] flex h-[37px] items-center rounded-[9px] px-[12px] ${
+                          post.thumbnailUrl ? 'right-[53px]' : 'right-[16px]'
+                        }`}
                         style={{
                           background: 'rgba(255,255,255,0.65)',
                           boxShadow: `inset 0 0 0 1.2px ${tint.chipRing}`,

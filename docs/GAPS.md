@@ -608,8 +608,37 @@ type and spacing below are untouched and the visual sits where the design leaves
 Recorded here because the frontend rules make the `.dc.html` the source of truth, and departing
 from it is a thing to declare rather than to do quietly.
 
-Still true: the calendar cells show no thumbnail, and nothing surfaces the 9:16 render anywhere.
-Neither was reported and neither is obviously wrong, so neither was changed.
+### Calendar thumbnails, and the 9:16 render that nothing showed (fixed)
+
+Raised as two things and they are one. Searching the prototype for a post thumbnail finds
+`assets/thumb-reel.png` at **38x64** — which is 9:16. The design already has an idiom for "a post,
+shown small", and it is portrait, which is the shape of the render nothing displayed.
+
+The honest caveat: that thumbnail is in the Calendar prototype's *reschedule suggestion* card, not
+in a month-grid day cell. The grid cells genuinely draw no thumbnail, so this is a second
+deliberate deviation, declared like the Draft Review one — but it reuses the design's own treatment
+(9:16, radius 4, `object-fit: cover`, the `rgba(131,131,131,0.08)` tile backing) rather than
+inventing a new one, scaled to 27x48 beside the month chip and 20x36 above the week chip.
+
+The real gap was in the data, not the markup. `content.list` carried a media *type* and nothing to
+look at, which is why the cell printed the word "Image" where the image should be. So:
+
+- `listRendersForItems` in `scoped.ts` — batched, following `listContentLinksForItems`, because a
+  month is thirty cells and one query per cell is how a list becomes a stall.
+- `thumbnailUrl` on `ContentListItem`, on the same reasoning the file already records for
+  `variantGroupId` and `blockedReason`: the alternative is a `content.get` per cell.
+- `thumbnailFor` prefers **9:16**, deliberately the opposite of `previewFrame` in the Draft Review
+  modal, which prefers 1:1 because that modal's well is wide. Video backdrops are not offered: a
+  cell cannot play one, and thirty `<video>` elements is thirty clips fetched to show stills.
+
+**The full suite caught what the targeted runs did not.** `list.test.ts` builds its ctx with
+`as unknown as ToolCtx`, so the compiler never checked the fake against `ContentStore` and eight
+tests failed on `listRendersForItems is not a function` after typecheck had passed clean. Worth
+remembering as a property of the cast, not of this change: a fake behind `as unknown as` is outside
+the type system entirely, and only running it proves anything.
+
+Wiring is tested through `contentList.handler`, not only through the helper — `fullSizeLogo` passed
+its own tests earlier the same day while `rankKit` did not call it, with both suites green.
 
 ### Checked and *not* defects, recorded so they are not re-reported
 

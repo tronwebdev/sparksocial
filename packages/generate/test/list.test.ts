@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ContentDraft, ScopedDb, ToolCtx } from '@sparksocial/tools';
 import { contentList } from '../src/list.js';
 
-function ctx(over: { list?: ScopedDb['content']['list'] } = {}): ToolCtx {
+function ctx(
+  over: {
+    list?: ScopedDb['content']['list'];
+    listRendersForItems?: ScopedDb['content']['listRendersForItems'];
+  } = {},
+): ToolCtx {
   return {
     orgId: 'org_1',
     role: 'owner',
@@ -15,6 +20,9 @@ function ctx(over: { list?: ScopedDb['content']['list'] } = {}): ToolCtx {
         get: async () => undefined,
         updateDraft: async () => undefined,
         list: over.list ?? (async () => []),
+        /* Thumbnails. Defaulted to none so every existing case still describes
+           a list with no media, which is what they were written against. */
+        listRendersForItems: over.listRendersForItems ?? (async () => []),
       },
       runs: { list: async () => [], get: async () => undefined },
     },
@@ -140,5 +148,77 @@ describe('content.list — why a post stopped', () => {
       ctx({ list: async () => [row({ status: 'needs_review', publishAttempts: 0 })] }),
     );
     expect(out.items[0]).not.toHaveProperty('publishAttempts');
+  });
+});
+
+/**
+ * The thumbnail reaches the row, not merely the helper.
+ *
+ * `thumbnailFor` has its own tests, and a helper passing while nothing calls
+ * it is a real failure mode in this repo — `fullSizeLogo` did exactly that in
+ * `brandKit.ts` an hour before this was written, with both suites green. So
+ * these go through `contentList.handler` and read the field off the item.
+ */
+describe('content.list thumbnails', () => {
+  const render = (aspect: string, storageUrl: string) => ({
+    id: 'r_1',
+    contentItemId: 'ci_1',
+    aspect,
+    storageUrl,
+    engine: 'remotion',
+    costCents: 0,
+    createdAt: new Date(),
+  });
+
+  it('puts the vertical render on the row', async () => {
+    const out = await contentList.handler(
+      { genomeId: 'gen_1', limit: 50 },
+      ctx({
+        list: async () => [row()],
+        listRendersForItems: async () => [
+          render('1:1', 'https://r2.test/square.png'),
+          render('9:16', 'https://r2.test/tall.png'),
+        ],
+      }),
+    );
+
+    expect(out.items[0]).toMatchObject({ thumbnailUrl: 'https://r2.test/tall.png' });
+  });
+
+  it('matches renders to their own item, not to the first row', async () => {
+    const out = await contentList.handler(
+      { genomeId: 'gen_1', limit: 50 },
+      ctx({
+        list: async () => [row({ id: 'ci_1' }), row({ id: 'ci_2' })],
+        listRendersForItems: async () => [{ ...render('9:16', 'https://r2.test/second.png'), contentItemId: 'ci_2' }],
+      }),
+    );
+
+    // The render belongs to the second row. Keying the map by item id is what
+    // stops it being painted onto every cell in the month.
+    expect(out.items[0]).not.toHaveProperty('thumbnailUrl');
+    expect(out.items[1]).toMatchObject({ thumbnailUrl: 'https://r2.test/second.png' });
+  });
+
+  it('omits the field entirely for a slot with nothing to show', async () => {
+    const out = await contentList.handler({ genomeId: 'gen_1', limit: 50 }, ctx({ list: async () => [row()] }));
+    expect(out.items[0]).not.toHaveProperty('thumbnailUrl');
+  });
+
+  /*
+   * The list is what the calendar is built from. Losing a month of posts
+   * because a render lookup failed would be a bad trade for a picture.
+   */
+  it('still returns the posts when the render read fails', async () => {
+    const out = await contentList.handler(
+      { genomeId: 'gen_1', limit: 50 },
+      ctx({
+        list: async () => [row()],
+        listRendersForItems: async () => { throw new Error('renders table unavailable'); },
+      }),
+    );
+
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0]).not.toHaveProperty('thumbnailUrl');
   });
 });

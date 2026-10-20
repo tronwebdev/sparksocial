@@ -911,6 +911,13 @@ export function createDevStore(
           .filter((r) => r.contentItemId === contentItemId && r.orgId === org && r.genomeId === genomeId)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       },
+
+      async listRendersForItems(contentItemIds, genomeId, org) {
+        const wanted = new Set(contentItemIds);
+        return renders
+          .filter((r) => wanted.has(r.contentItemId) && r.orgId === org && r.genomeId === genomeId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      },
     },
 
     analytics: {
