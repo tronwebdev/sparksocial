@@ -137,7 +137,27 @@ export function StepShell({
           <span aria-hidden className="h-[42px] w-24 shrink-0" />
         )}
 
-        <div className="absolute left-1/2 flex w-[738px] max-w-full -translate-x-1/2 flex-col items-center">
+        {/*
+         * `pointer-events-none`, because this band is painted *over* both pills.
+         *
+         * It is absolutely positioned and the two buttons are not, so it wins the
+         * hit test against them whatever the DOM order — and `max-w-full` means
+         * that below about 960px it stops being 738px wide and stretches across
+         * the whole header, covering Back and Continue completely. Measured on
+         * the deployed site: both pills dead at 900px and 796px, both fine at
+         * 980px and up.
+         *
+         * That was not a cosmetic bug. Only the brand-name and URL composers
+         * have an `onSubmit`, so Enter happened to work on the two steps a
+         * tester reaches first; every step after them — details, the questions,
+         * docs, kit, agent — has no keyboard path at all, so onboarding simply
+         * could not be finished in a window narrower than ~960px.
+         *
+         * Nothing in here is interactive: a label and a progressbar. So the band
+         * gives up the hit test rather than the pills moving or the width
+         * changing, and the capture's centring is untouched.
+         */}
+        <div className="pointer-events-none absolute left-1/2 flex w-[738px] max-w-full -translate-x-1/2 flex-col items-center">
           <p className="text-16 text-ink-muted">
             <span className="font-semibold text-ink">Step {group}</span> of 4
           </p>
