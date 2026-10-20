@@ -5,6 +5,7 @@ import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
 import { claimGrounding } from '@sparksocial/guardrails';
 import { crawl as defaultCrawl, type CrawlOptions, type CrawlResult } from './crawl.js';
 import { explainCrawlFailure } from './bootstrap.js';
+import { registerKnowledgeAsset } from '@sparksocial/agency/knowledgeAsset';
 
 /**
  * `knowledge.ingest_site` / `.ingest_docs` / `.ground_claim` — the automated
@@ -103,6 +104,48 @@ export function makeKnowledgeIngestSite(deps: KnowledgeIngestSiteDeps) {
             error: e instanceof Error ? e.message : String(e),
           });
         }
+      }
+
+      /*
+       * The crawl is also a knowledge *asset*, not only a corpus.
+       *
+       * This was the one write path of five that stored chunks and registered
+       * nothing. `brand.knowledge.attach`, `brand.knowledge.attach_document`
+       * and `genome.bootstrap_from_url` all register; crawling a site from the
+       * Brand Kit screen did not. The consequence is invisible until somebody
+       * looks at a calendar: grounding works perfectly — `guard.claim_grounding`
+       * reads the chunks and the writer gets them — while every playbook with
+       * `knowledge` in `required_asset_roles` stays blocked, because the
+       * resolver counts asset rows and there were none.
+       *
+       * So the owner who did exactly what the screen asked, and watched it say
+       * "Attached 5 pages", still saw "Knowledge — N of M resolvable posts"
+       * listed as a thing they had to go and supply.
+       *
+       * One asset for the site rather than one per page, matching what
+       * `saveKnowledge` does for the onboarding crawl: the role is a capability
+       * check, and five rows in the Assets Library for five pages of one
+       * website is a library nobody can read.
+       */
+      const first = result.pages[0];
+      if (attached.length > 0 && first) {
+        await registerKnowledgeAsset(ctx, {
+          genomeId: input.genomeId,
+          url: `knowledge:${first.url}`,
+          filename: hostOf(first.url),
+          excerpt: first.text.slice(0, 400),
+          embedding: await deps.embed.embed(first.text).catch(() => []),
+          source: 'knowledge.ingest_site',
+        }).catch((err: unknown) => {
+          /* Bookkeeping must not fail a crawl whose pages are already stored.
+             The chunks are the thing this tool promises; the asset is what
+             unlocks the playbooks, and it can be registered again later. */
+          ctx.logger.warn('crawled knowledge not registered as an asset', {
+            genomeId: input.genomeId,
+            url: input.url,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
       }
 
       ctx.logger.info('knowledge ingested from site', { genomeId: input.genomeId, url: input.url, pages: attached.length });
@@ -347,3 +390,12 @@ export const knowledgeGroundClaim = defineTool({
     return { grounded: true, ungroundedClaims: [] };
   },
 });
+
+/** The site's hostname, for the asset's filename. Falls back to the raw url. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}

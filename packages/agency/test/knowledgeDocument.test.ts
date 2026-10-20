@@ -24,7 +24,7 @@ const GUIDELINE = [
   'Cheapest in town. Guaranteed results.',
 ].join('\n');
 
-function ctx(over: { attached?: unknown[] } = {}): ToolCtx {
+function ctx(over: { attached?: unknown[]; createAsset?: (args: unknown) => Promise<{ id: string }> } = {}): ToolCtx {
   const attached = over.attached ?? [];
   return {
     orgId: 'org_1',
@@ -39,6 +39,11 @@ function ctx(over: { attached?: unknown[] } = {}): ToolCtx {
           return { id: `k_${attached.length}`, docId: (args as { docId: string }).docId };
         },
       },
+      /* `registerKnowledgeAsset` writes here. Absent before, which meant it
+         threw into its own catch and the tests passed while proving nothing
+         about the asset row — and `as unknown as ToolCtx` kept the compiler
+         quiet about it. */
+      assets: { create: over.createAsset ?? (async () => ({ id: 'asset_1' })) },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -148,5 +153,48 @@ describe('chunkText', () => {
     const text = 'x'.repeat(250);
     const out = chunkText(text, 80);
     expect(out.join('')).toBe(text);
+  });
+});
+
+/**
+ * The asset id, which the Assets Library now depends on.
+ *
+ * That panel used to upload a PDF through `asset.ingest_url`: an asset row with
+ * the `knowledge` role and no text extracted, so it satisfied the role gate —
+ * unlocking seven playbooks — while `knowledge.list` stayed empty and the
+ * writer never saw a word of the file. A knowledge asset with nothing behind it
+ * is worse than none, because it reports a capability the brand does not have.
+ *
+ * It now calls this tool instead, which reads the file *and* registers the one
+ * row, and needs the id back to put the upload in the folder that was open.
+ */
+describe('the registered asset is reported back', () => {
+  it('returns the assetId so a caller can file the upload', async () => {
+    const tool = makeBrandKnowledgeAttachDocument(deps(GUIDELINE) as never);
+
+    const out = await tool.handler(
+      { genomeId: 'gen_1', url: 'https://files.test/handbook.pdf', filename: 'handbook.pdf' },
+      ctx({ createAsset: async () => ({ id: 'asset_xyz' }) }),
+    );
+
+    expect(out.assetId).toBe('asset_xyz');
+    expect(out.chunks).toBeGreaterThan(0);
+  });
+
+  /*
+   * Registration is deliberately non-fatal — the chunks are what this tool
+   * promises and they are already written. The caller skips the folder move
+   * rather than reporting the upload as lost.
+   */
+  it('omits the assetId rather than failing when the row cannot be written', async () => {
+    const tool = makeBrandKnowledgeAttachDocument(deps(GUIDELINE) as never);
+
+    const out = await tool.handler(
+      { genomeId: 'gen_1', url: 'https://files.test/handbook.pdf', filename: 'handbook.pdf' },
+      ctx({ createAsset: async () => { throw new Error('assets unavailable'); } }),
+    );
+
+    expect(out.assetId).toBeUndefined();
+    expect(out.chunks).toBeGreaterThan(0);
   });
 });

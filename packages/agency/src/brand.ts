@@ -249,6 +249,18 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
     }),
     output: z.object({
       docId: z.string(),
+      /**
+       * The `knowledge` asset row this registered, when it registered one.
+       *
+       * Returned so the Assets Library can file the upload into the folder the
+       * owner had open. That panel used to reach a row through
+       * `asset.ingest_url`, which creates an asset and extracts no text — a
+       * PDF that satisfied the role gate and contributed nothing to grounding.
+       * Optional because registration is deliberately non-fatal: the chunks are
+       * what this tool promises, and a failure to write the row must not throw
+       * away work that succeeded.
+       */
+      assetId: z.string().optional(),
       pages: z.number().int(),
       chunks: z.number().int(),
       /** Characters extracted — a scanned PDF with no text layer comes back near zero. */
@@ -323,7 +335,7 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
        * throw away work that succeeded — the same posture `ensureBrandKitAsset`
        * takes on the logo path.
        */
-      await registerKnowledgeAsset(ctx, {
+      const registered = await registerKnowledgeAsset(ctx, {
         genomeId: input.genomeId,
         url: input.url,
         filename: input.filename,
@@ -336,6 +348,7 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
           docId,
           error: err instanceof Error ? err.message : String(err),
         });
+        return undefined;
       });
 
       /**
@@ -393,7 +406,14 @@ export function makeBrandKnowledgeAttachDocument(deps: { embed: EmbedClient; rea
         restrictionsAdded: restrictionsAdded.claimsToAvoid.length + restrictionsAdded.bannedPhrases.length,
       });
 
-      return { docId, pages, chunks: chunks.length, characters: cleaned.length, restrictionsAdded };
+      return {
+        docId,
+        ...(registered ? { assetId: registered.assetId } : {}),
+        pages,
+        chunks: chunks.length,
+        characters: cleaned.length,
+        restrictionsAdded,
+      };
     },
   });
 }

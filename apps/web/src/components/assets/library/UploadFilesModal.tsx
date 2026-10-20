@@ -205,35 +205,86 @@ export function UploadFilesModal({
        while the role still reads `product_screen` is filed as knowledge rather
        than rejected after it has already uploaded. */
     const assetRole = mediaType === 'document' && !DOCUMENT_ROLES.includes(role) ? 'knowledge' : role;
-    const ingested = await invoke<{ assetId: string; caption: string }>(
-      'asset.ingest_url',
-      {
-        genomeId,
-        url: presigned.output.readUrl,
-        assetRole,
-        mediaType,
-        rightsStatus: rightsCleared ? 'cleared' : 'pending',
-        source: 'assets_library_upload',
-        filename: file.name,
-        sizeBytes: file.size,
-      },
-      /* Not idempotent — a second call duplicates the asset — so the key is the
-         storage key, which is already unique per file. */
-      `asset-ingest:${presigned.output.key}`,
-    );
+
+    /*
+     * ── A knowledge document goes through the tool that reads it ──────────
+     *
+     * `asset.ingest_url` creates an asset row and captions it. For a picture
+     * that is the whole job; for a PDF filed as `knowledge` it is half of one,
+     * because the text is never extracted. The result was a document that
+     * satisfied the `knowledge` role gate — unlocking seven playbooks — while
+     * `knowledge.list` stayed empty, so `guard.claim_grounding` failed every
+     * specific claim the writer made and the writer never saw a word of the
+     * file. A knowledge asset with no text behind it is worse than no asset:
+     * it reports a capability the brand does not have.
+     *
+     * `brand.knowledge.attach_document` fetches the file, extracts its text,
+     * chunks it, and registers the same single asset row — so this is one
+     * call doing what two were failing to do between them, not an extra one.
+     * It returns the id precisely so the folder move below still works.
+     *
+     * Everything that is not a knowledge document keeps the ingest path: there
+     * is nothing to extract from a JPEG, and sending one to a document reader
+     * would be a parser call to learn that.
+     */
+    const asKnowledge = mediaType === 'document' && assetRole === 'knowledge';
+
+    const ingested = asKnowledge
+      ? await invoke<{ assetId?: string; chunks: number; characters: number }>(
+          'brand.knowledge.attach_document',
+          { genomeId, url: presigned.output.readUrl, filename: file.name },
+          `knowledge-doc:${presigned.output.key}`,
+        )
+      : await invoke<{ assetId: string; caption: string }>(
+          'asset.ingest_url',
+          {
+            genomeId,
+            url: presigned.output.readUrl,
+            assetRole,
+            mediaType,
+            rightsStatus: rightsCleared ? 'cleared' : 'pending',
+            source: 'assets_library_upload',
+            filename: file.name,
+            sizeBytes: file.size,
+          },
+          /* Not idempotent — a second call duplicates the asset — so the key is the
+             storage key, which is already unique per file. */
+          `asset-ingest:${presigned.output.key}`,
+        );
     if (ingested.status !== 'succeeded') {
       return { ...staged, error: ingested.status === 'failed' ? ingested.error.message : 'Ingest was gated.' };
     }
 
+    /*
+     * A scanned PDF with no text layer extracts near zero characters. The file
+     * is uploaded and the asset exists, so this is a note rather than a
+     * failure — but saying nothing would leave the owner believing the brand
+     * had learned something from a document it could not read.
+     */
+    if (asKnowledge && 'chunks' in ingested.output && ingested.output.chunks === 0) {
+      return {
+        ...staged,
+        error: 'Uploaded, but no text could be read from it — a scanned PDF needs a text layer to be searchable.',
+      };
+    }
+
     /* Into the folder that was open, which is the only reason this panel knows
        about a folder at all. */
-    await invoke(
-      'asset.folder.move',
-      { genomeId, assetId: ingested.output.assetId, folderId: folder.folderId },
-      `asset-move:${ingested.output.assetId}:${folder.folderId}`,
-    );
+    /* Absent only when registering the knowledge asset failed, which is
+       deliberately non-fatal there — the chunks are written either way, and a
+       file that is not in a folder is better than an upload reported as lost. */
+    const assetId = ingested.output.assetId;
+    if (assetId) {
+      await invoke(
+        'asset.folder.move',
+        { genomeId, assetId, folderId: folder.folderId },
+        `asset-move:${assetId}:${folder.folderId}`,
+      );
+    }
 
-    return { ...staged, assetId: ingested.output.assetId };
+    /* `null` rather than `undefined` for the staged row's own shape — the
+       knowledge path can legitimately come back without an id. */
+    return { ...staged, assetId: assetId ?? null };
   }
 
   async function start(list: FileList | File[]) {

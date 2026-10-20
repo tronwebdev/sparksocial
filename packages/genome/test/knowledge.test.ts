@@ -273,3 +273,75 @@ describe('knowledge.list', () => {
     expect(knowledgeList.effect).toBe('read');
   });
 });
+
+/**
+ * THE CRAWL IS A KNOWLEDGE ASSET, not only a corpus.
+ *
+ * This was the one write path of five that stored chunks and registered
+ * nothing. `brand.knowledge.attach`, `brand.knowledge.attach_document` and
+ * `genome.bootstrap_from_url` all register an asset; crawling a site from the
+ * Brand Kit screen did not.
+ *
+ * The consequence is invisible until somebody looks at a calendar. Grounding
+ * works perfectly — `guard.claim_grounding` reads the chunks and the writer
+ * gets them — while every playbook with `knowledge` in `required_asset_roles`
+ * stays blocked, because the resolver counts asset rows and there were none.
+ * So an owner who did exactly what the screen asked, and watched it say
+ * "Attached 5 pages", still saw Knowledge listed as a thing to go and supply.
+ */
+describe('knowledge.ingest_site registers the asset too', () => {
+  const pages = [
+    { url: 'https://example.com/', title: 'Home', text: 'Welcome to Example Co.' },
+    { url: 'https://example.com/faq', title: 'FAQ', text: 'Frequently asked questions.' },
+  ];
+
+  it('writes one asset for the site, not one per page', async () => {
+    /* Typed, because `vi.fn(async () => …)` infers a zero-argument mock and
+       `mock.calls[0][0]` is then a type error on an empty tuple — the trap
+       `bootstrapKit.test.ts` documents having fallen into. */
+    const create = vi.fn<(args: Record<string, unknown>) => Promise<{ id: string }>>(async () => ({ id: 'asset_1' }));
+    const tool = makeKnowledgeIngestSite({ embed: { embed: async () => [0.1] }, crawl: async () => ({ pages }) });
+
+    await tool.handler({ genomeId: 'gen_1', url: 'https://example.com', maxPages: 5 }, ctx({ assets: { create } }));
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0]?.[0]).toMatchObject({
+      genomeId: 'gen_1',
+      assetRole: 'knowledge',
+      mediaType: 'document',
+      // `assetInventory` counts only `cleared`, so `pending` would leave the
+      // brand resolving nothing one layer further down.
+      rightsStatus: 'cleared',
+      source: 'knowledge.ingest_site',
+    });
+  });
+
+  it('registers nothing when the crawl attached nothing', async () => {
+    const create = vi.fn(async () => ({ id: 'asset_1' }));
+    const tool = makeKnowledgeIngestSite({
+      embed: { embed: async () => [0.1] },
+      crawl: async () => ({ pages: [], failure: 'blocked' as const }),
+    });
+
+    await tool.handler({ genomeId: 'gen_1', url: 'https://example.com', maxPages: 5 }, ctx({ assets: { create } }));
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  /*
+   * The chunks are what this tool promises and they are already written by the
+   * time the asset is attempted. A failure to register the row must not throw
+   * away a crawl that succeeded.
+   */
+  it('still reports the attached pages when registering the asset fails', async () => {
+    const create = vi.fn(async () => { throw new Error('assets unavailable'); });
+    const tool = makeKnowledgeIngestSite({ embed: { embed: async () => [0.1] }, crawl: async () => ({ pages }) });
+
+    const out = await tool.handler(
+      { genomeId: 'gen_1', url: 'https://example.com', maxPages: 5 },
+      ctx({ assets: { create } }),
+    );
+
+    expect(out.attached).toHaveLength(2);
+  });
+});

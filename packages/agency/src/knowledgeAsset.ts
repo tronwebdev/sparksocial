@@ -58,8 +58,8 @@ export async function registerKnowledgeAsset(
     embedding: number[];
     source: string;
   },
-): Promise<void> {
-  await ctx.db.assets.create({
+): Promise<{ assetId: string }> {
+  const asset = await ctx.db.assets.create({
     genomeId: args.genomeId,
     orgId: ctx.orgId,
     url: args.url,
@@ -71,6 +71,16 @@ export async function registerKnowledgeAsset(
     source: args.source,
     filename: args.filename,
   });
+
+  /*
+   * Returned so the Assets Library can put the file in the folder that was
+   * open. The upload panel used to reach the same row through
+   * `asset.ingest_url`, which creates an asset and extracts no text — a PDF
+   * that satisfied the `knowledge` role gate and contributed nothing to
+   * grounding. It now calls `brand.knowledge.attach_document` instead, and
+   * needs the id back to finish the job it started.
+   */
+  return { assetId: asset.id };
 }
 
 /**
