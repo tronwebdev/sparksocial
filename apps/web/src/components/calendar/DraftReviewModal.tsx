@@ -18,10 +18,26 @@ import { postKindLabel } from '@/lib/platforms';
  *   notes       50,534  935x120 — "Agent Notes"
  *   primary     "Approve & Schedule"
  *
+ * ── The picture, which the design does not draw ───────────────────────────
+ *
+ * The prototype shows a caption, agent notes and a platform icon, and no
+ * image — its example is a Reel, where the caption is most of the decision.
+ * Followed literally that is what this screen was: a post of kind **Image**,
+ * with a finished 1:1 render sitting in R2, asking to be approved for
+ * publishing with the picture nowhere on screen. Reported as "I am not seeing
+ * the images of the posts that are image type", which is exactly what it was.
+ *
+ * So this deviates from `SparkSocial Calendar.dc.html` deliberately, and only
+ * by addition: the layout, type and spacing below are untouched, and the
+ * visual goes above the caption where the design leaves whitespace. Approving
+ * an image you have not seen is not a thing to be faithful about.
+ *
  * ── What it can and cannot do ─────────────────────────────────────────────
  *
- * The read is `content.list`, filtered to the one item — there is no
- * `content.get` in the registry. Approving is the honest gap: the design's
+ * The read was `content.list` filtered to the one item, under a comment saying
+ * no `content.get` existed. One does — it is what returns `beats` and
+ * `renders`, so without it this screen had no picture available to show even
+ * if it had wanted to. Approving is the honest gap: the design's
  * button approves and schedules in one move, and `approval.decide` is keyed on a
  * held **callId** rather than a content item, so a draft sitting in
  * `needs_review` cannot be approved from here. The button says so instead of
@@ -37,6 +53,45 @@ interface Item {
   mediaType?: 'video' | 'image' | 'carousel' | 'text';
   scheduledAt?: string;
   playbookName?: string;
+}
+
+/** The half of `content.get` this screen needs: what the post looks like. */
+export interface Visuals {
+  /** Finished files from `compose.render` — the post as it will go out. */
+  renders?: Array<{ aspect: string; url: string; engine: string }>;
+  beats?: Array<{
+    kind: string;
+    url?: string;
+    /** Auto-illustration's output, which leaves the beat's kind as `text`. */
+    backdrop?: { kind: 'image' | 'video'; urls: string[] };
+  }>;
+}
+
+/**
+ * The one frame worth showing, in the order that answers "what goes out?".
+ *
+ * A composed render first, because that file *is* the post — square before
+ * vertical only because this modal's well is wider than it is tall. Then a
+ * beat's own generated media, then auto-illustration's backdrop, which is the
+ * case that matters most here: it attaches to a beat without changing the
+ * beat's kind, so a post can be fully illustrated while every beat still
+ * reads as `text`. That is why checking `kind` alone found nothing.
+ *
+ * Video is shown with controls rather than autoplaying: this is a review of
+ * the decision to publish, and a clip that starts talking when a modal opens
+ * is answering a question nobody asked.
+ */
+export function previewFrame(v: Visuals | null): { url: string; kind: 'image' | 'video' } | undefined {
+  const square = v?.renders?.find((r) => r.aspect === '1:1') ?? v?.renders?.[0];
+  if (square) return { url: square.url, kind: 'image' };
+
+  for (const beat of v?.beats ?? []) {
+    if (beat.kind === 'generated_image' && beat.url) return { url: beat.url, kind: 'image' };
+    const first = beat.backdrop?.urls[0];
+    if (first) return { url: first, kind: beat.backdrop?.kind === 'video' ? 'video' : 'image' };
+  }
+
+  return undefined;
 }
 
 const STATUS_WORD: Record<string, string> = {
@@ -61,19 +116,35 @@ export function DraftReviewModal({
   onOpenPanel: (contentItemId: string) => void;
 }) {
   const [item, setItem] = useState<Item | null | 'missing'>(null);
+  const [visuals, setVisuals] = useState<Visuals | null>(null);
 
   useEffect(() => {
     if (!genomeId) return;
     let cancelled = false;
     void (async () => {
-      /* No `content.get` exists, so the list is filtered down to the one. */
-      const res = await invoke<{ items: Item[] }>('content.list', { genomeId, limit: 100 });
+      /*
+       * The list carries the status, slot and kind this header reads;
+       * `content.get` carries the beats and renders, which is the only place a
+       * picture exists. Both, because neither alone fills the screen.
+       *
+       * Requested together rather than in sequence: the header does not depend
+       * on the picture, so there is nothing to gain by waiting.
+       */
+      const [list, full] = await Promise.all([
+        invoke<{ items: Item[] }>('content.list', { genomeId, limit: 100 }),
+        invoke<Visuals>('content.get', { genomeId, contentItemId }),
+      ]);
       if (cancelled) return;
-      if (res.status !== 'succeeded') {
+
+      if (list.status !== 'succeeded') {
         setItem('missing');
-        return;
+      } else {
+        setItem(list.output.items.find((i) => i.contentItemId === contentItemId) ?? 'missing');
       }
-      setItem(res.output.items.find((i) => i.contentItemId === contentItemId) ?? 'missing');
+
+      /* A failed read means no picture, not a broken modal — the caption and
+         the route into the Draft Panel are still worth having. */
+      setVisuals(full.status === 'succeeded' ? full.output : null);
     })();
     return () => {
       cancelled = true;
@@ -81,6 +152,7 @@ export function DraftReviewModal({
   }, [genomeId, contentItemId]);
 
   const it = item !== null && item !== 'missing' ? item : null;
+  const frame = previewFrame(visuals);
 
   return (
     <CalendarModal kind="review" label="Draft review" onClose={onClose}>
@@ -113,6 +185,29 @@ export function DraftReviewModal({
           </>
         ) : null}
       </div>
+
+      {frame ? (
+        <div className="px-[50px] pt-[26px]">
+          <p className="text-18 font-normal text-ink-muted">
+            {frame.kind === 'video' ? 'Video Preview' : 'Image Preview'}
+          </p>
+          <div
+            className="mt-[12px] overflow-hidden rounded-2xl bg-white"
+            style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.08)' }}
+          >
+            {frame.kind === 'video' ? (
+              <video src={frame.url} controls className="mx-auto max-h-[260px]" />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={frame.url}
+                alt="How this post will look"
+                className="mx-auto max-h-[260px] object-contain"
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <div className="px-[50px] pt-[26px]">
         <p className="text-18 font-normal text-ink-muted">Caption Preview</p>

@@ -570,6 +570,47 @@ Two things this turned up that are not yet recorded elsewhere:
   mostly repeated `Missoma` and `Clientforce` drafts from testing. Harmless to the product and
   noisy for anyone reading the data.
 
+### The approve screen showed no image for image posts (fixed)
+
+Reported as "I am not seeing the images of the posts that are image type", and the first thing to
+say is that **the images were all there**. For the drafted Dishoom post `content.get` returns a
+generated `backdrop` on both beats and two finished Remotion renders, 1:1 and 9:16, in R2. Draft,
+auto-illustration and render had all run unprompted. This was display, not generation.
+
+Where it showed and where it did not:
+
+| surface | image |
+| --- | --- |
+| Draft Panel beat rows | yes — two R2 images, 1024px |
+| **Draft Review modal** (the Approve & Schedule screen) | **no — caption only** |
+| Calendar cells | no thumbnail |
+
+Two causes, the second being the one worth remembering:
+
+- The modal read `content.list`, which carries a summary and no media, on the strength of a comment
+  in its own header saying "there is no `content.get` in the registry". There is. So the screen had
+  no picture available to show even in principle.
+- Even given the beats, matching on `kind` finds nothing. Auto-illustration attaches a `backdrop`
+  and *deliberately leaves the beat as `text`*, so a fully illustrated post reads as textual to any
+  code that switches on kind. `BeatRow` carries a comment about having been caught by this exact
+  thing once already; this is its second outing, which suggests the shape is the trap rather than
+  either author.
+
+`DraftReviewModal` now reads `content.get` alongside the list, in parallel since the header does
+not depend on the picture, and `previewFrame` picks one frame: the composed render first because
+that file *is* the post, square before vertical because the modal's well is wide; then a beat's own
+generated media; then the backdrop. No media renders no section, rather than an empty bordered box
+that reads as a broken image.
+
+**A deliberate deviation from `SparkSocial Calendar.dc.html`.** The prototype draws no image here —
+its example is a Reel, where the caption is most of the decision. Kept purely additive: the layout,
+type and spacing below are untouched and the visual sits where the design leaves whitespace.
+Recorded here because the frontend rules make the `.dc.html` the source of truth, and departing
+from it is a thing to declare rather than to do quietly.
+
+Still true: the calendar cells show no thumbnail, and nothing surfaces the 9:16 render anywhere.
+Neither was reported and neither is obviously wrong, so neither was changed.
+
 ### Checked and *not* defects, recorded so they are not re-reported
 
 - **The timezone genuinely propagates.** `brand.governance.set` with `Europe/London` read back
