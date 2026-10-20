@@ -6,6 +6,7 @@ import { crawl as defaultCrawl, type CrawlFailure, type CrawlOptions, type Crawl
 import { inferGenome, type GenomeInferenceClient } from './infer.js';
 import type { CrawledKit } from './brandKit.js';
 import { ensureBrandKitAsset } from '@sparksocial/agency/brandKitAsset';
+import { registerKnowledgeAsset } from '@sparksocial/agency/knowledgeAsset';
 
 /**
  * REFERENCE TOOL — copy this shape for every other tool in the registry.
@@ -277,6 +278,7 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
             businessName: inferred.identity.businessName,
             embed: deps.embed,
           });
+          await saveKnowledge(ctx, existing.id, pages, deps.embed);
           return bootstrapOutput(input, existing.id, inferred, pages, kit);
         }
 
@@ -317,10 +319,129 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         businessName: inferred.identity.businessName,
         embed: deps.embed,
       });
+      await saveKnowledge(ctx, draft.id, pages, deps.embed);
       return bootstrapOutput(input, draft.id, inferred, pages, kit);
     });
   },
   });
+}
+
+/** How much of one page is worth keeping. `brand.knowledge.attach` caps at 20k. */
+const PAGE_CHARS = 20_000;
+
+/**
+ * STORE WHAT THE CRAWL READ, instead of reading it and throwing it away.
+ *
+ * ── The defect ───────────────────────────────────────────────────────────
+ *
+ * `bootstrapOutput` reports the crawled pages as evidence of kind
+ * `knowledge_chunk`, with their URLs as ids. Nothing wrote them. The pages
+ * were fetched, handed to inference, cited as knowledge, and dropped.
+ *
+ * Measured on the deployed build against a brand crawled minutes earlier:
+ * `knowledge.list` returned `docs: []`, `totalChunks: 0`, `totalChars: 0` for a
+ * genome whose own `why` named five pages it had read. The campaign step said
+ * "0 source documents · SPARK will write from the brand voice alone", which was
+ * true and need not have been.
+ *
+ * `brand.knowledge.attach`'s summary has described this the whole time: "the
+ * one write the wider knowledge.* ingestion pipeline (site/doc crawling) would
+ * eventually feed — until that exists, this is the manual path in". This is
+ * that pipeline, for the one crawl the product already performs.
+ *
+ * ── What it unlocks beyond grounding ─────────────────────────────────────
+ *
+ * The chunks are what `selectKnowledge` puts in front of the writer, so a draft
+ * can finally state a fact the site states. The `knowledge` asset registered
+ * alongside them is a second, separate gain: it is a `required_asset_roles`
+ * entry, and the calendar's own breakdown listed "Knowledge — 2 of 14
+ * resolvable posts" as a thing the owner had to go and supply.
+ *
+ * ── Only on a genome that has none ───────────────────────────────────────
+ *
+ * `attach` appends, so re-crawling a brand would otherwise stack a second copy
+ * of every page on top of the first and quietly double its knowledge base. The
+ * guard is "this genome has no knowledge at all" rather than a per-page check:
+ * an owner who has attached their own documents has a knowledge base already,
+ * and a re-crawl should not push five pages of marketing copy in beside it.
+ */
+async function saveKnowledge(
+  ctx: { orgId: string; db: ToolCtx['db']; logger: ToolCtx['logger'] },
+  genomeId: string,
+  pages: ReadonlyArray<{ url: string; title: string; text: string }>,
+  embed: ((text: string) => Promise<number[]>) | undefined,
+): Promise<void> {
+  /*
+   * No embedder, no knowledge. Unlike the brand-kit asset — where a zero
+   * vector still satisfies a role gate that only counts rows — a knowledge
+   * chunk exists to be *retrieved*, and `knowledge.ground_claim` and the
+   * Assets Library both rank by similarity. Writing zero vectors here would
+   * fill the corpus with chunks that match no query ever, which is worse than
+   * an empty corpus because it looks full.
+   */
+  if (!embed || pages.length === 0) return;
+
+  try {
+    const existing = await ctx.db.knowledge.listAll(genomeId, ctx.orgId);
+    if (existing.length > 0) return;
+
+    let stored = 0;
+    let firstEmbedding: number[] | undefined;
+
+    for (const page of pages) {
+      const text = page.text.trim().slice(0, PAGE_CHARS);
+      if (!text) continue;
+
+      const embedding = await embed(text);
+      await ctx.db.knowledge.attach({
+        genomeId,
+        orgId: ctx.orgId,
+        docId: page.url,
+        text,
+        embedding,
+        citation: { label: page.title || page.url, url: page.url },
+      });
+      firstEmbedding ??= embedding;
+      stored += 1;
+    }
+
+    if (stored === 0) return;
+
+    /*
+     * One asset for the site, not one per page. The role is a capability check
+     * — "does this brand have anything written down" — and five rows in the
+     * Assets Library for five pages of one website is a library nobody can
+     * read.
+     */
+    if (firstEmbedding) {
+      await registerKnowledgeAsset(ctx as ToolCtx, {
+        genomeId,
+        url: `knowledge:${pages[0]!.url}`,
+        filename: hostOf(pages[0]!.url),
+        excerpt: pages[0]!.text.slice(0, 400),
+        embedding: firstEmbedding,
+        source: 'genome.bootstrap_from_url',
+      }).catch((err: unknown) => {
+        ctx.logger.warn('crawled knowledge not registered as an asset', {
+          genomeId,
+          cause: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+
+    ctx.logger.info('crawled pages stored as knowledge', { genomeId, pages: stored });
+  } catch (e) {
+    /*
+     * Same posture as `saveKit`: the genome is what this tool promises. A brand
+     * that onboarded without its knowledge base can attach documents by hand;
+     * a brand whose whole crawl was discarded because one embedding call failed
+     * has to start again.
+     */
+    ctx.logger.warn('could not store the crawled pages as knowledge', {
+      genomeId,
+      cause: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 /**

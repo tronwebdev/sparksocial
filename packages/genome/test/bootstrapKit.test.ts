@@ -52,10 +52,17 @@ type CreateAsset = (args: Record<string, unknown>) => Promise<{ id: string }>;
 
 function harness(
   existingGovernance: Record<string, unknown> = {},
-  opts: { heldBrandKit?: number; embed?: (t: string) => Promise<number[]> } = {},
+  opts: {
+    heldBrandKit?: number;
+    heldKnowledge?: unknown[];
+    embed?: (t: string) => Promise<number[]>;
+  } = {},
 ) {
   const setGovernance = vi.fn<SetGovernance>(async () => ({}));
   const createAsset = vi.fn<CreateAsset>(async () => ({ id: 'asset_1' }));
+  const attachKnowledge = vi.fn<(args: Record<string, unknown>) => Promise<{ id: string; docId: string }>>(
+    async (args) => ({ id: 'kc_1', docId: String(args['docId']) }),
+  );
   const ctx = {
     orgId: 'org_1',
     role: 'owner',
@@ -80,6 +87,10 @@ function harness(
         inventory: async () => ({ brand_kit: opts.heldBrandKit ?? 0 }),
         create: createAsset,
       },
+      knowledge: {
+        listAll: async () => opts.heldKnowledge ?? [],
+        attach: attachKnowledge,
+      },
       runs: { list: async () => [], get: async () => undefined },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -92,7 +103,7 @@ function harness(
     ...(opts.embed ? { embed: opts.embed } : {}),
   } as never);
 
-  return { tool, ctx, setGovernance, createAsset };
+  return { tool, ctx, setGovernance, createAsset, attachKnowledge };
 }
 
 const input = { url: 'https://x.test/', brandId: 'brand_1', maxPages: 5 };
@@ -240,6 +251,75 @@ describe('the crawled logo becomes the brand_kit asset', () => {
   it('still returns the genome when the asset write fails', async () => {
     const { tool, ctx, createAsset } = harness();
     createAsset.mockRejectedValueOnce(new Error('assets table unavailable'));
+
+    const out = await tool.handler(input, ctx);
+    expect(out.draftGenomeId).toBe('gen_new');
+    expect(out.identity.businessName).toBe('Rowan & Vale');
+  });
+});
+
+/**
+ * THE CRAWL'S PAGES ARE STORED, not read and thrown away.
+ *
+ * `bootstrapOutput` reports them as evidence of kind `knowledge_chunk` with
+ * their URLs as ids, and nothing wrote them. Measured on the deployed build
+ * against a brand crawled minutes earlier: `knowledge.list` returned
+ * `docs: []`, `totalChunks: 0` for a genome whose own `why` named five pages it
+ * had read, and the campaign step said "0 source documents".
+ */
+describe('the crawl stores what it read', () => {
+  const embed = async () => [0.1, 0.2];
+
+  it('attaches a chunk per page, keyed by url and labelled by title', async () => {
+    const { tool, ctx, attachKnowledge } = harness({}, { embed });
+    await tool.handler(input, ctx);
+
+    expect(attachKnowledge).toHaveBeenCalledTimes(PAGES.length);
+    expect(attachKnowledge.mock.calls[0]?.[0]).toMatchObject({
+      genomeId: 'gen_new',
+      docId: PAGES[0]!.url,
+      text: PAGES[0]!.text,
+      citation: { label: PAGES[0]!.title, url: PAGES[0]!.url },
+    });
+  });
+
+  it('registers one knowledge asset for the site, not one per page', async () => {
+    const { tool, ctx, createAsset } = harness({}, { embed });
+    await tool.handler(input, ctx);
+
+    const knowledgeAssets = createAsset.mock.calls.filter((c) => c[0]?.['assetRole'] === 'knowledge');
+    expect(knowledgeAssets).toHaveLength(1);
+    expect(knowledgeAssets[0]?.[0]).toMatchObject({ assetRole: 'knowledge', mediaType: 'document' });
+  });
+
+  /*
+   * `attach` appends. Without the guard a re-crawl stacks a second copy of
+   * every page on the first and quietly doubles the corpus — and an owner who
+   * attached their own documents would get five pages of marketing copy pushed
+   * in beside them.
+   */
+  it('writes nothing when the genome already has knowledge', async () => {
+    const { tool, ctx, attachKnowledge } = harness({}, { embed, heldKnowledge: [{ id: 'kc_existing' }] });
+    await tool.handler(input, ctx);
+
+    expect(attachKnowledge).not.toHaveBeenCalled();
+  });
+
+  /*
+   * A chunk exists to be retrieved, and retrieval ranks by similarity. Zero
+   * vectors would fill the corpus with chunks that match no query ever — worse
+   * than an empty corpus, because it looks full.
+   */
+  it('stores nothing rather than zero vectors when there is no embedder', async () => {
+    const { tool, ctx, attachKnowledge } = harness();
+    await tool.handler(input, ctx);
+
+    expect(attachKnowledge).not.toHaveBeenCalled();
+  });
+
+  it('still returns the genome when the knowledge write fails', async () => {
+    const { tool, ctx, attachKnowledge } = harness({}, { embed });
+    attachKnowledge.mockRejectedValueOnce(new Error('knowledge_chunks unavailable'));
 
     const out = await tool.handler(input, ctx);
     expect(out.draftGenomeId).toBe('gen_new');
