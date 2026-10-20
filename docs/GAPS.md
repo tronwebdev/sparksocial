@@ -304,6 +304,25 @@ Each verified against the registry, not inferred from a comment.
       day the parameter changed rather than the day Anthropic ran out of credit. Same
       argument as `secrets.manifest`'s required/optional split: a dependency that is only
       touched during an incident needs its own heartbeat.
+- [ ] **The owed `.dc.html` fidelity diff, started 20 Oct — two screens checked of ten.**
+      CLAUDE.md has recorded this as owed since the 17 Oct audit. `scripts/colour-audit.mjs`
+      now ranks each screen by how many colours it paints that its *own* design never
+      specifies, and `scripts/design-copy.mjs` pulls a prototype's copy for diffing.
+      Current standing, lowest drift last: `settings 92%`, `engagement 75%`, `discovery 40%`,
+      `command-center 33%`, `assets 32%`, `onboarding 22%`, `agency 21%`, `calendar 11%`,
+      `dashboard 8%`, `automation 5%`.
+      **Those percentages are a worklist, not a verdict** — three kinds of legitimate
+      off-design colour are indistinguishable to the tool, and `settings`' 92% is almost
+      entirely Instagram, Facebook, LinkedIn and YouTube brand hexes, which are not the
+      designer's to choose. The script's header documents all three.
+      Onboarding is done: it is at 22% and the remaining five are `PALETTE`, the swatches a
+      customer picks from. The other nine screens are unread.
+      *Found while doing it:* copy diffing produces mostly false positives, because a
+      prototype draws one populated happy path per screen and the app has had to invent
+      every empty state, unknown status and error around it. `#F1F1F4` in `PlanQueue` reads
+      as drift and is the fallback chip for a status the design never drew; `CTA Clicks`
+      became `Posts published` because `analytics.brand_series` carries no click field, which
+      `KpiRow` already explains. The colour axis is the one with signal.
 - [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
       both disable it. Removing a planned post is a thing the PRD's calendar flows assume
       (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —

@@ -1072,7 +1072,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
               <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0C0C0C' }}>
                 Whose {pendingConsent.kind === 'avatar_clone' ? 'face' : 'voice'} is this?
               </p>
-              <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.5, color: '#5B5B5B' }}>
+              <p style={{ margin: '10px 0 0', fontSize: 16, lineHeight: 1.5, color: '#838383' }}>
                 Spark records who gave permission before it copies a real person&rsquo;s{' '}
                 {pendingConsent.kind === 'avatar_clone' ? 'likeness' : 'voice'}. Without this,{' '}
                 {pendingConsent.what} is stored but never used in a post.

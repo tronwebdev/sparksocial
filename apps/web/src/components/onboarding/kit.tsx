@@ -269,7 +269,15 @@ export function TagChip({ children, onRemove }: { children: React.ReactNode; onR
   );
 }
 
-/** 45×24.3, radius 154, 19px knob. `#3EC332` on, `#E4E4E4` off. */
+/**
+ * 45×24.3, radius 154, 19px knob. `#3EC332` on, `rgba(12,12,12,0.15)` off.
+ *
+ * The off state was `#E4E4E4`, which is in no design file. `SparkSocial
+ * Onboarding.dc.html` writes it as `strict ? "#3EC332" : "rgba(12,12,12,0.15)"`
+ * — translucent, not opaque. Over white they are a few shades apart; over the
+ * step's own gradient the opaque one reads as a grey patch where the design
+ * tints whatever is behind it.
+ */
 export function Toggle({
   checked,
   onChange,
@@ -297,7 +305,7 @@ export function Toggle({
         width: 45,
         height: 24.3,
         borderRadius: 154,
-        background: checked ? '#3EC332' : '#E4E4E4',
+        background: checked ? '#3EC332' : 'rgba(12,12,12,0.15)',
         border: 'none',
         padding: 0,
         cursor: disabled ? 'not-allowed' : 'pointer',

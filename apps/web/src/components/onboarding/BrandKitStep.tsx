@@ -333,7 +333,7 @@ export function BrandKitStep({
                       aria-hidden
                       style={{ width: 34, height: 34, borderRadius: 9, background: hex, boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.12)' }}
                     />
-                    <span style={{ fontSize: 15, color: '#5B5B5B' }}>{hex}</span>
+                    <span style={{ fontSize: 15, color: '#838383' }}>{hex}</span>
                   </span>
                 ))
               )}
