@@ -55,6 +55,25 @@
  * whose dense parts never render because there is no data. An empty state has
  * nothing to overflow, which looks identical to a screen that is fine.
  *
+ * ── What the remaining rows are, as of the fourth pass ───────────────────
+ *
+ * Worth saying plainly, because the list looks like a work queue and is not:
+ * after the loud screens were fixed, nearly every offset still reported is
+ * placed *inside a card* rather than on the canvas — `left-[12px] w-[224px]` in
+ * a 248px folder tile, `left-[74px] right-[40px]` in an upload row,
+ * `left-[124px]` in a wizard step. They move with their parent and they fit.
+ *
+ * The 48px threshold cannot tell those from a real canvas coordinate, and
+ * nothing readable from a class string can: the question is whether the offset
+ * exceeds the width of its nearest positioned ancestor, which is a DOM fact.
+ * So the remaining rows should be *measured*, not converted, and converting
+ * them on the strength of this list would mean editing correct code.
+ *
+ * Which leaves the one thing neither approach reaches: a screen that renders an
+ * empty state. `/assets` says "you don't have any folder currently", so the
+ * library never mounts — nothing to overflow, and indistinguishable from fine.
+ * Those want the data created first, then a browser.
+ *
  * Measure in a browser before acting on any row. This ranks the reading.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';

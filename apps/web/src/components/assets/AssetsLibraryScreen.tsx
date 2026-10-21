@@ -12,6 +12,7 @@ import { FolderMembersModal } from './library/FolderMembers';
 import { DeleteFolderModal, PickFolderModal, RenameFolderModal, ShareFolderModal } from './library/FolderActionModals';
 import { ViewAssetModal } from './library/ViewAssetModal';
 import { FolderCard, CreateFolderCard, FoldersEmptyState, UnfiledCard } from './library/FolderCards';
+import { closesFolderMenu } from './library/menuDismiss';
 import { AssetGrid, AssetList } from './library/AssetViews';
 import { assetName, type Asset, type Folder } from './library/types';
 
@@ -160,9 +161,29 @@ export function AssetsLibraryScreen() {
 
   useEffect(() => {
     if (!menuFor) return;
-    /* Capture phase, so the ⋯ button's own handler still runs and toggles —
-       without it a second click would close and immediately reopen. */
-    const close = () => setMenuFor(null);
+    /*
+      ── Why this listener has to know what it is looking at ────────────────
+      
+      The folder ⋯ menu never opened on the deployed build. Measured: click the
+      button and `aria-expanded` stays `false`, and a direct `.click()` from the
+      console does the same, so it was not an automation artefact.
+      
+      The listener was registered on `window` in the bubble phase by an effect
+      that only runs once `menuFor` is set — which sounds safe, and is not.
+      React attaches its own handler at the root container, inside `body`, and
+      flushes the resulting passive effect before the click has finished
+      propagating. So the listener this effect adds is in place in time to
+      receive *the very click that opened the menu*, and closes it again. The
+      comment that used to sit here claimed capture phase, which the code never
+      asked for and which would only have made it fire sooner.
+      
+      Ignoring clicks on the ⋯ button itself is the fix: its own `onMenu` keeps
+      toggling, so a second click still closes. The menu items are deliberately
+      *not* excluded — each opens a dialog, and the menu should go with them.
+    */
+    const close = (event: MouseEvent) => {
+      if (closesFolderMenu(event.target as Element | null)) setMenuFor(null);
+    };
     window.addEventListener('click', close);
     return () => window.removeEventListener('click', close);
   }, [menuFor]);

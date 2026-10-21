@@ -82,14 +82,30 @@ export function FolderCard({
 }) {
   return (
     <div
-      className="relative h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] bg-white"
+      /*
+        ── Below `canvas` a tile fills the row it is on ────────────────
+
+        248px is the design's tile and nothing about it overflows a phone:
+        measured on the deployed `/assets` at 430px, the wrapping row is 374
+        wide and the tile sits inside it, 0 elements off-screen. What it
+        leaves is a third of the width empty — one tile per row with a
+        126px gutter beside it, which reads as a layout that did not finish
+        rather than a layout that fits.
+
+        `basis-lib-folder` with `grow` keeps the design's width as the
+        *minimum* and spends whatever is left: one full-width tile on a
+        phone, two on a tablet, the drawn 248 at canvas scale where
+        `max-canvas` does not apply. The labels inside are already
+        `left-0 w-full text-center`, so only the thumbnail needed a rule.
+      */
+      className="relative h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] bg-white max-canvas:w-auto max-canvas:grow max-canvas:basis-lib-folder"
       style={{ boxShadow: '0 16px 40px -32px rgba(12,12,12,0.35)' }}
     >
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Open ${folder.name}`}
-        className="absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl bg-lib-thumb transition-colors hover:bg-[#EDF6F8]"
+        className="absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl bg-lib-thumb transition-colors hover:bg-[#EDF6F8] max-canvas:right-[12px] max-canvas:w-auto"
       >
         <span aria-hidden className="relative block h-[76px] w-[96px]">
           <span className="absolute left-0 top-0 block h-[18px] w-[42px] rounded-t-[6px]" style={{ background: '#8FE3F2' }} />
@@ -123,6 +139,7 @@ export function FolderCard({
       <button
         type="button"
         onClick={onMenu}
+        data-folder-menu
         aria-label={`Options for ${folder.name}`}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
@@ -205,7 +222,7 @@ export function UnfiledCard({ count, onOpen }: { count: number; onOpen: () => vo
     <button
       type="button"
       onClick={onOpen}
-      className="relative h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] bg-white text-left transition-shadow hover:shadow-[0_18px_46px_-28px_rgba(12,12,12,0.5)]"
+      className="relative h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] bg-white text-left transition-shadow hover:shadow-[0_18px_46px_-28px_rgba(12,12,12,0.5)] max-canvas:w-auto max-canvas:grow max-canvas:basis-lib-folder"
       style={{ boxShadow: '0 16px 40px -32px rgba(12,12,12,0.35)', outline: '1.4px dashed rgba(131,131,131,0.4)', outlineOffset: '-6px' }}
     >
       {/*
@@ -224,7 +241,7 @@ export function UnfiledCard({ count, onOpen }: { count: number; onOpen: () => vo
         flat it was just three rounded rectangles.
       */}
       <span
-        className="group/thumb absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl transition-colors"
+        className="group/thumb absolute left-[12px] top-[12px] flex h-lib-folder-thumb w-[224px] items-center justify-center rounded-xl transition-colors max-canvas:right-[12px] max-canvas:w-auto"
         style={{ background: '#F3F4F6' }}
       >
         <span aria-hidden className="relative block h-[76px] w-[96px]">
@@ -256,7 +273,7 @@ export function UnfiledCard({ count, onOpen }: { count: number; onOpen: () => vo
 export function CreateFolderCard({ onCreate }: { onCreate: () => void }) {
   return (
     <div
-      className="h-lib-folder-h w-lib-folder shrink-0 rounded-[18px]"
+      className="h-lib-folder-h w-lib-folder shrink-0 rounded-[18px] max-canvas:w-auto max-canvas:grow max-canvas:basis-lib-folder"
       style={{ background: 'rgba(255,255,255,0.55)' }}
     >
       <div

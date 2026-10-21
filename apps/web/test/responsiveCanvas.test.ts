@@ -438,3 +438,51 @@ describe('nothing declares a width a phone cannot hold', () => {
     expect(CHAT).toMatch(/h-\[166px\] w-full[^"]*max-canvas:flex-wrap/);
   });
 });
+
+/**
+ * The one case that was not content loss at all.
+ *
+ * `/assets` measured clean at 430px — 0 off-screen, 0 clipped, 0 collapsed,
+ * with real folders rendered rather than the empty state. The folder tile still
+ * wanted a rule: 248px fixed in a 374px wrapping row leaves a 126px gutter, one
+ * tile per screen, which reads as unfinished rather than fitting. Keeping the
+ * drawn width as a *minimum* and letting it grow is the whole fix, and it is
+ * the only reason these assertions are in a file about overflow.
+ */
+describe('a folder tile spends the width it is given', () => {
+  const FOLDERS = read('src/components/assets/library/FolderCards.tsx');
+
+  it('keeps 248 as a floor and grows past it below canvas', () => {
+    // All three tiles — the folder, Unfiled, and the skeleton — or the row
+    // packs one grown tile next to two fixed ones.
+    const grown = [...FOLDERS.matchAll(/w-lib-folder shrink-0[^"]*max-canvas:basis-lib-folder/g)];
+    expect(grown).toHaveLength(3);
+  });
+
+  it('takes the thumbnail with it', () => {
+    // 224 is 248 less two 12px insets; left alone it would sit in the corner of
+    // a 374px tile. Harness-measured: 350 at 430px, exactly 224 at 1300.
+    expect(FOLDERS).not.toMatch(/w-\[224px\](?![^"]*max-canvas:right-\[12px\])/);
+  });
+});
+
+/**
+ * `overflow-x-auto` that was not a scroll container.
+ *
+ * The automation queue's state tabs carried the right class and scrolled
+ * nothing: `inline-flex` in a wrapping row with no width constraint grows to
+ * its content, so `scrollWidth` equals `clientWidth` and the overflow lands on
+ * the page. Measured on the deployed `/automation` at 430px, the six tabs ran
+ * to x=706 and were cut at the viewport with nothing scrollable above them —
+ * Scheduled, Published and Failed could not be selected.
+ *
+ * Harness-measured after: 374 wide against a 739 scrollWidth at 430, and
+ * scrolling brings Failed to 394; 739 and not scrollable at 1300.
+ */
+describe('a scroll container needs a width to scroll inside', () => {
+  it('the automation state tabs are capped so their overflow is theirs', () => {
+    expect(read('src/components/automation/AutomationHome.tsx')).toContain(
+      'inline-flex h-[56px] max-w-full items-center gap-[6px] overflow-x-auto',
+    );
+  });
+});

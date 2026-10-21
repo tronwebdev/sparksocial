@@ -321,8 +321,20 @@ export function AutomationHome({
         </div>
 
         <div className="mt-[25px] flex flex-wrap items-center gap-[14px] px-[28px]">
+          {/*
+            `overflow-x-auto` on its own does nothing here. The tablist is
+            `inline-flex` inside a wrapping row with no width constraint, so it
+            simply grows to its content: `scrollWidth` equals `clientWidth`, no
+            scrollbar is needed, and the overflow lands on the page instead.
+
+            Measured on the deployed `/automation` at 430px: the six state tabs
+            ran to x=706, clipped at the viewport by an `overflow-hidden`
+            ancestor with nothing scrollable above them — Scheduled, Published
+            and Failed could not be selected at all. `max-w-full` is the whole
+            fix: cap the width and the scroll container becomes one.
+          */}
           <div
-            className="inline-flex h-[56px] items-center gap-[6px] overflow-x-auto rounded-[14px] bg-white px-[8px]"
+            className="inline-flex h-[56px] max-w-full items-center gap-[6px] overflow-x-auto rounded-[14px] bg-white px-[8px]"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
             role="tablist"
             aria-label="Queue state"
