@@ -208,14 +208,26 @@ export function UsagePanel() {
         ) : (
           <ul className="mt-2 grid grid-cols-1 gap-2">
             {usage.byTool.map((t) => (
-              <li key={t.tool} className="flex items-center gap-3">
+              /*
+                Four fixed widths in one unwrappable row: a 208px label, the
+                bar, 80px of money and 64px of call count. Measured on the
+                deployed `/account` at 430px, "3 calls" ended at 445 — the only
+                thing on that page that was genuinely off-screen rather than
+                sideways-scrollable in a table. Below `canvas` the label gives
+                up its fixed width and truncates instead, and the bar drops to
+                its own full-width line beneath the numbers.
+              */
+              <li key={t.tool} className="flex items-center gap-3 max-canvas:flex-wrap max-canvas:gap-y-1.5">
                 {/* What the credits went on, in words. `content.generate_avatar_video`
                     is the most expensive tool in the product and the least legible
                     line on a bill. */}
-                <span className="w-52 shrink-0 truncate text-12 text-ink" title={t.tool}>
+                <span
+                  className="w-52 shrink-0 truncate text-12 text-ink max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1"
+                  title={t.tool}
+                >
                   {toolLabel(t.tool)}
                 </span>
-                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border max-canvas:order-3 max-canvas:basis-full">
                   <span
                     className="block h-full rounded-full bg-primary"
                     style={{ width: `${Math.round(t.share * 100)}%` }}

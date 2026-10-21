@@ -147,7 +147,16 @@ export function saturationWord(saturation: number): 'Low' | 'Med' | 'HIGH' {
   return 'Low';
 }
 
-const CELL = 'flex items-center justify-center whitespace-nowrap text-center text-15';
+/*
+  The four metrics share the strip by ratio, so each cell's width falls with the
+  card. `whitespace-nowrap` is right at canvas scale and wrong at the bottom: at
+  320px the card is 216 wide, "Saturation: Med" gets a 65px share and rendered
+  29px past the viewport. Below `canvas` the cells wrap instead and the strip
+  grows to hold the second line; `min-w-0` is what lets a flex item be narrower
+  than its own text in the first place.
+*/
+const CELL =
+  'flex items-center justify-center whitespace-nowrap text-center text-15 max-canvas:min-w-0 max-canvas:whitespace-normal max-canvas:leading-[1.15]';
 const DIVIDER = 'h-full w-px shrink-0 bg-[rgba(131,131,131,0.15)]';
 const GHOST_BTN =
   'flex h-[42px] shrink-0 items-center gap-[8px] whitespace-nowrap rounded-[10px] bg-white px-[13px] text-15 font-semibold text-ink transition-shadow';
@@ -228,7 +237,28 @@ export function TrendCard({
 
   return (
     <li
-      className="relative h-disc-trend overflow-hidden rounded-[18px] bg-white"
+      /*
+        ── Below `canvas` the card stops being a plane ──────────────────────
+
+        Every offset on this card is anchored to an edge — `left-4 right-4`,
+        `right-[150px]`, `left-0 w-full` — so none of them strand as the column
+        narrows. The footer does, and for the one reason an edge anchor cannot
+        fix: its four controls are `shrink-0` by design, and four fixed widths
+        do not fit a 294px row however it is positioned.
+
+        Measured on the deployed `/discovery` at 430px: the card renders 326
+        wide, the footer 294, and its children want 138 + 134 + 115 + 42 plus
+        three 6px gaps — 447. Re-share ended at 467 and the bookmark, the only
+        control that saves a trend, at 515. Both were past the viewport and
+        `overflow-hidden` cut them off.
+
+        `flex-wrap` on the footer is the fix, but a wrapped footer is 90px tall
+        where the card budgeted 42, and at `bottom-4` it grows *upwards* into
+        the media well. So the card flows below the breakpoint instead: the
+        same children in the same order, each one merely static, with the
+        height following the content. Above `canvas` nothing here changes.
+      */
+      className="relative h-disc-trend overflow-hidden rounded-[18px] bg-white max-canvas:flex max-canvas:h-auto max-canvas:flex-col max-canvas:gap-[12px] max-canvas:p-[16px]"
       style={{
         boxShadow: trend.because
           ? 'inset 0 0 0 1px rgba(243,85,37,0.35)'
@@ -237,12 +267,12 @@ export function TrendCard({
     >
       {/* The title truncates rather than wrapping — the design pins the strip at
           66, so a second line would run under it. */}
-      <p className="absolute left-[20px] right-[150px] top-[22px] truncate text-22 font-bold text-ink">
+      <p className="absolute left-[20px] right-[150px] top-[22px] truncate text-22 font-bold text-ink max-canvas:static max-canvas:order-1">
         {trend.topic}
       </p>
 
       <div
-        className="absolute right-4 top-4 flex h-[36px] items-center rounded-[9px] bg-white px-3 text-15 font-semibold text-ink"
+        className="absolute right-4 top-4 flex h-[36px] items-center rounded-[9px] bg-white px-3 text-15 font-semibold text-ink max-canvas:static max-canvas:order-2 max-canvas:self-start"
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
       >
         Velocity: {velocityPct > 0 ? '+' : ''}
@@ -250,7 +280,7 @@ export function TrendCard({
       </div>
 
       <div
-        className="absolute left-0 top-[66px] flex h-disc-strip w-full items-center"
+        className="absolute left-0 top-[66px] flex h-disc-strip w-full items-center max-canvas:static max-canvas:order-3 max-canvas:h-auto max-canvas:min-h-disc-strip max-canvas:py-[6px] max-canvas:-mx-[16px] max-canvas:w-[calc(100%+32px)]"
         style={{
           boxShadow:
             'inset 0 -1px 0 rgba(131,131,131,0.15), inset 0 1px 0 rgba(131,131,131,0.15)',
@@ -294,7 +324,7 @@ export function TrendCard({
 
       {/* The media well — the thumbnail where there is one, the ranking argument
           where there is not, and the re-purpose answer once it arrives. */}
-      <div className="absolute left-4 right-4 top-[126px] h-disc-media overflow-hidden rounded-xl">
+      <div className="absolute left-4 right-4 top-[126px] h-disc-media overflow-hidden rounded-xl max-canvas:static max-canvas:order-4 max-canvas:shrink-0">
         {trend.media && !mediaFailed && !suggestion && !repurposeError ? (
           /*
             The well is the click target, not just the badge: a cropped still
@@ -408,7 +438,7 @@ export function TrendCard({
       {trend.because ? (
         <p
           title={`Skipped — ${trend.because}`}
-          className="absolute left-[24px] right-[24px] top-[134px] flex items-center gap-[7px] truncate rounded-lg px-[10px] py-[6px] text-14 font-semibold"
+          className="absolute left-[24px] right-[24px] top-[134px] flex items-center gap-[7px] truncate rounded-lg px-[10px] py-[6px] text-14 font-semibold max-canvas:static max-canvas:order-5"
           style={{ background: 'rgba(255,241,223,0.94)', color: '#8A4B12' }}
         >
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden className="shrink-0">
@@ -419,7 +449,7 @@ export function TrendCard({
         </p>
       ) : null}
 
-      <div className="absolute bottom-4 left-4 right-4 flex items-center gap-[6px]">
+      <div className="absolute bottom-4 left-4 right-4 flex items-center gap-[6px] max-canvas:static max-canvas:order-6 max-canvas:flex-wrap max-canvas:gap-y-[8px]">
         {onOpen ? (
           <button
             type="button"

@@ -102,18 +102,41 @@ function walk(dir, out = []) {
 }
 
 /**
- * Both class-string forms.
+ * Every place a class list can hide.
  *
- * The template-literal form is where conditional classes live, and a check
- * that read only `className="…"` skipped the calendar's filter dropdown
- * entirely — passing by not looking at the one element it was written for.
+ * Twice now this function has been the whole bug, both times by reading one
+ * form and calling the file clean:
+ *
+ *   * **The template literal.** A check that read only `className="…"` skipped
+ *     the calendar's filter dropdown entirely — passing by not looking at the
+ *     one element it was written for.
+ *   * **The hoisted constant.** `TrendCard` keeps its footer buttons in
+ *     `const GHOST_BTN = 'flex h-[42px] shrink-0 … whitespace-nowrap'` and
+ *     applies it through `cn()`. That is exactly the unfoldable shape this scan
+ *     exists to find, in a row that measured **90 elements past the viewport**
+ *     on the deployed `/discovery` at 430px — and the file ranked 20th with
+ *     four unrelated flags, because none of the three offending classes were
+ *     attached to a `className` attribute.
+ *
+ * So: any string literal in the file that carries a layout keyword counts,
+ * wherever it was written. That over-reports — a literal may be dead, or
+ * concatenated into something else — which is the right direction for a list
+ * whose purpose is to rank reading.
  */
+const LAYOUT_WORD = /(^|\s)(?:flex|inline-flex|grid|absolute|fixed|sticky)(\s|$)/;
+
 function classNames(src) {
   const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-  return [
+  const attrs = [
     ...[...code.matchAll(/className="([^"]+)"/g)].map((m) => m[1]),
     ...[...code.matchAll(/className=\{`([^`]+)`\}/g)].map((m) => m[1]),
   ];
+  const literals = [
+    ...[...code.matchAll(/'([^'\n]{8,})'/g)].map((m) => m[1]),
+    ...[...code.matchAll(/`([^`]{8,})`/g)].map((m) => m[1]),
+    ...[...code.matchAll(/"([^"\n]{8,})"/g)].map((m) => m[1]),
+  ].filter((v) => LAYOUT_WORD.test(v));
+  return [...new Set([...attrs, ...literals])];
 }
 
 /**
@@ -135,13 +158,38 @@ function classNames(src) {
 const offsets = (c) => {
   if (/left-1\/2/.test(c) && /-translate-x-1\/2/.test(c)) return [];
   if (/max-w-full/.test(c)) return [];
-  return [...c.matchAll(/(?:left|right)-\[(\d+)px\]/g)].map((m) => Number(m[1])).filter((n) => n >= CANVAS_OFFSET);
+  /*
+   * A bare `right-` offset is an anchor, not a coordinate: `right-[53px]`
+   * keeps an element 53px inside whatever edge its parent has and follows that
+   * edge down to zero width. It only becomes a hazard paired with a `left-`,
+   * which is the collapse case — `left-[452px] right-[240px]` resolves to a
+   * negative width on a narrow parent, and the browser clamps it to zero.
+   * Counting lone `right-` offsets flagged ChatDrawer's two header buttons and
+   * the drawer is already correct there.
+   */
+  const paired = /(^|\s)left-\[\d+px\]/.test(c);
+  const pattern = paired ? /(?:left|right)-\[(\d+)px\]/g : /(?:^|\s)left-\[(\d+)px\]/g;
+  return [...c.matchAll(pattern)].map((m) => Number(m[1])).filter((n) => n >= CANVAS_OFFSET);
 };
 
 function audit(file) {
   const src = readFileSync(file, 'utf8');
   const classes = classNames(src);
   const scrolls = /overflow-x-(?:auto|scroll)/.test(src);
+  /**
+   * A row that wraps somewhere in this file.
+   *
+   * `shrink-0` on a child is only a defect if no ancestor can fold, and the
+   * ancestor is usually not the element carrying the class — `TrendCard`'s
+   * footer buttons are a hoisted constant with no variant of their own, and the
+   * `max-canvas:flex-wrap` that fixes them sits on the parent `div`. Reading
+   * the class alone kept reporting them after they were fixed.
+   *
+   * File-level, and therefore coarse in the same way the `min-width` rule is:
+   * one wrapping row quiets every `shrink-0` in the file. Deliberate — the loud
+   * cases are gone, so silence is the cheaper error.
+   */
+  const wraps = /flex-wrap/.test(src);
   /**
    * Already answered, by any means.
    *
@@ -176,7 +224,7 @@ function audit(file) {
      */
     unfolding: classes.filter((c) => {
       if (!/(^|\s)flex(\s|$)/.test(c) || !/(^|\s)shrink-0(\s|$)/.test(c)) return false;
-      if (/flex-wrap/.test(c) || done(c)) return false;
+      if (wraps || done(c)) return false;
       if (/(^|\s)hidden(\s|$)/.test(c)) return false; // not rendered at the widths in question
       const w = /(?:^|\s)w-\[(\d+)px\]/.exec(c);
       return !w || Number(w[1]) > 430;

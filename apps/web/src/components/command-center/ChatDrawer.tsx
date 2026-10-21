@@ -490,7 +490,20 @@ export function ChatDrawer({
 
                   {m.draft ? (
                     <div
-                      className="relative h-[166px] w-full overflow-hidden rounded-[14.6px]"
+                      /*
+                        The well is drawn 460px wide: a 142px thumbnail at 10,
+                        then a title and a body column both starting at 167 and
+                        running 265 and 293 wide. The drawer is already capped
+                        at `calc(100vw-32px)`, so on a phone the well is about
+                        350 and the two text columns ended at 432 and 460 —
+                        inside the viewport, cut off by `overflow-hidden`,
+                        which is the quietest way to lose a draft's body text.
+
+                        Below `canvas` the same four children wrap: a smaller
+                        thumbnail with the title beside it, the body on its own
+                        line, the edit button under that.
+                      */
+                      className="relative h-[166px] w-full overflow-hidden rounded-[14.6px] max-canvas:flex max-canvas:h-auto max-canvas:flex-wrap max-canvas:items-start max-canvas:gap-[10px] max-canvas:p-[12px]"
                       style={{
                         background: 'linear-gradient(110.436deg, #FEEBFF 5.47%, #C2F4FE 96.41%)',
                         boxShadow: '0 0 0 0.958px rgba(131,131,131,0.2)',
@@ -500,16 +513,16 @@ export function ChatDrawer({
                           no render until Assemble runs, so the well carries the
                           playbook's initial instead of a placeholder image. */}
                       <div
-                        className="absolute left-[10px] top-[12px] flex h-[142px] w-[142px] items-center justify-center rounded-[13.37px] bg-ink"
+                        className="absolute left-[10px] top-[12px] flex h-[142px] w-[142px] items-center justify-center rounded-[13.37px] bg-ink max-canvas:static max-canvas:h-[96px] max-canvas:w-[96px] max-canvas:shrink-0"
                         style={{ boxShadow: '0 0 0 0.878px rgba(131,131,131,0.2)' }}
                       >
                         <span className="text-48 font-bold text-white/90">{m.draft.title.slice(0, 1)}</span>
                       </div>
-                      <p className="absolute left-[167px] top-[12px] w-[265px] text-16 font-medium leading-[1.25] text-ink">
+                      <p className="absolute left-[167px] top-[12px] w-[265px] text-16 font-medium leading-[1.25] text-ink max-canvas:static max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1">
                         {m.draft.title}
                       </p>
                       <p
-                        className="absolute left-[167px] top-[62px] line-clamp-3 w-[293px] text-14 font-normal leading-[1.25]"
+                        className="absolute left-[167px] top-[62px] line-clamp-3 w-[293px] text-14 font-normal leading-[1.25] max-canvas:static max-canvas:w-auto max-canvas:basis-full"
                         style={{ color: '#838383' }}
                       >
                         {m.draft.body}
@@ -518,7 +531,7 @@ export function ChatDrawer({
                         <button
                           type="button"
                           onClick={() => onOpenDraft(m.contentItemId!)}
-                          className="absolute left-[167px] top-[123px] flex h-[31px] w-[101px] items-center justify-center gap-[6px] rounded-[6.29px] transition-colors hover:bg-white/50"
+                          className="absolute left-[167px] top-[123px] flex h-[31px] w-[101px] items-center justify-center gap-[6px] rounded-[6.29px] transition-colors hover:bg-white/50 max-canvas:static max-canvas:shrink-0"
                           style={{ boxShadow: 'inset 0 0 0 0.485px #0C0C0C' }}
                         >
                           <svg width="11.3" height="11.3" viewBox="0 0 12 12" fill="none" aria-hidden>

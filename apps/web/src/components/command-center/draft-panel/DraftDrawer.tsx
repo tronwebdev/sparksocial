@@ -95,8 +95,17 @@ export function DraftDrawer({
         than a panel sliding over one.
       */}
       <div className="pointer-events-none absolute inset-x-0 top-[27px] bottom-[26px] flex justify-end">
-        {/* 1091 of 1728. Capped so the rail does not swallow a narrow window. */}
-        <div className="pointer-events-auto relative flex h-full w-full max-w-[min(63.1%,1091px)] min-w-[520px]">
+        {/*
+          1091 of 1728. Capped so the rail does not swallow a narrow window.
+
+          The 520px floor is what stops the drawer collapsing into a column on
+          a laptop, and the one thing in the app that is wider than a phone by
+          declaration rather than by accident: at 430 it would hold itself 90px
+          off the right edge, with no scroll container to recover it. Below
+          `canvas` the floor goes and the drawer is simply the width of the
+          screen.
+        */}
+        <div className="pointer-events-auto relative flex h-full w-full max-w-[min(63.1%,1091px)] min-w-[520px] max-canvas:min-w-0">
           {/*
             "Close Draft", outside the drawer's left edge.
 

@@ -59,6 +59,7 @@ const CONVERTED: ReadonlyArray<readonly [string, string]> = [
   ['calendar filters', 'src/components/command-center/QueueFilters.tsx'],
   ['plan queue', 'src/components/command-center/PlanQueue.tsx'],
   ['agent calendar tab', 'src/components/command-center/AgentCalendarTab.tsx'],
+  ['trend card', 'src/components/discovery/TrendCard.tsx'],
 ];
 
 /**
@@ -374,5 +375,66 @@ describe('the automation queue scrolls instead of stranding its headings', () =>
     const tracks = [...SOURCE_AUTO.matchAll(/gridTemplateColumns:\s*QUEUE_COLUMNS/g)];
     expect(tracks.length).toBeGreaterThanOrEqual(2);
     expect(SOURCE_AUTO).toMatch(/const QUEUE_COLUMNS = '[^']+'/);
+  });
+});
+
+/**
+ * The two rows whose classes were not written on a `className` attribute.
+ *
+ * `TrendCard` keeps its footer buttons in a hoisted `GHOST_BTN` constant and
+ * applies it through `cn()`, so neither the contract test above nor
+ * `scripts/responsive-audit.mjs` could see the `shrink-0` that mattered: the
+ * audit ranked the file 20th while the deployed `/discovery` had 90 elements
+ * past a 430px viewport. Both now read string literals too, and these are the
+ * assertions that would have caught it — written against the parent that wraps
+ * rather than the child that cannot shrink, because that is where the fix goes.
+ */
+describe('rows whose classes live in constants still fold', () => {
+  const TREND = read('src/components/discovery/TrendCard.tsx');
+  const USAGE = read('src/components/settings/UsagePanel.tsx');
+
+  it('the trend footer wraps, so four fixed-width controls stay on screen', () => {
+    // 138 + 134 + 115 + 42 plus three 6px gaps is 447; the card is 326 wide at
+    // 430px. Nothing about the children can fix that — the row has to fold.
+    expect(TREND).toContain('bottom-4 left-4 right-4 flex items-center gap-[6px] max-canvas:static');
+    expect(TREND).toMatch(/gap-\[6px\][^"]*max-canvas:flex-wrap/);
+  });
+
+  it('the metrics strip lets its cells be narrower than their text', () => {
+    // `whitespace-nowrap` plus a ratio-sized share put "Saturation: Med" 29px
+    // past a 320px viewport. A flex item needs `min-w-0` before it may wrap.
+    expect(TREND).toContain('max-canvas:min-w-0 max-canvas:whitespace-normal');
+    expect(TREND).toMatch(/h-disc-strip[^"]*max-canvas:min-h-disc-strip/);
+  });
+
+  it('the usage row gives up its fixed label width before the viewport', () => {
+    // w-52 + bar + w-20 + w-16, all `shrink-0`: "3 calls" ended at 445 on the
+    // deployed `/account`. The label is the only part with slack.
+    expect(USAGE).toMatch(/w-52 shrink-0 truncate[^"]*max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1/);
+    expect(USAGE).toMatch(/flex items-center gap-3 max-canvas:flex-wrap/);
+  });
+});
+
+/**
+ * The two widths that were wider than a phone by declaration.
+ *
+ * Everything else in this file is an element that outgrew its parent by
+ * accident. These two were written down: a 541px drawer (already capped, but
+ * carrying a 460px-wide composition inside it) and a 520px floor under the
+ * draft panel. A floor is the one shape no reflow can absorb — the element
+ * holds the width itself — so it needs releasing rather than rearranging.
+ */
+describe('nothing declares a width a phone cannot hold', () => {
+  it('the draft drawer drops its 520px floor below canvas', () => {
+    expect(read('src/components/command-center/draft-panel/DraftDrawer.tsx')).toContain(
+      'min-w-[520px] max-canvas:min-w-0',
+    );
+  });
+
+  it("the chat drawer's draft well reflows instead of clipping its body", () => {
+    const CHAT = read('src/components/command-center/ChatDrawer.tsx');
+    // left-167 + w-293 is 460 inside a well that is about 350 on a phone.
+    expect(CHAT).toMatch(/w-\[293px\][^"]*max-canvas:static max-canvas:w-auto max-canvas:basis-full/);
+    expect(CHAT).toMatch(/h-\[166px\] w-full[^"]*max-canvas:flex-wrap/);
   });
 });
