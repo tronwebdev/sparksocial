@@ -89,8 +89,10 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       product. They appear on Account Home marked as not built. **The one item here blocked on a
       decision rather than on time, and the decision is yours.**
 - [ ] **Vendor keys, no code path missing** — fal.ai (account locked on billing, blocks real
-      image generation), HeyGen (key configured, never spent real credits confirming a render
-      completes), Ayrshare (adapter ready, no key; deliberately out of default routing behind
+      image generation), Higgsfield (video backup behind fal, written and unit-tested against
+      the published API, never called with a real credential — the submit shape, the status
+      body and the four terminal states are all read from docs rather than observed), HeyGen
+      (key configured, never spent real credits confirming a render completes), Ayrshare (adapter ready, no key; deliberately out of default routing behind
       `PUBLISH_USE_AGGREGATOR=true`, reserved for long-tail platforms post-GA), Product Hunt /
       Pinterest / Google Drive / Canva (code-complete, unit-tested, never live-verified). Setup
       steps in `apps/api/.env.example`.

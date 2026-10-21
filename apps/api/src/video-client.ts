@@ -1,7 +1,10 @@
 import { ToolError } from '@sparksocial/shared';
 import type { VideoClient } from '@sparksocial/generate';
 import { envNum, envSet, envStr } from './env.js';
+import { higgsfieldVideoClient } from './higgsfield-video-client.js';
 import { parseExtra } from './image-client.js';
+import { withFallback } from './vendor-fallback.js';
+import { videoUnavailable } from './video-errors.js';
 
 /**
  * Anything else this model wants, as JSON — the same escape hatch
@@ -86,11 +89,16 @@ export function createVideoClient(opts: VideoClientOptions): VideoClient {
       });
 
       if (!submitResponse.ok) {
+        /*
+         * `videoUnavailable` rather than the status code on its own, and the
+         * reason is the fallback chain rather than this call: when both vendors
+         * fail, `withFallback` surfaces the *primary's* error, so this sentence
+         * is what an owner reads on the one failure they can act on. It used to
+         * read `Video generation request failed (403)` — a number, for "fal is
+         * out of credit".
+         */
         const detail = await submitResponse.text().catch(() => '');
-        throw new ToolError('UPSTREAM_FAILED', `Video generation request failed (${submitResponse.status}).`, {
-          status: submitResponse.status,
-          detail: detail.slice(0, 200),
-        });
+        throw videoUnavailable('fal', submitResponse.status, detail);
       }
 
       const submitted = (await submitResponse.json()) as { status_url?: string; response_url?: string };
@@ -101,7 +109,8 @@ export function createVideoClient(opts: VideoClientOptions): VideoClient {
       for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
         const statusResponse = await doFetch(submitted.status_url, { headers: { authorization: `Key ${opts.apiKey}` } });
         if (!statusResponse.ok) {
-          throw new ToolError('UPSTREAM_FAILED', `Video generation status check failed (${statusResponse.status}).`, { status: statusResponse.status });
+          const detail = await statusResponse.text().catch(() => '');
+          throw videoUnavailable('fal', statusResponse.status, detail);
         }
         const status = (await statusResponse.json()) as { status?: string };
 
@@ -158,9 +167,19 @@ function falAspectRatio(aspectRatio: string): string {
 }
 
 /**
- * The real client when `FAL_API_KEY` is configured, `undefined` otherwise —
- * same "unset → not registered" rule `imageClient()` sets, sharing the same
- * key (one fal.ai account) with its own optional model override.
+ * fal, then Higgsfield, then give up — the same shape `imageClient()` has, and
+ * the same `withFallback`.
+ *
+ * Either vendor alone is enough to register `content.generate_broll`. fal stays
+ * first because every piece of model configuration in this file was sized
+ * against it — `FAL_VIDEO_DURATIONS`, `FAL_VIDEO_EXTRA_PARAMS` and the codec
+ * note above are all hard-won, and they do not transfer. Higgsfield exists so
+ * that an exhausted fal balance stops being the end of a video post.
+ *
+ * Note what this does *not* do: it is a fallback, not a router. It will not
+ * pick the cheaper vendor for a given clip or spread load between them, and it
+ * should not — a second vendor is only reached after the first has failed and
+ * the caller has already waited for that failure.
  */
 let memo: VideoClient | undefined | null = null;
 
@@ -169,15 +188,40 @@ export function videoClient(): VideoClient | undefined {
   return memo;
 }
 
-function buildVideoClient(): VideoClient | undefined {
-  if (!envSet('FAL_API_KEY')) {
-    console.warn('[warn] FAL_API_KEY unset — content.generate_broll is not registered.');
+/**
+ * Exported for `video-provider-chain.test.ts`, the same way `buildTrendSource`
+ * is: the selection is the part worth testing, and `videoClient()` memoises so
+ * it can only be asked once per process.
+ */
+export function buildVideoClient(): VideoClient | undefined {
+  const primary = envSet('FAL_API_KEY')
+    ? createVideoClient({
+        apiKey: envStr('FAL_API_KEY', ''),
+        ...(envSet('FAL_VIDEO_MODEL') ? { model: envStr('FAL_VIDEO_MODEL', '') } : {}),
+      })
+    : undefined;
+  const backup = higgsfieldVideoClient();
+
+  if (!primary && !backup) {
+    console.warn(
+      '[warn] neither FAL_API_KEY nor HIGGSFIELD_KEY_ID/SECRET is set — content.generate_broll is not registered. ' +
+        'Video beats fall back to stills.',
+    );
     return undefined;
   }
-  return createVideoClient({
-    apiKey: envStr('FAL_API_KEY', ''),
-    ...(envSet('FAL_VIDEO_MODEL') ? { model: envStr('FAL_VIDEO_MODEL', '') } : {}),
-  });
+  if (!primary) {
+    console.warn(
+      '[warn] FAL_API_KEY unset — b-roll comes from Higgsfield, and FAL_VIDEO_* settings do not apply to it.',
+    );
+    return backup;
+  }
+  if (!backup) {
+    console.warn(
+      '[warn] HIGGSFIELD_KEY_ID/SECRET unset — b-roll has no backup. An exhausted fal balance stops it entirely.',
+    );
+    return primary;
+  }
+  return withFallback('video', primary, backup);
 }
 
 /**

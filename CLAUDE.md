@@ -91,8 +91,8 @@ runbook, and §7 is the order the steps actually have to happen in.
 | — (queues)              | *nothing* — not provisioned; Trigger.dev is unchanged         |
 
 Unchanged, because they are provider-agnostic SaaS: Trigger.dev (durable workflows), Mux
-(video delivery), Clerk (auth), Langfuse, PostHog, Sentry, HeyGen, ElevenLabs, fal, Canva,
-AssemblyAI, WhatsApp Cloud API, Dub.
+(video delivery), Clerk (auth), Langfuse, PostHog, Sentry, HeyGen, ElevenLabs, fal,
+Higgsfield (the video backup behind fal), Canva, AssemblyAI, WhatsApp Cloud API, Dub.
 
 **The plan's R2 rationale is back.** R2 was chosen for zero egress, which is the dominant
 cost lever for a media product. Azure Blob charges egress, which is why the Azure note here
@@ -141,13 +141,19 @@ which is the only reason it is worth recording that it was wrong.
 
 Measured against the registry and the deployed manifest, not from memory:
 
-- **216 tools defined, 215 live.** Only `analytics.sync` is unregistered, gated on
+- **217 tools defined, 216 live.** Only `analytics.sync` is unregistered, gated on
   `AYRSHARE_API_KEY`. Nothing else is held back by configuration. The count comes from
   `npm run generate:tool-types`, which walks every `defineTool` in the source and so counts
   what is *defined* regardless of env gating — it read 214 before `brand.delete` and
   `brand.deletion.preview` were added, so the "212" this line used to carry had already
-  drifted by two. Re-read it from the generator rather than incrementing this number by
-  hand.
+  drifted by two, and it read 217 against the "216" that replaced it. Re-read it from the
+  generator rather than incrementing this number by hand.
+
+  Note what adding a *vendor* does to this number: nothing. Higgsfield joined video
+  generation as fal's backup without a tool of its own, because a fallback belongs behind
+  `content.generate_broll` rather than beside it — two tools for one capability would make
+  "which one do I call" a question the agent has to answer, and it has no way to know which
+  vendor has credit.
 - **36 of 37 PRD flow IDs have code.** The three without their ID in a comment are built
   anyway: `AUTH-04` is `/meet-spark`, `AGT-01` is `/agents`, `AUTO-03` is the
   `bulk_connector` recipe kind.

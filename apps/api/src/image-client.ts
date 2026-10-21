@@ -3,6 +3,7 @@ import type { ImageClient } from '@sparksocial/generate';
 import { envSet, envStr } from './env.js';
 import type { BlobStore } from '@sparksocial/storage';
 import { fallbackImageClient } from './openai-image-client.js';
+import { withFallback } from './vendor-fallback.js';
 
 /**
  * Production image generation for `content.generate_image` — fal.ai's
@@ -249,7 +250,10 @@ export function imageClient(blobs: BlobStore): ImageClient | undefined {
 }
 
 /**
- * fal, then OpenAI, then give up — see `withFallback`.
+ * fal, then OpenAI, then give up — see `withFallback` in
+ * `vendor-fallback.js`, which moved there when video grew a second provider
+ * and wanted the same judgement about which failures are worth retrying
+ * elsewhere.
  *
  * Either vendor alone is enough to register the image tools. fal stays first
  * because it is cheaper and faster for this workload; OpenAI exists so that an
@@ -281,47 +285,5 @@ function buildImageClient(blobs: BlobStore): ImageClient | undefined {
     );
     return primary;
   }
-  return withFallback(primary, backup);
-}
-
-/**
- * Try `primary`; on a vendor failure, try `backup` once.
- *
- * ── What counts as worth retrying elsewhere ──────────────────────────────
- *
- * Only `UPSTREAM_FAILED`. A `GUARDRAIL_BLOCKED` or an `INVALID_INPUT` means the
- * *request* is the problem, and asking a second vendor the same bad question
- * wastes money to get the same answer — twice as slowly. An exhausted balance,
- * a rate limit, a vendor outage: those are about the vendor, and a different
- * vendor is the only retry that can succeed.
- *
- * ── Why the first error is what surfaces if both fail ────────────────────
- *
- * The backup's failure is almost always less interesting — it is the second
- * thing tried, often unconfigured or rejecting for its own unrelated reason —
- * while the primary's carries the cause anyone would act on ("fal is out of
- * credit"). Both are logged; one is thrown.
- */
-export function withFallback(primary: ImageClient, backup: ImageClient): ImageClient {
-  return {
-    async generate(args) {
-      try {
-        return await primary.generate(args);
-      } catch (e) {
-        if (!(e instanceof ToolError) || e.code !== 'UPSTREAM_FAILED') throw e;
-        console.warn('[warn] image: the primary provider failed, trying the backup', {
-          reason: e.message,
-          operator: (e.meta as { operator?: string } | undefined)?.operator,
-        });
-        try {
-          return await backup.generate(args);
-        } catch (second) {
-          console.error('[error] image: the backup provider failed too', {
-            reason: second instanceof Error ? second.message : String(second),
-          });
-          throw e;
-        }
-      }
-    },
-  };
+  return withFallback('image', primary, backup);
 }

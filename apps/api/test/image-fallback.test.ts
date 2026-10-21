@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
-import { imageUnavailable, withFallback } from '../src/image-client.js';
+import { imageUnavailable } from '../src/image-client.js';
+import { withFallback } from '../src/vendor-fallback.js';
 
 /**
  * A second image provider, and what a person is told when neither works.
@@ -25,7 +26,7 @@ describe('withFallback', () => {
     const primary = ok('https://fal.example/a.png');
     const backup = ok('https://openai.example/b.png');
 
-    const out = await withFallback(primary, backup).generate(args);
+    const out = await withFallback('image', primary, backup).generate(args);
 
     expect(out.url).toBe('https://fal.example/a.png');
     expect(backup.generate).not.toHaveBeenCalled();
@@ -36,7 +37,7 @@ describe('withFallback', () => {
     const primary = fails(imageUnavailable(403, 'User is locked. Reason: Exhausted balance.'));
     const backup = ok('https://openai.example/b.png');
 
-    const out = await withFallback(primary, backup).generate(args);
+    const out = await withFallback('image', primary, backup).generate(args);
 
     expect(out.url).toBe('https://openai.example/b.png');
     expect(backup.generate).toHaveBeenCalledWith(args);
@@ -52,7 +53,7 @@ describe('withFallback', () => {
     const primary = fails(new ToolError('GUARDRAIL_BLOCKED', 'claim_grounding', {}));
     const backup = ok('https://openai.example/b.png');
 
-    await expect(withFallback(primary, backup).generate(args)).rejects.toMatchObject({
+    await expect(withFallback('image', primary, backup).generate(args)).rejects.toMatchObject({
       code: 'GUARDRAIL_BLOCKED',
     });
     expect(backup.generate).not.toHaveBeenCalled();
@@ -64,7 +65,7 @@ describe('withFallback', () => {
     const primary = fails(imageUnavailable(403, 'Exhausted balance.'));
     const backup = fails(new ToolError('UPSTREAM_FAILED', 'The backup image service could not make an image either.', {}));
 
-    await expect(withFallback(primary, backup).generate(args)).rejects.toThrow(/run out of credit/i);
+    await expect(withFallback('image', primary, backup).generate(args)).rejects.toThrow(/run out of credit/i);
     vi.restoreAllMocks();
   });
 });

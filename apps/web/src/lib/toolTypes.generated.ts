@@ -225,7 +225,7 @@ export interface ToolIO {
   };
   "brand.knowledge.attach_document": {
     input: { genomeId: string; url: string; filename: string };
-    output: { docId: string; pages: number; chunks: number; characters: number; restrictionsAdded: { claimsToAvoid: Array<string>; bannedPhrases: Array<string> } };
+    output: { docId: string; assetId?: string; pages: number; chunks: number; characters: number; restrictionsAdded: { claimsToAvoid: Array<string>; bannedPhrases: Array<string> } };
   };
   "brand.logo.generate": {
     input: { brandId?: string; hint?: string };
@@ -345,7 +345,7 @@ export interface ToolIO {
   };
   "content.list": {
     input: { genomeId: string; status?: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; limit?: number };
-    output: { items: Array<{ contentItemId: string; playbookId: string; playbookName: string; mediaType?: "video" | "image" | "carousel" | "text"; platform?: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky"; status: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; summary: string; scheduledAt?: string; createdAt: string; variantGroupId?: string; variantLabel?: string; blockedReason?: string; publishAttempts?: number }> };
+    output: { items: Array<{ contentItemId: string; playbookId: string; playbookName: string; mediaType?: "video" | "image" | "carousel" | "text"; platform?: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky"; status: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; summary: string; scheduledAt?: string; createdAt: string; variantGroupId?: string; variantLabel?: string; blockedReason?: string; publishAttempts?: number; thumbnailUrl?: string }> };
   };
   "content.publish_payload": {
     input: { contentItemId: string; genomeId: string };
