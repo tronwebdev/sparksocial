@@ -154,9 +154,19 @@ Measured against the registry and the deployed manifest, not from memory:
   `content.generate_broll` rather than beside it — two tools for one capability would make
   "which one do I call" a question the agent has to answer, and it has no way to know which
   vendor has credit.
-- **36 of 37 PRD flow IDs have code.** The three without their ID in a comment are built
-  anyway: `AUTH-04` is `/meet-spark`, `AGT-01` is `/agents`, `AUTO-03` is the
-  `bulk_connector` recipe kind.
+- **Every PRD flow ID has code.** The "36 of 37" this line used to claim was wrong twice
+  over: the PRD declares **52** flow IDs, not 37, and 22 of them have no ID in a comment
+  anywhere. Measured 21 Oct by extracting every `XXX-NN` from `docs/PRD.md` and grepping the
+  tree for each.
+
+  Eighteen of the 22 are *sub-steps* (`AUTO-03.1`, `ENG-04.2`) whose parent flow does have
+  code; the remaining four are built under other names — `AUTH-04` is `/meet-spark`,
+  `AGT-01` is `/agents`, `AUTO-03` is the `bulk_connector` recipe kind, `ENG-04` is
+  `EngagementGate.tsx`. `ENG-04` is also printed twice in the PRD under two different
+  descriptions, which is a PRD typo rather than a missing screen.
+
+  The lesson the old number carries: grepping for an ID measures commenting discipline, not
+  coverage. Confirm each apparent gap by looking for the feature.
 - **All 12 native publish adapters exist** — Instagram, Facebook, Threads, TikTok, LinkedIn,
   X, YouTube, Pinterest, Reddit, Bluesky, Google Business — behind `PlatformAdapter`, with
   the aggregator still in front.

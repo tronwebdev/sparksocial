@@ -88,6 +88,29 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a
       decision rather than on time, and the decision is yours.**
+- [ ] **The dashboard's Agent Activity is empty while the brand has a full calendar.**
+      Reported from the deployed app on 20 Oct and confirmed again on 21: `/home` shows
+      *"Your agent hasn't run yet"* for an org whose calendar carries planned and published
+      posts.
+
+      It is not a bug in the feed. `agent.run.list` reads `agent_runs`, which only the SPARK
+      runtime writes (`packages/spark/src/anthropic.ts`, `events.ts`). Everything that
+      produced those posts — the campaign wizard, `calendar.generate`, `content.draft`,
+      `publish.now` — went through `invokeTool` and wrote `tool_calls`. Two honest records of
+      two different things, and the dashboard reads the one that is empty.
+
+      The fix is a decision, which is why this is here rather than done:
+
+      1. **Open an `agent_run` around the planning path** so wizard-driven work is an agent
+         run with steps. Truthful to the product's story — SPARK did plan it — and it means
+         a user-initiated wizard writes a row that says an agent ran.
+      2. **Have the feed also read tool calls, genome-scoped.** Closer to what the screen
+         promises ("each step it takes appears here with the reason"), but there is no
+         genome-scoped tool-call read: `org.audit.query` is org-wide and owner/admin, and
+         adding a scoped one is a new tool plus a `scoped.ts` predicate.
+
+      The owner asked for this to be left open pending that call.
+
 - [ ] **There is no billing. The credit system is spend metering, not revenue.**
       Worth stating plainly because the two get conflated, and because this file did not
       record it at all until asked directly.
