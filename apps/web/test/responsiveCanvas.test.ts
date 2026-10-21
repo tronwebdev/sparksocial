@@ -486,3 +486,76 @@ describe('a scroll container needs a width to scroll inside', () => {
     );
   });
 });
+
+/**
+ * The settings sweep: every subpage measured at 430px, and the four that failed.
+ *
+ * `/settings/accounts`, `/notifications`, `/privacy`, `/accessibility`,
+ * `/password`, `/connected` and `/team` were clean. These are the rest.
+ */
+describe('the settings screens hold a phone', () => {
+  const files = (rel: string) => read(rel);
+
+  it('no min-width column outlives the content column', () => {
+    // `min-w-[Npx] flex-1` is a floor that tells a row to wrap rather than let
+    // a field get too narrow. On a phone there is no width to wrap into: a
+    // 420px floor put 29 elements past the viewport on `/settings/profile`,
+    // the row ending at 491. Every such column now takes a full row below
+    // `canvas`, and `min-w-0` is what stops its content re-inflating it.
+    const offenders: string[] = [];
+    for (const rel of FLEX_FLOOR_FILES) {
+      const src = files(rel);
+      for (const m of src.matchAll(/min-w-\[\d+px\]\s+flex-(?:1|\[2\])(?![^"'`]*max-canvas:basis-full)/g)) {
+        offenders.push(`${rel}: ${m[0]}`);
+      }
+    }
+    expect(offenders, offenders.join(', ')).toEqual([]);
+  });
+
+  it('the settings tablist is a scroll container with a width', () => {
+    // Export / Import / Clone was cut at 419 with nothing scrollable over it.
+    // One tablist, every settings section.
+    expect(files('src/components/settings/SettingsTabs.tsx')).toContain(
+      'inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto',
+    );
+  });
+
+  it('the engagement rings are not drawn where they cannot fit', () => {
+    // 345px of nested absolute circles in a box that leaves 236 on a phone;
+    // the stack ended at 485. Nothing in it reflows, so below `canvas` the
+    // ornament goes and the empty-state message gets the width.
+    expect(files('src/components/settings/EngagementPanel.tsx')).toContain(
+      'h-[301px] w-[345px] max-canvas:hidden',
+    );
+  });
+
+  it('a knowledge source URL can break mid-token', () => {
+    // A URL has no spaces to wrap at: the crawled `docId` was the one element
+    // past the viewport on `/settings/brand-kits`, ending at 462.
+    expect(files('src/components/settings/KnowledgePanel.tsx')).toContain(
+      'min-w-0 break-all font-mono text-12 text-ink',
+    );
+  });
+});
+
+/** Where the `min-w-[Npx] flex-1` floors live, so the rule above stays applied. */
+const FLEX_FLOOR_FILES = [
+  'src/components/account/BrandTransferPanel.tsx',
+  'src/components/account/TeamPanel.tsx',
+  'src/components/assets/AssetSearchGrid.tsx',
+  'src/components/automation/InfluencerPanel.tsx',
+  'src/components/command-center/PendingQuestionsPanel.tsx',
+  'src/components/command-center/PerformanceCards.tsx',
+  'src/components/command-center/draft-panel/DraftPanel.tsx',
+  'src/components/discovery/InfluencerWatchlist.tsx',
+  'src/components/discovery/ReshareModal.tsx',
+  'src/components/discovery/TrendDetail.tsx',
+  'src/components/engagement/OpportunityActions.tsx',
+  'src/components/settings/ConsentPanel.tsx',
+  'src/components/settings/CreditUsageSection.tsx',
+  'src/components/settings/GovernancePanel.tsx',
+  'src/components/settings/ImportExportSection.tsx',
+  'src/components/settings/KnowledgePanel.tsx',
+  'src/components/settings/PolicyPanel.tsx',
+  'src/components/settings/personal/ProfileSection.tsx',
+] as const;

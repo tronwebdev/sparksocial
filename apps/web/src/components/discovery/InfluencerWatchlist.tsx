@@ -194,7 +194,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
             className="mt-1"
           />
         </div>
-        <div className="min-w-[180px] flex-1">
+        <div className="min-w-[180px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
           <label className="block text-12 text-ink-muted" htmlFor="inf-note">
             Why (optional)
           </label>

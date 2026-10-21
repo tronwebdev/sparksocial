@@ -279,7 +279,7 @@ export function ReshareModal({
         </Field>
 
         <div className="mt-[16px] flex flex-wrap gap-[14px]">
-          <div className="min-w-[190px] flex-1">
+          <div className="min-w-[190px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
             <p className="text-14 font-medium text-ink">Select Account</p>
             <select
               value=""
@@ -307,7 +307,7 @@ export function ReshareModal({
             </select>
           </div>
 
-          <div className="min-w-[190px] flex-1">
+          <div className="min-w-[190px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
             <p className="text-14 font-medium text-ink">Brand Kit</p>
             <div
               title="The brand kit is applied when a post is rendered, from Settings → Brand Kit. There is no per-campaign override to store, so this switch would not survive the Publish."

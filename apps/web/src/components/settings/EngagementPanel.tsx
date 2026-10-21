@@ -283,9 +283,23 @@ export function EngagementPanel() {
   if (step === null) {
     return (
       <div className="flex justify-center py-[47px]">
-        <div className="w-[622px] max-w-full rounded-[30px] bg-white px-[69px] py-[16px] text-center">
-          {/* the rings */}
-          <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px]">
+        <div className="w-[622px] max-w-full rounded-[30px] bg-white px-[69px] py-[16px] text-center max-canvas:px-[24px]">
+          {/*
+            the rings
+
+            345px of nested fixed-size circles — 279, 196, 127 — inside a card
+            whose 69px padding leaves 236 on a phone. Measured on the deployed
+            `/settings/engagement` at 430px: the ring stack ended at 485, with
+            the inner two clipped on top of that.
+
+            Nothing here reflows. The circles are placed against each other at
+            absolute offsets, so narrowing the box moves nothing, and scaling by
+            viewport width needs JS — `AgencyStage` carries that machinery for a
+            screen that earns it. This is `aria-hidden` ornament above an empty
+            state, so below `canvas` it simply is not drawn, and the message it
+            decorates gets the width back.
+          */}
+          <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px] max-canvas:hidden">
             <span className="absolute left-[32px] top-[22px] block h-[279px] w-[279px] rounded-full" style={{ background: 'rgba(108,232,255,0.12)' }} />
             <span className="absolute left-[74px] top-[63px] block h-[196px] w-[196px] rounded-full" style={{ background: 'rgba(132,201,214,0.19)' }} />
             <span className="absolute left-[108px] top-[102px] flex h-[127px] w-[127px] items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }}>

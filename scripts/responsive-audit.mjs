@@ -108,6 +108,9 @@ const SCALED_STAGE = [/^agency\//, /^campaign\//];
 /** Offsets smaller than this sit inside a box rather than on the canvas. */
 const CANVAS_OFFSET = 48;
 
+/** What a 430px phone actually leaves for content, measured in the shell. */
+const CONTENT_COLUMN = 374;
+
 /** Type big enough that one unbroken line can outrun a column. */
 const BIG_TYPE = /text-(2[89]|3\d|4\d|5\d|6\d)(\s|$|")/;
 
@@ -266,8 +269,15 @@ function audit(file) {
     minWidth: scrolls
       ? 0
       : classes.filter((c) => {
+          /*
+           * 430 was the wrong number. A phone's *viewport* is 430; its content
+           * column is 374 once the shell's gutters are taken out, and a floor
+           * only has to beat that. `min-w-[420px]` sailed under this check and
+           * put 29 elements past the viewport on `/settings/profile`, the row
+           * ending at 491. CONTENT_COLUMN is what was measured there.
+           */
           const m = /min-w-\[(\d+)px\]/.exec(c);
-          return m && Number(m[1]) > 430 && !done(c);
+          return m && Number(m[1]) > CONTENT_COLUMN && !done(c);
         }).length,
   };
 }

@@ -114,7 +114,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
             onChange={(e) => setRecommendedAction(e.target.value)}
             disabled={busy}
             placeholder="Recommended action, e.g. Call within the hour"
-            className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button size="sm" disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
             {busy ? 'Creating…' : 'Create opportunity'}
@@ -166,7 +166,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
           onChange={(e) => setRoutedTo(e.target.value)}
           disabled={busy}
           placeholder="Route to — a person, email, or CRM reference"
-          className="h-9 min-w-[220px] flex-1 rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+          className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
         />
         <Button size="sm" variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
           {busy ? 'Routing…' : 'Route'}

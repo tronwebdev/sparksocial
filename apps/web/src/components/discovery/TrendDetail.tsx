@@ -409,7 +409,7 @@ export function TrendDetail({
         </div>
         <div className="mt-[28px] flex flex-wrap gap-[38px]">
           <Skeleton className="h-[420px] w-[706px] rounded-[15px]" />
-          <Skeleton className="h-[420px] min-w-[400px] flex-1 rounded-[15px]" />
+          <Skeleton className="h-[420px] min-w-[400px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[15px]" />
         </div>
       </div>
     );
@@ -872,7 +872,7 @@ export function TrendDetail({
                     className="flex min-h-[118px] flex-wrap items-center gap-x-[18px] gap-y-3 rounded-[14px] px-[24px] py-[20px]"
                     style={{ background: r.bg, boxShadow: `inset 0 0 0 1px ${r.ring}` }}
                   >
-                    <div className="min-w-[240px] flex-1">
+                    <div className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
                       <p className="text-19 font-bold text-ink">{r.kind}</p>
                       <p className="mt-[10px] text-17 font-medium" style={{ color: '#5B5B5B' }}>
                         {r.desc}

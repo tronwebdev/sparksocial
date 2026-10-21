@@ -1935,7 +1935,7 @@ export function DraftPanel({
                     onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://your-site.com/offer"
                     disabled={shortening || !!shortUrl}
-                    className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                    className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                   />
                   {shortUrl ? (
                     <Button size="sm" variant="outline" onClick={() => { setShortUrl(null); setLinkUrl(''); }}>

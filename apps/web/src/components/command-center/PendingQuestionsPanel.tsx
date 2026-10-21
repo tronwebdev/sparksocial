@@ -144,7 +144,7 @@ export function PendingQuestionsPanel() {
                   onChange={(e) => setDrafts((d) => ({ ...d, [q.messageId]: e.target.value }))}
                   disabled={answering === q.messageId}
                   placeholder="Type an answer, or pick an option above"
-                  className="h-9 min-w-[220px] flex-1 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                  className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                 />
                 <Button
                   size="sm"

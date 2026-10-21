@@ -119,7 +119,7 @@ export function ConsentPanel() {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
+        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full gap-1">
           <label className="text-12 font-medium text-ink-muted" htmlFor="consent-subject">
             Whose likeness/voice (name)
           </label>
@@ -131,7 +131,7 @@ export function ConsentPanel() {
             className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
+        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full gap-1">
           <label className="text-12 font-medium text-ink-muted" htmlFor="consent-evidence">
             Evidence URL (optional)
           </label>

@@ -281,7 +281,7 @@ export function PolicyPanel() {
               value={newWindow.reason}
               onChange={(e) => setNewWindow((w) => ({ ...w, reason: e.target.value }))}
               placeholder="reason"
-              className="h-9 min-w-[140px] flex-1 rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <Button size="sm" variant="outline" onClick={addWindow}>
               Add window
@@ -310,7 +310,7 @@ export function PolicyPanel() {
               value={newFamily.family}
               onChange={(e) => setNewFamily((f) => ({ ...f, family: e.target.value }))}
               placeholder="e.g. content, publish, learning"
-              className="h-9 min-w-[140px] flex-1 rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <select
               value={newFamily.autonomy}

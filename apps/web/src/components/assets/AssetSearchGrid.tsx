@@ -231,7 +231,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 gap-1">
+        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full gap-1">
           <label className="text-12 font-medium text-ink-muted" htmlFor="asset-intent">
             What are you looking for
           </label>

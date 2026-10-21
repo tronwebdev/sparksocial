@@ -205,7 +205,7 @@ export function BrandTransferPanel() {
             results.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[180px] flex-1">
+            <div className="min-w-[180px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
               <label className="block text-12 text-ink-muted" htmlFor="export-brand">
                 Brand
               </label>

@@ -338,7 +338,7 @@ export function GovernancePanel() {
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder="https://… or upload"
-                  className="min-w-[200px] flex-1"
+                  className="min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
                 />
                 <input
                   ref={logoInput}

@@ -99,7 +99,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           }}
           placeholder="@handle"
           aria-label="Account handle"
-          className="h-[60px] min-w-[200px] flex-1 rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
+          className="h-[60px] min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[13px] bg-white px-[22px] text-17 font-medium text-ink outline-none placeholder:text-[#B0B0B0]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.28)' }}
         />
 

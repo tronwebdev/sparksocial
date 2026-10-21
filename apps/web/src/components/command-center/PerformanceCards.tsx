@@ -484,7 +484,7 @@ export function PerformanceCards({
                   className="flex flex-wrap items-center gap-x-6 gap-y-3 px-6 py-[22px]"
                   style={{ borderTop: i === 0 ? undefined : '1px solid rgba(131,131,131,0.1)' }}
                 >
-                  <div className="min-w-[220px] flex-1">
+                  <div className="min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
                     <p className="truncate text-20 font-semibold leading-[1.28] text-ink">
                       {post?.playbookName ?? 'Published post'}
                     </p>

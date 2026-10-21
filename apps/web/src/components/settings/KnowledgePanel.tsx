@@ -317,7 +317,15 @@ export function KnowledgePanel() {
               {list.docs.map((d) => (
                 <li key={d.docId} className="rounded-lg border border-border p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-mono text-12 text-ink">{d.docId}</p>
+                    {/*
+                      `docId` is a URL for a crawled source, and a URL has no
+                      spaces to wrap at: measured on the deployed
+                      `/settings/brand-kits` at 430px it was the one element
+                      past the viewport, ending at 462. `break-all` is the only
+                      thing that breaks an unbroken token, and `min-w-0` is what
+                      allows a flex item to be narrower than its own content.
+                    */}
+                    <p className="min-w-0 break-all font-mono text-12 text-ink">{d.docId}</p>
                     <div className="flex shrink-0 items-center gap-2">
                       {d.chunks > 1 ? <Badge variant="neutral">{d.chunks} chunks</Badge> : null}
                       <span className="text-12 tabular-nums text-ink-muted">
@@ -348,7 +356,7 @@ export function KnowledgePanel() {
             leave this open while it runs.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[200px] flex-1">
+            <div className="min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
               <label className="block text-12 text-ink-muted" htmlFor="kn-url">
                 Address
               </label>
@@ -480,7 +488,7 @@ export function KnowledgePanel() {
           The same check SPARK runs before publishing. Try a sentence you want it to be able to write.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div className="min-w-[240px] flex-1">
+          <div className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
             <Input
               value={claim}
               onChange={(e) => {

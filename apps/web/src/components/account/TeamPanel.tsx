@@ -196,7 +196,7 @@ export function TeamPanel() {
           you assign one below.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div className="min-w-[220px] flex-1">
+          <div className="min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
             <label className="block text-12 text-ink-muted" htmlFor="team-email">
               Email
             </label>
@@ -295,7 +295,7 @@ export function TeamPanel() {
                           const key = `brand:${m.userId}:${b.brandId}`;
                           return (
                             <li key={b.brandId} className="flex flex-wrap items-center gap-2">
-                              <span className="min-w-[140px] flex-1 truncate text-13 text-ink">
+                              <span className="min-w-[140px] flex-1 max-canvas:min-w-0 max-canvas:basis-full truncate text-13 text-ink">
                                 {b.name || b.brandId}
                               </span>
                               {assigned ? <Badge variant="success">{assigned.role}</Badge> : null}

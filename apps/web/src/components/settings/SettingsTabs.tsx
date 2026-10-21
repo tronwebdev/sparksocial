@@ -29,7 +29,15 @@ export function SettingsTabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className="inline-flex h-[50px] items-center gap-[5px] rounded-[10.828px] bg-white p-[5px]"
+      /*
+        The same shape the automation queue's state tabs had: `inline-flex`
+        with no width constraint grows to its content and spills the overflow
+        onto the page. Measured on the deployed `/settings/import-export` at
+        430px, the Export / Import / Clone row was cut at 419 with nothing
+        scrollable over it. One tablist, used by every settings section, so the
+        cap and the scroll container fix all of them at once.
+      */
+      className="inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto rounded-[10.828px] bg-white p-[5px]"
       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.15)' }}
     >
       {tabs.map((t) => {
