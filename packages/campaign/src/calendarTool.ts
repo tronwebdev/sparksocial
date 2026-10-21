@@ -241,6 +241,14 @@ export const CampaignListInput = z.object({
   limit: z.number().int().min(1).max(50).default(10),
 });
 
+/**
+ * The four kinds a campaign can be, as `CampaignType` in
+ * `@sparksocial/shared` declares them. Spelled once here because
+ * `campaign.create`'s input and `campaign.list`'s output both need it and had
+ * it written out separately.
+ */
+const CampaignTypeEnum = z.enum(['promotion', 'lead_magnet', 'authority', 'launch']);
+
 export const CampaignListOutput = z.object({
   campaigns: z.array(
     z.object({
@@ -250,6 +258,21 @@ export const CampaignListOutput = z.object({
       windowDays: z.number(),
       startAt: z.string(),
       status: CampaignStatus,
+      /**
+       * The campaign's kind, as chosen on step 2 of the wizard.
+       *
+       * Optional because it is: `campaign_type` is nullable and campaigns
+       * created before the wizard collected it have none. Absent is a real
+       * state and the screen says "—" for it, rather than inventing a default
+       * the owner never picked.
+       *
+       * It was missing from this output while being written and read
+       * everywhere else — the column exists, `campaign.create` takes it, the
+       * repository round-trips it — so the Command Center's hero had no type to
+       * show and printed `windowDays` under a "Type" label instead, beside a
+       * "Remaining" field already showing the same number in the same unit.
+       */
+      campaignType: CampaignTypeEnum.optional(),
     }),
   ),
 });
@@ -281,6 +304,7 @@ export const campaignList = defineTool({
         windowDays: c.windowDays,
         startAt: c.startAt.toISOString(),
         status: c.status,
+        ...(c.campaignType ? { campaignType: c.campaignType } : {}),
       })),
     };
   },

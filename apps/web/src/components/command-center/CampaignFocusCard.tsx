@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { pillarStyle } from '@/components/calendar/pillars';
-import { invoke } from '@/lib/tools';
 
 /**
  * The prototype's "Current Focus" hero card (`SparkSocial Command
@@ -34,7 +32,17 @@ export interface CampaignSummary {
   windowDays: number;
   startAt: string;
   status: string;
+  /** Optional because the column is: campaigns predating the wizard's step 2 have none. */
+  campaignType?: 'promotion' | 'lead_magnet' | 'authority' | 'launch';
 }
+
+/** The four kinds, in the words the wizard shows when it asks. */
+const TYPE_LABEL: Record<NonNullable<CampaignSummary['campaignType']>, string> = {
+  promotion: 'Promotion / Offers',
+  lead_magnet: 'Lead Magnet',
+  authority: 'Authority / Education',
+  launch: 'Launch / Announcement',
+};
 
 interface Slot {
   id: string;
@@ -59,19 +67,11 @@ export function CampaignFocusCard({
   campaign,
   calendarView,
   genomeName,
-  genomeId,
-  onRefresh,
 }: {
   campaign: CampaignSummary | null | undefined;
   calendarView: CalendarView | null;
   genomeName?: string;
-  /** `campaign.list`'s output doesn't carry a genomeId per row (it's implicit in the request that scoped the list) — `campaign.duplicate` needs one explicitly, so it comes down as its own prop. */
-  genomeId?: string;
-  /** Re-fetches `campaign.list`/`calendar.get` in the parent after pause/resume/duplicate changes campaign state. */
-  onRefresh: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   if (campaign === undefined) return <Skeleton className="h-40 w-full rounded-xl" />;
 
@@ -91,42 +91,6 @@ export function CampaignFocusCard({
         </Link>
       </section>
     );
-  }
-
-  async function pause() {
-    setBusy(true);
-    setMessage(null);
-    const res = await invoke<{ status: string }>('campaign.pause', { campaignId: campaign!.campaignId });
-    setBusy(false);
-    if (res.status === 'succeeded') onRefresh();
-    else setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
-  }
-
-  async function resume() {
-    setBusy(true);
-    setMessage(null);
-    const res = await invoke<{ status: string }>('campaign.resume', { campaignId: campaign!.campaignId });
-    setBusy(false);
-    if (res.status === 'succeeded') onRefresh();
-    else setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
-  }
-
-  async function duplicate() {
-    if (!genomeId) return;
-    setBusy(true);
-    setMessage(null);
-    // idempotent: false — creates a genuinely new campaign each call.
-    const res = await invoke<{ campaignId: string; name: string }>(
-      'campaign.duplicate',
-      { genomeId, campaignId: campaign!.campaignId },
-      crypto.randomUUID(),
-    );
-    setBusy(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: `Duplicated as "${res.output.name}" — its calendar starts empty. Find it from the calendar.` });
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
-    }
   }
 
   const remainingDays = Math.max(
@@ -218,8 +182,20 @@ export function CampaignFocusCard({
         <span className="text-ink-muted">
           Goal - <b className="font-semibold text-ink">{campaign.objective}</b>
         </span>
+        {/*
+          `windowDays` was here under a "Type" label, which made this row print
+          the same number twice in the same unit — "Type - 30 days" beside
+          "Remaining - 29 Days" — and never showed the type at all.
+
+          The type was always being collected and stored; `campaign.list` just
+          did not return it. An em dash where a campaign predates step 2 of the
+          wizard, rather than defaulting to a kind nobody chose.
+        */}
         <span className="text-ink-muted">
-          Type - <b className="font-semibold text-ink">{campaign.windowDays} days</b>
+          Type -{' '}
+          <b className="font-semibold text-ink">
+            {campaign.campaignType ? TYPE_LABEL[campaign.campaignType] : '—'}
+          </b>
         </span>
         <span className="text-ink-muted">
           Remaining - <b className="font-semibold text-ink">{remainingDays} Days</b>
@@ -334,73 +310,65 @@ export function CampaignFocusCard({
         that and did not — 478 is only obviously "inside 241..538" once you have
         seen the picture.
 
-        The design's are a filter over three fixtures. Ours are inert: `content
-        .list` takes a status, not a playbook family, so there is nothing to
-        filter by. Drawn because the design draws them, disabled and saying why.
+        ── Why there is one chip here and the design draws three ──────────
+
+        The design's three are a filter — "Lead magnets", "Authority Builder",
+        "Social Campaign", the first one ticked. Ours were those three literal
+        strings, always with the first ticked, and `disabled` with a tooltip
+        explaining that `content.list` has no playbook-family filter to drive
+        them. Three problems in one control: the labels are not the four kinds a
+        campaign can actually be (`promotion`, `lead_magnet`, `authority`,
+        `launch` — "Social Campaign" is not one of them), the tick never moved
+        off the first chip whatever the campaign was, and nothing happened when
+        you pressed any of them.
+
+        A filter is also the wrong idea *here* regardless of the backend. This
+        row is inside the hero, which describes one campaign; every post in that
+        campaign has that campaign's type, so filtering its own queue by
+        campaign type selects either everything or nothing.
+
+        So it states the fact it was pretending to filter on: the campaign's
+        kind, in the words the wizard used when it asked, in the design's own
+        active-chip style. A real filter over playbook families is a different
+        control with a different backend behind it, and worth having — it is
+        just not these three words with a tick glued to the first.
       */}
       <div className="mt-[15px] flex flex-wrap gap-[8.5px]">
-        {['Lead magnets', 'Authority Builder', 'Social Campaign'].map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            disabled
-            title="Filtering by campaign type needs a playbook-family filter on content.list."
-            className="flex h-[38.5px] w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] text-13 font-semibold"
-            style={
-              i === 0
-                ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }
-                : {
-                    background: 'rgba(131,131,131,0.05)',
-                    boxShadow: 'inset 0 0 0 0.73px rgba(12,12,12,0.1)',
-                    color: '#838383',
-                  }
-            }
+        {campaign.campaignType ? (
+          <span
+            className="flex h-[38.5px] min-w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] px-[14px] text-13 font-semibold"
+            style={{ background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }}
           >
-            {label}
-            {i === 0 ? (
-              <span className="inline-flex h-[13px] w-[13px] items-center justify-center rounded-full bg-ink">
-                <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
-                  <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            ) : null}
-          </button>
-        ))}
+            {TYPE_LABEL[campaign.campaignType]}
+            <span className="inline-flex h-[13px] w-[13px] items-center justify-center rounded-full bg-ink">
+              <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
+                <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </span>
+        ) : null}
       </div>
 
     </section>
 
       {/*
-        Pause, resume and duplicate are real and the design's hero has none of
-        them — so they sit *under* the card, not in it.
+        ── Pause, resume and duplicate are not on this screen ─────────────
 
-        Inside it they were the last row of a `minHeight: 297` box, which meant
-        the box was 297 *or taller*: measured 346.7 against the design's 297, and
-        every panel below inherited the difference. The hero is a fixed 297 now
-        (the design's own five rows fill it exactly) and these follow it on the
-        canvas as text actions, which is also where they stop competing with the
-        two framed buttons at the top.
+        They were, as text actions under the card, because the design's hero has
+        no such control and they had to go somewhere. Two things were wrong with
+        that. `order-last` put them after *every* sibling in this container
+        rather than after the hero, so they rendered beneath the queue — under
+        the heading "What is your Agent doing next?", which is not what they do.
+        And the design does not draw them here at all; a label-diff against
+        `SparkSocial Command Center.dc.html` found "Pause campaign" and
+        "Duplicate" among exactly four strings on this screen that the prototype
+        has no trace of.
+
+        `campaign.pause`, `campaign.resume` and `campaign.duplicate` are all
+        still registered and reachable. This removes a control the design never
+        had, not a capability.
       */}
-      <div className="order-last flex flex-wrap items-center gap-4 text-14">
-        {campaign.status === 'paused' ? (
-          <button type="button" disabled={busy} onClick={() => void resume()} className="font-medium text-ink underline underline-offset-2 disabled:opacity-50">
-            Resume campaign
-          </button>
-        ) : (
-          <button type="button" disabled={busy} onClick={() => void pause()} className="font-medium text-ink underline underline-offset-2 disabled:opacity-50">
-            Pause campaign
-          </button>
-        )}
-        <button type="button" disabled={busy || !genomeId} onClick={() => void duplicate()} className="font-medium text-ink-muted underline underline-offset-2 disabled:opacity-50">
-          Duplicate
-        </button>
-      </div>
 
-      {message ? (
-        <p className={`order-last text-14 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
-          {message.text}
-        </p>
-      ) : null}
     </>
   );
 }

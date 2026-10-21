@@ -273,7 +273,7 @@ export interface ToolIO {
   };
   "campaign.list": {
     input: { genomeId: string; limit?: number };
-    output: { campaigns: Array<{ campaignId: string; name: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; startAt: string; status: "draft" | "active" | "paused" }> };
+    output: { campaigns: Array<{ campaignId: string; name: string; objective: "leads" | "bookings" | "trials" | "sales" | "audience" | "hiring"; windowDays: number; startAt: string; status: "draft" | "active" | "paused"; campaignType?: "promotion" | "lead_magnet" | "authority" | "launch" }> };
   };
   "campaign.pause": {
     input: { campaignId: string };

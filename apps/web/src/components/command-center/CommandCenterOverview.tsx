@@ -114,13 +114,7 @@ export function CommandCenterOverview({
         `(cc)/agents/page.tsx`, which owns the copy because the title is
         per-tab.
       */}
-      <CampaignFocusCard
-        campaign={campaign}
-        calendarView={calendarView}
-        genomeName={genome?.name}
-        genomeId={genome?.genomeId}
-        onRefresh={() => void loadCampaign()}
-      />
+      <CampaignFocusCard campaign={campaign} calendarView={calendarView} genomeName={genome?.name} />
 
       {/*
         Three panels that used to sit under the queue are gone from this tab:
