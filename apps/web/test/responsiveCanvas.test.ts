@@ -327,3 +327,52 @@ describe('nothing is pinned to both edges of a box it cannot fit', () => {
     expect(squeeze('absolute right-[27px] top-[28px]')).toBe(false);
   });
 });
+
+/**
+ * SCROLL, where stacking would destroy the point of the layout.
+ *
+ * `AutomationHome`'s queue is five columns — `572px 352px 138px 136px 82px`,
+ * 1280px of fixed grid track — shared by the header row and every body row,
+ * and neither sat in a scroll container. Measured on the deployed
+ * `/automation` at 430px: the five column headings were past the viewport with
+ * no scrollable ancestor, so "Contents", "Recipe", "Account", "Status" and
+ * "Action" could not be reached.
+ *
+ * Fixed by scrolling rather than by the reflow the other screens got, because a
+ * five-column queue is read by comparing rows *down* a column and stacking
+ * destroys exactly that. The pattern is already in the codebase:
+ * `FolderLibrary` puts a `min-w-[720px]` table inside `overflow-x-auto`, which
+ * is why the assets library measured clean at 430px.
+ *
+ * This file is deliberately not in `CONVERTED`. Its remaining offsets sit
+ * inside a card that is already `max-md:w-full`, so a `left-[146px]` chip needs
+ * 266px of a 292px card at 320px and is fine; adding the file to the blanket
+ * rule would force conversions that are not needed, inside a card whose
+ * children are absolute by construction. So the guard is the specific thing
+ * that was changed.
+ */
+describe('the automation queue scrolls instead of stranding its headings', () => {
+  const SOURCE_AUTO = read('src/components/automation/AutomationHome.tsx');
+
+  it('wraps the queue card in a scroll container below canvas', () => {
+    // Not just `max-w-auto-wide` — the hero carries that token too, and
+    // matching on it alone found the hero and reported the card unfixed.
+    const card = classNames(SOURCE_AUTO).find(
+      (c) => c.includes('max-w-auto-wide') && c.includes('bg-white') && c.includes('pb-[24px]'),
+    );
+    expect(card, 'the queue card is no longer recognisable').toBeDefined();
+    expect(card).toContain('max-canvas:overflow-x-auto');
+  });
+
+  it('keeps the header and the rows on one shared track definition', () => {
+    /*
+     * They were siblings, which is how a scroll container on either alone would
+     * have slid the body out from under its own headings. One definition, one
+     * wrapper: a harness confirms the last heading and the last cell share a
+     * right edge after scrolling.
+     */
+    const tracks = [...SOURCE_AUTO.matchAll(/gridTemplateColumns:\s*QUEUE_COLUMNS/g)];
+    expect(tracks.length).toBeGreaterThanOrEqual(2);
+    expect(SOURCE_AUTO).toMatch(/const QUEUE_COLUMNS = '[^']+'/);
+  });
+});

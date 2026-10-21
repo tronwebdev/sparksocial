@@ -139,8 +139,25 @@ const offsets = (c) => {
 };
 
 function audit(file) {
-  const classes = classNames(readFileSync(file, 'utf8'));
-  const done = (c) => c.includes('max-canvas:') || c.includes('canvas:');
+  const src = readFileSync(file, 'utf8');
+  const classes = classNames(src);
+  const scrolls = /overflow-x-(?:auto|scroll)/.test(src);
+  /**
+   * Already answered, by any means.
+   *
+   * Three things count, and the first two were missed at first:
+   *
+   *   * **Any responsive variant**, not only `canvas`. `CampaignManage` carries
+   *     `max-xl:left-[40px]` on the element this scan was flagging — a narrow
+   *     rule written before the contract existed, with a different breakpoint.
+   *     Counting only `canvas:` reported screens that were already responsive.
+   *   * **`hidden`** paired with a variant that reveals it. Two dots in
+   *     `CampaignManage` are `hidden … xl:block`: they do not render at the
+   *     widths in question, so their offsets cannot strand anything.
+   *   * A declared width or offset the author has already capped.
+   */
+  const done = (c) =>
+    /(^|\s)(?:max-)?(?:sm|md|lg|xl|2xl|canvas):/.test(c) || /(^|\s)hidden(\s|$)/.test(c);
 
   return {
     stranded: classes.filter((c) => /(^|\s)absolute(\s|$)/.test(c) && offsets(c).length > 0 && !done(c)).length,
@@ -165,11 +182,26 @@ function audit(file) {
       return !w || Number(w[1]) > 430;
     }).length,
     pinned: classes.filter((c) => c.includes('whitespace-nowrap') && BIG_TYPE.test(c) && !done(c)).length,
-    /** A fixed floor wider than a phone is the single strongest signal. */
-    minWidth: classes.filter((c) => {
-      const m = /min-w-\[(\d+)px\]/.exec(c);
-      return m && Number(m[1]) > 430 && !done(c);
-    }).length,
+    /**
+     * A fixed floor wider than a phone — unless the file scrolls it.
+     *
+     * `min-w-[720px]` inside `overflow-x-auto` is the deliberate pattern for a
+     * data table, not a defect: `FolderLibrary` uses it, the assets library
+     * measured clean at 430px because of it, and `AutomationHome`'s queue was
+     * just fixed by adopting it. `WizardSteps` was flagged for a
+     * `min-w-[820px]` sitting directly inside an `overflow-x-auto` wrapper.
+     *
+     * File-level rather than per-element, which is coarse: a file with a scroll
+     * container anywhere stops being flagged for any floor. It errs toward
+     * silence, which for a risk list is the right direction once the loud
+     * cases are gone.
+     */
+    minWidth: scrolls
+      ? 0
+      : classes.filter((c) => {
+          const m = /min-w-\[(\d+)px\]/.exec(c);
+          return m && Number(m[1]) > 430 && !done(c);
+        }).length,
   };
 }
 

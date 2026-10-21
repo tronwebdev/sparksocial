@@ -259,7 +259,27 @@ export function AutomationHome({
       </div>
 
       {/* ── output queue ─────────────────────────────────────────────────── */}
-      <div className="mt-[34px] max-w-auto-wide rounded-[20px] bg-white pb-[24px]">
+      {/*
+        ── The queue table scrolls rather than reflows ─────────────────────
+
+        `QUEUE_COLUMNS` is `572px 352px 138px 136px 82px` — 1280px of fixed grid
+        tracks, shared by the header row and every body row, and neither sat in
+        a scroll container. Measured on the deployed `/automation` at 430px: the
+        five column headings were past the viewport with no scrollable ancestor
+        over any of them, so "Contents", "Recipe", "Account", "Status" and
+        "Action" could not be reached at all.
+
+        Scrolling, not stacking, and deliberately so. A five-column queue is
+        read by comparing rows down a column, which stacking destroys — and the
+        precedent is already here: `FolderLibrary` puts a `min-w-[720px]` table
+        inside `overflow-x-auto` for the same reason, and the assets library
+        measured clean at 430px because of it.
+
+        The wrapper has to hold the header *and* the rows. They were siblings,
+        which is how a scroll container on either alone would have slid the body
+        out from under its own headings.
+      */}
+      <div className="mt-[34px] max-w-auto-wide rounded-[20px] bg-white pb-[24px] max-canvas:overflow-x-auto">
         <div className="flex flex-wrap items-start gap-4 px-[28px] pt-[28px]">
           <div className="min-w-0 flex-1">
             <p className="text-22 font-bold text-ink">Automation output queue</p>
