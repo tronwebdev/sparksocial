@@ -62,6 +62,30 @@ import { join } from 'node:path';
 
 const ROOT = 'apps/web/src/components';
 
+/**
+ * Screens that answer a narrow viewport by *scaling*, not reflowing.
+ *
+ * `AgencyStage` puts its content on a 1728px stage and applies
+ * `transform: scale(min(1, vw / 1728))`; `CampaignWizard` does `pageW / 1728`
+ * the same way. Measured on the deployed agency portal at 430px:
+ * `scale(0.2488)`, stage exactly 430 wide, zero elements past the viewport. An
+ * absolute coordinate inside a stage like that cannot strand — the whole plane
+ * shrinks with the window.
+ *
+ * Excluded because counting them was this scan's largest error: 75 points of
+ * agency and 42 of campaign, 117 of about 206, every one a file that already
+ * handles the case by other means.
+ *
+ * Their real problem is the opposite, and this scan cannot see that either. At
+ * 0.2488 a 16px label renders at 4px and a 14px one at 3.5px: nothing is lost
+ * and nothing can be read. Scaling suits a splash screen — the reasoning
+ * `Stage.tsx` records for "Meet Spark" — and suits a client table considerably
+ * less. Converting them to flow means rewriting layouts that are absolute by
+ * construction, which is a decision rather than a tidy-up, and
+ * `AgencyStage`'s own header explains why it was not taken.
+ */
+const SCALED_STAGE = [/^agency\//, /^campaign\//];
+
 /** Offsets smaller than this sit inside a box rather than on the canvas. */
 const CANVAS_OFFSET = 48;
 
@@ -151,6 +175,7 @@ function audit(file) {
 
 const rows = walk(ROOT)
   .map((file) => ({ file: file.replace(/\\/g, '/').replace(`${ROOT}/`, ''), ...audit(file) }))
+  .filter((r) => !SCALED_STAGE.some((re) => re.test(r.file)))
   .map((r) => ({ ...r, total: r.stranded + r.unfolding + r.pinned + r.minWidth * 3 }))
   .filter((r) => r.total > 0)
   .sort((a, b) => b.total - a.total);
