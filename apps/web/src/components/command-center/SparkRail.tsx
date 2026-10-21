@@ -233,13 +233,33 @@ export function SparkRail({
           />
         </svg>
 
-        {/* 398x468 at radius 20.78 from y=192, 1px wider than the panel on each
-            side so its corners are clipped square by the panel's own radius. */}
-        <div className="absolute -left-px -right-px top-[292px] h-[668px] rounded-[20.78px] bg-white" />
+        {/*
+          398x468 at radius 20.78 from y=192, 1px wider than the panel on each
+          side so its corners are clipped square by the panel's own radius.
+
+          ── 192 and 468, not 292 and 668 ──────────────────────────────────
+
+          Both numbers disagreed with this comment, and the comment was right.
+          The panel shipped at `top-[292px] h-[668px]` and the card below it at
+          `top-[322px]`, each 100px past where the line above them says they go,
+          while the traits stack (366) and the buttons (598) stayed put. The
+          card therefore ran 322–445 and the traits began at 366: measured on
+          the deployed `/agents`, a **79px overlap**, with "No voice set" and
+          "Risk Tolerance" printed across the agent's own name.
+
+          Three independent sources agree on the original figures. These
+          comments, written in the same commit as the wrong code. The internal
+          arithmetic: 192 + 468 is exactly the 660 this rail is tall, and
+          222 + 123 leaves the 21px gap before 366. And the prototype, measured
+          in stage coordinates — identity card 541..664, voice row 685,
+          buttons 917 — which is the same spacing once the rail's own origin is
+          taken out.
+        */}
+        <div className="absolute -left-px -right-px top-[192px] h-[468px] rounded-[20.78px] bg-white" />
 
         {/* agent header: 353x123 at 21,222 on cyan 30% in a pink ring */}
         <div
-          className="absolute left-[21px] right-[22px] top-[322px] h-[123px] rounded-[15px]"
+          className="absolute left-[21px] right-[22px] top-[222px] h-[123px] rounded-[15px]"
           style={{ background: 'rgba(108,232,255,0.3)', boxShadow: 'inset 0 0 0 1px rgba(245,107,255,0.24)' }}
         >
           <span className="absolute left-[19px] top-[15.8px] block h-[92px] w-[92px]">
@@ -340,44 +360,62 @@ export function SparkRail({
           <div className="mt-4 h-px" style={{ background: 'rgba(131,131,131,0.2)' }} />
         </div>
 
-        {/* ── the two buttons, 169x41.3 on y=598 ───────────────────────── */}
-        <button
-          type="button"
-          onClick={onTogglePause}
-          disabled={busy}
-          className="absolute left-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center gap-[9px] rounded-[8.37px] text-15 font-medium text-ink disabled:opacity-50"
-          style={{
-            background: 'rgba(131,131,131,0.1)',
-            backdropFilter: 'blur(10px)',
-            boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.1)',
-          }}
-        >
-          {paused ? (
-            <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
-              <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
-              <path d="M6.8 5.6v5.8L11.4 8.5 6.8 5.6Z" fill="#0C0C0C" />
-            </svg>
-          ) : (
-            <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
-              <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
-              <path d="M6.6 5.8v5.4M10.4 5.8v5.4" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          )}
-          {paused ? 'Resume Agent' : 'Pause Agent'}
-        </button>
+        {/*
+          ── the two buttons, 169x41.3 on y=598 ──────────────────────────
 
-        <button
-          type="button"
-          onClick={() => setIdentityOpen(true)}
-          className="absolute right-[25px] top-[598px] flex h-[41.3px] w-[169px] items-center justify-center rounded-[8.37px] text-15 font-medium text-ink"
-          style={{
-            background: 'rgba(131,131,131,0.1)',
-            backdropFilter: 'blur(10px)',
-            boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.1)',
-          }}
-        >
-          View Agent Identity
-        </button>
+          The design places them `left:25 w:169` and `left:202 w:169` — side by
+          side with an 8px gap, which needs 396 of content width. Ours anchored
+          the second one `right-[25px]` instead, which is the same position only
+          at exactly 396 and is wrong everywhere else. Measured on the deployed
+          `/agents`: a 388px rail, a ~330px content box, and the two buttons
+          **overlapping by 58px** — "Pause Agen" with "View Agent Identity"
+          printed over its last four characters.
+
+          A flex row rather than the design's second coordinate. At 396 the two
+          169s and the 8px gap land exactly where the prototype puts them, and
+          below that they share what there is instead of colliding. `basis-0`
+          with `grow` is what makes them equal halves rather than sized by their
+          labels, which differ by five characters.
+        */}
+        <div className="absolute left-[25px] right-[25px] top-[598px] flex items-center gap-[8px]">
+          <button
+            type="button"
+            onClick={onTogglePause}
+            disabled={busy}
+            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center gap-[9px] rounded-[8.37px] text-15 font-medium text-ink disabled:opacity-50"
+            style={{
+              background: 'rgba(131,131,131,0.1)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.1)',
+            }}
+          >
+            {paused ? (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
+                <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
+                <path d="M6.8 5.6v5.8L11.4 8.5 6.8 5.6Z" fill="#0C0C0C" />
+              </svg>
+            ) : (
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
+                <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
+                <path d="M6.6 5.8v5.4M10.4 5.8v5.4" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            )}
+            {paused ? 'Resume Agent' : 'Pause Agent'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIdentityOpen(true)}
+            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center truncate rounded-[8.37px] text-15 font-medium text-ink"
+            style={{
+              background: 'rgba(131,131,131,0.1)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.1)',
+            }}
+          >
+            View Agent Identity
+          </button>
+        </div>
       </div>
 
       {identityOpen ? (
