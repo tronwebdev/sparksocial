@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import config from '../tailwind.config';
 import { STAGE, STEP_GEOM } from '../src/components/campaign/campaignChrome';
@@ -49,7 +49,18 @@ describe('the two stages stop scaling below canvas', () => {
     expect(FLATTEN).toContain('!left-0');
     expect(FLATTEN).toContain('!top-0');
     expect(FLATTEN).not.toContain('!static');
-    expect(SECTION).toContain(FLATTEN);
+    // `SECTION` carries the same rule behind the breakpoint, and has to: it goes
+    // on the section element in *both* layouts, so an unprefixed flatten there
+    // took the wide stage with it — harness-measured at 1300, the hero's
+    // decorative orb became a flow item and the heading landed at y=1276.
+    //
+    // The prefixed copy is written out rather than mapped from `FLATTEN`,
+    // because Tailwind generates only the class names it can find as literals
+    // in the source. This is what keeps the two from drifting.
+    for (const c of FLATTEN.split(' ')) {
+      expect(SECTION).toContain(`max-canvas:${c}`);
+    }
+    expect(SECTION).not.toMatch(/(^| )\[&>\*\]/);
     // And the one override a section needs that a flattened child does not: its
     // height is a class, so releasing it has to shout louder than one.
     expect(SECTION).toContain('max-canvas:!h-auto');
@@ -89,5 +100,46 @@ describe('the two stages stop scaling below canvas', () => {
     expect(INTRO).toContain('top-[100px] max-canvas:hidden');
     expect(INTRO).toContain("clipPath: PANEL_CLIP.popup }} />");
     expect(INTRO).toMatch(/bg-white max-canvas:hidden/);
+  });
+});
+
+/**
+ * The mistake that is silent in whichever direction you make it.
+ *
+ * `FLATTEN` has no breakpoint variant, which is right inside an `if (narrow)`
+ * return and wrong on a `className` both widths reach — there it flattens the
+ * wide stage too. Harness-measured at 1300 with that wrong: the agency hero's
+ * children went `relative`, its 760px decorative orb became a flow item, and
+ * the heading landed at y=1276. The narrow layout looked perfect throughout.
+ *
+ * The tell is the two appearing together: a class list that already names
+ * `max-canvas:` is, by construction, one that renders at both widths.
+ */
+describe('the unprefixed flatten stays inside narrow-only branches', () => {
+  const COMPONENTS = join(process.cwd(), 'apps/web/src/components');
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      const path = join(dir, entry);
+      if (statSync(path).isDirectory()) walk(path, out);
+      else if (entry.endsWith('.tsx')) out.push(path);
+    }
+    return out;
+  }
+
+  it('is never mixed with a max-canvas rule in one class list', () => {
+    const offenders: string[] = [];
+    for (const file of walk(COMPONENTS)) {
+      const src = readFileSync(file, 'utf8');
+      for (const m of src.matchAll(/cn\(([\s\S]{0,600}?)\)\}/g)) {
+        const body = m[1]!;
+        // Plain string work rather than a word boundary, because `FLATTEN` is a
+        // prefix of `FLATTEN_NARROW`: take the long name out and see whether the
+        // short one is still there.
+        if (!body.split('FLATTEN_NARROW').join('').includes('FLATTEN')) continue;
+        if (body.includes('max-canvas:')) offenders.push(file.replace(COMPONENTS, ''));
+      }
+    }
+    expect(offenders, offenders.join(', ')).toEqual([]);
   });
 });

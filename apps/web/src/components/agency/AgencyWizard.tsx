@@ -760,7 +760,7 @@ function StepDone({
         {/* the tilted glass panel the design floats on the right */}
         <span
           aria-hidden
-          className="absolute right-[44px] top-[36px] block h-[236px] w-[196px] rounded-[12px]"
+          className="absolute right-[44px] top-[36px] block h-[236px] w-[196px] rounded-[12px] max-canvas:hidden"
           style={{
             background: 'linear-gradient(160deg,rgba(255,255,255,0.7),rgba(255,255,255,0.25))',
             boxShadow: '0 18px 40px -26px rgba(60,120,200,0.5)',

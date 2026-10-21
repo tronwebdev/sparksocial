@@ -82,6 +82,34 @@ export function useStageWidth(stage: number): number {
 export const FLATTEN = '[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-full';
 
 /**
+ * The same rule, gated on the breakpoint.
+ *
+ * `FLATTEN` carries no variant because the wizard applies it inside a branch
+ * that only renders below `NARROW_BELOW` — there, the media query would be
+ * redundant. Anything put on an element that renders in *both* layouts needs
+ * this one instead: an unprefixed flatten there takes the wide stage with it.
+ *
+ * The rule of thumb, since both forms now exist: `FLATTEN` inside an
+ * `if (narrow)` return, `FLATTEN_NARROW` in a `className` that both widths
+ * reach. Getting it the wrong way round is silent — the layout that breaks is
+ * the one nobody is testing at the time.
+ *
+ * Caught in a harness rather than in review, and it was the whole desktop
+ * portal: at 1300 the hero's children went `relative`, its 760px decorative orb
+ * became a flow item, and the heading landed at y=1276 — the same failure the
+ * narrow layout had had, now on the layout that was working.
+ *
+ * Written out rather than derived from `FLATTEN` with a `map`, which is the
+ * obvious way to write it and would have produced four class names that exist
+ * only at runtime. Tailwind scans source text for literals; a class assembled
+ * by string concatenation is never generated, so the rule would have been
+ * silently absent instead of silently wrong. `narrowStage.test.ts` holds the
+ * two in step.
+ */
+export const FLATTEN_NARROW =
+  'max-canvas:[&>*]:!relative max-canvas:[&>*]:!left-0 max-canvas:[&>*]:!top-0 max-canvas:[&>*]:!max-w-full';
+
+/**
  * A stage section, below the breakpoint.
  *
  * The agency portal is eight of these: a `w-ag-wide` card placed at a stage
@@ -94,4 +122,4 @@ export const FLATTEN = '[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-
  * `!h-auto` has to shout, because the height it is overriding is a class
  * (`h-[376px]`) rather than an inline style.
  */
-export const SECTION = `max-canvas:!h-auto max-canvas:flex max-canvas:flex-col max-canvas:gap-[14px] max-canvas:p-[20px] max-canvas:[&_*]:!whitespace-normal ${FLATTEN}`;
+export const SECTION = `max-canvas:!h-auto max-canvas:flex max-canvas:flex-col max-canvas:gap-[14px] max-canvas:p-[20px] max-canvas:[&_*]:!whitespace-normal ${FLATTEN_NARROW}`;

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { RosterBrand } from './useAgencyRoster';
-import { SECTION } from '@/components/shell/narrowStage';
+import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
 import { cn } from '@/lib/utils';
 
 /**
@@ -50,10 +50,19 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
         The illustration cluster the design floats over the card's right half —
         two bleeding orbs, a chat bubble, and four product tiles. All of it is
         decorative, so it is `aria-hidden` and never in the tab order.
+
+        And none of it is drawn below `canvas`. Flattening the card turns every
+        direct child into a flow item, which is right for the heading and the
+        button and absurd for a 760px circle hung off the card's corner:
+        measured on the deployed `/agency` at 430px with the first pass of this,
+        that one orb became a 760px-tall block and pushed the heading to y=1022,
+        off the bottom of a screen that was otherwise correct. A decoration
+        placed *outside* the box it decorates has no meaning once the box is a
+        column.
       */}
       <span
         aria-hidden
-        className="absolute right-[-40px] top-[-190px] block h-[760px] w-[760px] rounded-full"
+        className="absolute right-[-40px] top-[-190px] block h-[760px] w-[760px] rounded-full max-canvas:hidden"
         style={{ background: 'radial-gradient(circle, rgba(244,214,246,0.75) 0%, rgba(226,222,250,0.45) 52%, rgba(233,242,250,0) 74%)' }}
       />
       <span
@@ -254,8 +263,25 @@ export function AgencyHomeSummary({
         )}
       </div>
 
-      {/* ── generated assets ───────────────────────────────────────────── */}
-      <div className="absolute left-[826px] top-[142px] h-[326px] w-[836px] overflow-hidden rounded-[16px] bg-ag-assets">
+      {/*
+        ── generated assets ──────────────────────────────────────────────
+
+        Three 300px cards side by side at 16, 332 and 648 inside an 836px
+        panel. The panel is a direct child and so flows; its three cards are a
+        level below that, which is exactly as far as flattening does not reach,
+        so they get the same treatment one level down.
+
+        Unmeasured, and worth saying so: this is the launched-agency state and
+        the test organisation has not launched one, so it renders nowhere I can
+        point a browser at. The shape is the same as the client table's rows,
+        which were measured.
+      */}
+      <div
+        className={cn(
+          'absolute left-[826px] top-[142px] h-[326px] w-[836px] overflow-hidden rounded-[16px] bg-ag-assets',
+          SECTION,
+        )}
+      >
         {/* Agency Website — the design's own tinted card with a phone mock. */}
         <div
           className="absolute left-[16px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px]"
@@ -477,18 +503,35 @@ function ToolCard({
     <button
       type="button"
       onClick={onClick}
-      className="absolute top-[20px] h-[96px] w-[438px] rounded-[14px] bg-white text-left transition-shadow hover:shadow-[0_14px_30px_-16px_rgba(12,12,12,0.5)]"
+      /*
+        The one thing the section's own flattening could not reach. A tool card
+        is a direct child of the Growth Tools section, so it flows; its icon,
+        title and body are *grand*children, still placed at 16 and 92 against a
+        card that is now 374 rather than 438. Measured on the deployed
+        `/agency` at 430px, the body's `w-[330px]` at `left-[92px]` was the only
+        thing left past the viewport, ending at 458.
+
+        So the card wraps too: icon and title on one line, the body beneath.
+        One more level, rather than a rule that recurses — a blanket
+        `[&_*]` would reach inside every glyph and badge on the page to fix two
+        paragraphs.
+      */
+      className={cn(
+        'absolute top-[20px] h-[96px] w-[438px] rounded-[14px] bg-white text-left transition-shadow hover:shadow-[0_14px_30px_-16px_rgba(12,12,12,0.5)]',
+        'max-canvas:!h-auto max-canvas:flex max-canvas:flex-wrap max-canvas:items-center max-canvas:gap-x-[12px] max-canvas:gap-y-[8px] max-canvas:p-[14px]',
+        FLATTEN_NARROW,
+      )}
       style={{ left: x, boxShadow: '0 10px 26px -20px rgba(12,12,12,0.4)' }}
     >
       <span
         aria-hidden
-        className="absolute left-[16px] top-[18px] flex h-[60px] w-[60px] items-center justify-center rounded-[14px]"
+        className="absolute left-[16px] top-[18px] flex h-[60px] w-[60px] items-center justify-center rounded-[14px] max-canvas:shrink-0"
         style={{ background: tint }}
       >
         {icon}
       </span>
       <span className="absolute left-[92px] top-[18px] text-19 font-bold text-ink">{title}</span>
-      <span className="absolute left-[92px] top-[48px] block w-[330px] text-14 font-normal leading-[1.3]" style={{ color: 'rgb(91,91,91)' }}>
+      <span className="absolute left-[92px] top-[48px] block w-[330px] text-14 font-normal leading-[1.3] max-canvas:!w-auto max-canvas:basis-full" style={{ color: 'rgb(91,91,91)' }}>
         {body}
       </span>
     </button>
