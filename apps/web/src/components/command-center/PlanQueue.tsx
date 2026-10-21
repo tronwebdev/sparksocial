@@ -552,24 +552,41 @@ export function PlanQueue({
                   media well landed on 352,22 against 320,12, the kind on 669
                   against 562, the chip on 831 against 770. Absolute offsets in a
                   fixed 104 row, the same fix the dashboard's Upcoming rows got.
+
+                  ── And what happens below `canvas` ─────────────────────────
+
+                  Those offsets describe a 1100px row, and there is no 1100px
+                  row on a phone. Measured on the deployed `/agents` at 430px:
+                  eight elements past the viewport, the furthest at x=874, and
+                  no horizontally scrollable ancestor over any of them — so the
+                  medium, the platform, the copy and the status chip were all
+                  simply gone.
+
+                  Below the breakpoint the same children become a wrapped card:
+                  time and glyph on the first line, confidence on its own, then
+                  the media well, platform mark and kind together, the summary
+                  full-width beneath, and the chip after it. The `flex-wrap`
+                  does the arranging, so each child needs only to stop being
+                  positioned — the order they already sit in is the order they
+                  should read in.
                 */
-                className="relative h-[104px]"
+                className="relative h-[104px] max-canvas:flex max-canvas:h-auto max-canvas:flex-wrap max-canvas:items-center max-canvas:gap-x-[14px] max-canvas:gap-y-[6px] max-canvas:px-[20px] max-canvas:py-[18px]"
                 style={{ borderTop: i === 0 ? undefined : '1px solid rgba(131,131,131,0.12)' }}
               >
-                <span className="absolute left-[20px] top-[22px] block" aria-hidden>
+                <span className="absolute left-[20px] top-[22px] block max-canvas:static max-canvas:shrink-0" aria-hidden>
                   <QueueCalendarGlyph />
                 </span>
 
                 {/* The next one out is the only row anybody is looking for - and
                     it is the first of the whole queue, not of whichever page you
                     are on. */}
-                <p className="absolute left-[55px] top-[22px] whitespace-nowrap text-20 font-semibold leading-[1.28] text-ink">
+                <p className="absolute left-[55px] top-[22px] whitespace-nowrap text-20 font-semibold leading-[1.28] text-ink max-canvas:static max-canvas:whitespace-normal">
                   {item.scheduledAt ? when(item.scheduledAt) : 'No slot yet'}
                   {absolute === 0 ? (
                     <span className="ml-2 align-middle text-14 font-medium text-primary">Next</span>
                   ) : null}
                 </p>
-                <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted">
+                <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted max-canvas:static max-canvas:basis-full">
                   Confidence: <b className="font-semibold text-ink">High</b>
                 </p>
 
@@ -580,7 +597,7 @@ export function PlanQueue({
                   three.
                 */}
                 <div
-                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-12 text-ink-muted"
+                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-12 text-ink-muted max-canvas:static max-canvas:h-[44px] max-canvas:w-[72px] max-canvas:shrink-0"
                   style={{ background: 'rgba(131,131,131,0.1)' }}
                 >
                   {item.mediaType ?? 'text'}
@@ -589,20 +606,20 @@ export function PlanQueue({
                 {/* The design badges the platform at 492,24 in 26.5px and puts
                     the kind at 562,27 — so with `public/icons` in place the mark
                     goes back in its own slot and the label starts at 562. */}
-                <span className="absolute left-[492px] top-[24px]">
+                <span className="absolute left-[492px] top-[24px] max-canvas:static max-canvas:shrink-0">
                   <PlatformIcon platform={item.platform} size={26.5} />
                 </span>
-                <p className="absolute left-[562px] top-[27px] max-w-[194px] truncate text-18 font-medium text-ink">
+                <p className="absolute left-[562px] top-[27px] max-w-[194px] truncate text-18 font-medium text-ink max-canvas:static max-canvas:min-w-0 max-canvas:flex-1">
                   {/* Named, not the raw enum: `youtube_shorts` on a row is the
                       kind of leak the platform label map exists to stop. */}
                   {item.platform ? platformLabel(item.platform) : 'no account chosen'}
                 </p>
-                <p className="absolute left-[492px] top-[62px] max-w-[264px] truncate text-16 leading-[1.3] text-ink-muted">
+                <p className="absolute left-[492px] top-[62px] max-w-[264px] truncate text-16 leading-[1.3] text-ink-muted max-canvas:static max-canvas:max-w-none max-canvas:basis-full">
                   {item.summary === NO_COPY ? <span className="italic">not written yet</span> : item.summary}
                 </p>
 
                 <span
-                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-15 font-medium"
+                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-15 font-medium max-canvas:static max-canvas:shrink-0"
                   style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
                 >
                   {chip.label}
@@ -654,7 +671,17 @@ export function PlanQueue({
                   the design's width (1079 + 37 = 1116, then 47 back for each) and
                   keeps all three whole at any narrower one.
                 */}
-                <div className="absolute right-[13px] top-[32px] flex shrink-0 items-center gap-[10px]">
+                {/*
+                  The actions join the flow with everything else.
+                  
+                  Anchored `right-[13px]` they are correct at any width — which
+                  is why the audit never flagged them — and that is exactly the
+                  trap: left absolute inside a row whose other children have
+                  become static, they would sit on top of the wrapped card
+                  rather than after it. Found by reading the row back rather
+                  than by the scan.
+                */}
+                <div className="absolute right-[13px] top-[32px] flex shrink-0 items-center gap-[10px] max-canvas:static max-canvas:ml-auto">
                 {item.status === 'needs_review' ? (
                   <RowAction
                     disabled

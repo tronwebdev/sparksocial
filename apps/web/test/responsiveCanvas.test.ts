@@ -57,6 +57,8 @@ const CONVERTED: ReadonlyArray<readonly [string, string]> = [
   ['settings shell', 'src/components/settings/SettingsShell.tsx'],
   ['dashboard banner', 'src/components/dashboard/AgentBanner.tsx'],
   ['calendar filters', 'src/components/command-center/QueueFilters.tsx'],
+  ['plan queue', 'src/components/command-center/PlanQueue.tsx'],
+  ['agent calendar tab', 'src/components/command-center/AgentCalendarTab.tsx'],
 ];
 
 /**
@@ -274,5 +276,54 @@ describe('the calendar filters fold instead of overflowing', () => {
     expect(select).not.toContain('calc(50%');
     expect(select).toContain('max-canvas:grow');
     expect(select).toContain('max-canvas:basis-[160px]');
+  });
+});
+
+/**
+ * COLLAPSE — a fourth failure mode, found on the agent calendar band.
+ *
+ * `left: 452px` together with `right: 240px` resolves to a *negative* width on
+ * a parent narrower than their sum. The browser clamps that to zero and
+ * `overflow-hidden` finishes the job, so the element is in the DOM, sized to
+ * nothing, and invisible. Measured on the deployed `/agents?tab=calendar` at
+ * 430px: two rows at width 0, holding "No voice set · Risk Tolerance" and
+ * "Analyzing engagement signals".
+ *
+ * It is worth its own name because every other check here looks for content
+ * *outside* the viewport, and this one never leaves it — an overflow scan
+ * reports the screen clean while two rows of it have quietly disappeared. The
+ * fix differs too: a stranded element only needs to stop being positioned, a
+ * collapsed one needs the `left`/`right` pair released.
+ *
+ * Verified in a harness from the real class strings: those rows go from 0 to
+ * 402px wide at 430, and are still 1036px at 452 on a 1728 viewport.
+ */
+describe('nothing is pinned to both edges of a box it cannot fit', () => {
+  for (const [name, rel] of CONVERTED) {
+    it(`${name} releases any left/right pair below canvas`, () => {
+      const squeezed = classNames(read(rel)).filter((c) => {
+        if (!/(^|\s)absolute(\s|$)/.test(c)) return false;
+        const left = /(?:^|\s)left-\[(\d+)px\]/.exec(c);
+        const right = /(?:^|\s)right-\[(\d+)px\]/.exec(c);
+        if (!left || !right) return false;
+        // Only a pair wide enough to overrun a phone, and only if nothing
+        // below `canvas` takes it out of the equation.
+        return Number(left[1]) + Number(right[1]) > 430 && !c.includes('max-canvas:static');
+      });
+
+      expect(squeezed, [rel, ...squeezed].join('\n')).toEqual([]);
+    });
+  }
+
+  it('recognises the shape it is about', () => {
+    // A bug in the predicate would make every case above pass in silence.
+    const squeeze = (c: string) =>
+      /(^|\s)absolute(\s|$)/.test(c) &&
+      /left-\[(\d+)px\]/.test(c) &&
+      /right-\[(\d+)px\]/.test(c);
+
+    expect(squeeze('absolute left-[452px] right-[240px] top-[26px]')).toBe(true);
+    expect(squeeze('absolute left-[452px] top-[107px]')).toBe(false);
+    expect(squeeze('absolute right-[27px] top-[28px]')).toBe(false);
   });
 });

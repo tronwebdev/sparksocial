@@ -90,8 +90,26 @@ export function AgentCalendarTab({
         The buttons are right-anchored (1625 - 1408 - 190 = 27) so they hold to
         the edge at any width; everything else is left-pinned, as drawn.
       */}
+      {/*
+        ── Below `canvas` this band stops being a band ─────────────────────
+
+        Its children are placed on a ~1600px plane: the identity card at 14,
+        the two meta rows spanning 452 to 240-from-the-right, the attention
+        banner at 452 with an 830px width, and two buttons pinned 27 from the
+        right edge. None of that survives a phone, and it failed in a way worth
+        naming because it is not the one the other screens had.
+
+        Measured on the deployed `/agents?tab=calendar` at 430px: the two meta
+        rows computed to **width 0**. `left: 452px` with `right: 240px` on a
+        narrower parent is a negative width, clamped to zero, and
+        `overflow-hidden` finished the job — "No voice set · Risk Tolerance" and
+        "Analyzing engagement signals" were in the DOM, sized to nothing, and
+        invisible. Nothing was off-screen, so an overflow check finds this
+        clean; it is collapse rather than strandedness, and it wants the
+        `left`/`right` pair released rather than merely being made static.
+      */}
       <section
-        className="relative h-[177px] overflow-hidden rounded-xl"
+        className="relative h-[177px] overflow-hidden rounded-xl max-canvas:flex max-canvas:h-auto max-canvas:flex-col max-canvas:gap-[14px] max-canvas:overflow-visible max-canvas:p-[14px]"
         style={{
           background:
             'linear-gradient(103deg, rgba(108,232,255,0.35) 0%, rgba(194,244,254,0.5) 38%, rgba(245,107,255,0.18) 100%), #EAF7FB',
@@ -99,21 +117,21 @@ export function AgentCalendarTab({
       >
         {/* 400x149 frosted identity card, its own children on its own offsets */}
         <div
-          className="absolute left-[14px] top-[14px] h-[149px] w-[400px] rounded-[15px]"
+          className="absolute left-[14px] top-[14px] h-[149px] w-[400px] rounded-[15px] max-canvas:static max-canvas:flex max-canvas:h-auto max-canvas:w-full max-canvas:flex-wrap max-canvas:items-center max-canvas:gap-x-[12px] max-canvas:gap-y-[8px] max-canvas:p-[16px]"
           style={{
             background: 'rgba(255,255,255,0.75)',
             boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.9)',
             backdropFilter: 'blur(12px)',
           }}
         >
-          <span className="absolute left-[26px] top-[24px] block h-[100px] w-[100px]">
+          <span className="absolute left-[26px] top-[24px] block h-[100px] w-[100px] max-canvas:static max-canvas:h-[64px] max-canvas:w-[64px] max-canvas:shrink-0">
             <SparkMark variant="shell" size={100} />
           </span>
-          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-32 font-semibold leading-[1.27] text-ink">
+          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-32 font-semibold leading-[1.27] text-ink max-canvas:static max-canvas:min-w-0 max-canvas:flex-1">
             {agentName ?? UNNAMED_AGENT}
           </p>
-          <span className="absolute left-[152px] top-[92px] text-16 leading-none text-ink">Status</span>
-          <span className="absolute left-[210px] top-[86px] inline-flex h-[31px] items-center gap-[7px] rounded-[90px] bg-white px-[13px]">
+          <span className="absolute left-[152px] top-[92px] text-16 leading-none text-ink max-canvas:static">Status</span>
+          <span className="absolute left-[210px] top-[86px] inline-flex h-[31px] items-center gap-[7px] rounded-[90px] bg-white px-[13px] max-canvas:static max-canvas:shrink-0">
             <span
               className="block h-[11px] w-[11px] rounded-full"
               style={{ background: paused ? '#F35525' : '#13D711' }}
@@ -123,7 +141,7 @@ export function AgentCalendarTab({
         </div>
 
         {/* traits — 452,26 with a 26px gap */}
-        <div className="absolute left-[452px] right-[240px] top-[26px] flex items-center gap-x-[26px] overflow-hidden">
+        <div className="absolute left-[452px] right-[240px] top-[26px] flex items-center gap-x-[26px] overflow-hidden max-canvas:static max-canvas:flex-wrap max-canvas:gap-y-[6px] max-canvas:overflow-visible">
           <span className="flex shrink-0 items-center gap-[9px]">
             <svg width="16" height="20" viewBox="0 0 16 20" fill="none" aria-hidden>
               <circle cx="8" cy="4" r="4" fill="#2F8291" />
@@ -158,7 +176,7 @@ export function AgentCalendarTab({
           that keep spinning while the agent is paused is the one thing a status
           strip must not do.
         */}
-        <div className="absolute left-[452px] right-[240px] top-[66px] flex items-center gap-x-[24px] overflow-hidden">
+        <div className="absolute left-[452px] right-[240px] top-[66px] flex items-center gap-x-[24px] overflow-hidden max-canvas:static max-canvas:flex-wrap max-canvas:gap-y-[6px] max-canvas:overflow-visible">
           {(paused
             ? [{ label: 'Paused — it will not act until you resume', spin: false }]
             : [
@@ -198,7 +216,7 @@ export function AgentCalendarTab({
 
         {/* attention — 452,107, 830 wide */}
         {reviewCount > 0 ? (
-          <div className="absolute left-[452px] top-[107px] w-[830px] max-w-[calc(100%-692px)]">
+          <div className="absolute left-[452px] top-[107px] w-[830px] max-w-[calc(100%-692px)] max-canvas:static max-canvas:w-full max-canvas:max-w-none">
             <NeedsAttentionBanner count={reviewCount} href="?tab=calendar&attention=1" />
           </div>
         ) : null}
@@ -208,7 +226,7 @@ export function AgentCalendarTab({
           type="button"
           onClick={onTogglePause}
           disabled={busy}
-          className="absolute right-[27px] top-[28px] flex h-12 w-[190px] items-center justify-center gap-[9px] rounded-[10px] bg-white text-16 font-medium text-ink disabled:opacity-50"
+          className="absolute right-[27px] top-[28px] max-canvas:static max-canvas:w-full flex h-12 w-[190px] items-center justify-center gap-[9px] rounded-[10px] bg-white text-16 font-medium text-ink disabled:opacity-50"
           style={{ boxShadow: '0 8px 22px -12px rgba(12,12,12,0.3)' }}
         >
           <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
@@ -226,7 +244,7 @@ export function AgentCalendarTab({
         <button
           type="button"
           onClick={() => setIdentityOpen(true)}
-          className="absolute right-[27px] top-[90px] flex h-12 w-[190px] items-center justify-center rounded-[10px] bg-white text-16 font-medium text-ink"
+          className="absolute right-[27px] top-[90px] max-canvas:static max-canvas:w-full flex h-12 w-[190px] items-center justify-center rounded-[10px] bg-white text-16 font-medium text-ink"
           style={{ boxShadow: '0 8px 22px -12px rgba(12,12,12,0.3)' }}
         >
           View Agent Identity
