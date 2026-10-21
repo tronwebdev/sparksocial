@@ -1,3 +1,14 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { invoke } from '@/lib/tools';
+
+const PLAN_LABEL: Record<string, string> = {
+  starter: 'Starter Plan',
+  growth: 'Growth Plan',
+  agency: 'Agency Plan',
+};
+
 /**
  * The pinned plan card — `SparkSocial Dashboard.dc.html`, 282×77 at
  * `left:21 top:1023`, i.e. bottom-anchored, which is what it becomes here.
@@ -14,11 +25,50 @@
  * and the card is 77px tall — three lines do not fit without shrinking the type
  * below what the design uses.
  *
- * Credits are still a placeholder until the credit ledger exists (plan §9, P3).
- * Wiring a real number now would mean inventing a source for it, and this is a
- * bad place to be approximately right about money.
+ * ── The numbers are real now ─────────────────────────────────────────────
+ *
+ * This used to read "Credits are still a placeholder until the credit ledger
+ * exists (plan §9, P3). Wiring a real number now would mean inventing a source
+ * for it, and this is a bad place to be approximately right about money." That
+ * was the right call and it has expired: the ledger exists, `org.usage.get`
+ * reports against it, and `/settings/credits` has been showing real spend for
+ * some time. So the card was no longer declining to invent a number — it was
+ * showing an invented one, 1,200 credits and a "Pro Plan" that is not even one
+ * of the three tiers the schema has (`starter`, `growth`, `agency`), in the one
+ * place a person glances at to see what is left.
+ *
+ * ── Why it can show nothing ──────────────────────────────────────────────
+ *
+ * Both reads are `scopes: ['owner', 'admin']`, deliberately — spend is
+ * commercial information about the organisation, and an agency's client has no
+ * business reading what the agency pays per video. The rail renders for every
+ * role, so an editor or a viewer gets the avatar and no numbers. That is the
+ * honest degradation: an empty slot says "not yours to see", where a fallback
+ * number would say something false to exactly the people who cannot check it.
+ *
+ * One call, not two: `org.create` with no argument is the documented read for
+ * "what plan is this org on", and it is what the Agency Portal already uses.
  */
 export function PlanCard() {
+  const [plan, setPlan] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      /*
+       * Settled, not awaited in sequence: a viewer is refused both, and the
+       * plan being readable while the balance is not (or the reverse) should
+       * still show whichever half came back.
+       */
+      const [planRes, usageRes] = await Promise.all([
+        invoke<{ plan: string }>('org.create', {}),
+        invoke<{ remainingCredits: number }>('org.usage.get', {}),
+      ]);
+      if (planRes.status === 'succeeded') setPlan(planRes.output.plan);
+      if (usageRes.status === 'succeeded') setCredits(usageRes.output.remainingCredits);
+    })();
+  }, []);
+
   return (
     <div
       className="mx-[21px] mb-6 h-[77px] rounded-md max-xl:hidden"
@@ -45,15 +95,17 @@ export function PlanCard() {
         </span>
 
         <span className="absolute left-[85px] top-[11px] text-18 font-semibold leading-[1.28] text-ink">
-          Pro Plan
+          {plan ? (PLAN_LABEL[plan] ?? `${plan} Plan`) : 'Plan'}
         </span>
 
-        <span
-          className="absolute left-[85px] top-[39px] flex h-[26px] w-[112px] items-center rounded pl-[9px] text-14 font-semibold"
-          style={{ background: '#DCF2F6', color: '#838383' }}
-        >
-          1,200 credits
-        </span>
+        {credits === null ? null : (
+          <span
+            className="absolute left-[85px] top-[39px] flex h-[26px] min-w-[112px] items-center rounded px-[9px] text-14 font-semibold"
+            style={{ background: '#DCF2F6', color: '#838383' }}
+          >
+            {credits.toLocaleString()} credits
+          </span>
+        )}
 
         <svg
           width="8"

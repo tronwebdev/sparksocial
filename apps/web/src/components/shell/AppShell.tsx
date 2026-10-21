@@ -9,6 +9,10 @@ import { PlanCard } from './PlanCard';
  * The two-column app frame: a 322px sidebar on white, and a rounded content canvas
  * card inset 18px with the brand gradient wash.
  *
+ * The sidebar is a sticky, viewport-height column: the page scrolls under it
+ * and the plan card stays in the bottom corner. See the comment on the `aside`
+ * for what it was doing before and how that was measured.
+ *
  * `chrome` exists because not every screen in the prototype wears this frame —
  * Calendar, Discovery and Command Center are full-bleed with their own Back
  * affordance. Modelling that from the start avoids retrofitting an escape hatch
@@ -33,7 +37,29 @@ export function AppShell({ children, chrome = 'shell' }: AppShellProps) {
           'grid-cols-[var(--ss-rail)_1fr] max-xl:grid-cols-[88px_1fr] max-md:grid-cols-1',
         )}
       >
-        <aside className="flex flex-col max-md:hidden">
+        {/*
+          ── The rail stays put ──────────────────────────────────────────
+
+          It did not. The grid is `min-h-screen` and nothing inside it scrolls
+          on its own, so the *document* scrolls and the rail scrolled with it.
+          Measured on the deployed `/home` at 1440x900: document 1465 tall
+          against a 900 viewport, `aside` 1465 tall and `position: static`.
+          `mt-auto` below pins the plan card to the bottom of that 1465px
+          column, which is 565px past the fold — the card the design puts in
+          the corner of the screen was only reachable by scrolling to the end
+          of whatever page you were on.
+
+          `sticky` rather than `fixed`: the grid column already reserves the
+          rail's width, and a fixed rail leaves that column empty and overlays
+          the canvas. Sticky keeps the track and parks the content in it.
+
+          `h-screen` is what makes `mt-auto` mean "the bottom of the screen"
+          rather than "the bottom of the page", and `min-h-0` lets the nav in
+          the middle be the part that gives when a short window cannot hold
+          everything — the plan card and the wordmark are fixed furniture, the
+          list of links is not.
+        */}
+        <aside className="sticky top-0 flex h-screen flex-col max-md:hidden">
           {/*
             The wordmark is the route to the dashboard. That is how the
             prototypes reach it - their nav has no Home row, and the Brand Home
@@ -46,7 +72,9 @@ export function AppShell({ children, chrome = 'shell' }: AppShellProps) {
           >
             <Wordmark className="max-xl:[&>span]:hidden" />
           </Link>
-          <SidebarNav />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SidebarNav />
+          </div>
           {/*
             Ask Spark used to sit here, under a docstring claiming 48 of 61
             prototypes put it in the sidebar. 48 of 61 do have it; not one of
@@ -58,7 +86,9 @@ export function AppShell({ children, chrome = 'shell' }: AppShellProps) {
 
             It is a page-header control now, so `TopBar` renders it.
           */}
-          <div className="mt-auto" />
+          {/* `mt-auto` is gone with the scroll container above it: the nav
+              takes the slack now, so the card sits under it at the foot of a
+              viewport-height column rather than being pushed there. */}
           <PlanCard />
         </aside>
 
