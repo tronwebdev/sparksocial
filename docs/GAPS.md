@@ -88,10 +88,30 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a
       decision rather than on time, and the decision is yours.**
+- [ ] **Generated media is stored as a vendor URL that expires.** `content.generate_broll`
+      and `content.generate_image` keep whatever link the vendor returned in the draft's beat;
+      only the OpenAI image path goes through a `BlobStore`, and only because OpenAI returns
+      base64 rather than a link. Higgsfield documents output retention as *"at least seven
+      days"* and says to copy files to your own storage — so a draft sitting in review for a
+      fortnight loses its footage, and the beat still points confidently at a dead URL. fal's
+      retention is not documented either way, which means the same risk is probably already
+      live on the primary. The fix is to mirror completed media into R2 on generation, which
+      touches both vendors and both media types; the reason it is not done here is that it is
+      a storage decision, not a client one.
+- [ ] **The b-roll cost estimate is 40¢ against a real ~$1.04.** `estimateCents: () => 40` was
+      an approximation for fal's `ltx-video`. The deployed `FAL_VIDEO_MODEL` is Seedance 2.5,
+      and Higgsfield lists the same model at **$0.207/s** — a five-second clip is about $1.04,
+      and the duration whitelist allows 30s, which is **$6.21 for one clip**. The estimate
+      gates approval and feeds the credit model, so being 2.5× under is not a rounding error.
+      Higgsfield has the honest fix available: `POST /estimate/{endpointId}` returns
+      `{ credits, usd }` for the exact parameters before anything is charged. fal has no
+      equivalent, so a per-second table keyed on the configured model is the fallback.
 - [ ] **Vendor keys, no code path missing** — fal.ai (account locked on billing, blocks real
       image generation), Higgsfield (video backup behind fal, written and unit-tested against
       the published API, never called with a real credential — the submit shape, the status
-      body and the four terminal states are all read from docs rather than observed), HeyGen
+      body, the four terminal states and the concurrency-as-400 behaviour are all read from
+      docs rather than observed; the open question is what codec it returns, since the schema
+      has no codec field and fal's same model needed `H264` to be playable), HeyGen
       (key configured, never spent real credits confirming a render completes), Ayrshare (adapter ready, no key; deliberately out of default routing behind
       `PUBLISH_USE_AGGREGATOR=true`, reserved for long-tail platforms post-GA), Product Hunt /
       Pinterest / Google Drive / Canva (code-complete, unit-tested, never live-verified). Setup

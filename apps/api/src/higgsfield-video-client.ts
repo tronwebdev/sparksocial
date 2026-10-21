@@ -43,8 +43,15 @@ import { videoUnavailable } from './video-errors.js';
  *
  * `video-client.ts` records a paid-for, unusable render: Seedance defaults to
  * generating its own ambient sound and speech, which then talks over the
- * ElevenLabs narration. Higgsfield's Kling endpoints default `sound` to `"on"`
- * and the Hailuo ones generate audio too, so the same trap is here, pre-set.
+ * ElevenLabs narration. It is the *same model* here, with the same
+ * `generate_audio: true` default, so the trap is identical and already sprung.
+ *
+ * One thing fal's config has that this cannot copy: `codec: H264`. fal's
+ * Seedance returns HEVC Main 10 under `codec: auto`, which headless Chrome
+ * cannot decode — every clip reached the renderer and died as `Code 4 -` with
+ * an empty message. Higgsfield's schema has no `codec` field at all, so what it
+ * returns is unknown and cannot be asked for. That is the first thing to check
+ * on the first real clip: play it in the composer, not just download it.
  *
  * It is not fixed in code, for the reason the fal client gives: the next model
  * spells it differently or does not have it, and a table of model quirks in
@@ -66,16 +73,54 @@ export interface HiggsfieldVideoClientOptions {
 }
 
 /**
- * Kling 3.0 Standard, which takes the two things a b-roll beat actually asks
- * for: an aspect ratio (`16:9`, `9:16`, `1:1`) and a duration between 3 and 15
- * seconds. Hailuo accepts only 6 or 10 and has no aspect-ratio field at all — a
- * perfectly good model that would silently square every vertical clip.
+ * The same model the primary runs: `bytedance/seedance-2.5/text-to-video`.
  *
- * Overridable, and the override is an endpoint id exactly as Higgsfield's model
- * pages print it, because this module's posture is the fal client's: changing
- * models is configuration, not a code change.
+ * This started as Kling 3.0 Standard, on the reasoning that it takes an aspect
+ * ratio and a flexible duration. Checking the catalogue against our own
+ * deployment made that look like the wrong question. `FAL_VIDEO_MODEL` is set
+ * to `bytedance/seedance-2.5/text-to-video`, and Higgsfield hosts the same
+ * model under the same id, with the same parameter names — `duration` 4-30,
+ * `resolution`, `aspect_ratio`, `generate_audio`.
+ *
+ * Matching matters more than any feature comparison, because of *when* a
+ * fallback fires. A post is several beats, each its own clip; fal can fail on
+ * beat three and succeed on beats one, two and four. Footage from a different
+ * model in the middle of one video is not a degraded result, it is a visible
+ * seam — a different grade, a different motion character, in a nine-second
+ * post. Same model, no seam.
+ *
+ * ── What it costs ────────────────────────────────────────────────────────
+ *
+ * It is also the dearest thing on the price list: **$0.207/s** at list,
+ * $0.145/s at maximum discount, against $0.084/s for Kling 3.0 and $0.05/s for
+ * Wan 3.0 (vendor's own pricing page, read 21 Oct 2026). A five-second clip is
+ * about **$1.04**, where `content.generate_broll` declares `estimateCents: 40`.
+ *
+ * That gap is recorded in `docs/GAPS.md` rather than papered over here: the
+ * estimate is the tool's, it is already approximate for fal, and the honest fix
+ * is Higgsfield's own `POST /estimate/{endpointId}`, which returns
+ * `{ credits, usd }` for the exact parameters before anything is charged.
+ *
+ * `HIGGSFIELD_VIDEO_MODEL=kling-video/v3.0/std/text-to-video` is the lever for
+ * anyone who would rather have the cheaper seam. The override is an endpoint id
+ * exactly as Higgsfield's model pages print it, because this module's posture is
+ * the fal client's: changing models is configuration, not a code change.
  */
-const DEFAULT_MODEL = 'kling-video/v3.0/std/text-to-video';
+const DEFAULT_MODEL = 'bytedance/seedance-2.5/text-to-video';
+
+/**
+ * What the default model accepts, so the default configuration works.
+ *
+ * Seedance's floor is 4 seconds and `ContentGenerateBrollInput` allows 1, so an
+ * unsnapped 3-second hook is a 422 — the exact rejection `FAL_VIDEO_DURATIONS`
+ * was added to prevent, which is why the deployed fal config carries `4,5,…,30`
+ * by hand.
+ *
+ * Only applied when no model override is set. A table of per-model ranges in
+ * here is the stale vendor catalogue the fal client argues against; the range of
+ * the one model this file chooses is not that table, it is part of choosing it.
+ */
+const DEFAULT_DURATIONS = Array.from({ length: 27 }, (_, i) => i + 4); // 4…30
 
 const BASE_URL = 'https://api.higgsfield.ai';
 
@@ -104,15 +149,23 @@ const EXTRA = parseExtra('HIGGSFIELD_VIDEO_EXTRA_PARAMS');
 /**
  * The clip lengths this model will accept, if it only accepts some.
  *
- * Empty by default, which is right for the default model: Kling takes any whole
- * number from 3 to 15. Hailuo takes 6 or 10 and nothing else, so pointing
- * `HIGGSFIELD_VIDEO_MODEL` there without also setting this is the rejection
- * `FAL_VIDEO_DURATIONS` exists to prevent, in a second vendor's words.
+ * Defaults to the default model's own range. Setting `HIGGSFIELD_VIDEO_MODEL`
+ * without setting this drops back to sending whatever was asked for, because at
+ * that point the range belongs to a model this file knows nothing about —
+ * Hailuo takes 6 or 10 and nothing else, and guessing on its behalf would be the
+ * stale catalogue again.
  */
-const ALLOWED_DURATIONS = envStr('HIGGSFIELD_VIDEO_DURATIONS', '')
+const CONFIGURED_DURATIONS = envStr('HIGGSFIELD_VIDEO_DURATIONS', '')
   .split(',')
   .map((s) => Number(s.trim()))
   .filter((n) => Number.isFinite(n) && n > 0);
+
+const ALLOWED_DURATIONS =
+  CONFIGURED_DURATIONS.length > 0
+    ? CONFIGURED_DURATIONS
+    : envSet('HIGGSFIELD_VIDEO_MODEL')
+      ? [] // somebody else's model, somebody else's range
+      : DEFAULT_DURATIONS;
 
 export function createHiggsfieldVideoClient(opts: HiggsfieldVideoClientOptions): VideoClient {
   const model = opts.model ?? DEFAULT_MODEL;

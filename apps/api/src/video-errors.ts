@@ -19,7 +19,30 @@ export function videoUnavailable(vendor: string, status: number, detail: string)
   const body = detail.toLowerCase();
   const outOfCredit = status === 403 || /exhausted|balance|locked|quota|credit/.test(body);
   const badKey = status === 401;
-  const rateLimited = status === 429;
+  /*
+   * ── Why a 400 can be a rate limit ──────────────────────────────────────
+   *
+   * Higgsfield's concurrency cap does not come back as 429. It comes back as
+   * **400 Bad Request** with `{"detail":"Maximum number of concurrent requests
+   * (4) has been reached"}`, and their docs say there are no `Retry-After` or
+   * rate-limit headers to read instead.
+   *
+   * That matters for us specifically: a post is several beats and
+   * `autoIllustrate` can have several clips in flight, so four concurrent
+   * requests is a number this pipeline reaches on one ordinary post — not an
+   * abuse case. Classified as a request error it reads as "your prompt was
+   * wrong" and stops; classified as busy it reads as "wait a minute", which is
+   * both true and actionable.
+   *
+   * Reading the message to decide is exactly what the vendor's docs advise
+   * against ("do not parse human-readable messages to make permanent business
+   * decisions"), and they are right about *permanent* decisions. This is not
+   * one: it picks a sentence and a retry hint. If they change the wording the
+   * failure mode is the generic message we would have shown anyway, which is
+   * why the status code still has to match as well.
+   */
+  const atConcurrency = status === 400 && /concurrent/.test(body);
+  const rateLimited = status === 429 || atConcurrency;
   /*
    * 423 and 503 are Higgsfield's, and they are not failures of ours or of the
    * account: a model can be temporarily blocked or simply not ready. They are
@@ -44,7 +67,10 @@ export function videoUnavailable(vendor: string, status: number, detail: string)
     : badKey
       ? `${vendor} rejected the API key. Check the key, and that it is not revoked.`
       : rateLimited
-        ? `${vendor} rate-limited this account. Back off, or raise the plan limit.`
+        ? atConcurrency
+          ? `${vendor} refused this as over the account's concurrency cap (it returns 400, not 429, and sends no Retry-After). ` +
+            'Let a clip finish before starting another, or raise the limit in their console.'
+          : `${vendor} rate-limited this account. Back off, or raise the plan limit.`
         : modelDown
           ? `${vendor} reported the model as blocked or not ready (${status}). Pick another model or wait.`
           : `${vendor} returned ${status}: ${detail.slice(0, 200)}`;

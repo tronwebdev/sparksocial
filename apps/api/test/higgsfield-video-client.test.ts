@@ -52,7 +52,7 @@ describe('request shape', () => {
     const out = await client(fetchImpl).generate({ prompt: 'a kiln firing', aspectRatio: '9:16', durationSec: 6 });
 
     expect(out).toEqual({ url: 'https://hf.example/clip.mp4' });
-    expect(fetchImpl.mock.calls[0]![0]).toBe('https://api.higgsfield.ai/kling-video/v3.0/std/text-to-video');
+    expect(fetchImpl.mock.calls[0]![0]).toBe('https://api.higgsfield.ai/bytedance/seedance-2.5/text-to-video');
     const init = fetchImpl.mock.calls[0]![1] as RequestInit;
     const headers = init.headers as Record<string, string>;
     // One header, both halves, colon-separated — not a bearer token.
@@ -87,6 +87,29 @@ describe('request shape', () => {
     await client(fetchImpl).generate({ prompt: 'x', aspectRatio: '4:5', durationSec: 5 });
 
     expect(JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string).aspect_ratio).toBe('9:16');
+  });
+});
+
+describe('durations', () => {
+  it('lifts a sub-minimum request to the default model floor', async () => {
+    // Seedance will not take 3 seconds and the tool's schema allows 1, so
+    // without this a three-second hook is a 422 after the key, the account and
+    // the prompt were all fine.
+    const { fetchImpl } = vendor([{ status: 'completed', video: { url: 'https://hf.example/c.mp4' } }]);
+
+    await client(fetchImpl).generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 3 });
+
+    expect(JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string).duration).toBe(4);
+  });
+
+  it('rounds down to a whole second the model accepts', async () => {
+    const { fetchImpl } = vendor([{ status: 'completed', video: { url: 'https://hf.example/c.mp4' } }]);
+
+    await client(fetchImpl).generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 9.6 });
+
+    // Down, not nearest: a clip longer than its scene is footage nobody sees
+    // and money already spent.
+    expect(JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string).duration).toBe(9);
   });
 });
 
@@ -190,6 +213,41 @@ describe('terminal states', () => {
 });
 
 describe('vendor errors', () => {
+  it('reads a concurrency refusal as busy, not as a bad request', async () => {
+    // Higgsfield returns 400, not 429, when the account's concurrency cap is
+    // reached, and sends no Retry-After. A post is several beats with several
+    // clips in flight, so four concurrent requests is a number this pipeline
+    // reaches on one ordinary post — "your prompt was wrong" is the wrong thing
+    // to tell someone about it.
+    const fetchImpl = vi.fn(
+      async (_url: string | URL | Request, _init?: RequestInit) =>
+        new Response('{"detail":"Maximum number of concurrent requests (4) has been reached"}', { status: 400 }),
+    );
+
+    const err = await client(fetchImpl as unknown as ReturnType<typeof vi.fn>)
+      .generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 5 })
+      .catch((e: unknown) => e);
+
+    expect((err as ToolError).message).toMatch(/busy right now/i);
+    expect((err as ToolError).meta).toMatchObject({ operator: expect.stringContaining('concurrency cap') });
+  });
+
+  it('still treats an ordinary 400 as an ordinary failure', async () => {
+    // The status code has to match as well as the wording, so a reworded
+    // concurrency message degrades to the generic sentence rather than
+    // mislabelling every 400 as busy.
+    const fetchImpl = vi.fn(
+      async (_url: string | URL | Request, _init?: RequestInit) =>
+        new Response('{"detail":"prompt must not be empty"}', { status: 400 }),
+    );
+
+    const err = await client(fetchImpl as unknown as ReturnType<typeof vi.fn>)
+      .generate({ prompt: 'x', aspectRatio: '9:16', durationSec: 5 })
+      .catch((e: unknown) => e);
+
+    expect((err as ToolError).message).toMatch(/did not work just now/i);
+  });
+
   it('says "out of credit" for a 403, in words an owner can act on', async () => {
     // This is the failure the whole fallback exists for, and the sentence a
     // user sees when *both* vendors are out.
