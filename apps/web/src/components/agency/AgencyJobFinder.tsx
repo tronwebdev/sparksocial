@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { SECTION } from '@/components/shell/narrowStage';
 
 /**
  * `Job Finder` — one screen, two tabs.
@@ -41,7 +42,7 @@ export function AgencyJobFinder() {
 
   return (
     <>
-      <section className="absolute left-ag-tool-x top-[190px] h-[300px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-jf">
+      <section className={cn('absolute left-ag-tool-x top-[190px] h-[300px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-jf', SECTION)}>
         {/* eslint-disable-next-line @next/next/no-img-element -- decorative full-bleed backdrop off the prototype */}
         <img src="/agency/jobfinder-hero.png" alt="" aria-hidden className="absolute left-0 top-0 h-full w-full object-cover" />
 
@@ -66,7 +67,7 @@ export function AgencyJobFinder() {
           src="/agency/jobfinder-892c.jpg"
           alt=""
           aria-hidden
-          className="absolute right-[64px] top-[32px] h-[236px] w-[380px] rounded-[14px] object-cover"
+          className="absolute right-[64px] top-[32px] h-[236px] w-[380px] rounded-[14px] object-cover max-canvas:hidden"
           style={{ objectPosition: 'center 20%', boxShadow: '0 26px 60px -30px rgba(0,0,0,0.7)' }}
         />
         {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size decorative art off the prototype */}
@@ -74,7 +75,7 @@ export function AgencyJobFinder() {
           src="/agency/jobfinder-288d.png"
           alt=""
           aria-hidden
-          className="absolute right-[308px] top-[236px] w-[264px]"
+          className="absolute right-[308px] top-[236px] w-[264px] max-canvas:hidden"
           style={{ filter: 'drop-shadow(0 16px 34px rgba(0,0,0,0.5))' }}
         />
       </section>
@@ -170,7 +171,7 @@ export function AgencyJobFinder() {
         count behave; there is simply nothing to populate them from.
       */}
       <section
-        className="absolute left-ag-tool-x top-[772px] w-ag-tool-wide rounded-[16px] bg-white py-[54px] text-center"
+        className={cn('absolute left-ag-tool-x top-[772px] w-ag-tool-wide rounded-[16px] bg-white py-[54px] text-center', SECTION)}
         style={{ boxShadow: '0 16px 40px -34px rgba(12,12,12,0.45)' }}
       >
         <p className="text-19 font-bold text-ink">

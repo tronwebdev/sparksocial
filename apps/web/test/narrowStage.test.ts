@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import config from '../tailwind.config';
-import { NARROW_BELOW, STAGE, STEP_GEOM } from '../src/components/campaign/campaignChrome';
+import { STAGE, STEP_GEOM } from '../src/components/campaign/campaignChrome';
+import { FLATTEN, NARROW_BELOW, SECTION } from '../src/components/shell/narrowStage';
 
 const read = (rel: string) => readFileSync(join(process.cwd(), 'apps/web', rel), 'utf8');
 
-const CHROME = read('src/components/campaign/campaignChrome.tsx');
 const WIZARD = read('src/components/campaign/CampaignWizard.tsx');
 const INTRO = read('src/components/campaign/CampaignIntro.tsx');
+const AGENCY = read('src/components/agency/AgencyStage.tsx');
 
 /**
  * The campaign wizard stops scaling below `canvas`.
@@ -20,7 +21,7 @@ const INTRO = read('src/components/campaign/CampaignIntro.tsx');
  * viewport, and a font-size check because `transform` does not change computed
  * `font-size`. It only shows up by multiplying through the matrix.
  */
-describe('the campaign wizard stops scaling below canvas', () => {
+describe('the two stages stop scaling below canvas', () => {
   it('switches at the same width as the canvas screen', () => {
     // The wizard cannot use the Tailwind variant — its positions are inline
     // styles computed from STEP_GEOM, and a variant cannot reach an inline
@@ -29,7 +30,8 @@ describe('the campaign wizard stops scaling below canvas', () => {
     expect(`${NARROW_BELOW}px`).toBe(canvas);
   });
 
-  it('keeps the scaled stage for wide windows', () => {
+  it('keeps both scaled stages for wide windows', () => {
+    expect(AGENCY).toContain('transform: `scale(${scale})`');
     // The flowing layout is the addition, not the replacement: at canvas scale
     // the design is still drawn exactly as the prototype draws it.
     expect(STAGE).toBe(1728);
@@ -37,15 +39,31 @@ describe('the campaign wizard stops scaling below canvas', () => {
     expect(WIZARD).toContain('const narrow = pageW < NARROW_BELOW;');
   });
 
-  it('flattens panel children with relative, not static', () => {
+  it('flattens with relative, never static', () => {
     // A card is a positioning context — its icon, title, copy and tick badge are
     // placed against it. `static` hands those to the next positioned ancestor,
     // which is the fixed dialog, and the cards' contents pile up in its corner.
     // Harness-measured at 430px with the real nesting: card at x=46 and its
     // badge at 258, which is 46 + the badge's own 212.
-    expect(CHROME).toContain('[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0');
-    expect(CHROME).not.toContain('[&>*]:!static');
-    expect(WIZARD).toContain('[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0');
+    expect(FLATTEN).toContain('!relative');
+    expect(FLATTEN).toContain('!left-0');
+    expect(FLATTEN).toContain('!top-0');
+    expect(FLATTEN).not.toContain('!static');
+    expect(SECTION).toContain(FLATTEN);
+    // And the one override a section needs that a flattened child does not: its
+    // height is a class, so releasing it has to shout louder than one.
+    expect(SECTION).toContain('max-canvas:!h-auto');
+  });
+
+  it('the agency portal flows on the same switch', () => {
+    // Same stage, same measurement — 94 text nodes at 3.5-6.9px — and the same
+    // two pieces dropped rather than moved.
+    expect(AGENCY).toContain('if (vw < NARROW_BELOW) {');
+    expect(AGENCY).toContain('<NarrowStage value>');
+    // The chrome is lifted into components so the flowing header mounts the
+    // same pill and profile rather than a second copy of them.
+    expect(AGENCY).toContain('<AgencyScopePill narrow />');
+    expect(AGENCY).toContain('<AgencyProfile narrow />');
   });
 
   it('both layouts mount the same step', () => {

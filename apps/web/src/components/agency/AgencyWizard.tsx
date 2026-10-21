@@ -1,6 +1,8 @@
 'use client';
 
 import { TimezoneField } from '@/components/common/TimezoneField';
+import { SECTION } from '@/components/shell/narrowStage';
+import { cn } from '@/lib/utils';
 
 
 /**
@@ -115,7 +117,7 @@ export function AgencyWizard({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 z-[80] animate-fade-in cursor-default motion-reduce:animate-none"
+        className="absolute inset-0 z-[80] animate-fade-in cursor-default motion-reduce:animate-none max-canvas:!fixed"
         style={{ background: 'rgba(30,34,40,0.5)' }}
       />
 
@@ -123,7 +125,19 @@ export function AgencyWizard({
         role="dialog"
         aria-modal="true"
         aria-label="Agency launch wizard"
-        className="absolute left-ag-wiz-x top-[30px] z-[81] w-ag-wiz-w animate-modal-in overflow-hidden rounded-[30px] bg-ag-wiz motion-reduce:animate-none"
+        /*
+          On the stage this is a panel at a coordinate, sized by `WIZ_HEIGHTS`.
+          Below the breakpoint the stage is a flowing column, so an absolute
+          panel would land in the middle of it — it becomes a sheet instead,
+          inset 12 on every side, scrolling its own content. `!h-auto` from
+          `SECTION` beats the inline height; with `top` and `bottom` both set it
+          stretches between them rather than collapsing.
+        */
+        className={cn(
+          'absolute left-ag-wiz-x top-[30px] z-[81] w-ag-wiz-w animate-modal-in overflow-hidden rounded-[30px] bg-ag-wiz motion-reduce:animate-none',
+          SECTION,
+          'max-canvas:!fixed max-canvas:inset-x-[12px] max-canvas:!top-[12px] max-canvas:bottom-[12px] max-canvas:w-auto max-canvas:overflow-y-auto',
+        )}
         style={{ height: h, boxShadow: '0 60px 140px -40px rgba(0,0,0,0.55)' }}
       >
         {/* ── header ─────────────────────────────────────────────────── */}
@@ -663,7 +677,7 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
                   {/* The design's preview eye. Nothing renders a template yet. */}
                   <span
                     aria-hidden
-                    className="absolute right-[48px] top-[11px] flex h-[26px] w-[26px] items-center justify-center rounded-full"
+                    className="absolute right-[48px] top-[11px] flex h-[26px] w-[26px] items-center justify-center rounded-full max-canvas:hidden"
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', opacity: 0.55 }}
                   >
                     <svg width="15" height="12" viewBox="0 0 19 15" fill="none" aria-hidden className="block">

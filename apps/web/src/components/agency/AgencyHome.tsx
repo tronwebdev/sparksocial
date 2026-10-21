@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import type { RosterBrand } from './useAgencyRoster';
+import { SECTION } from '@/components/shell/narrowStage';
+import { cn } from '@/lib/utils';
 
 /**
  * Portal Home's two states — `Portal Home` in the prototype, keyed off whether
@@ -41,7 +43,7 @@ import type { RosterBrand } from './useAgencyRoster';
 export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
   return (
     <section
-      className="absolute left-ag-gutter top-[118px] h-[376px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-hero"
+      className={cn('absolute left-ag-gutter top-[118px] h-[376px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-hero', SECTION)}
       style={{ boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
     >
       {/*
@@ -56,14 +58,14 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       />
       <span
         aria-hidden
-        className="absolute right-[200px] top-[-60px] block h-[480px] w-[480px] rounded-full"
+        className="absolute right-[200px] top-[-60px] block h-[480px] w-[480px] rounded-full max-canvas:hidden"
         style={{ background: 'radial-gradient(circle, rgba(250,236,252,0.9) 0%, rgba(236,230,252,0.4) 58%, rgba(236,230,252,0) 78%)' }}
       />
 
       {/* the rounded blue capsule with two glowing eyes */}
       <span
         aria-hidden
-        className="absolute right-[490px] top-[158px] block h-[96px] w-[170px] rounded-[34px]"
+        className="absolute right-[490px] top-[158px] block h-[96px] w-[170px] rounded-[34px] max-canvas:hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(140,210,244,0.55) 0%, rgba(108,184,236,0.4) 100%)',
           boxShadow: '0 24px 54px -22px rgba(76,150,220,0.55), inset 0 2px 10px rgba(255,255,255,0.7)',
@@ -74,12 +76,12 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       </span>
 
       {/* eslint-disable-next-line @next/next/no-img-element -- a fixed-size decorative sprite off the prototype, not content */}
-      <img src="/agency/portal-usermsg.png" alt="" aria-hidden className="absolute right-[650px] top-[44px] w-[118px]" />
+      <img src="/agency/portal-usermsg.png" alt="" aria-hidden className="absolute right-[650px] top-[44px] w-[118px] max-canvas:hidden" />
 
       {/* the Instagram tile */}
       <span
         aria-hidden
-        className="absolute right-[118px] top-[40px] flex h-[64px] w-[64px] items-center justify-center rounded-[16px]"
+        className="absolute right-[118px] top-[40px] flex h-[64px] w-[64px] items-center justify-center rounded-[16px] max-canvas:hidden"
         style={{
           background: 'radial-gradient(circle at 28% 108%, #FFD600 0%, #FF6930 36%, #E1306C 64%, #7638FA 100%)',
           boxShadow: '0 18px 40px -16px rgba(225,48,108,0.6)',
@@ -95,7 +97,7 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       {/* the tilted photo tile */}
       <span
         aria-hidden
-        className="absolute right-[690px] top-[196px] flex h-[64px] w-[74px] items-center justify-center rounded-[14px]"
+        className="absolute right-[690px] top-[196px] flex h-[64px] w-[74px] items-center justify-center rounded-[14px] max-canvas:hidden"
         style={{
           background: 'linear-gradient(160deg, #FFE9B8 0%, #F7B95C 100%)',
           boxShadow: '0 18px 40px -18px rgba(240,160,60,0.65)',
@@ -112,7 +114,7 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
       {/* the browser mock-up */}
       <span
         aria-hidden
-        className="absolute right-[96px] top-[196px] block h-[78px] w-[96px] rounded-[12px]"
+        className="absolute right-[96px] top-[196px] block h-[78px] w-[96px] rounded-[12px] max-canvas:hidden"
         style={{ background: 'linear-gradient(170deg, #4E7BF0 0%, #3157D6 100%)', boxShadow: '0 20px 44px -18px rgba(64,102,224,0.65)' }}
       >
         <span className="absolute left-[8px] right-[8px] top-[8px] flex h-[14px] items-center gap-[3px] rounded-[5px] bg-white px-[4px]">
@@ -173,7 +175,7 @@ export function AgencyHomeSummary({
 
   return (
     <section
-      className="absolute left-ag-gutter top-[118px] h-[372px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-card"
+      className={cn('absolute left-ag-gutter top-[118px] h-[372px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-card', SECTION)}
       style={{ boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
     >
       <h2 className="absolute left-[66px] top-[150px] whitespace-nowrap text-28 font-bold leading-none text-ink">
@@ -263,7 +265,7 @@ export function AgencyHomeSummary({
           <AssetEye filled />
           <span
             aria-hidden
-            className="absolute left-[70px] top-[76px] block h-[250px] w-[160px] rounded-t-[10px] bg-white"
+            className="absolute left-[70px] top-[76px] block h-[250px] w-[160px] rounded-t-[10px] bg-white max-canvas:hidden"
             style={{ boxShadow: '0 -6px 24px -12px rgba(12,12,12,0.2)' }}
           />
           <span className="absolute bottom-[14px] left-0 right-0 text-center text-13" style={{ color: 'rgb(91,91,91)' }}>
@@ -411,7 +413,7 @@ export function AgencyGrowthTools({
   onJobFinder: () => void;
 }) {
   return (
-    <section className="absolute left-ag-gutter top-[514px] h-[136px] w-ag-wide rounded-[20px] bg-ag-growth">
+    <section className={cn('absolute left-ag-gutter top-[514px] h-[136px] w-ag-wide rounded-[20px] bg-ag-growth', SECTION)}>
       <h3 className="absolute left-[32px] top-[28px] flex items-center gap-[11px] whitespace-nowrap text-22 font-bold leading-none text-ink">
         <svg width="18" height="24" viewBox="0 0 16 20" fill="none" aria-hidden className="block">
           <path d="M9.5 1 2 11.5h5L6.5 19 14 8.5H9L9.5 1Z" fill="#0C0C0C" />

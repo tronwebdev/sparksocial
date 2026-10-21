@@ -11,6 +11,7 @@ import { useProposals } from './useProposals';
 import { money } from './proposalText';
 import { leadsToCsv } from './leadCsv';
 import { TINT, type StatusTint } from './statusTints';
+import { SECTION } from '@/components/shell/narrowStage';
 
 /**
  * `Client Finder` / `Client Finder Saved Leads` — the agency's lead pipeline,
@@ -204,7 +205,7 @@ export function AgencyClientFinder({
   /* ── nothing captured yet ──────────────────────────────────────────── */
   const empty = (
       <>
-        <section className="absolute left-ag-tool-x top-[190px] h-[430px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-dark">
+        <section className={cn('absolute left-ag-tool-x top-[190px] h-[430px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-dark', SECTION)}>
           {/* eslint-disable-next-line @next/next/no-img-element -- a decorative full-bleed backdrop off the prototype */}
           <img src="/agency/jobfinder-hero.png" alt="" aria-hidden className="absolute left-0 top-0 h-full w-full object-cover" />
 
@@ -431,7 +432,7 @@ export function AgencyClientFinder({
       </button>
 
       <section
-        className="absolute left-ag-tool-x top-[312px] h-[806px] w-ag-tool-wide overflow-hidden rounded-[20px] bg-white"
+        className={cn('absolute left-ag-tool-x top-[312px] h-[806px] w-ag-tool-wide overflow-hidden rounded-[20px] bg-white', SECTION)}
         style={{ boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
       >
         {[

@@ -16,7 +16,6 @@ import { MissingFactsRequest } from '@/components/campaign/MissingFactsRequest';
 import type { Explanation } from '@/components/explain/WhyPopover';
 import {
   AgentOrb,
-  CampaignNarrow,
   Chevron,
   ModalBlobs,
   NARROW_BELOW,
@@ -27,6 +26,7 @@ import {
   type Step,
 } from './campaignChrome';
 import { CampaignIntro } from './CampaignIntro';
+import { FLATTEN, NarrowStage, useStageWidth } from '@/components/shell/narrowStage';
 
 /**
  * The design's progress track, in pixels — `w-cmp-progress`.
@@ -157,8 +157,8 @@ export function CampaignWizard({
    */
   const [emptyResult, setEmptyResult] = useState<{ campaignId: string; planned: number } | null>(null);
 
-  /** The stage scale — see `campaignChrome.tsx`. */
-  const [pageW, setPageW] = useState(STAGE);
+  /** The stage scale — see `@/components/shell/narrowStage`. */
+  const pageW = useStageWidth(STAGE);
   /** The prototype's entry card. Only shown where a caller asks for it. */
   const [intro, setIntro] = useState(showIntro);
 
@@ -456,15 +456,6 @@ export function CampaignWizard({
     onActivated(created.output.campaignId);
   }
 
-
-  /* The stage scales to the viewport, exactly as the prototype's own script
-     does — a resize listener plus one read at mount. */
-  useEffect(() => {
-    const onResize = () => setPageW(window.innerWidth || STAGE);
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
 
   /**
    * The brand card, the agent's name and the timezone — three reads that fill
@@ -846,7 +837,7 @@ export function CampaignWizard({
   */
   if (narrow) {
     return (
-      <CampaignNarrow value>
+      <NarrowStage value>
         <div
           className="fixed inset-0 z-50 overflow-y-auto"
           role="dialog"
@@ -916,7 +907,7 @@ export function CampaignWizard({
               is a sibling of the panel rather than a child of it, so
               `StepPanel`'s own rule never reaches it.
             */}
-            <div className="mt-[16px] flex flex-col gap-[16px] [&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-full">
+            <div className={`mt-[16px] flex flex-col gap-[16px] ${FLATTEN}`}>
               {stepSlot}
             </div>
 
@@ -927,7 +918,7 @@ export function CampaignWizard({
             ) : null}
           </div>
         </div>
-      </CampaignNarrow>
+      </NarrowStage>
     );
   }
 

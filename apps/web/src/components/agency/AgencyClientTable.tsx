@@ -6,6 +6,8 @@ import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { useAuth } from '@clerk/nextjs';
 import { DeleteBrandModal } from './DeleteBrandModal';
 import type { RosterBrand } from './useAgencyRoster';
+import { SECTION } from '@/components/shell/narrowStage';
+import { cn } from '@/lib/utils';
 
 /**
  * The workspace table — the prototype's client list, measured off the stage
@@ -105,7 +107,7 @@ export function AgencyClientTable({
 
   return (
     <section
-      className="absolute left-ag-gutter w-ag-wide rounded-[20px] bg-white"
+      className={cn('absolute left-ag-gutter w-ag-wide rounded-[20px] bg-white', SECTION)}
       style={{ top, height, boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
     >
       {/* ── headers ────────────────────────────────────────────────────── */}
@@ -117,15 +119,25 @@ export function AgencyClientTable({
         { x: 1330, label: 'Status' },
         { x: 1544, label: 'Action' },
       ].map((h) => (
+        /*
+          Column headings label columns. Below the breakpoint a row is a stacked
+          card rather than six cells on a line, so there are no columns for these
+          to be over — six stray words above the list is worse than none. The
+          same reason the 66px rule beneath them goes.
+        */
         <span
           key={h.label}
-          className="absolute top-[28px] whitespace-nowrap text-16 font-semibold"
+          className="absolute top-[28px] whitespace-nowrap text-16 font-semibold max-canvas:hidden"
           style={{ left: h.x, color: 'rgb(91,91,91)' }}
         >
           {h.label}
         </span>
       ))}
-      <div aria-hidden className="absolute left-0 top-[66px] h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
+      <div
+        aria-hidden
+        className="absolute left-0 top-[66px] h-px w-full max-canvas:hidden"
+        style={{ background: 'rgba(131,131,131,0.15)' }}
+      />
 
       {brands.length === 0 ? (
         <p className="absolute left-[26px] top-[92px] text-16" style={{ color: 'rgb(131,131,131)' }}>
@@ -134,9 +146,16 @@ export function AgencyClientTable({
       ) : null}
 
       {laid.map(({ b, isOpen, top: rowTop, h }, i) => (
+        /*
+          A row is six cells at 96, 388, 742, 1046, 1330 and 1544 across a
+          1644px card. Below the breakpoint it becomes a card of its own, its
+          cells stacked in the order they read across — `SECTION` is the same
+          flow-and-flatten the section above it got, applied one level down,
+          because flattening a parent does not reach a grandchild.
+        */
         <div
           key={b.genomeId}
-          className="absolute left-0 w-full rounded-[14px] transition-[height] duration-200"
+          className={cn('absolute left-0 w-full rounded-[14px] transition-[height] duration-200', SECTION)}
           style={{ top: rowTop, height: h, background: isOpen ? 'var(--ss-ag-row-open)' : 'transparent' }}
         >
           <span

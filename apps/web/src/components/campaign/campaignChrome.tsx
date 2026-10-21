@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { FLATTEN, NARROW_BELOW, useNarrowStage } from '@/components/shell/narrowStage';
 import { cn } from '@/lib/utils';
 
 /**
@@ -47,29 +48,15 @@ import { cn } from '@/lib/utils';
 /** The prototype's stage width. Every coordinate below is on this stage. */
 export const STAGE = 1728;
 
-/**
- * Where the stage stops being scaled and starts being abandoned.
- *
- * The same 1300 as the `canvas` screen in `tailwind.config.ts` — this screen
- * cannot use the Tailwind variant for the switch itself, because its positions
- * are inline styles computed from `STEP_GEOM` rather than classes, and a
- * variant cannot reach an inline style. `campaignNarrow.test.ts` asserts the
- * two numbers stay equal.
- */
-export const NARROW_BELOW = 1300;
+/*
+  Both stages share one switch and one flattening rule — see
+  `@/components/shell/narrowStage`, which carries the measurement and the
+  reasoning. Re-exported here because this file is where the campaign screen's
+  callers already look for its geometry.
+*/
+export { NARROW_BELOW };
 
-/**
- * Whether this render is the flowing one.
- *
- * Context rather than a prop because it would otherwise thread through seven
- * component signatures to reach the panels that care, and every one of those
- * signatures is already a list of the step's own data.
- */
-const NarrowContext = createContext(false);
-
-export const CampaignNarrow = NarrowContext.Provider;
-
-export const useCampaignNarrow = () => useContext(NarrowContext);
+export const useCampaignNarrow = useNarrowStage;
 
 export type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -347,13 +334,9 @@ export function StepPanel({
     written in reading order (heading, lede, then cards), which is why
     flattening them produces the right order rather than a shuffle.
 
-    `!relative` with `!left-0 !top-0` rather than `!static`, and the difference
-    matters: a card is itself a positioning context — its icon, title, copy and
-    tick badge are placed against it. Turning the card static hands those
-    descendants to the next positioned ancestor, which is the fixed dialog, and
-    four cards' worth of contents pile up in its top-left corner. Relative keeps
-    the card a containing block; the two zeroed offsets are what stop
-    `position: relative` from honouring the `left: 37px` it was given.
+    `FLATTEN` is `relative` with both offsets zeroed rather than `static`, for
+    the reason its own doc comment gives — a card is a positioning context, and
+    turning it static empties its contents into the dialog's corner.
 
     `!whitespace-normal` goes with it: at canvas scale a 596px panel holds
     "Could you share what matters most to you right now?" on one line at 18px,
@@ -366,7 +349,8 @@ export function StepPanel({
           'relative w-full rounded-2xl p-[18px]',
           wash,
           'flex flex-col gap-[14px]',
-          '[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-full [&_*]:!whitespace-normal',
+          FLATTEN,
+          '[&_*]:!whitespace-normal',
         )}
       >
         {children}
