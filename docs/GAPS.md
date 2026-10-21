@@ -88,6 +88,37 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a
       decision rather than on time, and the decision is yours.**
+- [ ] **There is no billing. The credit system is spend metering, not revenue.**
+      Worth stating plainly because the two get conflated, and because this file did not
+      record it at all until asked directly.
+
+      *Working, and genuinely:* `credit_ledger` and `org_budgets` in Postgres; every paid
+      tool declares `estimateCents`; `policy.ts` rule 4 refuses a call whose estimate exceeds
+      what is left; a ledger row is written after each call, including a failure that already
+      reached a vendor; per-category sub-caps refuse too; `org.usage.get` reports it and
+      `/settings/credits` and the sidebar card show it. Live numbers today: $3.17 of $500,
+      159 of 25,000 credits.
+
+      *Absent entirely:* any payment provider. No Stripe, Paddle or anything else — no
+      integration, no env key, no table, no webhook. No payment method capture, no invoice,
+      no receipt, no dunning, no proration, no trial expiry enforcement, no subscription
+      object. `/pricing` says so in its own header — *"nothing here charges anybody"* — and
+      carries no monetary figures because none exist anywhere in the system.
+
+      *What "recurring" means here:* `periodStart()` is the first of the calendar month in
+      UTC, so on the 1st the spend window restarts and the full cap is available again. That
+      is a usage period resetting, not a renewal. Nobody is charged, and no money moves.
+
+      *The sharp edge:* `org.billing.plan.set` is named billing and is not. It is
+      `scopes: ['owner']`, `autonomy: 'auto'`, and it moves the cap — starter $500, growth
+      $2,000, agency $10,000 a month. An owner can therefore raise their own spend ceiling
+      twentyfold with one tool call and no payment step. That is correct for a product with
+      no billing and wrong the moment there is one, so whoever adds payments must gate this
+      tool behind them rather than beside them.
+
+      *The only way credit enters the system:* `org.credits.grant`, owner-only, manual,
+      `idempotent: false` with "this is money" written next to it.
+
 - [ ] **Generated media is stored as a vendor URL that expires.** `content.generate_broll`
       and `content.generate_image` keep whatever link the vendor returned in the draft's beat;
       only the OpenAI image path goes through a `BlobStore`, and only because OpenAI returns
