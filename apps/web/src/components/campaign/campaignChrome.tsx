@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -20,10 +20,56 @@ import { cn } from '@/lib/utils';
  * That is a deliberate exception to how the rest of the app is built. It is
  * confined to this one screen, and it is why the geometry lives in a table here
  * rather than being spread through the JSX.
+ *
+ * ── Why the exception stops at `canvas` ──────────────────────────────────
+ *
+ * Scaling a stage is a trade: the layout is never wrong, and the type gets
+ * smaller than the window. That trade is fine down to a laptop and absurd on a
+ * phone. Measured on the deployed `/campaign/new` at 430px: `scale(0.2488)`,
+ * nothing off-screen, and type declared at 16-25.5px rendering at **4-6.3px**.
+ * A four-step form nobody can read is not a form.
+ *
+ * Worth recording how nearly that was missed. An overflow probe calls the
+ * screen clean, because it is: every element is inside the viewport. A
+ * font-size probe calls it clean too, because `transform` does not change
+ * computed `font-size` — the first measurement here reported "0 text under
+ * 9px" on a screen where every word is four pixels tall. It only shows up if
+ * you multiply the declared size through the matrix yourself.
+ *
+ * So below `canvas` the stage is not scaled; it is abandoned. `NARROW` carries
+ * that decision, `StepPanel` flattens its own children into a column, and
+ * `CampaignWizard` renders its chrome as a flex header rather than six
+ * coordinates. The clip-path notches and the orb straddle go with the stage —
+ * they are shapes cut for exact widths, and there is no narrow version of them
+ * that is not a different drawing.
  */
 
 /** The prototype's stage width. Every coordinate below is on this stage. */
 export const STAGE = 1728;
+
+/**
+ * Where the stage stops being scaled and starts being abandoned.
+ *
+ * The same 1300 as the `canvas` screen in `tailwind.config.ts` — this screen
+ * cannot use the Tailwind variant for the switch itself, because its positions
+ * are inline styles computed from `STEP_GEOM` rather than classes, and a
+ * variant cannot reach an inline style. `campaignNarrow.test.ts` asserts the
+ * two numbers stay equal.
+ */
+export const NARROW_BELOW = 1300;
+
+/**
+ * Whether this render is the flowing one.
+ *
+ * Context rather than a prop because it would otherwise thread through seven
+ * component signatures to reach the panels that care, and every one of those
+ * signatures is already a list of the step's own data.
+ */
+const NarrowContext = createContext(false);
+
+export const CampaignNarrow = NarrowContext.Provider;
+
+export const useCampaignNarrow = () => useContext(NarrowContext);
 
 export type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -287,6 +333,47 @@ export function StepPanel({
   wash?: string;
   children: ReactNode;
 }) {
+  const narrow = useCampaignNarrow();
+
+  /*
+    Every step positions its children against this panel's top-left with inline
+    `left`/`top`, so there is no class to override and no variant that could
+    reach one. What there is instead is the cascade: an `!important` author
+    declaration beats a plain inline one, and `position: static` makes a
+    `left`/`top` pair inert without having to unset either.
+
+    So the flow variant is the panel turning its own children into a column,
+    once, rather than a narrow branch in each of the six steps. They are already
+    written in reading order (heading, lede, then cards), which is why
+    flattening them produces the right order rather than a shuffle.
+
+    `!relative` with `!left-0 !top-0` rather than `!static`, and the difference
+    matters: a card is itself a positioning context — its icon, title, copy and
+    tick badge are placed against it. Turning the card static hands those
+    descendants to the next positioned ancestor, which is the fixed dialog, and
+    four cards' worth of contents pile up in its top-left corner. Relative keeps
+    the card a containing block; the two zeroed offsets are what stop
+    `position: relative` from honouring the `left: 37px` it was given.
+
+    `!whitespace-normal` goes with it: at canvas scale a 596px panel holds
+    "Could you share what matters most to you right now?" on one line at 18px,
+    and a 374px column does not.
+  */
+  if (narrow) {
+    return (
+      <div
+        className={cn(
+          'relative w-full rounded-2xl p-[18px]',
+          wash,
+          'flex flex-col gap-[14px]',
+          '[&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-full [&_*]:!whitespace-normal',
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="absolute" style={{ left: x, top: y, width: w, height: h }}>
       <div

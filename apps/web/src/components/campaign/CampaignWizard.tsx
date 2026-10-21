@@ -16,8 +16,10 @@ import { MissingFactsRequest } from '@/components/campaign/MissingFactsRequest';
 import type { Explanation } from '@/components/explain/WhyPopover';
 import {
   AgentOrb,
+  CampaignNarrow,
   Chevron,
   ModalBlobs,
+  NARROW_BELOW,
   STAGE,
   STEP_GEOM,
   Spinner,
@@ -25,6 +27,14 @@ import {
   type Step,
 } from './campaignChrome';
 import { CampaignIntro } from './CampaignIntro';
+
+/**
+ * The design's progress track, in pixels — `w-cmp-progress`.
+ *
+ * The flowing header divides by it rather than re-deriving the stops, so both
+ * layouts read the same `STEP_GEOM.prog` table.
+ */
+const PROGRESS_TRACK = 508;
 import { GoalStep, TypeStep } from './CampaignChoiceSteps';
 import { OfferStep, type BrandCard } from './CampaignOfferStep';
 import { AccountsStep, type PlatformStatus } from './CampaignAccountsStep';
@@ -622,7 +632,28 @@ export function CampaignWizard({
   const geom = STEP_GEOM[step];
   const scale = pageW / STAGE;
 
+  /*
+    Below `NARROW_BELOW` the stage is abandoned rather than scaled — see the
+    header of `campaignChrome.tsx` for the measurement that decided it. Read
+    from `pageW` rather than a media query because the switch has to reach
+    inline styles, which a Tailwind variant cannot.
+  */
+  const narrow = pageW < NARROW_BELOW;
+
   if (intro) {
+    /*
+      `CampaignIntro` positions with classes rather than inline styles, so it
+      carries its own `max-canvas:` rules and needs no branch here — only to
+      stop being put on a scaled plane.
+    */
+    if (narrow) {
+      return (
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
+          <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} />
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Create a campaign">
         <div className="relative w-full overflow-hidden" style={{ height: Math.round(1117 * scale) }}>
@@ -678,6 +709,227 @@ export function CampaignWizard({
         }}
       />
     ) : null;
+
+  /*
+    The six steps, hoisted out of the JSX so both layouts can mount the same
+    one. Nothing about a step depends on which frame it is in — the stage puts
+    it at a coordinate, the column puts it in a stack, and `StepPanel` is what
+    knows the difference.
+  */
+  const stepSlot = (
+    <>
+  {/* ── the step ──────────────────────────────────────────────── */}
+  {step === 1 ? (
+    <GoalStep
+      goalKey={goalKey}
+      objective={objective}
+      onPickCard={(c) => {
+        setGoalKey(c.key);
+        setObjective(c.objective);
+        // The card carries the type it implies; an explicit later
+        // choice on step 2 still wins, which is why this only seeds
+        // the suggestion rather than setting `typeChoice`.
+        setSuggestedType(c.type);
+      }}
+      onPickExtra={(v) => {
+        setGoalKey(null);
+        setObjective(v);
+      }}
+    />
+  ) : null}
+
+  {step === 2 ? <TypeStep value={campaignType} onPick={setTypeChoice} /> : null}
+
+  {step === 3 ? (
+    <>
+      <OfferStep
+        brand={brand}
+        ctaOn={ctaOn}
+        ctaUrl={ctaUrl}
+        onToggleCta={() => {
+          setCtaOn((v) => !v);
+          if (ctaOn) setCtaUrl('');
+        }}
+        onCtaUrl={setCtaUrl}
+      />
+      {/*
+        Facts the brand has not supplied that its formats read
+        directly. The design has no slot for this; it is shown anyway,
+        below the panel, because it is the one check that catches a
+        campaign which looks complete and produces refusals a week
+        later. Step 3 is where it belongs — these are offer facts.
+      */}
+      {plan?.answers && !answersDismissed ? (
+        <div className="absolute left-[199px] top-[1032px] w-[638px]">
+          <MissingFactsRequest
+            genomeId={genomeId}
+            facts={plan.answers.missing}
+            unlocksPosts={plan.answers.unlocksPosts}
+            blockedPlaybooks={plan.answers.blockedPlaybooks}
+            onFilled={propose}
+            onSkip={() => setAnswersDismissed(true)}
+          />
+        </div>
+      ) : null}
+    </>
+  ) : null}
+
+  {step === 4 ? (
+    <AccountsStep
+      platforms={platforms}
+      selected={selected}
+      onToggle={(p) => setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]))}
+      onConnect={(p) => void connectPlatform(p)}
+      connecting={connecting}
+    />
+  ) : null}
+
+  {step === 5 ? (
+    <AutonomyStep
+      approvalMode={approvalMode}
+      onApprovalMode={(m) => {
+        governanceTouched.current = true;
+        setApprovalMode(m);
+      }}
+      learn={learnFromPerformance}
+      onLearn={() => setLearnFromPerformance((v) => !v)}
+      mix={adjustMixAutomatically}
+      onMix={() => setAdjustMixAutomatically((v) => !v)}
+      windowDays={windowDays}
+      onWindowDays={setWindowDays}
+      weight={weight}
+      onWeight={setWeight}
+      rung={engagementRung}
+      onRung={(r) => {
+        governanceTouched.current = true;
+        setEngagementRung(r);
+      }}
+      timezone={timezone}
+    />
+  ) : null}
+
+  {step === 6 ? (
+    <ReviewStep
+      agent={agent}
+      brandLogo={brand?.logoUrl}
+      goalLabel={goalLabel}
+      typeLabel={TYPE_CARDS.find((t) => t.value === campaignType)?.title ?? campaignType}
+      windowDays={windowDays}
+      weight={weight}
+      ctaUrl={ctaUrl.trim()}
+      requireApproval={approvalMode === 'review_everything'}
+      onRequireApproval={() => {
+        governanceTouched.current = true;
+        setApprovalMode(approvalMode === 'review_everything' ? 'review_first_week' : 'review_everything');
+      }}
+      onActivate={() => void activate()}
+      busy={busy}
+    />
+  ) : null}
+    </>
+  );
+
+  /*
+    ── The flowing wizard ────────────────────────────────────────────────
+
+    Six coordinates become one flex row. The pieces are the same pieces — Back,
+    the step count, Continue, the progress track, the assignment line — read off
+    the design rather than redrawn, with the two that belong to the stage left
+    out: the orb, which straddles a notch cut into the panel it sits on, and the
+    notch itself.
+
+    The progress fill stays the design's own table. `geom.prog` is a width in
+    pixels across a 508px track, not a percentage, because the stops are not
+    evenly spaced (54, 123, 257, 349, 453, 507) and the bar accelerates through
+    the middle steps. Dividing by the track keeps that curve at any width;
+    `step / 6` would look right and be wrong at every stop but the last.
+  */
+  if (narrow) {
+    return (
+      <CampaignNarrow value>
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create a campaign"
+          style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(10px)' }}
+        >
+          {readinessModal}
+
+          <div className="mx-auto my-[14px] w-[calc(100%-24px)] max-w-[620px] rounded-2xl bg-surface-200 p-[16px]">
+            <div className="flex flex-wrap items-center gap-[10px]">
+              <button
+                type="button"
+                onClick={backward}
+                className="flex h-[43px] shrink-0 items-center gap-[8px] rounded-[8.457px] px-[14px] text-17 font-medium"
+                style={{ color: 'rgb(131,131,131)', boxShadow: '0 0 0 0.846px rgb(131,131,131)' }}
+              >
+                <Chevron style={{ transform: 'scaleX(-1)' }} />
+                Back
+              </button>
+
+              <span className="shrink-0 text-18 font-semibold leading-none text-ink">
+                Step {step}
+                <span className="font-normal"> of 6</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={forward}
+                disabled={busy}
+                className="ml-auto flex h-[43px] shrink-0 items-center gap-[8px] rounded-[8.457px] px-[16px] text-17 font-medium text-ink disabled:opacity-60"
+                style={{ background: 'rgba(255,255,255,0.07)', boxShadow: '0 0 0 0.846px rgba(131,131,131,0.5)' }}
+              >
+                {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
+                <Chevron color="rgb(12,12,12)" />
+              </button>
+            </div>
+
+            <div
+              className="mt-[14px] h-[15px] w-full overflow-hidden rounded-[16.843px]"
+              style={{ background: 'rgba(12,12,12,0.05)' }}
+              role="progressbar"
+              aria-valuenow={step}
+              aria-valuemin={1}
+              aria-valuemax={6}
+              aria-label={`Step ${step} of 6`}
+            >
+              <div
+                className="mt-[1px] h-[13px] rounded-[24.137px] bg-cmp-progress"
+                style={{
+                  width: `${(geom.prog / PROGRESS_TRACK) * 100}%`,
+                  transition: 'width 0.5s cubic-bezier(0.22,1,0.36,1)',
+                }}
+              />
+            </div>
+
+            <p className="mt-[12px] flex items-center gap-[7px] text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>
+              <Spinner className="shrink-0" />
+              <span>
+                Assigning this campaign to{' '}
+                {agent.named ? <span className="font-bold text-purple">{agent.name}</span> : UNNAMED_AGENT_INLINE}
+              </span>
+            </p>
+
+            {/*
+              The same flattening, for the step 3 extras: `MissingFactsRequest`
+              is a sibling of the panel rather than a child of it, so
+              `StepPanel`'s own rule never reaches it.
+            */}
+            <div className="mt-[16px] flex flex-col gap-[16px] [&>*]:!relative [&>*]:!left-0 [&>*]:!top-0 [&>*]:!max-w-full">
+              {stepSlot}
+            </div>
+
+            {error ? (
+              <p className="mt-[14px] text-15 text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </CampaignNarrow>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
@@ -761,114 +1013,7 @@ export function CampaignWizard({
 
             {step !== 6 ? <AgentOrb size={113} className="left-[461px]" style={{ top: avTop }} /> : null}
 
-            {/* ── the step ──────────────────────────────────────────────── */}
-            {step === 1 ? (
-              <GoalStep
-                goalKey={goalKey}
-                objective={objective}
-                onPickCard={(c) => {
-                  setGoalKey(c.key);
-                  setObjective(c.objective);
-                  // The card carries the type it implies; an explicit later
-                  // choice on step 2 still wins, which is why this only seeds
-                  // the suggestion rather than setting `typeChoice`.
-                  setSuggestedType(c.type);
-                }}
-                onPickExtra={(v) => {
-                  setGoalKey(null);
-                  setObjective(v);
-                }}
-              />
-            ) : null}
-
-            {step === 2 ? <TypeStep value={campaignType} onPick={setTypeChoice} /> : null}
-
-            {step === 3 ? (
-              <>
-                <OfferStep
-                  brand={brand}
-                  ctaOn={ctaOn}
-                  ctaUrl={ctaUrl}
-                  onToggleCta={() => {
-                    setCtaOn((v) => !v);
-                    if (ctaOn) setCtaUrl('');
-                  }}
-                  onCtaUrl={setCtaUrl}
-                />
-                {/*
-                  Facts the brand has not supplied that its formats read
-                  directly. The design has no slot for this; it is shown anyway,
-                  below the panel, because it is the one check that catches a
-                  campaign which looks complete and produces refusals a week
-                  later. Step 3 is where it belongs — these are offer facts.
-                */}
-                {plan?.answers && !answersDismissed ? (
-                  <div className="absolute left-[199px] top-[1032px] w-[638px]">
-                    <MissingFactsRequest
-                      genomeId={genomeId}
-                      facts={plan.answers.missing}
-                      unlocksPosts={plan.answers.unlocksPosts}
-                      blockedPlaybooks={plan.answers.blockedPlaybooks}
-                      onFilled={propose}
-                      onSkip={() => setAnswersDismissed(true)}
-                    />
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
-            {step === 4 ? (
-              <AccountsStep
-                platforms={platforms}
-                selected={selected}
-                onToggle={(p) => setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]))}
-                onConnect={(p) => void connectPlatform(p)}
-                connecting={connecting}
-              />
-            ) : null}
-
-            {step === 5 ? (
-              <AutonomyStep
-                approvalMode={approvalMode}
-                onApprovalMode={(m) => {
-                  governanceTouched.current = true;
-                  setApprovalMode(m);
-                }}
-                learn={learnFromPerformance}
-                onLearn={() => setLearnFromPerformance((v) => !v)}
-                mix={adjustMixAutomatically}
-                onMix={() => setAdjustMixAutomatically((v) => !v)}
-                windowDays={windowDays}
-                onWindowDays={setWindowDays}
-                weight={weight}
-                onWeight={setWeight}
-                rung={engagementRung}
-                onRung={(r) => {
-                  governanceTouched.current = true;
-                  setEngagementRung(r);
-                }}
-                timezone={timezone}
-              />
-            ) : null}
-
-            {step === 6 ? (
-              <ReviewStep
-                agent={agent}
-                brandLogo={brand?.logoUrl}
-                goalLabel={goalLabel}
-                typeLabel={TYPE_CARDS.find((t) => t.value === campaignType)?.title ?? campaignType}
-                windowDays={windowDays}
-                weight={weight}
-                ctaUrl={ctaUrl.trim()}
-                requireApproval={approvalMode === 'review_everything'}
-                onRequireApproval={() => {
-                  governanceTouched.current = true;
-                  setApprovalMode(approvalMode === 'review_everything' ? 'review_first_week' : 'review_everything');
-                }}
-                onActivate={() => void activate()}
-                busy={busy}
-              />
-            ) : null}
+            {stepSlot}
 
             {error ? (
               <p className="absolute left-[265px] w-[720px] text-15 text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
