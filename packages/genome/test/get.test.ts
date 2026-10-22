@@ -22,6 +22,9 @@ const GENOME = {
   version: 4,
   identity: { business_name: 'Emeka Cuts' },
   dimensions: { objective: 'bookings' },
+  offer: { primary_cta: 'Book a chair' },
+  voice: { point_of_view: 'first_person_plural' },
+  audience: { primary: 'local regulars' },
   constraints: {
     heygen_avatar_id: 'tp_abc',
     heygen_avatar_kind: 'talking_photo',
@@ -56,6 +59,33 @@ describe('genome.get', () => {
    * read the camelCase names and returned `undefined` for both, which
    * type-checked only until the real store type was applied.
    */
+  /*
+   * The hero on the Command Center has a slot labelled "Primary CTA" and
+   * rendered an em dash in it for every brand, under a comment explaining that
+   * no such field existed. It did: `genome.offer.set` writes `primary_cta` to
+   * its own column and fourteen playbook `cta` beats read it verbatim. This
+   * tool was the only thing in the way — it returned identity, dimensions and
+   * constraints and dropped the rest of the row on the floor.
+   */
+  it('returns the offer, so a screen can show the call-to-action', async () => {
+    const out = await genomeGet.handler({ genomeId: 'gen_1' }, ctx());
+
+    expect(out.genome.offer).toMatchObject({ primary_cta: 'Book a chair' });
+    expect(out.genome.voice).toMatchObject({ point_of_view: 'first_person_plural' });
+    expect(out.genome.audience).toMatchObject({ primary: 'local regulars' });
+  });
+
+  /*
+   * `learned` is the one column deliberately left off: accumulated rather than
+   * authored, unbounded, and read directly by the tools that care. A read tool
+   * that grows without limit is a different problem from one that omits a field.
+   */
+  it('leaves the learned state out', async () => {
+    const out = await genomeGet.handler({ genomeId: 'gen_1' }, ctx());
+
+    expect(out.genome).not.toHaveProperty('learned');
+  });
+
   it('maps the stored keys to the ones callers use', async () => {
     const out = await genomeGet.handler({ genomeId: 'gen_1' }, ctx());
 

@@ -67,10 +67,13 @@ export function CampaignFocusCard({
   campaign,
   calendarView,
   genomeName,
+  primaryCta,
 }: {
   campaign: CampaignSummary | null | undefined;
   calendarView: CalendarView | null;
   genomeName?: string;
+  /** `offer.primary_cta` from the brand's genome. Absent until it is set. */
+  primaryCta?: string;
 }) {
 
   if (campaign === undefined) return <Skeleton className="h-40 w-full rounded-xl" />;
@@ -237,16 +240,31 @@ export function CampaignFocusCard({
         ) : null}
 
         {/*
-          The design's "Primary CTA - Visit Opt-in page". There is no CTA field
-          on a campaign - not unset, absent - so this says that rather than
-          rendering "not set", which would imply a control somewhere that sets
-          it. `campaign.create` would need the field first.
+          The design's "Primary CTA - Visit Opt-in page".
+
+          This read "there is no CTA field, so there is nothing to show" and
+          rendered an em dash under a tooltip saying so. The field was there the
+          whole time, one level up: a campaign has no CTA, but the *brand* does
+          — `offer.primary_cta`, written by `genome.offer.set` and read verbatim
+          by fourteen playbook `cta` beats. `genome.get` simply did not return
+          the column, so nothing on this screen could see it.
+
+          Still an em dash when it is unset, because that is honest and the
+          wizard's step 3 asks for it. The tooltip now says where it comes from
+          rather than that it does not exist.
         */}
         <span
           className="text-16 text-ink-muted"
-          title="A campaign has no primary-CTA field yet, so there is nothing to show here."
+          title={
+            primaryCta
+              ? 'The brand’s primary call-to-action. Every playbook that closes with one uses these words.'
+              : 'Not set on this brand yet. The campaign wizard asks for it, or set it in brand settings.'
+          }
         >
-          Primary CTA - <b className="text-14 font-semibold text-ink-muted">&mdash;</b>
+          Primary CTA -{' '}
+          <b className={`text-14 font-semibold ${primaryCta ? 'text-link-blue' : 'text-ink-muted'}`}>
+            {primaryCta || '—'}
+          </b>
         </span>
       </div>
 

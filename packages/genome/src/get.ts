@@ -28,6 +28,18 @@ import { ToolError } from '@sparksocial/shared';
  * because a tool that returns a genome and omits most of it invites a second
  * near-identical tool later.
  *
+ * It did exactly that anyway. `offer`, `voice` and `audience` were left off,
+ * so the Command Center's hero — which has a slot labelled "Primary CTA",
+ * because the design has one — could not read `offer.primary_cta` and printed
+ * an em dash under a comment explaining that no such field existed. It did
+ * exist: `genome.offer.set` writes it to its own column and fourteen playbook
+ * `cta` beats read it. The omission, not the schema, was the missing field.
+ *
+ * `learned` stays off. It is accumulated rather than authored, it grows without
+ * bound, and the things that read it (`learning.*`) query it directly. Every
+ * other column is here now, so the next screen that needs one does not have to
+ * find this out the same way.
+ *
  * A label for this name already sat in `packages/shared/src/toolLabel.ts`
  * (`'genome.get': 'Read a brand'`) with no tool behind it — somebody expected
  * this to exist too. That label is kept; this does not add a second.
@@ -52,6 +64,14 @@ export const GenomeGetOutput = z.object({
     version: z.number(),
     identity: z.record(z.unknown()),
     dimensions: z.record(z.unknown()),
+    /**
+     * Where `offer.primary_cta` lives — the words fourteen playbook `cta`
+     * beats use verbatim, and the one field the Command Center's hero has a
+     * labelled slot for.
+     */
+    offer: z.record(z.unknown()),
+    voice: z.record(z.unknown()),
+    audience: z.record(z.unknown()),
     /** Where `heygen_avatar_id` and `elevenlabs_voice_id` live. */
     constraints: z.record(z.unknown()),
   }),
@@ -62,8 +82,8 @@ export const genomeGet = defineTool({
   version: 1,
 
   summary:
-    "Read one brand's genome — its identity, routing dimensions and constraints, including which avatar " +
-    'and voice are registered. Free.',
+    "Read one brand's genome — its identity, routing dimensions, offer, voice, audience and constraints, " +
+    'including the primary call-to-action and which avatar and voice are registered. Free.',
 
   input: GenomeGetInput,
   output: GenomeGetOutput,
@@ -89,6 +109,9 @@ export const genomeGet = defineTool({
         version: genome.version,
         identity: genome.identity as Record<string, unknown>,
         dimensions: genome.dimensions as Record<string, unknown>,
+        offer: genome.offer as unknown as Record<string, unknown>,
+        voice: genome.voice as unknown as Record<string, unknown>,
+        audience: genome.audience as unknown as Record<string, unknown>,
         constraints: genome.constraints as Record<string, unknown>,
       },
     };

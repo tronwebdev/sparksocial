@@ -21,7 +21,35 @@ import { FLATTEN_NARROW } from '@/components/shell/narrowStage';
  * a button press, where an "are you sure you want to begin" card would be a
  * second click for nothing.
  */
-export function CampaignIntro({ onStart, onLater }: { onStart: () => void; onLater: () => void }) {
+export function CampaignIntro({
+  onStart,
+  onLater,
+  hasCampaign,
+}: {
+  onStart: () => void;
+  onLater: () => void;
+  /** Undefined while the answer is still in flight — see `HEADLINE`. */
+  hasCampaign?: boolean;
+}) {
+  /*
+    The prototype's headline is the first-run one, because a prototype only
+    draws first run. The build showed it to everyone: a brand with a live
+    campaign, nine posts on its calendar and an agent drafting copy was still
+    told to create its first. It is the kind of line a person reads as "this
+    thing has lost my work".
+
+    Three states rather than two. The lookup is a round trip, and a card that
+    says "your first" and then corrects itself to "another" is worse than one
+    that waits half a second to commit — so the unknown state is phrased so it
+    is true in both cases.
+  */
+  const headline =
+    hasCampaign === undefined
+      ? 'Let’s set up a campaign.'
+      : hasCampaign
+        ? 'Let’s create another campaign.'
+        : 'Let’s create your first campaign.';
+
   /*
     ── Below `canvas` ──────────────────────────────────────────────────
 
@@ -62,7 +90,7 @@ export function CampaignIntro({ onStart, onLater }: { onStart: () => void; onLat
           className="absolute left-[35px] top-[55px] w-[478px] text-center text-36 font-semibold leading-[1.21] max-canvas:static max-canvas:w-full"
           style={{ color: 'rgb(131,131,131)' }}
         >
-          Your agent is ready! <span className="text-black">Let&rsquo;s create your first campaign.</span>
+          Your agent is ready! <span className="text-black">{headline}</span>
         </h2>
 
         <p

@@ -161,6 +161,27 @@ export function CampaignWizard({
   const pageW = useStageWidth(STAGE);
   /** The prototype's entry card. Only shown where a caller asks for it. */
   const [intro, setIntro] = useState(showIntro);
+  /**
+   * Whether this brand has run a campaign before, for the intro's copy.
+   *
+   * The card greeted every arrival with "let's create your first campaign",
+   * including a brand with nine of them on a calendar. `undefined` until the
+   * answer is back, so the card can say something that is true either way
+   * rather than flashing the wrong one and correcting itself.
+   */
+  const [hasCampaign, setHasCampaign] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    if (!intro) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<{ campaigns: unknown[] }>('campaign.list', { genomeId, limit: 1 });
+      if (!cancelled && res.status === 'succeeded') setHasCampaign(res.output.campaigns.length > 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [intro, genomeId]);
 
   // CMP-01.1
   /**
@@ -640,7 +661,7 @@ export function CampaignWizard({
     if (narrow) {
       return (
         <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Create a campaign">
-          <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} />
+          <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} hasCampaign={hasCampaign} />
         </div>
       );
     }
@@ -649,7 +670,7 @@ export function CampaignWizard({
       <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Create a campaign">
         <div className="relative w-full overflow-hidden" style={{ height: Math.round(1117 * scale) }}>
           <div className="absolute left-0 top-0 w-[1728px] origin-top-left" style={{ transform: `scale(${scale})`, height: 1117 }}>
-            <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} />
+            <CampaignIntro onStart={() => setIntro(false)} onLater={onCancel} hasCampaign={hasCampaign} />
           </div>
         </div>
       </div>

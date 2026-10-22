@@ -517,7 +517,7 @@ export interface ToolIO {
   };
   "genome.get": {
     input: { genomeId: string };
-    output: { genome: { genomeId: string; brandId: string; version: number; identity: Record<string, unknown>; dimensions: Record<string, unknown>; constraints: Record<string, unknown> } };
+    output: { genome: { genomeId: string; brandId: string; version: number; identity: Record<string, unknown>; dimensions: Record<string, unknown>; offer: Record<string, unknown>; voice: Record<string, unknown>; audience: Record<string, unknown>; constraints: Record<string, unknown> } };
   };
   "genome.identity.set": {
     input: { genomeId: string; identity: { business_name?: string; category?: string; sub_category?: string; one_liner?: string; geography?: { scope: "global" | "national" | "local"; locale: string; radius_km: (number) | (null) }; languages?: Array<string>; price_tier?: "budget" | "mid" | "premium" | "enterprise" } };

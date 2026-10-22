@@ -57,6 +57,12 @@ export function CommandCenterOverview({
 
   const [campaign, setCampaign] = useState<CampaignSummary | null | undefined>(undefined); // undefined = not checked yet, null = none exists
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
+  /*
+    The hero's "Primary CTA" slot. It lives on the brand rather than the
+    campaign, so it is read once per genome here instead of per campaign in
+    `loadCampaign` — a campaign changing does not change the brand's words.
+  */
+  const [primaryCta, setPrimaryCta] = useState<string | undefined>(undefined);
 
   const loadCampaign = useCallback(async () => {
     if (!genome) return;
@@ -78,6 +84,22 @@ export function CommandCenterOverview({
   useEffect(() => {
     void loadCampaign();
   }, [loadCampaign]);
+
+  useEffect(() => {
+    if (!genome) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await invoke<{ genome: { offer?: { primary_cta?: string } } }>('genome.get', {
+        genomeId: genome.genomeId,
+      });
+      // A refusal leaves it undefined, which renders the same em dash as unset.
+      // Nothing on this screen is worth an error state for a CTA.
+      if (!cancelled && res.status === 'succeeded') setPrimaryCta(res.output.genome.offer?.primary_cta || undefined);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [genome]);
 
   if (genomeLoading) {
     return (
@@ -114,7 +136,12 @@ export function CommandCenterOverview({
         `(cc)/agents/page.tsx`, which owns the copy because the title is
         per-tab.
       */}
-      <CampaignFocusCard campaign={campaign} calendarView={calendarView} genomeName={genome?.name} />
+      <CampaignFocusCard
+        campaign={campaign}
+        calendarView={calendarView}
+        genomeName={genome?.name}
+        primaryCta={primaryCta}
+      />
 
       {/*
         Three panels that used to sit under the queue are gone from this tab:
