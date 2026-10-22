@@ -35,6 +35,7 @@ export * from './engagementConfig.js';
 export * from './agentIdentity.js';
 
 export * from './hashtags.js';
+export * from './platformMedia.js';
 export * from './timezones.js';
 export * from './audioPeaks.js';
 export * from './article.js';

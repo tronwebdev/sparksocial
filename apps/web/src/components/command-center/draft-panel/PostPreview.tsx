@@ -1,6 +1,7 @@
 'use client';
 
-import { PLATFORM_LIMITS } from '@sparksocial/shared';
+import { useState } from 'react';
+import { PLATFORM_LIMITS, platformTakes, type PostFormat } from '@sparksocial/shared';
 import { cn } from '@/lib/utils';
 import { backdropOf, type DraftView } from './types';
 
@@ -48,6 +49,11 @@ export interface PostPreviewProps {
   brandName?: string;
   /** Where this post is going. Empty means no account has been chosen yet. */
   platforms: string[];
+  /** Every platform the picker offers. */
+  options: readonly string[];
+  /** The one currently chosen to publish to. */
+  selected: string;
+  onSelect: (platform: string) => void;
   /** The brand's posting window for this date, when one is known. */
   bestTime?: string;
   onPublish: () => void;
@@ -78,7 +84,14 @@ function mediaOf(draft: DraftView): Array<{ kind: 'image' | 'video'; url: string
     kind: r.url.endsWith('.mp4') ? ('video' as const) : ('image' as const),
     url: r.url,
   }));
-  if (rendered.length > 0) return rendered.slice(0, 1);
+  /*
+    `.slice(0, 1)` for everything except a carousel, and that exception is the
+    whole bug. For a video or an image there is one composed file and it *is*
+    the post. A carousel's renders are its slides — six files, one per slide —
+    so taking the first one turned a six-slide carousel into a single image,
+    which is exactly how it looked on the deployed site.
+  */
+  if (rendered.length > 0) return draft.mediaType === 'carousel' ? rendered : rendered.slice(0, 1);
 
   const out: Array<{ kind: 'image' | 'video'; url: string }> = [];
   for (const b of draft.beats) {
@@ -108,11 +121,120 @@ function counts(caption: string): Array<{ platform: string; limit: number; over:
   }));
 }
 
+
+/**
+ * A carousel, previewed as a carousel.
+ *
+ * ── What it replaces ─────────────────────────────────────────────────────
+ *
+ * Every slide, stacked vertically, in a one-column grid. That is a contact
+ * sheet, not a preview: nobody scrolling Instagram sees six images at once,
+ * they see the first one and decide whether to swipe. A reviewer looking at
+ * the stack cannot tell whether slide 1 earns the swipe, which is the only
+ * question a carousel preview has to answer. It also read as a single image
+ * when only one slide had been rendered, which is how this was reported.
+ *
+ * `DP prevCarousel.dc.html` shows one slide in a 4:5 frame, arrows either
+ * side, "Slide 2 of 6" above it and a numbered pager below. That is this.
+ *
+ * ── The pager is the point ───────────────────────────────────────────────
+ *
+ * Both controls are here on purpose. The arrows are how you read it in order,
+ * the way the post is consumed; the numbered pager is how you jump to the
+ * slide somebody has complained about. Keyboard arrows do the same, because a
+ * reviewer going through six slides should not have to aim at a 28px target
+ * six times.
+ */
+function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'; url: string }>; label: string }) {
+  const [at, setAt] = useState(0);
+  const total = media.length;
+  const current = media[Math.min(at, total - 1)]!;
+  const go = (next: number) => setAt(((next % total) + total) % total);
+
+  return (
+    <div
+      className="mt-[20px]"
+      role="group"
+      aria-roledescription="carousel"
+      aria-label={label}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); go(at - 1); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); go(at + 1); }
+      }}
+    >
+      <p className="text-15 font-medium text-ink-muted" aria-live="polite">
+        Slide {at + 1} of {total}
+      </p>
+
+      <div className="mt-[10px] flex items-center gap-[10px]">
+        <button
+          type="button"
+          aria-label="Previous slide"
+          onClick={() => go(at - 1)}
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-white text-16 text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.25)]"
+        >
+          &#8249;
+        </button>
+
+        {/*
+          4:5 — the ratio the carousel playbooks render at (1080x1350), and the
+          one the design labels under the frame. `object-contain` rather than
+          `cover`, because a slide cropped in the preview is a slide whose
+          cropping nobody approved.
+        */}
+        <div className="flex aspect-[4/5] min-w-0 flex-1 items-center justify-center overflow-hidden rounded-[10px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
+          {current.kind === 'video' ? (
+            <video src={current.url} controls className="h-full w-full object-contain" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={current.url} alt={`Slide ${at + 1} of ${total}`} className="h-full w-full object-contain" />
+          )}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Next slide"
+          onClick={() => go(at + 1)}
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-white text-16 text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.25)]"
+        >
+          &#8250;
+        </button>
+      </div>
+
+      <div className="mt-[12px] flex flex-wrap items-center justify-center gap-[6px]">
+        {media.map((m, i) => (
+          <button
+            key={m.url + i}
+            type="button"
+            aria-label={`Go to slide ${i + 1}`}
+            aria-current={i === at ? 'true' : undefined}
+            onClick={() => setAt(i)}
+            className="flex h-[28px] w-[28px] items-center justify-center rounded-[6px] text-13 font-medium transition-colors"
+            style={
+              i === at
+                ? { background: 'var(--ss-cyan-200)', color: 'var(--ss-ink)' }
+                : { background: 'rgba(131,131,131,0.12)', color: 'var(--ss-ink-muted)' }
+            }
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-[10px] text-center text-13 text-ink-muted">4:5 &middot; 1080&times;1350</p>
+    </div>
+  );
+}
+
 export function PostPreview({
   draft,
   caption,
   brandName,
   platforms,
+  options,
+  selected,
+  onSelect,
   bestTime,
   onPublish,
   onSchedule,
@@ -163,7 +285,14 @@ export function PostPreview({
           {caption || '(no written copy)'}
         </p>
 
-        {media.length > 0 ? (
+        {media.length > 0 && draft.mediaType === 'carousel' ? (
+          /*
+            A carousel is read one slide at a time, so it is previewed one
+            slide at a time. The stacked grid below is still right for a post
+            whose media is a set rather than a sequence.
+          */
+          <CarouselDeck media={media} label={caption.slice(0, 60) || 'Carousel preview'} />
+        ) : media.length > 0 ? (
           <div className="mt-[20px] grid grid-cols-1 gap-[10px]">
             {media.map((m, i) =>
               m.kind === 'video' ? (
@@ -199,34 +328,73 @@ export function PostPreview({
         ))}
       </div>
 
-      {/* ── Where it goes ──────────────────────────────────────────────── */}
+      {/*
+        ── Where it goes ──────────────────────────────────────────────────
+
+        One row, not two. This used to be a read-only list of the accounts the
+        calendar slot had chosen, and the panel rendered a *second* "Publish
+        to" underneath it — a row of buttons that actually set the target. Two
+        headings with the same words, one inert and one live, on the same
+        screen. The live one wins and the slot's accounts moved into the line
+        beneath the row, which is where that fact belongs: it is context for
+        the choice, not a second control.
+
+        Unavailable is a state, not an omission. A platform that cannot carry
+        this format stays in the row, greyed and unclickable, with the reason
+        printed underneath — the design does exactly this for TikTok on a
+        carousel. Hiding it would leave somebody looking for the platform they
+        expected and finding nothing to explain its absence.
+      */}
       <p className="mt-[28px] text-15 font-medium text-ink-muted">Publish to</p>
       <div className="mt-[14px] flex flex-wrap items-center gap-[11px]">
-        {(platforms.length > 0 ? platforms : ['No account chosen']).map((p) => {
+        {options.map((p) => {
           const limit = PLATFORM_LIMITS[p]?.maxLength;
           const over = limit !== undefined && caption.length > limit;
-          const chosen = platforms.includes(p);
+          const takes = platformTakes(p, draft.mediaType as PostFormat);
+          const chosen = p === selected;
           return (
-            <span
+            <button
               key={p}
+              type="button"
+              disabled={!takes.ok}
+              aria-pressed={chosen}
+              {...(takes.reason ? { title: takes.reason } : {})}
+              onClick={() => onSelect(p)}
               className={cn(
-                'flex h-[35px] items-center rounded-full px-[18px] text-16 font-medium',
-                over ? 'text-ink' : chosen ? 'text-ink' : 'text-ink-muted',
+                'flex h-[35px] items-center rounded-full px-[18px] text-16 font-medium capitalize transition-colors',
+                !takes.ok ? 'cursor-not-allowed text-ink-muted opacity-50' : chosen ? 'text-ink' : 'text-ink-muted',
               )}
               style={{
-                background: over
+                background: over && chosen
                   ? 'rgba(243,85,37,0.32)'
                   : chosen
                     ? 'var(--ss-cyan-200)'
                     : 'rgba(131,131,131,0.2)',
               }}
             >
-              {p}
-              {over ? ' (over limit)' : ''}
-            </span>
+              {p.replace('_', ' ')}
+              {over && chosen ? ' (over limit)' : ''}
+            </button>
           );
         })}
       </div>
+
+      {/* The refusals, spelled out. One line per platform this post cannot use. */}
+      {options
+        .map((p) => ({ p, takes: platformTakes(p, draft.mediaType as PostFormat) }))
+        .filter((x) => !x.takes.ok)
+        .map((x) => (
+          <p key={x.p} className="mt-[8px] text-13 text-ink-muted">
+            {x.takes.reason}
+          </p>
+        ))}
+
+      {/* What the calendar slot already decided, as context rather than a control. */}
+      <p className="mt-[10px] text-13 text-ink-muted">
+        {platforms.length > 0
+          ? `This slot is set to ${platforms.join(', ')}.`
+          : 'No account has been connected for this slot yet.'}
+      </p>
 
       {/* ── When ───────────────────────────────────────────────────────── */}
       {bestTime ? (

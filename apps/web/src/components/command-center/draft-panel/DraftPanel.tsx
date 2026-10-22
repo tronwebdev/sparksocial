@@ -1244,6 +1244,7 @@ export function DraftPanel({
     <DraftDrawer
       postType={postType}
       onPostType={setPostType}
+      typeFixed={draft !== null && draft !== undefined}
       tab={drawerTab}
       onTab={setDrawerTab}
       onClose={onClose}
@@ -1808,6 +1809,9 @@ export function DraftPanel({
                 caption={caption(draft, shortUrl)}
                 {...(focus?.brandName ? { brandName: focus.brandName } : {})}
                 platforms={draft.platform ? [draft.platform] : []}
+                options={PLATFORMS}
+                selected={platform}
+                onSelect={(p) => setPlatform(p as (typeof PLATFORMS)[number])}
                 {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
                 onPublish={() => void publishNow()}
                 onSaveDraft={onClose}
@@ -1951,23 +1955,13 @@ export function DraftPanel({
                 {linkError ? <p className="mt-1 text-12 text-destructive">{linkError}</p> : null}
               </div>
 
-              <div>
-                <p className="text-13 font-medium text-ink-muted">Publish to</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {PLATFORMS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPlatform(p)}
-                      className={`rounded-full border px-3 py-1.5 text-13 capitalize ${
-                        platform === p ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-ink hover:bg-surface-muted'
-                      }`}
-                    >
-                      {p.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/*
+                The platform picker was here, under its own "Publish to"
+                heading, directly below `PostPreview`'s heading of the same
+                name. Two sections, same words, one inert. It lives inside the
+                preview now, where the design puts it and where the caption it
+                has to fit is on screen beside it.
+              */}
 
               {error ? <p className="text-13 text-destructive">{error}</p> : null}
             </div>

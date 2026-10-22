@@ -56,6 +56,7 @@ export type DrawerTab = 'current' | 'list';
 export function DraftDrawer({
   postType,
   onPostType,
+  typeFixed,
   tab,
   onTab,
   onClose,
@@ -63,6 +64,12 @@ export function DraftDrawer({
 }: {
   postType: PostType;
   onPostType: (next: PostType) => void;
+  /**
+   * The post already is something, so the rail reports rather than asks.
+   *
+   * See `PostTypeRail`. Unset while composing, set once a draft is loaded.
+   */
+  typeFixed?: boolean;
   tab: DrawerTab;
   onTab: (next: DrawerTab) => void;
   onClose: () => void;
@@ -134,7 +141,9 @@ export function DraftDrawer({
               follows: the rail picks what *this* post is, and the list is not
               one post.
             */}
-            {tab === 'list' ? null : <PostTypeRail active={postType} onSelect={onPostType} />}
+            {tab === 'list' ? null : (
+              <PostTypeRail active={postType} onSelect={onPostType} fixed={typeFixed ?? false} />
+            )}
 
             <div className="flex min-w-0 flex-1 flex-col">
               <DrawerTabs tab={tab} onTab={onTab} />
@@ -160,7 +169,33 @@ export function DraftDrawer({
  * else, which is what the design says, rather than what a text post would
  * plausibly want.
  */
-function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next: PostType) => void }) {
+function PostTypeRail({
+  active,
+  onSelect,
+  fixed,
+}: {
+  active: PostType;
+  onSelect: (next: PostType) => void;
+  fixed: boolean;
+}) {
+  /*
+    ── Why three of these four are dead once a draft is open ──────────────
+
+    The rail picked which editor to show and nothing else. On a carousel
+    draft, pressing "Image" swapped in the image editor for a post that is
+    not an image — same six slides underneath, a form that cannot describe
+    them, and no indication that anything was wrong. It did not convert the
+    draft, because nothing here can: the format is settled at plan time by the
+    playbook, and the beats, the render and the platform rules all follow from
+    it.
+
+    So once a draft is loaded the rail states the format instead of offering
+    it. The real "I want this as something else" is `content.repurpose`, which
+    is already in the editor under "Want this as a different format?" — it
+    makes a *new* draft and leaves this one alone, which is the only honest
+    version of the operation.
+  */
+  const reason = 'This draft is already a ' + active + '. Use "Want this as a different format?" below to repurpose it.';
   return (
     <nav
       aria-label="Post type"
@@ -194,8 +229,13 @@ function PostTypeRail({ active, onSelect }: { active: PostType; onSelect: (next:
               <button
                 type="button"
                 aria-current={on ? 'true' : undefined}
+                disabled={fixed && !on}
+                {...(fixed && !on ? { title: reason } : {})}
                 onClick={() => onSelect(t.id)}
-                className="flex w-full flex-col items-center gap-[6px] py-[4px]"
+                className={cn(
+                  'flex w-full flex-col items-center gap-[6px] py-[4px]',
+                  fixed && !on ? 'cursor-not-allowed opacity-40' : '',
+                )}
               >
                 {/*
                   A 75x75 tile, r15.69 — measured, not a card.
