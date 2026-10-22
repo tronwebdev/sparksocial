@@ -138,6 +138,9 @@ export function makeComposeStatic(deps: ComposeStaticDeps) {
             genomeId: input.genomeId,
             orgId: ctx.orgId,
             aspect: r.aspect,
+            // Carried for a carousel, absent for an image. Without it the six
+            // slide rows differ only by url, and `content.get` keeps one.
+            ...(r.beatId ? { beatId: r.beatId } : {}),
             storageUrl: r.url,
             engine: 'satori',
             costCents: COST_CENTS_PER_RENDER,

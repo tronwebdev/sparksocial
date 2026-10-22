@@ -44,6 +44,22 @@ import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PL
  */
 const SCENE_ADD_KEY = '__add_scene__';
 
+/**
+ * What to call this post at the top of the editor.
+ *
+ * The design says "Untitled Post", which is the right placeholder for the
+ * empty state it draws and the wrong label for a draft that has been written:
+ * the first line is already the hook, and it identifies the post in a list of
+ * twelve in a way a placeholder cannot. Falls back to the design's words when
+ * there is genuinely nothing yet.
+ */
+function postTitle(draft: DraftView): string {
+  for (const b of draft.beats) {
+    if (b.kind === 'text' && b.text.trim()) return b.text.trim().slice(0, 90);
+  }
+  return 'Untitled Post';
+}
+
 export function DraftPanel({
   genomeId,
   contentItemId: initialContentItemId,
@@ -1571,6 +1587,35 @@ export function DraftPanel({
 
           {phase === 'editor' && draft ? (
             <div className="grid grid-cols-1 gap-4">
+              {/*
+                ── The editor's header, which was not there ──────────────────
+
+                `DP carousel.dc.html` opens the content pane with three lines
+                before anything else: the post's title at 843,189 in 27/600
+                ink, the format as a section heading at 821,412 in 22/600, and
+                a meta row at y596 in 18/500 grey — aspect, template, and how
+                many slides. The build started at the storyboard, so a person
+                opening a draft saw a list of slides with nothing above it
+                saying what they were slides *of*.
+
+                The title is the post's own first line rather than the
+                design's "Untitled Post" placeholder, because by the time a
+                draft is open it has one, and a real headline identifies the
+                post in a way a placeholder cannot.
+              */}
+              <header>
+                <h2 className="text-26 font-semibold leading-[1.2] text-ink">{postTitle(draft)}</h2>
+                <p className="mt-[14px] text-22 font-semibold capitalize text-ink">{draft.mediaType} Post</p>
+                <div className="mt-[10px] flex flex-wrap items-center gap-x-[22px] gap-y-[6px] text-18 font-medium text-ink-muted">
+                  {draft.mediaType === 'carousel' || draft.mediaType === 'image' ? <span>4:5</span> : null}
+                  {draft.mediaType === 'video' ? <span>9:16</span> : null}
+                  <span>Brand template</span>
+                  <span>
+                    {draft.beats.length} {draft.mediaType === 'carousel' ? 'slide' : 'scene'}
+                    {draft.beats.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+              </header>
               {/*
                 The storyboard header - M5's "9:16 / 0:24 total / Add scene" strip.
                 The total prefers whatever the last scene tool returned, because

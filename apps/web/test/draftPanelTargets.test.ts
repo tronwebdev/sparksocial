@@ -101,3 +101,50 @@ describe('the post-type rail reports once a draft is open', () => {
     expect(PANEL).toContain('typeFixed={draft !== null && draft !== undefined}');
   });
 });
+
+/**
+ * The preview's layout, which was one prototype applied to four formats.
+ *
+ * Measured at the 1728 stage: `prevText` is a single column — "Post preview"
+ * 821,147, engagement row y543, counts y609. `prevImage` and `prevCarousel`
+ * are two — media 822,184 in a 324x405 frame, and a 493-wide column from
+ * x1195. Both media prototypes agree to the pixel, so it is one layout for
+ * both and not a carousel special case.
+ */
+describe('the preview follows the prototype for its own format', () => {
+  it('splits media posts into the design’s two columns', () => {
+    expect(PREVIEW).toContain("const twoColumn = draft.mediaType !== 'text'");
+    // 324 + 49 + 493 = 866 on an 868-wide pane.
+    expect(PREVIEW).toContain('gap-[49px]');
+    expect(PREVIEW).toContain('w-[324px] shrink-0');
+  });
+
+  it('stacks them below the canvas width instead of squeezing', () => {
+    expect(PREVIEW).toContain('max-canvas:flex-col');
+  });
+
+  it('keeps the post card for text, which is what its prototype draws', () => {
+    expect(PREVIEW).toContain('PostCard');
+    expect(PREVIEW).toContain("'Like', 'Comment', 'Share'");
+  });
+
+  it('heads the phase the way the design does', () => {
+    expect(PREVIEW).toContain('Review your post');
+    // "Generated" is true of a post with pixels and false of one without, so
+    // it is read rather than printed.
+    expect(PREVIEW).toContain("media.length > 0 ? 'Generated'");
+  });
+});
+
+describe('the editor says what the draft is', () => {
+  it('carries the title, the format and the meta row', () => {
+    expect(PANEL).toContain('postTitle(draft)');
+    expect(PANEL).toContain('{draft.mediaType} Post');
+    expect(PANEL).toContain('Brand template');
+  });
+
+  it('prefers the post’s own first line to the placeholder', () => {
+    expect(PANEL).toContain("return 'Untitled Post';");
+    expect(PANEL).toContain("b.kind === 'text' && b.text.trim()");
+  });
+});

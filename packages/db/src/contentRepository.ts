@@ -135,6 +135,7 @@ function toRender(row: scoped.RenderRow): RenderRecord {
     id: row.id,
     contentItemId: row.contentItemId,
     aspect: row.aspect,
+    beatId: row.beatId,
     storageUrl: row.storageUrl,
     engine: row.engine,
     costCents: row.costCents,

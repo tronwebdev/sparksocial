@@ -145,16 +145,46 @@ export const contentGet = defineTool({
     const band = playbook?.output.duration_sec;
 
     /*
-     * Newest first, one per aspect.
+     * Newest first, one per aspect — and, for a carousel, one per slide.
      *
      * `compose.render` writes a row per aspect ratio and a re-render adds more
      * rather than replacing, so the table holds every take ever made. The
      * preview wants the current one, which is the newest of each aspect —
      * showing all of them would be a gallery of supplanted versions.
+     *
+     * Keying on the aspect alone was right for every format with one render
+     * and wrong for the one without. A carousel writes a row per slide per
+     * aspect: six rows, same aspect, differing only by `beat_id`. The map kept
+     * the newest of the six and discarded the rest, so a six-slide carousel
+     * read back as a single image — which is what the Draft Panel showed, and
+     * what it was reported as. The key is now the aspect and the slide.
+     *
+     * Rows written before `beat_id` existed have none, so they collapse to one
+     * per aspect exactly as they used to. An old carousel still previews as a
+     * single slide; re-rendering it fixes it. Backfilling is not possible —
+     * which slide each row held is the fact that was never written down.
      */
     const all = await ctx.db.content.listRenders(input.contentItemId, input.genomeId, ctx.orgId).catch(() => []);
     const newestPerAspect = new Map<string, (typeof all)[number]>();
-    for (const r of all) if (!newestPerAspect.has(r.aspect)) newestPerAspect.set(r.aspect, r);
+    for (const r of all) {
+      const key = r.beatId ? `${r.aspect} ${r.beatId}` : r.aspect;
+      if (!newestPerAspect.has(key)) newestPerAspect.set(key, r);
+    }
+
+    /*
+     * Slide order, not newest-first.
+     *
+     * The query returns the most recent row first, which for a carousel is the
+     * last slide rendered. A preview that opens on slide 6 and counts down is
+     * not a preview of the post. Ordered by where each slide's beat sits in
+     * the draft, with anything unmatched kept at the end rather than dropped.
+     */
+    const beatOrder = new Map((parsed.success ? parsed.data : []).map((b, i) => [b.beatId, i]));
+    const ordered = [...newestPerAspect.values()].sort((a, b) => {
+      const ai = a.beatId ? (beatOrder.get(a.beatId) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      const bi = b.beatId ? (beatOrder.get(b.beatId) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      return ai - bi;
+    });
 
     return {
       contentItemId: draft.id,
@@ -193,7 +223,7 @@ export const contentGet = defineTool({
       ...(draft.variantGroupId ? { variantGroupId: draft.variantGroupId } : {}),
       ...(draft.variantLabel ? { variantLabel: draft.variantLabel } : {}),
       ...(draft.scheduledAt ? { scheduledAt: draft.scheduledAt.toISOString() } : {}),
-      renders: [...newestPerAspect.values()].map((r) => ({
+      renders: ordered.map((r) => ({
         aspect: r.aspect,
         url: r.storageUrl,
         engine: r.engine,

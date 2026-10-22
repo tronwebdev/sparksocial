@@ -204,6 +204,94 @@ describe('content.get — renders already made', () => {
     expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/new.mp4', 'https://cdn/square.mp4']);
   });
 
+  /**
+   * The one format where "one render per aspect" is the wrong rule.
+   *
+   * `compose.render` writes a row per slide per aspect for a carousel — six
+   * rows, same aspect, differing only by `beatId`. Keying the dedupe on the
+   * aspect alone kept the newest of the six and threw the rest away, so a
+   * six-slide carousel read back as one image. That is exactly what the Draft
+   * Panel displayed and how it was reported: "it's just showing as an image".
+   */
+  it('keeps every slide of a carousel, not just the newest one', async () => {
+    const slide = (beatId: string, url: string, at: string) => ({ ...render('4:5', url, at), beatId });
+
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({
+        get: async () => ({
+          id: 'ci_1', genomeId: 'gen_1', playbookId: 'pb_text_update', mode: 'synthesize',
+          status: 'draft',
+          copy: [
+            { kind: 'text', beatId: 'b1', text: 'Hook' },
+            { kind: 'text', beatId: 'b2', text: 'Step' },
+            { kind: 'text', beatId: 'b3', text: 'CTA' },
+          ],
+          why: { summary: 'x', factors: [], evidence: [], alternatives: [] }, createdAt: new Date(),
+        }),
+        renders: [
+          slide('b3', 'https://cdn/s3.png', '2026-01-03'),
+          slide('b2', 'https://cdn/s2.png', '2026-01-03'),
+          slide('b1', 'https://cdn/s1.png', '2026-01-03'),
+        ],
+      }),
+    );
+
+    // In slide order, not newest-first — a preview that opens on the last
+    // slide and counts down is not a preview of the post.
+    expect(res.renders.map((r) => r.url)).toEqual([
+      'https://cdn/s1.png',
+      'https://cdn/s2.png',
+      'https://cdn/s3.png',
+    ]);
+  });
+
+  /** A re-rendered slide still replaces its own previous take, not its neighbours'. */
+  it('keeps the newest take of each slide', async () => {
+    const slide = (beatId: string, url: string, at: string) => ({ ...render('4:5', url, at), beatId });
+
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({
+        get: async () => ({
+          id: 'ci_1', genomeId: 'gen_1', playbookId: 'pb_text_update', mode: 'synthesize',
+          status: 'draft',
+          copy: [
+            { kind: 'text', beatId: 'b1', text: 'Hook' },
+            { kind: 'text', beatId: 'b2', text: 'CTA' },
+          ],
+          why: { summary: 'x', factors: [], evidence: [], alternatives: [] }, createdAt: new Date(),
+        }),
+        renders: [
+          slide('b1', 'https://cdn/s1-new.png', '2026-01-05'),
+          slide('b2', 'https://cdn/s2.png', '2026-01-03'),
+          slide('b1', 'https://cdn/s1-old.png', '2026-01-01'),
+        ],
+      }),
+    );
+
+    expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/s1-new.png', 'https://cdn/s2.png']);
+  });
+
+  /*
+   * Rows written before the column existed carry no slide, and must keep
+   * behaving as they did — one per aspect — rather than all surviving as
+   * separate "slides" of a post that has one.
+   */
+  it('still collapses rows that predate the slide column', async () => {
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({
+        renders: [
+          render('4:5', 'https://cdn/legacy-new.png', '2026-01-03'),
+          render('4:5', 'https://cdn/legacy-old.png', '2026-01-01'),
+        ],
+      }),
+    );
+
+    expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/legacy-new.png']);
+  });
+
   it('answers with an empty list rather than failing when nothing is rendered', async () => {
     const res = await contentGet.handler({ contentItemId: 'ci_1', genomeId: 'gen_1' }, ctx());
     expect(res.renders).toEqual([]);

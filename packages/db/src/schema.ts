@@ -190,6 +190,17 @@ export const renders = pgTable(
     genomeId: text('genome_id').notNull(),
     contentItemId: uuid('content_item_id').notNull(),
     aspect: text('aspect').notNull(),
+    /*
+     * Which slide this is, for the formats that have more than one.
+     *
+     * Null for an image or a video, where the render *is* the post. A carousel
+     * writes one row per slide per aspect, and without this they were six rows
+     * that differed only by url — so `content.get`, which keeps the newest row
+     * per aspect, kept one of them and a six-slide carousel read back as a
+     * single image. `compose.render` already computed the beat id and threw it
+     * away at this line.
+     */
+    beatId: text('beat_id'),
     storageUrl: text('storage_url').notNull(),
     engine: text('engine').notNull(), // 'remotion' today; 'ffmpeg'/'satori' if compose grows other engines
     costCents: integer('cost_cents').notNull().default(0),

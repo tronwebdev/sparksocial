@@ -1282,6 +1282,8 @@ export interface ContentStore {
     genomeId: string;
     orgId: string;
     aspect: string;
+    /** Which slide this render is, for a carousel. Omitted where there is one. */
+    beatId?: string;
     storageUrl: string;
     engine: string;
     costCents: number;
@@ -1300,11 +1302,24 @@ export interface ContentStore {
   listRendersForItems(contentItemIds: string[], genomeId: string, orgId: string): Promise<RenderRecord[]>;
 }
 
-/** One `renders` row — `compose.render`'s output for a single aspect ratio. */
+/**
+ * One `renders` row — `compose.render`'s output for a single aspect ratio,
+ * and for a carousel a single slide within it.
+ */
 export interface RenderRecord {
   id: string;
   contentItemId: string;
   aspect: string;
+  /**
+   * Which slide, for a carousel.
+   *
+   * Optional rather than required so a store that predates the column — the
+   * dev store, a test fixture — stays a valid store. Absent and null mean the
+   * same thing to every reader: "this render is the whole post", which is the
+   * right reading for an image, a video, and for a carousel row written before
+   * the column existed.
+   */
+  beatId?: string | null;
   storageUrl: string;
   engine: string;
   costCents: number;

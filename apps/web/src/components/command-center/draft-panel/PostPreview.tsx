@@ -227,6 +227,133 @@ function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'
   );
 }
 
+/**
+ * The post card — `DP prevText.dc.html`, and only that.
+ *
+ * Avatar, byline, copy, media, and the platform's engagement row: a text post
+ * previewed as a post. The media formats do not use it, because their design
+ * does not — see the layout note on `PostPreview`.
+ */
+function PostCard({
+  name,
+  draft,
+  caption,
+  media,
+}: {
+  name: string;
+  draft: DraftView;
+  caption: string;
+  media: Array<{ kind: 'image' | 'video'; url: string }>;
+}) {
+  return (
+    <article className="rounded-[10px] bg-white px-[24px] pt-[18px] pb-[20px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
+      <header className="flex items-center gap-[10px]">
+        <span
+          aria-hidden
+          className="flex h-[63px] w-[63px] items-center justify-center rounded-full text-28 font-medium"
+          style={{ background: '#CFFCCF', color: '#13AD12' }}
+        >
+          {initials(name)}
+        </span>
+        <span>
+          <span className="block text-18 font-medium text-ink-muted">{name}</span>
+          {/*
+            "Sponsored ·" in the design, which this is not — nothing here buys
+            placement. The line below it is what the post actually is: an
+            organic post, and when it is scheduled, when it goes.
+          */}
+          <span className="mt-[6px] block text-15 font-medium text-ink-muted">
+            {draft.scheduledAt
+              ? new Date(draft.scheduledAt).toLocaleString('en', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })
+              : 'Not scheduled yet'}
+          </span>
+        </span>
+      </header>
+
+      <p className="mt-[28px] whitespace-pre-wrap text-18 font-medium leading-[1.5] text-ink-muted">
+        {caption || '(no written copy)'}
+      </p>
+
+      {media.length > 0 ? (
+        <div className="mt-[20px] grid grid-cols-1 gap-[10px]">
+          {media.map((m, i) =>
+            m.kind === 'video' ? (
+              <video key={m.url + i} src={m.url} controls className="max-h-[420px] w-full rounded-[10px] bg-black/5" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={m.url + i} src={m.url} alt="" className="max-h-[420px] w-full rounded-[10px] object-contain" />
+            ),
+          )}
+        </div>
+      ) : null}
+
+      <footer className="mt-[24px] flex items-center gap-[52px] border-t border-border/50 pt-[16px]">
+        {['Like', 'Comment', 'Share'].map((a) => (
+          <span key={a} aria-hidden className="text-16 text-ink-muted">
+            {a}
+          </span>
+        ))}
+      </footer>
+    </article>
+  );
+}
+
+/**
+ * The media column of the two-column preview — `DP prevImage` / `prevCarousel`.
+ *
+ * 324x405 at the 1728 stage, which is 4:5 exactly, with the format printed
+ * under it in 18/500 grey. A carousel puts its deck here; everything else puts
+ * its one composed file.
+ */
+function MediaPane({
+  draft,
+  media,
+  caption,
+}: {
+  draft: DraftView;
+  media: Array<{ kind: 'image' | 'video'; url: string }>;
+  caption: string;
+}) {
+  if (media.length === 0) {
+    return (
+      <p
+        className="rounded-[10px] px-[18px] py-[16px] text-16 text-ink-muted"
+        style={{ background: 'rgba(131,131,131,0.1)' }}
+      >
+        Nothing has been rendered for this post yet — render it from the editor and it appears here.
+      </p>
+    );
+  }
+
+  if (draft.mediaType === 'carousel') {
+    return <CarouselDeck media={media} label={caption.slice(0, 60) || 'Carousel preview'} />;
+  }
+
+  const one = media[0]!;
+  return (
+    <div>
+      <div
+        className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[10px]"
+        style={{ background: 'rgba(131,131,131,0.1)' }}
+      >
+        {one.kind === 'video' ? (
+          <video src={one.url} controls className="h-full w-full object-contain" />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={one.url} alt="" className="h-full w-full object-contain" />
+        )}
+      </div>
+      <p className="mt-[10px] text-18 font-medium text-ink-muted">4:5 &middot; 1080&times;1350</p>
+    </div>
+  );
+}
+
 export function PostPreview({
   draft,
   caption,
@@ -246,106 +373,91 @@ export function PostPreview({
   const media = mediaOf(draft);
   const lengths = counts(caption);
 
-  return (
-    <div className="px-[30px] pt-[27px] pb-[30px]">
-      <p className="text-15 font-medium text-ink-muted">Post preview</p>
+  /*
+    ── One column or two ──────────────────────────────────────────────────
 
-      {/* ── The post, as it will appear ─────────────────────────────────── */}
-      <article className="mt-[16px] rounded-[10px] bg-white px-[24px] pt-[18px] pb-[20px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
-        <header className="flex items-center gap-[10px]">
-          <span
-            aria-hidden
-            className="flex h-[63px] w-[63px] items-center justify-center rounded-full text-28 font-medium"
-            style={{ background: '#CFFCCF', color: '#13AD12' }}
-          >
-            {initials(name)}
-          </span>
-          <span>
-            <span className="block text-18 font-medium text-ink-muted">{name}</span>
-            {/*
-              "Sponsored ·" in the design, which this is not — nothing here buys
-              placement. The line below it is what the post actually is: an
-              organic post, and when it is scheduled, when it goes.
-            */}
-            <span className="mt-[6px] block text-15 font-medium text-ink-muted">
-              {draft.scheduledAt
-                ? new Date(draft.scheduledAt).toLocaleString('en', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })
-                : 'Not scheduled yet'}
-            </span>
-          </span>
-        </header>
+    This file was built from `DP prevText.dc.html` and applied that layout to
+    every format. Half right: the prototypes disagree with each other on
+    purpose, and the disagreement is the design.
 
-        <p className="mt-[28px] whitespace-pre-wrap text-18 font-medium leading-[1.5] text-ink-muted">
+    Measured at the 1728 stage, `prevText` is one column — "Post preview" at
+    821,147, the engagement row at y543, the character counts at y609. But
+    `prevImage` and `prevCarousel` are two: the media at 822,184 in a 324x405
+    frame (4:5 exactly), and a 493-wide column from x1195 holding the caption,
+    the platforms and the schedule. Both media prototypes place their pieces at
+    identical coordinates, so it is one layout for both rather than a carousel
+    special case.
+
+    Which follows from what each is for. A text post has nothing to look at but
+    the words, so the preview is the post. A post with media asks two questions
+    — is the picture right, is the copy right — and the design puts one on each
+    side so neither answer requires scrolling past the other.
+  */
+  const twoColumn = draft.mediaType !== 'text';
+
+  /* ── The caption, with the one action the design gives it ───────────── */
+  const captionPane = (
+    <div>
+      <div className="flex items-baseline justify-between gap-4">
+        <p className="text-15 font-medium text-ink-muted">AI-written caption</p>
+        {/*
+          "Rewrite" in the design, in its purple. That control already exists
+          one phase back as "Ask for a change", which edits this copy with the
+          same tools — so this names where it is instead of offering a second,
+          differently-worded version of it.
+        */}
+        <span
+          className="text-14 font-medium"
+          style={{ color: '#A341FF' }}
+          title="Edit the copy in the editor — Back to editor, then Ask for a change."
+        >
+          Rewrite in the editor
+        </span>
+      </div>
+      <div className="mt-[14px] max-h-[167px] overflow-y-auto rounded-[10px] bg-white px-[20px] py-[16px] shadow-[0_0_0_1px_rgba(131,131,131,0.18)]">
+        <p className="whitespace-pre-wrap text-16 font-medium leading-[1.5] text-ink-muted">
           {caption || '(no written copy)'}
         </p>
+      </div>
+    </div>
+  );
 
-        {media.length > 0 && draft.mediaType === 'carousel' ? (
-          /*
-            A carousel is read one slide at a time, so it is previewed one
-            slide at a time. The stacked grid below is still right for a post
-            whose media is a set rather than a sequence.
-          */
-          <CarouselDeck media={media} label={caption.slice(0, 60) || 'Carousel preview'} />
-        ) : media.length > 0 ? (
-          <div className="mt-[20px] grid grid-cols-1 gap-[10px]">
-            {media.map((m, i) =>
-              m.kind === 'video' ? (
-                <video key={m.url + i} src={m.url} controls className="max-h-[420px] w-full rounded-[10px] bg-black/5" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={m.url + i} src={m.url} alt="" className="max-h-[420px] w-full rounded-[10px] object-contain" />
-              ),
-            )}
-          </div>
-        ) : draft.mediaType !== 'text' ? (
-          <p className="mt-[20px] rounded-[10px] px-[18px] py-[16px] text-16 text-ink-muted" style={{ background: 'rgba(131,131,131,0.1)' }}>
-            Nothing has been rendered for this post yet — render it from the editor and it appears here.
-          </p>
-        ) : null}
-
-        <footer className="mt-[24px] flex items-center gap-[52px] border-t border-border/50 pt-[16px]">
-          {['Like', 'Comment', 'Share'].map((a) => (
-            <span key={a} aria-hidden className="text-16 text-ink-muted">
-              {a}
-            </span>
-          ))}
-        </footer>
-      </article>
-
-      {/* ── Length, per platform ────────────────────────────────────────── */}
-      <p className="mt-[28px] text-15 font-medium text-ink-muted">Character count by platform</p>
-      <div className="mt-[14px] flex flex-wrap items-center gap-x-[34px] gap-y-[10px] rounded-[10px] px-[22px] py-[18px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
+  /* ── Length, per platform ──────────────────────────────────────────── */
+  const countsPane = (
+    <div>
+      <p className="text-15 font-medium text-ink-muted">Character count by platform</p>
+      <div
+        className="mt-[14px] flex flex-wrap items-center gap-x-[34px] gap-y-[10px] rounded-[10px] px-[22px] py-[18px]"
+        style={{ background: 'rgba(131,131,131,0.1)' }}
+      >
         {lengths.map((l) => (
           <span key={l.platform} className={cn('text-16 font-medium', l.over ? 'text-destructive' : 'text-ink-muted')}>
             {l.platform} {caption.length}/{l.limit}
           </span>
         ))}
       </div>
+    </div>
+  );
 
-      {/*
-        ── Where it goes ──────────────────────────────────────────────────
+  /*
+    ── Where it goes ──────────────────────────────────────────────────────
 
-        One row, not two. This used to be a read-only list of the accounts the
-        calendar slot had chosen, and the panel rendered a *second* "Publish
-        to" underneath it — a row of buttons that actually set the target. Two
-        headings with the same words, one inert and one live, on the same
-        screen. The live one wins and the slot's accounts moved into the line
-        beneath the row, which is where that fact belongs: it is context for
-        the choice, not a second control.
+    One row, not two. This used to be a read-only list of the accounts the
+    calendar slot had chosen, and the panel rendered a *second* "Publish to"
+    underneath it — a row of buttons that actually set the target. Two headings
+    with the same words, one inert and one live, on the same screen. The live
+    one wins and the slot's accounts moved into the line beneath the row, which
+    is where that fact belongs: context for the choice, not a second control.
 
-        Unavailable is a state, not an omission. A platform that cannot carry
-        this format stays in the row, greyed and unclickable, with the reason
-        printed underneath — the design does exactly this for TikTok on a
-        carousel. Hiding it would leave somebody looking for the platform they
-        expected and finding nothing to explain its absence.
-      */}
-      <p className="mt-[28px] text-15 font-medium text-ink-muted">Publish to</p>
+    Unavailable is a state, not an omission. A platform that cannot carry this
+    format stays in the row, greyed and unclickable, with the reason printed
+    underneath — the design does exactly this for TikTok on a carousel. Hiding
+    it would leave somebody looking for the platform they expected and finding
+    nothing to explain its absence.
+  */
+  const publishPane = (
+    <div>
+      <p className="text-15 font-medium text-ink-muted">Publish to</p>
       <div className="mt-[14px] flex flex-wrap items-center gap-[11px]">
         {options.map((p) => {
           const limit = PLATFORM_LIMITS[p]?.maxLength;
@@ -365,11 +477,8 @@ export function PostPreview({
                 !takes.ok ? 'cursor-not-allowed text-ink-muted opacity-50' : chosen ? 'text-ink' : 'text-ink-muted',
               )}
               style={{
-                background: over && chosen
-                  ? 'rgba(243,85,37,0.32)'
-                  : chosen
-                    ? 'var(--ss-cyan-200)'
-                    : 'rgba(131,131,131,0.2)',
+                background:
+                  over && chosen ? 'rgba(243,85,37,0.32)' : chosen ? 'var(--ss-cyan-200)' : 'rgba(131,131,131,0.2)',
               }}
             >
               {p.replace('_', ' ')}
@@ -395,57 +504,112 @@ export function PostPreview({
           ? `This slot is set to ${platforms.join(', ')}.`
           : 'No account has been connected for this slot yet.'}
       </p>
+    </div>
+  );
 
-      {/* ── When ───────────────────────────────────────────────────────── */}
-      {bestTime ? (
-        <>
-          <p className="mt-[28px] text-15 font-medium text-ink-muted">Schedule</p>
-          <div className="mt-[14px] rounded-[10px] px-[13px] py-[13px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
-            <div
-              className="flex h-[41px] items-center rounded-[10px] px-[30px] text-16 font-semibold"
-              style={{ background: 'rgba(163,65,255,0.2)', color: 'var(--ss-purple)' }}
-            >
-              {bestTime}
-            </div>
+  /* ── When ───────────────────────────────────────────────────────────── */
+  const schedulePane = bestTime ? (
+    <div>
+      <p className="text-15 font-medium text-ink-muted">Schedule</p>
+      <div className="mt-[14px] rounded-[10px] px-[13px] py-[13px]" style={{ background: 'rgba(131,131,131,0.1)' }}>
+        <div
+          className="flex h-[41px] items-center rounded-[10px] px-[30px] text-16 font-semibold"
+          style={{ background: 'rgba(163,65,255,0.2)', color: 'var(--ss-purple)' }}
+        >
+          {bestTime}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  /*
+    ── Actions ────────────────────────────────────────────────────────────
+
+    "Publish now" at the left edge and the quieter pair at the right, which is
+    where `prevCarousel` puts them: x828 against x1423 and x1571 on an 868-wide
+    pane. The split is doing work — the irreversible one is nowhere near the
+    two that are not.
+  */
+  const actions = (
+    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/50 pt-[20px]">
+      <button
+        type="button"
+        onClick={onPublish}
+        disabled={busy}
+        className="flex h-[43px] w-[190px] items-center justify-center rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
+      >
+        {busy ? 'Publishing…' : 'Publish now'}
+      </button>
+
+      <div className="flex items-center gap-[18px]">
+        {onSchedule ? (
+          <button
+            type="button"
+            onClick={onSchedule}
+            disabled={busy}
+            className="flex h-[44px] items-center rounded-[8.457px] px-[20px] text-16 font-medium disabled:opacity-60"
+            style={{ background: 'rgba(36,116,237,0.1)', color: '#2474ED' }}
+          >
+            Schedule
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onSaveDraft}
+          disabled={busy}
+          className="flex h-[44px] items-center rounded-[8.457px] bg-white px-[24px] text-16 font-medium text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.18)] disabled:opacity-60"
+        >
+          Save as Draft
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="px-[30px] pt-[27px] pb-[30px]">
+      {/*
+        "Review your post" — 18/600 ink at 867,63, with the state beside it in
+        14/600. The design's word is "Generated", which is true of a post that
+        has pixels and false of one that does not, so it is read from the post
+        rather than printed unconditionally.
+      */}
+      <div className="flex items-baseline gap-[22px]">
+        <h2 className="text-18 font-semibold text-ink">Review your post</h2>
+        <span className="text-14 font-semibold" style={{ color: media.length > 0 ? '#13D711' : '#838383' }}>
+          {media.length > 0 ? 'Generated' : draft.mediaType === 'text' ? 'Written' : 'Not rendered'}
+        </span>
+      </div>
+
+      {twoColumn ? (
+        /*
+          324 + 49 + 493 = 866 on the design's 868-wide pane. The left column is
+          fixed because 4:5 at a fixed width is what the format is; the right
+          one takes the rest. Below `canvas` they stack, media first — the order
+          the two questions get asked in.
+        */
+        <div className="mt-[28px] flex items-start gap-[49px] max-canvas:flex-col max-canvas:gap-[24px]">
+          <div className="w-[324px] shrink-0 max-canvas:w-full">
+            <MediaPane draft={draft} media={media} caption={caption} />
           </div>
-        </>
-      ) : null}
+          <div className="flex min-w-0 flex-1 flex-col gap-[28px] max-canvas:w-full">
+            {captionPane}
+            {publishPane}
+            {schedulePane}
+            {countsPane}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-[28px] flex flex-col gap-[28px]">
+          <PostCard name={name} draft={draft} caption={caption} media={media} />
+          {countsPane}
+          {publishPane}
+          {schedulePane}
+        </div>
+      )}
 
       {error ? <p className="mt-[20px] text-14 text-destructive">{error}</p> : null}
 
-      {/* ── Actions ────────────────────────────────────────────────────── */}
-      <div className="mt-[40px] flex flex-wrap items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={onPublish}
-          disabled={busy}
-          className="flex h-[43px] w-[190px] items-center justify-center rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
-        >
-          {busy ? 'Publishing…' : 'Publish now'}
-        </button>
-
-        <div className="flex items-center gap-[18px]">
-          {onSchedule ? (
-            <button
-              type="button"
-              onClick={onSchedule}
-              disabled={busy}
-              className="flex h-[44px] items-center rounded-[8.457px] px-[20px] text-16 font-medium disabled:opacity-60"
-              style={{ background: 'rgba(36,116,237,0.1)', color: '#2474ED' }}
-            >
-              Schedule
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={busy}
-            className="flex h-[44px] items-center rounded-[8.457px] bg-white px-[24px] text-16 font-medium text-ink shadow-[0_0_0_1px_rgba(131,131,131,0.18)] disabled:opacity-60"
-          >
-            Save as Draft
-          </button>
-        </div>
-      </div>
+      <div className="mt-[40px]">{actions}</div>
     </div>
   );
 }

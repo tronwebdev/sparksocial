@@ -1022,17 +1022,22 @@ export interface RenderRow {
   id: string;
   contentItemId: string;
   aspect: string;
+  /** Which slide, for a carousel. Null where the render is the whole post. */
+  beatId: string | null;
   storageUrl: string;
   engine: string;
   costCents: number;
   createdAt: Date;
 }
 
-/** Write side of `compose.render` — one row per aspect ratio rendered. */
+/**
+ * Write side of `compose.render` — one row per aspect ratio rendered, and for
+ * a carousel one per slide per aspect.
+ */
 export async function recordRender(
   db: Database,
   scope: Scope,
-  args: { contentItemId: string; aspect: string; storageUrl: string; engine: string; costCents: number },
+  args: { contentItemId: string; aspect: string; beatId?: string; storageUrl: string; engine: string; costCents: number },
 ): Promise<RenderRow> {
   const [row] = await db
     .insert(renders)
@@ -1041,6 +1046,7 @@ export async function recordRender(
       genomeId: scope.genomeId,
       contentItemId: args.contentItemId,
       aspect: args.aspect,
+      ...(args.beatId ? { beatId: args.beatId } : {}),
       storageUrl: args.storageUrl,
       engine: args.engine,
       costCents: args.costCents,
