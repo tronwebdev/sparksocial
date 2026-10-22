@@ -1,6 +1,7 @@
 'use client';
 
 import { AgentOrb, PANEL_CLIP } from './campaignChrome';
+import { FLATTEN_NARROW } from '@/components/shell/narrowStage';
 
 /**
  * The entry state of `SparkSocial Create Campaign.dc.html` — its `isPopup`
@@ -32,7 +33,25 @@ export function CampaignIntro({ onStart, onLater }: { onStart: () => void; onLat
   */
   return (
     <div className="absolute left-0 top-0 h-[1117px] w-[1728px] overflow-hidden max-canvas:static max-canvas:flex max-canvas:h-full max-canvas:min-h-full max-canvas:w-full max-canvas:items-center max-canvas:justify-center max-canvas:p-[20px]">
-      <div aria-hidden className="absolute inset-0 bg-cmp-backdrop" style={{ backdropFilter: 'blur(10px)' }} />
+      {/*
+        `-z-10` and `pointer-events-none`, because of what the line above does
+        to this one. Below `canvas` the wrapper turns `static`, so this backdrop
+        re-anchors to the dialog root — and the card, now a flow item, paints
+        *before* it. A decorative blur ended up on top of the only two controls
+        on the screen: "Create Campaign" and "Setup Later" were unclickable at
+        every width under 1300, which is a laptop. `elementFromPoint` over the
+        button returned this div.
+
+        Neither an overflow audit nor a sibling-overlap test can see it — the
+        backdrop is meant to cover everything. The rule it wants is: an
+        `inset-0` decoration inside a wrapper that flattens must say it is
+        decoration, in both senses.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-cmp-backdrop"
+        style={{ backdropFilter: 'blur(10px)' }}
+      />
 
       <AgentOrb size={212.891} className="left-[757.5px] top-[100px] max-canvas:hidden" />
 
@@ -56,7 +75,15 @@ export function CampaignIntro({ onStart, onLater }: { onStart: () => void; onLat
         <button
           type="button"
           onClick={onStart}
-          className="absolute left-[178px] top-[214px] h-[48px] w-[192px] cursor-pointer rounded-[9.82px] bg-white transition-colors hover:bg-surface-200 active:scale-[0.98] max-canvas:static"
+          /*
+            `max-canvas:static` on its own emptied this button. Its icon and its
+            label are both absolutely positioned inside it, so dropping the
+            button's positioning handed them to the dialog root: the word
+            "Create Campaign" rendered in the top-left corner of the screen and
+            the button itself was a blank outlined box. Below `canvas` it
+            becomes an ordinary flex row and its children come back into flow.
+          */
+          className={`absolute left-[178px] top-[214px] h-[48px] w-[192px] cursor-pointer rounded-[9.82px] bg-white transition-colors hover:bg-surface-200 active:scale-[0.98] max-canvas:static max-canvas:flex max-canvas:items-center max-canvas:justify-center max-canvas:gap-[8px] ${FLATTEN_NARROW}`}
           style={{ boxShadow: 'inset 0 0 0 1px rgb(131,131,131)' }}
         >
           <svg width="13.854" height="13.814" viewBox="0 0 13.854 13.814" fill="rgb(0,0,0)" className="absolute left-[20px] top-[17px] block" aria-hidden>

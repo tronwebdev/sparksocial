@@ -211,17 +211,25 @@ export function CampaignFocusCard({
       */}
       <div className="mt-[15px] flex flex-wrap items-center gap-x-6 gap-y-3">
         {pillars.length > 0 ? (
-          <div className="flex items-center">
-            {pillars.map((pillar, i) => {
+          /*
+            The design overlaps its three photographs by 12px, which works
+            because a face is still recognisable with a third of it hidden. A
+            word is not: at -12 the next circle ate the end of the one behind
+            it, and the labels were truncated to two characters to survive it —
+            which rendered Teach and Team identically. Readable labels and an
+            overlap cannot both be had, so the overlap goes and the labels stay.
+          */
+          <div className="flex items-center gap-[4px]">
+            {pillars.map((pillar) => {
               const style = pillarStyle(pillar);
               return (
                 <span
                   key={pillar}
                   title={style.label}
-                  className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-13 font-semibold ${style.chip}`}
-                  style={{ boxShadow: '0 0 0 2px #FFFFFF', marginLeft: i === 0 ? 0 : -12 }}
+                  className={`relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-12 font-semibold ${style.chip}`}
+                  style={{ boxShadow: '0 0 0 2px #FFFFFF' }}
                 >
-                  {style.label.slice(0, 2)}
+                  {style.short}
                 </span>
               );
             })}

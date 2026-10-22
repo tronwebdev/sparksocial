@@ -230,7 +230,14 @@ export function OverviewSection() {
 
           <span
             aria-hidden
-            className="absolute left-[50px] top-[348px] block h-[40px] w-[91px] max-canvas:static max-canvas:mt-[14px] max-canvas:inline-block max-canvas:align-middle"
+            /*
+              `relative`, not `static`. The three circles inside are absolute at
+              left 0/26/52 and read this box as their origin; `static` sent them
+              to the nearest positioned ancestor instead, and on a 1024-wide
+              window they landed 243px above the gap they left behind. The box
+              keeps its own 91x40 and still flows inline.
+            */
+            className="absolute left-[50px] top-[348px] block h-[40px] w-[91px] max-canvas:relative max-canvas:left-auto max-canvas:top-auto max-canvas:mt-[14px] max-canvas:inline-block max-canvas:align-middle"
           >
             {[0, 26, 52].map((x, i) => (
               <span

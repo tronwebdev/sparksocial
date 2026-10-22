@@ -20,6 +20,16 @@ export type Pillar = (typeof PILLARS)[number];
 export interface PillarStyle {
   /** What the owner sees. §6.8's vocabulary, not the engine's. */
   label: string;
+  /**
+   * The label where only a circle's worth of room exists.
+   *
+   * Written out rather than computed, because the obvious computation is wrong:
+   * `label.slice(0, 2)` renders Teach and Team both as "Te", and the Command
+   * Center's hero stacked two identical circles in two different colours with
+   * no way to tell which was which. Colour carries the meaning here, but the
+   * letters must not actively contradict it.
+   */
+  short: string;
   /** Solid fill, for the mix bar. */
   bar: string;
   /** Tinted chip, for a calendar slot. */
@@ -30,6 +40,7 @@ export interface PillarStyle {
 export const PILLAR_STYLE: Record<Pillar, PillarStyle> = {
   educational: {
     label: 'Teach',
+    short: 'Teach',
     bar: 'bg-brand-purple',
     chip: 'bg-brand-purple/10 text-brand-purple border-brand-purple/25',
     dot: 'bg-brand-purple',
@@ -39,24 +50,28 @@ export const PILLAR_STYLE: Record<Pillar, PillarStyle> = {
     // for, and because the 35% ceiling is easier to defend when the label is
     // honest about it.
     label: 'Offer',
+    short: 'Offer',
     bar: 'bg-warn',
     chip: 'bg-warn/10 text-warn border-warn/25',
     dot: 'bg-warn',
   },
   proof: {
     label: 'Proof',
+    short: 'Proof',
     bar: 'bg-success',
     chip: 'bg-success/10 text-success border-success/25',
     dot: 'bg-success',
   },
   personality: {
     label: 'Team',
+    short: 'Team',
     bar: 'bg-brand-pink',
     chip: 'bg-brand-pink/10 text-brand-pink border-brand-pink/25',
     dot: 'bg-brand-pink',
   },
   community: {
     label: 'Community',
+    short: 'Comm',
     bar: 'bg-brand-cyan',
     chip: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/25',
     dot: 'bg-brand-cyan',
@@ -65,6 +80,7 @@ export const PILLAR_STYLE: Record<Pillar, PillarStyle> = {
 
 const FALLBACK: PillarStyle = {
   label: 'Other',
+  short: 'Other',
   bar: 'bg-ink-muted',
   chip: 'bg-ink-muted/10 text-ink-muted border-ink-muted/25',
   dot: 'bg-ink-muted',
