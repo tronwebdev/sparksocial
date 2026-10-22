@@ -126,7 +126,7 @@ const TITLE: Record<PostType, string> = {
  * re-worded — so `text` follows `image` rather than gaining a phrasing the
  * design does not use.
  */
-const ABOUT: Record<PostType, string> = {
+export const ABOUT: Record<PostType, string> = {
   image: 'What is this post about?',
   video: 'What is this video about?',
   carousel: 'What is this carousel about?',

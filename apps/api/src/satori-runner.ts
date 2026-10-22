@@ -22,7 +22,7 @@ import { loadBrandFonts } from './font-loader.js';
  * Satori cannot use system fonts — it needs real font bytes up front, same
  * requirement `content.generate_image`'s "no fake fallback" reasoning would
  * apply to if this were a font *lookup* instead of a static asset already in
- * the repo. `apps/web/src/fonts/AsgardTrial-FitBold.ttf` is the brand's own
+ * the repo. `apps/api/assets/fonts/AsgardTrial-FitBold.ttf` is the brand's own
  * display face (`compose.render`'s own doc comment says Remotion applies
  * "the brand's own type and layout" — this is that same identity, not a
  * generic placeholder), confirmed to actually parse: `Onest-Variable.ttf`
@@ -33,8 +33,27 @@ import { loadBrandFonts } from './font-loader.js';
  * Loaded once and cached, same pattern `remotion-runner.ts` uses for its
  * bundle.
  */
+/*
+ * ── Why the font lives in this app and not the web one ───────────────────
+ *
+ * This read `../../web/src/fonts/AsgardTrial-FitBold.ttf`, which works in a
+ * checkout and does not exist in the deployed image: `apps/api/Dockerfile`
+ * copies `packages` and `apps/api`, and nothing else. Every static render in
+ * production failed with `ENOENT ... /app/apps/web/src/fonts/...` — so no
+ * image or carousel has ever been rendered there, and the Draft Panel has
+ * only ever had per-beat generated media to show.
+ *
+ * It failed quietly, too: `content.get` wraps its render read in
+ * `.catch(() => [])` and `content.list` falls back to a beat's own image, so
+ * "no renders exist" and "the renderer is broken" look identical from the UI.
+ *
+ * The real defect is the layering: `apps/api` reaching into `apps/web` for an
+ * asset is a dependency nothing in the build or the type system can see, and
+ * the Dockerfile is free to stop satisfying it without any test noticing. The
+ * API owns its own copy now, so the path cannot drift from what ships.
+ */
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FONT_PATH = join(__dirname, '../../web/src/fonts/AsgardTrial-FitBold.ttf');
+const FONT_PATH = join(__dirname, '../assets/fonts/AsgardTrial-FitBold.ttf');
 const FONT_NAME = 'AsgardFit';
 
 let fontData: Promise<Buffer> | undefined;

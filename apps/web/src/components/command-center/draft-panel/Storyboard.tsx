@@ -520,7 +520,31 @@ function title(beat: ResolvedBeat): string {
 }
 
 /** Whatever the slide says after its headline, or nothing when that is all of it. */
+/**
+ * The line under a slide's headline — the design's layout note.
+ *
+ * `DP carousel.dc.html` prints a *visual* description there: "Bold headline on
+ * solid brand background. Small arrow indicating swipe." Nothing in the data
+ * carries that sentence — a playbook `Beat` has an id, a duration, a prompt
+ * reference and a source, and no field describing what the slide should look
+ * like. So this used to print the rest of the copy instead, which is a
+ * different fact wearing the same slot.
+ *
+ * There *is* an honest source, for any slide whose picture has actually been
+ * made: the prompt it was generated from. That is a description of the visual,
+ * written before the visual existed, which is exactly what the design's line
+ * is. A slide with no picture yet falls back to the remaining copy, and a
+ * one-sentence slide with no picture still gets nothing rather than repeating
+ * its own headline.
+ *
+ * Inventing the sentence was the alternative, and it is the one thing this
+ * must not do: a layout note nobody wrote, under a slide nobody laid out, is a
+ * claim about the post that is not true of it.
+ */
 function note(beat: ResolvedBeat): string {
+  if ((beat.kind === 'generated_image' || beat.kind === 'generated_broll') && beat.prompt.trim()) {
+    return beat.prompt.trim();
+  }
   const whole = describe(beat).trim();
   const rest = whole.slice(title(beat).length).replace(/^[.\s]+/, '').trim();
   return rest;

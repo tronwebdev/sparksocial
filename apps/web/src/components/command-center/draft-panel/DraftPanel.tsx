@@ -8,7 +8,7 @@ import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
 import { DraftDrawer, type PostType, type DrawerTab } from './DraftDrawer';
-import { ImageDraftForm } from './ImageDraftForm';
+import { ImageDraftForm, ABOUT } from './ImageDraftForm';
 import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
 import { DraftsList } from './DraftsList';
 import { PostPreview } from './PostPreview';
@@ -521,6 +521,41 @@ export function DraftPanel({
    */
   async function regenerateConcept() {
     await createDraft();
+  }
+
+  /**
+   * "Regenerate concept", for a post that already exists.
+   *
+   * `regenerateConcept` above is the trigger phase's version: no draft yet, so
+   * it creates one. Opening a draft from the queue goes straight to the editor
+   * and skips that phase entirely, so the design's concept controls — the
+   * "What is this … about?" field and this button — were on a screen nobody
+   * reaching an existing post ever saw. `DP carousel.dc.html` is one screen,
+   * not two.
+   *
+   * `contentItemId` so it refills *this* slot instead of adding a second post
+   * to the calendar, and `draft.playbookId` because `selectedPlaybookId` is set
+   * by the format picker, which an opened draft never touches.
+   *
+   * No `discardSceneEdits`. A draft whose storyboard has been hand-edited
+   * refuses, by design, and the refusal says so — which is the right answer to
+   * "regenerate this" after somebody has added a slide by hand.
+   */
+  async function redraftThisPost() {
+    if (!draft || !genomeId || busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await invoke<DraftView>(
+      'content.draft',
+      { genomeId, playbookId: draft.playbookId, contentItemId: draft.contentItemId, intent },
+      crypto.randomUUID(),
+    );
+    setBusy(false);
+    if (res.status !== 'succeeded') {
+      setError(res.status === 'failed' ? res.error.message : 'That redraft was gated.');
+      return;
+    }
+    setDraft(res.output);
   }
 
   const replaceBeat = useCallback((beatId: string, next: ResolvedBeat) => {
@@ -1616,6 +1651,53 @@ export function DraftPanel({
                   </span>
                 </div>
               </header>
+
+              {/*
+                ── The concept, where the design puts it ─────────────────────
+
+                `DP carousel.dc.html` is one screen: the brief at 818,470, the
+                "AI storyboard" heading at 818,660, and the slides under it.
+                The build split that across two phases — `trigger` holds the
+                brief and "Regenerate concept", `editor` holds the storyboard —
+                and opening a post from the queue lands straight in `editor`.
+                So for every existing draft, which is every draft anybody
+                reviews, both controls were unreachable.
+
+                The field seeds from the post's own copy rather than starting
+                empty: the brief that produced it is the honest starting point
+                for another take, and an empty box beside a written post reads
+                as "we have forgotten what this was for".
+              */}
+              <section>
+                <label htmlFor="dp-editor-intent" className="block text-18 font-medium text-ink-muted">
+                  {ABOUT[draft.mediaType]}
+                </label>
+                <textarea
+                  id="dp-editor-intent"
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  rows={2}
+                  placeholder={summariseBeats(draft.beats) ?? 'What this post is about'}
+                  className="mt-[10px] w-full resize-y rounded-[10px] border border-border bg-input px-[16px] py-[12px] text-16 text-ink placeholder:text-ink-placeholder"
+                />
+              </section>
+
+              {/*
+                "AI storyboard" 18/500 ink at 818,660, with the one action the
+                design gives the whole concept beside it. Regenerating refuses
+                on a hand-edited storyboard and says why — see `redraftThisPost`.
+              */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-18 font-medium text-ink">AI storyboard</p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void redraftThisPost()}
+                  className="text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
+                >
+                  {busy ? 'Regenerating…' : 'Regenerate concept'}
+                </button>
+              </div>
               {/*
                 The storyboard header - M5's "9:16 / 0:24 total / Add scene" strip.
                 The total prefers whatever the last scene tool returned, because

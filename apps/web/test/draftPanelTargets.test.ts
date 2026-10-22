@@ -14,6 +14,7 @@ const code = (rel: string) =>
 const PREVIEW = code('PostPreview.tsx');
 const PANEL = code('DraftPanel.tsx');
 const DRAWER = code('DraftDrawer.tsx');
+const STORYBOARD = code('Storyboard.tsx');
 
 /**
  * Three things the panel said that were not true of the post in it.
@@ -146,5 +147,56 @@ describe('the editor says what the draft is', () => {
   it('prefers the post’s own first line to the placeholder', () => {
     expect(PANEL).toContain("return 'Untitled Post';");
     expect(PANEL).toContain("b.kind === 'text' && b.text.trim()");
+  });
+});
+
+/**
+ * The design's editor is one screen; the build had split it across two phases.
+ *
+ * `DP carousel.dc.html` puts the brief at 818,470, "AI storyboard" at 818,660
+ * and the slides below. The build held the brief and "Regenerate concept" in
+ * the `trigger` phase and the storyboard in `editor` — and opening a post from
+ * the queue lands straight in `editor`, so for every existing draft both
+ * controls were on a screen nobody reached.
+ */
+describe('the editor carries the concept controls', () => {
+  it('asks what the post is about, in the design’s words per format', () => {
+    expect(PANEL).toContain('{ABOUT[draft.mediaType]}');
+    expect(PANEL).toContain('id="dp-editor-intent"');
+  });
+
+  it('heads the slide list and offers another take beside it', () => {
+    expect(PANEL).toContain('AI storyboard');
+    expect(PANEL).toContain('Regenerate concept');
+    expect(PANEL).toContain('redraftThisPost');
+  });
+
+  it('refills this slot rather than adding a second post', () => {
+    expect(PANEL).toContain('contentItemId: draft.contentItemId, intent');
+    // The format picker is never touched by an opened draft, so the playbook
+    // has to come from the draft.
+    expect(PANEL).toContain('playbookId: draft.playbookId');
+  });
+
+  it('does not force a redraft over a hand-edited storyboard', () => {
+    expect(PANEL).not.toContain('discardSceneEdits: true');
+  });
+});
+
+describe('a slide’s note describes the slide', () => {
+  /*
+   * The design prints a visual description under each headline. No field
+   * carries one — a playbook Beat has an id, a duration, a prompt ref and a
+   * source. The prompt a generated picture was made from is a real description
+   * of that picture, so it is used where it exists and nothing is invented
+   * where it does not.
+   */
+  it('prefers the prompt the picture was generated from', () => {
+    expect(STORYBOARD).toContain("beat.kind === 'generated_image' || beat.kind === 'generated_broll'");
+    expect(STORYBOARD).toContain('return beat.prompt.trim();');
+  });
+
+  it('still falls back to the remaining copy', () => {
+    expect(STORYBOARD).toContain('const whole = describe(beat).trim();');
   });
 });
