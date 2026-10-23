@@ -121,6 +121,10 @@ import {
   orgBillingPlanSet,
   orgSecuritySsoConfigure,
   orgAuditQuery,
+  makeBrandBudgetList,
+  makeOrgCreditsCheckout,
+  makeOrgCreditsPacks,
+  makeBrandBudgetSet,
   makeOrgBudgetSet,
   makeOrgCreditsGrant,
   makeOrgUsageGet,
@@ -261,6 +265,14 @@ import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
 import { createSatoriRunner } from './satori-runner.js';
 import { envSet, envStr, envNum } from './env.js';
+import {
+  CREDIT_PACKS,
+  createCheckoutSession,
+  packPriceCents,
+  type CreditPack,
+  readStripeConfig,
+  stripeClient,
+} from './stripe-client.js';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
@@ -1017,6 +1029,36 @@ export function registerAgencyTools(deps: {
   // control that stores nothing and changes no behaviour — and the sub-caps are
   // enforced in `policy.ts`, so they change behaviour the moment they are set.
   register(makeOrgBudgetSet({ credits: deps.credits }));
+  /*
+   * Per-brand ceilings. Registered beside the org's for the same reason they
+   * are checked beside it: one bounds the organisation, the other bounds a
+   * client inside it, and an agency needs both or neither is a budget.
+   */
+  register(makeBrandBudgetSet({ credits: deps.credits }));
+  register(makeBrandBudgetList({ credits: deps.credits }));
+
+  /*
+   * Buying credits, only where it can actually complete.
+   *
+   * Gated on *both* keys. A secret key without a webhook secret can take a
+   * customer's money and never deliver the credits, which is worse than not
+   * selling them — so the absence of either leaves the tool unregistered and
+   * the button simply is not there, per CLAUDE.md's rule about unconfigured
+   * keys.
+   */
+  const stripe = readStripeConfig();
+  if (stripe) {
+    const client = stripeClient(stripe);
+    const checkoutDeps = {
+      packs: () => CREDIT_PACKS,
+      priceCents: packPriceCents,
+      currency: stripe.currency,
+      createSession: (args: { orgId: string; pack: CreditPack; userId?: string }) =>
+        createCheckoutSession(client, stripe, args),
+    };
+    register(makeOrgCreditsCheckout(checkoutDeps));
+    register(makeOrgCreditsPacks(checkoutDeps));
+  }
 
   register(brandCreate);
   register(brandSettingsPatch);

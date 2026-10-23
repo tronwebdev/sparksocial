@@ -395,6 +395,22 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
        * Omitted when the tool has no category (it charges nothing) or the
        * workspace has set no allocation for it.
        */
+      /*
+       * The brand's own ceiling. `req.brand.name` is what the refusal says, so
+       * a person reads "Dishoom's monthly budget" rather than a brand id.
+       */
+      ...(req.ctx.budget.remainingBrandCents !== undefined
+        ? {
+            brand: {
+              // The policy input's `brand` carries governance, not a display
+              // name, so the message says "this brand" rather than inventing
+              // one. The screen that sets the cap has the name; the refusal
+              // only has to be unambiguous about which ceiling was hit.
+              name: 'this brand',
+              remainingCents: req.ctx.budget.remainingBrandCents,
+            },
+          }
+        : {}),
       ...(() => {
         const category = creditCategoryFor(tool.name);
         const remaining = category ? req.ctx.budget.remainingByCategory?.[category] : undefined;

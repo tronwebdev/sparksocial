@@ -86,7 +86,7 @@ export async function makeSystemCtx(args: SystemCtxArgs): Promise<ToolCtx> {
     ...(args.runId ? { runId: args.runId } : {}),
     role: args.role,
     approvalMode: 'review_everything',
-    budget: await readBudget(args.credits, args.orgId),
+    budget: await readBudget(args.credits, args.orgId, new Date(), args.brandId),
     db: args.db,
     logger: {
       info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),

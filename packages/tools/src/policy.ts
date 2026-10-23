@@ -151,6 +151,16 @@ export interface PolicyInput {
      * in a workspace that never set an allocation.
      */
     category?: { name: string; remainingCents: number };
+    /**
+     * The brand's own remaining ceiling, where it has one.
+     *
+     * Absent when this brand has no cap — which is every brand until an owner
+     * sets a number, and the reason this is optional rather than defaulted to
+     * zero. Present and hard: an agency that can be told one client has eaten
+     * the month, and cannot stop the next one, has a report rather than a
+     * budget.
+     */
+    brand?: { name: string; remainingCents: number };
   };
 
   /** Engagement replies are gated until the campaign clears the eligibility rule. */
@@ -455,6 +465,29 @@ function evaluateRules(input: PolicyInput): Decision {
         kind: 'deny',
         reason: `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.remainingCents}¢ remaining this month.`,
         ruleId: 'budget.exceeded',
+      };
+    }
+    /**
+     * The brand's own cap, checked after the org's and before the category's.
+     *
+     * Ordered that way for the same reason the category check sits after the
+     * monthly one: the most useful answer is the one that cannot be fixed by
+     * raising something smaller. "The org is out of credit" beats "this client
+     * is out", which beats "this client's render allocation is out" — each
+     * only reached when the one above it has room.
+     *
+     * Hard, deliberately. An org-level soft warning already exists in
+     * `org.usage.get`'s alert bands; what did not exist was any way to stop one
+     * brand spending another brand's month. A limit that only warned would
+     * leave the agency exactly where it was.
+     */
+    if (budget.brand && budget.estimatedCents > budget.brand.remainingCents) {
+      return {
+        kind: 'deny',
+        reason:
+          `Estimated ${budget.estimatedCents}¢ exceeds the ${budget.brand.remainingCents}¢ left in ` +
+          `${budget.brand.name}'s monthly budget.`,
+        ruleId: 'budget.brand_exceeded',
       };
     }
     /**

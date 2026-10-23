@@ -951,6 +951,39 @@ export const brands = pgTable(
  * missing row must not read as unlimited. The direction matters — the failure
  * mode of guessing high is a bill nobody agreed to.
  */
+/**
+ * One brand's monthly ceiling inside the org's — a **hard** cap.
+ *
+ * ── Why a row per brand, and why absent is unlimited ─────────────────────
+ *
+ * The credit ledger has always carried `brand_id` per entry, so per-brand
+ * *spend* was computable and per-brand *limits* did not exist: an agency could
+ * see that one client had eaten the month and could do nothing to stop the
+ * next one. This is the stop.
+ *
+ * Absent means no brand cap — bounded only by the org's monthly cap, which is
+ * where every brand started and must remain for every brand nobody has set a
+ * number on. Zero is a different instruction ("this brand spends nothing") and
+ * stays distinguishable, the same rule `org_credit_allocations` states for
+ * categories.
+ *
+ * Hard, not advisory: `policy.ts` refuses a call that would cross it, the same
+ * way it refuses one that would cross the org cap. A limit that only warned
+ * would be a number on a bar, and the bar would be a lie.
+ */
+export const brandBudgets = pgTable(
+  'brand_budgets',
+  {
+    brandId: text('brand_id').primaryKey(),
+    orgId: text('org_id').notNull(),
+    monthlyCapCents: integer('monthly_cap_cents').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // The org screen's only list query: every cap this org has set.
+  (t) => [index('brand_budgets_org_idx').on(t.orgId)],
+);
+
 export const orgBudgets = pgTable('org_budgets', {
   orgId: text('org_id').primaryKey(),
   /** Cents per calendar month, UTC. */
@@ -1020,11 +1053,28 @@ export const creditLedger = pgTable(
     /** Positive spends, negative refunds. */
     costCents: integer('cost_cents').notNull(),
     reason: text('reason').notNull().default('tool_call'),
+    /*
+     * The outside event this row came from — a Stripe checkout session id.
+     *
+     * Null for everything the product does to itself. It exists because a
+     * payment webhook is redelivered: Stripe retries until it gets a 2xx, and
+     * a network blip between granting the credits and answering turns one
+     * purchase into two grants. `callId` could not carry it — that column is
+     * "the `tool_calls` row this bills", and writing a payment id into it
+     * would be a lie in a column whose meaning the rest of the system reads.
+     *
+     * The unique index is the whole mechanism: the second delivery collides
+     * and is dropped by the database rather than by anyone remembering to
+     * check.
+     */
+    externalRef: text('external_ref'),
     at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     // One charge per call, enforced by the database rather than by remembering.
     uniqueIndex('credit_ledger_call_idx').on(t.callId),
+    // One grant per outside event, for the same reason and by the same means.
+    uniqueIndex('credit_ledger_external_idx').on(t.externalRef),
     // The balance query: one org, one period.
     index('credit_ledger_org_at_idx').on(t.orgId, t.at),
   ],

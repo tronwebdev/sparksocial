@@ -94,6 +94,26 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
     // 3. Role. Clerk custom organization roles carry an `org:` prefix.
     const role = parseRole(orgRole);
 
+    /*
+     * The brand is resolved *before* the budget, not after.
+     *
+     * It used to be the other way round, which was fine while a budget was an
+     * org-level fact. A per-brand ceiling is not: reading the budget before
+     * knowing the brand would either miss the cap entirely or need a second
+     * ledger read per request, and this file's own note on that query — "one
+     * extra query per request, deliberately not cached" — is a reason to have
+     * one, not two.
+     *
+     * The verification is unchanged and still happens below: this only moves
+     * *when* the genome row is fetched. `brandIdForBudget` is a hint for the
+     * ceiling lookup and nothing else — every isolation check still runs
+     * against the re-read row, and a caller who fails one is refused before
+     * any of this is used.
+     */
+    const claimedGenomeId = req.headers.get('x-genome-id');
+    const claimedGenome = claimedGenomeId ? await deps.db.genomes.get(claimedGenomeId, orgId) : undefined;
+    const brandIdForBudget = claimedGenome?.workspace_id;
+
     const ctx: ToolCtx & { caller: 'user' | 'agent' } = {
       orgId,
       userId,
@@ -117,7 +137,7 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
        * is a balance that permits a call the org cannot afford, and the cache
        * invalidation story for "how much money is left" is the one nobody wins.
        */
-      budget: await readBudget(deps.credits, orgId),
+      budget: await readBudget(deps.credits, orgId, new Date(), brandIdForBudget),
       db: deps.db,
       logger: {
         info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),
@@ -139,9 +159,11 @@ export function makeClerkResolveCtx(deps: ClerkResolveDeps) {
     //
     //    `brandId` is read off the verified row. It is never taken from the
     //    request: an `x-brand-id` header is ignored entirely.
-    const claimedGenomeId = req.headers.get('x-genome-id');
     if (claimedGenomeId) {
-      const genome = await deps.db.genomes.get(claimedGenomeId, orgId);
+      // The row read above, not a second fetch. `genomes.get` already filters
+      // on orgId, so this is the same verified row either way — the lookup
+      // simply happens once.
+      const genome = claimedGenome;
       if (!genome) {
         throw new ToolError('ISOLATION_VIOLATION', 'That genome is not in your organization.', {
           genomeId: claimedGenomeId,

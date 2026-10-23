@@ -14,6 +14,15 @@ export async function readBudget(
   credits: CreditStore | undefined,
   orgId: string,
   now: Date = new Date(),
+  /**
+   * The brand in scope, when there is one.
+   *
+   * Optional because plenty of calls have no brand — an org-level read, a
+   * signed-out probe — and a brand cap cannot apply to a call that belongs to
+   * no brand. Passing it is what turns the cap from a stored number into an
+   * enforced one.
+   */
+  brandId?: string,
 ): Promise<ToolCtx['budget']> {
   /**
    * No ledger configured means no enforcement, and it says so loudly at boot
@@ -56,6 +65,21 @@ export async function readBudget(
     remainingByCategory[category] = Math.max(0, capCents - (spentByCategory.get(category) ?? 0));
   }
 
+  /*
+   * The brand's own ceiling, where it has one.
+   *
+   * A second read, and only when a brand is in scope: a per-brand cap is rare
+   * (most orgs set none) and the query is a primary-key lookup plus the same
+   * period index scan the org total already uses. Tolerant of a store that
+   * does not implement it for the same reason the breakdown above is — a
+   * narrowing field must not be able to take the product down.
+   */
+  let remainingBrandCents: number | undefined;
+  if (brandId && typeof credits.brandBudget === 'function') {
+    const brand = await credits.brandBudget(orgId, brandId, now);
+    if (brand.capCents !== null) remainingBrandCents = Math.max(0, brand.capCents - brand.spentCents);
+  }
+
   return {
     // Clamped at zero. A negative remaining is arithmetically correct after an
     // overspend and reads as nonsense on a usage bar, and `policy.ts` compares
@@ -64,5 +88,6 @@ export async function readBudget(
     remainingCents: Math.max(0, monthlyCapCents - spentCents),
     monthlyCapCents,
     ...(Object.keys(remainingByCategory).length ? { remainingByCategory } : {}),
+    ...(remainingBrandCents !== undefined ? { remainingBrandCents } : {}),
   };
 }

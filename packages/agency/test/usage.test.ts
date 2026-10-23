@@ -26,6 +26,10 @@ function credits(over: Partial<Omit<CreditStore, 'budget'>> & { budget?: BudgetO
     record: async () => {},
     grant: async () => {},
     setBudget: async () => {},
+    // No brand cap unless a case sets one — the production default too.
+    brandBudget: async () => ({ capCents: null, spentCents: 0 }),
+    listBrandBudgets: async () => [],
+    setBrandBudget: async () => {},
     ...over,
     budget: async () => ({ ...(await budget()), byTool: [], allocationsCents: {} }),
   };

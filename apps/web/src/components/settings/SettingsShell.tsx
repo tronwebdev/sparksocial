@@ -10,9 +10,11 @@ import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import {
   BRAND_SECTIONS,
+  ORG_SECTIONS,
   PERSONAL_SECTIONS,
   treeFor,
   type SettingsSection,
+  type SettingsTree,
 } from './settingsTree';
 
 /**
@@ -63,7 +65,7 @@ export function SettingsShell({
 }) {
   const pathname = usePathname();
   const tree = treeFor(pathname);
-  const sections = tree === 'personal' ? PERSONAL_SECTIONS : BRAND_SECTIONS;
+  const sections = tree === 'org' ? ORG_SECTIONS : tree === 'personal' ? PERSONAL_SECTIONS : BRAND_SECTIONS;
   const [chatOpen, setChatOpen] = useState(false);
   const { genome } = useSelectedGenome();
   const router = useRouter();
@@ -180,11 +182,21 @@ export function SettingsShell({
   );
 }
 
-/** The 435x50 Workspace / Personal switch. */
-function SettingsTreeSwitch({ tree }: { tree: 'brand' | 'personal' }) {
+/**
+ * The scope switch — three segments now, not two.
+ *
+ * The prototype's pill is 435px holding two 224px segments. A third does not
+ * fit at those numbers, and widening the pill would push it into the header's
+ * other furniture, so the segments share the width instead: the pill keeps its
+ * measured size and each label gets a third of it. The labels shorten to one
+ * word each for the same reason — "Organisation Settings" in a 145px segment
+ * is "Organisation Sett".
+ */
+function SettingsTreeSwitch({ tree }: { tree: SettingsTree }) {
   const items = [
-    { key: 'brand' as const, label: 'Brand Settings', href: BRAND_SECTIONS[0]!.href },
-    { key: 'personal' as const, label: 'Personal Settings', href: PERSONAL_SECTIONS[0]!.href },
+    { key: 'org' as const, label: 'Organisation', href: ORG_SECTIONS[0]!.href },
+    { key: 'brand' as const, label: 'Brand', href: BRAND_SECTIONS[0]!.href },
+    { key: 'personal' as const, label: 'Personal', href: PERSONAL_SECTIONS[0]!.href },
   ];
   return (
     <div
@@ -212,11 +224,16 @@ function SettingsTreeSwitch({ tree }: { tree: 'brand' | 'personal' }) {
             role="tab"
             aria-selected={on}
             className={cn(
-              'flex h-set-seg-h flex-1 items-center justify-center gap-[7px] rounded-[76.383px] text-17 font-medium leading-[1.26] transition-colors',
+              'flex h-set-seg-h min-w-0 flex-1 items-center justify-center gap-[6px] rounded-[76.383px] text-15 font-medium leading-[1.26] transition-colors',
               on ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink',
             )}
           >
-            {it.key === 'brand' ? (
+            {it.key === 'org' ? (
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+                <rect x="2" y="5" width="6.4" height="11.4" rx="1.3" stroke="currentColor" strokeWidth="1.5" />
+                <rect x="9.2" y="1.6" width="6.8" height="14.8" rx="1.3" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+            ) : it.key === 'brand' ? (
               <svg width="18" height="17" viewBox="0 0 18 17" fill="none" aria-hidden>
                 <path d="M1 6.2 9 1.5l8 4.7v8.3H1V6.2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
               </svg>
@@ -247,13 +264,15 @@ function SettingsNavPanel({
   pathname,
 }: {
   sections: readonly SettingsSection[];
-  tree: 'brand' | 'personal';
+  tree: SettingsTree;
   pathname: string;
 }) {
   const pitch = tree === 'personal' ? 56 : 58;
   return (
     <nav
-      aria-label={tree === 'personal' ? 'Personal settings' : 'Brand settings'}
+      aria-label={
+        tree === 'org' ? 'Organisation settings' : tree === 'personal' ? 'Personal settings' : 'Brand settings'
+      }
       className="w-set-nav shrink-0 overflow-hidden rounded-[15.556px] bg-white py-[10px] max-lg:w-full"
       /*
         The design states both panels outright: 285x420 for the seven brand

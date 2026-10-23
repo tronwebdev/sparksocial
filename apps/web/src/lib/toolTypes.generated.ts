@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 217 tools.
+ * 221 tools.
  */
 
 export interface ToolIO {
@@ -182,6 +182,14 @@ export interface ToolIO {
   "asset.upload_url": {
     input: { genomeId: string; filename: string; contentType: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "video/mp4" | "video/quicktime" | "video/webm" | "audio/mpeg" | "audio/mp4" | "audio/wav" | "audio/webm" | "audio/ogg" | "application/pdf"; sizeBytes: number };
     output: { uploadUrl: string; readUrl: string; key: string; expiresAt: string; headers: Record<string, string> };
+  };
+  "brand.budget.list": {
+    input: Record<string, never>;
+    output: { brands: Array<{ brandId: string; monthlyCapCents: number; monthlyCapCredits: number; spentCents: number; remainingCents: number; exhausted: boolean }> };
+  };
+  "brand.budget.set": {
+    input: { brandId: string; monthlyCapCents: (number) | (null) };
+    output: { brandId: string; monthlyCapCents: (number) | (null); monthlyCapCredits: (number) | (null); spentCents: number; remainingCents: (number) | (null) };
   };
   "brand.create": {
     input: { name: string; category: string; oneLiner?: string; locale?: string };
@@ -667,9 +675,17 @@ export interface ToolIO {
     input: { plan?: "starter" | "growth" | "agency" };
     output: { plan: "starter" | "growth" | "agency"; defaultApprovalMode: string; ssoRequired: boolean; twoFactorRequired: boolean; dataResidency: string; retentionDays: (number) | (null); monthlyCapCents: number; updatedAt: string };
   };
+  "org.credits.checkout": {
+    input: { packId: string };
+    output: { url: string; sessionId: string; credits: number; priceCents: number; currency: string };
+  };
   "org.credits.grant": {
     input: { amountCents: number; reason: string; brandId?: string };
     output: { granted: true; balance: { monthlyCapCents: number; spentCents: number } };
+  };
+  "org.credits.packs": {
+    input: Record<string, never>;
+    output: { currency: string; packs: Array<{ id: string; label: string; credits: number; priceCents: number }> };
   };
   "org.governance.set": {
     input: { defaultApprovalMode?: "autopublish" | "review_first_week" | "review_everything"; twoFactorRequired?: boolean; dataResidency?: "any" | "eu" | "us" | "uk"; retentionDays?: number };

@@ -39,6 +39,7 @@ import { registerApprovalTools } from './tools.js';
 import { envList, envNum, envSet, envStr, revision } from './env.js';
 import { describeModelVendors } from './model-client.js';
 import { describeEngageWebhook } from './engage-webhook.js';
+import { readStripeConfig, stripeClient } from './stripe-client.js';
 
 /**
  * Entrypoint. Azure Container Apps runs this behind Front Door.
@@ -318,6 +319,32 @@ const recorder = broadcastingRecorder(tracedRecorder, bus);
  * mapping via env makes the loop testable end to end without pretending the
  * lookup exists. Multi-tenant inbound needs that column first.
  */
+/**
+ * Stripe's payment webhook, when Stripe is configured.
+ *
+ * Both keys or neither — `readStripeConfig` returns null unless the secret key
+ * and the webhook secret are both set. A secret key alone can take a
+ * customer's money and never deliver the credits, which is worse than not
+ * selling them.
+ *
+ * `credits` is the same ledger every tool spends against. A payment that
+ * landed in a different store from the one the policy reads would be money
+ * taken and a balance that never moved.
+ */
+const stripeConfig = readStripeConfig();
+const stripeWebhook =
+  stripeConfig && credits
+    ? {
+        stripe: stripeClient(stripeConfig),
+        config: stripeConfig,
+        credits,
+        logger: {
+          info: (m: string, meta?: unknown) => console.log(`[info] ${m}`, meta ?? ''),
+          warn: (m: string, meta?: unknown) => console.warn(`[warn] ${m}`, meta ?? ''),
+        },
+      }
+    : undefined;
+
 const whatsappWebhook = envSet('WHATSAPP_APP_SECRET')
   ? {
       invokeDeps,
@@ -583,6 +610,7 @@ const app = createApp({
   // enforcement is live — no plumbing to add later.
   invokeDeps,
   telemetry: telemetry.status(),
+  ...(stripeWebhook ? { stripeWebhook } : {}),
   ...(whatsappWebhook ? { whatsappWebhook } : {}),
   ...(engageWebhook ? { engageWebhook } : {}),
   ...(revision() ? { revision: revision()! } : {}),

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { registerWhatsappWebhook, type WhatsappWebhookDeps } from './whatsapp-webhook.js';
 import { registerEngageWebhook, type EngageWebhookDeps } from './engage-webhook.js';
+import { registerStripeWebhook, type StripeWebhookDeps } from './stripe-webhook.js';
 import { streamSSE } from 'hono/streaming';
 import { ToolError } from '@sparksocial/shared/types';
 import {
@@ -31,6 +32,14 @@ import type { RunEvent, RunEventBus, RunAgentArgs, RunResult } from '@sparksocia
  */
 
 export interface AppDeps {
+  /**
+   * Stripe's payment webhook. Absent → the route does not exist.
+   *
+   * The same rule the two below follow, and here it is the only thing standing
+   * between the endpoint and anyone on the internet granting themselves
+   * credits: this route is the sole path by which a payment becomes a balance.
+   */
+  stripeWebhook?: StripeWebhookDeps;
   /** Meta's inbound webhook. Absent → the route does not exist. */
   whatsappWebhook?: WhatsappWebhookDeps;
   /**
@@ -90,6 +99,13 @@ export function createApp(deps: AppDeps) {
    * register-only-when-signed rule, per route, for the same reason.
    */
   if (deps.engageWebhook) registerEngageWebhook(app, deps.engageWebhook);
+
+  /**
+   * Stripe. Same rule again: no webhook secret, no route. A payment endpoint
+   * that accepts unsigned writes is the worst instance of the class, because
+   * what it writes is money.
+   */
+  if (deps.stripeWebhook) registerStripeWebhook(app, deps.stripeWebhook);
 
   /* ── The tool manifest. SPARK's view and the UI's view are this one list. ── */
   app.get('/v1/tools', (c) => c.json({ tools: agentManifest() }));

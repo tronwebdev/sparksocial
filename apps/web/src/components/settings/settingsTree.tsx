@@ -22,7 +22,19 @@ import type { ReactNode } from 'react';
  * place the product calls a brand something else.
  */
 
-export type SettingsTree = 'brand' | 'personal';
+/**
+ * Three scopes, because there are three.
+ *
+ * `brand` and `personal` were the prototype's two, and between them sat the
+ * thing neither one is: the organisation. Credits, billing and the plan are
+ * org-scoped in every store that holds them — `org_budgets` and
+ * `credit_ledger` are keyed on `org_id`, and `org.usage.get` takes no brand —
+ * but the only screen for them lived under Brand Settings. So "Account
+ * Settings" on the brands page opened one brand's settings, and a credit
+ * balance shared by every brand was shown as though it belonged to whichever
+ * one happened to be selected.
+ */
+export type SettingsTree = 'org' | 'brand' | 'personal';
 
 export interface SettingsSection {
   href: string;
@@ -79,6 +91,33 @@ const Icons = {
       <rect x="1" y="1" width="19" height="13" rx="2.4" {...S} />
       <path d="M1 5.4h19" {...S} />
       <path d="M4.4 10h3.6" {...S} />
+    </svg>
+  ),
+  org: (
+    <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden>
+      <rect x="2.2" y="5" width="7" height="12.4" rx="1.4" {...S} />
+      <rect x="9.8" y="1.6" width="7" height="15.8" rx="1.4" {...S} />
+      <path d="M4.6 8.2h2.2M4.6 11.4h2.2M12.2 4.8h2.2M12.2 8.2h2.2M12.2 11.4h2.2" {...S} />
+    </svg>
+  ),
+  billing: (
+    <svg width="21" height="19" viewBox="0 0 21 19" aria-hidden>
+      <rect x="1.2" y="2.6" width="18.6" height="13.8" rx="2.4" {...S} />
+      <path d="M1.2 7.4h18.6" {...S} />
+      <path d="M4.6 12.2h4.2" {...S} />
+    </svg>
+  ),
+  budgets: (
+    <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden>
+      <circle cx="9.5" cy="9.5" r="7.9" {...S} />
+      <path d="M9.5 1.6v7.9l5.6 5.6" {...S} />
+    </svg>
+  ),
+  audit: (
+    <svg width="18" height="20" viewBox="0 0 18 20" aria-hidden>
+      <path d="M3 1.6h8.4L16.4 6v12.4H3V1.6Z" {...S} />
+      <path d="M11.4 1.6V6h5" {...S} />
+      <path d="M6 10.6h6.4M6 14h4.2" {...S} />
     </svg>
   ),
   offers: (
@@ -152,8 +191,29 @@ export const BRAND_SECTIONS: readonly SettingsSection[] = [
     mid-wizard to find.
   */
   { href: '/settings/offers', label: 'Offers & CTA', icon: Icons.offers },
-  { href: '/settings/credits', label: 'Credit & Usage', icon: Icons.credits },
+  /*
+    Credit & Usage used to be here, and it was the clearest case of the
+    missing scope: `org_budgets` and `credit_ledger` are keyed on `org_id`,
+    `org.usage.get` takes no brand, and the screen showed a balance shared by
+    every brand in the organisation as though it belonged to whichever one was
+    selected. It lives under Organisation now.
+  */
   { href: '/settings/team', label: 'Team Roles', icon: Icons.team },
+];
+
+/**
+ * Organisation Settings — the scope the prototype has no screens for.
+ *
+ * Everything here is keyed on the org in the store it lives in, which is the
+ * test for whether a section belongs: the plan, the credit balance, who may
+ * spend it, and what every brand did with it. A screen that needs a `genomeId`
+ * is a brand screen and belongs in the list above.
+ */
+export const ORG_SECTIONS: readonly SettingsSection[] = [
+  { href: '/settings/org', label: 'Organisation', icon: Icons.org },
+  { href: '/settings/org/billing', label: 'Billing & Credits', icon: Icons.billing },
+  { href: '/settings/org/brands', label: 'Brand budgets', icon: Icons.budgets },
+  { href: '/settings/org/audit', label: 'Audit log', icon: Icons.audit },
 ];
 
 /** Personal Settings — the prototype's six, in its order. */
@@ -166,7 +226,15 @@ export const PERSONAL_SECTIONS: readonly SettingsSection[] = [
   { href: '/settings/privacy', label: 'Privacy', icon: Icons.privacy },
 ];
 
-/** Which tree a path belongs to. Personal is the closed set; everything else is brand. */
+/**
+ * Which tree a path belongs to.
+ *
+ * Org is matched by prefix rather than by membership, so a section added under
+ * `/settings/org/` is in the org tree without having to be listed twice.
+ * Personal stays the closed set it was, and everything else is a brand screen
+ * — which keeps the default where it has always been.
+ */
 export function treeFor(pathname: string): SettingsTree {
+  if (pathname === '/settings/org' || pathname.startsWith('/settings/org/')) return 'org';
   return PERSONAL_SECTIONS.some((s) => s.href === pathname) ? 'personal' : 'brand';
 }

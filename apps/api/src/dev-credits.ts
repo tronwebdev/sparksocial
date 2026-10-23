@@ -25,8 +25,13 @@ export function createDevCreditStore(
   // `tool` is carried so `spendByTool` can group on it, the same as the real
   // ledger's column. Without it the dev store could answer "how much" and not
   // "on what", which is the whole of what `org.usage.get` adds.
-  const charged = new Map<string, { orgId: string; tool: string; costCents: number; at: Date }>();
+  const charged = new Map<
+    string,
+    { orgId: string; brandId?: string; tool: string; costCents: number; at: Date }
+  >();
   const caps = new Map<string, number>();
+  /** `${orgId}:${brandId}` → cap. Absent is no cap, never zero. */
+  const brandCaps = new Map<string, number>();
   const allocations = new Map<string, Record<string, number>>();
 
   return {
@@ -54,6 +59,32 @@ export function createDevCreditStore(
      * a limit that only bites in production is a limit nobody exercises until a
      * customer does.
      */
+    /*
+     * Brand caps, held in the same map-of-numbers spirit as the rest of this
+     * store. A brand with no entry has no cap, which is the production
+     * meaning too — absent is unlimited-within-the-org, never zero.
+     */
+    async brandBudget(orgId, brandId) {
+      const cap = brandCaps.get(`${orgId}:${brandId}`);
+      let spent = 0;
+      for (const e of charged.values()) {
+        if (e.orgId === orgId && e.brandId === brandId) spent += e.costCents;
+      }
+      return { capCents: cap ?? null, spentCents: spent };
+    },
+
+    async listBrandBudgets(orgId) {
+      return [...brandCaps.entries()]
+        .filter(([k]) => k.startsWith(`${orgId}:`))
+        .map(([k, monthlyCapCents]) => ({ brandId: k.slice(orgId.length + 1), monthlyCapCents }));
+    },
+
+    async setBrandBudget({ orgId, brandId, monthlyCapCents }) {
+      const key = `${orgId}:${brandId}`;
+      if (monthlyCapCents === null) brandCaps.delete(key);
+      else brandCaps.set(key, monthlyCapCents);
+    },
+
     async setBudget({ orgId, monthlyCapCents: cap, allocationsCents }) {
       if (cap !== undefined) caps.set(orgId, cap);
       if (allocationsCents !== undefined) allocations.set(orgId, { ...allocationsCents });
@@ -82,10 +113,13 @@ export function createDevCreditStore(
         .slice(0, limit);
     },
 
-    async record({ callId, orgId, tool, costCents, at }) {
+    async record({ callId, orgId, brandId, tool, costCents, at }) {
       // First write wins, like `onConflictDoNothing`.
       if (charged.has(callId)) return;
-      charged.set(callId, { orgId, tool, costCents, at });
+      // `brandId` is kept so this store can answer the per-brand question too.
+      // The real ledger has carried the column from the start; the dev store
+      // dropped it on the floor, so a brand cap here was uncheckable.
+      charged.set(callId, { orgId, ...(brandId ? { brandId } : {}), tool, costCents, at });
     },
 
     async grant({ orgId, amountCents }) {

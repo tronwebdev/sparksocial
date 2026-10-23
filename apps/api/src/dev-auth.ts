@@ -33,7 +33,10 @@ export function makeDevResolveCtx(db: ScopedDb, credits?: CreditStore) {
       approvalMode: 'autopublish',
       // Same ledger as production. A dev environment with an unreachable spend
       // limit is how the limit stays untested until a customer hits it.
-      budget: await readBudget(credits, h.get('x-org-id') ?? 'org_dev'),
+      // The brand goes in too: a cap enforced under Clerk and ignored in
+      // development is the same class of bug as the `agentPaused` divergence
+      // this file's own comment records.
+      budget: await readBudget(credits, h.get('x-org-id') ?? 'org_dev', new Date(), h.get('x-brand-id') ?? undefined),
       db,
       logger: {
         info: (m, meta) => console.log(`[info] ${m}`, meta ?? ''),

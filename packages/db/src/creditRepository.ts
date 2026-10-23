@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gt, gte, sql } from 'drizzle-orm';
 import type { CreditStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
-import { creditLedger, orgBudgets, orgCreditAllocations } from './schema.js';
+import { brandBudgets, creditLedger, orgBudgets, orgCreditAllocations } from './schema.js';
 
 /**
  * `credit_ledger` + `org_budgets` backed by Postgres — plan §9.
@@ -130,22 +130,108 @@ export function createCreditRepository(db: Database): CreditStore {
         .onConflictDoNothing({ target: creditLedger.callId });
     },
 
-    async grant({ orgId, brandId, amountCents, reason }) {
+    async grant({ orgId, brandId, amountCents, reason, externalRef }) {
       // Negative costCents is a credit, per this table's own documented
       // convention ("positive is a spend, negative a refund or a goodwill
       // credit"). `callId` is null — a manual grant is not billing any real
       // tool_calls row, so there is nothing to key idempotency on the way
       // `record()` does; `org.credits.grant`'s own `idempotent: false`
       // declaration is what stops a retried call from granting twice.
-      await db.insert(creditLedger).values({
-        id: randomUUID(),
-        orgId,
-        costCents: -Math.abs(amountCents),
-        tool: 'org.credits.grant',
-        reason,
-        at: new Date(),
-        ...(brandId ? { brandId } : {}),
-      });
+      await db
+        .insert(creditLedger)
+        .values({
+          id: randomUUID(),
+          orgId,
+          costCents: -Math.abs(amountCents),
+          tool: 'org.credits.grant',
+          reason,
+          at: new Date(),
+          ...(brandId ? { brandId } : {}),
+          ...(externalRef ? { externalRef } : {}),
+        })
+        /*
+         * Dropped rather than failed on a repeat.
+         *
+         * `credit_ledger_external_idx` is unique, so a redelivered payment
+         * webhook collides here and this is a no-op — which is the correct
+         * outcome and must look like success to the caller. A thrown error
+         * would make the webhook answer non-2xx, and Stripe would redeliver
+         * it again, forever.
+         *
+         * A grant with no external reference has nothing to collide on and
+         * behaves exactly as it did: `org.credits.grant`'s own
+         * `idempotent: false` is what guards that path.
+         */
+        .onConflictDoNothing({ target: creditLedger.externalRef });
+    },
+
+    /**
+     * One brand's cap and its spend this period.
+     *
+     * Two statements rather than a join: the cap is a single-row primary-key
+     * lookup and the spend is an index scan over the period, and a join would
+     * make the planner choose between them. Both are on the hot path — this
+     * runs on every paid call with a brand in scope — so they are issued
+     * together and awaited together.
+     *
+     * A brand with no row has no cap. That is the state every brand starts in
+     * and the one the policy reads as "bounded only by the org".
+     */
+    async brandBudget(orgId, brandId, now) {
+      const [capRow, spendRows] = await Promise.all([
+        db
+          .select({ cap: brandBudgets.monthlyCapCents })
+          .from(brandBudgets)
+          .where(and(eq(brandBudgets.brandId, brandId), eq(brandBudgets.orgId, orgId)))
+          .limit(1),
+        db
+          .select({ total: sql<string>`coalesce(sum(${creditLedger.costCents}), 0)` })
+          .from(creditLedger)
+          .where(
+            and(
+              eq(creditLedger.orgId, orgId),
+              eq(creditLedger.brandId, brandId),
+              gte(creditLedger.at, periodStart(now)),
+            ),
+          ),
+      ]);
+
+      return {
+        capCents: capRow[0]?.cap ?? null,
+        // Same bigint-as-string caution as `budget` — parsed, not coerced.
+        spentCents: Number(spendRows[0]?.total ?? 0),
+      };
+    },
+
+    async listBrandBudgets(orgId) {
+      const rows = await db
+        .select({ brandId: brandBudgets.brandId, monthlyCapCents: brandBudgets.monthlyCapCents })
+        .from(brandBudgets)
+        .where(eq(brandBudgets.orgId, orgId));
+      return rows;
+    },
+
+    /**
+     * `null` deletes the row, which is how "no cap" is expressed.
+     *
+     * Not a zero: zero is "this brand spends nothing", and a screen that
+     * cleared a cap by writing zero would silently freeze the brand it was
+     * trying to free. The two have to stay different all the way down.
+     */
+    async setBrandBudget({ orgId, brandId, monthlyCapCents }) {
+      if (monthlyCapCents === null) {
+        await db
+          .delete(brandBudgets)
+          .where(and(eq(brandBudgets.brandId, brandId), eq(brandBudgets.orgId, orgId)));
+        return;
+      }
+      await db
+        .insert(brandBudgets)
+        .values({ brandId, orgId, monthlyCapCents })
+        .onConflictDoUpdate({
+          target: brandBudgets.brandId,
+          set: { monthlyCapCents, orgId, updatedAt: new Date() },
+        });
     },
 
     async setBudget({ orgId, monthlyCapCents, allocationsCents }) {

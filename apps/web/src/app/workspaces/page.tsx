@@ -195,7 +195,16 @@ export default function WorkspacesPage() {
             className="flex h-12 items-center rounded-full bg-white px-2 sm:h-14"
             style={{ boxShadow: '0 10px 26px -18px rgba(12,12,12,0.35)' }}
           >
-            <BarButton onClick={() => router.push('/settings')} label="Account Settings">
+            {/*
+              The organisation, not a brand.
+
+              This opened `/settings`, which is one brand's settings — reached
+              from a page that lists every brand, with whichever one happened
+              to be selected in the cookie. Brand settings are reached by
+              opening a brand, which is the only place the question "which
+              brand" has an answer.
+            */}
+            <BarButton onClick={() => router.push('/settings/org')} label="Account Settings">
               <svg width="17" height="17" viewBox="0 0 22 22" fill="none" aria-hidden>
                 <circle cx="9" cy="7" r="2.8" stroke={MUTED} strokeWidth="1.6" />
                 <path d="M3 17c1-2.7 3.2-4.2 6-4.2 1 0 1.9.2 2.7.5" stroke={MUTED} strokeWidth="1.6" strokeLinecap="round" />
@@ -305,7 +314,7 @@ export default function WorkspacesPage() {
                         </MenuItem>
                       ))
                     : null}
-                  <MenuItem label="Account Settings" onClick={() => router.push('/settings')}>
+                  <MenuItem label="Account Settings" onClick={() => router.push('/settings/org')}>
                     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
                       <circle cx="11" cy="11" r="3" stroke="currentColor" strokeWidth="1.5" />
                       <path d="M11 2.6v2.2M11 17.2v2.2M2.6 11h2.2M17.2 11h2.2M4.9 4.9l1.6 1.6M15.5 15.5l1.6 1.6M4.9 17.1l1.6-1.6M15.5 6.5l1.6-1.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

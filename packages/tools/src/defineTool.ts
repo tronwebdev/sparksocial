@@ -41,6 +41,16 @@ export interface ToolCtx {
      * than treating a missing entry as zero.
      */
     remainingByCategory?: Record<string, number>;
+    /**
+     * What is left of *this brand's* own monthly ceiling.
+     *
+     * Absent when the brand has no cap, which is every brand until an owner
+     * sets one — the same presence-is-the-signal rule `remainingByCategory`
+     * follows, and for the same reason: a default would make "no cap" and "a
+     * generous cap" indistinguishable, and they stop behaving the same the
+     * moment somebody lowers a number.
+     */
+    remainingBrandCents?: number;
   };
   db: ScopedDb;             // from packages/db — see scoped.ts
   logger: Logger;
@@ -1797,6 +1807,36 @@ export interface CreditStore {
   }): Promise<void>;
 
   /**
+   * One brand's hard monthly ceiling, and what it has spent against it.
+   *
+   * Read on every paid call that has a brand in scope, so it returns both in
+   * one round trip for the same reason `budget` does. `capCents: null` means
+   * this brand has no cap of its own and is bounded only by the org's — which
+   * is every brand until somebody sets a number, and must stay the default.
+   */
+  brandBudget(
+    orgId: string,
+    brandId: string,
+    now: Date,
+  ): Promise<{ capCents: number | null; spentCents: number }>;
+
+  /**
+   * Every brand cap this org has set, for the organisation screen.
+   *
+   * Only the brands with a row: a brand absent from this list has no cap, and
+   * padding the result with nulls for every brand in the org would make the
+   * screen's "which of these are capped" question need a second read to
+   * answer.
+   */
+  listBrandBudgets(orgId: string): Promise<Array<{ brandId: string; monthlyCapCents: number }>>;
+
+  /**
+   * Set or clear one brand's cap. `null` removes it, which is not the same as
+   * zero — see `brand_budgets`' own comment.
+   */
+  setBrandBudget(args: { orgId: string; brandId: string; monthlyCapCents: number | null }): Promise<void>;
+
+  /**
    * `org.credits.grant` — a manual goodwill/plan credit, never tied to a real
    * `tool_calls` row (`callId` is generated internally, not accepted from the
    * caller). Kept off `record()` on purpose: `record` is idempotent-by-replay
@@ -1805,7 +1845,22 @@ export interface CreditStore {
    * only `org.credits.grant`'s factory receives it directly, the same
    * isolation `CreditStore` itself already documents for the whole interface.
    */
-  grant(entry: { orgId: string; brandId?: string; amountCents: number; reason: string }): Promise<void>;
+  grant(entry: {
+    orgId: string;
+    brandId?: string;
+    amountCents: number;
+    reason: string;
+    /**
+     * The outside event this grant came from — a Stripe checkout session id.
+     *
+     * When present the write is idempotent on it: a second grant carrying the
+     * same reference is dropped. That is the whole defence against a payment
+     * webhook being redelivered, which Stripe does until it gets a 2xx, and a
+     * blip between granting and answering would otherwise turn one purchase
+     * into two balances.
+     */
+    externalRef?: string;
+  }): Promise<void>;
 }
 
 /** One item in the Review queue. */
