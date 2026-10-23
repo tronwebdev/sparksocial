@@ -45,11 +45,11 @@ export interface ToolIO {
   };
   "agent.run.get": {
     input: { runId: string };
-    output: { runId: string; agent: string; goal: string; trigger: "user" | "schedule" | "event"; status: "running" | "succeeded" | "failed" | "cancelled"; costCents: number; startedAt: string; endedAt?: string; parentRunId?: string; durationMs: (number) | (null); tokens: { input: number; output: number }; error?: { code: string; message: string }; steps: Array<{ idx: number; type: "think" | "tool" | "delegate" | "wait"; payload: unknown; ms: number; at: string }> };
+    output: { runId: string; agent: string; goal: string; trigger: "user" | "schedule" | "event"; status: "running" | "succeeded" | "failed" | "cancelled"; costCents: number; startedAt: string; endedAt?: string; parentRunId?: string; reply?: string; durationMs: (number) | (null); tokens: { input: number; output: number }; error?: { code: string; message: string }; steps: Array<{ idx: number; type: "think" | "tool" | "delegate" | "wait"; payload: unknown; ms: number; at: string }> };
   };
   "agent.run.list": {
     input: { limit?: number };
-    output: { runs: Array<{ runId: string; agent: string; goal: string; trigger: "user" | "schedule" | "event"; status: "running" | "succeeded" | "failed" | "cancelled"; costCents: number; startedAt: string; endedAt?: string; parentRunId?: string; durationMs: (number) | (null) }> };
+    output: { runs: Array<{ runId: string; agent: string; goal: string; trigger: "user" | "schedule" | "event"; status: "running" | "succeeded" | "failed" | "cancelled"; costCents: number; startedAt: string; endedAt?: string; parentRunId?: string; reply?: string; durationMs: (number) | (null) }> };
   };
   "agent.status": {
     input: Record<string, never>;
@@ -525,7 +525,7 @@ export interface ToolIO {
   };
   "genome.list": {
     input: Record<string, never>;
-    output: { genomes: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string }> };
+    output: { genomes: Array<{ genomeId: string; brandId: string; name: string; logoUrl?: string; updatedAt: string }> };
   };
   "genome.offer.set": {
     input: { genomeId: string; offer: { products?: Array<{ name: string; price?: string; cta_url?: string }>; primary_cta?: string } };

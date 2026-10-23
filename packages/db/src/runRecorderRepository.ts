@@ -49,6 +49,10 @@ export function createRunRecorder(db: Database): RunRecorder {
       }
       if (patch.endedAt) update.endedAt = patch.endedAt;
       if (patch.error) update.error = patch.error;
+      // Empty string is not a reply; `loop.ts` substitutes a fallback before
+      // it ever gets here, so a blank one means something went wrong upstream
+      // and a null column is the honest record of that.
+      if (patch.reply) update.reply = patch.reply;
       await db.update(agentRuns).set(update).where(eq(agentRuns.id, id));
     },
   };
@@ -124,6 +128,7 @@ function toSummary(row: typeof agentRuns.$inferSelect): RunSummary {
     startedAt: row.startedAt,
     ...(row.endedAt ? { endedAt: row.endedAt } : {}),
     ...(row.parentRunId ? { parentRunId: row.parentRunId } : {}),
+    ...(row.reply ? { reply: row.reply } : {}),
   };
 }
 

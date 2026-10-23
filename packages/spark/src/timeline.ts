@@ -32,6 +32,15 @@ const RunSummarySchema = z.object({
   startedAt: z.string(),
   endedAt: z.string().optional(),
   parentRunId: z.string().optional(),
+  /**
+   * What SPARK answered.
+   *
+   * On the list and not only the detail, because the conversation history is
+   * what needed it — a list of questions with no answers is not a history.
+   * Absent for a run still going, one that failed before replying, and every
+   * run recorded before the reply was stored at all.
+   */
+  reply: z.string().optional(),
   /** Wall-clock duration; null while the run is still going. */
   durationMs: z.number().nullable(),
 });
@@ -145,6 +154,7 @@ function toSummary(r: {
   startedAt: Date;
   endedAt?: Date;
   parentRunId?: string;
+  reply?: string;
 }) {
   return {
     runId: r.id,
@@ -156,6 +166,7 @@ function toSummary(r: {
     startedAt: r.startedAt.toISOString(),
     ...(r.endedAt ? { endedAt: r.endedAt.toISOString() } : {}),
     ...(r.parentRunId ? { parentRunId: r.parentRunId } : {}),
+    ...(r.reply ? { reply: r.reply } : {}),
     durationMs: r.endedAt ? r.endedAt.getTime() - r.startedAt.getTime() : null,
   };
 }

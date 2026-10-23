@@ -2785,6 +2785,15 @@ export interface RunSummary {
   endedAt?: Date;
   /** Set on a delegated subagent run, pointing at the orchestrator's run. */
   parentRunId?: string;
+  /**
+   * What SPARK answered, where the run finished and said something.
+   *
+   * On the summary rather than only the detail, because the conversation list
+   * is the thing that needed it: a history of questions with no answers is not
+   * a history. Absent for a run still going, a run that failed before
+   * replying, and every run recorded before the column existed.
+   */
+  reply?: string;
 }
 
 /** A run plus the ordered steps that make up its timeline. */

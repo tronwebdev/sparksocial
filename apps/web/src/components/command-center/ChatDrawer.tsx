@@ -100,6 +100,8 @@ interface RunSummary {
   status: string;
   startedAt: string;
   costCents: number;
+  /** What SPARK answered. Absent on runs recorded before replies were stored. */
+  reply?: string;
 }
 
 /** The design's two tabs, and the pill geometry it slides between them. */
@@ -283,7 +285,20 @@ export function ChatDrawer({
       role="dialog"
       aria-modal="false"
       aria-label="Ask Spark"
-      className="fixed right-[24px] top-[78px] z-50 flex w-[541px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[30px] bg-white animate-chat-in motion-reduce:animate-none"
+      /*
+        `max-h`, which it did not have.
+
+        The panel is `fixed` with a top and no height, so it was exactly as
+        tall as its contents: every reply made it taller until it ran off the
+        bottom of the screen, and the thread's `overflow-y-auto` never did
+        anything because its parent had no height to overflow. Reported as the
+        window going short and the reply not scrolling — two symptoms of one
+        missing constraint.
+
+        78 at the top, 24 of breathing room at the bottom. A short chat still
+        sizes to its contents; a long one stops at the viewport and scrolls.
+      */
+      className="fixed right-[24px] top-[78px] z-50 flex max-h-[calc(100vh-102px)] w-[541px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-[30px] bg-white animate-chat-in motion-reduce:animate-none"
       style={{
         height: 'min(982px, calc(100vh - 102px))',
         boxShadow: '0 32px 90px -20px rgba(12,12,12,0.3), 0 0 0 1px rgba(131,131,131,0.12)',
@@ -384,7 +399,7 @@ export function ChatDrawer({
 
       {tab === 'convos' ? (
         /* ── conversations: rows at 16,88, h50.6 r14.6, gap 12 ──────── */
-        <div className="mx-[16px] mt-[25px] flex-1 overflow-y-auto pb-[16px]">
+        <div className="mx-[16px] mt-[25px] min-h-0 flex-1 overflow-y-auto pb-[16px]">
           {openRun ? (
             /*
               One conversation, read **inside this tab**. It used to write itself
@@ -410,15 +425,40 @@ export function ChatDrawer({
                 {humaniseGoal(openRun.goal, titles)}
               </p>
 
+              {/*
+                The answer, where there is one.
+
+                This used to read "Replies are not stored per run", which was
+                true and was the bug: the run recorded the goal, the steps and
+                the cost, and not what SPARK said. A history of questions with
+                no answers is not a history. `agent_runs.reply` holds it now.
+
+                The old line survives for the runs that predate the column.
+                They cannot be backfilled — the text went to one HTTP caller
+                and was never written down — so the honest thing is to say so
+                for those and show the reply for everything since.
+              */}
               <div className="flex items-start gap-[10px]">
                 {SPARK_ORB(26.4)}
-                <p className="max-w-[367px] text-16 font-medium leading-[1.25]" style={{ color: '#838383' }}>
-                  This run {openRun.status} {relativeTime(openRun.startedAt)}
-                  {openRun.costCents ? ` and cost ${(openRun.costCents / 100).toFixed(2)}` : ''}. Replies are not
-                  stored per run, so the request above is what SPARK was given — the Timeline on Performance &amp;
-                  Learning has its full step-by-step.
-                </p>
+                {openRun.reply ? (
+                  <p className="max-w-[367px] whitespace-pre-wrap text-16 font-medium leading-[1.4] text-ink">
+                    {openRun.reply}
+                  </p>
+                ) : (
+                  <p className="max-w-[367px] text-16 font-medium leading-[1.25]" style={{ color: '#838383' }}>
+                    This run {openRun.status} {relativeTime(openRun.startedAt)}
+                    {openRun.costCents ? ` and cost ${(openRun.costCents / 100).toFixed(2)}` : ''}, and predates
+                    replies being stored — the Timeline on Performance &amp; Learning has its full step-by-step.
+                  </p>
+                )}
               </div>
+
+              {openRun.reply ? (
+                <p className="text-13" style={{ color: '#838383' }}>
+                  {relativeTime(openRun.startedAt)}
+                  {openRun.costCents ? ` · ${(openRun.costCents / 100).toFixed(2)}` : ''} · {openRun.status}
+                </p>
+              ) : null}
 
               <button
                 type="button"
@@ -469,7 +509,22 @@ export function ChatDrawer({
       ) : (
         <>
           {/* ── thread: 27,88 · 496x734, bottom-anchored ─────────────── */}
-          <div ref={listRef} className="mx-[27px] mt-[25px] flex flex-1 flex-col justify-end gap-[18px] overflow-y-auto pb-[6px]">
+          {/*
+            `min-h-0`, and the bottom-anchoring moved inside.
+
+            Two separate reasons the thread would not scroll. A flex child will
+            not shrink below its content without `min-h-0`, so `overflow-y-auto`
+            on it was inert — the item grew instead of scrolling. And
+            `justify-end` on a scroll container pushes overflow past the *top*
+            edge, where there is no scrollback to reach it: the oldest messages
+            become unreachable rather than scrollable.
+
+            An inner `mt-auto` block does what `justify-end` was for — messages
+            sit at the bottom while there are few — without owning the
+            scrolling, which the outer box does normally, from the top.
+          */}
+          <div ref={listRef} className="mx-[27px] mt-[25px] flex min-h-0 flex-1 flex-col overflow-y-auto pb-[6px]">
+            <div className="mt-auto flex flex-col gap-[18px]">
             {messages.map((m) =>
               m.role === 'user' ? (
                 <p
@@ -567,6 +622,7 @@ export function ChatDrawer({
                 </span>
               </div>
             ) : null}
+            </div>
           </div>
 
           {/* ── suggestions, only on an empty thread ─────────────────── */}

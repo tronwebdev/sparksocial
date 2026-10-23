@@ -295,13 +295,23 @@ export async function runAgent(args: RunAgentArgs, deps: RunAgentDeps): Promise<
       }
     }
 
-    await deps.recorder.finishRun(runId, { status: 'succeeded', endedAt: now() });
     // The system prompt now insists on this, but a prompt is not a guarantee —
     // the model is the one part of this loop that isn't under our control.
     // Never hand the caller an empty string: that's what turned into a
     // stone-silent chat bubble with no way to tell "SPARK is done" from
     // "SPARK is broken."
     const text = finalText || fallbackText(toolCallIds.length);
+
+    /*
+     * Finished *after* the reply is resolved, not before.
+     *
+     * The order used to be the other way round, which is why the answer was
+     * never stored: the run was closed, and the text the caller receives was
+     * computed on the next line and written down nowhere. The same text goes
+     * to the HTTP caller and to the record, so a conversation reads back as
+     * the person saw it rather than as a question with a gap after it.
+     */
+    await deps.recorder.finishRun(runId, { status: 'succeeded', endedAt: now(), reply: text });
     return { runId, status: 'succeeded', text, toolCallIds };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

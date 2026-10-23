@@ -1471,6 +1471,20 @@ export const agentRuns = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     error: jsonb('error'),
+    /*
+     * What SPARK actually said.
+     *
+     * The run recorded the goal, the steps and the cost, and not the answer.
+     * So a conversation opened from history showed the question with
+     * "Replies are not stored per run" under it — the panel had to say that
+     * out loud because the column did not exist. A chat whose replies are not
+     * kept is a chat with no history, whatever the list implies.
+     *
+     * Null for a run that has not finished, and for every run recorded before
+     * this column existed. Those cannot be backfilled: the text was returned
+     * to one HTTP caller and never written down.
+     */
+    reply: text('reply'),
   },
   (t) => [
     // Composite, and descending on `started_at`, because the Agent Timeline's

@@ -36,6 +36,14 @@ export interface AgentRun {
   startedAt: Date;
   endedAt?: Date;
   error?: { code: string; message: string };
+  /**
+   * The answer, as the caller received it.
+   *
+   * Recorded so a conversation can be read back. Without it the history list
+   * held every question and no reply, and the panel said so in place of the
+   * answer.
+   */
+  reply?: string;
 }
 
 export interface AgentStep {
@@ -53,7 +61,8 @@ export interface RunRecorder {
   appendStep(step: AgentStep): Promise<void>;
   finishRun(
     id: string,
-    patch: Pick<AgentRun, 'status'> & Partial<Pick<AgentRun, 'costCents' | 'tokens' | 'endedAt' | 'error'>>,
+    patch: Pick<AgentRun, 'status'> &
+      Partial<Pick<AgentRun, 'costCents' | 'tokens' | 'endedAt' | 'error' | 'reply'>>,
   ): Promise<void>;
 }
 

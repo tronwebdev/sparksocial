@@ -81,6 +81,13 @@ const Icons = {
       <path d="M4.4 10h3.6" {...S} />
     </svg>
   ),
+  offers: (
+    <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden>
+      <path d="M9.5 1.6 17.4 6v7l-7.9 4.4L1.6 13V6l7.9-4.4Z" {...S} />
+      <path d="M1.6 6l7.9 4.4L17.4 6" {...S} />
+      <path d="M9.5 10.4v7" {...S} />
+    </svg>
+  ),
   team: (
     <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden>
       <circle cx="9.5" cy="4.6" r="3" {...S} />
@@ -136,6 +143,15 @@ export const BRAND_SECTIONS: readonly SettingsSection[] = [
   { href: '/settings/engagement', label: 'Engagement Intelligence', icon: Icons.engagement },
   { href: '/settings/accounts', label: 'Account Connection', icon: Icons.accounts },
   { href: '/settings/import-export', label: 'Import / Export', icon: Icons.importExport },
+  /*
+    Not in the prototype's seven, and added because the data has always had
+    room for it: `GenomeOffer.products` is an array and nothing could write a
+    second entry. The only reachable offer field was `primary_cta`, and only
+    through the campaign wizard's missing-facts prompt — so a brand selling
+    four things could describe one of them, in a place it had to be caught
+    mid-wizard to find.
+  */
+  { href: '/settings/offers', label: 'Offers & CTA', icon: Icons.offers },
   { href: '/settings/credits', label: 'Credit & Usage', icon: Icons.credits },
   { href: '/settings/team', label: 'Team Roles', icon: Icons.team },
 ];
