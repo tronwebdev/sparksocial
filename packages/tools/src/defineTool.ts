@@ -183,7 +183,18 @@ export interface ScopedDb {
      * takes no `genomeId`: it answers "what may I ask for", so gating it on an
      * already-chosen genome would be circular.
      */
-    listForOrg(orgId: string): Promise<Array<{ id: string; brandId: string; name: string; updatedAt: Date }>>;
+    /**
+     * Every genome in the org, with the brand's display name and logo.
+     *
+     * `name` is the governance name where the brand has one and the genome's
+     * `business_name` otherwise — the two stores held the same fact and the
+     * list read the one the settings screen does not write. `logoUrl` is
+     * absent for a brand that has not set one, which is a real state: the
+     * caller draws its own placeholder rather than being handed a fake URL.
+     */
+    listForOrg(
+      orgId: string,
+    ): Promise<Array<{ id: string; brandId: string; name: string; logoUrl?: string; updatedAt: Date }>>;
   };
   assets: {
     /**
@@ -599,6 +610,18 @@ export interface BrandDeletionCounts {
 
 export interface BrandGovernanceStore {
   get(brandId: string, orgId: string, name?: string): Promise<BrandGovernance>;
+
+  /**
+   * Change the brand's display name.
+   *
+   * Its own method because `get`'s third argument is not one. That argument is
+   * the name to use *when inserting*, and `get` returns an existing row before
+   * it is ever read — so `brand.settings.patch`, which called `get(id, org,
+   * newName)` and returned the name it had been handed, reported a successful
+   * rename and wrote nothing. Every list kept the old name, which is exactly
+   * how it was reported: "it shows saved, but it does not reflect".
+   */
+  rename(brandId: string, orgId: string, name: string): Promise<BrandGovernance>;
 
   /**
    * What a delete would destroy — read before anything is touched, so the

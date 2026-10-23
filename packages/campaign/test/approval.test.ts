@@ -28,6 +28,7 @@ function store(initial: Partial<BrandGovernance> = {}): BrandGovernanceStore {
     ...initial,
   };
   return {
+    rename: async () => ({}) as never,
     countContents: async () => { throw new Error('brands.countContents not stubbed in this test'); },
     deleteCascade: async () => { throw new Error('brands.deleteCascade not stubbed in this test'); },
     get: async () => row,

@@ -28,6 +28,8 @@ export const GenomeListOutput = z.object({
       genomeId: z.string(),
       brandId: z.string(),
       name: z.string(),
+      /** The brand's logo, where it has one. Absent is a real state, not a gap. */
+      logoUrl: z.string().optional(),
       updatedAt: z.string(),
     }),
   ),
@@ -57,6 +59,7 @@ export const genomeList = defineTool({
         genomeId: r.id,
         brandId: r.brandId,
         name: r.name,
+        ...(r.logoUrl ? { logoUrl: r.logoUrl } : {}),
         updatedAt: r.updatedAt.toISOString(),
       })),
     };

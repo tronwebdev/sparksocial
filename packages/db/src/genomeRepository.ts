@@ -13,7 +13,7 @@ import {
 import { GenomeDimensions } from '@sparksocial/shared/types';
 import type { ScopedDb } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
-import { genomes } from './schema.js';
+import { brands, genomes } from './schema.js';
 
 /**
  * `GenomeVoice.tone_vector` is required with no `.default()` — unlike
@@ -334,6 +334,29 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
       };
     },
 
+    /**
+     * Every genome in the org, as a switcher needs it.
+     *
+     * ── The join, and why ────────────────────────────────────────────────
+     *
+     * A brand's name exists twice: `identity.business_name` on the genome, and
+     * `brands.name`, the governance label the settings screen edits. This read
+     * projected the genome's and nothing wrote it, so renaming a brand changed
+     * the settings screen and nothing else — the switcher, the workspaces grid
+     * and the Command Center's byline all kept the old one.
+     *
+     * `brand.settings.patch` now writes both, which fixes it going forward.
+     * The join is what fixes the brands renamed before that: governance first,
+     * genome second, so a row either write touched reads correctly either way.
+     *
+     * The logo comes along for the same reason it was missing — nothing
+     * projected it, so the workspaces grid painted a decorative illustration
+     * chosen by card index and a brand with a real logo never showed it.
+     *
+     * Still only the display fields, not the whole genome: this feeds a
+     * switcher, and shipping every org genome's identity/voice/learned payload
+     * to the client would leak far more than the list needs.
+     */
     async listForOrg(orgId) {
       const rows = await db
         .select({
@@ -341,19 +364,25 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
           brandId: genomes.brandId,
           identity: genomes.identity,
           updatedAt: genomes.updatedAt,
+          govName: brands.name,
+          logoUrl: brands.logoUrl,
         })
         .from(genomes)
+        .leftJoin(brands, and(eq(brands.id, genomes.brandId), eq(brands.orgId, genomes.orgId)))
         .where(eq(genomes.orgId, orgId))
         .orderBy(desc(genomes.updatedAt))
         .limit(100);
 
-      // Only the display name is projected, not the whole genome: this feeds a
-      // switcher, and shipping every org genome's full identity/voice/learned
-      // payload to the client would leak far more than the list needs.
       return rows.map((r) => ({
         id: r.id,
         brandId: r.brandId,
-        name: (r.identity as { business_name?: string } | null)?.business_name ?? 'Untitled brand',
+        // A governance row is upserted with `name: ''` on first read, so empty
+        // is "never named here" rather than "named nothing" — fall through it.
+        name:
+          (r.govName ?? '').trim() ||
+          (r.identity as { business_name?: string } | null)?.business_name ||
+          'Untitled brand',
+        ...(r.logoUrl ? { logoUrl: r.logoUrl } : {}),
         updatedAt: r.updatedAt,
       }));
     },

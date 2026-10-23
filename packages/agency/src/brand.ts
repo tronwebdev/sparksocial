@@ -104,11 +104,52 @@ export const brandSettingsPatch = defineTool({
   idempotent: true,
 
   async handler(input, ctx) {
-    // `brands.get` upserts on first read; a rename after that is a second
-    // `get` call with the new name, matching `brandRepository.ts`'s own
-    // upsert-then-reread shape for every governance field.
-    const gov = await ctx.db.brands.get(input.brandId, ctx.orgId, input.name);
-    return { brandId: gov.brandId, name: input.name };
+    /*
+     * This read `brands.get(brandId, orgId, input.name)` and returned
+     * `input.name`. `get`'s third argument is the name to *insert* with, and
+     * it returns an existing row before ever reading it — so on any brand that
+     * already existed, which is all of them, the rename wrote nothing and the
+     * response echoed back the name it had been handed. The screen said
+     * "Saved", every list kept the old name, and the two agreed with each
+     * other because neither had asked the database.
+     */
+    const gov = await ctx.db.brands.rename(input.brandId, ctx.orgId, input.name);
+
+    /*
+     * ── And the genome's own name, which is the one most screens read ──────
+     *
+     * A brand's name lives in two places: `brands.name`, the governance label
+     * this tool owns, and `identity.business_name` on each of its genomes,
+     * which is what the agent writes as and what `genome.list` projects — so
+     * the brand switcher, the workspaces grid and the Command Center's byline
+     * all read the genome, not this row. Renaming one left the other, and the
+     * name "changed" on the settings screen alone.
+     *
+     * A person renaming their brand means both. Done here rather than asking
+     * the caller to make two calls, because two calls is two chances to make
+     * only the first one.
+     *
+     * Best-effort per genome: a brand with no genome yet is an ordinary state,
+     * and a failure to relabel one must not undo a rename that has happened.
+     */
+    const genomes = (await ctx.db.genomes.listForOrg(ctx.orgId)).filter((g) => g.brandId === input.brandId);
+    for (const g of genomes) {
+      try {
+        await ctx.db.genomes.patchIdentity({
+          genomeId: g.id,
+          orgId: ctx.orgId,
+          identity: { business_name: input.name },
+        });
+      } catch (err) {
+        ctx.logger.warn('brand renamed but genome identity not relabelled', {
+          brandId: input.brandId,
+          genomeId: g.id,
+          error: String(err),
+        });
+      }
+    }
+
+    return { brandId: gov.brandId, name: gov.name };
   },
 });
 

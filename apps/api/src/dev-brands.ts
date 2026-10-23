@@ -72,6 +72,19 @@ export function createDevBrandStore(): BrandGovernanceStore & { size(): number }
       return copy(upsert(brandId, orgId, name));
     },
 
+    /**
+     * Rename, which `get`'s third argument never performed.
+     *
+     * `get` only applies that name when it inserts, here as in the real store —
+     * so this is the method that changes an existing one, and the reason it is
+     * a method at all.
+     */
+    async rename(brandId, orgId, name) {
+      const row = upsert(brandId, orgId, name);
+      row.name = name;
+      return copy(row);
+    },
+
     /*
      * Deletion, as far as this store can honestly report it.
      *

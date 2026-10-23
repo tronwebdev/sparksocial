@@ -38,10 +38,28 @@ describe('brand.create', () => {
 });
 
 describe('brand.settings.patch', () => {
+  /*
+   * This test used to stub `brands.get` alone and assert the returned name,
+   * and it passed for as long as the tool wrote nothing at all: `get`'s third
+   * argument is the name to *insert* with, so on an existing brand the rename
+   * was a no-op and the response echoed back the input. The assertion and the
+   * bug agreed. It stubs the write now, and asserts the write happened.
+   * `brandRename.test.ts` covers the rest.
+   */
   it('renames a brand and nothing else', async () => {
-    const db = { brands: { get: async (id: string, orgId: string, name?: string) => ({ brandId: id, name, approvalMode: 'review_first_week', createdAt: new Date(), agentPaused: false, postsPerWeek: 3 }) } };
+    const renames: Array<[string, string, string]> = [];
+    const db = {
+      brands: {
+        rename: async (id: string, orgId: string, name: string) => {
+          renames.push([id, orgId, name]);
+          return { brandId: id, name, approvalMode: 'review_first_week', createdAt: new Date(), agentPaused: false, postsPerWeek: 3 };
+        },
+      },
+      genomes: { listForOrg: async () => [], patchIdentity: async () => ({ id: 'gen_1', version: 2 }) },
+    };
     const out = await brandSettingsPatch.handler({ brandId: 'brand_1', name: 'New Name' }, ctx(db));
     expect(out.name).toBe('New Name');
+    expect(renames).toEqual([['brand_1', 'org_1', 'New Name']]);
   });
 });
 

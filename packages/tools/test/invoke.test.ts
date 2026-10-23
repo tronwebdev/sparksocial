@@ -285,6 +285,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         clear: async () => {},
       },
       brands: {
+        rename: async () => { throw new Error('brands.rename not stubbed in this test'); },
         countContents: async () => { throw new Error('brands.countContents not stubbed in this test'); },
         deleteCascade: async () => { throw new Error('brands.deleteCascade not stubbed in this test'); },
         get: async (brandId: string) => ({

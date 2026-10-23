@@ -36,6 +36,7 @@ function db(over: { name?: string; deleteCascade?: () => Promise<typeof COUNTS> 
           agentPaused: false,
           postsPerWeek: 3,
         }),
+        rename: async () => ({}) as never,
         countContents: async () => COUNTS,
         deleteCascade,
       },

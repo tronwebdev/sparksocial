@@ -68,6 +68,8 @@ interface BrandCard {
   genomeId: string;
   brandId: string;
   name: string;
+  /** The brand's own logo. Absent until one is set — see the card's mark. */
+  logoUrl?: string;
   updatedAt: string;
 }
 
@@ -463,11 +465,29 @@ export default function WorkspacesPage() {
                       aria-label={`Open ${b.name}`}
                       className="absolute inset-x-0 top-0 bottom-16 border-0 bg-transparent"
                     />
+                    {/*
+                      The brand's own logo, where it has one.
+
+                      This always painted `CARD_ICON[i % CARD_ICON.length]` — a
+                      decorative illustration chosen by the card's position in
+                      the grid. So a brand that had uploaded a logo did not show
+                      it here, and the same brand showed a different picture
+                      after another brand was added above it. `genome.list`
+                      returns the logo now; the illustration is what a brand
+                      without one still gets, which is the job it was doing all
+                      along for brands that have none.
+
+                      `contain` for a real logo and `cover` for the artwork: a
+                      wordmark cropped to fill a circle is unreadable, and the
+                      illustrations are drawn to be cropped.
+                    */}
                     <span
                       className="pointer-events-none absolute left-[22px] top-[26px] block h-[92px] w-[92px] rounded-full"
                       style={{
                         boxShadow: '0 0 0 3px rgba(255,255,255,0.9)',
-                        background: `#FFFFFF url('${CARD_ICON[i % CARD_ICON.length]}') center / cover no-repeat`,
+                        background: b.logoUrl
+                          ? `#FFFFFF url('${b.logoUrl}') center / contain no-repeat`
+                          : `#FFFFFF url('${CARD_ICON[i % CARD_ICON.length]}') center / cover no-repeat`,
                       }}
                     />
                     <span className="pointer-events-none absolute left-6 top-[138px] block max-w-[calc(100%-48px)] truncate text-20 font-bold text-ink">

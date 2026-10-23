@@ -69,6 +69,34 @@ export function createBrandRepository(db: Database): BrandGovernanceStore {
           };
     },
 
+    /**
+     * Rename, which `get`'s third argument never did.
+     *
+     * That argument is the name to insert *with*; `get` returns an existing row
+     * before reading it, so a rename through `get` wrote nothing and the tool
+     * returned the name it had been handed. Same upsert-then-scoped-reread
+     * shape as `setApprovalMode`, for the same reason its comment gives: the
+     * upsert keys on id alone, so the scoped re-read is what makes a cross-org
+     * write surface as an error instead of quietly succeeding.
+     */
+    async rename(brandId, orgId, name) {
+      await db.insert(brands).values({ id: brandId, orgId, name }).onConflictDoUpdate({
+        target: brands.id,
+        set: { name, updatedAt: new Date() },
+      });
+
+      const [row] = await db
+        .select()
+        .from(brands)
+        .where(and(eq(brands.id, brandId), eq(brands.orgId, orgId)))
+        .limit(1);
+
+      if (!row) {
+        throw new Error(`Brand ${brandId} is not in this organisation.`);
+      }
+      return toGovernance(row);
+    },
+
     async setApprovalMode(brandId, orgId, mode) {
       await db.insert(brands).values({ id: brandId, orgId, approvalMode: mode }).onConflictDoUpdate({
         target: brands.id,
