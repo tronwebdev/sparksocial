@@ -54,7 +54,25 @@ export interface LowerThird {
 export type TimedBeat =
   | ({ kind: 'image'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
   | ({ kind: 'video'; beatId: string; durationSec: number; url: string; caption?: string } & LowerThird)
-  | ({ kind: 'text'; beatId: string; durationSec: number; text: string; voiceoverUrl?: string } & LowerThird &
+  | ({
+      kind: 'text';
+      beatId: string;
+      durationSec: number;
+      text: string;
+      /**
+       * The words this beat had before they were blanked, and nothing else.
+       *
+       * `text` is emptied when a picture or a voice is going to carry the beat
+       * instead — see the `stillWithPicture` and `spokenAloud` reasoning below.
+       * That is right until the thing meant to carry them cannot: a backdrop
+       * the renderer does not draw leaves an empty frame, which is the one
+       * output that is wrong under every reading. Kept so a renderer has
+       * something to fall back to, and deliberately *not* read on the happy
+       * path — `text` stays the single source of what is on screen.
+       */
+      originalText?: string;
+      voiceoverUrl?: string;
+    } & LowerThird &
       Backdrop)
   /** A narration track meant to underlay the composition, not its own visual slot — see the module comment on `generated_audio`. */
   | { kind: 'audio'; beatId: string; durationSec: number; url: string };
@@ -169,6 +187,7 @@ export function zipTimeline(args: {
         beatId: beat.beatId,
         durationSec,
         text: stillWithPicture || spokenAloud ? '' : beat.text,
+        ...(stillWithPicture || spokenAloud ? { originalText: beat.text } : {}),
         ...lower,
         ...(beat.backdrop ? { backdrop: beat.backdrop } : {}),
         ...(beat.voiceoverUrl ? { voiceoverUrl: beat.voiceoverUrl } : {}),

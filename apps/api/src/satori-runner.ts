@@ -126,6 +126,39 @@ function beatToNode(beat: TimedBeat | undefined, width: number, height: number, 
       logoUrl ? logoNode(logoUrl, width) : el('div', {}),
     );
   }
+  /*
+    ── A text beat whose words were moved into the picture ─────────────────
+
+    `zipTimeline` blanks a still's copy when the beat has a backdrop, and says
+    why: "a still post's copy is its caption — the platform prints it under the
+    image — so burning it across the photograph shows the same sentence twice
+    and ruins the picture to do it." Sound reasoning, and it hands this
+    function a beat with `text: ''` and a `backdrop`.
+
+    This file never looked at `backdrop`. So the words were dropped because the
+    picture would carry them, and the picture was never drawn: four of the six
+    slides of the first carousel rendered in production came back as empty
+    brand-coloured frames with a logo in the corner. The two that rendered
+    their words were the two with no backdrop.
+
+    Measured on the deployed post: beats 1-4 carry backdrops and rendered
+    blank, beats 5-6 do not and rendered their text. Locally, Satori lays out
+    all six strings perfectly — it was never a text problem.
+
+    The fallback matters as much as the fix. A beat with neither words nor a
+    usable picture renders its original copy rather than nothing: an empty
+    frame is the one output that is wrong under every interpretation.
+  */
+  const backdrop = 'backdrop' in beat ? beat.backdrop : undefined;
+  if (beat.kind === 'text' && backdrop?.kind === 'image' && backdrop.urls[0]) {
+    return el(
+      'div',
+      { style: { ...base, position: 'relative' } },
+      el('img', { src: backdrop.urls[0], width, height, style: { objectFit: 'cover' } }),
+      logoUrl ? logoNode(logoUrl, width) : el('div', {}),
+    );
+  }
+
   // kind === 'text'
   return el(
     'div',
@@ -139,7 +172,16 @@ function beatToNode(beat: TimedBeat | undefined, width: number, height: number, 
         textAlign: 'center',
       },
     },
-    el('div', { style: { color: typeColor, fontSize: 64, fontFamily: display, lineHeight: 1.3 } }, beat.text),
+    /*
+      `originalText` where the beat has been blanked and has no picture to
+      carry it — see the backdrop note above. A video backdrop lands here too:
+      Satori cannot draw one, and the words are a better frame than nothing.
+    */
+    el(
+      'div',
+      { style: { color: typeColor, fontSize: 64, fontFamily: display, lineHeight: 1.3 } },
+      beat.text || ('originalText' in beat ? (beat.originalText as string) : '') || '',
+    ),
     logoUrl ? logoNode(logoUrl, width) : el('div', {}),
   );
 }
