@@ -56,6 +56,8 @@ export interface PostPreviewProps {
   onSelect: (platform: string) => void;
   /** The brand's posting window for this date, when one is known. */
   bestTime?: string;
+  /** "Edit outline" — the storyboard is where a slide is actually changed. */
+  onEditOutline?: () => void;
   onPublish: () => void;
   onSchedule?: () => void;
   onSaveDraft: () => void;
@@ -145,8 +147,26 @@ function counts(caption: string): Array<{ platform: string; limit: number; over:
  * reviewer going through six slides should not have to aim at a 28px target
  * six times.
  */
-function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'; url: string }>; label: string }) {
+function CarouselDeck({
+  media,
+  label,
+  onEditOutline,
+}: {
+  media: Array<{ kind: 'image' | 'video'; url: string }>;
+  label: string;
+  /** "Edit outline" — back to the storyboard, which is where slides are changed. */
+  onEditOutline?: () => void;
+}) {
   const [at, setAt] = useState(0);
+  /*
+    "All slides", from the design's own button row.
+
+    One slide at a time is how the post is read and how you judge whether slide
+    1 earns the swipe. It is the wrong view for "does this hang together" —
+    that question is about the sequence, and answering it one slide at a time
+    means holding five slides in your head. Both views, one button.
+  */
+  const [grid, setGrid] = useState(false);
   const total = media.length;
   const current = media[Math.min(at, total - 1)]!;
   const go = (next: number) => setAt(((next % total) + total) % total);
@@ -167,6 +187,30 @@ function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'
         Slide {at + 1} of {total}
       </p>
 
+      {grid ? (
+        <div className="mt-[10px] grid grid-cols-2 gap-[10px]">
+          {media.map((m, i) => (
+            <button
+              key={m.url + i}
+              type="button"
+              aria-label={`Open slide ${i + 1}`}
+              onClick={() => {
+                setAt(i);
+                setGrid(false);
+              }}
+              className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[10px]"
+              style={{ background: 'rgba(131,131,131,0.1)' }}
+            >
+              {m.kind === 'video' ? (
+                <video src={m.url} className="h-full w-full object-contain" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.url} alt={`Slide ${i + 1}`} className="h-full w-full object-contain" />
+              )}
+            </button>
+          ))}
+        </div>
+      ) : (
       <div className="mt-[10px] flex items-center gap-[10px]">
         <button
           type="button"
@@ -201,6 +245,7 @@ function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'
           &#8250;
         </button>
       </div>
+      )}
 
       <div className="mt-[12px] flex flex-wrap items-center justify-center gap-[6px]">
         {media.map((m, i) => (
@@ -223,6 +268,27 @@ function CarouselDeck({ media, label }: { media: Array<{ kind: 'image' | 'video'
       </div>
 
       <p className="mt-[10px] text-center text-13 text-ink-muted">4:5 &middot; 1080&times;1350</p>
+
+      {/*
+        The design's two buttons under the frame, at 875,697 and 1030,697 in
+        16/500 ink. "Edit outline" is the storyboard — the one place a slide's
+        words and picture are actually changed — rather than a second editor
+        grown inside the preview.
+      */}
+      <div className="mt-[14px] flex flex-wrap items-center justify-center gap-[18px]">
+        <button
+          type="button"
+          onClick={() => setGrid((g) => !g)}
+          className="text-16 font-medium text-ink hover:underline"
+        >
+          {grid ? 'One at a time' : 'All slides'}
+        </button>
+        {onEditOutline ? (
+          <button type="button" onClick={onEditOutline} className="text-16 font-medium text-ink hover:underline">
+            Edit outline
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -315,10 +381,12 @@ function MediaPane({
   draft,
   media,
   caption,
+  onEditOutline,
 }: {
   draft: DraftView;
   media: Array<{ kind: 'image' | 'video'; url: string }>;
   caption: string;
+  onEditOutline?: () => void;
 }) {
   if (media.length === 0) {
     return (
@@ -332,7 +400,13 @@ function MediaPane({
   }
 
   if (draft.mediaType === 'carousel') {
-    return <CarouselDeck media={media} label={caption.slice(0, 60) || 'Carousel preview'} />;
+    return (
+      <CarouselDeck
+        media={media}
+        label={caption.slice(0, 60) || 'Carousel preview'}
+        {...(onEditOutline ? { onEditOutline } : {})}
+      />
+    );
   }
 
   const one = media[0]!;
@@ -363,6 +437,7 @@ export function PostPreview({
   selected,
   onSelect,
   bestTime,
+  onEditOutline,
   onPublish,
   onSchedule,
   onSaveDraft,
@@ -589,7 +664,7 @@ export function PostPreview({
         */
         <div className="mt-[28px] flex items-start gap-[49px] max-canvas:flex-col max-canvas:gap-[24px]">
           <div className="w-[324px] shrink-0 max-canvas:w-full">
-            <MediaPane draft={draft} media={media} caption={caption} />
+            <MediaPane draft={draft} media={media} caption={caption} {...(onEditOutline ? { onEditOutline } : {})} />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-[28px] max-canvas:w-full">
             {captionPane}

@@ -1,0 +1,126 @@
+# Schema, then code — the step the Render cut-over never got.
+#
+# `infra/render/MIGRATION.md` §6 is titled "Migrations — the one that will bite
+# you" and describes this workflow in full. It was written and never created,
+# so the Render deployment has had no migration step at all: every schema
+# change since the cut-over has shipped its code and left its SQL unapplied.
+#
+# It stayed invisible because additive migrations are invisible until something
+# reads the new column. `0056_ambitious_risque.sql` is the one that bit —
+# `renders.beat_id` was added, `compose.static` started writing it, and every
+# carousel render in production failed with
+#
+#   Failed query: insert into "renders" (... "beat_id" ...)
+#
+# after the file had already been rendered and uploaded to R2. The pixels were
+# paid for and the row was lost.
+#
+# ── Ordering ──────────────────────────────────────────────────────────────
+#
+# Migrate first, deploy second, and never the other way round. New code against
+# an old schema fails every request that touches the missing column; old code
+# against a new schema is fine, because an additive migration is invisible to
+# it. The worst case of this order is a brief window where a column exists that
+# nothing reads yet.
+#
+# `drizzle-kit migrate` consults its own `__drizzle_migrations` journal, so it
+# is idempotent: re-running a deploy is safe, and a deploy with no schema change
+# is a no-op.
+#
+# ── Why auto-deploy must be off on the API ────────────────────────────────
+#
+# This workflow triggers the deploy itself, after the migration. If Render's own
+# auto-deploy is also on, the push starts a deploy in parallel with this job and
+# the race is the thing the ordering exists to prevent. `render.yaml` already
+# sets `autoDeploy: false` on the API and says why; this is the other half of
+# that decision.
+#
+# ── Secrets this needs ────────────────────────────────────────────────────
+#
+#   RENDER_DATABASE_URL     the Postgres *external* connection string. The
+#                           internal one resolves only inside Render's network
+#                           and a GitHub runner is not in it.
+#   RENDER_DEPLOY_HOOK_API  the API service's deploy hook URL.
+#   RENDER_DEPLOY_HOOK_WEB  the web service's. Optional — leave it unset and
+#                           the web service keeps auto-deploying, which is
+#                           safe, because the web app holds no schema.
+#
+# There is no Key Vault here. Render keeps secrets as environment variables in
+# an env group, so unlike `deploy-azure.yml` this reads the connection string
+# straight from GitHub's own secret store. That is one credential in two places
+# — the env group and this secret — and they have to be rotated together.
+# `infra/render/MIGRATION.md` §7 is the order that rotation happens in.
+
+name: Deploy (Render)
+
+on:
+  push:
+    branches: [staging, main]
+  workflow_dispatch:
+
+concurrency:
+  # One deploy at a time per branch. Two migrations racing on one database is
+  # the failure this whole file exists to avoid, and a second push while the
+  # first is mid-migrate would do exactly that.
+  group: deploy-render-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Full install, not `--omit=dev`: `drizzle-kit` is a devDependency of
+      # `packages/db`, which is the reason the migration cannot run inside the
+      # deployed image and therefore the reason this job exists.
+      - run: npm ci
+
+      - name: Fail early if the connection string is missing
+        env:
+          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::RENDER_DATABASE_URL is not set."
+            echo "::error::It is the Postgres *external* URL from the Render dashboard —"
+            echo "::error::the internal one does not resolve from a GitHub runner."
+            echo "::error::  gh secret set RENDER_DATABASE_URL"
+            exit 1
+          fi
+
+      # Never echoed, and `set -x` is deliberately absent from this step.
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: npm run migrate -w @sparksocial/db
+
+      - name: Deploy the API
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_API is not set, so the migration just ran"
+            echo "::error::against a database whose API will not be redeployed. Set it:"
+            echo "::error::  gh secret set RENDER_DEPLOY_HOOK_API"
+            exit 1
+          fi
+          curl -fsS "$HOOK" > /dev/null
+          echo "API deploy triggered."
+
+      # Optional. A web service with no deploy hook configured keeps Render's
+      # own auto-deploy, which is fine: nothing in `apps/web` reads the schema.
+      - name: Deploy the web app
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK_WEB is unset — leaving the web service to its own auto-deploy."
+            exit 0
+          fi
+          curl -fsS "$HOOK" > /dev/null
+          echo "Web deploy triggered."

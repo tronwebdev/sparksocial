@@ -200,3 +200,24 @@ describe('a slide’s note describes the slide', () => {
     expect(STORYBOARD).toContain('const whole = describe(beat).trim();');
   });
 });
+
+/**
+ * The two buttons the design puts under the slide frame, at 875,697 and
+ * 1030,697 in 16/500 ink.
+ */
+describe('the deck offers the sequence as well as the slide', () => {
+  it('can show every slide at once and come back', () => {
+    expect(PREVIEW).toContain('All slides');
+    expect(PREVIEW).toContain('One at a time');
+    expect(PREVIEW).toContain('Open slide');
+  });
+
+  /*
+   * "Edit outline" goes to the storyboard rather than growing a second editor
+   * inside the preview. A slide's words and picture are changed in one place.
+   */
+  it('sends outline edits to the editor', () => {
+    expect(PREVIEW).toContain('Edit outline');
+    expect(PANEL).toContain("onEditOutline={() => setPhase('editor')}");
+  });
+});

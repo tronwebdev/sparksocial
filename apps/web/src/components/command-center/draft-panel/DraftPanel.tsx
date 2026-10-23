@@ -1940,6 +1940,7 @@ export function DraftPanel({
                 selected={platform}
                 onSelect={(p) => setPlatform(p as (typeof PLATFORMS)[number])}
                 {...(draft.scheduledAt ? { bestTime: new Date(draft.scheduledAt).toLocaleString() } : {})}
+                onEditOutline={() => setPhase('editor')}
                 onPublish={() => void publishNow()}
                 onSaveDraft={onClose}
                 busy={busy}
