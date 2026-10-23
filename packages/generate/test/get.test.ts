@@ -273,6 +273,39 @@ describe('content.get — renders already made', () => {
     expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/s1-new.png', 'https://cdn/s2.png']);
   });
 
+  /**
+   * The first real re-render after the column shipped came back with seven
+   * renders for six slides: the six new ones, plus the row written before
+   * `beat_id` existed, which has no slide and so collided with none of them.
+   * The deck read "Slide 1 of 7" with a stale duplicate at the end.
+   */
+  it('drops a slideless row from an aspect that now has slides', async () => {
+    const slide = (beatId: string, url: string, at: string) => ({ ...render('4:5', url, at), beatId });
+
+    const res = await contentGet.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_1' },
+      ctx({
+        get: async () => ({
+          id: 'ci_1', genomeId: 'gen_1', playbookId: 'pb_text_update', mode: 'synthesize',
+          status: 'draft',
+          copy: [
+            { kind: 'text', beatId: 'b1', text: 'Hook' },
+            { kind: 'text', beatId: 'b2', text: 'CTA' },
+          ],
+          why: { summary: 'x', factors: [], evidence: [], alternatives: [] }, createdAt: new Date(),
+        }),
+        renders: [
+          slide('b1', 'https://cdn/s1.png', '2026-02-01'),
+          slide('b2', 'https://cdn/s2.png', '2026-02-01'),
+          // Written by the old renderer, before anything recorded a slide.
+          render('4:5', 'https://cdn/legacy.png', '2026-01-01'),
+        ],
+      }),
+    );
+
+    expect(res.renders.map((r) => r.url)).toEqual(['https://cdn/s1.png', 'https://cdn/s2.png']);
+  });
+
   /*
    * Rows written before the column existed carry no slide, and must keep
    * behaving as they did — one per aspect — rather than all surviving as

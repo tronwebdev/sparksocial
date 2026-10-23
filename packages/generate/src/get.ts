@@ -165,8 +165,27 @@ export const contentGet = defineTool({
      * which slide each row held is the fact that was never written down.
      */
     const all = await ctx.db.content.listRenders(input.contentItemId, input.genomeId, ctx.orgId).catch(() => []);
+
+    /*
+     * A row with no slide, for an aspect that has slides, is a supplanted take.
+     *
+     * Found live. The first carousel rendered after the column shipped came
+     * back with *seven* renders for six slides: the six new ones plus the one
+     * row written before `beat_id` existed, which has no slide and so could not
+     * collide with any of them. It sorted to the end and the deck read "Slide 1
+     * of 7" with a stale duplicate last.
+     *
+     * The rule that removes it without special-casing the migration: within an
+     * aspect, a row that does not say which slide it is can only predate the
+     * renderer that does, so anything with slides supersedes it. An aspect
+     * whose rows *all* lack slides — every image and video, and a carousel
+     * nobody has re-rendered — is untouched.
+     */
+    const hasSlides = new Set(all.filter((r) => r.beatId).map((r) => r.aspect));
+    const current = all.filter((r) => r.beatId || !hasSlides.has(r.aspect));
+
     const newestPerAspect = new Map<string, (typeof all)[number]>();
-    for (const r of all) {
+    for (const r of current) {
       const key = r.beatId ? `${r.aspect} ${r.beatId}` : r.aspect;
       if (!newestPerAspect.has(key)) newestPerAspect.set(key, r);
     }
