@@ -108,7 +108,7 @@ services:
         value: https://sparksocial-web.onrender.com
       # Same reasoning — see the note on SPARK_API_URL.
       - key: CLERK_AUTHORIZED_PARTIES
-        value: https://sparksocial-web.onrender.com
+        value: https://app.sparkai.social,https://sparksocial-web.onrender.com
       # `LOCAL_STORAGE_PUBLIC_URL` is absent for the same reason: it would be
       # this service's own `RENDER_EXTERNAL_URL`, which `apps/api/src/tools.ts`
       # now reads directly as the fallback base URL. It only matters when no
