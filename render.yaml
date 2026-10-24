@@ -98,14 +98,14 @@ services:
       # does not throw — it silently rejects every sign-in from the deployed
       # origin.
       #
-      # **When you attach custom domains, every URL in this file changes.** They
-      # are all `https://sparksocial-{api,web}.onrender.com`; grep for it.
+      # **These now use the custom domains** (`app.` / `api.sparkai.social`). If a
+      # domain ever changes, every URL here changes with it; grep for `sparkai.social`.
       # Pinned for the same reason as the two below it and as SPARK_API_URL on
       # the web service — see that note. `WEB_APP_URL` is what links in capture
       # messages and notifications point at, so an empty one is a dead link in
       # somebody's inbox rather than a loud failure.
       - key: WEB_APP_URL
-        value: https://sparksocial-web.onrender.com
+        value: https://app.sparkai.social
       # Same reasoning — see the note on SPARK_API_URL.
       - key: CLERK_AUTHORIZED_PARTIES
         value: https://app.sparkai.social,https://sparksocial-web.onrender.com
@@ -114,9 +114,9 @@ services:
       # now reads directly as the fallback base URL. It only matters when no
       # cloud store is configured — R2 and Azure both return absolute URLs.
       - key: SOCIAL_REDIRECT_URI
-        value: https://sparksocial-api.onrender.com/oauth/social/callback
+        value: https://api.sparkai.social/oauth/social/callback
       - key: CANVA_REDIRECT_URI
-        value: https://sparksocial-api.onrender.com/oauth/canva/callback
+        value: https://api.sparkai.social/oauth/canva/callback
 
   # ── Web ─────────────────────────────────────────────────────────────────
   #
@@ -154,7 +154,7 @@ services:
       # naming rather than a smell: Render has no Blueprint expression for "the
       # other service's URL" that is both reliable and readable.
       - key: SPARK_API_URL
-        value: https://sparksocial-api.onrender.com
+        value: https://api.sparkai.social
       # `sync: false` means "set this in the dashboard" — the value never enters
       # the repo. Required: without it the web app cannot start a session.
       - key: CLERK_SECRET_KEY
