@@ -4,6 +4,7 @@
       "allowed": {
         "origins": [
           "https://sparksocial-web.onrender.com",
+          "https://app.sparkai.social",
           "http://localhost:3000"
         ],
         "methods": ["PUT", "GET", "HEAD"],

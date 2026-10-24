@@ -1,0 +1,35 @@
+# Tuning for the docker-mautic "basic" example on a Namecheap Quasar VPS (4+ GB RAM).
+# Copy into ~/docker-mautic/examples/basic/ next to docker-compose.yml.
+# Compose merges this file automatically on every `docker compose` command.
+#
+# Ports are NOT changed here: Compose appends port lists instead of replacing
+# them, so the 8080 binding is edited in docker-compose.yml itself (guide Part 5).
+
+x-mautic-image: &mautic-image mautic/mautic:7.2-apache
+
+services:
+  db:
+    restart: unless-stopped
+    command: >
+      --innodb-buffer-pool-size=512M
+      --performance-schema=OFF
+      --max-connections=80
+
+  mautic_web:
+    image: *mautic-image
+    restart: unless-stopped
+    environment:
+      - PHP_INI_VALUE_MEMORY_LIMIT=512M
+
+  mautic_cron:
+    image: *mautic-image
+    restart: unless-stopped
+    environment:
+      - PHP_INI_VALUE_MEMORY_LIMIT=512M
+
+  # Worker keeps the image default of 2 consumers per queue; Quasar has the RAM.
+  mautic_worker:
+    image: *mautic-image
+    restart: unless-stopped
+    environment:
+      - PHP_INI_VALUE_MEMORY_LIMIT=512M

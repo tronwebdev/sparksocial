@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentsmith · Email updates</title>
+  <meta name="description" content="Agentsmith's email system. Manage your subscription from the link at the bottom of any email.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%23111827%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-family=%27Arial,sans-serif%27 font-size=%2718%27 font-weight=%27700%27 fill=%27white%27 text-anchor=%27middle%27%3EA%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!--
+    Root page for mautic.YOURDOMAIN.com, set via Mautic → Configuration →
+    System Settings → "Mautic's root URL". Self-contained: the logo is inlined,
+    and the only external request is the Onest font, which falls back to the
+    system UI font if it can't load.
+
+    Before publishing, replace:
+      https://YOURDOMAIN.com   your main website
+      hello@YOURDOMAIN.com     a monitored inbox
+  -->
+  <style>
+    :root {
+      --ink: #111827;
+      --ink-2: #374151;
+      --muted: #6B7280;
+      --canvas: #F6F7F9;
+      --paper: #FFFFFF;
+      --line: rgba(12, 12, 12, .08);
+      --cyan: #93A4BD;
+      --cyan-200: #E5E9F0;
+      --teal-900: #1F2937;
+      --purple: #4B5563;
+      --pink: #CBD5E1;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      line-height: 1.55;
+      /* A soft neutral wash. Swap in Agentsmith brand colours in :root. */
+      background:
+        linear-gradient(-157.442deg, rgba(148,163,184,.18) 2.42%, rgba(255,255,255,0) 42.66%),
+        linear-gradient(-198.502deg, rgba(203,213,225,.22) 4.4%, rgba(255,255,255,0) 38.06%),
+        var(--canvas);
+      background-attachment: fixed;
+    }
+    a { color: inherit; }
+    .wrap { width: 100%; max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+    header { padding: 28px 0; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
+    .mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--ink); color: #fff; font-weight: 700; font-size: 20px; }
+    .brand > span:last-child { font-weight: 700; font-size: 20px; letter-spacing: -.01em; }
+
+    main { flex: 1; display: flex; align-items: center; padding: 24px 0 56px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--cyan-200); color: var(--teal-900);
+      font-size: 13px; font-weight: 600;
+    }
+    .eyebrow::before {
+      content: ""; width: 7px; height: 7px; border-radius: 2px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+    }
+    h1 {
+      margin-top: 20px; max-width: 16ch;
+      font-size: clamp(34px, 6vw, 56px); line-height: 1.06;
+      font-weight: 700; letter-spacing: -.025em;
+    }
+    .lede { margin-top: 18px; max-width: 54ch; font-size: 18px; color: var(--ink-2); }
+
+    .cards {
+      margin-top: 40px;
+      display: grid; gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .card {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 24px; border-radius: var(--radius);
+      background: var(--paper); border: 1px solid var(--line);
+      box-shadow: 0 1px 2px rgba(12,12,12,.04), 0 8px 24px rgba(12,12,12,.04);
+    }
+    .card h2 { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+    .card p { font-size: 15px; color: var(--muted); flex: 1; }
+    .icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--canvas); color: var(--ink);
+    }
+    .icon svg { width: 18px; height: 18px; }
+    .btn {
+      align-self: flex-start;
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 4px; padding: 10px 16px; border-radius: 999px;
+      font-size: 14px; font-weight: 600; text-decoration: none;
+      transition: transform .15s ease, background-color .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+    .btn--ink { background: var(--ink); color: #fff; }
+    .btn--line { background: var(--paper); border: 1px solid var(--line); }
+    .btn--line:hover { background: var(--canvas); }
+
+    footer { padding: 24px 0 32px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
+    footer nav { display: flex; gap: 20px; }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--ink); text-decoration: underline; }
+
+    @media (max-width: 760px) {
+      .cards { grid-template-columns: 1fr; }
+      .lede { font-size: 16px; }
+      main { align-items: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .btn { transition: none; }
+      .btn:hover { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <a class="brand" href="https://YOURDOMAIN.com" aria-label="Agentsmith home">
+        <span class="mark" aria-hidden="true">A</span>
+        <span>Agentsmith</span>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <span class="eyebrow">Email updates</span>
+      <h1>This is where Agentsmith's emails come from.</h1>
+      <p class="lede">
+        You probably got here from a link in one of our emails. There's nothing to
+        sign in to on this page. Here's how to manage what you receive, or reach us.
+      </p>
+
+      <div class="cards">
+        <section class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          </div>
+          <h2>Manage your emails</h2>
+          <p>
+            Every email we send has an <strong>unsubscribe</strong> and
+            <strong>preferences</strong> link at the bottom. Use it to change what
+            you get or stop our emails. It takes effect straight away.
+          </p>
+        </section>
+
+        <section class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          </div>
+          <h2>Visit Agentsmith</h2>
+          <p>See what we do and how we can help.</p>
+          <a class="btn btn--ink" href="https://YOURDOMAIN.com">Go to the website →</a>
+        </section>
+
+        <section class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h2>Questions?</h2>
+          <p>Not sure why you got an email from us, or want to be removed by hand? Write to us.</p>
+          <a class="btn btn--line" href="mailto:hello@YOURDOMAIN.com">hello@YOURDOMAIN.com</a>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© Agentsmith</span>
+      <nav aria-label="Legal">
+        <a href="https://YOURDOMAIN.com/privacy.html">Privacy</a>
+        <a href="https://YOURDOMAIN.com/terms.html">Terms</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

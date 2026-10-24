@@ -1,0 +1,4 @@
+# /etc/caddy/Caddyfile — replace YOURDOMAIN.com with your domain.
+mautic.YOURDOMAIN.com {
+    reverse_proxy localhost:8080
+}
