@@ -3,7 +3,6 @@
 import { GovernancePanel } from './GovernancePanel';
 import { KitSection } from './KitSection';
 import { KnowledgePanel } from './KnowledgePanel';
-import { OfferPanel } from './OfferPanel';
 import { BrandTemplatesPanel } from './BrandTemplatesPanel';
 import { ConsentPanel } from './ConsentPanel';
 import { AvatarConfigPanel } from './AvatarConfigPanel';
@@ -71,9 +70,23 @@ export function BrandKitsSection() {
         title="Brand Knowledge"
         hint="What SPARK is allowed to claim. With nothing attached, guardrails hold every specific statement."
       >
+        {/*
+          `OfferPanel` was here and is gone — see the note in `OffersSection`.
+
+          Two screens wrote `genome.offer.set`: this one, which could set the
+          call-to-action and nothing else, and `/settings/offers`, which sets
+          the CTA *and* the products a brand actually sells. Two controls over
+          one field, in two places, with no way to tell from either that the
+          other existed.
+
+          This one also could not show what was already stored — its own
+          comment said so, because when it was written no tool returned a
+          genome's offer. `genome.get` returns it now, which is what made the
+          fuller screen possible and this one misleading: it rendered an empty
+          box whether or not a CTA was set.
+        */}
         <div className="grid grid-cols-1 gap-[22px]">
           <KnowledgePanel />
-          <OfferPanel />
         </div>
       </KitSection>
 

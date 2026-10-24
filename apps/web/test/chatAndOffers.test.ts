@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = process.cwd();
@@ -97,5 +97,27 @@ describe('a brand can describe more than one offer', () => {
   /* The same lesson as the rename: show what was stored, not what was typed. */
   it('reflects what was stored', () => {
     expect(OFFERS).toContain('setProducts(cleaned)');
+  });
+});
+
+/**
+ * Two screens wrote `genome.offer.set`.
+ *
+ * Brand Kits had an `OfferPanel` that set the call-to-action and nothing else
+ * and could not display what was stored — when it was written, no tool
+ * returned a genome's offer. `/settings/offers` was added without noticing
+ * it, which left two controls over one field in two places. `genome.get`
+ * returns the offer now, which made the fuller screen possible and the older
+ * one misleading: an empty box whether or not a CTA was set.
+ */
+describe('there is one place to set an offer', () => {
+  it('has no second offer panel in the brand kit', () => {
+    const kit = code('apps/web/src/components/settings/BrandKitsSection.tsx');
+    expect(kit).not.toContain('<OfferPanel />');
+    expect(existsSync(join(root, 'apps/web/src/components/settings/OfferPanel.tsx'))).toBe(false);
+  });
+
+  it('leaves the one that can read what is stored', () => {
+    expect(OFFERS).toContain("invoke<{ genome: { offer?: Offer } }>('genome.get'");
   });
 });

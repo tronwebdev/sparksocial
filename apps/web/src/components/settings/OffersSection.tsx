@@ -24,6 +24,19 @@ import { userMessage } from '@/lib/errorCopy';
  * meaning "use the business's actual words, never invent one" — so this is not
  * decoration. A brand with no CTA has fourteen formats it cannot draft.
  *
+ * ── The panel this replaced ──────────────────────────────────────────────
+ *
+ * Brand Kits had an `OfferPanel` doing half of this: it set `primary_cta` and
+ * nothing else, and it could not show what was already stored — its own
+ * comment said so, because when it was written no tool returned a genome's
+ * offer. This screen was added without noticing it, which left two controls
+ * over one field in two places, neither hinting the other existed.
+ *
+ * `genome.get` returns the offer now. That is what made this screen possible
+ * and what made the old one actively misleading: it rendered an empty box
+ * whether or not a CTA was set, so it read as "none" for a brand that had one.
+ * It is gone, and this is the one place.
+ *
  * ── Why products are replaced wholesale ───────────────────────────────────
  *
  * `genome.offer.set` takes the whole array, so this editor holds the list in
