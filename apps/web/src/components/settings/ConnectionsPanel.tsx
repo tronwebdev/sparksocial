@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `brand.oauth.*` — connects this brand's own Canva account, the credential
@@ -59,7 +60,7 @@ export function ConnectionsPanel() {
       kind: 'err',
       text:
         res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : "That request was gated — Canva connections need an owner or admin, which you are not in this account.",
     });
   }
@@ -75,7 +76,7 @@ export function ConnectionsPanel() {
       setConnectedBy(undefined);
       setMessage({ kind: 'ok', text: 'Disconnected.' });
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

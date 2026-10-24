@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * EVERY CAMPAIGN THIS BRAND HAS, WITH ITS NAME AND ITS STATE.
@@ -101,7 +102,7 @@ export function CampaignList({
     );
     setWorking(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That rename needs approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That rename needs approval.');
       return;
     }
     setRenaming(null);
@@ -134,7 +135,7 @@ export function CampaignList({
     );
     setWorking(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That change needs approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
       return;
     }
     onChanged();

@@ -8,6 +8,7 @@ import { DropZone, SectionLabel, SelectField } from './kit';
 import { VoiceWaveform } from '@/components/common/VoiceWaveform';
 import { clockMMSS as clock, DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
 import { ProtoScale } from './Stage';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `F6`'s fourth group — "Name your agent", and the face and voice it uses.
@@ -243,7 +244,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     setError(null);
     const res = await invoke('brand.governance.set', { agentName: next || null });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Naming it needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Naming it needs approval first.');
       return;
     }
     setSaved(next);
@@ -263,7 +264,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     setError(null);
     const res = await invoke('brand.governance.set', { stockVoiceId: next });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Changing the voice needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Changing the voice needs approval first.');
       return;
     }
     setNotice('Voice set. Type a line on the right to hear it.');
@@ -305,7 +306,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       setBusy(null);
       setError(
         granted.status === 'failed'
-          ? granted.error.message
+          ? userMessage(granted.error)
           : 'Recording consent needs approval first.',
       );
       return;
@@ -333,7 +334,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       sizeBytes: file.size,
     });
     if (presigned.status !== 'succeeded') {
-      setError(presigned.status === 'failed' ? presigned.error.message : 'That upload needs approval first.');
+      setError(presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload needs approval first.');
       return null;
     }
     // `uploadToStorage` owns the failure wording, because `fetch`'s own is the
@@ -383,7 +384,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     const res = await invoke<{ imageUrl: string }>('genome.avatar.generate', { genomeId }, crypto.randomUUID());
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Generating an avatar needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Generating an avatar needs approval first.');
       return;
     }
     setAvatarUrl(res.output.imageUrl);
@@ -420,7 +421,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     const res = await invoke('genome.avatar.from_image', { genomeId, imageUrl: url, contentType }, crypto.randomUUID());
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Setting an avatar needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Setting an avatar needs approval first.');
       return;
     }
     /* Show the uploaded file itself rather than re-fetching: the browser already
@@ -453,7 +454,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Cloning a voice needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Cloning a voice needs approval first.');
       return;
     }
     setHasVoice(true);
@@ -562,7 +563,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     const res = await invoke<{ url: string }>('voice.preview', { genomeId, text: line }, crypto.randomUUID());
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Previewing the voice needs approval first.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Previewing the voice needs approval first.');
       return;
     }
     setPreviewUrl(res.output.url);

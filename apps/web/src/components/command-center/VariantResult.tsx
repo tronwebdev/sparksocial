@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `DISC-02`'s A/B verdict, on the post it belongs to.
@@ -82,7 +83,7 @@ export function VariantResult({
       const res = await invoke<Result>('content.variant.result', { genomeId, variantGroupId });
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setResult(res.output);
@@ -105,7 +106,7 @@ export function VariantResult({
       res.status === 'succeeded'
         ? `Recorded against ${res.output.pillar} — scored ${res.output.reward.toFixed(2)} against this brand's own recent average.`
         : res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'Recording needs approval first.',
     );
   }

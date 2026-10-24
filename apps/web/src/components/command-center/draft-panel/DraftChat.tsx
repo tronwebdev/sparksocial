@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { startAgentRun } from '@/lib/agent';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `M9` — conversational editing inside the Draft Panel.
@@ -84,7 +85,7 @@ export function DraftChat({
     setBusy(false);
 
     if (res.status !== 'succeeded') {
-      setTurns((t) => [...t, { role: 'spark', text: res.error.message }]);
+      setTurns((t) => [...t, { role: 'spark', text: userMessage(res.error) }]);
       return;
     }
     setTurns((t) => [...t, { role: 'spark', text: res.run.text || 'Done.' }]);

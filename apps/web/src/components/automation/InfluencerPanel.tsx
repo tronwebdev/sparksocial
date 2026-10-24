@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The Influencers half of the query step's toggle — a real tab, not a label.
@@ -39,7 +40,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
     const res = await invoke<{ watchlist: Watch[] }>('trend.influencer.watch', { genomeId, action: 'list' });
     if (res.status !== 'succeeded') {
       setList([]);
-      setError(res.status === 'failed' ? res.error.message : 'That read was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That read was gated.');
       return;
     }
     setError(null);
@@ -64,7 +65,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     if (action === 'add') setHandle('');

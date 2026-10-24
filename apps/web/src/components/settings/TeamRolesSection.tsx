@@ -6,6 +6,7 @@ import { ApprovalFlowsPanel } from './ApprovalFlowsPanel';
 import { PolicyPanel } from './PolicyPanel';
 import { SettingsTabs } from './SettingsTabs';
 import { AddClientModal, AddMemberModal, EditGroupModal, type EditableGroup } from './TeamModals';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Team Users` / `… Team Groups` / `… Team Groups Flows`.
@@ -182,7 +183,7 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
       const res = await invoke<{ members: Member[]; partial?: string }>('team.list', {});
       if (res.status !== 'succeeded') {
         setMembers([]);
-        setError(res.status === 'failed' ? res.error.message : 'Reading the team needs an approval.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'Reading the team needs an approval.');
         return;
       }
       setMembers(res.output.members);
@@ -207,7 +208,7 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
     const res = await invoke('team.role.set', { userId: m.userId, role });
     setBusyId(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Changing a role needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Changing a role needs an approval.');
       return;
     }
     setMembers((list) => (list ?? []).map((x) => (x.userId === m.userId ? { ...x, orgRole: role } : x)));
@@ -384,7 +385,7 @@ function GroupsTab({
       const res = await invoke<{ groups: Group[] }>('team.group.list', {});
       if (res.status !== 'succeeded') {
         setGroups([]);
-        setError(res.status === 'failed' ? res.error.message : 'Reading groups needs an approval.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'Reading groups needs an approval.');
         return;
       }
       setGroups(res.output.groups);

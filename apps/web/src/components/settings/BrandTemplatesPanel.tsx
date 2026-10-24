@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `SET-WS-BRAND-KITS` → Templates. The prototype draws five peer tabs
@@ -78,7 +79,7 @@ export function BrandTemplatesPanel() {
   async function load() {
     const res = await invoke<{ kitTemplates: KitTemplate[] }>('brand.governance.get', {});
     if (res.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
       setTemplates([]);
       return;
     }
@@ -105,7 +106,7 @@ export function BrandTemplatesPanel() {
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That change needs approval.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' });
       return;
     }
     setTemplates(res.output.kitTemplates);

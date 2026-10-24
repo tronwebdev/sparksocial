@@ -8,6 +8,7 @@ import type {
   ProposalStatus,
 } from '@sparksocial/shared/agencyPipeline';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `proposal.*` for the Client Finder's lead rows.
@@ -86,7 +87,7 @@ export function useProposals() {
   const load = useCallback(async () => {
     const res = await invoke<ListOutput>('proposal.list', { limit: CAP, offset: 0 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Reading proposals needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Reading proposals needs an approval.');
       return;
     }
     setError(null);
@@ -116,7 +117,7 @@ export function useProposals() {
       try {
         const res = await invoke<unknown>(name, input, key);
         if (res.status !== 'succeeded') {
-          return res.status === 'failed' ? res.error.message : 'That needs an approval first.';
+          return res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.';
         }
         await load();
         return null;
@@ -163,7 +164,7 @@ export function useProposals() {
           crypto.randomUUID(),
         );
         if (res.status !== 'succeeded') {
-          return { error: res.status === 'failed' ? res.error.message : 'Sending needs an approval first.' };
+          return { error: res.status === 'failed' ? userMessage(res.error) : 'Sending needs an approval first.' };
         }
         await load();
         return { token: res.output.token, expiresAt: res.output.expiresAt };

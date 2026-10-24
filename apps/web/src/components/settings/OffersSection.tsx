@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * What the brand is actually selling, and the line that asks for it.
@@ -60,7 +61,7 @@ export function OffersSection() {
     if (!genomeId) return;
     const res = await invoke<{ genome: { offer?: Offer } }>('genome.get', { genomeId });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'You cannot read this brand.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'You cannot read this brand.');
       setLoaded(true);
       return;
     }
@@ -101,7 +102,7 @@ export function OffersSection() {
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'You do not have permission to change this brand.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'You do not have permission to change this brand.');
       return;
     }
     // Reflect what was stored, not what was typed — see `brand.settings.patch`,

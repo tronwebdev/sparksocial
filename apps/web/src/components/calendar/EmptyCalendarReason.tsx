@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * WHY A CAMPAIGN HAS NO POSTS IN IT.
@@ -95,7 +96,7 @@ export function EmptyCalendarReason({
       const res = await invoke<GapsOutput>('asset.gaps', { genomeId });
       if (cancelled) return;
       if (res.status === 'succeeded') setData(res.output);
-      else setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      else setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
     })();
     return () => {
       cancelled = true;

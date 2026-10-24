@@ -23,6 +23,32 @@ import type {
 /* ── Context handed to every handler ───────────────────────────────── */
 
 export interface ToolCtx {
+  /**
+   * What this call *actually* cost, when the handler finds out.
+   *
+   * ── Why an estimate was not enough ──────────────────────────────────────
+   *
+   * `estimateCents` is charged to the ledger verbatim, and every one of them
+   * describes itself as "a rough per-call ceiling". So the credit balance is
+   * not a record of spending, it is a record of guesses — and the guesses are
+   * out by multiples where it matters most: `content.generate_broll` estimated
+   * 40¢ against a measured $1.04 for a five-second Seedance clip, which is a
+   * brand spending two and a half times what its balance says.
+   *
+   * The estimate still has to exist and still has to be a ceiling: the policy
+   * checks it *before* the call, when nobody knows the real figure. This is
+   * the other half — the correction afterwards, from the one party that can
+   * know. A handler that learns the price from the vendor reports it; one that
+   * cannot stays silent and the estimate stands, which is exactly what happens
+   * today everywhere.
+   *
+   * Call it at most once, with the total for the call in cents. Later calls
+   * replace earlier ones rather than adding: a handler that retries a vendor
+   * should report what the whole call cost, not each attempt separately, or
+   * the ledger learns about the retry and the budget screen does not.
+   */
+  reportCost?(cents: number): void;
+
   orgId: string;
   brandId?: string;
   /** Required for anything touching assets, knowledge, memories, or content. */

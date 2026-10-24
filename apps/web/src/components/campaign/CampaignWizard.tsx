@@ -42,6 +42,7 @@ import { AutonomyStep } from './CampaignAutonomyStep';
 import { ReviewStep } from './CampaignReviewStep';
 import { ReadinessModal } from './ReadinessModal';
 import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `CMP-01` — the campaign wizard, PRD §8.4.
@@ -278,7 +279,7 @@ export function CampaignWizard({
     const res = await invoke<ProposedPlan>('campaign.propose_plan', { genomeId, objective, windowDays });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setPlan(res.output);
@@ -405,7 +406,7 @@ export function CampaignWizard({
 
     if (created.status !== 'succeeded') {
       setBusy(false);
-      setError(created.status === 'failed' ? created.error.message : 'That request was gated.');
+      setError(created.status === 'failed' ? userMessage(created.error) : 'That request was gated.');
       return;
     }
 
@@ -418,7 +419,7 @@ export function CampaignWizard({
     if (generated.status !== 'succeeded') {
       setError(
         generated.status === 'failed'
-          ? `The campaign was created but its calendar was not: ${generated.error.message}`
+          ? `The campaign was created but its calendar was not: ${userMessage(generated.error)}`
           : 'The campaign was created but generating its calendar was gated.',
       );
       return;
@@ -460,7 +461,7 @@ export function CampaignWizard({
     if (activated.status !== 'succeeded') {
       setError(
         activated.status === 'failed'
-          ? `The campaign and its calendar were created, but activating it did not finish: ${activated.error.message}. You can activate it from the calendar.`
+          ? `The campaign and its calendar were created, but activating it did not finish: ${userMessage(activated.error)}. You can activate it from the calendar.`
           : 'The campaign and its calendar were created. Activating it needs approval — do it from the calendar.',
       );
       return;
@@ -564,7 +565,7 @@ export function CampaignWizard({
     if (res.status !== 'succeeded') {
       setError(
         res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'Connecting an account needs an approval this screen cannot give.',
       );
       return;

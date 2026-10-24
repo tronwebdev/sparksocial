@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import { AssignmentNote, MemberChecklist, useTeam } from './FolderMembers';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Create Folder Modal` — `SparkSocial Assets Library.dc.html`.
@@ -70,7 +71,7 @@ export function CreateFolderModal({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     if (members.length > 0) {
@@ -86,7 +87,7 @@ export function CreateFolderModal({
       if (assigned.status !== 'succeeded') {
         setError(
           `Folder created, but the people could not be assigned: ${
-            assigned.status === 'failed' ? assigned.error.message : 'that request was gated.'
+            assigned.status === 'failed' ? userMessage(assigned.error) : 'that request was gated.'
           } Use the folder's ⋯ menu to try again.`,
         );
         return;

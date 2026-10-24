@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * THE AGENCY ROSTER — every brand, and which ones have gone quiet.
@@ -71,7 +72,7 @@ export function AgencyRosterPanel() {
       else
         setError(
           res.status === 'failed'
-            ? res.error.message
+            ? userMessage(res.error)
             : 'The roster is only visible to owners and admins of this workspace.',
         );
     })();

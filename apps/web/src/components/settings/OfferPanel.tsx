@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `genome.offer.set` — nothing in onboarding or the crawl ever asks for a
@@ -36,7 +37,7 @@ export function OfferPanel() {
     if (res.status === 'succeeded') {
       setMessage({ kind: 'ok', text: 'Saved.' });
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import type { ToolOutput } from '@/lib/toolTypes.generated';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * WHAT WOULD STOP THIS CAMPAIGN WORKING — shown before it is created.
@@ -56,7 +57,7 @@ export function ReadinessModal({ genomeId, objective, windowDays, onProceed, onC
          * here keeps this advisory — the campaign was creatable before this
          * screen existed, and a broken advisory is not a reason to stop.
          */
-        setError(res.status === 'failed' ? res.error.message : 'That check needs an approval this screen cannot give.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That check needs an approval this screen cannot give.');
         return;
       }
       setData(res.output);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 export interface RankedTrendItem {
   trendId: string;
@@ -228,7 +229,7 @@ export function TrendCard({
     );
     setRepurposeBusy(false);
     if (res.status !== 'succeeded') {
-      setRepurposeError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setRepurposeError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setSuggestion(res.output.suggestion);

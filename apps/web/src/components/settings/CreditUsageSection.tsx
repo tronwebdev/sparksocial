@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Credit Usage` — the 2662-tall screen, measured off the
@@ -76,7 +77,7 @@ export function CreditUsageSection() {
     void (async () => {
       const res = await invoke<Usage>('org.usage.get', {});
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'Reading usage needs an approval.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'Reading usage needs an approval.');
         return;
       }
       setUsage(res.output);

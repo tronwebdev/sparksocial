@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import type { Folder } from './types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The two folder actions that need a confirmation step — Rename and Delete.
@@ -187,7 +188,7 @@ export function RenameFolderModal({
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onRenamed(res.output.name);
@@ -255,7 +256,7 @@ export function DeleteFolderModal({
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onDeleted(res.output.unfiled);
@@ -331,7 +332,7 @@ export function PickFolderModal({
     const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId: f.folderId }, `asset-move:${asset}:${f.folderId}`);
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onFiled(f.name);

@@ -9,6 +9,7 @@ import { CredentialConnectModal } from './CredentialConnectModal';
 import { expiresInWords } from '@sparksocial/shared';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `integration.health` — real since 18 Aug 2026, replacing `publish.status`
@@ -112,7 +113,7 @@ export function PublishHealthPanel() {
       // readable yet in the same tick.
       return res.output.platforms;
     }
-    setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+    setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
     return null;
   }, []);
 
@@ -178,7 +179,7 @@ export function PublishHealthPanel() {
       return;
     }
     setBusyPlatform(null);
-    setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+    setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
   }
 
   async function disconnect(platform: string) {
@@ -191,7 +192,7 @@ export function PublishHealthPanel() {
       setMessage({ kind: 'ok', text: 'Disconnected.' });
       await load();
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

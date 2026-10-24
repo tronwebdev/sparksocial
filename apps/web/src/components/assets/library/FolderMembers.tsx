@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import type { Folder } from './types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Assigning people to a folder.
@@ -60,7 +61,7 @@ export function useTeam(): { team: TeamMember[] | null; error: string | null } {
       /* A viewer-role member cannot read the team list — `team.list` withholds
          colleagues' emails from roles that should not have them. An empty
          picker with a reason beats an error banner on a folder dialog. */
-      setError(res.status === 'failed' ? res.error.message : 'You do not have access to the team list.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'You do not have access to the team list.');
       setTeam([]);
       return;
     }
@@ -200,7 +201,7 @@ export function FolderMembersModal({
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onSaved(selected.length);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * AGENT IDENTITY — Ownership & Personality.
@@ -107,7 +108,7 @@ export function AgentIdentityModal({
       const res = await invoke<Governance>('brand.governance.get', {});
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setGov(res.output);

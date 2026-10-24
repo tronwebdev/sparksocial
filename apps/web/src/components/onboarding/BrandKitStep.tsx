@@ -9,6 +9,7 @@ import {
 import { ProtoScale } from './Stage';
 import { TimezoneField } from '@/components/common/TimezoneField';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `F6`'s third group and `M8` — the brand kit, asked during onboarding.
@@ -192,7 +193,7 @@ export function BrandKitStep({
     setMessage(
       res.status === 'succeeded'
         ? { kind: 'ok', text: 'Saved.' }
-        : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval first.' },
+        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval first.' },
     );
     return res.status === 'succeeded';
   }

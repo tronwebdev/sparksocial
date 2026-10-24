@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ENG-02.4` — the conversation drawer.
@@ -88,7 +89,7 @@ export function ConversationDrawer({
       const res = await invoke<Thread>('engage.thread', { genomeId, messageId, limit: 50 });
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setThread(res.output);

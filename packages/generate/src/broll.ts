@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError } from '@sparksocial/shared';
+import { VIDEO_CENTS_PER_SECOND } from '@sparksocial/shared/credits';
 import { ResolvedBeat, keepStructure } from './draft.js';
 import type { VideoClient } from './types.js';
 import { brandImageClause } from './brandContext.js';
@@ -103,13 +104,25 @@ export function makeContentGenerateBroll(video: VideoClient) {
     idempotent: false,
     surfaces: ['CC-02', 'CC-03'],
 
-    // fal's video models price well above their image models (longer
-    // inference); this is a rough per-call ceiling for a short clip, same
-    // approximation `content.generate_image` makes for its own model.
     // PRD §6's \"approval required for media generation\" permission —
     // see `producesMedia` in defineTool.ts on why this is declared, not inferred.
     producesMedia: true,
-    estimateCents: () => 40,
+    /*
+     * Per second, from the vendor's own quote — see `VIDEO_CENTS_PER_SECOND`.
+     *
+     * This was a flat 40, described as "a rough per-call ceiling for a short
+     * clip". It was not a ceiling: the vendor quotes $1.04 for five seconds,
+     * so the figure was out by 2.6x on the default and by thirteen times at
+     * the 60-second maximum this tool's own input allows — in the direction
+     * that lets the spend through a budget check.
+     *
+     * `?? 5` matches the input's own default, because `estimateCents` is
+     * handed the *raw* input before Zod has applied it.
+     */
+    estimateCents: (raw) => {
+      const seconds = (raw as { durationSec?: number } | undefined)?.durationSec ?? 5;
+      return Math.ceil(Math.max(1, Math.min(60, seconds)) * VIDEO_CENTS_PER_SECOND);
+    },
 
     async handler(input, ctx) {
       const draft = await ctx.db.content.get(input.contentItemId, input.genomeId, ctx.orgId);

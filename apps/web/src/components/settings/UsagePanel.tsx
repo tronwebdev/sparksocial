@@ -10,6 +10,7 @@ import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { CREDIT_CATEGORY_HINT, creditsToCents } from '@sparksocial/shared/credits';
 import type { CreditCategory } from '@sparksocial/shared/credits';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `SET-WS-CREDIT-USAGE` — the Credit & Usage screen.
@@ -97,7 +98,7 @@ export function UsagePanel() {
       setError(null);
       return;
     }
-    setError(res.status === 'failed' ? res.error.message : 'Usage is only visible to owners and admins.');
+    setError(res.status === 'failed' ? userMessage(res.error) : 'Usage is only visible to owners and admins.');
   }, []);
 
   useEffect(() => {
@@ -342,7 +343,7 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
       return;
     }
     setFailure(
-      res.status === 'failed' ? res.error.message : 'Only the account owner can change spending limits.',
+      res.status === 'failed' ? userMessage(res.error) : 'Only the account owner can change spending limits.',
     );
   };
 

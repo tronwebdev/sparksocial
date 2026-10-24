@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * APPROVAL FLOWS (`SET-WS-TEAM-GROUPS`) — the second half of the Team Roles
@@ -70,7 +71,7 @@ export function ApprovalFlowsPanel() {
 
     if (ruleRes.status !== 'succeeded') {
       setError(
-        ruleRes.status === 'failed' ? ruleRes.error.message : 'Approval flows are not visible to your role.',
+        ruleRes.status === 'failed' ? userMessage(ruleRes.error) : 'Approval flows are not visible to your role.',
       );
       return;
     }
@@ -105,7 +106,7 @@ export function ApprovalFlowsPanel() {
     );
     setBusyId(null);
     if (res.status === 'succeeded') await load();
-    else setError(res.status === 'failed' ? res.error.message : 'Only owners and admins can change approval flows.');
+    else setError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can change approval flows.');
   };
 
   const remove = async (rule: Rule) => {
@@ -113,7 +114,7 @@ export function ApprovalFlowsPanel() {
     const res = await invoke<unknown>('approval.rule.delete', { id: rule.id }, crypto.randomUUID());
     setBusyId(null);
     if (res.status === 'succeeded') await load();
-    else setError(res.status === 'failed' ? res.error.message : 'Only owners and admins can change approval flows.');
+    else setError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can change approval flows.');
   };
 
   return (
@@ -232,7 +233,7 @@ function RuleForm({
       await onSaved();
       return;
     }
-    onError(res.status === 'failed' ? res.error.message : 'Only owners and admins can add approval flows.');
+    onError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can add approval flows.');
   };
 
   return (

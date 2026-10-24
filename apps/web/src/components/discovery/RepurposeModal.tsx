@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from './TrendCard';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Re-purpose — `SparkSocial Discovery.dc.html`, the modal the card's Re-purpose
@@ -87,7 +88,7 @@ export function RepurposeModal({
     );
     setLoading(false);
     if (res.status !== 'succeeded') {
-      setWhy(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setWhy(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setSuggestion(res.output.suggestion);
@@ -131,7 +132,7 @@ export function RepurposeModal({
     );
     setHooksBusy(false);
     if (res.status !== 'succeeded') {
-      setHooksError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setHooksError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setHooks(res.output.hooks);
@@ -155,7 +156,7 @@ export function RepurposeModal({
     );
     setDrafting(false);
     if (res.status !== 'succeeded') {
-      setDraftError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setDraftError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onOpenDraft(res.output.contentItemId);

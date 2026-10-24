@@ -7,17 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
-import { WhyPopover } from '@/components/explain/WhyPopover';
 import { EmptyCalendarReason } from './EmptyCalendarReason';
 import { EmptyCard } from '@/components/common/EmptyCard';
 import { CampaignList, type CampaignRow } from './CampaignList';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
-import { MixBar, type MixSlice } from './MixBar';
 import { DayActionSheet } from './DayActionSheet';
 import { pillarStyle } from './pillars';
 import { CampaignReportPanel } from './CampaignReportPanel';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * THE CALENDAR — engine spec §6.8 Step 4, PRD `CAL-01`→`CAL-06`.
@@ -62,6 +61,18 @@ interface Slot {
   mediaType: string | null;
 }
 
+/**
+ * One pillar's share of a campaign, as `calendar.get` reports it.
+ *
+ * Declared here now that `MixBar` is gone — it lived in that file because the
+ * bar was its only consumer. The calendar still reads the mix, to label a
+ * campaign by its leading pillar, and a read is not a control.
+ */
+export interface MixSlice {
+  pillar: string;
+  count: number;
+}
+
 interface CalendarView {
   campaignId: string;
   name: string;
@@ -71,23 +82,10 @@ interface CalendarView {
   slots: Slot[];
 }
 
-/** `calendar.impact_preview`'s output — what calendar.generate would change, without writing anything. */
-interface MixImpactPreview {
-  currentSlotCount: number;
-  proposedSlotCount: number;
-  mixBefore: { pillar: string; count: number }[];
-  mixAfter: { pillar: string; count: number }[];
-  unfilledPillars: { pillar: string; count: number }[];
-  wouldChange: boolean;
-  why: { summary: string };
-}
-
 // `ProposedPlan` and the objective labels moved to `CampaignWizard` with
 // `CMP-01.1`/`.2`. This file is the calendar; creating a campaign is a
 // six-step flow of its own and no longer half-lives here.
 
-/** One nudge, in mix-weight terms. Small enough that a click is a nudge, not a lurch. */
-const ADJUST_STEP = 0.12;
 /**
  * UTC noon — not local noon, which is what this comment used to claim while the
  * constant's own name said otherwise.
@@ -178,7 +176,6 @@ export function CalendarBoard({
 } = {}) {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const [view, setView] = useState<CalendarView | null>(null);
-  const [override, setOverride] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string; pinDate?: string }>({
@@ -204,10 +201,8 @@ export function CalendarBoard({
   /** Calendar grid or a flat list — `CAL-08`. */
   const [layoutOwn, setLayoutOwn] = useState<'calendar' | 'list'>('calendar');
   const layout = layoutProp ?? layoutOwn;
-  const [mixPreview, setMixPreview] = useState<MixImpactPreview | null>(null);
   /** §8.7's three filters. `all` rather than an empty string so the select's value is never ambiguous. */
   const [filters, setFilters] = useState<SlotFilterState>({ status: 'all', platform: 'all', mediaType: 'all' });
-  const [previewOverride, setPreviewOverride] = useState<Record<string, number> | null>(null);
 
   /**
    * Filtering is client-side, deliberately.
@@ -220,7 +215,6 @@ export function CalendarBoard({
    * slot dragged out of the current filter vanish mid-gesture.
    */
   const visibleSlots = useMemo(() => filterSlots(view?.slots ?? [], filters), [view?.slots, filters]);
-  const [previewing, setPreviewing] = useState(false);
   const [pickerDate, setPickerDate] = useState('');
   const router = useRouter();
 
@@ -309,7 +303,7 @@ export function CalendarBoard({
         ...(Object.keys(mixOverride).length ? { mixOverride } : {}),
       });
       if (gen.status !== 'succeeded') {
-        setError(gen.status === 'failed' ? gen.error.message : 'That change was gated.');
+        setError(gen.status === 'failed' ? userMessage(gen.error) : 'That change was gated.');
         setBusy(false);
         return;
       }
@@ -327,39 +321,6 @@ export function CalendarBoard({
   // instant-then-undo (§CAL-05's own "reversible beats a modal" call). This
   // one gets a preview-then-apply step instead: the click no longer commits
   // immediately, it shows what would change and waits for "Apply".
-  const adjust = useCallback(
-    async (pillar: string, direction: 'more' | 'less') => {
-      if (!view) return;
-      const current = override[pillar] ?? 0.2;
-      const next = Math.max(0, Math.min(1, current + (direction === 'more' ? ADJUST_STEP : -ADJUST_STEP)));
-      const merged = { ...override, [pillar]: next };
-      setPreviewing(true);
-      setMixPreview(null);
-      const res = await invoke<MixImpactPreview>('calendar.impact_preview', { campaignId: view.campaignId, mixOverride: merged });
-      setPreviewing(false);
-      if (res.status === 'succeeded') {
-        setMixPreview(res.output);
-        setPreviewOverride(merged);
-      } else {
-        setError(res.status === 'failed' ? res.error.message : 'That preview was gated.');
-      }
-    },
-    [view, override],
-  );
-
-  const applyMixPreview = useCallback(async () => {
-    if (!view || !previewOverride) return;
-    setOverride(previewOverride);
-    setMixPreview(null);
-    await regenerate(view.campaignId, previewOverride);
-    setPreviewOverride(null);
-  }, [view, previewOverride, regenerate]);
-
-  const cancelMixPreview = useCallback(() => {
-    setMixPreview(null);
-    setPreviewOverride(null);
-  }, []);
-
   const openTriggerFor = useCallback((day: string) => {
     setDraftPanel({ open: true, pinDate: day });
   }, []);
@@ -414,7 +375,7 @@ export function CalendarBoard({
         if (brief.status !== 'succeeded') {
           setError(
             brief.status === 'failed'
-              ? brief.error.message
+              ? userMessage(brief.error)
               : 'That needs approval before SPARK can send you a shot list.',
           );
           return;
@@ -433,7 +394,7 @@ export function CalendarBoard({
         crypto.randomUUID(),
       );
       if (drafted.status !== 'succeeded') {
-        setError(drafted.status === 'failed' ? drafted.error.message : 'That draft was gated.');
+        setError(drafted.status === 'failed' ? userMessage(drafted.error) : 'That draft was gated.');
         return;
       }
       const scheduled = await invoke('content.schedule', {
@@ -462,7 +423,7 @@ export function CalendarBoard({
         scheduledAt: `${day}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
       });
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That move was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That move was gated.');
         return;
       }
       await reload(view.campaignId);
@@ -500,7 +461,7 @@ export function CalendarBoard({
         scheduledAt: `${toDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
       });
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That move was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That move was gated.');
         return;
       }
       await reload(view.campaignId);
@@ -587,8 +548,25 @@ export function CalendarBoard({
           <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
         </header>
 
-        {/* The headline. Step 4 is judged here, not in the grid below. */}
-        <MixBar mix={view.mixActual} onAdjust={adjust} busy={busy || previewing} />
+        {/*
+          ── The mix bar is gone ───────────────────────────────────────────
+
+          It was never in `SparkSocial Calendar.dc.html`. It was added because
+          the content spec asks for a campaign to be "reviewed at mix level",
+          which it does — but the calendar is where a month is read, and the
+          bar turned the first thing on the screen into a control for changing
+          the thing you came to look at.
+
+          What goes with it: the +/- buttons, the impact preview and its Apply.
+          Those were the only way to reach `calendar.impact_preview`, so
+          leaving them would leave a panel nothing could open.
+
+          The capability is untouched. `calendar.impact_preview` and
+          `calendar.generate`'s `mixOverride` are both still registered and
+          still reachable by SPARK — this removes a control, not an ability,
+          the same way Pause/Duplicate came off the Command Center hero. If a
+          screen for tuning the mix is wanted later, this is the tool it calls.
+        */}
 
         {/*
           A campaign with no posts in it, explained.
@@ -607,45 +585,6 @@ export function CalendarBoard({
               busy={busy}
               onRegenerate={() => void regenerate(view.campaignId, {})}
             />
-          </div>
-        ) : null}
-
-        {previewing ? <p className="mt-2 text-13 text-ink-muted">Working out what that would change…</p> : null}
-
-        {mixPreview ? (
-          <div className="mt-3 rounded-lg border border-border bg-surface-muted p-4">
-            <p className="text-13 text-ink">{mixPreview.why.summary}</p>
-            <WhyPopover why={mixPreview.why} label="What this change is based on" />
-            {mixPreview.wouldChange ? (
-              <p className="mt-1 text-13 text-ink-muted">
-                {mixPreview.currentSlotCount} → <b className="text-ink">{mixPreview.proposedSlotCount}</b> posts
-              </p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {mixPreview.mixAfter.map((m) => {
-                const before = mixPreview.mixBefore.find((b) => b.pillar === m.pillar)?.count ?? 0;
-                const style = pillarStyle(m.pillar);
-                return (
-                  <span key={m.pillar} className={cn('rounded border px-2 py-1 text-12 font-medium', style.chip)}>
-                    {style.label} · {before} → {m.count}
-                  </span>
-                );
-              })}
-            </div>
-            {mixPreview.unfilledPillars.length > 0 ? (
-              <p className="mt-2 text-12 text-warn">
-                Would leave {mixPreview.unfilledPillars.map((u) => `${pillarStyle(u.pillar).label} short ${u.count}`).join(', ')} — not
-                enough cleared assets to fill it.
-              </p>
-            ) : null}
-            <div className="mt-3 flex items-center gap-2">
-              <Button size="sm" disabled={busy || !mixPreview.wouldChange} onClick={() => void applyMixPreview()}>
-                {busy ? 'Applying…' : 'Apply'}
-              </Button>
-              <Button size="sm" variant="ghost" disabled={busy} onClick={cancelMixPreview}>
-                Cancel
-              </Button>
-            </div>
           </div>
         ) : null}
 

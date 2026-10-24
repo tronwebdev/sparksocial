@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * One hard monthly limit per brand.
@@ -67,7 +68,7 @@ export function BrandBudgetsSection() {
     ]);
 
     if (list.status !== 'succeeded') {
-      setError(list.status === 'failed' ? list.error.message : 'You cannot read this organisation.');
+      setError(list.status === 'failed' ? userMessage(list.error) : 'You cannot read this organisation.');
       setBrands([]);
       return;
     }
@@ -107,7 +108,7 @@ export function BrandBudgetsSection() {
     if (res.status !== 'succeeded') {
       setError(
         res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'Only an owner can set a spending limit.',
       );
       return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import type { Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `agency.roster` — one row per brand in the organisation, over a trailing
@@ -44,7 +45,7 @@ export function useAgencyRoster() {
   const load = useCallback(async () => {
     const res = await invoke<Roster>('agency.roster', { windowDays: 30 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Reading the roster needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Reading the roster needs an approval.');
       setRoster(null);
       return;
     }

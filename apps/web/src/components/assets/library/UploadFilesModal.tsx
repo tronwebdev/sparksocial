@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { formatBytes } from '../AssetsLibraryScreen';
 import { ASSET_ROLES } from '../roles';
 import type { Folder } from './types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Upload Files Modal` — `SparkSocial Assets Library.dc.html`.
@@ -174,7 +175,7 @@ export function UploadFilesModal({
       sizeBytes: file.size,
     });
     if (presigned.status !== 'succeeded') {
-      return { ...staged, error: presigned.status === 'failed' ? presigned.error.message : 'Upload was gated.' };
+      return { ...staged, error: presigned.status === 'failed' ? userMessage(presigned.error) : 'Upload was gated.' };
     }
 
     /* `x-ms-blob-type` is Azure's own requirement for a SAS upload, not a
@@ -252,7 +253,7 @@ export function UploadFilesModal({
           `asset-ingest:${presigned.output.key}`,
         );
     if (ingested.status !== 'succeeded') {
-      return { ...staged, error: ingested.status === 'failed' ? ingested.error.message : 'Ingest was gated.' };
+      return { ...staged, error: ingested.status === 'failed' ? userMessage(ingested.error) : 'Ingest was gated.' };
     }
 
     /*

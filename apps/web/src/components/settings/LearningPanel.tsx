@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `learning.freeze`/`.reset` — real since 17 Aug 2026, reached from no
@@ -47,7 +48,7 @@ export function LearningPanel() {
     if (res.status === 'succeeded') {
       setMessage({ kind: 'ok', text: res.output.frozen ? 'Mix locked — learning.reweight is now a no-op until unfrozen.' : 'Unfrozen — the mix can learn again.' });
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -63,7 +64,7 @@ export function LearningPanel() {
       const conf = await invoke<Confidence>('learning.confidence', { genomeId: genome.genomeId });
       if (conf.status === 'succeeded') setConfidence(conf.output);
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

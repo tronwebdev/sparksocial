@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { cn } from '@/lib/utils';
 import { pillarStyle } from './pillars';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * §6.8 Step 6 — "report against the stated outcome, not vanity metrics."
@@ -51,7 +52,7 @@ export function CampaignReportPanel({ campaignId }: { campaignId: string }) {
     ]);
     setLoading(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setReport(res.output);

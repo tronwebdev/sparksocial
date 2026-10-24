@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ONB-04` — *"Connect Social Accounts (connected profiles list + OAuth popup)"*.
@@ -73,7 +74,7 @@ export function ConnectAccountsStep({
   const load = useCallback(async () => {
     const res = await invoke<{ platforms: PlatformStatus[] }>('integration.health', {});
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     const native = res.output.platforms.filter((p) => (NATIVE as readonly string[]).includes(p.platform));
@@ -95,7 +96,7 @@ export function ConnectAccountsStep({
       // The common case here is "not configured for native publishing yet",
       // which the tool refuses by name. Shown verbatim — it is a better
       // explanation than anything this component could paraphrase.
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     const win = window.open(res.output.authorizeUrl, 'spark-oauth', 'width=600,height=760');

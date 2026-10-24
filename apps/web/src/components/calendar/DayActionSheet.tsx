@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `F9` / `CAL-07` — what happens when you click an empty day.
@@ -117,7 +118,7 @@ export function DayActionSheet({
       });
       setAsking(false);
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setRec(res.output);

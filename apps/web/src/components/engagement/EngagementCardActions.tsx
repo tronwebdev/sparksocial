@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { invoke } from '@/lib/tools';
 import type { EngagementItem } from './EngagementFeed';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `engage.escalate` / `engage.takeover` — the two ways a card leaves the feed
@@ -44,7 +45,7 @@ export function EngagementCardActions({
     const res = await invoke<{ status: string }>('engage.escalate', { genomeId, messageId: item.id, reason: reason.trim() });
     setPhase('idle');
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setResolution('escalated');
@@ -58,7 +59,7 @@ export function EngagementCardActions({
     const res = await invoke<{ status: string }>('engage.takeover', { genomeId, messageId: item.id });
     setPhase('idle');
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setResolution('taken_over');

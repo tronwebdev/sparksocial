@@ -8,6 +8,8 @@
  * distinction is the whole point of the autonomy model.
  */
 
+import { userMessage } from './errorCopy';
+
 export type ToolResult<T> =
   | { status: 'succeeded'; callId: string; output: T; why?: unknown }
   | { status: 'gated'; callId: string; decision: { kind: string; reason?: string } }
@@ -171,20 +173,32 @@ export async function invokeOrThrow<T>(name: string, input: unknown): Promise<T>
   const result = await invoke<T>(name, input);
   if (result.status === 'succeeded') return result.output;
   if (result.status === 'gated') throw new Error(`${name} was gated: ${result.decision.kind}`);
-  throw new Error(`${name} failed: ${result.error.code} — ${result.error.message}`);
+  throw new Error(`${name} failed: ${result.error.code} — ${userMessage(result.error)}`);
 }
 
 /**
  * One place to turn any `ToolResult` failure into a line for a person.
  *
- * Deliberately thin: it does **not** rewrite tool messages. Every code in the
- * set is already written for a human by whoever threw it — `INVALID_INPUT` names
- * the field, `NOT_FOUND` names the thing, and `explainCrawlFailure` writes a real
- * sentence for "blocked" versus "unreachable", each with a different next step.
- * Replacing those with something generic would lose the only useful part.
+ * It used to say, here, that it deliberately does **not** rewrite tool
+ * messages — that every code in the set is already written for a human by
+ * whoever threw it, and replacing those with something generic would lose the
+ * only useful part. That reasoning is still right and it was not enough.
  *
- * What this exists for is the `gated` branch, which every caller was
- * hand-rolling and half of them got subtly different.
+ * What it missed is that "written by whoever threw it" includes Zod, the
+ * Postgres driver and `node:fs`. Two of those reached onboarding verbatim:
+ *
+ *   brandFonts.display: Invalid enum value. Expected 'inter' | … received 'Asgard Trial'
+ *   The inference pass returned an unusable shape.
+ *
+ * So `userMessage` now stands in front of it, and it preserves the original
+ * stance by inverting the test: a message is shown **unless it looks like
+ * machine output**. The crawl's "blocked" sentence, the guardrail refusals and
+ * every other piece of real copy pass through untouched; a Zod dump does not.
+ * See `errorCopy.ts` for why the test runs that way round rather than needing
+ * each tool to opt in.
+ *
+ * The `gated` branch is still the other half of why this exists: every caller
+ * was hand-rolling it and half of them got subtly different.
  *
  * ── The one that got away, and where it was fixed ─────────────────────────
  *
@@ -199,5 +213,5 @@ export async function invokeOrThrow<T>(name: string, input: unknown): Promise<T>
 export function humanError(result: ToolResult<unknown>, gatedFallback = 'That needs approval before it can run.'): string {
   if (result.status === 'succeeded') return '';
   if (result.status === 'gated') return result.decision.reason ?? gatedFallback;
-  return result.error.message || 'That did not work.';
+  return userMessage(result.error) || 'That did not work.';
 }

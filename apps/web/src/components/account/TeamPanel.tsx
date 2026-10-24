@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `SET-WS-01` — teams, roles, and which brands each person can reach.
@@ -101,7 +102,7 @@ export function TeamPanel() {
     } else {
       setError(
         team.status === 'failed'
-          ? team.error.message
+          ? userMessage(team.error)
           : 'Only an owner or admin can see who is in this account.',
       );
     }
@@ -135,7 +136,7 @@ export function TeamPanel() {
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That invitation was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That invitation was held for review.' });
       return;
     }
     setNote({ kind: 'ok', text: `Invitation sent to ${inviteEmail.trim()}. They appear here once they accept.` });
@@ -151,7 +152,7 @@ export function TeamPanel() {
     if (res.status !== 'succeeded') {
       setNote({
         kind: 'err',
-        text: res.status === 'failed' ? res.error.message : 'Only the owner can change org roles.',
+        text: res.status === 'failed' ? userMessage(res.error) : 'Only the owner can change org roles.',
       });
       return;
     }
@@ -168,7 +169,7 @@ export function TeamPanel() {
     });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That change was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That change was held for review.' });
       return;
     }
     await load();

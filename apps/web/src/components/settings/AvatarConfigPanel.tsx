@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `genome.avatar_config.set` — real since P3, unreached from any screen until
@@ -50,7 +51,7 @@ export function AvatarConfigPanel() {
     if (res.status === 'succeeded') {
       setMessage({ kind: 'ok', text: 'Saved.' });
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -76,7 +77,7 @@ export function AvatarConfigPanel() {
       if (enabled) setOverrideReason('');
     } else {
       // Refused without a licensed, consented person to clone — `content.generate_avatar_video` checks the same two facts before spending.
-      setOverrideMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setOverrideMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

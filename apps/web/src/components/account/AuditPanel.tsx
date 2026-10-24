@@ -9,6 +9,7 @@ import { invoke } from '@/lib/tools';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `SET-ORG-01` / §10 — the audit log.
@@ -124,7 +125,7 @@ export function AuditPanel() {
       });
       setLoading(false);
       if (res.status === 'succeeded') setCalls(res.output.calls);
-      else setError(res.status === 'failed' ? res.error.message : 'Only an owner or admin can read the audit log.');
+      else setError(res.status === 'failed' ? userMessage(res.error) : 'Only an owner or admin can read the audit log.');
       return;
     }
 
@@ -141,7 +142,7 @@ export function AuditPanel() {
     });
     setLoading(false);
     if (res.status === 'succeeded') setEngagement(res.output.items);
-    else setError(res.status === 'failed' ? res.error.message : 'That request was held for review.');
+    else setError(res.status === 'failed' ? userMessage(res.error) : 'That request was held for review.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, tool, since, until, limit, genome]);
 

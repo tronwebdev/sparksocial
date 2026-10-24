@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SettingsTabs } from './SettingsTabs';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Export` / `… Import` / `… Clone` — three prototype screens under
@@ -81,7 +82,7 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
     const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Exporting this brand needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Exporting this brand needs an approval.');
       return;
     }
     setPayload(res.output.data);
@@ -235,7 +236,7 @@ function ImportTab({
       const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId: from });
       if (res.status !== 'succeeded') {
         setBusy(false);
-        setError(res.status === 'failed' ? res.error.message : 'Reading that workspace needs an approval.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'Reading that workspace needs an approval.');
         return;
       }
       data = res.output.data;
@@ -255,7 +256,7 @@ function ImportTab({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Creating a brand needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a brand needs an approval.');
       return;
     }
     setDone(`Created “${res.output.name}”. It is in your brand switcher.`);

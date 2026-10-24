@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * ASKING FOR THE MISSING FACT, AT THE MOMENT IT IS STILL CHEAP.
@@ -93,7 +94,7 @@ export function MissingFactsRequest({
       if (res.status !== 'succeeded') {
         setBusy(false);
         setError(
-          res.status === 'failed' ? res.error.message : 'You do not have permission to change brand settings.',
+          res.status === 'failed' ? userMessage(res.error) : 'You do not have permission to change brand settings.',
         );
         return;
       }

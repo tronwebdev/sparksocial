@@ -5,6 +5,7 @@ import { invoke } from '@/lib/tools';
 import { DropZone, PreviewTile } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `F6` — "Upload company Docs (PDF)", with the sample guideline beside it.
@@ -78,7 +79,7 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
     });
     if (presigned.status !== 'succeeded') {
       setBusy(false);
-      setError(presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.');
+      setError(presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.');
       return;
     }
 
@@ -105,7 +106,7 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
     if (read.status !== 'succeeded') {
       // The tool's own message is the useful one here — "that PDF has no text in
       // it, it is probably a scan" is a different instruction from a failure.
-      setError(read.status === 'failed' ? read.error.message : 'Reading that document was gated.');
+      setError(read.status === 'failed' ? userMessage(read.error) : 'Reading that document was gated.');
       return;
     }
 

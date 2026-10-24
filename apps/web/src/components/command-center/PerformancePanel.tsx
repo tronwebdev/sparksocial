@@ -7,6 +7,7 @@ import { PerformanceCards } from './PerformanceCards';
 import type { BrandSeries } from '@/components/dashboard/types';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `CC-04` — Command Center Performance, PRD §5.
@@ -144,7 +145,7 @@ export function PerformancePanel({
       if (res.status !== 'succeeded') {
         setError(
           res.status === 'failed'
-            ? res.error.message
+            ? userMessage(res.error)
             : 'Performance is not visible to this role.',
         );
         return;

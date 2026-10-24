@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The rows every calendar span draws from.
@@ -56,7 +57,7 @@ export function useCalendarSlots(genomeId: string | undefined): CalendarSlots {
       limit: 100,
     });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setSlots([]);
       return;
     }

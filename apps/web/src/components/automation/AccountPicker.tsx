@@ -6,6 +6,7 @@ import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * "Target account(s)" — connecting *and* choosing, on the wizard step itself.
@@ -87,7 +88,7 @@ export function AccountPicker({
          brand must be selected." Saying that — with the fix — beats an empty
          list that blames the person for not having connected anything. */
       setRows([]);
-      setLoadError(res.status === 'failed' ? res.error.message : 'That read was gated.');
+      setLoadError(res.status === 'failed' ? userMessage(res.error) : 'That read was gated.');
       return;
     }
     setLoadError(null);
@@ -127,7 +128,7 @@ export function AccountPicker({
         ...n,
         [platform]:
           res.status === 'failed'
-            ? res.error.message
+            ? userMessage(res.error)
             : (res.decision?.reason ?? 'Connecting an account needs an owner or admin.'),
       }));
       return;

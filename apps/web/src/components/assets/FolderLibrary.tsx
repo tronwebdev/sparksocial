@@ -8,6 +8,7 @@ import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { ASSET_ROLES } from './roles';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `LIB-01` / `LIB-02` — the folder library, PRD §8.11.
@@ -78,7 +79,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
     if (!genomeId) return;
     const res = await invoke<{ folders: Folder[] }>('asset.folder.list', { genomeId });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setFolders([]);
       return;
     }
@@ -97,7 +98,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
     const res = await invoke<Folder>('asset.folder.create', { genomeId, name }, crypto.randomUUID());
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Creating a folder was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a folder was gated.');
       return;
     }
     setNewName('');
@@ -246,7 +247,7 @@ function FolderDetail({
       res.status === 'succeeded'
         ? 'Moved.'
         : res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'That move was gated.',
     );
     if (res.status === 'succeeded') await load();
@@ -258,7 +259,7 @@ function FolderDetail({
       res.status === 'succeeded'
         ? 'Marked as used — retrieval will rest it for a while before offering it again.'
         : res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'That was gated.',
     );
     if (res.status === 'succeeded') await load();

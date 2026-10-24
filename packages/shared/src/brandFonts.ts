@@ -110,6 +110,146 @@ export interface BrandFonts {
   body?: string;
 }
 
+/**
+ * A font family read off a real website, mapped to the nearest face we can
+ * actually render.
+ *
+ * ── The bug this exists for ───────────────────────────────────────────────
+ *
+ * `brandKit.ts` reads the site's own CSS and comes back with whatever the
+ * designer chose — "Plus Jakarta Sans", "Asgard Trial", "Söhne". Onboarding
+ * wrote that straight into `brandFonts`, which is validated against the six
+ * ids below, so every brand whose site used a font that is not one of six
+ * failed its first save with
+ *
+ *   brandFonts.display: Invalid enum value. Expected 'inter' | … received 'Asgard Trial'
+ *
+ * on screen. Which is to say: it failed for nearly every real site.
+ *
+ * ── Why the enum is not the thing to widen ───────────────────────────────
+ *
+ * It would be easy to let the column hold any string, and wrong. The list is
+ * six because those are the faces both renderers can fetch — Satori needs real
+ * bytes and chokes on a variable font, and a family name it cannot resolve is
+ * a render that silently falls back. Storing "Plus Jakarta Sans" would turn a
+ * loud validation error into a quiet wrong-font, which is worse.
+ *
+ * ── So: match, and say nothing rather than guess wildly ──────────────────
+ *
+ * The crawl is a *proposal* — `saveKit` only applies it when the brand has no
+ * fonts yet — so proposing the closest renderable face is exactly its job.
+ * Exact names first, then the handful of aliases that are genuinely the same
+ * design, then a classification by what the name says about the shape, and
+ * `undefined` when nothing matches. Absent means "the default", which is a
+ * better answer than a face nobody chose.
+ */
+const FONT_ALIASES: Record<string, BrandFontId> = {
+  // The list itself, so a site already using one of ours is recognised.
+  inter: 'inter',
+  'dm sans': 'dm_sans',
+  'space grotesk': 'space_grotesk',
+  'playfair display': 'playfair',
+  lora: 'lora',
+  oswald: 'oswald',
+
+  /*
+   * Faces that are close enough that a reader would not call it a different
+   * brand. Deliberately short: a long alias table is a list of opinions, and
+   * the classifier below handles the rest without pretending to recognise
+   * something it does not.
+   */
+  'plus jakarta sans': 'dm_sans',
+  'plus jakarta display': 'dm_sans',
+  poppins: 'dm_sans',
+  nunito: 'dm_sans',
+  'nunito sans': 'dm_sans',
+  rubik: 'dm_sans',
+  manrope: 'inter',
+  roboto: 'inter',
+  'helvetica neue': 'inter',
+  helvetica: 'inter',
+  arial: 'inter',
+  'sf pro text': 'inter',
+  'sf pro display': 'inter',
+  'segoe ui': 'inter',
+  'open sans': 'inter',
+  lato: 'inter',
+  montserrat: 'inter',
+  'work sans': 'inter',
+  'source sans pro': 'inter',
+  'ibm plex sans': 'inter',
+  figtree: 'dm_sans',
+  outfit: 'space_grotesk',
+  sora: 'space_grotesk',
+  'space mono': 'space_grotesk',
+  satoshi: 'space_grotesk',
+  'general sans': 'space_grotesk',
+  georgia: 'lora',
+  'times new roman': 'lora',
+  garamond: 'lora',
+  'eb garamond': 'lora',
+  merriweather: 'lora',
+  'pt serif': 'lora',
+  'source serif pro': 'lora',
+  'dm serif display': 'playfair',
+  'bodoni moda': 'playfair',
+  didot: 'playfair',
+  'abril fatface': 'playfair',
+  'bebas neue': 'oswald',
+  anton: 'oswald',
+  'archivo narrow': 'oswald',
+  teko: 'oswald',
+};
+
+/** Words in a family name that say what shape it is, when the name is unknown. */
+const SERIF_HINT = /serif|georgia|times|garamond|baskerville|caslon|didot|bodoni|playfair|roman/;
+const CONDENSED_HINT = /condensed|narrow|compressed|impact|anton|bebas/;
+const MONO_HINT = /mono|code|courier|consol/;
+
+export function matchBrandFont(family: string | undefined): BrandFontId | undefined {
+  if (!family) return undefined;
+
+  /*
+   * One family, lowercased, quotes and weight suffixes stripped. A CSS stack
+   * has already been reduced to its first entry by the crawler, but the names
+   * that arrive still carry things like "Trial", "Variable" and "Pro" that are
+   * licensing or cut, not identity.
+   */
+  const name = family
+    .toLowerCase()
+    .replace(/["']/g, '')
+    .replace(/(trial|variable|vf|pro|std|lt|mt|regular|book)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!name) return undefined;
+
+  const alias = FONT_ALIASES[name];
+  if (alias) return alias;
+
+  /*
+   * A generic family is not a choice — `font-family: sans-serif` means the
+   * designer did not pick one, and proposing Inter off the back of it would be
+   * inventing a decision.
+   */
+  if (/^(sans-serif|serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|-apple-system|inherit|initial)$/.test(name)) {
+    return undefined;
+  }
+
+  // Unknown name: read what the name says about the shape. Mono has no match in
+  // the six, and a condensed display face is closer to Oswald than to anything.
+  if (MONO_HINT.test(name)) return 'space_grotesk';
+  if (CONDENSED_HINT.test(name)) return 'oswald';
+  if (SERIF_HINT.test(name)) return 'lora';
+
+  /*
+   * Everything else is a sans nobody here has heard of, which most custom
+   * brand faces are. Inter is the neutral one — the face that reads as clean
+   * rather than as anything — so it is the least wrong default.
+   */
+  return 'inter';
+}
+
 export function brandFont(id: string | undefined): BrandFontFace | undefined {
   return BRAND_FONTS.find((f) => f.id === id);
 }

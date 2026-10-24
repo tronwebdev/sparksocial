@@ -6,6 +6,7 @@ import { startAgentRun } from '@/lib/agent';
 import { isSparkPinned, setSparkPinned } from '@/lib/askSpark';
 import { humaniseGoal } from '@/lib/runGoal';
 import { relativeTime } from '@/lib/relativeTime';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * ASK SPARK — the chat drawer, built to `ui build/Spark Chat.dc.html`
@@ -228,7 +229,7 @@ export function ChatDrawer({
     const outcome = await startAgentRun(goal);
     setBusy(false);
     if (outcome.status !== 'succeeded') {
-      append('system', `Couldn't reach SPARK: ${outcome.error.message}`);
+      append('system', `Couldn't reach SPARK: ${userMessage(outcome.error)}`);
       return;
     }
     append('spark', outcome.run.text || '(no reply)');
@@ -262,7 +263,7 @@ export function ChatDrawer({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      append('system', res.status === 'failed' ? `Couldn't draft that: ${res.error.message}` : 'That draft was gated.');
+      append('system', res.status === 'failed' ? `Couldn't draft that: ${userMessage(res.error)}` : 'That draft was gated.');
       return;
     }
     append('spark', `Here is a ${pb.name} draft.`, {

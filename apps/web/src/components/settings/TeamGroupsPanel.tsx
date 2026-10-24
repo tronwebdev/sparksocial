@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * TEAM GROUPS (`SET-WS-TEAM-GROUPS`) — the Groups tab.
@@ -117,7 +118,7 @@ export function TeamGroupsPanel() {
         setCreating(false);
         return { ok: true, text: `Created ${res.output.name}.` };
       }
-      return { ok: false, text: res.status === 'failed' ? res.error.message : 'That change needs approval.' };
+      return { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
     });
   }
 
@@ -130,7 +131,7 @@ export function TeamGroupsPanel() {
       const res = await invoke('team.group.update', { groupId: group.id, capabilities: next });
       return res.status === 'succeeded'
         ? { ok: true, text: `Updated ${group.name}.` }
-        : { ok: false, text: res.status === 'failed' ? res.error.message : 'That change needs approval.' };
+        : { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
     });
   }
 
@@ -141,7 +142,7 @@ export function TeamGroupsPanel() {
         setMemberDrafts((prev) => ({ ...prev, [group.id]: '' }));
         return { ok: true, text: member ? `Added to ${group.name}.` : `Removed from ${group.name}.` };
       }
-      return { ok: false, text: res.status === 'failed' ? res.error.message : 'That change needs approval.' };
+      return { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
     });
   }
 
@@ -150,7 +151,7 @@ export function TeamGroupsPanel() {
       const res = await invoke('team.group.delete', { groupId: group.id });
       return res.status === 'succeeded'
         ? { ok: true, text: `Deleted ${group.name}.` }
-        : { ok: false, text: res.status === 'failed' ? res.error.message : 'That change needs approval.' };
+        : { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
     });
   }
 

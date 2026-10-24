@@ -682,6 +682,14 @@ export function rankKit(probe: ReturnType<typeof kitProbe>): CrawledKit {
    */
   const generic = /^(system-ui|-apple-system|blinkmacsystemfont|sans-serif|serif|monospace|ui-\w+|inherit|initial)$/i;
   const keep = (family: string | undefined) => (family && !generic.test(family) ? family : undefined);
+
+  /*
+   * The family as the stylesheet spells it — "Plus Jakarta Sans", "Asgard
+   * Trial". This module observes; mapping that onto the faces the renderers
+   * can fetch is a product decision and happens in `saveKit`, where the kit is
+   * applied. Keeping the raw name here is also what makes the mapping
+   * testable against real input rather than against its own output.
+   */
   const fonts = { display: keep(probe.fonts.display), body: keep(probe.fonts.body) };
 
   const logo = pickLogo(probe.logos);

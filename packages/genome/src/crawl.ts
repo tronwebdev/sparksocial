@@ -140,6 +140,79 @@ const ERROR_PAGE_MIN_TEXT = 600;
  * fail" and one asking "what do I tell the owner", and they are not
  * interchangeable.
  */
+/**
+ * A page that is only a bot check, recognised by what it says.
+ *
+ * ── The gap this closes ───────────────────────────────────────────────────
+ *
+ * `textFloorFor` catches a short error body served under a failure status.
+ * It cannot catch the other shape, which is now the commoner one: a challenge
+ * page served with **200 OK** and plenty of text. Cloudflare's interstitial,
+ * Turnstile, a WAF's "please verify" page — all of them clear 600 characters
+ * easily, so the crawl counted one as content, the inference pass was handed a
+ * security notice, and the model did the only honest thing it could with it:
+ *
+ *   Unknown — the site returned only a bot/security check page, with no
+ *   business content available.
+ *
+ * That shape failed validation, and the owner was shown "The inference pass
+ * returned an unusable shape" — a sentence about our parser, for a site that
+ * had simply refused us. The same wrong answer `ERROR_PAGE_MIN_TEXT` was added
+ * to prevent, arriving through the door that constant does not cover.
+ *
+ * ── Why phrases and not a vendor check ───────────────────────────────────
+ *
+ * There is no header or status that reliably says "this is a challenge" —
+ * that is rather the point of one. What every vendor does have is a page that
+ * tells a human what is happening, in a small number of well-worn sentences.
+ * Matching those is unglamorous and it is what is actually observable.
+ *
+ * Two guards against a false positive, which would be the expensive mistake —
+ * refusing to read a site that was willing to be read:
+ *
+ *   * a phrase must appear in the **first 1500 characters**, where a challenge
+ *     page has nothing else; an article *about* Cloudflare mentions it deep in
+ *     the body, and
+ *   * the page must be **short**. A real page that happens to say "checking
+ *     your browser" somewhere is a real page, and real pages are long.
+ */
+const CHALLENGE_PHRASES = [
+  'just a moment',
+  'checking your browser',
+  'enable javascript and cookies to continue',
+  'verify you are human',
+  'verifying you are human',
+  'please verify you are a human',
+  'additional security check is required',
+  'ddos protection by',
+  'attention required!',
+  'why have i been blocked',
+  'this website is using a security service to protect itself',
+  'ray id',
+  'cf-browser-verification',
+  'challenge-platform',
+  'access denied',
+  'request unsuccessful. incapsula',
+  'pardon our interruption',
+  'are you a robot',
+  'security check to access',
+];
+
+/** Where a challenge page says what it is; past this, it is page content. */
+const CHALLENGE_LOOKAHEAD = 1500;
+
+/**
+ * Above this, a page carrying one of the phrases is a page *about* the topic,
+ * not a challenge. Challenge pages are a sentence and a spinner.
+ */
+const CHALLENGE_MAX_TEXT = 3_000;
+
+export function isChallengePage(text: string, title?: string): boolean {
+  const head = `${title ?? ''} ${text.slice(0, CHALLENGE_LOOKAHEAD)}`.toLowerCase();
+  if (!CHALLENGE_PHRASES.some((phrase) => head.includes(phrase))) return false;
+  return text.length <= CHALLENGE_MAX_TEXT;
+}
+
 export function textFloorFor(status: number | undefined): number {
   const refusedOrBroken = status === undefined || status >= 400;
   return refusedOrBroken ? ERROR_PAGE_MIN_TEXT : MIN_TEXT;
@@ -272,11 +345,26 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
         const text = clean(await page.evaluate(() => (globalThis as unknown as BrowserGlobals).document?.body?.innerText ?? ''));
 
         /*
-         * A page whose status says "error" has to be substantial before it is
-         * believed, because the alternative is inferring a brand from the word
-         * "Forbidden". A page served 200 keeps the ordinary bar.
+         * A challenge page is a refusal wearing a 200.
+         *
+         * Checked before the length bar, because it passes it: Cloudflare's
+         * interstitial and friends are served OK with enough text to clear
+         * `ERROR_PAGE_MIN_TEXT`, so the crawl used to count one as content and
+         * hand a security notice to the inference pass. See `isChallengePage`.
+         *
+         * Treated as `blocked` on the entry URL, which is what it is, and
+         * which has copy that names the cause and the remedy. On any other
+         * page it is simply not content — a footer link into a protected area
+         * says nothing about the business.
          */
-        if (text.length >= textFloorFor(status)) {
+        if (isChallengePage(text, title)) {
+          if (next === entryUrl) entryFailure = 'blocked';
+        } else if (text.length >= textFloorFor(status)) {
+          /*
+           * A page whose status says "error" has to be substantial before it
+           * is believed, because the alternative is inferring a brand from the
+           * word "Forbidden". A page served 200 keeps the ordinary bar.
+           */
           pages.push({ url: next, title, text: text.slice(0, MAX_TEXT) });
         }
 

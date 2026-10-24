@@ -6,6 +6,7 @@ import { NICHES, resolveNiche } from '@sparksocial/shared';
 import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `F6`'s "Brand Details" — the prototype's second screen, and `M8`'s logo.
@@ -186,7 +187,7 @@ export function BrandDetailsStep({
     setMessage(
       res.status === 'succeeded'
         ? { kind: 'ok', text: 'Saved.' }
-        : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval first.' },
+        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval first.' },
     );
   }
 
@@ -218,7 +219,7 @@ export function BrandDetailsStep({
     if (res.status !== 'succeeded') {
       setMessage({
         kind: 'err',
-        text: res.status === 'failed' ? res.error.message : 'Generating a logo needs approval first.',
+        text: res.status === 'failed' ? userMessage(res.error) : 'Generating a logo needs approval first.',
       });
       return;
     }
@@ -249,7 +250,7 @@ export function BrandDetailsStep({
       setUploading(false);
       setMessage({
         kind: 'err',
-        text: presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.',
+        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
       });
       return;
     }
@@ -266,7 +267,7 @@ export function BrandDetailsStep({
     if (saved.status !== 'succeeded') {
       setMessage({
         kind: 'err',
-        text: saved.status === 'failed' ? saved.error.message : 'Saving the logo was gated.',
+        text: saved.status === 'failed' ? userMessage(saved.error) : 'Saving the logo was gated.',
       });
       return;
     }

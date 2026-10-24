@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `asset.gaps` — real since P2 (§4.4), reached from no screen until now. The
@@ -42,7 +43,7 @@ export function AssetGapsPanel({ refreshKey }: { refreshKey: number }) {
         setData(res.output);
         setError(null);
       } else {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       }
     })();
   }, [genome, refreshKey]);

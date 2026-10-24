@@ -14,6 +14,7 @@ import { DraftsList } from './DraftsList';
 import { PostPreview } from './PostPreview';
 import { cn } from '@/lib/utils';
 import { type KitTemplate, KIT_TEMPLATE_LABEL, keepStructure, clock, caption, PLATFORMS, type DraftView, type PlaybookSummary, type RankedPlaybook, type ResolvedBeat } from './types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The Draft Panel — plan §6.8's Draft Panel, `ui build/figma-dp/`'s ~20
@@ -263,7 +264,7 @@ export function DraftPanel({
       setPhase('loading');
       const res = await invoke<DraftView>('content.get', { contentItemId, genomeId });
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         /**
          * The phase has to move, and this line is the whole of the "empty Draft
          * modal" defect.
@@ -346,7 +347,7 @@ export function DraftPanel({
           crypto.randomUUID(),
         );
         if (filled.status !== 'succeeded') {
-          setError(filled.status === 'failed' ? filled.error.message : 'That draft was gated.');
+          setError(filled.status === 'failed' ? userMessage(filled.error) : 'That draft was gated.');
           setPhase('failed');
           return;
         }
@@ -487,7 +488,7 @@ export function DraftPanel({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That draft was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That draft was gated.');
       return;
     }
     setDraft(res.output);
@@ -552,7 +553,7 @@ export function DraftPanel({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That redraft was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That redraft was gated.');
       return;
     }
     setDraft(res.output);
@@ -595,7 +596,7 @@ export function DraftPanel({
     setBusyBeatId(null);
     setStage(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'generated_image', beatId, url: res.output.url, prompt });
@@ -622,7 +623,7 @@ export function DraftPanel({
     setBusyBeatId(null);
     setStage(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'generated_video', beatId, url: res.output.url, script });
@@ -649,7 +650,7 @@ export function DraftPanel({
     setBusyBeatId(null);
     setStage(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'generated_audio', beatId, url: res.output.url, script });
@@ -680,7 +681,7 @@ export function DraftPanel({
     setBusyBeatId(null);
     setStage(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'generated_broll', beatId, url: res.output.url, prompt });
@@ -705,7 +706,7 @@ export function DraftPanel({
     );
     setBusyBeatId(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'dubbed_media', beatId, url: res.output.url, targetLanguage, mediaType: mediaKind });
@@ -723,7 +724,7 @@ export function DraftPanel({
     });
     setBusyBeatId(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     replaceBeat(beatId, { kind: 'text', beatId, text });
@@ -771,7 +772,7 @@ export function DraftPanel({
     );
     setBusyBeatId(null);
     if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? res.error.message : 'Gated.' }));
+      setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
     setDraft((d) => (d ? { ...d, beats: res.output.beats } : d));
@@ -872,7 +873,7 @@ export function DraftPanel({
     });
     setShortening(false);
     if (res.status !== 'succeeded') {
-      setLinkError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setLinkError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setShortUrl(res.output.shortUrl);
@@ -891,7 +892,7 @@ export function DraftPanel({
     );
     setRendering(false);
     if (res.status !== 'succeeded') {
-      setRenderError(res.status === 'failed' ? res.error.message : 'Rendering was gated.');
+      setRenderError(res.status === 'failed' ? userMessage(res.error) : 'Rendering was gated.');
       return;
     }
     setRenders(res.output.renders);
@@ -909,7 +910,7 @@ export function DraftPanel({
     });
     setVariantsLoading(false);
     if (res.status !== 'succeeded') {
-      setVariantsError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setVariantsError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setVariants(res.output.variants);
@@ -950,7 +951,7 @@ export function DraftPanel({
     );
     setSplitting(null);
     if (res.status !== 'succeeded') {
-      setSplitNote(res.status === 'failed' ? res.error.message : 'Setting up the test needs approval first.');
+      setSplitNote(res.status === 'failed' ? userMessage(res.error) : 'Setting up the test needs approval first.');
       return;
     }
     setVariants(null);
@@ -992,7 +993,7 @@ export function DraftPanel({
     );
     setRepurposing(false);
     if (res.status !== 'succeeded') {
-      setRepurposeError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setRepurposeError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setRepurposeOpen(false);
@@ -1012,7 +1013,7 @@ export function DraftPanel({
     if (res.status === 'succeeded') {
       setExplainSummary((s) => ({ ...s, [playbookId]: res.output.why.summary }));
     } else {
-      setExplainSummary((s) => ({ ...s, [playbookId]: res.status === 'failed' ? res.error.message : 'That request was gated.' }));
+      setExplainSummary((s) => ({ ...s, [playbookId]: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' }));
     }
   }
 
@@ -1028,7 +1029,7 @@ export function DraftPanel({
     );
     setStaticRendering(false);
     if (res.status !== 'succeeded') {
-      setStaticRenderError(res.status === 'failed' ? res.error.message : 'Rendering was gated.');
+      setStaticRenderError(res.status === 'failed' ? userMessage(res.error) : 'Rendering was gated.');
       return;
     }
     setRenders(res.output.renders);
@@ -1072,7 +1073,7 @@ export function DraftPanel({
     );
     setFanoutBusy(false);
     if (res.status !== 'succeeded') {
-      setFanoutError(res.status === 'failed' ? res.error.message : 'Fanning out was gated.');
+      setFanoutError(res.status === 'failed' ? userMessage(res.error) : 'Fanning out was gated.');
       return;
     }
     setFanoutResult(res.output);
@@ -1126,7 +1127,7 @@ export function DraftPanel({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Publishing was held for review — check the queue.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Publishing was held for review — check the queue.');
       return;
     }
     onClose();
@@ -1146,7 +1147,7 @@ export function DraftPanel({
     );
     setRollingBack(false);
     if (res.status !== 'succeeded') {
-      setRollbackError(res.status === 'failed' ? res.error.message : 'Rollback was held for review.');
+      setRollbackError(res.status === 'failed' ? userMessage(res.error) : 'Rollback was held for review.');
       return;
     }
     setDraft((d) => (d ? { ...d, status: 'rolled_back' } : d));
@@ -1181,7 +1182,7 @@ export function DraftPanel({
     });
     setRescheduling(false);
     if (res.status !== 'succeeded') {
-      setRescheduleError(res.status === 'failed' ? res.error.message : 'Rescheduling was held for review.');
+      setRescheduleError(res.status === 'failed' ? userMessage(res.error) : 'Rescheduling was held for review.');
       return;
     }
     // Mirror the write locally rather than refetching: `content.schedule` clears

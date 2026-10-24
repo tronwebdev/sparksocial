@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { Skeleton } from '@/components/ui/skeleton';
 import { humaniseGoal } from '@/lib/runGoal';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * AGENT COMMAND CENTER — NEEDS ATTENTION.
@@ -111,7 +112,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
       const res = await invoke('approval.decide', { callId, decision }, `approval-decide:${callId}:${decision}`);
       setBusy(null);
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That decision was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That decision was gated.');
         return;
       }
       setError(null);

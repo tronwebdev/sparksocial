@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Add Member`, `… Add Client` and `… Edit Group` — the three
@@ -177,7 +178,7 @@ export function AddMemberModal({ onClose, onDone }: { onClose: () => void; onDon
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Inviting someone needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Inviting someone needs an approval.');
       return;
     }
     onDone();
@@ -269,7 +270,7 @@ export function AddClientModal({ onClose, onDone }: { onClose: () => void; onDon
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Adding a client needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Adding a client needs an approval.');
       return;
     }
     onDone();
@@ -396,7 +397,7 @@ export function EditGroupModal({
       );
       setBusy(false);
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'Creating a group needs an approval.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a group needs an approval.');
         return;
       }
       onDone();
@@ -411,7 +412,7 @@ export function EditGroupModal({
     });
     if (updated.status !== 'succeeded') {
       setBusy(false);
-      setError(updated.status === 'failed' ? updated.error.message : 'Updating this group needs an approval.');
+      setError(updated.status === 'failed' ? userMessage(updated.error) : 'Updating this group needs an approval.');
       return;
     }
 
@@ -429,7 +430,7 @@ export function EditGroupModal({
         setBusy(false);
         setError(
           res.status === 'failed'
-            ? `${label(userId)}: ${res.error.message}`
+            ? `${label(userId)}: ${userMessage(res.error)}`
             : `Changing membership for ${label(userId)} needs an approval.`,
         );
         return;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ONB-05` — the agent personalization step.
@@ -91,7 +92,7 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
         setBusy(false);
         setMessage({
           kind: 'err',
-          text: res.status === 'failed' ? res.error.message : 'Recording consent needs approval before it can run.',
+          text: res.status === 'failed' ? userMessage(res.error) : 'Recording consent needs approval before it can run.',
         });
         return;
       }
@@ -110,7 +111,7 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
         // The consent record stands even though the ids did not save. That is
         // the right way round — a consent record with no avatar is harmless,
         // and saying so stops somebody re-granting it and creating a duplicate.
-        text: `${res.status === 'failed' ? res.error.message : 'That needs approval before it can run.'} The consent record was saved; you can set the ids in Settings.`,
+        text: `${res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.'} The consent record was saved; you can set the ids in Settings.`,
       });
       return;
     }

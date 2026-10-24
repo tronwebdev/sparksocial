@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Automation Recipes — plan §12 P5, `AUTO-01`→`AUTO-04.4`. Two tabs: the
@@ -79,7 +80,7 @@ export function AutomationRecipes() {
     setError(null);
     const res = await invoke<{ recipes: RecipeItem[] }>('recipe.list', { genomeId: id });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setRecipes([]);
       return;
     }
@@ -90,7 +91,7 @@ export function AutomationRecipes() {
     setError(null);
     const res = await invoke<{ outputs: OutputItem[] }>('recipe.output.list', { genomeId: id, status: 'pending_review', limit: 50 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setOutputs([]);
       return;
     }
@@ -390,7 +391,7 @@ function NewRecipeForm({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onCreated();
@@ -750,7 +751,7 @@ function EditRecipeForm({
 
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That change needs approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
       return;
     }
     onSaved();

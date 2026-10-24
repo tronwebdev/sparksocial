@@ -12,6 +12,7 @@ import { BrandFontPicker } from './BrandFontPicker';
 import { KitSection, KitRow } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
 import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@sparksocial/shared';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Palette presets.
@@ -183,7 +184,7 @@ export function GovernancePanel() {
       setUploading(false);
       setMessage({
         kind: 'err',
-        text: presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.',
+        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
       });
       return;
     }
@@ -212,7 +213,7 @@ export function GovernancePanel() {
     if (res.status !== 'succeeded') {
       setMessage({
         kind: 'err',
-        text: res.status === 'failed' ? res.error.message : 'That needs approval before it can spend.',
+        text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can spend.',
       });
       return;
     }
@@ -281,7 +282,7 @@ export function GovernancePanel() {
     }
     setMessage({
       kind: 'err',
-      text: res.status === 'failed' ? res.error.message : 'That change needs approval.',
+      text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.',
     });
   }
 

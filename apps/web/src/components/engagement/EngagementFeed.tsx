@@ -12,6 +12,7 @@ import { ReplyAction } from './ReplyAction';
 import { EngagementCardActions } from './EngagementCardActions';
 import { OpportunityActions } from './OpportunityActions';
 import { ConversationDrawer } from './ConversationDrawer';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ENG-02` — the engagement inbox feed: comments, DMs and story replies,
@@ -94,7 +95,7 @@ export function EngagementFeed() {
       const res = await invoke<{ items: EngagementItem[] }>('engage.list', input);
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         setItems([]);
         return;
       }

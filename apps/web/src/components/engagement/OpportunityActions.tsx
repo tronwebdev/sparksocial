@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import type { EngagementItem } from './EngagementFeed';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `engage.opportunity.create` / `.route` — Sales Opportunities tab only
@@ -64,7 +65,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setOpportunityId(res.output.opportunityId);
@@ -87,7 +88,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
     });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setRoutedAs(res.output.routedTo);

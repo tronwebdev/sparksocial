@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from './TrendCard';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Re-share — the composer the supplied design draws, and a different thing from
@@ -139,7 +140,7 @@ export function ReshareModal({
     );
     if (created.status !== 'succeeded') {
       setBusy(false);
-      setError(created.status === 'failed' ? created.error.message : 'That request was gated.');
+      setError(created.status === 'failed' ? userMessage(created.error) : 'That request was gated.');
       return;
     }
 

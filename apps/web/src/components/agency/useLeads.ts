@@ -5,6 +5,7 @@ import type { LeadSource, LeadStatus } from '@sparksocial/shared/agencyPipeline'
 import { invoke } from '@/lib/tools';
 import type { Explanation } from '@/components/explain/WhyPopover';
 import type { LeadImportRow } from './leadCsv';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `lead.*` for the Client Finder.
@@ -109,7 +110,7 @@ export function useLeads(query: LeadQuery) {
     if (mine !== seq.current) return;
 
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Reading the pipeline needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Reading the pipeline needs an approval.');
       setLoading(false);
       return;
     }
@@ -142,7 +143,7 @@ export function useLeads(query: LeadQuery) {
       try {
         const res = await invoke<unknown>(name, input, key);
         if (res.status !== 'succeeded') {
-          return res.status === 'failed' ? res.error.message : 'That needs an approval first.';
+          return res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.';
         }
         await load();
         return null;
@@ -178,7 +179,7 @@ export function useLeads(query: LeadQuery) {
       try {
         const res = await invoke<ImportResult>('lead.import', { rows }, crypto.randomUUID());
         if (res.status !== 'succeeded') {
-          return { error: res.status === 'failed' ? res.error.message : 'Importing needs an approval first.' };
+          return { error: res.status === 'failed' ? userMessage(res.error) : 'Importing needs an approval first.' };
         }
         await load();
         return { result: res.output };

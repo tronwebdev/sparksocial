@@ -458,25 +458,65 @@ export async function invokeTool(req: InvokeRequest, deps: InvokeDeps): Promise<
     }
   }
 
+  /*
+   * The handler's own channel for "this is what it really cost".
+   *
+   * Given as a closure on a copy of the ctx rather than mutated onto the
+   * caller's: `req.ctx` is built once per request and reused across a fan-out,
+   * and a handler reporting a cost must not be able to write it onto a context
+   * another call is also holding.
+   */
+  let reported: number | undefined;
+  const handlerCtx: typeof req.ctx = {
+    ...req.ctx,
+    reportCost: (cents: number) => {
+      if (Number.isFinite(cents)) reported = cents;
+    },
+  };
+
   try {
-    const raw = await tool.handler(input, req.ctx);
+    const raw = await tool.handler(input, handlerCtx);
 
     /* 8 ── Output validation, before anything escapes the boundary. */
     const output = tool.output.parse(raw);
     const why = extractWhy(output);
 
+    /*
+     * What it cost, which is not always what it was estimated to cost.
+     *
+     * The estimate is a pre-flight ceiling — the policy has to check something
+     * before the vendor is called, and `estimateCents`'s own comments all call
+     * themselves rough. Where a handler learned the real figure it reported it
+     * through `ctx.reportCost`, and the ledger should record that rather than
+     * the guess. Where it did not, nothing changes.
+     *
+     * Clamped at zero: a negative charge is a refund and belongs in
+     * `credits.grant`, not in a tool call pretending to have earned money.
+     */
+    const actualCents = reported ?? estimatedCents;
     const settled: ToolCallRecord = {
       ...base,
       status: 'succeeded',
       output,
+      costCents: Math.max(0, actualCents),
       ...(why ? { why } : {}),
     };
 
     /* 9 ── Audit, cost, fan-out. */
     await deps.writeToolCall(settled);
+    /*
+     * `estimatedCents > 0` rather than `actualCents > 0`, deliberately. A tool
+     * that estimated nothing is a free tool and has no ledger row; a tool that
+     * estimated something and reported a true zero still gets a row, because
+     * "this cost nothing" is a fact worth recording about a paid tool.
+     */
     if (estimatedCents > 0) await deps.recordCost?.(settled);
     deps.emit?.('tool.succeeded', settled);
-    req.ctx.trace.event('tool.succeeded', { tool: tool.name, costCents: estimatedCents });
+    req.ctx.trace.event('tool.succeeded', {
+      tool: tool.name,
+      costCents: settled.costCents,
+      ...(reported !== undefined && reported !== estimatedCents ? { estimatedCents } : {}),
+    });
 
     return { status: 'succeeded', call: settled, output, ...(why ? { why } : {}) };
   } catch (e) {

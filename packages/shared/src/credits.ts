@@ -170,6 +170,36 @@ export const CATEGORISED_TOOLS: readonly string[] = Object.keys(CATEGORY_BY_TOOL
  * A named constant rather than an inline `/ 2`, because changing the rate is a
  * pricing decision that has to be visible in a diff.
  */
+/**
+ * What a generated second of video actually costs, in cents.
+ *
+ * ── Measured, not guessed ─────────────────────────────────────────────────
+ *
+ * `content.generate_broll` estimated a flat 40¢ per call with a comment
+ * calling itself "a rough per-call ceiling". It is not a ceiling: a five-second
+ * Seedance clip was quoted **$1.04** by the vendor's own `/estimate` endpoint —
+ * 104¢ against an estimate of 40 — so a brand generating video spent two and a
+ * half times what its balance said, and the cap it was checked against was the
+ * wrong number in the direction that lets the spend through.
+ *
+ * 104 / 5 ≈ 21. Per second rather than per call, because that is how the model
+ * is billed and because a flat figure is wrong in both directions at once: it
+ * overcharges a 4-second clip and badly undercharges a 30-second one, and the
+ * tool's input allows up to 60.
+ *
+ * ── What this number is not ──────────────────────────────────────────────
+ *
+ * It is one model's price on one date. `scripts/check-higgsfield.mjs
+ * --estimate-only` asks the vendor for a live quote and is free to run; this
+ * constant should be re-checked against it rather than trusted indefinitely.
+ * Every other `estimateCents` in the codebase is still the rough ceiling its
+ * own comment admits to — this is the one that had a measurement behind it,
+ * and the rest want the same treatment before the balance means anything.
+ *
+ * Checked: 22 October 2026, bytedance/seedance-2.5, 5s at 1080p.
+ */
+export const VIDEO_CENTS_PER_SECOND = 21;
+
 export const CENTS_PER_CREDIT = 2;
 
 /**

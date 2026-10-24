@@ -610,6 +610,20 @@ const app = createApp({
   // enforcement is live — no plumbing to add later.
   invokeDeps,
   telemetry: telemetry.status(),
+  /*
+   * Media URLs, re-signed on the way out. Only with R2 configured: the host
+   * and bucket are what `keyFromUrl` matches on, and an Azure or local store
+   * mints URLs this does not know how to read.
+   */
+  ...(envSet('R2_ACCOUNT_ID')
+    ? {
+        mediaUrls: {
+          store: blobStore(),
+          host: `${envStr('R2_ACCOUNT_ID', '').trim().toLowerCase()}.r2.cloudflarestorage.com`,
+          bucket: envStr('R2_BUCKET', 'assets'),
+        },
+      }
+    : {}),
   ...(stripeWebhook ? { stripeWebhook } : {}),
   ...(whatsappWebhook ? { whatsappWebhook } : {}),
   ...(engageWebhook ? { engageWebhook } : {}),

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Guarantees the org has **at least one genome** before the shell renders.
@@ -36,7 +37,7 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
       if (res.status !== 'succeeded') {
         // A gate that fails open would let an org-less-looking error hide
         // behind a redirect it did not ask for; name it instead.
-        setFailed(res.status === 'failed' ? res.error.message : 'That needs approval before it can run.');
+        setFailed(res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.');
         return;
       }
 

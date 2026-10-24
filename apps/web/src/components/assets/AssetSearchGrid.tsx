@@ -9,6 +9,7 @@ import { relativeTime } from '@/lib/relativeTime';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
 import { AssetDetailPanel, type DetailAsset } from './AssetDetailPanel';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `asset.retrieve` — real since P2, reached from no screen until now.
@@ -159,7 +160,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
         setError(null);
       } else {
         setResults([]);
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       }
       return;
     }
@@ -176,7 +177,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
       setError(null);
     } else {
       setResults([]);
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
     }
   }, [genome, intent, role, page]);
 
@@ -196,7 +197,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
     const res = await invoke('asset.caption.set', { genomeId: genome.genomeId, assetId, caption });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That change was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
       return;
     }
     setEditing(null);
@@ -211,7 +212,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
     const res = await invoke('asset.archive', { genomeId: genome.genomeId, assetId, archived: true });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That change was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
       return;
     }
     await search();

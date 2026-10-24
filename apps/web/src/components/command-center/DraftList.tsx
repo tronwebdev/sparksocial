@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { VariantResult } from './VariantResult';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * CC-03 — the Draft List: everything a genome has in flight, across every
@@ -92,7 +93,7 @@ export function DraftList({
       const res = await invoke<{ items: DraftListItem[] }>('content.list', { genomeId, limit: 20 });
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         setItems([]);
         return;
       }
@@ -112,7 +113,7 @@ export function DraftList({
     if (res.status !== 'succeeded') {
       setSyncErrors((e) => ({
         ...e,
-        [contentItemId]: res.status === 'failed' ? res.error.message : 'That request was gated.',
+        [contentItemId]: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.',
       }));
       return;
     }
@@ -134,7 +135,7 @@ export function DraftList({
     ]);
     setMetricsLoading(null);
     if (pm.status !== 'succeeded') {
-      setMetricsError((e) => ({ ...e, [contentItemId]: pm.status === 'failed' ? pm.error.message : 'That request was gated.' }));
+      setMetricsError((e) => ({ ...e, [contentItemId]: pm.status === 'failed' ? userMessage(pm.error) : 'That request was gated.' }));
       return;
     }
     setPostMetrics((m) => ({ ...m, [contentItemId]: pm.output }));

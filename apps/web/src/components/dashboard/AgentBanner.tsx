@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The dashboard's agent banner — `SparkSocial Dashboard.dc.html`, the dark card
@@ -94,7 +95,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
     const res = await invoke<{ paused: boolean }>(paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That was not allowed.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
       return;
     }
     onChanged?.();
@@ -107,7 +108,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
     const res = await invoke('agent.frequency.set', { postsPerWeek: perWeek });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That was not allowed.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
       return;
     }
     setFreqOpen(false);

@@ -14,6 +14,7 @@ import {
   type QueueFilterState,
 } from './QueueFilters';
 import { SparkMark } from '@/components/brand/SparkMark';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Calendar Mode — the month grid on the Agent Calendar tab
@@ -145,7 +146,7 @@ export function CalendarMonthGrid({
       limit: 100,
     });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setError(null);

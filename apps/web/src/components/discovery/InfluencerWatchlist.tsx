@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * §8.9's second watchlist — the accounts a brand studies.
@@ -90,7 +91,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
     } else {
       setError(
         res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'Only an owner, admin or editor can see which accounts this brand watches.',
       );
       setWatchlist([]);
@@ -114,7 +115,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
     });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setWatchlist(res.output.watchlist);
@@ -148,7 +149,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
     }
     // Shown as written. The tool explains why it cannot look — paraphrasing it
     // into "no results" is precisely the lie this branch exists to avoid.
-    setReviewBlocked(res.status === 'failed' ? res.error.message : 'That request was gated.');
+    setReviewBlocked(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
   }
 
   if (!genomeId) return null;

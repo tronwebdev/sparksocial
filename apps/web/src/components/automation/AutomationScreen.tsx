@@ -11,6 +11,7 @@ import { RecipeWizard, type Validation } from './RecipeWizard';
 import { configFor, emptyDraft, intervalMinutesFor, type WizardDraft } from './wizardDraft';
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import { useAutomation, type ManageRow, type QueueRow, type RecipeItem } from './useAutomation';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Automation Recipes — `ui build/SparkSocial Automation.dc.html`.
@@ -112,7 +113,7 @@ export function AutomationScreen() {
       setValidation(
         res.status === 'succeeded'
           ? res.output
-          : { valid: false, error: res.status === 'failed' ? res.error.message : 'That check was gated.', notApplied: [] },
+          : { valid: false, error: res.status === 'failed' ? userMessage(res.error) : 'That check was gated.', notApplied: [] },
       );
     })();
     return () => {

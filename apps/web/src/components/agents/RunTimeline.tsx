@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * THE AGENT TIMELINE (plan §4.5).
@@ -88,7 +89,7 @@ export function RunTimeline() {
   const loadRuns = useCallback(async () => {
     const res = await invoke<{ runs: RunSummary[] }>('agent.run.list', { limit: 25 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setRuns([]);
       return;
     }
@@ -195,7 +196,7 @@ function RunDetailPanel({
       if (cancelled) return;
 
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setError(null);
@@ -250,7 +251,7 @@ function RunDetailPanel({
 
       {detail.error ? (
         <p className="mt-4 rounded bg-destructive/10 p-3 text-13 text-destructive">
-          {detail.error.code}: {detail.error.message}
+          {detail.error.code}: {userMessage(detail.error)}
         </p>
       ) : null}
 

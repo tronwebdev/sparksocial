@@ -14,6 +14,7 @@ import {
 } from './QueueFilters';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { EmptyCard } from '@/components/common/EmptyCard';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * §7.5's **Plan** queue — the fourth of the four the PRD makes first-class.
@@ -149,7 +150,7 @@ export function PlanQueue({
     });
 
     if (scheduled.status !== 'succeeded') {
-      setError(scheduled.status === 'failed' ? scheduled.error.message : 'That request was gated.');
+      setError(scheduled.status === 'failed' ? userMessage(scheduled.error) : 'That request was gated.');
       return;
     }
     setError(null);
@@ -211,7 +212,7 @@ export function PlanQueue({
 
       if (payload.status !== 'succeeded') {
         setError(
-          payload.status === 'failed' ? payload.error.message : 'Reading that post for publishing was gated.',
+          payload.status === 'failed' ? userMessage(payload.error) : 'Reading that post for publishing was gated.',
         );
         return;
       }
@@ -233,7 +234,7 @@ export function PlanQueue({
       if (published.status !== 'succeeded') {
         setError(
           published.status === 'failed'
-            ? published.error.message
+            ? userMessage(published.error)
             : 'That post is held for approval — it will go out once approved.',
         );
         return;

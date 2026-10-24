@@ -15,6 +15,7 @@ import { FolderCard, CreateFolderCard, FoldersEmptyState, UnfiledCard } from './
 import { closesFolderMenu } from './library/menuDismiss';
 import { AssetGrid, AssetList } from './library/AssetViews';
 import { assetName, type Asset, type Folder } from './library/types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * ASSETS LIBRARY — `ui build/SparkSocial Assets Library.dc.html`.
@@ -151,7 +152,7 @@ export function AssetsLibraryScreen() {
     if (!genomeId) return;
     const res = await invoke<{ folders: Folder[] }>('asset.folder.list', { genomeId });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setFolders([]);
       return;
     }
@@ -314,7 +315,7 @@ export function AssetsLibraryScreen() {
     if (!genomeId) return;
     const res = await invoke('asset.archive', { genomeId, assetId: a.assetId }, `asset-archive:${a.assetId}`);
     if (res.status !== 'succeeded') {
-      say(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      say(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setAssets((prev) => prev?.filter((x) => x.assetId !== a.assetId) ?? prev);

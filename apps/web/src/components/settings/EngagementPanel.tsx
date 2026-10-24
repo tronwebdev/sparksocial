@@ -24,6 +24,7 @@ import {
   type PlatformsRead,
   type Step,
 } from './engagement/types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * ENGAGEMENT INTELLIGENCE — `Settings WS Engagement Start` through `… Done`.
@@ -205,7 +206,7 @@ export function EngagementPanel() {
               engagementTypes: draft.types,
             });
       if (res.status !== 'succeeded') {
-        return res.status === 'failed' ? `${p.label}: ${res.error.message}` : `${p.label} needs approval.`;
+        return res.status === 'failed' ? `${p.label}: ${userMessage(res.error)}` : `${p.label} needs approval.`;
       }
     }
     return null;
@@ -240,7 +241,7 @@ export function EngagementPanel() {
     if (res.status !== 'succeeded') {
       setMessage({
         kind: 'err',
-        text: res.status === 'failed' ? res.error.message : 'That change needs approval.',
+        text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.',
       });
       return;
     }

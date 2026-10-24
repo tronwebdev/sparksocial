@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * DELETE A BRAND — the only irreversible button in the product.
@@ -83,7 +84,7 @@ export function DeleteBrandModal({
       const res = await invoke<Preview>('brand.deletion.preview', { brandId });
       if (!live) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setPreview(res.output);
@@ -111,7 +112,7 @@ export function DeleteBrandModal({
 
     if (held.status === 'failed') {
       setBusy(false);
-      setError(held.error.message);
+      setError(userMessage(held.error));
       return;
     }
 
@@ -130,7 +131,7 @@ export function DeleteBrandModal({
       if (released.status !== 'succeeded') {
         setError(
           released.status === 'failed'
-            ? released.error.message
+            ? userMessage(released.error)
             : 'The deletion is waiting for approval in the Command Center.',
         );
         return;

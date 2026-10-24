@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SettingsSaveBar } from './SettingsShell';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Overview`, measured off the prototype's own DOM.
@@ -137,7 +138,7 @@ export function OverviewSection() {
       const res = await invoke('brand.settings.patch', { brandId, name: name.trim() });
       if (res.status !== 'succeeded') {
         setBusy(false);
-        setNote(res.status === 'failed' ? res.error.message : 'Renaming this brand needs an approval.');
+        setNote(res.status === 'failed' ? userMessage(res.error) : 'Renaming this brand needs an approval.');
         return;
       }
     }
@@ -146,7 +147,7 @@ export function OverviewSection() {
       const res = await invoke('genome.identity.set', { genomeId, identity: { one_liner: oneLiner.trim() } });
       if (res.status !== 'succeeded') {
         setBusy(false);
-        setNote(res.status === 'failed' ? res.error.message : 'Saving the description needs an approval.');
+        setNote(res.status === 'failed' ? userMessage(res.error) : 'Saving the description needs an approval.');
         return;
       }
     }

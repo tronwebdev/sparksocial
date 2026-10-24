@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The Agency Portal — plan §6.9, §12 P6. Org-level plan/governance/SSO and
@@ -77,7 +78,7 @@ export function AgencyPanel() {
       invoke<{ genomes: BrandRow[] }>('genome.list', {}),
     ]);
     if (settingsRes.status === 'succeeded') setSettings(settingsRes.output);
-    else setError(settingsRes.status === 'failed' ? settingsRes.error.message : 'That request was gated.');
+    else setError(settingsRes.status === 'failed' ? userMessage(settingsRes.error) : 'That request was gated.');
     if (brandsRes.status === 'succeeded') setBrands(brandsRes.output.genomes);
   }, []);
 
@@ -305,7 +306,7 @@ function CreditsCard({
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onGranted(res.output.balance);
@@ -365,7 +366,7 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
     const res = await invoke('brand.create', { name, category }, crypto.randomUUID());
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onCreated();

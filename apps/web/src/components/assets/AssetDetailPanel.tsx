@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { ASSET_ROLES } from './roles';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `asset.rights.set` / `.cooldown.check` / `.reuse` / `.folder.*` — real
@@ -83,7 +84,7 @@ export function AssetDetailPanel({
       setRightsStatus(res.output.rightsStatus);
       onChanged();
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -98,7 +99,7 @@ export function AssetDetailPanel({
     if (res.status === 'succeeded') {
       setCooldown(res.output.results[0] ?? null);
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -115,7 +116,7 @@ export function AssetDetailPanel({
       setFolderId(res.output.folderId ?? '');
       onChanged();
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -132,7 +133,7 @@ export function AssetDetailPanel({
       await moveToFolder(res.output.folderId);
     } else {
       setFolderBusy(false);
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 
@@ -145,7 +146,7 @@ export function AssetDetailPanel({
       setMessage({ kind: 'ok', text: `Marked used — usage count now ${res.output.usageCount}.` });
       onChanged();
     } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was gated.' });
+      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
     }
   }
 

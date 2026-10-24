@@ -5,6 +5,7 @@ import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
 import { Thumb } from './AssetViews';
 import { assetKind, assetName, assetStamp, type Asset } from './types';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Rights clearance` — the list behind "N awaiting rights clearance".
@@ -76,7 +77,7 @@ export function RightsModal({
     });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     onChanged(`${assetName(a)} cleared`);

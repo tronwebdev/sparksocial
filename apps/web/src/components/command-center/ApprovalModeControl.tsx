@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * CC-01's approval-mode control — PRD §7.1/§9's approval ladder, made
@@ -50,7 +51,7 @@ export function ApprovalModeControl() {
     const res = await invoke<ApprovalModeView>('agent.approval_mode.set', { mode });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That change was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
       return;
     }
     setView(res.output);

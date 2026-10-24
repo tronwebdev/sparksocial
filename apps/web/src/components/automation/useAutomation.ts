@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { KIND_META, statusChip, type RecipeKind, type StatusChip } from './recipeMeta';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Everything the Automation screen reads, in one place.
@@ -97,7 +98,7 @@ export function useAutomation(genomeId: string | undefined) {
     /* One message, from whichever failed first — three banners for one outage
        is three times the noise and no more information. */
     const failed = [r, o, c].find((x) => x.status !== 'succeeded');
-    setError(failed && failed.status === 'failed' ? failed.error.message : null);
+    setError(failed && failed.status === 'failed' ? userMessage(failed.error) : null);
   }, [genomeId]);
 
   useEffect(() => {

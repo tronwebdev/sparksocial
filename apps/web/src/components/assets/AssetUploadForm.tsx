@@ -6,6 +6,7 @@ import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The upload half of the Asset Graph — `asset.upload_url` → PUT bytes
@@ -95,7 +96,7 @@ export function AssetUploadForm({
 
     if (presigned.status !== 'succeeded') {
       setBusy(false);
-      setMessage({ kind: 'err', text: presigned.status === 'failed' ? presigned.error.message : 'Upload was gated.' });
+      setMessage({ kind: 'err', text: presigned.status === 'failed' ? userMessage(presigned.error) : 'Upload was gated.' });
       return;
     }
 
@@ -136,7 +137,7 @@ export function AssetUploadForm({
 
     setBusy(false);
     if (ingested.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: ingested.status === 'failed' ? ingested.error.message : 'Ingest was gated.' });
+      setMessage({ kind: 'err', text: ingested.status === 'failed' ? userMessage(ingested.error) : 'Ingest was gated.' });
       return;
     }
     setMessage({ kind: 'ok', text: `Added — captioned as "${ingested.output.caption}"` });

@@ -5,6 +5,7 @@ import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PostType } from './DraftDrawer';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The Drafts List — `DP list.dc.html`, and the tab that did nothing.
@@ -146,7 +147,7 @@ export function DraftsList({
       const res = await invoke<{ items: ContentListItem[] }>('content.list', { genomeId, limit: 50 });
       if (!live) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That list was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That list was gated.');
         setItems([]);
         return;
       }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AssetUploadForm } from '@/components/assets/AssetUploadForm';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ONB-04` — the step that gives SPARK something to write *from*.
@@ -81,7 +82,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
     setCtaMsg(
       res.status === 'succeeded'
         ? { kind: 'ok', text: 'Saved. Every post that ends on an ask will use those words.' }
-        : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval before it can run.' },
+        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.' },
     );
   }
 
@@ -104,7 +105,7 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
             kind: 'ok',
             text: `Saved ${statements.length} ${statements.length === 1 ? 'opinion' : 'opinions'}. SPARK will write from ${statements.length === 1 ? 'it' : 'them'} rather than around them.`,
           }
-        : { kind: 'err', text: res.status === 'failed' ? res.error.message : 'That needs approval before it can run.' },
+        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.' },
     );
   }
 

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import type { EngagementItem } from './EngagementFeed';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The "approve & send" loop PRD §8.8 describes, attached to one feed card:
@@ -49,7 +50,7 @@ export function ReplyAction({
       regenerate,
     });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'Drafting was held: check the review queue.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Drafting was held: check the review queue.');
       setPhase('idle');
       return;
     }
@@ -77,7 +78,7 @@ export function ReplyAction({
     if (res.status === 'gated') {
       setGated(res.decision.reason ?? `Held: ${res.decision.kind}.`);
     } else {
-      setError(res.error.message);
+      setError(userMessage(res.error));
     }
   }
 

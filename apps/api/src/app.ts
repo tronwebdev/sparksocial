@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { registerWhatsappWebhook, type WhatsappWebhookDeps } from './whatsapp-webhook.js';
 import { registerEngageWebhook, type EngageWebhookDeps } from './engage-webhook.js';
 import { registerStripeWebhook, type StripeWebhookDeps } from './stripe-webhook.js';
+import { mightHaveMediaUrls, refreshMediaUrls } from './media-urls.js';
 import { streamSSE } from 'hono/streaming';
 import { ToolError } from '@sparksocial/shared/types';
 import {
@@ -32,6 +33,16 @@ import type { RunEvent, RunEventBus, RunAgentArgs, RunResult } from '@sparksocia
  */
 
 export interface AppDeps {
+  /**
+   * Re-signs our own media URLs on the way out — see `media-urls.ts`.
+   *
+   * Absent when no cloud store is configured, which is also when there is
+   * nothing to re-sign. Every generated picture and render is stored as the
+   * presigned URL it was uploaded with, so a draft read a fortnight later has
+   * dead images; the key is recoverable from the stored URL, so this repairs
+   * every row ever written without a migration.
+   */
+  mediaUrls?: { store: import('@sparksocial/storage').BlobStore; host: string; bucket: string };
   /**
    * Stripe's payment webhook. Absent → the route does not exist.
    *
@@ -160,8 +171,18 @@ export function createApp(deps: AppDeps) {
     /* The HTTP status mirrors the governance decision, so a client cannot
      * mistake "held for approval" for "done". */
     switch (result.status) {
-      case 'succeeded':
-        return c.json({ status: 'succeeded', callId: result.call.id, output: result.output, why: result.why });
+      case 'succeeded': {
+        /*
+         * Only when the body mentions our host at all, which is a string scan
+         * rather than a typed walk — the common case is "no media here" and it
+         * should cost almost nothing.
+         */
+        const output =
+          deps.mediaUrls && mightHaveMediaUrls(result.output, deps.mediaUrls.host)
+            ? await refreshMediaUrls(result.output, deps.mediaUrls)
+            : result.output;
+        return c.json({ status: 'succeeded', callId: result.call.id, output, why: result.why });
+      }
       case 'gated':
         return c.json(
           {

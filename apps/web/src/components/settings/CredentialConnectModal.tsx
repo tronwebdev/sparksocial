@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { Button } from '@/components/ui/button';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Connecting a platform that has no OAuth redirect.
@@ -58,7 +59,7 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
     setBusy(false);
     if (res.status !== 'succeeded') {
       setError(
-        res.status === 'failed' ? res.error.message : 'Connecting an account needs an approval this screen cannot give.',
+        res.status === 'failed' ? userMessage(res.error) : 'Connecting an account needs an approval this screen cannot give.',
       );
       return;
     }

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { GenomeDimensions, Explanation, untrusted, ToolError } from '@sparksocial/shared/types';
 import { PublicHttpUrl } from '@sparksocial/shared/safeUrl';
+import { matchBrandFont } from '@sparksocial/shared/brandFonts';
 import { crawl as defaultCrawl, type CrawlFailure, type CrawlOptions, type CrawlResult } from './crawl.js';
 import { inferGenome, type GenomeInferenceClient } from './infer.js';
 import type { CrawledKit } from './brandKit.js';
@@ -528,7 +529,33 @@ async function saveKit(
 
     if (kit.colors.length > 0 && !(existing.brandColors?.length)) patch.brandColors = kit.colors;
     if (kit.logoUrl && !existing.logoUrl) patch.logoUrl = kit.logoUrl;
-    if (kit.fonts && !existing.brandFonts) patch.brandFonts = kit.fonts;
+    /*
+     * ── The crawled font, mapped to one we can render ────────────────────
+     *
+     * `kit.fonts` is the family as the site's own stylesheet spells it —
+     * "Plus Jakarta Sans", "Asgard Trial", "Söhne". This wrote it straight
+     * into `brandFonts`, which is validated against six ids, so onboarding a
+     * brand whose site used anything else failed its first save with the enum
+     * error on screen:
+     *
+     *   brandFonts.display: Invalid enum value. Expected 'inter' | … received 'Asgard Trial'
+     *
+     * Which is nearly every real site. Widening the column was the wrong fix:
+     * the six are the faces both renderers can actually fetch, and storing a
+     * name nothing resolves would trade a loud error for a quiet wrong font.
+     *
+     * `matchBrandFont` returns the nearest renderable face, or nothing when
+     * the name says nothing about the shape. Nothing is a good answer — this
+     * is a proposal, applied only to a brand that has chosen no fonts yet, and
+     * absent means "the default".
+     */
+    if (kit.fonts && !existing.brandFonts) {
+      const display = matchBrandFont(kit.fonts.display);
+      const body = matchBrandFont(kit.fonts.body);
+      if (display || body) {
+        patch.brandFonts = { ...(display ? { display } : {}), ...(body ? { body } : {}) };
+      }
+    }
 
     if (Object.keys(patch).length === 0) return;
 

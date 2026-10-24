@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The "controls" PRD §CC-01 names: the kill switch (`agent.pause`/`agent.resume`)
@@ -71,7 +72,7 @@ export function AgentControlBar({
     const res = await invoke<AgentStatusView>(status.paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     publish(res.output);
@@ -89,7 +90,7 @@ export function AgentControlBar({
     const res = await invoke<AgentStatusView & { why: { summary: string } }>('agent.frequency.set', { postsPerWeek });
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     publish(res.output);

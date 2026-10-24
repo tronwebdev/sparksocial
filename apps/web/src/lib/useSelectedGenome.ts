@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from './tools';
 import { readSelectedGenome } from './selectedGenome';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Which genome the brand switcher has selected — the `spark_genome` cookie's
@@ -37,7 +38,7 @@ export function useSelectedGenome(): UseSelectedGenome {
       const res = await invoke<{ genomes: SelectedGenome[] }>('genome.list', {});
       if (cancelled) return;
       if (res.status !== 'succeeded' || res.output.genomes.length === 0) {
-        setError(res.status === 'failed' ? res.error.message : 'No brands yet.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'No brands yet.');
         setLoading(false);
         return;
       }

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `genome.consent.grant` / `.revoke` / `.list` — real since P3, unreached from
@@ -47,7 +48,7 @@ export function ConsentPanel() {
       setRecords(res.output.records);
       setError(null);
     } else {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
     }
   }, []);
 
@@ -72,7 +73,7 @@ export function ConsentPanel() {
     );
     setBusy(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     setSubject('');
@@ -85,7 +86,7 @@ export function ConsentPanel() {
     const res = await invoke<ConsentRecord>('genome.consent.revoke', { consentId });
     setRevoking(null);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     await reload();

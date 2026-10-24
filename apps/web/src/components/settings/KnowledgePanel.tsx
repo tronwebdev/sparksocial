@@ -9,6 +9,7 @@ import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `ONB-02` / §8.12 — what this brand knows, and the way in.
@@ -100,7 +101,7 @@ export function KnowledgePanel() {
       setList(res.output);
       setError(null);
     } else {
-      setError(res.status === 'failed' ? res.error.message : 'Knowledge is not visible to this role.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Knowledge is not visible to this role.');
     }
   }, [genomeId]);
 
@@ -123,7 +124,7 @@ export function KnowledgePanel() {
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That crawl was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That crawl was held for review.' });
       return;
     }
     // The tool reports a `failure` rather than throwing when a crawl reaches a
@@ -156,7 +157,7 @@ export function KnowledgePanel() {
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That request was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was held for review.' });
       return;
     }
     setNote({ kind: 'ok', text: `Attached “${res.output.docId}”.` });
@@ -196,7 +197,7 @@ export function KnowledgePanel() {
       setBusyDoc(false);
       setNote({
         kind: 'err',
-        text: presigned.status === 'failed' ? presigned.error.message : 'That upload was gated.',
+        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
       });
       return;
     }
@@ -220,7 +221,7 @@ export function KnowledgePanel() {
       // it is probably a scan" is an instruction, not a failure.
       setNote({
         kind: 'err',
-        text: read.status === 'failed' ? read.error.message : 'Reading that document was gated.',
+        text: read.status === 'failed' ? userMessage(read.error) : 'Reading that document was gated.',
       });
       return;
     }
@@ -269,7 +270,7 @@ export function KnowledgePanel() {
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That check was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That check was held for review.' });
       return;
     }
     setClaimResult({ grounded: res.output.grounded, ...(res.output.fixAction ? { fixAction: res.output.fixAction } : {}) });

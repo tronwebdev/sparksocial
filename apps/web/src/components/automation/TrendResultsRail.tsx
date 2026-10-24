@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { compactVolume, saturationWord, type RankedTrendItem } from '@/components/discovery/TrendCard';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * "Posts Results" — the rail beside the AutoTrend query step, `atResults`.
@@ -75,7 +76,7 @@ export function TrendResultsRail({
       if (cancelled) return;
       if (res.status !== 'succeeded') {
         setTrends([]);
-        setError(res.status === 'failed' ? res.error.message : 'That read was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That read was gated.');
         return;
       }
       setTrends(res.output.trends);

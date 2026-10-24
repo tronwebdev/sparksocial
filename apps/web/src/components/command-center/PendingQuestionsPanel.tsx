@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `human.ask`'s own doc comment calls this "the other half of the Command
@@ -60,7 +61,7 @@ export function PendingQuestionsPanel() {
   async function load() {
     const res = await invoke<{ questions: PendingQuestion[] }>('human.pending', { limit: 20 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setQuestions([]);
       return;
     }
@@ -82,7 +83,7 @@ export function PendingQuestionsPanel() {
     if (res.status !== 'succeeded') {
       setAnswerErrors((e) => ({
         ...e,
-        [messageId]: res.status === 'failed' ? res.error.message : 'That answer was gated.',
+        [messageId]: res.status === 'failed' ? userMessage(res.error) : 'That answer was gated.',
       }));
       return;
     }

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { CreditUsageSection } from './CreditUsageSection';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Buying credits, and what has happened to the ones already bought.
@@ -74,7 +75,7 @@ export function BillingSection() {
     if (res.status !== 'succeeded') {
       setBusy(null);
       setError(
-        res.status === 'failed' ? res.error.message : 'Only an owner can buy credits for this organisation.',
+        res.status === 'failed' ? userMessage(res.error) : 'Only an owner can buy credits for this organisation.',
       );
       return;
     }

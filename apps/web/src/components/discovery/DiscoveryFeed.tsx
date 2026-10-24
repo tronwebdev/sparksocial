@@ -13,6 +13,7 @@ import { DiscoveryFilterRail, type RailSection } from './DiscoveryFilterRail';
 import { TrendMediaViewer } from './TrendMediaViewer';
 import { RepurposeModal } from './RepurposeModal';
 import { ReshareModal } from './ReshareModal';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Discovery — `SparkSocial Discovery.dc.html`, `DISC-01`/`DISC-02`, plan §12 P5.
@@ -213,7 +214,7 @@ export function DiscoveryFeed() {
       why: { summary: string };
     }>('trend.rank', { genomeId: id, limit: 15 });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setTrends([]);
       return;
     }

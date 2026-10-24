@@ -8,6 +8,7 @@ import { invoke } from '@/lib/tools';
 import { useAuth } from '@clerk/nextjs';
 import { readSelectedGenome } from '@/lib/selectedGenome';
 import { relativeTime } from '@/lib/relativeTime';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * What SPARK has told you — the other half of `PendingQuestionsPanel`.
@@ -89,7 +90,7 @@ export function NotificationsPanel() {
       limit: 20,
     });
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setItems([]);
       return;
     }
@@ -111,7 +112,7 @@ export function NotificationsPanel() {
     const res = await invoke<{ unreadCount: number }>('human.notifications.read', { all: true });
     setMarking(false);
     if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
     // Reload rather than patching locally: the tool reports what it actually

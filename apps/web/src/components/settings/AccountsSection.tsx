@@ -6,6 +6,7 @@ import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { platformLabel } from '@/lib/platforms';
 import { CredentialConnectModal } from './CredentialConnectModal';
 import { PublishHealthPanel } from './PublishHealthPanel';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Settings WS Social Accounts`, measured relative to the 1350 content card:
@@ -122,7 +123,7 @@ export function AccountsSection() {
     const res = await invoke<{ platforms: Platform[] }>('integration.health', {});
     if (res.status !== 'succeeded') {
       setPlatforms([]);
-      setError(res.status === 'failed' ? res.error.message : 'Reading connections needs an approval.');
+      setError(res.status === 'failed' ? userMessage(res.error) : 'Reading connections needs an approval.');
       return;
     }
     setPlatforms(res.output.platforms);
@@ -165,7 +166,7 @@ export function AccountsSection() {
     if (res.status !== 'succeeded') {
       setError(
         res.status === 'failed'
-          ? res.error.message
+          ? userMessage(res.error)
           : 'Connecting an account needs an approval this screen cannot give.',
       );
       return;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `SET-WS-01` — take a brand out, bring a brand in.
@@ -84,7 +85,7 @@ export function BrandTransferPanel() {
     const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId: selected });
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That export was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That export was held for review.' });
       return;
     }
 
@@ -171,7 +172,7 @@ export function BrandTransferPanel() {
     );
     setBusy(null);
     if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? res.error.message : 'That import was held for review.' });
+      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That import was held for review.' });
       return;
     }
     setNote({

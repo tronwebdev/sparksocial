@@ -9,6 +9,7 @@ import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from
 import { RepurposeModal } from './RepurposeModal';
 import { ReshareModal } from './ReshareModal';
 import { TrendMediaViewer, youTubeId } from './TrendMediaViewer';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `DISC-02` — the trend detail screen, PRD §8.9, drawn to
@@ -323,7 +324,7 @@ export function TrendDetail({
       const res = await invoke<TrendDetailView>('trend.detail', { genomeId, trendId, seriesDays: days });
       if (cancelled) return;
       if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? res.error.message : 'That request was gated.');
+        setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
         return;
       }
       setView(res.output);
