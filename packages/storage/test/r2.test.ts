@@ -296,3 +296,54 @@ describe('the headers it tells a client to send', () => {
     }
   });
 });
+
+/**
+ * THE TTL THAT KILLED EVERY STORED URL AFTER FIFTEEN MINUTES.
+ *
+ * Observed in production:
+ *
+ *   [warn] render queue: could not render this item
+ *   Error loading image with src: …&X-Amz-Expires=900&…
+ *
+ * 900 seconds is the *upload* window — how long a client has to PUT. It was
+ * also used to sign the read URL that comes back, and that URL is written into
+ * a beat, a render row or an asset and referenced for the life of the content.
+ * So every piece of generated media died a quarter of an hour after it was
+ * made, and the render queue — which runs later by design — hit it every time.
+ *
+ * The two numbers answer different questions and had been sharing one
+ * variable. `put()` three functions down already used the long one.
+ */
+describe('read urls outlive the upload window', () => {
+  const expiresOf = (url: string) => Number(new URL(url).searchParams.get('X-Amz-Expires'));
+
+  it('signs a presigned upload’s read url for days, not minutes', async () => {
+    const { client } = harness();
+    const store = createR2BlobStore({ ...base, client });
+
+    const out = await store.presignUpload({ key: 'org/gen/2026/10/x.png', contentType: 'image/png' });
+
+    // The upload window stays short — a PUT URL is a capability to write.
+    expect(expiresOf(out.uploadUrl)).toBe(900);
+    expect(expiresOf(out.readUrl)).toBe(7 * 24 * 3600);
+  });
+
+  /*
+   * `media-urls.ts` re-signs on the way out and calls this with no TTL. With
+   * the old default it was repairing dead URLs with URLs that died almost as
+   * fast — a page served at noon had broken images by quarter past.
+   */
+  it('defaults a bare readUrl to the long ttl too', async () => {
+    const { client } = harness();
+    const store = createR2BlobStore({ ...base, client });
+
+    expect(expiresOf(await store.readUrl('org/gen/2026/10/x.png'))).toBe(7 * 24 * 3600);
+  });
+
+  it('still honours a ttl a caller asks for outright', async () => {
+    const { client } = harness();
+    const store = createR2BlobStore({ ...base, client });
+
+    expect(expiresOf(await store.readUrl('org/gen/2026/10/x.png', 60))).toBe(60);
+  });
+});

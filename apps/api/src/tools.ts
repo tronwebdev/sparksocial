@@ -265,6 +265,7 @@ import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
 import { createSatoriRunner } from './satori-runner.js';
 import { envSet, envStr, envNum } from './env.js';
+import { mightHaveMediaUrls, refreshMediaUrls } from './media-urls.js';
 import {
   CREDIT_PACKS,
   createCheckoutSession,
@@ -955,9 +956,42 @@ export function localBlobStoreForRoutes(): LocalDiskBlobStore | undefined {
  * if the same instance survives across renders. `register()` runs once at
  * startup, so closing over a single call here is enough.
  */
+/**
+ * Beats whose media URLs are fresh, for the renderers.
+ *
+ * ── Why the runners need this and the HTTP boundary was not enough ──────
+ *
+ * `app.ts` re-signs media on the way out of a tool call, which fixes every
+ * URL a browser sees. The render queue never goes that way: it calls
+ * `compose.render` server-side, the handler reads the stored URL straight out
+ * of `content_items.copy`, and Remotion fetches it. Observed in production:
+ *
+ *   render queue: could not render this item
+ *   Error loading image with src: …&X-Amz-Expires=900&…
+ *
+ * Fifteen minutes, because `presignUpload` was signing its read URL with the
+ * *upload* TTL — fixed at source in `r2.ts`. This is the other half, and it
+ * is worth having even with that fixed: a 7-day read URL still expires, and
+ * a post scheduled three weeks out is rendered long after it was written.
+ *
+ * Applied at the runner rather than inside `packages/compose`, because the
+ * blob store lives here and compose is deliberately free of vendor clients.
+ */
+function withFreshMedia<T extends { beats: unknown }>(store: BlobStore): (args: T) => Promise<T> {
+  const host = envSet('R2_ACCOUNT_ID')
+    ? `${envStr('R2_ACCOUNT_ID', '').trim().toLowerCase()}.r2.cloudflarestorage.com`
+    : '';
+  const bucket = envStr('R2_BUCKET', 'assets');
+
+  return async (args: T): Promise<T> => {
+    if (!host || !mightHaveMediaUrls(args.beats, host)) return args;
+    return { ...args, beats: await refreshMediaUrls(args.beats, { store, host, bucket }) };
+  };
+}
+
 function remotionRunner() {
   const store = blobStore();
-  return createRemotionRunner({
+  const base = createRemotionRunner({
     async publish(localPath, kind) {
       const bytes = await readFile(localPath);
       const contentType = kind === 'video' ? 'video/mp4' : 'image/png';
@@ -969,17 +1003,35 @@ function remotionRunner() {
       return url;
     },
   });
+
+  /*
+   * Both entry points, because both read the beats' media. Thin wrappers
+   * rather than a change inside the runner: the runner's job is to draw, and
+   * which URLs are still valid is a storage concern.
+   */
+  const fresh = withFreshMedia<Parameters<typeof base.renderStill>[0]>(store);
+  return {
+    renderVideo: async (args: Parameters<typeof base.renderVideo>[0]) => base.renderVideo(await fresh(args)),
+    renderStill: async (args: Parameters<typeof base.renderStill>[0]) => base.renderStill(await fresh(args)),
+  };
 }
 
 /** Same shape as `remotionRunner()` above, one instance for the process lifetime so the loaded font is cached, not re-read per render. */
 function satoriRunner() {
   const store = blobStore();
-  return createSatoriRunner({
+  const base = createSatoriRunner({
     async publish(buffer, _kind) {
       const { url } = await store.put({ key: `renders/${randomUUID()}.png`, contentType: 'image/png', bytes: buffer });
       return url;
     },
   });
+
+  // Satori fetches a backdrop the same way Remotion does — see
+  // `withFreshMedia`. It draws stills only, so there is one entry point.
+  const fresh = withFreshMedia<Parameters<typeof base.renderStill>[0]>(store);
+  return {
+    renderStill: async (args: Parameters<typeof base.renderStill>[0]) => base.renderStill(await fresh(args)),
+  };
 }
 
 /**

@@ -171,7 +171,22 @@ export function createR2BlobStore(opts: R2Options): BlobStore {
         throw storageUnavailable(e, opts.bucket);
       }
 
-      const readUrl = await signGet(key, ttlSec);
+      /*
+       * The *read* URL is long-lived; the upload window is not.
+       *
+       * This signed the read with `ttlSec` — the upload TTL, 15 minutes. The
+       * two have nothing to do with each other: a client has to PUT within a
+       * short window, and the URL that comes back is written into a beat, a
+       * render row or an asset and referenced for as long as that content
+       * exists. Fifteen minutes later it was dead, which is what the render
+       * queue kept hitting:
+       *
+       *   Error loading image with src: …&X-Amz-Expires=900&…
+       *
+       * `put()` three functions down already used the long TTL for exactly
+       * this reason. This is the same call with the same justification.
+       */
+      const readUrl = await signGet(key, LONG_READ_TTL_SEC);
       return {
         uploadUrl,
         readUrl,
@@ -186,7 +201,19 @@ export function createR2BlobStore(opts: R2Options): BlobStore {
       };
     },
 
-    async readUrl(key, ttlSec = DEFAULT_UPLOAD_TTL_SEC) {
+    /*
+     * Defaults to the long TTL, not the upload one.
+     *
+     * Every caller of this is reading something to show or to render, and the
+     * 15-minute default meant a page served at noon had broken images at
+     * quarter past. `media-urls.ts` re-signs on the way out and was handed the
+     * same 900 seconds, so it was repairing dead URLs with URLs that died
+     * almost as fast.
+     *
+     * A caller that genuinely wants a short-lived read — a one-off probe —
+     * still passes one.
+     */
+    async readUrl(key, ttlSec = LONG_READ_TTL_SEC) {
       return signGet(key, ttlSec);
     },
 

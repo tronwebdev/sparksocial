@@ -45,6 +45,12 @@ export interface AzureBlobOptions {
 const DELEGATION_TTL_MIN = 60;
 const DELEGATION_REFRESH_MARGIN_MS = 60_000;
 const DEFAULT_UPLOAD_TTL_SEC = 900;
+/**
+ * A read URL is written into a beat, a render row or an asset and referenced
+ * for as long as that content exists — the same reasoning, and the same
+ * number, as `r2.ts`.
+ */
+const LONG_READ_TTL_SEC = 7 * 24 * 3600;
 
 export function createAzureBlobStore(opts: AzureBlobOptions): BlobStore {
   const accountUrl = `https://${opts.account}.blob.core.windows.net`;
@@ -104,7 +110,10 @@ export function createAzureBlobStore(opts: AzureBlobOptions): BlobStore {
       };
     },
 
-    async readUrl(key, ttlSec = DEFAULT_UPLOAD_TTL_SEC) {
+    /* Long by default, for the reason `r2.ts` states at the same method: a
+       read URL is written into content and referenced for its lifetime, and
+       the upload window is 15 minutes. */
+    async readUrl(key, ttlSec = LONG_READ_TTL_SEC) {
       return sign(key, 'r', ttlSec);
     },
 
