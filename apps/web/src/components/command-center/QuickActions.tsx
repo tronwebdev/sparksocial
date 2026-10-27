@@ -12,13 +12,12 @@ import { cn } from '@/lib/utils';
  * one place that offers them, which is why eighteen draft-panel prototypes all
  * render it.
  *
- * ── Two of the five are on this page, and that is the point ───────────────
+ * ── Three of the five stay on this screen ───────────────────────────────
  *
- * Drafts and Performance are panels further down this same screen, and it would
- * be reasonable to leave them out on the grounds that scrolling exists. The
- * prototype includes them, and it is right to: this screen is long, and "where
- * is the draft I was working on" should not be answered by scrolling past a
- * campaign card and two queues. They scroll to the panel; the rest navigate.
+ * Drafts, the Agent Calendar and Performance are all part of the Command
+ * Center — the draft panel on its list, and two of its tabs — so those three
+ * change what this screen shows rather than leaving it. Chat opens the drawer;
+ * Active campaigns goes to the Calendar, where the campaign list lives.
  *
  * ── Why anchors rather than buttons ───────────────────────────────────────
  *
@@ -32,19 +31,28 @@ interface Action {
   label: string;
   href: string;
   hint: string;
-  /** Set for the two that live on this page — see the header. */
-  local?: boolean;
 }
 
+/*
+  ── Where they go, measured on production ─────────────────────────────────
+
+  "Drafts list" and "Performance & learning" were `#drafts` and
+  `#performance` — anchors to panels on this page. Neither id exists: the
+  drafts list lives in the draft panel and Performance is its own Command
+  Center tab. So one jumped to the top of the page and the other did nothing.
+  They now name the real place: the panel opened on its list, and the tab.
+  "Agent calendar" is the Command Center's own Agent Calendar tab, which is
+  what the label says, rather than the separate Calendar screen.
+*/
 const ACTIONS: Action[] = [
-  { label: 'Chat with Spark', href: '#chat', hint: 'Ask it to do something', local: true },
-  { label: 'Drafts list', href: '#drafts', hint: 'Everything in flight', local: true },
-  { label: 'Agent calendar', href: '/calendar', hint: 'The month it has planned' },
-  { label: 'Performance & learning', href: '#performance', hint: 'What it learned', local: true },
+  { label: 'Chat', href: '#chat', hint: 'Ask it to do something' },
+  { label: 'Drafts list', href: '/agents?drafts=list', hint: 'Everything in flight' },
+  { label: 'Agent calendar', href: '/agents?tab=calendar', hint: 'The month it has planned' },
+  { label: 'Performance & learning', href: '/agents?tab=performance', hint: 'What it learned' },
   { label: 'Active campaigns', href: '/calendar', hint: 'What it is working toward' },
 ];
 
-export function QuickActions({ onOpenChat }: { onOpenChat: () => void }) {
+export function QuickActions({ onOpenChat, agentName = 'Spark' }: { onOpenChat: () => void; agentName?: string }) {
   return (
     <section className="rounded-xl border border-border bg-surface p-6">
       <h2 className="text-18 font-semibold text-ink">Quick actions</h2>
@@ -65,7 +73,8 @@ export function QuickActions({ onOpenChat }: { onOpenChat: () => void }) {
                 /* The one that is not a destination: the drawer is state on the
                    page, so it is genuinely a button and is marked up as one. */
                 <button type="button" onClick={onOpenChat} className={cn(className, 'w-full')}>
-                  <ActionLabel {...a} />
+                  {/* The agent's own name — "Chat with Bean", not "with Spark". */}
+                  <ActionLabel {...a} label={`Chat with ${agentName}`} />
                 </button>
               ) : (
                 <Link href={a.href} className={className}>

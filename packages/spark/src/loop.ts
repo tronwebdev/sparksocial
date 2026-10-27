@@ -377,6 +377,8 @@ function systemPromptFor(agent: AgentName, genomeId: string | undefined): string
     // that answers with silence reads as broken; one that says "I don't have
     // that" is just honest.
     '- ALWAYS end your final turn with a short text message for the user, even if the answer is "I don\'t have that information" or "done, nothing further to report." A turn with tool calls and no text is not acceptable.',
+    '- Questions about campaigns, the calendar or what has been drafted are answered from the data: read campaign.list, calendar.get and content.list (where you have them) before answering. An empty run log is not evidence that nothing has been planned or drafted.',
+    '- Format replies for a narrow chat panel: a short opening line, then at most a few short sections with **bold** labels and "- " bullet points. No tables. Keep it brief. Never show internal ids (campaign, genome, content or run ids) — name things the way the user sees them.',
     ...(def.canDelegate
       ? [
           '- You cannot call most tools directly — your own scope is narrow by design. For anything outside it ' +

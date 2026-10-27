@@ -92,3 +92,14 @@ describe('what the reader is shown', () => {
     expect(userMessage(undefined, 'Could not load the calendar.')).toBe('Could not load the calendar.');
   });
 });
+
+describe('the proxy’s unreachable-API note', () => {
+  it('is replaced — it carries the server address and Node’s "fetch failed"', () => {
+    const msg = userMessage({
+      code: 'UPSTREAM_FAILED',
+      message: 'Could not reach the SparkSocial API at http://localhost:8080. fetch failed',
+    });
+    expect(msg).not.toMatch(/localhost|fetch failed|SparkSocial API/);
+    expect(msg).toMatch(/try again/i);
+  });
+});

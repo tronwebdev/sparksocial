@@ -68,11 +68,14 @@ export function DraftPanel({
   onClose,
   onDraftCreated,
   focus,
+  initialTab,
 }: {
   genomeId: string | undefined;
   contentItemId?: string;
   open: boolean;
   onClose: () => void;
+  /** Which of Current Draft / Drafts List to show on opening — Quick Actions' "Drafts list". */
+  initialTab?: DrawerTab;
   /**
    * What the drawer's Current Focus card says — `DP image`'s header.
    *
@@ -118,7 +121,10 @@ export function DraftPanel({
    * an image.
    */
   const [postType, setPostType] = useState<PostType>('image');
-  const [drawerTab, setDrawerTab] = useState<DrawerTab>('current');
+  const [drawerTab, setDrawerTab] = useState<DrawerTab>(initialTab ?? 'current');
+  useEffect(() => {
+    if (open && initialTab) setDrawerTab(initialTab);
+  }, [open, initialTab]);
   /** `DP image`'s editable prompt, which the old panel had nowhere to put. */
   const [conceptPrompt, setConceptPrompt] = useState('');
 

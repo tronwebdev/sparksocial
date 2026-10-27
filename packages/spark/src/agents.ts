@@ -75,7 +75,17 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
   spark: {
     name: 'spark',
     responsibility: 'User conversation, intent to delegation, chat drawer commands, explainability.',
-    toolScopes: ['human.*', 'agent.*', 'queue.*', 'approval.*'],
+    /*
+     * Plus three reads, by exact name. "Summarize my agent campaign" — the
+     * chat drawer's first suggestion — was answered from agent status and the
+     * run log alone, because nothing in the orchestrator's own scope can see a
+     * campaign: it told a brand with a live campaign and eleven scheduled posts
+     * that "the campaign hasn't actually produced anything yet". These read
+     * and cannot change anything, and the questions they answer are the
+     * commonest in the drawer; delegating a lookup to `planner` to relay it
+     * back is a slower route to the same rows.
+     */
+    toolScopes: ['human.*', 'agent.*', 'queue.*', 'approval.*', 'campaign.list', 'calendar.get', 'content.list'],
     model: 'opus',
     effort: 'high',
     canDelegate: true,

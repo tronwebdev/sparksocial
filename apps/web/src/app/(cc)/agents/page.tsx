@@ -127,9 +127,10 @@ function CommandCenter() {
     `?tab=overview&draft=...` first and threw you onto another tab before the
     panel opened. Seeded from `?draft=` so a link to one still works.
   */
-  const [draft, setDraft] = useState<{ open: boolean; contentItemId?: string }>(() => {
+  const [draft, setDraft] = useState<{ open: boolean; contentItemId?: string; list?: boolean }>(() => {
     const id = params.get('draft');
-    return id ? { open: true, contentItemId: id } : { open: false };
+    if (id) return { open: true, contentItemId: id };
+    return params.get('drafts') === 'list' ? { open: true, list: true } : { open: false };
   });
   const [tab, setTab] = useState<CcTab>(hasDraft ? 'overview' : isTab(fromUrl) ? fromUrl : 'overview');
 
@@ -147,9 +148,20 @@ function CommandCenter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftParam]);
 
-  /* A link that changes `?tab=` while mounted should move the tab with it. */
+  /* `?drafts=list` — Quick Actions' "Drafts list": the panel, on its list. */
+  const draftsParam = params.get('drafts');
   useEffect(() => {
-    if (isTab(fromUrl) && fromUrl !== tab) setTab(fromUrl);
+    if (draftsParam === 'list') setDraft({ open: true, list: true });
+  }, [draftsParam]);
+
+  /*
+    A link that changes `?tab=` while mounted should move the tab with it —
+    through `onTab`, so a link is held to the same Performance gate a click is.
+    It called `setTab` directly, which walked a Quick Actions link straight past
+    the eligibility card.
+  */
+  useEffect(() => {
+    if (isTab(fromUrl) && fromUrl !== tab) onTab(fromUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromUrl]);
 
@@ -284,6 +296,7 @@ function CommandCenter() {
         genomeId={genome?.genomeId}
         contentItemId={draft.contentItemId}
         open={draft.open}
+        {...(draft.list ? { initialTab: 'list' as const } : {})}
         onClose={() => setDraft({ open: false })}
       />
     </CommandCenterShell>

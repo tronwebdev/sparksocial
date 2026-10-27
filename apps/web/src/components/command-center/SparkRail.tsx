@@ -182,7 +182,7 @@ export function SparkRail({
 
       {actionsOpen ? (
         <div className="mt-3">
-          <QuickActions onOpenChat={onOpenChat} />
+          <QuickActions onOpenChat={onOpenChat} agentName={id?.named ? id.name : 'Spark'} />
         </div>
       ) : null}
 

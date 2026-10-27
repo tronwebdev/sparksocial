@@ -7,6 +7,8 @@ import { isSparkPinned, setSparkPinned } from '@/lib/askSpark';
 import { humaniseGoal } from '@/lib/runGoal';
 import { relativeTime } from '@/lib/relativeTime';
 import { userMessage } from '@/lib/errorCopy';
+import { ChatText } from './ChatText';
+import { useAgentIdentity } from '@/lib/useAgentIdentity';
 
 /**
  * ASK SPARK — the chat drawer, built to `ui build/Spark Chat.dc.html`
@@ -131,10 +133,14 @@ const SPARK_ORB = (size: number) => {
   );
 };
 
+/*
+  What the two inactive controls say on hover. These were notes to ourselves
+  — tool names, a vendor, "no upload path reaches a chat turn" — shown to the
+  people using the product. The reasons are unchanged; the words are theirs.
+*/
 const DEAD_CONTROL = {
-  mic: 'No speech-to-text tool is registered. AssemblyAI transcribes uploaded media (finish.transcribe); it is not wired to a live microphone.',
-  attach:
-    'No upload path reaches a chat turn. asset.upload puts a file in the Asset Graph, which is where drafts retrieve media from — attach it there and SPARK will find it.',
+  mic: 'Voice input isn’t available yet — type your message instead.',
+  attach: 'Files can’t be attached to a chat yet. Add them to the Assets Library and your agent will use them in drafts.',
 } as const;
 
 export function ChatDrawer({
@@ -160,6 +166,9 @@ export function ChatDrawer({
    * it opens where it lives, with a way back to the list.
    */
   const [openRun, setOpenRun] = useState<RunSummary | null>(null);
+  /** For the composer's placeholder — the agent's own name when it has one. */
+  const agentIdentity = useAgentIdentity(genomeId);
+  const agentLabel = agentIdentity.named ? agentIdentity.name : 'Spark';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -271,12 +280,20 @@ export function ChatDrawer({
       append('system', res.status === 'failed' ? `Couldn't draft that: ${userMessage(res.error)}` : 'That draft was gated.');
       return;
     }
-    append('spark', `Here is a ${pb.name} draft.`, {
+    // "an Offer / Availability draft", not "a Offer".
+    append('spark', `Here is ${/^[aeiou]/i.test(pb.name) ? 'an' : 'a'} ${pb.name} draft.`, {
       contentItemId: res.output.contentItemId,
       draft: {
         title: pb.name,
         body:
-          res.output.beats?.map((b) => b.text).filter(Boolean).join(' ').slice(0, 160) ||
+          // Each scene ends a sentence. Joined with a bare space, two scenes
+          // ran together: "…gone once it's poured Order beans online".
+          res.output.beats
+            ?.map((b) => b.text?.trim())
+            .filter(Boolean)
+            .map((t) => (/[.!?…:]$/.test(t!) ? t : `${t}.`))
+            .join(' ')
+            .slice(0, 160) ||
           'Open it to add media and publish.',
       },
     });
@@ -322,7 +339,19 @@ export function ChatDrawer({
 
         <button
           type="button"
-          onClick={() => setTab('chat')}
+          /*
+            New Chat starts one. It only switched tabs, so once a conversation
+            had begun there was no way back to an empty thread — or to the
+            suggestions, which show only on one.
+          */
+          onClick={() => {
+            if (tab === 'chat' && !busy) {
+              setMessages([]);
+              setPlaybooks(null);
+              setDraft('');
+            }
+            setTab('chat');
+          }}
           aria-pressed={tab === 'chat'}
           className="absolute left-[17.77px] top-[13.7px] flex items-center gap-[7px]"
         >
@@ -447,9 +476,10 @@ export function ChatDrawer({
               <div className="flex items-start gap-[10px]">
                 {SPARK_ORB(26.4)}
                 {openRun.reply ? (
-                  <p className="max-w-[367px] whitespace-pre-wrap text-16 font-medium leading-[1.4] text-ink">
-                    {openRun.reply}
-                  </p>
+                  <ChatText
+                    text={openRun.reply}
+                    className="min-w-0 max-w-[367px] text-16 font-medium leading-[1.25] text-[#838383]"
+                  />
                 ) : (
                   <p className="max-w-[367px] text-16 font-medium leading-[1.25]" style={{ color: '#838383' }}>
                     This run {openRun.status} {relativeTime(openRun.startedAt)}
@@ -544,9 +574,10 @@ export function ChatDrawer({
                 <div key={m.id} className="flex flex-col gap-[14px]">
                   <div className="flex items-start gap-[10px]">
                     {SPARK_ORB(26.4)}
-                    <p className="max-w-[367px] text-16 font-medium leading-[1.25]" style={{ color: '#838383' }}>
-                      {m.text}
-                    </p>
+                    <ChatText
+                      text={m.text}
+                      className="min-w-0 max-w-[367px] text-16 font-medium leading-[1.25] text-[#838383]"
+                    />
                   </div>
 
                   {m.draft ? (
@@ -720,8 +751,10 @@ export function ChatDrawer({
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Message Spark or @ mention a feature"
-              aria-label="Message Spark"
+              // No "@ mention a feature": nothing parses an @, so it promised
+              // a feature the composer does not have.
+              placeholder={`Message ${agentLabel}`}
+              aria-label={`Message ${agentLabel}`}
               className="absolute left-[15.57px] top-[8px] h-[40px] w-[calc(100%-70px)] bg-transparent text-16 font-medium text-ink outline-none placeholder:text-[#838383]"
             />
 

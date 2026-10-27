@@ -99,6 +99,8 @@ const MACHINE_SIGNALS: readonly RegExp[] = [
   /\bunusable shape\b/i,
   /\b[a-z_]+\.[a-z_]+(\.[a-z_]+)*\s*:/i, // `brandFonts.display:` — a field path
   /https?:\/\/\S{80,}/, // a signed URL dumped into prose
+  /fetch failed/i, // Node's undici, verbatim
+  /could not reach the sparksocial api/i, // the proxy's own note, with the server's address in it
 ];
 
 /** True when the message is machine output rather than something written for a reader. */
