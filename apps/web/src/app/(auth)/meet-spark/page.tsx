@@ -126,23 +126,16 @@ export default function MeetSparkPage() {
         your Ai Social Agent
       </div>
 
-      <StageHoldButton tone="dark" label="let’s get you onboarding" onComplete={() => router.push('/onboarding')} />
+      {/* A click, like the completion screen's: a hold read as a dead button. */}
+      <StageHoldButton tone="dark" label="let’s get you onboarding" onComplete={() => router.push('/onboarding')} mode="click" />
 
       {/*
-        "Press & hold to begin" — `Onboarding.dc.html`'s Meet Spark Splash, at
-        its own numbers: 760.5,1010 · 207 wide · 14px · rgba(255,255,255,0.35).
-
-        It was missing, and it is the only thing on the screen that says the
-        button is not a button. `StageHoldButton` fills over 900ms and navigates
-        at the end; a click does nothing at all, so without this line the screen
-        reads as broken to anyone who taps it once — which is everyone, the
-        first time. The completion screen has always carried its equivalent
-        ("Press & Hold button to continue"); this one did not.
+        The caption, at the design's own numbers: 760.5,1010 · 207 wide ·
+        14px · rgba(255,255,255,0.35). The design's words were "Press & hold
+        to begin"; the button is a click now, so the caption says so.
 
         Not a `<button>` and not focusable: it labels the control rather than
-        being one. `StageHoldButton` is what keyboard and screen-reader users
-        reach, and a second tab stop saying "press and hold" would be a tab stop
-        that does nothing.
+        being one, and a second tab stop would be one that does nothing.
       */}
       <div
         aria-hidden
@@ -156,7 +149,7 @@ export default function MeetSparkPage() {
           color: 'rgba(255,255,255,0.35)',
         }}
       >
-        Press &amp; hold to begin
+        Click to begin
       </div>
     </Stage>
   );
