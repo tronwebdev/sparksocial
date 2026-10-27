@@ -97,7 +97,8 @@ describe('content.generate_image', () => {
     const tool = makeContentGenerateImage(image);
 
     const res = await tool.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a bold quote card', aspectRatio: '1:1' },
+      // Replace is explicit now: a text beat attaches by default (below).
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a bold quote card', aspectRatio: '1:1', attach: false },
       ctx({ updateDraft }),
     );
 
@@ -141,7 +142,8 @@ describe('content.generate_image', () => {
     const tool = makeContentGenerateImage(stubImage('https://fal.example/card.png'));
 
     await tool.handler(
-      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a bold quote card', aspectRatio: '1:1' },
+      // Replace is explicit now: a text beat attaches by default (below).
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a bold quote card', aspectRatio: '1:1', attach: false },
       ctx({
         updateDraft,
         get: async () => ({
@@ -161,6 +163,33 @@ describe('content.generate_image', () => {
       durationSec: 7,
       label: 'Cover',
       voice: 'brand',
+    });
+  });
+
+  /**
+   * The words stay. Replacing a text beat by default turned a post's copy
+   * into an image prompt — its caption went out as hashtags alone and the
+   * queue called it unwritten. Found drafting a single-image post on
+   * production, from the Draft Panel button, which sends no `attach`.
+   */
+  it('keeps a text beat and puts the picture behind it when `attach` is not given', async () => {
+    const updateDraft = vi.fn<ScopedDb['content']['updateDraft']>(async (args) => ({
+      id: args.id, genomeId: args.genomeId, playbookId: 'pb_generated_quote_card', mode: 'synthesize',
+      status: 'draft', copy: args.copy, why: args.why, createdAt: new Date(),
+    }));
+    const tool = makeContentGenerateImage(stubImage('https://fal.example/card.png'));
+
+    await tool.handler(
+      { contentItemId: 'ci_1', genomeId: 'gen_saas', beatId: 'hook', prompt: 'a card about our numbers', aspectRatio: '1:1' },
+      ctx({ updateDraft }),
+    );
+
+    const savedCopy = updateDraft.mock.calls[0]![0].copy as unknown[];
+    expect(savedCopy[0]).toMatchObject({
+      kind: 'text',
+      beatId: 'hook',
+      text: 'a card about our numbers',
+      backdrop: { kind: 'image', urls: ['https://fal.example/card.png'] },
     });
   });
 

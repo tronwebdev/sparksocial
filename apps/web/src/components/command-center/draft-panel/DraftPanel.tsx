@@ -599,6 +599,26 @@ export function DraftPanel({
       setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
       return;
     }
+    /*
+      Mirrors the server: a beat with words keeps them and gets the picture
+      behind it (`content.generate_image` attaches by default for text beats);
+      anything else is replaced. Replacing here too would show "Untitled Post"
+      and an image-only scene until the next reload.
+    */
+    const current = draft.beats.find((b) => b.beatId === beatId);
+    if (current?.kind === 'text') {
+      setDraft((d) =>
+        d
+          ? {
+              ...d,
+              beats: d.beats.map((b) =>
+                b.beatId === beatId ? { ...b, backdrop: { kind: 'image' as const, urls: [res.output.url] } } : b,
+              ),
+            }
+          : d,
+      );
+      return;
+    }
     replaceBeat(beatId, { kind: 'generated_image', beatId, url: res.output.url, prompt });
   }
 

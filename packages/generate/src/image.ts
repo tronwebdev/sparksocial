@@ -135,9 +135,22 @@ ${clause}` : input.prompt;
 
       const { url } = await image.generate({ prompt, aspectRatio: input.aspectRatio });
 
+      /*
+       * Attach by default when the beat holds words.
+       *
+       * Replacing a `text` beat turns the post's own copy into an image
+       * prompt: the caption `content.publish_payload` assembles from text beats
+       * came out as nothing but hashtags, `content.list` reported a written,
+       * rendered post as "(no copy yet)", and the Draft Panel titled it
+       * "Untitled Post". Found drafting a single-image post on production,
+       * where the panel's "Generate image" button sends no `attach` at all.
+       * An explicit `attach: false` still replaces.
+       */
+      const attach = input.attach ?? beats[index]!.kind === 'text';
+
       const nextBeats = [...beats];
       // Attach or replace — see `attach` on the input.
-      nextBeats[index] = input.attach
+      nextBeats[index] = attach
         ? { ...beats[index]!, backdrop: { kind: 'image', urls: [url] } }
         : { ...keepStructure(beats[index]!), kind: 'generated_image', beatId: input.beatId, url, prompt };
 
