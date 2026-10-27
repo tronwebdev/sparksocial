@@ -263,7 +263,7 @@ export function EngagementPanel() {
 
   if (loading) {
     return (
-      <section aria-busy className="rounded-xl border border-border bg-surface p-6">
+      <section aria-busy className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
         <h2 className="text-18 font-semibold text-ink">Engagement Intelligence</h2>
         <PanelSkeleton rows={3} />
       </section>
@@ -284,7 +284,7 @@ export function EngagementPanel() {
   if (step === null) {
     return (
       <div className="flex justify-center py-[47px]">
-        <div className="w-[622px] max-w-full rounded-[30px] bg-white px-[69px] py-[16px] text-center max-canvas:px-[24px]">
+        <div className="w-[622px] max-w-full rounded-[30px] bg-white px-[69px] py-[16px] text-center max-cq-canvas:px-[24px]">
           {/*
             the rings
 
@@ -300,7 +300,7 @@ export function EngagementPanel() {
             state, so below `canvas` it simply is not drawn, and the message it
             decorates gets the width back.
           */}
-          <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px] max-canvas:hidden">
+          <span aria-hidden className="relative mx-auto mt-[0px] block h-[301px] w-[345px] max-cq-canvas:hidden">
             <span className="absolute left-[32px] top-[22px] block h-[279px] w-[279px] rounded-full" style={{ background: 'rgba(108,232,255,0.12)' }} />
             <span className="absolute left-[74px] top-[63px] block h-[196px] w-[196px] rounded-full" style={{ background: 'rgba(132,201,214,0.19)' }} />
             <span className="absolute left-[108px] top-[102px] flex h-[127px] w-[127px] items-center justify-center rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }}>

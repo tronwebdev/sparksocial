@@ -107,7 +107,7 @@ export function UsagePanel() {
 
   if (error) {
     return (
-      <section className="rounded-xl border border-border bg-surface p-6">
+      <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
         <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
         <p className="mt-2 text-14 text-ink-muted">{error}</p>
       </section>
@@ -116,7 +116,7 @@ export function UsagePanel() {
 
   if (!usage) {
     return (
-      <section className="rounded-xl border border-border bg-surface p-6">
+      <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
         <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>
         <Skeleton className="mt-4 h-32 w-full rounded-lg" />
       </section>
@@ -126,7 +126,7 @@ export function UsagePanel() {
   const tone = ALERT[usage.alert];
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">This month&rsquo;s spend</h2>

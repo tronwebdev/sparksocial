@@ -92,7 +92,7 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
 
   return (
     <div className="flex flex-wrap gap-[26px]">
-      <div className="min-w-[420px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+      <div className="min-w-[420px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
         <h3 className="text-20 font-bold text-ink">Export workspace bundle</h3>
         <p className="mt-[10px] max-w-[540px] text-18 font-medium" style={{ color: 'rgb(131,131,131)' }}>
           Everything that makes this brand sound like itself, as portable JSON.
@@ -264,7 +264,7 @@ function ImportTab({
 
   return (
     <div className="flex flex-wrap gap-[26px]">
-      <div className="min-w-[420px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+      <div className="min-w-[420px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
         <h3 className="text-20 font-bold text-ink">
           {mode === 'clone' ? 'Clone a workspace' : 'Import from another workspace'}
         </h3>

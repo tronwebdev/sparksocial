@@ -3,7 +3,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const read = (rel: string) => readFileSync(join(process.cwd(), 'apps/web', rel), 'utf8');
+// Container-measured canvas variants read as the viewport ones — see
+// `responsiveCanvas.test.ts`, which also checks the container exists.
+const read = (rel: string) =>
+  readFileSync(join(process.cwd(), 'apps/web', rel), 'utf8')
+    .replace(/max-cq-canvas:/g, 'max-canvas:')
+    .replace(/cq-canvas:/g, 'canvas:');
 
 /** Source with the comments taken out — the comments here describe the bugs. */
 const code = (rel: string) =>

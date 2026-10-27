@@ -97,7 +97,12 @@ export function AutomationHome({
     <div className="px-auto-inset pb-auto-inset pt-auto-inset">
       {/* ── hero ─────────────────────────────────────────────────────────── */}
       <div
-        className="relative h-auto-hero-h w-full max-w-auto-wide overflow-hidden rounded-[24px]"
+        /*
+          Absolute rows at 38 / 94 / 162 are the design's, and they hold while
+          the subtitle is two lines. On a phone it is four, and it ran into
+          "Add New Recipe". Below `sm` the hero is a centred column in flow.
+        */
+        className="relative h-auto-hero-h w-full max-w-auto-wide overflow-hidden rounded-[24px] max-sm:flex max-sm:h-auto max-sm:flex-col max-sm:items-center max-sm:gap-4 max-sm:px-5 max-sm:py-8"
         style={{ background: 'var(--ss-grad-auto-hero)' }}
       >
         <span
@@ -106,19 +111,19 @@ export function AutomationHome({
           style={{ backgroundImage: 'var(--ss-grad-auto-stars)' }}
         />
 
-        <p className="absolute inset-x-0 top-[38px] text-center text-34 font-bold text-auto-hero-title">
+        <p className="absolute inset-x-0 top-[38px] text-center text-34 font-bold text-auto-hero-title max-sm:relative max-sm:top-0">
           Automation Recipes
         </p>
-        <p className="absolute inset-x-0 top-[94px] text-center text-17 font-normal leading-[1.4] text-white/85">
+        <p className="absolute inset-x-0 top-[94px] text-center text-17 font-normal leading-[1.4] text-white/85 max-sm:relative max-sm:top-0">
           Set-and-forget content engines. Recipes generate posts on a schedule
-          <br />
+          <br className="max-sm:hidden" />
           and route them to your queue and calendar.
         </p>
 
         <button
           type="button"
           onClick={onOpenChooser}
-          className="absolute left-1/2 top-[162px] flex h-[47px] -translate-x-1/2 items-center gap-[11px] rounded-[12px] px-[20px] transition-shadow"
+          className="absolute left-1/2 top-[162px] flex h-[47px] -translate-x-1/2 items-center gap-[11px] rounded-[12px] px-[20px] transition-shadow max-sm:relative max-sm:left-0 max-sm:top-0 max-sm:translate-x-0"
           style={{
             background: 'rgba(20,16,28,0.9)',
             boxShadow: '0 0 0 1.6px rgba(196,107,245,0.8), 0 0 24px -4px rgba(140,120,255,0.6)',
@@ -209,12 +214,15 @@ export function AutomationHome({
           return (
             <div
               key={kind}
-              className="relative h-auto-card-h w-auto-card shrink-0 overflow-hidden rounded-[20px] max-md:w-full"
+              /* Flow below `md`: a full-width card on a phone wraps its
+                 description to three lines, and the buttons pinned at 192
+                 sat on top of it. */
+              className="relative h-auto-card-h w-auto-card shrink-0 overflow-hidden rounded-[20px] max-md:flex max-md:h-auto max-md:w-full max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:p-6"
               style={{ background: meta.bg, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.12)' }}
             >
               <span
                 aria-hidden
-                className="absolute left-[24px] top-[24px] flex h-[58px] w-[58px] items-center justify-center rounded-[14px] text-white"
+                className="absolute left-[24px] top-[24px] flex h-[58px] w-[58px] items-center justify-center rounded-[14px] text-white max-md:static"
                 style={{ background: meta.iconBg }}
               >
                 <RecipeGlyph kind={kind} size={30} />
@@ -230,15 +238,15 @@ export function AutomationHome({
                 </span>
               </span>
 
-              <p className="absolute left-[24px] top-[102px] whitespace-nowrap text-22 font-bold text-ink">{meta.name}</p>
-              <p className="absolute left-[24px] top-[138px] w-[378px] max-w-[calc(100%-48px)] text-16 font-normal leading-[1.35]" style={{ color: '#5B5B5B' }}>
+              <p className="absolute left-[24px] top-[102px] whitespace-nowrap text-22 font-bold text-ink max-md:static max-md:mt-4 max-md:basis-full max-md:whitespace-normal">{meta.name}</p>
+              <p className="absolute left-[24px] top-[138px] w-[378px] max-w-[calc(100%-48px)] text-16 font-normal leading-[1.35] max-md:static max-md:mt-1 max-md:w-auto max-md:max-w-none max-md:basis-full" style={{ color: '#5B5B5B' }}>
                 {meta.desc}
               </p>
 
               <button
                 type="button"
                 onClick={() => onManage(kind)}
-                className="absolute left-[24px] top-[192px] flex h-[41px] items-center rounded-[9px] bg-white px-[22px] transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383]"
+                className="absolute left-[24px] top-[192px] flex h-[41px] items-center rounded-[9px] bg-white px-[22px] transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383] max-md:static max-md:mt-4"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
               >
                 <span className="text-15 font-semibold text-ink">Manage</span>
@@ -246,7 +254,7 @@ export function AutomationHome({
               <button
                 type="button"
                 onClick={() => onAddNew(kind)}
-                className="absolute left-[146px] top-[192px] flex h-[41px] items-center gap-[9px] rounded-[9px] px-[16px] transition-colors hover:bg-white/60"
+                className="absolute left-[146px] top-[192px] flex h-[41px] items-center gap-[9px] rounded-[9px] px-[16px] transition-colors hover:bg-white/60 max-md:static max-md:mt-4"
               >
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
                   <path d="M7 1v12M1 7h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
@@ -279,7 +287,7 @@ export function AutomationHome({
         which is how a scroll container on either alone would have slid the body
         out from under its own headings.
       */}
-      <div className="mt-[34px] max-w-auto-wide rounded-[20px] bg-white pb-[24px] max-canvas:overflow-x-auto">
+      <div className="mt-[34px] max-w-auto-wide rounded-[20px] bg-white pb-[24px]">
         <div className="flex flex-wrap items-start gap-4 px-[28px] pt-[28px]">
           <div className="min-w-0 flex-1">
             <p className="text-22 font-bold text-ink">Automation output queue</p>
@@ -384,6 +392,17 @@ export function AutomationHome({
           </div>
         </div>
 
+        {/*
+          Only the table scrolls, and only when it must. The scroller used to
+          be the whole card and only below `canvas`, so from 1300 to ~1700 the
+          1280px of fixed tracks ran "Account", "Status" and "Action" off the
+          card with nothing to scroll; below it the title and pager slid away
+          with the rows. Now the tracks are proportional — the design's own
+          widths at its own width — with floors, and this wrapper scrolls
+          sideways once even the floors no longer fit.
+        */}
+        <div className="overflow-x-auto">
+        <div className="min-w-[792px]">
         {/* The design's five column headers at 28 / 600 / 952 / 1090 / 1226 on a
             1318 card, carried as track widths so a long title cannot push a
             chip out from under its own heading. */}
@@ -507,6 +526,8 @@ export function AutomationHome({
             })}
           </ul>
         )}
+        </div>
+        </div>
 
         {/* 28,900 — "Page 1 of 4", with two 34px discs at 1216 and 1258 and the
             disabled one at .45. The design's card holds five rows between the
@@ -534,12 +555,17 @@ export function AutomationHome({
 /**
  * 28 / 600 / 952 / 1090 / 1226 on the design's 1318 card, as track widths.
  *
+ * As fractions of those widths rather than the widths themselves: at the
+ * design's 1280 of track space the four `fr` tracks resolve to exactly
+ * 572 / 352 / 138 / 136, and narrower they shrink together down to their
+ * floors (792 in all) instead of running past the card.
+ *
  * The right padding is 10, not 28: the design's second action button runs
  * 1271..1308, so the row's own right margin is 10 and a symmetric 28 would
  * squeeze 26px out of the first track — which is exactly what it did, dragging
  * every column left of where its heading says it is.
  */
-const QUEUE_COLUMNS = '572px 352px 138px 136px 82px';
+const QUEUE_COLUMNS = 'minmax(260px,572fr) minmax(200px,352fr) minmax(120px,138fr) minmax(130px,136fr) 82px';
 
 /** The pager's 34px discs — ringed `rgba(131,131,131,.35)`, the dead one at .45. */
 function PageDisc({ back = false, disabled, onClick, label }: { back?: boolean; disabled: boolean; onClick: () => void; label: string }) {

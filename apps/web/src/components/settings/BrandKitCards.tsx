@@ -72,7 +72,8 @@ export function LogoCard({
           onClick={onGenerate}
           disabled={generating || uploading}
           title="A flat placeholder mark to work with until you have your own logo."
-          className="flex h-[43.6px] w-[161.4px] items-center gap-[8px] rounded-[11.3px] bg-white pl-[11.4px] text-16 font-medium text-ink transition-colors hover:bg-[#F7F7F7] disabled:opacity-60"
+          aria-label="Generate logo"
+          className="flex h-[43.6px] w-[161.4px] items-center gap-[8px] rounded-[11.3px] bg-white pl-[11.4px] text-16 font-medium text-ink transition-colors hover:bg-[#F7F7F7] disabled:opacity-60 [@container(max-width:420px)]:w-[43.6px] [@container(max-width:420px)]:justify-center [@container(max-width:420px)]:pl-0"
           style={{ boxShadow: `inset 0 0 0 0.755px ${LINE}` }}
         >
           <svg width="23" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -83,7 +84,8 @@ export function LogoCard({
               strokeLinejoin="round"
             />
           </svg>
-          {generating ? 'Generating…' : 'Generate logo'}
+          {/* The word goes before the button runs past the card. */}
+          <span className="[@container(max-width:420px)]:hidden">{generating ? 'Generating…' : 'Generate logo'}</span>
         </button>
       }
     >
@@ -105,7 +107,9 @@ export function LogoCard({
         207,117.9 — so it starts 31 below the label's top and 20 right of the
         circle.
       */}
-      <div className="mt-[15.3px] flex items-start gap-[20.3px] pl-[8.5px] max-sm:flex-col max-sm:items-center max-sm:pl-0">
+      {/* Stacked when the card cannot hold both columns: 155 + 20 + a drop
+          zone worth dropping on. At 1024 two-up the zone was 40px wide. */}
+      <div className="mt-[15.3px] flex items-start gap-[20.3px] pl-[8.5px] [@container(max-width:520px)]:flex-col [@container(max-width:520px)]:items-center [@container(max-width:520px)]:pl-0">
         <div className="flex w-[155px] shrink-0 flex-col items-center">
           <span className="text-17 font-normal leading-[22px] text-ink-muted">Logo Preview</span>
           <span
@@ -138,7 +142,7 @@ export function LogoCard({
           onDragLeave={() => setOver(false)}
           onDrop={drop}
           className={cn(
-            'relative mt-[30.6px] flex h-[161.4px] min-w-0 max-w-[402.8px] flex-1 cursor-pointer flex-col items-center rounded-[14.6px] bg-white outline-none transition-shadow focus-visible:shadow-[0_0_0_2px_var(--ss-primary)] max-sm:w-full',
+            'relative mt-[30.6px] flex h-[161.4px] min-w-0 max-w-[402.8px] flex-1 cursor-pointer flex-col items-center rounded-[14.6px] bg-white outline-none transition-shadow focus-visible:shadow-[0_0_0_2px_var(--ss-primary)] [@container(max-width:520px)]:mt-0 [@container(max-width:520px)]:w-full [@container(max-width:520px)]:flex-none',
             over && 'shadow-[inset_0_0_0_1.5px_#A341FF]',
           )}
         >
@@ -386,7 +390,7 @@ export function TypographyCard({
       <div className="mt-[18px] flex h-[42px] items-center justify-between gap-4 pl-[3px]">
         <span className="shrink-0 text-18 font-normal text-ink">Selected Font</span>
         <span
-          className="truncate text-36 font-bold leading-[42px] text-ink"
+          className="truncate text-36 font-bold leading-[42px] text-ink [@container(max-width:420px)]:text-24"
           style={{ fontFamily: fontStack(display) }}
           title={chosen?.note}
         >

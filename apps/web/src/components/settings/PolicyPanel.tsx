@@ -137,7 +137,7 @@ export function PolicyPanel() {
   if (loading) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Escalation policy</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Finer-grained rules on top of the approval mode above — platforms/content types that always need review,
@@ -282,7 +282,7 @@ export function PolicyPanel() {
               value={newWindow.reason}
               onChange={(e) => setNewWindow((w) => ({ ...w, reason: e.target.value }))}
               placeholder="reason"
-              className="h-9 min-w-[140px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <Button size="sm" variant="outline" onClick={addWindow}>
               Add window
@@ -311,7 +311,7 @@ export function PolicyPanel() {
               value={newFamily.family}
               onChange={(e) => setNewFamily((f) => ({ ...f, family: e.target.value }))}
               placeholder="e.g. content, publish, learning"
-              className="h-9 min-w-[140px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <select
               value={newFamily.autonomy}

@@ -19,9 +19,14 @@
  * being pinned to its edges — at 620px minimum width the composition still
  * holds together.
  */
-export function BrandPanel() {
+/**
+ * `compact` is for a narrow column — Pricing gives this panel 420px. At the
+ * sign-up's 620 floor and 48px title it overflowed that column and drew
+ * "Agent-first Social" across the plan cards beside it.
+ */
+export function BrandPanel({ compact = false }: { compact?: boolean } = {}) {
   return (
-    <div className="relative flex-[0_0_53.9%] overflow-hidden bg-[--ss-ink-900] max-lg:hidden" style={{ minWidth: 620 }}>
+    <div className="relative flex-[0_0_53.9%] overflow-hidden bg-[--ss-ink-900] max-lg:hidden" style={{ minWidth: compact ? 0 : 620 }}>
       {/* The teal bloom behind the rings. Sampled at #1A2C2F top-left against a
           #0C0C0C ground, fading out well before the panel's bottom edge. */}
       <div
@@ -47,13 +52,20 @@ export function BrandPanel() {
         className="pointer-events-none absolute left-1/2 top-[38%] w-[845px] max-w-[120%] -translate-x-1/2 -translate-y-1/2"
       />
 
-      <div className="relative flex h-full flex-col items-center justify-center px-10">
+      {/*
+        Anchored to the rings, not centred in the panel. In `SparkSocial
+        Auth.dc.html` the 762px ring is centred at 432 of 1117 (the same 38%
+        the rings use here), the logo's top is 161 above that line and the
+        title 24 below it. Centring the column put the title at 580 against the
+        design's 456, and drifted it off the rings at every other height.
+      */}
+      <div className="absolute inset-x-0 top-[38%] flex -translate-y-[161px] flex-col items-center px-10">
         <img src="/auth/signup-logo.svg" alt="" aria-hidden className="h-[148px] w-[148px] animate-breathe" />
 
         {/* CS Mollwish, the display face — not the body type scale. */}
-        <div className="mt-[52px] text-center">
-          <p className="font-display text-48 leading-[1.269] text-white">Agent-first Social</p>
-          <p className="font-display text-40 leading-[1.269] text-white">Operating System</p>
+        <div className="mt-[37px] text-center">
+          <p className={`font-display leading-[1.269] text-white ${compact ? 'text-32' : 'text-48'}`}>Agent-first Social</p>
+          <p className={`font-display leading-[1.269] text-white ${compact ? 'text-26' : 'text-40'}`}>Operating System</p>
         </div>
 
         <div className="mt-[22px] flex items-center gap-[10px]">

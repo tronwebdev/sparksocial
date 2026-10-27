@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
 
 /**
  * Every colour here is a `var(--ss-*)` and **no hex appears in this file**. That is
@@ -553,7 +554,25 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    /**
+     * `canvas`, measured against the box rather than the window.
+     *
+     * `canvas:` / `max-canvas:` switch a screen between the design's absolute
+     * 1300px geometry and a flowing fallback by *viewport* width. That is right
+     * for a page that owns the viewport and wrong for a section inside one: the
+     * settings card is ~973px wide on a 1366 laptop, so the viewport said
+     * "canvas" and an absolutely-placed column at x=796 ran 300px out of it.
+     *
+     * `cq-canvas:` / `max-cq-canvas:` ask the nearest `cq` container instead
+     * (`SettingsShell`'s content card is one). Use them for anything drawn to
+     * the canvas that lives inside another box.
+     */
+    plugin(({ addVariant }) => {
+      addVariant('cq-canvas', '@container cq (min-width: 1300px)');
+      addVariant('max-cq-canvas', '@container cq (max-width: 1299.98px)');
+    }),
+  ],
 };
 
 export default config;

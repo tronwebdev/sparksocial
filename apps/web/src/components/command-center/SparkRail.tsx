@@ -119,8 +119,15 @@ export function SparkRail({
       style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 0 1px #FFFFFF', height: 781 }}
     >
       {/* ── rail header ──────────────────────────────────────────────── */}
-      <div className="flex h-[58px] items-start justify-between gap-4">
-        <div className="min-w-0">
+      {/*
+        Wraps rather than overlapping. The name and its status line were
+        `nowrap` beside a fixed 218px button in a rail that is ~300px at 1280
+        and on a phone: "Freshly Activated" ran under the button and the name
+        was squeezed to "S…". When the two no longer fit side by side the
+        button drops to its own line; at the design's width nothing moves.
+      */}
+      <div className="flex min-h-[58px] flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 max-w-full">
           {/*
             The agent's own name, when it has one.
 
@@ -135,7 +142,7 @@ export function SparkRail({
           <p className="ml-[5px] truncate font-display text-26 leading-[1.1] text-ink">
             {id?.named ? `${id.name}:` : 'Spark:'}
           </p>
-          <p className="mt-[7px] whitespace-nowrap text-16 font-medium leading-[1.31] text-ink-muted">
+          <p className="mt-[7px] truncate text-16 font-medium leading-[1.31] text-ink-muted">
             {/* The design's "✨ Freshly Activated". True on day one and a lie
                 after that, so it says which state the agent is in. */}
             {paused ? '⏸ Paused' : campaign ? '✨ Running your presence' : '✨ Freshly Activated'}
@@ -259,27 +266,34 @@ export function SparkRail({
 
         {/* agent header: 353x123 at 21,222 on cyan 30% in a pink ring */}
         <div
-          className="absolute left-[21px] right-[22px] top-[222px] h-[123px] rounded-[15px]"
+          className="absolute left-[21px] right-[22px] top-[222px] h-[123px] rounded-[15px] [container-type:inline-size]"
           style={{ background: 'rgba(108,232,255,0.3)', boxShadow: 'inset 0 0 0 1px rgba(245,107,255,0.24)' }}
         >
-          <span className="absolute left-[19px] top-[15.8px] block h-[92px] w-[92px]">
-            <SparkMark variant="shell" size={92} />
+          {/*
+            The design's card is 353 wide. The rail is narrower than that from
+            1280 to ~1500 and on a phone (~222), where the 92px orb and the
+            180px status block at 125 ran "Active" 11px out of the card. Under
+            330px of card the orb steps down to 64 and the text moves in to 95.
+          */}
+          <span className="absolute left-[19px] top-[15.8px] block h-[92px] w-[92px] [@container(max-width:330px)]:left-[16px] [@container(max-width:330px)]:top-[29.5px] [@container(max-width:330px)]:h-[64px] [@container(max-width:330px)]:w-[64px]">
+            <SparkMark variant="shell" size={92} className="[@container(max-width:330px)]:!h-[64px] [@container(max-width:330px)]:!w-[64px]" />
           </span>
 
-          <p className="absolute left-[123px] right-[12px] top-[28px] truncate text-22 font-semibold leading-[1.28] text-ink">
+          <p className="absolute left-[123px] right-[12px] top-[28px] truncate text-22 font-semibold leading-[1.28] text-ink [@container(max-width:330px)]:left-[95px]">
             {id?.named ? id.name : UNNAMED_AGENT}
           </p>
 
           {/* 180x28.9 at 125,67.6: the word, then a white pill holding the dot
               and the state. */}
-          <div className="absolute left-[125px] top-[67.6px] h-[28.9px] w-[180px]">
-            <span className="absolute left-0 top-[6.3px] text-13 leading-none text-ink">Status</span>
-            <span className="absolute left-[47px] top-0 h-[28.9px] w-[69.5px] rounded-[90.3px] bg-white" />
+          <div className="absolute left-[125px] top-[67.6px] h-[28.9px] w-[180px] [@container(max-width:330px)]:left-[95px] [@container(max-width:330px)]:w-[117px]">
+            {/* On a phone the card is ~180: the word goes and the pill moves in. */}
+            <span className="absolute left-0 top-[6.3px] text-13 leading-none text-ink [@container(max-width:230px)]:hidden">Status</span>
+            <span className="absolute left-[47px] top-0 h-[28.9px] w-[69.5px] rounded-[90.3px] bg-white [@container(max-width:230px)]:left-0" />
             <span
-              className="absolute left-[55.5px] top-[9.5px] block h-[10.74px] w-[10.74px] rounded-full"
+              className="absolute left-[55.5px] top-[9.5px] block h-[10.74px] w-[10.74px] rounded-full [@container(max-width:230px)]:left-[8.5px]"
               style={{ background: paused ? '#F35525' : '#13D711' }}
             />
-            <span className="absolute left-[70px] top-[6.3px] text-13 leading-none text-ink">
+            <span className="absolute left-[70px] top-[6.3px] text-13 leading-none text-ink [@container(max-width:230px)]:left-[23px]">
               {paused ? 'Paused' : 'Active'}
             </span>
           </div>

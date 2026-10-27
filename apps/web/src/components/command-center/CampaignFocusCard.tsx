@@ -137,9 +137,14 @@ export function CampaignFocusCard({
     */
     <>
     <section
-      className="relative overflow-hidden rounded-xl px-[26px] py-[18px]"
+      // 297 is the design's, at a width where everything fits on its lines.
+      // As a floor it holds that; as a height it cut the wrapped rows off the
+      // bottom on a phone — "Remaining", the pillars and the CTA all clipped.
+      // A size container: the media strip below needs the card, not the
+      // window, to be wide — see the note on it.
+      className="relative overflow-hidden rounded-xl px-[26px] py-[18px] [container-type:inline-size] max-sm:px-4"
       style={{
-        height: 297,
+        minHeight: 297,
         background:
           'linear-gradient(34.352deg, #FEDEB5 -13.04%, rgba(255,255,255,0.53) 16.32%), linear-gradient(90deg, #FFFFFF 0%, #C2F4FD 100%)',
         boxShadow: 'inset 0 0 0 2px #FFFFFF',
@@ -282,7 +287,7 @@ export function CampaignFocusCard({
             rather than dead buttons. */}
         <span
           aria-hidden
-          className="absolute right-[527.5px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full xl:flex"
+          className="absolute right-[527.5px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full [@container(min-width:1050px)]:flex"
           style={{ boxShadow: 'inset 0 0 0 0.5px #838383', background: 'rgba(255,255,255,0.6)' }}
         >
           <svg width="5" height="8" viewBox="0 0 5 8" fill="none" className="-scale-x-100">
@@ -291,14 +296,18 @@ export function CampaignFocusCard({
         </span>
         <span
           aria-hidden
-          className="absolute right-[29px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full xl:flex"
+          className="absolute right-[29px] top-[138px] hidden h-[21.2px] w-[21.2px] items-center justify-center rounded-full [@container(min-width:1050px)]:flex"
           style={{ boxShadow: 'inset 0 0 0 0.5px #838383', background: 'rgba(255,255,255,0.6)' }}
         >
           <svg width="5" height="8" viewBox="0 0 5 8" fill="none">
             <path d="m1 1 3 3-3 3" stroke="#838383" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-        <div className="absolute right-[66.2px] top-[31px] hidden items-start gap-[20.5px] xl:flex">
+        {/* Shown when the *card* can hold it beside the text (~1050 of the
+            design's 1160). It was `xl:` — the window — and at 1366 the card
+            is ~730, so the three posters sat on the title, "Remaining" and
+            Adjust Frequency. */}
+        <div className="absolute right-[66.2px] top-[31px] hidden items-start gap-[20.5px] [@container(min-width:1050px)]:flex">
           {upcoming.slice(0, 3).map((slot) => (
             <div
               key={slot.id}

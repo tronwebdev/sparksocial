@@ -97,7 +97,7 @@ export function CreditUsageSection() {
 
   return (
     <div className="flex flex-wrap gap-[26px]">
-      <div className="min-w-[380px] flex-1 max-canvas:min-w-0 max-canvas:basis-full space-y-[26px]">
+      <div className="min-w-[380px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full space-y-[26px]">
         {/* ── balance ────────────────────────────────────────────────── */}
         <div className="h-[214px] w-[386px] max-w-full rounded-[13.364px] p-[28px]" style={{ background: 'var(--ss-ink-900)' }}>
           <p className="text-16 font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>

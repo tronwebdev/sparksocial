@@ -94,7 +94,15 @@ export function RightRail({
         <div
           role="tablist"
           aria-label="Right rail panels"
-          className="relative h-[63px] rounded bg-seg-track"
+          /*
+            A size container, because what breaks this control is the rail's
+            width and not the screen's. At the design's 421px the labels sit at
+            their measured offsets; between 1280 and 1440 the rail is ~270 and
+            "Trending Topics" ran past the card's edge. Below 400px of track
+            each label centres in its own half, and the glyphs and the type
+            step down until both fit.
+          */
+          className="relative h-[63px] rounded bg-seg-track [container-type:inline-size]"
         >
           <span
             aria-hidden
@@ -112,13 +120,13 @@ export function RightRail({
             type="button"
             aria-selected={seg === 'published'}
             onClick={() => setSeg('published')}
-            className="absolute top-[21px] flex h-[23px] items-center gap-2.5 bg-transparent"
+            className="absolute top-[21px] flex h-[23px] items-center gap-2.5 bg-transparent [@container(max-width:400px)]:!left-[10px] [@container(max-width:400px)]:w-[calc((100%-35px)/2)] [@container(max-width:400px)]:justify-center [@container(max-width:400px)]:gap-1.5"
             style={{ left: LABEL_X.published }}
           >
             {/* A paper plane, not a tick. The tick was mine and it reads as
                 "done"; the design's glyph is the send icon, which is what
                 publishing a post is. */}
-            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" aria-hidden className="[@container(max-width:400px)]:hidden">
               <path
                 d="M18 2 2 8.6l6.4 2.4L18 2Z"
                 stroke={seg === 'published' ? '#000000' : '#838383'}
@@ -133,7 +141,7 @@ export function RightRail({
               />
             </svg>
             <span
-              className="whitespace-nowrap text-18 font-medium leading-none"
+              className="whitespace-nowrap text-18 font-medium leading-none [@container(max-width:400px)]:text-15 [@container(max-width:300px)]:text-13"
               style={{ color: seg === 'published' ? '#000000' : '#838383' }}
             >
               Post published
@@ -145,12 +153,12 @@ export function RightRail({
             type="button"
             aria-selected={seg === 'trending'}
             onClick={() => setSeg('trending')}
-            className="absolute top-[15px] flex h-[29px] items-center gap-0.5 bg-transparent"
+            className="absolute top-[15px] flex h-[29px] items-center gap-0.5 bg-transparent [@container(max-width:400px)]:!left-[calc(50%+7.5px)] [@container(max-width:400px)]:w-[calc((100%-35px)/2)] [@container(max-width:400px)]:justify-center"
             style={{ left: LABEL_X.trending }}
           >
-            <img src="/dashboard/fire.png" alt="" width={27} height={27} className="block object-cover" />
+            <img src="/dashboard/fire.png" alt="" width={27} height={27} className="block object-cover [@container(max-width:400px)]:hidden" />
             <span
-              className="whitespace-nowrap text-18 font-medium leading-none"
+              className="whitespace-nowrap text-18 font-medium leading-none [@container(max-width:400px)]:text-15 [@container(max-width:300px)]:text-13"
               style={{ color: seg === 'trending' ? '#000000' : '#838383' }}
             >
               Trending Topics

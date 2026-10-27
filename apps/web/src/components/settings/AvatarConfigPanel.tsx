@@ -82,7 +82,7 @@ export function AvatarConfigPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Avatar &amp; voice</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Which trained HeyGen avatar and ElevenLabs voice this brand generates from. Set this after training

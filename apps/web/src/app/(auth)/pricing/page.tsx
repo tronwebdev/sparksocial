@@ -62,7 +62,7 @@ const PLANS: PlanCard[] = [
 export default function PricingPage() {
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr]">
-      <BrandPanel />
+      <BrandPanel compact />
 
       <main className="flex items-center justify-center bg-bg p-8">
         <div className="w-full max-w-4xl">

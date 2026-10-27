@@ -337,8 +337,13 @@ export function CalendarMonthGrid({
               <div
                 key={key}
                 className={cn(
-                  'group relative overflow-hidden',
-                  variant === 'screen' ? 'h-cal-cell rounded-[20px]' : 'h-[140px] rounded-2xl',
+                  // A size container: the cell is 220 at the design's width and
+                  // ~117 at 1024, where the 16px insets and the full "Planned by
+                  // Agent" label no longer fit. See the `@container` steps below.
+                  'group relative overflow-hidden [container-type:inline-size]',
+                  // On a phone a cell is ~26-45px wide; 226 tall made the month a
+                  // 1.4m column of slivers. It becomes a compact day: see `T` below.
+                  variant === 'screen' ? 'h-cal-cell rounded-[20px] max-sm:h-[64px] max-sm:rounded-[12px]' : 'h-[140px] rounded-2xl',
                   post || (variant === 'screen' && !otherMonth && onAddPost)
                     ? 'cursor-pointer transition-shadow'
                     : undefined,
@@ -384,6 +389,8 @@ export function CalendarMonthGrid({
                   className={cn(
                     'absolute text-20 font-medium tabular-nums',
                     variant === 'screen' ? 'left-[16px] top-[11px]' : 'left-[14px] top-[9px]',
+                    // A compact day: the number centred, small enough for 26px.
+                    '[@container(max-width:90px)]:left-1/2 [@container(max-width:90px)]:top-[8px] [@container(max-width:90px)]:-translate-x-1/2 [@container(max-width:90px)]:text-14',
                   )}
                   style={{
                     color: otherMonth ? 'rgba(131,131,131,0.45)' : past ? '#838383' : '#0C0C0C',
@@ -401,7 +408,7 @@ export function CalendarMonthGrid({
                 {!otherMonth && key === todayKey ? (
                   <span
                     aria-hidden
-                    className="absolute left-[8px] top-[4px] h-[30px] w-[30px] rounded-full"
+                    className="absolute left-[8px] top-[4px] h-[30px] w-[30px] rounded-full [@container(max-width:90px)]:left-1/2 [@container(max-width:90px)]:top-[3px] [@container(max-width:90px)]:h-[26px] [@container(max-width:90px)]:w-[26px] [@container(max-width:90px)]:-translate-x-1/2"
                     style={{ boxShadow: 'inset 0 0 0 1.5px var(--ss-accent-purple)' }}
                   />
                 ) : null}
@@ -418,7 +425,7 @@ export function CalendarMonthGrid({
                     <>
                       <span
                         aria-hidden
-                        className="absolute right-[11px] top-[11px] flex h-[34px] w-[34px] items-center justify-center rounded-lg bg-white"
+                        className="absolute right-[11px] top-[11px] flex h-[34px] w-[34px] items-center justify-center rounded-lg bg-white [@container(max-width:90px)]:hidden"
                         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
                       >
                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
@@ -426,10 +433,18 @@ export function CalendarMonthGrid({
                         </svg>
                       </span>
 
-                      <span className="absolute left-[16px] top-[52px] flex items-center gap-[8px]">
-                        <SparkMark variant="shell" size={26} />
-                        <span className="whitespace-nowrap text-14 font-medium text-ink">
+                      {/* In a compact day the post is a dot under the number. */}
+                      <span aria-hidden className="absolute bottom-[12px] left-1/2 hidden h-[8px] w-[8px] -translate-x-1/2 rounded-full [@container(max-width:90px)]:block" style={{ background: tint.chipRing }} />
+
+                      <span className="absolute left-[16px] top-[52px] flex items-center gap-[8px] [@container(max-width:190px)]:left-[10px] [@container(max-width:190px)]:gap-[5px] [@container(max-width:90px)]:hidden">
+                        <SparkMark variant="shell" size={26} className="[@container(max-width:190px)]:!h-[20px] [@container(max-width:190px)]:!w-[20px]" />
+                        <span className="whitespace-nowrap text-14 font-medium text-ink [@container(max-width:190px)]:hidden">
                           Planned by Agent
+                        </span>
+                        {/* The narrow cell's label: same fact, a third of the width. */}
+                        {/* Under 110 (a tablet's cell is ~80) the mark says it alone. */}
+                        <span className="hidden whitespace-nowrap text-13 font-medium text-ink [@container(max-width:190px)]:inline [@container(max-width:110px)]:!hidden">
+                          By Agent
                         </span>
                       </span>
 
@@ -449,14 +464,14 @@ export function CalendarMonthGrid({
                         <img
                           src={post.thumbnailUrl}
                           alt=""
-                          className="absolute right-[16px] top-[94px] h-[48px] w-[27px] rounded-[4px] object-cover"
+                          className="absolute right-[16px] top-[94px] h-[48px] w-[27px] rounded-[4px] object-cover [@container(max-width:150px)]:hidden"
                           style={{ background: 'rgba(131,131,131,0.08)' }}
                         />
                       ) : null}
 
                       <span
-                        className={`absolute left-[16px] top-[94px] flex h-[37px] items-center rounded-[9px] px-[12px] ${
-                          post.thumbnailUrl ? 'right-[53px]' : 'right-[16px]'
+                        className={`absolute left-[16px] top-[94px] flex h-[37px] items-center rounded-[9px] px-[12px] [@container(max-width:190px)]:!left-[10px] [@container(max-width:190px)]:px-[8px] [@container(max-width:110px)]:hidden ${
+                          post.thumbnailUrl ? 'right-[53px] [@container(max-width:150px)]:!right-[10px]' : 'right-[16px] [@container(max-width:190px)]:!right-[10px]'
                         }`}
                         style={{
                           background: 'rgba(255,255,255,0.65)',
@@ -472,13 +487,13 @@ export function CalendarMonthGrid({
                       </span>
 
                       <span
-                        className="absolute left-[16px] top-[146px] truncate text-15 font-medium"
+                        className="absolute left-[16px] top-[146px] truncate text-15 font-medium [@container(max-width:190px)]:left-[10px] [@container(max-width:190px)]:!max-w-[calc(100%-20px)] [@container(max-width:90px)]:hidden"
                         style={{ color: '#3B3B3B', maxWidth: 'calc(100% - 32px)' }}
                       >
                         {postKindLabel(post.platform, post.mediaType)}
                       </span>
 
-                      <span className="absolute left-[16px] top-[176px] flex items-center gap-[6px]">
+                      <span className="absolute left-[16px] top-[176px] flex items-center gap-[6px] [@container(max-width:190px)]:left-[10px] [@container(max-width:90px)]:hidden">
                         <PlatformIcon platform={post.platform} size={24} />
                         {posts.length > 1 ? (
                           <span className="text-13 font-semibold text-brand-purple">

@@ -105,10 +105,15 @@ interface RunSummary {
   reply?: string;
 }
 
-/** The design's two tabs, and the pill geometry it slides between them. */
+/**
+ * The design's two tabs, and the pill geometry it slides between them —
+ * `dwPillLeft` / `dwPillWidth` in `Spark Chat.dc.html`: 0 / 135 and 137 / 196.
+ * These were 8 / 146 and 156 / 182, which floated the pill off the strip's
+ * left edge and cut "My conversations" short.
+ */
 const TABS = [
-  { key: 'chat' as const, label: 'New Chat', left: 8, width: 146 },
-  { key: 'convos' as const, label: 'My conversations', left: 156, width: 182 },
+  { key: 'chat' as const, label: 'New Chat', left: 0, width: 135 },
+  { key: 'convos' as const, label: 'My conversations', left: 137, width: 196 },
 ];
 
 const SPARK_ORB = (size: number) => {

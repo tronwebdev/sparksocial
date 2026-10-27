@@ -241,11 +241,20 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 <SlotCalendarGlyph />
               </span>
 
-              <div className="min-w-0 shrink xl:w-[173px] xl:shrink-0">
+              {/*
+                On a phone the row is ~300px for five columns, and the date was
+                left 40px of it. Below `sm` the media well and the separate
+                platform column go, the date column takes the room, and the
+                platform moves onto the date's second line.
+              */}
+              <div className="min-w-0 shrink max-sm:flex-1 xl:w-[173px] xl:shrink-0">
                 <p className="truncate text-20 font-semibold leading-[1.28] text-ink">
                   {p.scheduledAt ? slotDateTime(p.scheduledAt) : 'Not scheduled yet'}
                 </p>
                 <p className="mt-[10px] truncate text-16 font-normal text-ink-muted" title={p.summary}>
+                  <span className="sm:hidden">
+                    {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'} ·{' '}
+                  </span>
                   {p.summary}
                 </p>
               </div>
@@ -257,7 +266,7 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 (`mediaUrl` on `ContentListItem`) would close both.
               */}
               <div
-                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-12 text-ink-muted xl:w-[127px]"
+                className="flex h-dash-row-body w-[92px] shrink-0 items-center justify-center rounded text-12 text-ink-muted max-sm:hidden xl:w-[127px]"
                 style={{ background: 'rgba(131,131,131,0.1)' }}
               >
                 {p.mediaType ?? 'text'}
@@ -270,8 +279,14 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 slot and leaves the platform to the slot's own choice, so it
                 says that rather than showing nothing.
               */}
+              {/*
+                The 98px gutter is the design's at its 810px row. A fixed 98 from
+                `xl` up left the label 35px at 1366, where the card is 597 wide —
+                "Carousel" became "C…". Percentage padding resolves against the
+                row, so this is 98 at the design's width and gives way below it.
+              */}
               <span
-                className="min-w-0 flex-1 truncate text-18 font-medium text-ink xl:pl-[98px]"
+                className="min-w-0 flex-1 truncate text-18 font-medium text-ink max-sm:hidden xl:pl-[clamp(0px,calc(100%-712px),98px)]"
                 title={p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
               >
                 {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}

@@ -206,7 +206,12 @@ export function CommandCenterShell({
           height is stated (99) because the divider under it is at y=117 and the
           page title is measured 26px from that, not from Ask Spark's shadow.
         */}
-        <header className="flex flex-wrap items-start gap-4 px-[17px] pt-4 sm:h-cc-chrome-h sm:gap-[22.1px] sm:px-cc-chrome-x sm:pb-0 sm:pr-cc-chrome-r sm:pt-0">
+        {/*
+          A floor, not a height. Between 1024 and ~1500 the pill, Ask Spark and
+          the bell do not fit beside the wordmark, the row wraps — and with a
+          fixed 99 the wrapped tabs were drawn over "Agent Command Center".
+        */}
+        <header className="flex flex-wrap items-start gap-4 px-[17px] pt-4 sm:min-h-cc-chrome-h sm:gap-[22.1px] sm:px-cc-chrome-x sm:pb-0 sm:pr-cc-chrome-r sm:pt-0">
           <span className="font-display text-28 leading-[1.13] text-ink sm:mt-cc-top-mark">
             Sparksocial
           </span>
@@ -229,7 +234,7 @@ export function CommandCenterShell({
             of the card's right edge — which is what puts the pill's left edge on
             the design's 613 without positioning it there.
           */}
-          <div className="ml-auto flex min-w-0 items-start gap-4 sm:gap-cc-chrome-gap">
+          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-start justify-end gap-4 sm:gap-cc-chrome-gap">
             <nav
               role="tablist"
               aria-label="Command Center"
@@ -260,11 +265,14 @@ export function CommandCenterShell({
                   aria-selected={tab === t.id}
                   onClick={() => onTab(t.id)}
                   className={cn(
-                    'relative z-10 flex h-[23px] items-center gap-2 whitespace-nowrap bg-transparent px-[20px] text-17 font-medium leading-none transition-colors',
+                    // Compact under 1600: the four tabs at the design's 20px
+                    // padding with icons need ~876px, which is most of the
+                    // header on a laptop.
+                    'relative z-10 flex h-[23px] items-center gap-2 whitespace-nowrap bg-transparent px-[20px] text-17 font-medium leading-none transition-colors max-[1600px]:px-[13px] max-[1600px]:text-15',
                     tab === t.id ? 'text-white' : 'text-ink-muted hover:text-ink',
                   )}
                 >
-                  <span className="inline-flex h-[21px] w-[21px] shrink-0 items-center justify-center">
+                  <span className="inline-flex h-[21px] w-[21px] shrink-0 items-center justify-center max-[1600px]:hidden">
                     {t.icon}
                   </span>
                   {t.label}

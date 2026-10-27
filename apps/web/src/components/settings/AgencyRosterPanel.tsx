@@ -82,7 +82,7 @@ export function AgencyRosterPanel() {
   }, [windowDays]);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Every brand</h2>

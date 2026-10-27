@@ -197,7 +197,7 @@ export function PublishHealthPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Publishing health</h2>

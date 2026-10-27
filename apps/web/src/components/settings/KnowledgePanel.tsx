@@ -279,7 +279,7 @@ export function KnowledgePanel() {
   if (!genomeId) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">What this brand knows</h2>
       <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Policies, FAQs, spec sheets, pages from your site. SPARK checks every specific claim it writes against
@@ -357,7 +357,7 @@ export function KnowledgePanel() {
             leave this open while it runs.
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+            <div className="min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
               <label className="block text-12 text-ink-muted" htmlFor="kn-url">
                 Address
               </label>
@@ -489,7 +489,7 @@ export function KnowledgePanel() {
           The same check SPARK runs before publishing. Try a sentence you want it to be able to write.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+          <div className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
             <Input
               value={claim}
               onChange={(e) => {

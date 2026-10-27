@@ -531,7 +531,13 @@ export function PlanQueue({
       ) : null}
 
       {upcoming.length > 0 && layout === 'rows' ? (
-        <ol>
+        <ol className="[container-type:inline-size]">
+          {/*
+            A size container: the rows below are drawn to an 1100px row, and
+            the switch to the wrapped card asks this list, not the window. It
+            was `max-canvas:` — at 1366 the window is past canvas while the
+            card is ~730, so the absolute row ran its chip under the actions.
+          */}
           {upcoming.map((item, i) => {
             /* An unknown status shows *itself*, neutrally. Falling back to
                `scheduled` made every unmapped status claim to be scheduled. */
@@ -571,23 +577,23 @@ export function PlanQueue({
                   positioned — the order they already sit in is the order they
                   should read in.
                 */
-                className="relative h-[104px] max-canvas:flex max-canvas:h-auto max-canvas:flex-wrap max-canvas:items-center max-canvas:gap-x-[14px] max-canvas:gap-y-[6px] max-canvas:px-[20px] max-canvas:py-[18px]"
+                className="relative h-[104px] [@container(max-width:1099px)]:flex [@container(max-width:1099px)]:h-auto [@container(max-width:1099px)]:flex-wrap [@container(max-width:1099px)]:items-center [@container(max-width:1099px)]:gap-x-[14px] [@container(max-width:1099px)]:gap-y-[6px] [@container(max-width:1099px)]:px-[20px] [@container(max-width:1099px)]:py-[18px]"
                 style={{ borderTop: i === 0 ? undefined : '1px solid rgba(131,131,131,0.12)' }}
               >
-                <span className="absolute left-[20px] top-[22px] block max-canvas:static max-canvas:shrink-0" aria-hidden>
+                <span className="absolute left-[20px] top-[22px] block [@container(max-width:1099px)]:static [@container(max-width:1099px)]:shrink-0" aria-hidden>
                   <QueueCalendarGlyph />
                 </span>
 
                 {/* The next one out is the only row anybody is looking for - and
                     it is the first of the whole queue, not of whichever page you
                     are on. */}
-                <p className="absolute left-[55px] top-[22px] whitespace-nowrap text-20 font-semibold leading-[1.28] text-ink max-canvas:static max-canvas:whitespace-normal">
+                <p className="absolute left-[55px] top-[22px] whitespace-nowrap text-20 font-semibold leading-[1.28] text-ink [@container(max-width:1099px)]:static [@container(max-width:1099px)]:whitespace-normal">
                   {item.scheduledAt ? when(item.scheduledAt) : 'No slot yet'}
                   {absolute === 0 ? (
                     <span className="ml-2 align-middle text-14 font-medium text-primary">Next</span>
                   ) : null}
                 </p>
-                <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted max-canvas:static max-canvas:basis-full">
+                <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted [@container(max-width:1099px)]:static [@container(max-width:1099px)]:basis-full">
                   Confidence: <b className="font-semibold text-ink">High</b>
                 </p>
 
@@ -598,7 +604,7 @@ export function PlanQueue({
                   three.
                 */}
                 <div
-                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-12 text-ink-muted max-canvas:static max-canvas:h-[44px] max-canvas:w-[72px] max-canvas:shrink-0"
+                  className="absolute left-[320px] top-[12px] flex h-20 w-[127px] items-center justify-center rounded text-12 text-ink-muted [@container(max-width:1099px)]:static [@container(max-width:1099px)]:h-[44px] [@container(max-width:1099px)]:w-[72px] [@container(max-width:1099px)]:shrink-0"
                   style={{ background: 'rgba(131,131,131,0.1)' }}
                 >
                   {item.mediaType ?? 'text'}
@@ -607,20 +613,20 @@ export function PlanQueue({
                 {/* The design badges the platform at 492,24 in 26.5px and puts
                     the kind at 562,27 — so with `public/icons` in place the mark
                     goes back in its own slot and the label starts at 562. */}
-                <span className="absolute left-[492px] top-[24px] max-canvas:static max-canvas:shrink-0">
+                <span className="absolute left-[492px] top-[24px] [@container(max-width:1099px)]:static [@container(max-width:1099px)]:shrink-0">
                   <PlatformIcon platform={item.platform} size={26.5} />
                 </span>
-                <p className="absolute left-[562px] top-[27px] max-w-[194px] truncate text-18 font-medium text-ink max-canvas:static max-canvas:min-w-0 max-canvas:flex-1">
+                <p className="absolute left-[562px] top-[27px] max-w-[194px] truncate text-18 font-medium text-ink [@container(max-width:1099px)]:static [@container(max-width:1099px)]:min-w-0 [@container(max-width:1099px)]:flex-1">
                   {/* Named, not the raw enum: `youtube_shorts` on a row is the
                       kind of leak the platform label map exists to stop. */}
                   {item.platform ? platformLabel(item.platform) : 'no account chosen'}
                 </p>
-                <p className="absolute left-[492px] top-[62px] max-w-[264px] truncate text-16 leading-[1.3] text-ink-muted max-canvas:static max-canvas:max-w-none max-canvas:basis-full">
+                <p className="absolute left-[492px] top-[62px] max-w-[264px] truncate text-16 leading-[1.3] text-ink-muted [@container(max-width:1099px)]:static [@container(max-width:1099px)]:max-w-none [@container(max-width:1099px)]:basis-full">
                   {item.summary === NO_COPY ? <span className="italic">not written yet</span> : item.summary}
                 </p>
 
                 <span
-                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-15 font-medium max-canvas:static max-canvas:shrink-0"
+                  className="absolute left-[770px] top-[30px] flex h-[41px] items-center whitespace-nowrap rounded-lg px-[18px] text-15 font-medium [@container(max-width:1099px)]:static [@container(max-width:1099px)]:shrink-0"
                   style={{ background: chip.bg, boxShadow: `inset 0 0 0 1.06px ${chip.ring}`, color: chip.fg }}
                 >
                   {chip.label}
@@ -682,7 +688,7 @@ export function PlanQueue({
                   rather than after it. Found by reading the row back rather
                   than by the scan.
                 */}
-                <div className="absolute right-[13px] top-[32px] flex shrink-0 items-center gap-[10px] max-canvas:static max-canvas:ml-auto">
+                <div className="absolute right-[13px] top-[32px] flex shrink-0 items-center gap-[10px] [@container(max-width:1099px)]:static [@container(max-width:1099px)]:ml-auto">
                 {item.status === 'needs_review' ? (
                   <RowAction
                     disabled

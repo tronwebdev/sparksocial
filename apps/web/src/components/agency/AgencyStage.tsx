@@ -211,8 +211,11 @@ function AgencyScopePill({ narrow = false }: { narrow?: boolean }) {
   return (
     <div
       className={cn(
-        'h-[56px] w-[378px] rounded-[28px] bg-white',
-        narrow ? 'relative max-w-full shrink-0' : 'absolute left-[1000px] top-[40px]',
+        'h-[56px] rounded-[28px] bg-white',
+        /* Narrow, the pill is a flex row sized by its two tabs. It kept the
+           design's fixed 378 with its tabs pinned at 6 and 194, so on a 360
+           phone "Agency Portal" ended at 375 and the page scrolled sideways. */
+        narrow ? 'relative inline-flex max-w-full shrink-0 items-center gap-1 p-[6px]' : 'absolute left-[1000px] top-[40px] w-[378px]',
       )}
       style={{ boxShadow: '0 10px 26px -16px rgba(12,12,12,0.3)' }}
       role="tablist"
@@ -222,7 +225,10 @@ function AgencyScopePill({ narrow = false }: { narrow?: boolean }) {
         href="/settings"
         role="tab"
         aria-selected={false}
-        className="absolute left-[6px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] px-[15px] text-16 font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]"
+        className={cn(
+          'flex h-[44px] items-center gap-[9px] rounded-[22px] px-[15px] text-16 font-medium transition-colors hover:bg-[rgba(131,131,131,0.08)]',
+          narrow ? 'relative max-sm:gap-[6px] max-sm:px-[11px] max-sm:text-14' : 'absolute left-[6px] top-[6px]',
+        )}
         style={{ color: 'rgb(91,91,91)' }}
       >
         <svg width="17" height="17" viewBox="0 0 22 22" fill="none" aria-hidden className="block">
@@ -235,7 +241,10 @@ function AgencyScopePill({ narrow = false }: { narrow?: boolean }) {
       <span
         role="tab"
         aria-selected
-        className="absolute left-[194px] top-[6px] flex h-[44px] items-center gap-[9px] rounded-[22px] bg-ink px-[16px] text-16 font-semibold text-white"
+        className={cn(
+          'flex h-[44px] items-center gap-[9px] rounded-[22px] bg-ink px-[16px] text-16 font-semibold text-white',
+          narrow ? 'relative max-sm:gap-[6px] max-sm:px-[11px] max-sm:text-14' : 'absolute left-[194px] top-[6px]',
+        )}
       >
         <svg width="16" height="15" viewBox="0 0 16 15" fill="none" aria-hidden className="block">
           <rect x="1" y="4" width="14" height="10" rx="2.4" stroke="#FFFFFF" strokeWidth="1.4" />

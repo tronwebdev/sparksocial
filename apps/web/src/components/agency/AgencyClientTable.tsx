@@ -97,6 +97,9 @@ export function AgencyClientTable({
     y += (isOpen ? ROW_OPEN : ROW) + GAP;
     return { b, isOpen, top: at, h: isOpen ? ROW_OPEN : ROW };
   });
+  /* With no rows the card was 133 tall, and the 66px footer's "0 workspaces"
+     landed on the empty-state line at 92. The empty state gets a row's room. */
+  if (brands.length === 0) y += 56;
   const height = y + 66;
 
   function toggle(id: string) {

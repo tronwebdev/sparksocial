@@ -171,14 +171,14 @@ export function ProfileSection() {
         however the row wraps.
 
         Below `canvas` every such column takes a full row instead —
-        `max-canvas:min-w-0 max-canvas:basis-full`, applied to all 31 of them
+        `max-cq-canvas:min-w-0 max-cq-canvas:basis-full`, applied to all 31 of them
         across the app. `min-w-0` matters as much as the basis: without it the
         column's own content re-inflates it past the row it was given.
       */}
       <div className="mt-[30px] flex flex-wrap gap-[26px]">
-        <div className="min-w-[420px] flex-[2] max-canvas:min-w-0 max-canvas:basis-full space-y-[22px]">
+        <div className="min-w-[420px] flex-[2] max-cq-canvas:min-w-0 max-cq-canvas:basis-full space-y-[22px]">
           <div className="flex flex-wrap gap-[22px]">
-            <PersonalField label="First Name" className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+            <PersonalField label="First Name" className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
               <input
                 value={form.first}
                 onChange={(e) => set({ first: e.target.value })}
@@ -186,7 +186,7 @@ export function ProfileSection() {
                 className="h-full w-full bg-transparent px-[26px] text-18 font-medium text-ink outline-none"
               />
             </PersonalField>
-            <PersonalField label="Last Name" className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+            <PersonalField label="Last Name" className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
               <input
                 value={form.last}
                 onChange={(e) => set({ last: e.target.value })}
@@ -218,7 +218,7 @@ export function ProfileSection() {
           </PersonalField>
 
           <div className="flex flex-wrap gap-[22px]">
-            <PersonalField label="Timezone" className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+            <PersonalField label="Timezone" className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
               <PersonalSelect
                 value={form.timezone ?? ''}
                 onChange={(v) => set({ timezone: v })}
@@ -233,7 +233,7 @@ export function ProfileSection() {
                 options={zonesIncluding(form.timezone || guessTimezone())}
               />
             </PersonalField>
-            <PersonalField label="Pronouns" className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
+            <PersonalField label="Pronouns" className="min-w-[240px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full">
               <PersonalSelect
                 value={form.pronouns ?? ''}
                 onChange={(v) => set({ pronouns: v })}
@@ -249,7 +249,7 @@ export function ProfileSection() {
           </p>
         </div>
 
-        <div className="min-w-[320px] flex-1 max-canvas:min-w-0 max-canvas:basis-full space-y-[22px]">
+        <div className="min-w-[320px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full space-y-[22px]">
           <div>
             <label className="block text-18 font-medium" style={{ color: 'rgb(131,131,131)' }}>
               Bio (Optional)

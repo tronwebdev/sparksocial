@@ -39,7 +39,21 @@ import { describe, expect, it } from 'vitest';
  * element's right edge past the viewport at any of the others.
  */
 
-const read = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8');
+/**
+ * Sources as the canvas contract sees them. A section inside another box
+ * switches on its *container's* width (`cq-canvas:` / `max-cq-canvas:`, see
+ * `tailwind.config.ts`) rather than the viewport's, and the contract is the
+ * same either way: the design's geometry above the line, a rule for every
+ * offset below it. So the container spelling reads as the viewport one here,
+ * and the test that the container exists is below.
+ */
+const read = (rel: string) =>
+  readFileSync(join(__dirname, '..', rel), 'utf8')
+    .replace(/max-cq-canvas:/g, 'max-canvas:')
+    .replace(/cq-canvas:/g, 'canvas:')
+    // A component drawn to a narrower box than the canvas switches at its own
+    // width — the plan queue's rows at 1099 — and reads the same way here.
+    .replace(/\[@container\(max-width:\d+px\)\]:/g, 'max-canvas:');
 
 const SOURCE = read('src/components/settings/OverviewSection.tsx');
 
@@ -362,7 +376,12 @@ describe('the automation queue scrolls instead of stranding its headings', () =>
       (c) => c.includes('max-w-auto-wide') && c.includes('bg-white') && c.includes('pb-[24px]'),
     );
     expect(card, 'the queue card is no longer recognisable').toBeDefined();
-    expect(card).toContain('max-canvas:overflow-x-auto');
+    // The table scrolls inside the card — not the card — so the title and the
+    // pager stay put; and at every width, because between 1300 and ~1700 the
+    // card is narrower than the design too. The tracks have floors, and the
+    // scroller holds the header *and* the rows.
+    expect(SOURCE_AUTO).toMatch(/<div className="overflow-x-auto">\s*<div className="min-w-\[792px\]">/);
+    expect(SOURCE_AUTO).toContain("const QUEUE_COLUMNS = 'minmax(260px,572fr)");
   });
 
   it('keeps the header and the rows on one shared track definition', () => {
@@ -559,3 +578,23 @@ const FLEX_FLOOR_FILES = [
   'src/components/settings/PolicyPanel.tsx',
   'src/components/settings/personal/ProfileSection.tsx',
 ] as const;
+
+describe('settings sections measure their card, not the window', () => {
+  const SHELL = readFileSync(join(__dirname, '../src/components/settings/SettingsShell.tsx'), 'utf8');
+  const CONFIG = readFileSync(join(__dirname, '../tailwind.config.ts'), 'utf8');
+
+  it('the shell content card is the `cq` container', () => {
+    expect(SHELL).toContain('[container:cq/inline-size]');
+  });
+
+  it('the variants ask that container', () => {
+    expect(CONFIG).toContain("addVariant('cq-canvas', '@container cq (min-width: 1300px)')");
+    expect(CONFIG).toContain("addVariant('max-cq-canvas', '@container cq (max-width: 1299.98px)')");
+  });
+
+  it('the overview switches on the card — at 1366 the card is 973 wide', () => {
+    const raw = readFileSync(join(__dirname, '../src/components/settings/OverviewSection.tsx'), 'utf8');
+    expect(raw).toContain('cq-canvas:min-w-[1300px]');
+    expect(raw).not.toMatch(/(?<![-\w])max-canvas:/);
+  });
+});

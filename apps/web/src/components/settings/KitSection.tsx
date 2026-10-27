@@ -64,12 +64,14 @@ export function KitSection({
 }) {
   if (rule !== undefined) {
     return (
-      <section className={cn('bg-panel', className)} style={{ borderRadius: 22.888, padding: '19px 23px 23px', ...style }}>
+      // A size container: these cards are 626 at the design's width, ~300
+      // two-up at 1024 and on a phone, and their bodies step down by it.
+      <section className={cn('bg-panel px-[23px] pb-[23px] pt-[19px] [container-type:inline-size] max-sm:px-4 max-sm:pb-4', className)} style={{ borderRadius: 22.888, ...style }}>
         <div className="flex items-start justify-between gap-3" style={{ height: rule - 19 }}>
           <h3 className="text-20 font-medium leading-[1.3] text-ink">{title}</h3>
           {headerRight ? <div className="-mr-[7px] -mt-[4.2px] shrink-0">{headerRight}</div> : null}
         </div>
-        <div aria-hidden className="-mx-[23px] h-px" style={{ background: 'rgba(12,12,12,0.1)' }} />
+        <div aria-hidden className="-mx-[23px] h-px max-sm:-mx-4" style={{ background: 'rgba(12,12,12,0.1)' }} />
         {children}
       </section>
     );
@@ -77,8 +79,8 @@ export function KitSection({
 
   return (
     <section
-      className={cn('bg-panel', className)}
-      style={{ borderRadius: 22.888, padding: '19px 23px 23px', ...style }}
+      className={cn('bg-panel px-[23px] pb-[23px] pt-[19px] max-sm:px-4 max-sm:pb-4', className)}
+      style={{ borderRadius: 22.888, ...style }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

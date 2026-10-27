@@ -99,11 +99,13 @@ export default function SignUpPage() {
       <BrandPanel />
 
       {/*
-        Card top sits 34.5px from the frame top in `signup.png`, not centred —
-        the column is top-weighted, so `justify-start` with that padding rather
-        than `justify-center`, which would drop it ~55px lower.
+        Centred, with 53px of padding: `SparkSocial Auth.dc.html`'s right side
+        is `justify-content:center; padding:53px 24px`. This was top-aligned at
+        34px from an older `signup.png`, which put the card 125px above the
+        design at 1117 tall. Centring only uses spare height — on a short screen
+        the column grows with its content and the card starts at the padding.
       */}
-      <div className="flex flex-1 flex-col items-center justify-start overflow-y-auto px-6 pb-10 pt-[34px]">
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-[53px]">
         <AuthPanel tone="light" className="pb-[28px]">
           <AuthHeader title="Register to continue" subtitle="Join us today and unlock exclusive features!" />
 

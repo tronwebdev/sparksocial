@@ -93,7 +93,7 @@ export function ConsentPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Likeness &amp; voice consent</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Required before any avatar or voice-clone format can pass the rights guardrail. Recording consent here is an
@@ -120,7 +120,7 @@ export function ConsentPanel() {
             ))}
           </select>
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full gap-1">
+        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full gap-1">
           <label className="text-12 font-medium text-ink-muted" htmlFor="consent-subject">
             Whose likeness/voice (name)
           </label>
@@ -132,7 +132,7 @@ export function ConsentPanel() {
             className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
-        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full gap-1">
+        <div className="grid grid-cols-1 min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full gap-1">
           <label className="text-12 font-medium text-ink-muted" htmlFor="consent-evidence">
             Evidence URL (optional)
           </label>

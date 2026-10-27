@@ -156,12 +156,16 @@ export function SettingsShell({
         <div aria-hidden className="mx-[26px] h-px" style={{ background: 'rgba(131,131,131,0.25)' }} />
 
         {/* ── nav + content ───────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-start gap-[11px] px-[26px] pb-[40px] pt-[26px]">
+        {/* Phones trim every layer's inset: page, card, content, kit card and
+            panel each added 24-30px, and a panel on a 360 phone was left 107. */}
+        <div className="flex flex-wrap items-start gap-[11px] px-[26px] pb-[40px] pt-[26px] max-sm:px-3 max-sm:pt-4">
           <SettingsNavPanel sections={sections} tree={tree} pathname={pathname} />
 
+          {/* The `cq` container the sections' `cq-canvas:` variants measure —
+              the card's width, not the window's. See `tailwind.config.ts`. */}
           <section
             className={cn(
-              'min-w-0 flex-1 rounded-xl',
+              'min-w-0 flex-1 rounded-xl [container:cq/inline-size]',
               bare ? '' : 'bg-white',
               contentClassName,
             )}
@@ -170,7 +174,7 @@ export function SettingsShell({
               children
             ) : (
               <>
-                <div className="px-[30px] pt-[21px]">
+                <div className="px-[30px] pt-[21px] max-sm:px-4">
                   <h2 className={cn('font-semibold leading-[1.3] text-ink', large ? 'text-28' : 'text-20')}>{heading}</h2>
                   {subtitle ? (
                     <p
@@ -185,7 +189,7 @@ export function SettingsShell({
                   ) : null}
                 </div>
                 {/* 50 between the large subtitle and the first card (231 → 281). */}
-                <div className={cn('px-[30px] pb-[30px]', large ? 'pt-[49px]' : 'pt-[22px]')}>{children}</div>
+                <div className={cn('px-[30px] pb-[30px] max-sm:px-4', large ? 'pt-[49px] max-sm:pt-6' : 'pt-[22px]')}>{children}</div>
                 {footer}
               </>
             )}
@@ -247,7 +251,10 @@ function SettingsTreeSwitch({ tree }: { tree: SettingsTree }) {
             role="tab"
             aria-selected={on}
             className={cn(
-              'flex h-set-seg-h min-w-0 flex-1 items-center justify-center gap-[6px] rounded-[76.383px] text-15 font-medium leading-[1.26] transition-colors',
+              // Sized by their labels, not thirds: "Organisation" is the longest
+              // and ran 4px out of an equal third below 1366, where the icons
+              // also go so the three fit the pill.
+              'flex h-set-seg-h min-w-0 flex-auto items-center justify-center gap-[6px] whitespace-nowrap rounded-[76.383px] px-[10px] text-15 font-medium leading-[1.26] transition-colors max-[1365px]:[&>svg]:hidden',
               on ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink',
             )}
           >

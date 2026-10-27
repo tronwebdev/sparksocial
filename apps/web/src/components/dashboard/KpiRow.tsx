@@ -77,10 +77,18 @@ export function KpiRow({ series }: { series: BrandSeries }) {
       {cards.map((c, i) => (
         <div
           key={c.label}
-          className={cn('relative h-dash-kpi rounded-lg px-[21px] pt-[15px]', TINTS[i % TINTS.length])}
+          /*
+            A size container, and a floor rather than a height. Between 1280
+            and ~1440 the left column holds three cards of ~168px, and the 35px
+            value plus the 90px delta pill ran 11px out of the card. Under 230px
+            of card the pill drops below the value and the card grows to hold
+            it; at the design's 270 the content is 15 + 23 + 13 + 44.8 + 11, so
+            the 107 floor is exactly what renders.
+          */
+          className={cn('relative min-h-dash-kpi rounded-lg px-[21px] pb-[11px] pt-[15px] [container-type:inline-size]', TINTS[i % TINTS.length])}
         >
           <p className="text-18 font-medium leading-[1.28] text-ink-muted">{c.label}</p>
-          <div className="mt-[13px] flex items-center gap-3">
+          <div className="mt-[13px] flex items-center gap-3 [@container(max-width:230px)]:flex-wrap [@container(max-width:230px)]:gap-y-1">
             <span className="text-35 font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>

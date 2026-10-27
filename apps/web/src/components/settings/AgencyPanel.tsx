@@ -121,7 +121,7 @@ export function AgencyPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Agency</h2>
       <p className="mt-1 text-14 text-ink-muted">Org plan, governance defaults, and every brand in this account.</p>
       {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}

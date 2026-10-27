@@ -46,7 +46,8 @@ createServer((req, res) => {
     res.end();
     return;
   }
-  if (req.method === 'GET' && (req.url ?? '').startsWith('/extract.js')) {
+  const script = /^\/(extract|responsive)\.js(\?|$)/.exec(req.url ?? '');
+  if (req.method === 'GET' && script) {
     /*
      * Served fresh on every request rather than cached, so editing the
      * extractor between two measurements changes the second one. A stale
@@ -54,7 +55,7 @@ createServer((req, res) => {
      * either design.
      */
     res.writeHead(200, { ...cors, 'content-type': 'text/javascript', 'cache-control': 'no-store' });
-    res.end(readFileSync(join(process.cwd(), 'scripts', 'fidelity', 'extract.js'), 'utf8'));
+    res.end(readFileSync(join(process.cwd(), 'scripts', 'fidelity', `${script[1]}.js`), 'utf8'));
     return;
   }
   if (req.method === 'GET') {

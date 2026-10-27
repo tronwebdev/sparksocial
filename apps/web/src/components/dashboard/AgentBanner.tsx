@@ -143,7 +143,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
   */
   return (
     <section className="relative min-h-dash-banner rounded-2xl bg-agent-banner">
-      <div className="flex flex-wrap items-start gap-y-6 py-[28.6px] pl-[39px] pr-[39px]">
+      <div className="flex flex-wrap items-start gap-y-6 py-[28.6px] pl-[39px] pr-[39px] max-sm:px-5 max-sm:py-5">
         {/* ── identity ─────────────────────────────────────────────────── */}
         {/*
           318 exactly, and the name overflows it.
@@ -161,12 +161,18 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
           the 30px name paints past its column, unclipped, exactly as the
           prototype's does. Nothing downstream moves, whatever it is called.
         */}
-        <div className="flex w-[318px] shrink-0 items-start gap-0">
-          <span className="block h-[118.94px] w-[118.94px] shrink-0">
-            <SparkMark variant="shell" size={118.94} animated />
+        {/*
+          Below `canvas` the 318 box gives way: on a 360px phone the banner has
+          ~280px inside its padding, and the fixed 318 + 179 cut "Active" off at
+          the card's edge. The orb steps down to 80 on phones, and the column
+          takes whatever is left.
+        */}
+        <div className="flex w-[318px] shrink-0 items-start gap-0 max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1">
+          <span className="block h-[118.94px] w-[118.94px] shrink-0 max-sm:h-[80px] max-sm:w-[80px]">
+            <SparkMark variant="shell" size={118.94} animated className="max-sm:!h-[80px] max-sm:!w-[80px]" />
           </span>
 
-          <span className="ml-[20.06px] flex w-[179px] shrink-0 flex-col">
+          <span className="ml-[20.06px] flex w-[179px] shrink-0 flex-col max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1 max-sm:ml-3">
             {/*
               The name slot — and where naming lives when there is no name.
 
@@ -207,7 +213,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
             </span>
 
             {/* 113×35 pill, then the dot and label outside it. */}
-            <span className="mt-[29px] flex items-center">
+            <span className="mt-[29px] flex flex-wrap items-center gap-y-2 max-sm:mt-3">
               <span
                 className="flex h-[35px] w-[113px] items-center rounded-[7.38px] pl-[10.6px]"
                 style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(23.78px)' }}
