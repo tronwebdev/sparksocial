@@ -120,3 +120,22 @@ describe('a brand with nothing recorded', () => {
     expect(brandImageClause({ category: 'jewellery retailer' })).toContain('a jewellery retailer');
   });
 });
+
+describe('lettering in a generated image stays legible', () => {
+  it('asks for white or near-black text with contrast, palette or not', () => {
+    for (const c of [brandImageClause(brand), brandImageClause({ name: 'Acme' }), brandImageClause({})]) {
+      expect(c).toMatch(/white or near-black/i);
+      expect(c).toMatch(/strong contrast/i);
+    }
+  });
+
+  it('keeps the brand colours off the letters on a dark or busy photo — the purple that was unreadable', () => {
+    const c = brandImageClause({ ...brand, colors: ['#5B2A86', '#1A1A1A'] });
+    expect(c).toMatch(/never set text in a brand colour over a dark or busy background/i);
+    expect(c).toMatch(/palette for surfaces, objects and accents/i);
+  });
+
+  it('puts text over a photograph on a band', () => {
+    expect(brandImageClause(brand)).toMatch(/solid or darkened band/i);
+  });
+});

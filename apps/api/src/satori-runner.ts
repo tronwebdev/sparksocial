@@ -121,7 +121,7 @@ function beatToNode(beat: TimedBeat | undefined, width: number, height: number, 
       { style: { ...base, position: 'relative' } },
       el('img', { src: beat.url, width, height, style: { objectFit: 'cover' } }),
       beat.kind === 'image' && 'caption' in beat && beat.caption
-        ? captionNode(beat.caption, typeColor, body)
+        ? captionNode(beat.caption, body)
         : el('div', {}),
       logoUrl ? logoNode(logoUrl, width) : el('div', {}),
     );
@@ -213,8 +213,13 @@ function logoNode(url: string, width: number): SatoriNode {
  * The scrim behind a caption stays neutral even with a kit applied: its job is
  * legibility over arbitrary photography, and a brand-coloured scrim on a photo
  * that happens to be the same hue makes the caption vanish.
+ *
+ * The letters are white for the same reason. They took the kit's type colour,
+ * which is chosen to read on the brand's *ground* — a dark type colour (a
+ * near-black, a deep purple) on this 55% black scrim is the unreadable caption
+ * the scrim exists to prevent.
  */
-function captionNode(caption: string, typeColor: string, bodyFont: string): SatoriNode {
+function captionNode(caption: string, bodyFont: string): SatoriNode {
   return el(
     'div',
     {
@@ -233,7 +238,7 @@ function captionNode(caption: string, typeColor: string, bodyFont: string): Sato
       {
         style: {
           display: 'flex',
-          color: typeColor,
+          color: '#FFFFFF',
           fontSize: 40,
           fontFamily: bodyFont,
           background: 'rgba(12,12,12,0.55)',

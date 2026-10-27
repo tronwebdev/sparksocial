@@ -92,10 +92,27 @@ export function brandImageClause(brand: BrandImageContext): string {
   const colours = (brand.colors ?? []).filter((c) => /^#[0-9a-fA-F]{3,8}$/.test(c)).slice(0, MAX_COLOURS);
   if (colours.length > 0) {
     parts.push(
-      `Use the brand palette: ${colours.join(', ')}. ` +
+      `Use the brand palette for surfaces, objects and accents: ${colours.join(', ')}. ` +
         'Neutrals, white and black are fine alongside them; do not introduce a different accent colour.',
     );
   }
+
+  /*
+   * Legibility, always.
+   *
+   * The image model letters the post's copy into the picture, and with a
+   * palette in the prompt it set the second line of a Monmouth Coffee post in
+   * the brand's purple on a dark grey photograph — present, on-brand, and
+   * unreadable. Nothing downstream can fix contrast inside a generated pixel,
+   * so the rule goes where the pixels are made: text is white or near-black,
+   * on something that separates it from the photo, and the palette stays off
+   * the letters.
+   */
+  parts.push(
+    'Any lettering must be clearly legible at phone size: white or near-black, with strong contrast ' +
+      'against what is directly behind it. Over a photograph, put text on a solid or darkened band. ' +
+      'Never set text in a brand colour over a dark or busy background.',
+  );
 
   /*
    * The two instructions that exist because of what was actually generated.
