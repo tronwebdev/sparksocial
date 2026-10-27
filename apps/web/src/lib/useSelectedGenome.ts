@@ -17,6 +17,8 @@ import { userMessage } from '@/lib/errorCopy';
 
 export interface SelectedGenome {
   genomeId: string;
+  /** The brand this genome belongs to — what spend and caps are keyed on. */
+  brandId: string;
   name: string;
 }
 

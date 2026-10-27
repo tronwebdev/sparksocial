@@ -207,7 +207,7 @@ export default function WorkspacesPage() {
               opening a brand, which is the only place the question "which
               brand" has an answer.
             */}
-            <BarButton onClick={() => router.push('/settings/org')} label="Account Settings">
+            <BarButton onClick={() => router.push('/organization')} label="Account Settings">
               <svg width="17" height="17" viewBox="0 0 22 22" fill="none" aria-hidden>
                 <circle cx="9" cy="7" r="2.8" stroke={MUTED} strokeWidth="1.6" />
                 <path d="M3 17c1-2.7 3.2-4.2 6-4.2 1 0 1.9.2 2.7.5" stroke={MUTED} strokeWidth="1.6" strokeLinecap="round" />
@@ -317,7 +317,7 @@ export default function WorkspacesPage() {
                         </MenuItem>
                       ))
                     : null}
-                  <MenuItem label="Account Settings" onClick={() => router.push('/settings/org')}>
+                  <MenuItem label="Account Settings" onClick={() => router.push('/organization')}>
                     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" aria-hidden>
                       <circle cx="11" cy="11" r="3" stroke="currentColor" strokeWidth="1.5" />
                       <path d="M11 2.6v2.2M11 17.2v2.2M2.6 11h2.2M17.2 11h2.2M4.9 4.9l1.6 1.6M15.5 15.5l1.6 1.6M4.9 17.1l1.6-1.6M15.5 6.5l1.6-1.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

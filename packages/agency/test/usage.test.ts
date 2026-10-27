@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ToolError } from '@sparksocial/shared';
 import type { CreditStore, ToolCtx } from '@sparksocial/tools/defineTool';
-import { makeOrgUsageGet } from '../src/usage.js';
+import { evaluate } from '@sparksocial/tools/policy';
+import { makeBrandUsageGet, makeOrgUsageGet } from '../src/usage.js';
 
 /**
  * `org.usage.get` — PRD §8.12's usage slice, and §12's "what consumes credits".
@@ -23,6 +24,7 @@ function credits(over: Partial<Omit<CreditStore, 'budget'>> & { budget?: BudgetO
   const budget: BudgetOverride = over.budget ?? (async () => ({ monthlyCapCents: 10_000, spentCents: 0 }));
   return {
     spendByTool: async () => [],
+    brandSpendByTool: async () => [],
     record: async () => {},
     grant: async () => {},
     setBudget: async () => {},
@@ -250,5 +252,53 @@ describe('org.usage.get', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('brand.usage.get', () => {
+  const brandTool = (over: Parameters<typeof credits>[0] = {}) => makeBrandUsageGet({ credits: credits(over) });
+
+  it('reports one brand’s spend, its own cap and its share of the organisation’s', async () => {
+    const out = await brandTool({
+      budget: async () => ({ monthlyCapCents: 10_000, spentCents: 4_000 }),
+      brandBudget: async () => ({ capCents: 2_000, spentCents: 1_000 }),
+      brandSpendByTool: async () => [
+        { tool: 'content.generate_image', costCents: 600, calls: 6 },
+        { tool: 'content.generate_voiceover', costCents: 400, calls: 2 },
+      ],
+    }).handler({ brandId: 'brand_1', topTools: 10 }, ctx());
+
+    expect(out).toMatchObject({ brandId: 'brand_1', spentCents: 1_000, capCents: 2_000, remainingCents: 1_000 });
+    expect(out.usedFraction).toBeCloseTo(0.5);
+    expect(out.shareOfOrg).toBeCloseTo(0.25);
+    expect(out.byTool[0]).toMatchObject({ tool: 'content.generate_image', share: 0.6 });
+    expect(out.byCategory.reduce((n, c) => n + c.costCents, 0)).toBe(1_000);
+  });
+
+  it('says a brand with no cap is bounded only by the organisation', async () => {
+    const out = await brandTool().handler({ brandId: 'brand_1', topTools: 10 }, ctx());
+    expect(out.capCents).toBeNull();
+    expect(out.remainingCents).toBeNull();
+    expect(out.usedFraction).toBeNull();
+  });
+
+  it('uses the session’s brand when none is named, and refuses when there is none', async () => {
+    const seen: string[] = [];
+    const t = brandTool({ brandBudget: async (_o, b) => (seen.push(b), { capCents: null, spentCents: 0 }) });
+    await t.handler({ topTools: 10 }, { ...ctx(), brandId: 'brand_ctx' } as ToolCtx);
+    expect(seen).toEqual(['brand_ctx']);
+    await expect(t.handler({ topTools: 10 }, ctx())).rejects.toThrow(ToolError);
+  });
+
+  it('is refused to a client role — it is what the agency pays', () => {
+    const t = brandTool();
+    const decision = evaluate({
+      caller: 'user',
+      role: 'client',
+      tool: { name: t.name, effect: t.effect, autonomy: t.autonomy, scopes: t.scopes },
+      brand: { approvalMode: 'autopublish', agentPaused: false },
+      budget: { estimatedCents: 0, remainingCents: 10_000 },
+    } as unknown as Parameters<typeof evaluate>[0]);
+    expect(decision.kind).toBe('deny');
   });
 });

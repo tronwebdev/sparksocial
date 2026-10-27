@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ClerkClient } from '@clerk/backend';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import type { OrgSettingsRecord } from '@sparksocial/tools/defineTool';
 import { ToolError } from '@sparksocial/shared';
@@ -84,6 +85,69 @@ export const orgCreate = defineTool({
     return shape(settings);
   },
 });
+
+/* ── org.rename ──────────────────────────────────────────────────────── */
+
+export interface OrgRenameDeps {
+  clerk: ClerkClient;
+}
+
+export const OrgRenameInput = z.object({
+  /** Trimmed before it is checked, so a name of spaces is refused rather than stored. */
+  name: z.string().trim().min(1).max(80),
+});
+
+export const OrgRenameOutput = z.object({ orgId: z.string(), name: z.string() });
+
+/**
+ * The organisation's name — the one thing about an org a person names.
+ *
+ * It lives in Clerk, not here: `OrgGuard` asks for it as "Name your account"
+ * and Clerk's organisation record holds it, which is why this calls
+ * `@clerk/backend` the way `team.invite` does rather than writing a column.
+ * Keeping a copy in `org_settings` would give the account two names that could
+ * disagree, with the session's claims reading one and a screen the other.
+ *
+ * `ctx.orgId` is the only org it can touch — there is no org id in the input —
+ * so a caller cannot rename an organisation they are not in.
+ */
+export function makeOrgRename(deps: OrgRenameDeps) {
+  return defineTool({
+    name: 'org.rename',
+    version: 1,
+
+    summary:
+      "Rename this organisation — the account every brand in it shares. The name lives in Clerk's " +
+      'organisation record and is what the account switcher shows. Owner or admin.',
+
+    input: OrgRenameInput,
+    output: OrgRenameOutput,
+
+    effect: 'external',
+    /**
+     * A person's decision. Nothing SPARK is asked to do needs the account
+     * renamed, and an agent that could would be able to make an agency's whole
+     * account read as somebody else's.
+     */
+    autonomy: 'human_only',
+    scopes: ['owner', 'admin'],
+    /** Setting a name twice leaves the same name. */
+    idempotent: true,
+    surfaces: ['SET-ORG-01'],
+
+    async handler(input, ctx) {
+      try {
+        const org = await deps.clerk.organizations.updateOrganization(ctx.orgId, { name: input.name });
+        ctx.logger.info('org renamed', { orgId: ctx.orgId });
+        return { orgId: org.id, name: org.name };
+      } catch (e) {
+        throw new ToolError('UPSTREAM_FAILED', `Clerk could not rename the organisation: ${e instanceof Error ? e.message : String(e)}`, {
+          orgId: ctx.orgId,
+        });
+      }
+    },
+  });
+}
 
 /* ── org.governance.set ──────────────────────────────────────────────── */
 

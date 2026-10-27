@@ -189,11 +189,15 @@ export function EngagementFeed() {
             tabs. It was `xl:`, a window width, but beside the rail at 1440 the
             card is 921 wide — the tabs wrapped inside the pinned box and the
             second row ("Auto-Handled", "Sales Leads") was drawn over the
-            filters. Narrower than that they take their own row. */}
+            filters. Narrower than that they take their own row.
+
+            1060, not 1098: the prototype's tabs also end 24px into the card's
+            right padding (390 + 740 in a 1138 panel), so at 1728 — a 1075
+            content box — they pin where the design draws them. */}
         <div
           role="tablist"
           aria-label="Engagement categories"
-          className="flex flex-wrap items-center [@container(min-width:1100px)]:absolute [@container(min-width:1100px)]:left-[358px] [@container(min-width:1100px)]:top-[-4px]"
+          className="flex flex-wrap items-center [@container(min-width:1060px)]:absolute [@container(min-width:1060px)]:left-[358px] [@container(min-width:1060px)]:top-[-4px] [@container(min-width:1060px)]:w-max [@container(min-width:1060px)]:flex-nowrap"
         >
           {TABS.map((t) => (
             <button

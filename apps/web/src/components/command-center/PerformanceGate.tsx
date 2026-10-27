@@ -77,7 +77,7 @@ export function usePerformanceEligibility(genomeId: string | undefined): GateSta
       return;
     }
     void (async () => {
-      const res = await invoke<{ confidence: number; active: boolean; arms: Arm[] }>(
+      const res = await invoke<{ confidence: number; active: boolean; arms: Arm[]; observationFloor?: number }>(
         'learning.confidence',
         { genomeId },
       );
@@ -90,13 +90,13 @@ export function usePerformanceEligibility(genomeId: string | undefined): GateSta
       const arms = res.output.arms ?? [];
       const eligible = arms.some((a) => a.qualifies);
       const best = arms.reduce((n, a) => Math.max(n, a.observations), 0);
-      /* The floor is not returned as a number, only as the flag — so it is
-         inferred from the smallest qualifying arm when there is one, and shown
-         as "keep going" rather than a fake target when there is not. */
-      const needed = arms.filter((a) => a.qualifies).reduce((n, a) => Math.min(n, a.observations), Infinity);
+      /* The engine's own floor, which the tool returns now. It used to be
+         inferred from the smallest qualifying arm — impossible before the first
+         one qualifies, which is exactly when somebody asks how many more. */
+      const needed = res.output.observationFloor ?? 0;
 
       if (!eligible) {
-        setState({ kind: 'blocked', observations: best, needed: Number.isFinite(needed) ? needed : 0 });
+        setState({ kind: 'blocked', observations: best, needed });
         return;
       }
 
@@ -129,7 +129,11 @@ export function PerformanceGateModal({ state, onClose }: { state: GateState; onC
       <GateCard
         tone="blocked"
         onClose={onClose}
+        /* "Learn More" closed the card, which is a button lying about what it
+           does. It opens the explanation inside the card now, and then reads
+           "Got it". */
         action={{ label: 'Learn More', onClick: onClose }}
+        learnMore={<LearnMore observations={state.observations} needed={state.needed} />}
         detail={
           state.observations > 0
             ? `SPARK has ${state.observations} measured ${state.observations === 1 ? 'outcome' : 'outcomes'} on its strongest content pillar${
@@ -192,19 +196,59 @@ export function PerformanceGate({
   );
 }
 
+/**
+ * What "Learn More" opens: what the tab is, what unlocks it, and what to do
+ * meanwhile — in the engine's own terms, with its own threshold.
+ */
+function LearnMore({ observations, needed }: { observations: number; needed: number }) {
+  const left = needed > observations ? needed - observations : 0;
+  return (
+    <div className="mt-[22px] space-y-[14px] text-left text-15 leading-[1.5] text-ink-muted">
+      <div>
+        <p className="font-semibold text-ink">What this tab shows</p>
+        <p className="mt-[2px]">
+          Once posts go out, SPARK measures how each one did — reach, engagement, clicks — and learns which content
+          pillars and formats work for this brand. This tab shows those results, and what your agent changed because
+          of them.
+        </p>
+      </div>
+      <div>
+        <p className="font-semibold text-ink">What unlocks it</p>
+        <p className="mt-[2px]">
+          {needed
+            ? `One content pillar needs ${needed} published and measured posts. Fewer than that and a trend is noise, so SPARK won’t act on it, or show it to you as insight.`
+            : 'One content pillar needs enough published and measured posts for a trend to mean something. Fewer than that is noise.'}
+          {left ? ` ${left} more to go.` : ''}
+        </p>
+      </div>
+      <div>
+        <p className="font-semibold text-ink">What to do meanwhile</p>
+        <p className="mt-[2px]">
+          Keep your campaign running and posts publishing. Results are measured automatically — there is nothing to
+          switch on, and this opens by itself.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function GateCard({
   tone,
   children,
   detail,
   action,
+  learnMore,
   onClose,
 }: {
   tone: 'blocked' | 'unlocked';
   children: React.ReactNode;
   detail?: string;
   action: { label: string; onClick: () => void };
+  /** When given, the action opens this inside the card instead of running. */
+  learnMore?: React.ReactNode;
   onClose: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -214,8 +258,19 @@ function GateCard({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-start justify-center px-4 pt-[11vh]" role="dialog" aria-modal="true">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default bg-transparent" />
+    <div
+      className="fixed inset-0 z-[130] flex items-start justify-center overflow-y-auto px-4 pb-[6vh] pt-[11vh]"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Dimmed, as every other modal in the product is. It was transparent,
+          so the page looked usable while every click on it was being caught. */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="fixed inset-0 animate-fade-in cursor-default border-0 bg-[rgba(40,40,40,0.45)] motion-reduce:animate-none"
+      />
 
       <div
         className="relative w-[520px] max-w-full animate-modal-in rounded-[22px] px-[44px] pb-[38px] pt-[24px] text-center motion-reduce:animate-none"
@@ -262,13 +317,16 @@ function GateCard({
         <p className="mt-[20px] text-24 font-semibold leading-[1.32] text-ink">{children}</p>
         {detail ? <p className="mt-[14px] text-16 leading-[1.5] text-ink-muted">{detail}</p> : null}
 
+        {expanded ? <div className="animate-fade-in motion-reduce:animate-none">{learnMore}</div> : null}
+
         <button
           type="button"
-          onClick={action.onClick}
+          onClick={learnMore && !expanded ? () => setExpanded(true) : action.onClick}
+          aria-expanded={learnMore ? expanded : undefined}
           className="mt-[26px] h-[48px] rounded-[10px] bg-white px-[28px] text-16 font-medium text-ink transition-colors hover:bg-[#F4F5F7]"
           style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
         >
-          {action.label}
+          {learnMore && expanded ? 'Got it' : action.label}
         </button>
       </div>
     </div>

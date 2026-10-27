@@ -192,12 +192,14 @@ export const BRAND_SECTIONS: readonly SettingsSection[] = [
   */
   { href: '/settings/offers', label: 'Offers & CTA', icon: Icons.offers },
   /*
-    Credit & Usage used to be here, and it was the clearest case of the
-    missing scope: `org_budgets` and `credit_ledger` are keyed on `org_id`,
-    `org.usage.get` takes no brand, and the screen showed a balance shared by
-    every brand in the organisation as though it belonged to whichever one was
-    selected. It lives under Organisation now.
+    Credit & Usage used to be here showing the *organisation's* balance, as
+    though it belonged to whichever brand was selected — which is why it moved
+    to the organisation. It is back as what a brand can honestly claim: what
+    this brand spent, on what, against its own limit if it has one
+    (`brand.usage.get`, which groups `credit_ledger` by `brand_id`). The
+    balance it draws on stays the organisation's.
   */
+  { href: '/settings/credits', label: 'Credit & Usage', icon: Icons.credits },
   { href: '/settings/team', label: 'Team Roles', icon: Icons.team },
 ];
 
@@ -210,10 +212,10 @@ export const BRAND_SECTIONS: readonly SettingsSection[] = [
  * is a brand screen and belongs in the list above.
  */
 export const ORG_SECTIONS: readonly SettingsSection[] = [
-  { href: '/settings/org', label: 'Organisation', icon: Icons.org },
-  { href: '/settings/org/billing', label: 'Billing & Credits', icon: Icons.billing },
-  { href: '/settings/org/brands', label: 'Brand budgets', icon: Icons.budgets },
-  { href: '/settings/org/audit', label: 'Audit log', icon: Icons.audit },
+  { href: '/organization', label: 'Organisation', icon: Icons.org },
+  { href: '/organization/billing', label: 'Billing & Credits', icon: Icons.billing },
+  { href: '/organization/brands', label: 'Brand budgets', icon: Icons.budgets },
+  { href: '/organization/audit', label: 'Audit log', icon: Icons.audit },
 ];
 
 /** Personal Settings — the prototype's six, in its order. */
@@ -230,11 +232,12 @@ export const PERSONAL_SECTIONS: readonly SettingsSection[] = [
  * Which tree a path belongs to.
  *
  * Org is matched by prefix rather than by membership, so a section added under
- * `/settings/org/` is in the org tree without having to be listed twice.
+ * `/organization/` is in the org tree without having to be listed twice. It
+ * is its own screen now, outside the brand ones — see `app/organization`.
  * Personal stays the closed set it was, and everything else is a brand screen
  * — which keeps the default where it has always been.
  */
 export function treeFor(pathname: string): SettingsTree {
-  if (pathname === '/settings/org' || pathname.startsWith('/settings/org/')) return 'org';
+  if (pathname === '/organization' || pathname.startsWith('/organization/')) return 'org';
   return PERSONAL_SECTIONS.some((s) => s.href === pathname) ? 'personal' : 'brand';
 }

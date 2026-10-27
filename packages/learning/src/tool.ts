@@ -256,6 +256,13 @@ export const learningConfidence = defineTool({
     active: z.boolean(),
     mixWeightsOverride: z.record(z.string(), z.number()).nullable(),
     arms: z.array(ArmOut),
+    /**
+     * Outcomes a pillar needs before it `qualifies`. Returned rather than left
+     * for a screen to infer from the smallest qualifying arm, which cannot be
+     * done at all before the first one qualifies — exactly when a person asks
+     * "how many more".
+     */
+    observationFloor: z.number().int(),
   }),
   effect: 'read',
   autonomy: 'auto',
@@ -270,6 +277,7 @@ export const learningConfidence = defineTool({
       active: genome.learned.confidence > 0.4 && genome.learned.mix_weights_override !== null,
       mixWeightsOverride: genome.learned.mix_weights_override,
       arms: armRows.map(shapeArm),
+      observationFloor: EXPLORATION_FLOOR_OBSERVATIONS,
     };
   },
 });

@@ -59,6 +59,16 @@ interface Usage {
   why: Explanation;
 }
 
+/**
+ * A tool's registry name in words — `content.generate_image` reads "Content
+ * generate image". The name is the honest key (it is what was billed), so this
+ * only respaces it; it does not invent a friendlier label that could drift.
+ */
+export const toolLabel = (tool: string) => {
+  const words = tool.replace(/[._]+/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
 const compact = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}K` : String(n);
 
@@ -182,7 +192,7 @@ export function CreditUsageSection() {
             <ul className="mt-[16px] grid grid-cols-1 gap-[10px]">
               {usage.byTool.slice(0, 8).map((t) => (
                 <li key={t.tool} className="flex flex-wrap items-baseline justify-between gap-[12px] text-16">
-                  <span className="font-medium text-ink">{t.tool}</span>
+                  <span className="font-medium text-ink">{toolLabel(t.tool)}</span>
                   <span style={{ color: 'rgb(131,131,131)' }}>
                     {(t.costCents / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} ·{' '}
                     {Math.round(t.share * 100)}%

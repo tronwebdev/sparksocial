@@ -128,6 +128,8 @@ import {
   makeOrgBudgetSet,
   makeOrgCreditsGrant,
   makeOrgUsageGet,
+  makeBrandUsageGet,
+  makeOrgRename,
   brandCreate,
   brandSettingsPatch,
   brandGovernanceGet,
@@ -1077,6 +1079,8 @@ export function registerAgencyTools(deps: {
   // balance only ever came back from `org.credits.grant`, so rendering a usage
   // panel meant granting credits to display a number.
   register(makeOrgUsageGet({ credits: deps.credits }));
+  // The same ledger read, narrowed to one brand — Brand settings' Credit & Usage.
+  register(makeBrandUsageGet({ credits: deps.credits }));
   // The write side of the same screen. Without it the allocation bars would be a
   // control that stores nothing and changes no behaviour — and the sub-caps are
   // enforced in `policy.ts`, so they change behaviour the moment they are set.
@@ -1148,6 +1152,8 @@ export function registerAgencyTools(deps: {
     // no membership list to join brand assignments against, and a team screen
     // showing only `brand_members` rows would omit every member who has none.
     register(makeTeamList({ clerk: deps.clerk }));
+    // The org's name is Clerk's record, so renaming it needs the same client.
+    register(makeOrgRename({ clerk: deps.clerk }));
   }
   register(teamPermissionSet);
   // The Groups tab (`SET-WS-TEAM-GROUPS`). Capability bundles that widen what

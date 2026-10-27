@@ -635,7 +635,7 @@ describe('the Command Center holds together beside the rail', () => {
     // `xl:absolute` pinned them at 358 in a 921px card; the second row of
     // tabs was drawn over the filters.
     expect(tablist).not.toContain('xl:absolute');
-    expect(tablist).toContain('[@container(min-width:1100px)]:absolute');
+    expect(tablist).toContain('[@container(min-width:1060px)]:absolute');
     expect(classNames(raw).some((c) => c.includes('[container-type:inline-size]'))).toBe(true);
   });
 

@@ -111,6 +111,34 @@ export function createCreditRepository(db: Database): CreditStore {
       }));
     },
 
+    /** `spendByTool`, narrowed to one brand. Same string-to-number parsing. */
+    async brandSpendByTool(orgId, brandId, now, limit) {
+      const rows = await db
+        .select({
+          tool: creditLedger.tool,
+          costCents: sql<string>`sum(${creditLedger.costCents})`,
+          calls: sql<string>`count(*)`,
+        })
+        .from(creditLedger)
+        .where(
+          and(
+            eq(creditLedger.orgId, orgId),
+            eq(creditLedger.brandId, brandId),
+            gte(creditLedger.at, periodStart(now)),
+            gt(creditLedger.costCents, 0),
+          ),
+        )
+        .groupBy(creditLedger.tool)
+        .orderBy(desc(sql`sum(${creditLedger.costCents})`))
+        .limit(limit);
+
+      return rows.map((r) => ({
+        tool: r.tool,
+        costCents: Number(r.costCents),
+        calls: Number(r.calls),
+      }));
+    },
+
     async record({ callId, orgId, brandId, tool, costCents, at }) {
       await db
         .insert(creditLedger)

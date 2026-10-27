@@ -1801,6 +1801,20 @@ export interface CreditStore {
   ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
 
   /**
+   * {@link spendByTool} for one brand — `brand.usage.get`'s read.
+   *
+   * `credit_ledger.brand_id` has been written on every charge with a brand in
+   * scope since the table was made; this is the first read that groups by it.
+   * Same exclusions as the org's: grants are negative rows and are left out.
+   */
+  brandSpendByTool(
+    orgId: string,
+    brandId: string,
+    now: Date,
+    limit: number,
+  ): Promise<Array<{ tool: string; costCents: number; calls: number }>>;
+
+  /**
    * Append one charge. Idempotent on `callId` — a second write for the same
    * call is silently ignored rather than raising, because the caller is
    * `invokeTool` finishing a successful call and failing it *after* the work

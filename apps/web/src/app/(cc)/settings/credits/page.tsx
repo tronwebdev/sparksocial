@@ -1,17 +1,18 @@
-import { redirect } from 'next/navigation';
+import { SettingsShell } from '@/components/settings/SettingsShell';
+import { BrandUsageSection } from '@/components/settings/BrandUsageSection';
 
 /**
- * `/settings/credits` — moved to `/settings/org/billing`.
+ * `/settings/credits` — this brand's Credit & Usage.
  *
- * It was never a brand screen. `org_budgets` and `credit_ledger` are both
- * keyed on `org_id` and `org.usage.get` takes no brand, so this page showed a
- * balance shared by every brand in the organisation as though it belonged to
- * whichever one was selected in the cookie.
- *
- * A redirect rather than a deletion: the path is in bookmarks, in the nav
- * history of anyone who used it, and quite possibly in a support reply. A 404
- * would teach them the feature was removed, which is the opposite of true.
+ * It redirected to the organisation's billing, because it had been showing the
+ * organisation's balance as though it were the selected brand's. The brand's
+ * own numbers exist now (`brand.usage.get`), so the path is a brand screen
+ * again — and the organisation's balance stays where it moved to.
  */
-export default function CreditsMoved() {
-  redirect('/settings/org/billing');
+export default function CreditsPage() {
+  return (
+    <SettingsShell heading="Credit & Usage" subtitle="What this brand spent this month, and on what.">
+      <BrandUsageSection />
+    </SettingsShell>
+  );
 }

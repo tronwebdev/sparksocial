@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 221 tools.
+ * 223 tools.
  */
 
 export interface ToolIO {
@@ -254,6 +254,10 @@ export interface ToolIO {
   "brand.settings.patch": {
     input: { brandId: string; name: string };
     output: { brandId: string; name: string };
+  };
+  "brand.usage.get": {
+    input: { brandId?: string; topTools?: number };
+    output: { brandId: string; periodStart: string; spentCents: number; spentCredits: number; capCents: (number) | (null); capCredits: (number) | (null); remainingCents: (number) | (null); remainingCredits: (number) | (null); usedFraction: (number) | (null); orgRemainingCredits: number; shareOfOrg: number; byCategory: Array<{ category: string; label: string; costCents: number; credits: number; calls: number; share: number; unavailable: boolean }>; byTool: Array<{ tool: string; costCents: number; calls: number; share: number; credits: number }> };
   };
   "calendar.generate": {
     input: { campaignId: string; mixOverride?: Record<"educational" | "product" | "proof" | "personality" | "community", number> };
@@ -690,6 +694,10 @@ export interface ToolIO {
   "org.governance.set": {
     input: { defaultApprovalMode?: "autopublish" | "review_first_week" | "review_everything"; twoFactorRequired?: boolean; dataResidency?: "any" | "eu" | "us" | "uk"; retentionDays?: number };
     output: { plan: "starter" | "growth" | "agency"; defaultApprovalMode: string; ssoRequired: boolean; twoFactorRequired: boolean; dataResidency: string; retentionDays: (number) | (null); monthlyCapCents: number; updatedAt: string };
+  };
+  "org.rename": {
+    input: { name: string };
+    output: { orgId: string; name: string };
   };
   "org.security.sso.configure": {
     input: { required: boolean };

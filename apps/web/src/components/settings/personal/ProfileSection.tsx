@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'sonner';
 import { SettingsSaveBar } from '../SettingsShell';
 import { PersonalField, PersonalSelect } from './fields';
 import { guessTimezone, zonesIncluding } from '@sparksocial/shared';
@@ -42,6 +43,10 @@ interface Meta {
 
 const PRONOUNS = ['', 'She/Her', 'He/Him', 'They/Them', 'Prefer not to say'];
 
+/** What the hint under the button promises: "PNG, JPG up to 4MB". */
+const PHOTO_TYPES = ['image/png', 'image/jpeg'];
+const PHOTO_MAX_BYTES = 4 * 1024 * 1024;
+
 export function ProfileSection() {
   const { user, isLoaded } = useUser();
 
@@ -59,6 +64,47 @@ export function ProfileSection() {
   }, [user]);
 
   const [form, setForm] = useState(initial);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  async function uploadPhoto(file: File) {
+    if (!user) return;
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setPhotoError('That file is not a PNG or JPG.');
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      setPhotoError('That image is over 4MB.');
+      return;
+    }
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await user.setProfileImage({ file });
+      // The resource re-reads itself, so every screen holding `useUser()`
+      // picks up the new `imageUrl` without a reload.
+      await user.reload();
+      toast('Profile photo updated');
+    } catch (e) {
+      setPhotoError(e instanceof Error ? e.message : 'That photo did not upload.');
+    }
+    setPhotoBusy(false);
+  }
+
+  async function removePhoto() {
+    if (!user) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await user.setProfileImage({ file: null });
+      await user.reload();
+      toast('Profile photo removed');
+    } catch (e) {
+      setPhotoError(e instanceof Error ? e.message : 'That photo was not removed.');
+    }
+    setPhotoBusy(false);
+  }
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -124,38 +170,71 @@ export function ProfileSection() {
         <span
           className="relative flex h-[143px] w-[143px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-cover bg-center"
           style={{
-            background: user?.imageUrl
+            // `hasImage`, not `imageUrl`: Clerk always returns a URL, a generated
+            // placeholder when nobody has uploaded, and that read as "you have a
+            // photo" and hid the monogram.
+            background: user?.hasImage
               ? `url('${user.imageUrl}') center/cover no-repeat`
               : 'linear-gradient(180deg, rgb(12,12,12) 0%, rgb(114,114,114) 100%)',
             boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.2), 0 0 0 4px #FFFFFF',
           }}
         >
-          {user?.imageUrl ? null : (
+          {user?.hasImage ? null : (
             <span className="text-64 font-medium leading-none text-white">{monogram}</span>
           )}
+          {photoBusy ? (
+            <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-15 font-medium text-white">
+              Saving…
+            </span>
+          ) : null}
         </span>
 
         <div className="mb-[8px]">
           <div className="flex items-center gap-[10px]">
             {/*
-              Clerk owns the avatar upload — it validates, crops and stores it,
-              and re-implementing that against `user.setProfileImage` would mean
-              owning the failure cases too. This opens the same dialog.
+              Upload opened Clerk's profile dialog by dispatching
+              `spark:open-user-profile` — an event nothing listened for, so the
+              button did nothing at all. It is a file picker now, straight into
+              `user.setProfileImage`: Clerk still stores and serves the image,
+              and every `useUser()` reader (the sidebar's plan card, the brands
+              page's chip) re-renders with it.
             */}
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.dispatchEvent(new CustomEvent('spark:open-user-profile'));
+            <input
+              ref={fileRef}
+              type="file"
+              accept={PHOTO_TYPES.join(',')}
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) void uploadPhoto(file);
               }}
-              className="flex h-[40px] w-[100px] items-center justify-center rounded-[8.863px] bg-white text-17 font-medium transition-colors hover:bg-surface-200"
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={photoBusy}
+              className="flex h-[40px] w-[100px] items-center justify-center rounded-[8.863px] bg-white text-17 font-medium transition-colors hover:bg-surface-200 disabled:opacity-60"
               style={{ boxShadow: 'inset 0 0 0 0.591px rgba(131,131,131,0.2), 0 4px 40px rgba(0,0,0,0.15)', color: 'rgb(131,131,131)' }}
             >
               Upload
-            </a>
+            </button>
+            {user?.hasImage ? (
+              <button
+                type="button"
+                onClick={() => void removePhoto()}
+                disabled={photoBusy}
+                className="flex h-[40px] items-center justify-center rounded-[8.863px] px-[14px] text-17 font-medium transition-colors hover:bg-white disabled:opacity-60"
+                style={{ color: 'rgb(131,131,131)' }}
+              >
+                Remove
+              </button>
+            ) : null}
           </div>
-          <p className="mt-[10px] text-16" style={{ color: 'rgb(131,131,131)' }}>
-            PNG, JPG up to 4MB. Square images work best.
+          <p className="mt-[10px] text-16" style={{ color: photoError ? '#E5484D' : 'rgb(131,131,131)' }} role={photoError ? 'alert' : undefined}>
+            {photoError ?? 'PNG, JPG up to 4MB. Square images work best.'}
           </p>
         </div>
       </div>

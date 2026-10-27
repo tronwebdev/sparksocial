@@ -21,10 +21,11 @@ import { Skeleton } from '@/components/ui/skeleton';
  * everywhere in one change, the same reasoning `OrgGuard` uses for living in the
  * shared layout rather than on individual pages.
  *
- * An initials circle rather than Clerk's `imageUrl` — a real avatar needs
- * `next/image` remote-pattern config for Clerk's CDN host, which is a config
- * change for a feature nobody asked for. Initials cost nothing and are legible
- * at this size regardless of whether the user has ever set a photo.
+ * The person's photo once they have set one, initials until then. It is a CSS
+ * background rather than `next/image`, which would need remote-pattern config
+ * for Clerk's CDN host — the brands page's chip and the sidebar's plan card draw
+ * it the same way. `hasImage` decides, not `imageUrl`: Clerk always returns a
+ * URL, a generated placeholder when nothing was uploaded.
  */
 export function UserMenu() {
   const { user, isLoaded } = useUser();
@@ -60,9 +61,10 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Account menu for ${label}`}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--ss-accent-purple)] text-13 font-semibold text-white outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--ss-accent-purple)] bg-cover bg-center text-13 font-semibold text-white outline-none focus-visible:ring-[1.5px] focus-visible:ring-ring"
+        style={user.hasImage ? { backgroundImage: `url('${user.imageUrl}')` } : undefined}
       >
-        {initials}
+        {user.hasImage ? null : initials}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-[240px]">

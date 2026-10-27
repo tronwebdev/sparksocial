@@ -296,7 +296,7 @@ export function AgencyClientTable({
                   organisation-level — so this points at where it lives instead
                   of printing a card that is not this client's.
                 */}
-                <Link href="/settings/credits" className="text-16 font-medium underline underline-offset-2" style={{ color: 'rgb(91,91,91)' }}>
+                <Link href="/organization/billing" className="text-16 font-medium underline underline-offset-2" style={{ color: 'rgb(91,91,91)' }}>
                   Billing is org-wide
                 </Link>
               </span>

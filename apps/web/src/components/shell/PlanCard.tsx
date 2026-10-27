@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
 
 const PLAN_LABEL: Record<string, string> = {
@@ -48,8 +50,19 @@ const PLAN_LABEL: Record<string, string> = {
  *
  * One call, not two: `org.create` with no argument is the documented read for
  * "what plan is this org on", and it is what the Agency Portal already uses.
+ *
+ * ── The avatar is the person's ───────────────────────────────────────────
+ *
+ * It was the prototype's memoji for everyone, so a photo set on the profile
+ * page never appeared here. It is Clerk's `imageUrl` now — the same image the
+ * brands page's chip shows — with the memoji kept for an account that has never
+ * set one. Clerk's user resource is shared, so an upload re-renders this too.
+ *
+ * And the chevron finally goes somewhere: the card is the plan and the balance,
+ * so it opens the organisation's Billing & Credits.
  */
 export function PlanCard() {
+  const { user } = useUser();
   const [plan, setPlan] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
 
@@ -70,8 +83,10 @@ export function PlanCard() {
   }, []);
 
   return (
-    <div
-      className="mx-[21px] mb-6 h-[77px] rounded-md max-xl:hidden"
+    <Link
+      href="/organization/billing"
+      aria-label="Plan and credits"
+      className="mx-[21px] mb-6 block h-[77px] rounded-md transition-colors hover:bg-[rgba(131,131,131,0.05)] max-xl:hidden"
       style={{ boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' }}
     >
       <div className="relative h-full">
@@ -79,7 +94,7 @@ export function PlanCard() {
           <span
             className="block h-full w-full rounded-full"
             style={{
-              background: "#F8F8F8 url('/dashboard/pro-memoji.png') center / cover no-repeat",
+              background: `#F8F8F8 url('${user?.imageUrl && user.hasImage ? user.imageUrl : '/dashboard/pro-memoji.png'}') center / cover no-repeat`,
               boxShadow: 'inset 0 0 0 1.44px rgba(120,120,120,0.28)',
             }}
           />
@@ -118,6 +133,6 @@ export function PlanCard() {
           <path d="m1 1 5.5 6L1 13" stroke="#838383" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-    </div>
+    </Link>
   );
 }

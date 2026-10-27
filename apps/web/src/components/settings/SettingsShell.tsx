@@ -73,6 +73,13 @@ export function SettingsShell({
   const pathname = usePathname();
   const tree = treeFor(pathname);
   const sections = tree === 'org' ? ORG_SECTIONS : tree === 'personal' ? PERSONAL_SECTIONS : BRAND_SECTIONS;
+  /*
+    The organisation is its own screen, not a third tab of a brand's settings.
+    It is reached from the brands page and goes back there, and it carries
+    nothing that belongs to a brand: no Brand/Personal switch, and no Ask Spark
+    — the agent is a brand's, and the account has none.
+  */
+  const isOrg = tree === 'org';
   const [chatOpen, setChatOpen] = useState(false);
   const { genome } = useSelectedGenome();
   const router = useRouter();
@@ -95,7 +102,7 @@ export function SettingsShell({
         */}
         <div className="relative flex flex-wrap items-start gap-[20px] px-[26px] sm:h-[99px]">
           <Link
-            href="/home"
+            href={isOrg ? '/workspaces' : '/home'}
             className="mt-[32px] flex h-[36.392px] w-[92px] shrink-0 items-center justify-center gap-[10px] rounded-[7.072px] text-17 font-medium leading-[1.269] transition-colors hover:bg-white"
             style={{ boxShadow: '0 0 0 0.707px rgb(131,131,131)', color: 'rgb(131,131,131)' }}
           >
@@ -107,7 +114,9 @@ export function SettingsShell({
 
           {/* In the wordmark's face, as on all twenty-six settings prototypes
               ("CS Mollwish", 27.49px) — it was set in the body face. */}
-          <h1 className="mt-[35px] font-display text-28 font-normal leading-[1.13] text-ink">Settings</h1>
+          <h1 className="mt-[35px] font-display text-28 font-normal leading-[1.13] text-ink">
+            {isOrg ? 'Account Settings' : 'Settings'}
+          </h1>
 
           {/* Switcher 1033→1468, Ask from 1491 to 1687: a 23 gap and the card's own 26 inset. */}
           <div className="ml-auto flex min-w-0 items-start gap-[23px]">
@@ -115,10 +124,10 @@ export function SettingsShell({
               <NotificationBell compact />
             </span>
 
-            <SettingsTreeSwitch tree={tree} />
+            {isOrg ? null : <SettingsTreeSwitch tree={tree} />}
 
             {/* One 196-wide box, orb then pill, exactly as the design groups them. */}
-            <div className="mt-[15px] hidden w-[196px] items-center xl:flex">
+            <div className={cn('mt-[15px] hidden w-[196px] items-center', !isOrg && 'xl:flex')}>
               {/* The design's 70.216 orb, then the 126x47 r12.507 pill. */}
               <span
                 aria-hidden
@@ -197,31 +206,29 @@ export function SettingsShell({
         </div>
       </div>
 
-      <ChatDrawer
-        genomeId={genome?.genomeId}
-        open={chatOpen}
-        onClose={() => setChatOpen(false)}
-        /* Settings has no draft panel of its own, so a draft Spark produces
-           here opens where drafts live — the Command Center. */
-        onOpenDraft={(contentItemId) => router.push(`/agents?draft=${contentItemId}`)}
-      />
+      {isOrg ? null : (
+        <ChatDrawer
+          genomeId={genome?.genomeId}
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          /* Settings has no draft panel of its own, so a draft Spark produces
+             here opens where drafts live — the Command Center. */
+          onOpenDraft={(contentItemId) => router.push(`/agents?draft=${contentItemId}`)}
+        />
+      )}
     </div>
   );
 }
 
 /**
- * The scope switch — three segments now, not two.
+ * The scope switch — Brand and Personal, the prototype's two.
  *
- * The prototype's pill is 435px holding two 224px segments. A third does not
- * fit at those numbers, and widening the pill would push it into the header's
- * other furniture, so the segments share the width instead: the pill keeps its
- * measured size and each label gets a third of it. The labels shorten to one
- * word each for the same reason — "Organisation Settings" in a 145px segment
- * is "Organisation Sett".
+ * Organisation was a third segment here, which made the account read as one
+ * more tab of a brand's settings. It is its own screen now, reached from the
+ * brands page (`/organization`), so the pill is back to the design's two.
  */
 function SettingsTreeSwitch({ tree }: { tree: SettingsTree }) {
   const items = [
-    { key: 'org' as const, label: 'Organisation', href: ORG_SECTIONS[0]!.href },
     { key: 'brand' as const, label: 'Brand', href: BRAND_SECTIONS[0]!.href },
     { key: 'personal' as const, label: 'Personal', href: PERSONAL_SECTIONS[0]!.href },
   ];
@@ -258,12 +265,7 @@ function SettingsTreeSwitch({ tree }: { tree: SettingsTree }) {
               on ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink',
             )}
           >
-            {it.key === 'org' ? (
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
-                <rect x="2" y="5" width="6.4" height="11.4" rx="1.3" stroke="currentColor" strokeWidth="1.5" />
-                <rect x="9.2" y="1.6" width="6.8" height="14.8" rx="1.3" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            ) : it.key === 'brand' ? (
+            {it.key === 'brand' ? (
               <svg width="18" height="17" viewBox="0 0 18 17" fill="none" aria-hidden>
                 <path d="M1 6.2 9 1.5l8 4.7v8.3H1V6.2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
               </svg>

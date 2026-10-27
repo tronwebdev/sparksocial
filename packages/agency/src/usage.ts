@@ -304,3 +304,138 @@ export function makeOrgUsageGet(deps: UsageDeps) {
 function startOfPeriod(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
+
+/* ── brand.usage.get ─────────────────────────────────────────────────── */
+
+export const BrandUsageGetInput = z.object({
+  /** Defaults to the brand the session is working in. */
+  brandId: z.string().min(1).optional(),
+  topTools: z.number().int().min(1).max(50).default(10),
+});
+
+export const BrandUsageGetOutput = z.object({
+  brandId: z.string(),
+  periodStart: z.string(),
+  spentCents: z.number().int(),
+  spentCredits: z.number().int(),
+  /** This brand's own ceiling, when an owner has set one. Null is "bounded only by the organisation". */
+  capCents: z.number().int().nullable(),
+  capCredits: z.number().int().nullable(),
+  remainingCents: z.number().int().nullable(),
+  remainingCredits: z.number().int().nullable(),
+  /** Against the brand's own cap, 0–1. Null when it has none. */
+  usedFraction: z.number().nullable(),
+  /** What the whole organisation has left — the balance this brand actually draws on. */
+  orgRemainingCredits: z.number().int(),
+  /** This brand's part of everything the organisation spent this month, 0–1. */
+  shareOfOrg: z.number(),
+  byCategory: z.array(
+    z.object({
+      category: z.string(),
+      label: z.string(),
+      costCents: z.number().int(),
+      credits: z.number().int(),
+      calls: z.number().int(),
+      share: z.number(),
+      unavailable: z.boolean(),
+    }),
+  ),
+  byTool: z.array(ToolSpend.extend({ credits: z.number().int() })),
+});
+
+/**
+ * One brand's credit use this month.
+ *
+ * `org.usage.get` answers for the organisation, and the balance *is* the
+ * organisation's — every brand draws on it. What nobody could answer was the
+ * question a brand's own settings are opened to ask: what did *this* brand
+ * spend, on what, and how close is it to its own limit if it has one. The
+ * ledger has carried `brand_id` on every charge since it was written; this is
+ * the read that groups by it.
+ *
+ * Owner and admin, as `org.usage.get` is — spend is commercial information,
+ * and an agency's client role should not read what the agency pays per video.
+ */
+export function makeBrandUsageGet(deps: UsageDeps) {
+  return defineTool({
+    name: 'brand.usage.get',
+    version: 1,
+
+    summary:
+      "This month's credit spend for one brand: what it spent, on which tools, its own limit if it has one, " +
+      "and its share of the organisation's spend. Free, read-only.",
+
+    input: BrandUsageGetInput,
+    output: BrandUsageGetOutput,
+
+    effect: 'read',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin'],
+    idempotent: true,
+    surfaces: ['SET-WS-01'],
+
+    async handler(input, ctx) {
+      const brandId = input.brandId ?? ctx.brandId;
+      if (!brandId) {
+        throw new ToolError('INVALID_INPUT', 'Pick a brand to see its usage.', {});
+      }
+
+      const now = new Date();
+      // Every read filters on `ctx.orgId`, so a brand id from another
+      // organisation answers with zeros rather than with its numbers.
+      const [own, everyTool, org] = await Promise.all([
+        deps.credits.brandBudget(ctx.orgId, brandId, now),
+        deps.credits.brandSpendByTool(ctx.orgId, brandId, now, 200),
+        deps.credits.budget(ctx.orgId, now),
+      ]);
+
+      const spentCents = Math.max(0, own.spentCents);
+      const capCents = own.capCents;
+      const remainingCents = capCents === null ? null : Math.max(0, capCents - spentCents);
+
+      const byCategoryAcc = new Map<CreditCategory, { costCents: number; calls: number }>();
+      for (const row of everyTool) {
+        const category = creditCategoryFor(row.tool);
+        if (!category) continue;
+        const acc = byCategoryAcc.get(category) ?? { costCents: 0, calls: 0 };
+        acc.costCents += row.costCents;
+        acc.calls += row.calls;
+        byCategoryAcc.set(category, acc);
+      }
+
+      return {
+        brandId,
+        periodStart: startOfPeriod(now).toISOString(),
+        spentCents,
+        spentCredits: centsToCredits(spentCents),
+        capCents,
+        capCredits: capCents === null ? null : centsToCredits(capCents),
+        remainingCents,
+        remainingCredits: remainingCents === null ? null : centsToCredits(remainingCents),
+        usedFraction:
+          capCents === null ? null : capCents > 0 ? Math.min(1, spentCents / capCents) : spentCents > 0 ? 1 : 0,
+        orgRemainingCredits: centsToCredits(Math.max(0, org.monthlyCapCents - org.spentCents)),
+        shareOfOrg: org.spentCents > 0 ? Number(Math.min(1, spentCents / org.spentCents).toFixed(4)) : 0,
+        byCategory: CREDIT_CATEGORIES.map((category) => {
+          const acc = byCategoryAcc.get(category) ?? { costCents: 0, calls: 0 };
+          return {
+            category,
+            label: CREDIT_CATEGORY_LABEL[category],
+            costCents: acc.costCents,
+            credits: centsToCredits(acc.costCents),
+            calls: acc.calls,
+            share: spentCents > 0 ? Number((acc.costCents / spentCents).toFixed(4)) : 0,
+            unavailable: CATEGORIES_WITHOUT_TOOLS.includes(category),
+          };
+        }),
+        byTool: everyTool.slice(0, input.topTools).map((r) => ({
+          tool: r.tool,
+          costCents: r.costCents,
+          credits: centsToCredits(r.costCents),
+          calls: r.calls,
+          share: spentCents > 0 ? Number((r.costCents / spentCents).toFixed(4)) : 0,
+        })),
+      };
+    },
+  });
+}

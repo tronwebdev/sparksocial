@@ -291,7 +291,7 @@ export function CalendarMonthGrid({
       {error ? <p className="pb-3 text-13 text-destructive">{error}</p> : null}
 
       {/* 96 and 136 in the design are 16 and 56 below the card's 80px hairline. */}
-      <div className="grid grid-cols-7 gap-[8px]">
+      <div className="grid grid-cols-7 gap-[8px] [container-type:inline-size]">
         {WEEKDAYS.map((d) => (
           <div
             key={d}
@@ -305,10 +305,13 @@ export function CalendarMonthGrid({
                the screen. */
             style={variant === 'screen' ? { color: d === 'Sunday' ? 'var(--ss-cal-sunday)' : '#0C0C0C' } : undefined}
           >
-            {/* The design writes them in full; there is not room for that under
-                220px of column, so the short form appears below `2xl`. */}
-            <span className="hidden 2xl:inline">{d}</span>
-            <span className="2xl:hidden">{d.slice(0, 3)}</span>
+            {/* The design writes them in full. The short form was kept below
+                `2xl`, a window width, on the theory that a column under 220 had
+                no room — but "Wednesday" needs ~90, and at 1440 a column is
+                ~180. It switches on the grid's own width now: full names until
+                a column is under ~100. */}
+            <span className="hidden [@container(min-width:760px)]:inline">{d}</span>
+            <span className="[@container(min-width:760px)]:hidden">{d.slice(0, 3)}</span>
           </div>
         ))}
       </div>

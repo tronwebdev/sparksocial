@@ -113,6 +113,24 @@ export function createDevCreditStore(
         .slice(0, limit);
     },
 
+    async brandSpendByTool(orgId, brandId, now, limit) {
+      const from = periodStart(now).getTime();
+      const byTool = new Map<string, { costCents: number; calls: number }>();
+
+      for (const e of charged.values()) {
+        if (e.orgId !== orgId || e.brandId !== brandId || e.at.getTime() < from || e.costCents <= 0) continue;
+        const acc = byTool.get(e.tool) ?? { costCents: 0, calls: 0 };
+        acc.costCents += e.costCents;
+        acc.calls += 1;
+        byTool.set(e.tool, acc);
+      }
+
+      return [...byTool.entries()]
+        .map(([tool, acc]) => ({ tool, ...acc }))
+        .sort((a, b) => b.costCents - a.costCents)
+        .slice(0, limit);
+    },
+
     async record({ callId, orgId, brandId, tool, costCents, at }) {
       // First write wins, like `onConflictDoNothing`.
       if (charged.has(callId)) return;
