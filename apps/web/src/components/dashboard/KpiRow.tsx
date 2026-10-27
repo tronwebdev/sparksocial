@@ -81,7 +81,7 @@ export function KpiRow({ series }: { series: BrandSeries }) {
         >
           <p className="text-18 font-medium leading-[1.28] text-ink-muted">{c.label}</p>
           <div className="mt-[13px] flex items-center gap-3">
-            <span className="text-36 font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
+            <span className="text-35 font-semibold leading-[1.28] tabular-nums text-ink">{c.value}</span>
             <Delta changePct={c.changePct} absolute={c.absolute} before={c.before} />
           </div>
           {/*

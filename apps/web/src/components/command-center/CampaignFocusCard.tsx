@@ -179,7 +179,7 @@ export function CampaignFocusCard({
         </a>
       </div>
 
-      <h2 className="mt-[20px] text-36 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
+      <h2 className="mt-[20px] text-34 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
 
       <div className="mt-[16px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16 leading-[1.3]">
         <span className="text-ink-muted">

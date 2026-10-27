@@ -92,8 +92,21 @@ export function SidebarNav() {
                     style={{ height: ROW_H }}
                   >
                     <Icon className="h-[26px] w-[26px] shrink-0" />
+                    {/*
+                      600 for every item, active or not, at a line-height of
+                      1.22 — measured off `SparkSocial Dashboard.dc.html` at the
+                      1728 stage, where all seven labels are 18/600 (17/600 for
+                      the long one) in 22px line boxes. The build had 500 for the
+                      active item and 400 for the rest, and a 27px line box.
+
+                      The design marks the active item by colour alone — ink
+                      against `#838383` — which is what `text-ink` /
+                      `text-ink-muted` on the link already do. Varying the
+                      weight as well was a second signal the design never drew,
+                      and it made the inactive items read as disabled.
+                    */}
                     <span
-                      className={cn('truncate max-xl:hidden', isActive ? 'font-medium' : 'font-normal')}
+                      className="truncate font-semibold leading-[1.22] max-xl:hidden"
                       style={{ fontSize: item.labelPx }}
                     >
                       {item.label}

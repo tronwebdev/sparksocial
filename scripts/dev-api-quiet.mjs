@@ -31,7 +31,20 @@ if (!env.DATABASE_URL && existsSync(envFile)) {
     if (m) env.DATABASE_URL = m[1].replace(/^["']|["']$/g, '');
   }
 }
-if (env.DATABASE_URL && !/sslmode=/.test(env.DATABASE_URL)) {
+/*
+ * Only for a remote host. A local Postgres usually has no TLS at all, and
+ * forcing `sslmode=require` onto it turns a working connection into a
+ * refused one — the opposite of the reason this is here.
+ */
+const isLocal = (() => {
+  try {
+    const host = new URL(env.DATABASE_URL ?? '').hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '';
+  } catch {
+    return true;
+  }
+})();
+if (env.DATABASE_URL && !isLocal && !/sslmode=/.test(env.DATABASE_URL)) {
   env.DATABASE_URL += (env.DATABASE_URL.includes('?') ? '&' : '?') + 'sslmode=require';
 }
 

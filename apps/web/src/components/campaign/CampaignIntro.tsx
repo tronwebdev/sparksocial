@@ -87,7 +87,7 @@ export function CampaignIntro({
         <div aria-hidden className="absolute inset-0 bg-white max-canvas:hidden" style={{ backdropFilter: 'blur(45.794px)', clipPath: PANEL_CLIP.popup }} />
 
         <h2
-          className="absolute left-[35px] top-[55px] w-[478px] text-center text-36 font-semibold leading-[1.21] max-canvas:static max-canvas:w-full"
+          className="absolute left-[35px] top-[55px] w-[478px] text-center text-35 font-semibold leading-[1.21] max-canvas:static max-canvas:w-full"
           style={{ color: 'rgb(131,131,131)' }}
         >
           Your agent is ready! <span className="text-black">{headline}</span>

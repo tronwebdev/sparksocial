@@ -194,7 +194,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               type, would make the one thing this banner exists to say the
               smallest text on it.
             */}
-            <span className="mt-[6.4px] whitespace-nowrap text-32 font-semibold leading-[1.27] text-white max-canvas:whitespace-normal">
+            <span className="mt-[6.4px] whitespace-nowrap text-30 font-semibold leading-[1.27] text-white max-canvas:whitespace-normal">
               {name ?? (
                 <Link
                   href="/settings/brand-kit"
@@ -277,7 +277,13 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
             ))}
           </div>
 
-          <div className="mt-[19px] flex flex-wrap items-center gap-[15px]">
+          {/*
+            The design places the buttons absolutely, 54px below the top of the
+            status row (`Dashboard.dc.html`, "right: status + actions"). The status
+            row is 22px tall here, so the gap is 32 — it was 19, which lifted all
+            three buttons 13px toward the labels above them.
+          */}
+          <div className="mt-[32px] flex flex-wrap items-center gap-[15px]">
             <button
               type="button"
               onClick={() => void togglePause()}

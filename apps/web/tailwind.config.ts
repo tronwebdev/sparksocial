@@ -342,7 +342,10 @@ const config: Config = {
         24: [fluid(24), { lineHeight: '1.25' }], // 24px at canvas, fluid below
         26: [fluid(26), { lineHeight: '1.2' }], // 26px at canvas, fluid below
         28: [fluid(28), { lineHeight: '1.2' }], // 28px at canvas, fluid below
+        30: [fluid(30), { lineHeight: '1.27' }], // 30px at canvas — the screen and agent titles (Calendar.dc.html, Dashboard.dc.html)
         32: [fluid(32), { lineHeight: '1.15' }], // 32px at canvas, fluid below
+        34: [fluid(34), { lineHeight: '1.27' }], // 34px at canvas — campaign, Automation and Workspaces titles (Command Center, Automation, Account Home)
+        35: [fluid(35), { lineHeight: '1.28' }], // 35px at canvas — KPI values and the campaign intro headline (Dashboard, Create Campaign)
         36: [fluid(36), { lineHeight: '1.1' }], // 36px at canvas, fluid below
         40: [fluid(40), { lineHeight: '1.1' }], // 40px at canvas, fluid below
         48: [fluid(48), { lineHeight: '1.05' }], // 48px at canvas, fluid below

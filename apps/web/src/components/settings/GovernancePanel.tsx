@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PanelSkeleton } from '@/components/ui/skeleton';
@@ -8,27 +8,12 @@ import { invoke } from '@/lib/tools';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
-import { BrandFontPicker } from './BrandFontPicker';
-import { KitSection, KitRow } from './KitSection';
+import { FontSelect } from './BrandFontPicker';
+import { BrandKitGrid, ColorThemeCard, LogoCard, TONE_AXES, TypographyCard, VoiceCard } from './BrandKitCards';
+import { KitSection } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
 import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@sparksocial/shared';
 import { userMessage } from '@/lib/errorCopy';
-
-/**
- * Palette presets.
- *
- * Positional, matching `resolveKit`'s documented convention: ground, type,
- * accent. Each pair is checked for contrast by hand — the point of a preset is
- * that it is known to be legible, which is the one thing a colour picker cannot
- * promise. Five, for the same reason there are five voices and six fonts.
- */
-const COLOUR_PRESETS: ReadonlyArray<{ name: string; colors: string[] }> = [
-  { name: 'Ink', colors: ['#0C0C0C', '#FFFFFF', '#4F8EF7'] },
-  { name: 'Paper', colors: ['#F7F5F0', '#1A1A1A', '#B4521F'] },
-  { name: 'Forest', colors: ['#12241B', '#EAF2EC', '#5FBF8A'] },
-  { name: 'Cobalt', colors: ['#0E1C33', '#EAF0FA', '#F2B14C'] },
-  { name: 'Clay', colors: ['#2B1D1A', '#F5EDE8', '#D98A5C'] },
-];
 
 /**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
@@ -55,12 +40,6 @@ const COLOUR_PRESETS: ReadonlyArray<{ name: string; colors: string[] }> = [
  * those fields today. `PolicyPanel` makes the same call for content types.
  */
 
-const TONE_AXES = [
-  { key: 'formal', label: 'Formal', low: 'Casual', high: 'Formal' },
-  { key: 'playful', label: 'Playful', low: 'Serious', high: 'Playful' },
-  { key: 'technical', label: 'Technical', low: 'Plain', high: 'Technical' },
-  { key: 'bold', label: 'Bold', low: 'Measured', high: 'Bold' },
-] as const;
 
 
 interface Governance {
@@ -95,7 +74,7 @@ const splitList = (text: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-export function GovernancePanel() {
+export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNode } = {}) {
   const [loading, setLoading] = useState(true);
   const [topicsText, setTopicsText] = useState('');
   const [claimsText, setClaimsText] = useState('');
@@ -121,7 +100,6 @@ export function GovernancePanel() {
   const [generatingLogo, setGeneratingLogo] = useState(false);
   const { genome } = useSelectedGenome();
   const genomeId = genome?.genomeId;
-  const logoInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
@@ -317,237 +295,28 @@ export function GovernancePanel() {
       ) : (
         <>
           {/*
-            ── Row 1 of the design: Workspace logo · Color Theme ─────────────
+            ── The design's four cards ─────────────────────────────────────
 
-            Four cards two-up, which is what the prototype draws and what this
-            screen was flattening into a single stack. They share this
-            component's one draft rather than being four components: every
-            field below is written by a single `brand.governance.set` call, and
-            splitting them would leave four panels racing to save one row.
+            Drawn to `Settings WS Brand Kits.dc.html` by `BrandKitCards`, which
+            owns no state: every value is this component's one draft, written
+            by a single `brand.governance.set`. The controls the design has no
+            room for are in "Fine-tune" further down.
           */}
-          <KitRow>
-            <KitSection
-              title="Workspace logo"
-              hint="Used bottom-left on anything SPARK renders, and as the mark on your posts."
-            >
-              <label className="mt-3 block text-12 text-ink-muted" htmlFor="gov-logo">
-                Logo
-              </label>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <Input
-                  id="gov-logo"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://… or upload"
-                  className="min-w-[200px] flex-1 max-canvas:min-w-0 max-canvas:basis-full"
-                />
-                <input
-                  ref={logoInput}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void uploadLogo(file);
-                    e.target.value = '';
-                  }}
-                />
-                <Button variant="outline" size="sm" disabled={uploading} onClick={() => logoInput.current?.click()}>
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </Button>
-                {/*
-                  `SET-WS-BRAND-KITS`' "Generate logo". Labelled as a placeholder
-                  rather than as identity work, because that is what it is — see
-                  `brand.logo.generate`'s own comment on why the prompt forbids
-                  lettering and keeps to a flat single-colour shape.
-                */}
-                <Button variant="outline" size="sm" disabled={uploading || generatingLogo} onClick={() => void generateLogo()}>
-                  {generatingLogo ? 'Generating…' : 'Generate a placeholder'}
-                </Button>
-              </div>
-              {logoUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={logoUrl}
-                  alt="Brand logo"
-                  className="mt-2 h-12 w-auto max-w-[160px] rounded border border-border bg-surface-muted object-contain p-1"
-                />
-              ) : null}
-            </KitSection>
-
-            <KitSection
-              title="Color Theme"
-              hint="First is the background, second the text on it, third an accent. Photos are never tinted."
-            >
-              {/*
-                Colour presets — `3.3`'s "colour and voice presets".
-                Applied rather than suggested: clicking one *sets* the palette,
-                because a colour you cannot see is not a suggestion. The ordering is
-                the renderers' own convention, documented in `resolveKit`: first is
-                the ground, second the type on it, third the accent.
-              */}
-              <label className="mt-4 block text-12 text-ink-muted">Palette presets</label>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {COLOUR_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => setBrandColors(preset.colors)}
-                    title={`${preset.name} — ${preset.colors.join(', ')}`}
-                    className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-12 text-ink-muted hover:text-ink"
-                  >
-                    <span className="flex overflow-hidden rounded">
-                      {preset.colors.map((c) => (
-                        <span key={c} className="h-4 w-4" style={{ background: c }} />
-                      ))}
-                    </span>
-                    {preset.name}
-                  </button>
-                ))}
-              </div>
-              <label className="mt-4 block text-12 text-ink-muted">Colours</label>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                {brandColors.map((c, i) => (
-                  <div key={`${c}-${i}`} className="flex items-center gap-1.5 rounded-lg border border-border px-2 py-1">
-                    <input
-                      type="color"
-                      value={normaliseHex(c)}
-                      onChange={(e) => setBrandColors(brandColors.map((x, j) => (j === i ? e.target.value : x)))}
-                      className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
-                      aria-label={`${COLOR_ROLE[i] ?? 'Extra'} colour`}
-                    />
-                    <span className="font-mono text-11 text-ink-muted">
-                      {COLOR_ROLE[i] ?? 'extra'}
-                      {/* A stored value the colour input cannot show (`red`, an
-                          `rgb()`) is named here rather than silently displayed as
-                          the fallback swatch — otherwise the panel would claim the
-                          brand's colour is grey. */}
-                      {normaliseHex(c) !== c.trim().toLowerCase() ? (
-                        <span className="ml-1 text-warn">{c}</span>
-                      ) : null}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setBrandColors(brandColors.filter((_, j) => j !== i))}
-                      className="text-13 text-ink-muted hover:text-ink"
-                      aria-label={`Remove ${c}`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {brandColors.length < 3 ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBrandColors([...brandColors, DEFAULT_NEW_COLOR])}
-                  >
-                    Add {COLOR_ROLE[brandColors.length] ?? 'colour'}
-                  </Button>
-                ) : null}
-              </div>
-              {brandColors.length > 0 ? (
-                /* A swatch row is not a preview. Showing the two colours against
-                   each other is the one check that catches the mistake that
-                   matters — a type colour nobody can read on its own ground. */
-                <div
-                  className="mt-2 flex h-16 items-center justify-center rounded-lg border border-border"
-                  style={{ backgroundColor: brandColors[0] ?? '#0C0C0C' }}
-                >
-                  <span className="text-15 font-medium" style={{ color: brandColors[1] ?? '#FFFFFF' }}>
-                    This is how text will read
-                  </span>
-                </div>
-              ) : null}
-            </KitSection>
-          </KitRow>
-
-          {/* ── Row 2: Brand Voice · Typography Style ───────────────────── */}
-          <KitRow>
-            <KitSection title="Brand Voice" hint="Overrides whatever SPARK inferred from your website.">
-              {/* ── Voice ──────────────────────────────────────────────────── */}
-              <div>
-                <h3 className="text-14 font-medium text-ink">Voice</h3>
-                <p className="mt-0.5 text-12 text-ink-muted">
-                  Overrides whatever SPARK inferred from your website.
-                </p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {TONE_AXES.map((axis) => (
-                    <div key={axis.key}>
-                      <div className="flex items-baseline justify-between">
-                        <label className="text-13 text-ink" htmlFor={`tone-${axis.key}`}>
-                          {axis.label}
-                        </label>
-                        <span className="text-12 tabular-nums text-ink-muted">
-                          {Math.round(tone[axis.key] * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        id={`tone-${axis.key}`}
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={Math.round(tone[axis.key] * 100)}
-                        onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
-                        className="mt-1 w-full accent-[--ss-primary]"
-                      />
-                      <div className="flex justify-between text-11 text-ink-muted">
-                        <span>{axis.low}</span>
-                        <span>{axis.high}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/*
-                `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
-                `packages/shared/src/voices.ts` for why a curated list of real ids
-                beats a text field asking somebody to paste one, and why the brand's
-                own cloned voice is deliberately not an option here.
-              */}
-              <label className="mt-4 block text-12 text-ink-muted" htmlFor="gov-voice">
-                Narration voice
-              </label>
-              <select
-                id="gov-voice"
-                value={stockVoiceId}
-                onChange={(e) => {
-                  setUsingDefaultVoice(false);
-                  setStockVoiceId(e.target.value);
-                }}
-                className="mt-1.5 h-10 w-full max-w-[26rem] rounded border border-border bg-input px-2 text-14 text-ink"
-              >
-                {STOCK_VOICES.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} — {v.character}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-12 text-ink-muted">
-                Used when SPARK records a voiceover. A scene can override it, and your own cloned voice is a
-                separate setting that needs a consent record.
-              </p>
-            </KitSection>
-
-            <KitSection
-              title="Typography Style"
-              hint="Shown against your palette, because type and colour are two halves of one decision."
-            >
-              {/* M4 — the prototype's "Choose Fonts", with something behind it.
-                  Placed under the colours because its sample is shown on them,
-                  and because type and colour are the two halves of the same
-                  decision. */}
-              <label className="mt-5 block text-12 text-ink-muted">Type</label>
-              <div className="mt-1.5">
-                <BrandFontPicker
-                  value={brandFonts}
-                  onChange={setBrandFonts}
-                  {...(brandColors[0] ? { ground: brandColors[0] } : {})}
-                  {...(brandColors[1] ? { type: brandColors[1] } : {})}
-                />
-              </div>
-            </KitSection>
-          </KitRow>
+          <BrandKitGrid>
+            <LogoCard
+              logoUrl={logoUrl}
+              uploading={uploading}
+              generating={generatingLogo}
+              onFile={(file) => void uploadLogo(file)}
+              onGenerate={() => void generateLogo()}
+            />
+            <ColorThemeCard colors={brandColors} onChange={setBrandColors} normalise={normaliseHex} />
+            <VoiceCard tone={tone} onChange={setTone} />
+            <TypographyCard
+              display={brandFonts.display}
+              onChange={(display) => setBrandFonts((f) => ({ ...f, display }))}
+            />
+          </BrandKitGrid>
 
           {/*
             ── Enable Strict Compliance ──────────────────────────────────────
@@ -623,6 +392,14 @@ export function GovernancePanel() {
               </label>
             </div>
           </KitSection>
+
+          {/*
+            The design's next two sections — Brand Knowledge and Templates —
+            are not this panel's, but they come between Strict Compliance and
+            Watermark, which are. The caller passes them in so the page runs in
+            the design's order without splitting this one draft in two.
+          */}
+          {afterCompliance}
 
           {/*
             ── Watermark ─────────────────────────────────────────────────────
@@ -719,6 +496,91 @@ export function GovernancePanel() {
             rather than being hidden, or smuggled into a section the design
             does draw and does not mean.
           */}
+          {/*
+            ── Fine-tune ────────────────────────────────────────────────────
+
+            What the design's four cards are too coarse to carry: the four tone
+            axes the voice dropdown sets in one move, the face for running
+            text (the design's one font select sets the headline face, and
+            captions follow it unless set here), and the narration voice. Real
+            controls with no slot in the design, kept rather than dropped.
+          */}
+          <KitSection title="Fine-tune" hint="Finer control over the voice and type chosen above.">
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <h3 className="text-14 font-medium text-ink">Tone</h3>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {TONE_AXES.map((axis) => (
+                    <div key={axis.key}>
+                      <div className="flex items-baseline justify-between">
+                        <label className="text-13 text-ink" htmlFor={`tone-${axis.key}`}>
+                          {axis.label}
+                        </label>
+                        <span className="text-12 tabular-nums text-ink-muted">
+                          {Math.round(tone[axis.key] * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        id={`tone-${axis.key}`}
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={Math.round(tone[axis.key] * 100)}
+                        onChange={(e) => setTone((t) => ({ ...t, [axis.key]: Number(e.target.value) / 100 }))}
+                        className="mt-1 w-full accent-[--ss-primary]"
+                      />
+                      <div className="flex justify-between text-11 text-ink-muted">
+                        <span>{axis.low}</span>
+                        <span>{axis.high}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FontSelect
+                  id="gov-font-body"
+                  label="Caption font"
+                  hint={brandFonts.display && !brandFonts.body ? 'Following your headline font' : 'Running text on posts'}
+                  value={brandFonts.body}
+                  onChange={(body) => setBrandFonts((f) => ({ ...f, body }))}
+                  filter={() => true}
+                />
+                {/*
+                  `M5`'s "Ai Voice". Five real ElevenLabs premade ids — see
+                  `packages/shared/src/voices.ts` for why a curated list of real
+                  ids beats a text field, and why the brand's own cloned voice is
+                  deliberately not an option here.
+                */}
+                <div>
+                  <label className="block text-12 text-ink-muted" htmlFor="gov-voice">
+                    Narration voice
+                  </label>
+                  <select
+                    id="gov-voice"
+                    value={stockVoiceId}
+                    onChange={(e) => {
+                      setUsingDefaultVoice(false);
+                      setStockVoiceId(e.target.value);
+                    }}
+                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
+                  >
+                    {STOCK_VOICES.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} — {v.character}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-12 text-ink-muted">
+                    Used when SPARK records a voiceover. Your own cloned voice is a separate setting that needs a
+                    consent record.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </KitSection>
+
           <KitSection title="Name and schedule" hint="Who this brand is, and when its posts land.">
             <div className="grid grid-cols-1 gap-6">
               {/* ── Who it is (`F4`) ────────────────────────────────────────────
@@ -829,7 +691,15 @@ export function GovernancePanel() {
             </div>
           </KitSection>
 
-          <div className="flex flex-wrap items-center gap-3">
+          {/*
+            Sticky, because the fields it saves now start at the top of the page
+            and Brand Knowledge and Templates sit between them and here. A save
+            two screens below the logo you just changed is a save nobody finds.
+          */}
+          <div
+            className="sticky bottom-[16px] z-10 flex flex-wrap items-center gap-3 self-start rounded-xl bg-white/90 px-4 py-3 backdrop-blur"
+            style={{ boxShadow: '0 10px 30px -12px rgba(12,12,12,0.25), inset 0 0 0 1px rgba(12,12,12,0.06)' }}
+          >
             <Button disabled={busy} onClick={() => void save()}>
               {busy ? 'Saving…' : 'Save brand rules'}
             </Button>
@@ -844,13 +714,6 @@ export function GovernancePanel() {
     </div>
   );
 }
-
-/**
- * The palette is positional, and the labels say so rather than leaving somebody
- * to discover it. Matches `resolveKit` in `@sparksocial/compose` exactly — if
- * these ever disagree, the panel is lying about what the renderer will do.
- */
-const COLOR_ROLE = ['background', 'text', 'accent'] as const;
 
 /** A mid grey: visibly unset, and legible against either default while it is being changed. */
 const DEFAULT_NEW_COLOR = '#808080';

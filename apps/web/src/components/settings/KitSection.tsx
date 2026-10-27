@@ -41,6 +41,7 @@ export function KitSection({
   className,
   style,
   headerRight,
+  rule,
   children,
 }: {
   title: string;
@@ -49,8 +50,31 @@ export function KitSection({
   style?: CSSProperties;
   /** A control belonging to the card's header — the design's "Generate logo". */
   headerRight?: ReactNode;
+  /**
+   * The y, from the card's top, of a full-bleed hairline under the header.
+   *
+   * The design's four kit cards draw one — `rgba(12,12,12,0.1)`, 623.69 of
+   * the card's 626 — at 71 under Workspace logo and Brand Voice and at 61.8
+   * under Color Theme and Typography Style. With it the header is a band of
+   * fixed height and the body is laid out from the line, which is how every
+   * position inside those cards is measured.
+   */
+  rule?: number;
   children: ReactNode;
 }) {
+  if (rule !== undefined) {
+    return (
+      <section className={cn('bg-panel', className)} style={{ borderRadius: 22.888, padding: '19px 23px 23px', ...style }}>
+        <div className="flex items-start justify-between gap-3" style={{ height: rule - 19 }}>
+          <h3 className="text-20 font-medium leading-[1.3] text-ink">{title}</h3>
+          {headerRight ? <div className="-mr-[7px] -mt-[4.2px] shrink-0">{headerRight}</div> : null}
+        </div>
+        <div aria-hidden className="-mx-[23px] h-px" style={{ background: 'rgba(12,12,12,0.1)' }} />
+        {children}
+      </section>
+    );
+  }
+
   return (
     <section
       className={cn('bg-panel', className)}
@@ -58,7 +82,9 @@ export function KitSection({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-20 font-medium leading-[1.3] text-ink">{title}</h3>
+          {/* 600, where the four ruled kit cards are 500: Brand Knowledge and
+              Templates are 20/600 in the design, Strict Compliance 20/700. */}
+          <h3 className="text-20 font-semibold leading-[1.3] text-ink">{title}</h3>
           {hint ? <p className="mt-[6px] text-13 text-ink-muted">{hint}</p> : null}
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}

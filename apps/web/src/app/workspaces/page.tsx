@@ -180,8 +180,11 @@ export default function WorkspacesPage() {
       <div className="mx-auto w-full max-w-[1728px] px-4 pb-16 sm:px-8 xl:px-[42px]">
         {/* ── top bar ─────────────────────────────────────────────────────── */}
         <header className="flex flex-wrap items-center gap-3 pt-6 xl:flex-nowrap xl:pt-[38px]">
+          {/* 46,44 in the design: 4px in from the hero's edge, and 6px above
+              the centre of the 56px controls beside it (−12 of margin in a
+              centred row moves it 6). */}
           <span
-            className="mr-auto whitespace-nowrap text-20 font-extrabold tracking-[-0.02em] text-ink sm:text-26"
+            className="mr-auto whitespace-nowrap text-20 font-extrabold tracking-[-0.02em] text-ink sm:text-26 xl:-mt-[12px] xl:ml-[4px]"
           >
             Sparksocial
           </span>
@@ -400,12 +403,13 @@ export default function WorkspacesPage() {
               M3 settled the vocabulary: the business is a brand, the
               organisation is an account.
             */}
-            <h1 className="text-26 font-bold text-white sm:text-36">Brands</h1>
+            <h1 className="text-26 font-bold text-white sm:text-34">Brands</h1>
             <p className="mt-2 max-w-[46ch] text-15 font-normal sm:mt-3 sm:text-17 lg:max-w-none lg:whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.65)' }}>
               Every brand in this account. Open one to work in it, or add another.
             </p>
 
-            <div className="mt-5 flex flex-col gap-3 sm:mt-[22px] sm:flex-row sm:items-center sm:gap-4">
+            {/* Search and Add at 156 in the 272 hero (`Account Home.dc.html`). */}
+            <div className="mt-5 flex flex-col gap-3 sm:mt-[33px] sm:flex-row sm:items-center sm:gap-4">
               <div className="relative h-[54px] w-full rounded-[27px] bg-white sm:w-[454px]">
                 <input
                   type="text"

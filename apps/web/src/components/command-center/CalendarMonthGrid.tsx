@@ -271,6 +271,7 @@ export function CalendarMonthGrid({
             mediaTypes={mediaTypes}
             statuses={statuses}
             statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1)}
+            caption={false}
           />
         </div>
       )}

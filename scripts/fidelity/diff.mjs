@@ -48,25 +48,62 @@ function median(xs) {
   return s[Math.floor(s.length / 2)];
 }
 
-/** rgb(a) string → [r,g,b,a]. */
+/**
+ * A computed colour → [r, g, b, a], in 0-255 with alpha 0-1.
+ *
+ * Two notations, because the browser reports two. `rgb(…)`/`rgba(…)` for a
+ * plain colour, and `color(srgb r g b / a)` with 0-1 channels for anything
+ * produced by `color-mix()` — which is every token this app routes through
+ * `alpha()` in `tailwind.config.ts`.
+ *
+ * The first version only read `rgb`, fell through to black for everything
+ * else, and reported 64 grey labels "rendering black" across nine screens.
+ * They were all `#838383`, correctly. A colour this cannot read is now
+ * `undefined`, and an unreadable colour is not compared rather than being
+ * compared as black.
+ */
 function rgba(c) {
-  const m = /rgba?\(([^)]+)\)/.exec(c ?? '');
-  if (!m) return [0, 0, 0, 1];
-  const p = m[1].split(',').map(Number);
-  return [p[0], p[1], p[2], p[3] ?? 1];
+  const v = (c ?? '').trim();
+  let m = /^rgba?\(([^)]+)\)$/.exec(v);
+  if (m) {
+    const p = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return [p[0], p[1], p[2], p[3] ?? 1];
+  }
+  m = /^color\(srgb\s+([^)]+)\)$/.exec(v);
+  if (m) {
+    const [rgb, alpha] = m[1].split('/').map((x) => x.trim());
+    const [r, g, b] = rgb.split(/\s+/).map(Number);
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255), alpha !== undefined ? Number(alpha) : 1];
+  }
+  return undefined;
 }
 
 function colourDiff(a, b) {
   const x = rgba(a);
   const y = rgba(b);
+  if (!x || !y) return 0;
   return Math.max(Math.abs(x[0] - y[0]), Math.abs(x[1] - y[1]), Math.abs(x[2] - y[2]), Math.abs(x[3] - y[3]) * 255);
 }
 
 function hex(c) {
-  const [r, g, b, a] = rgba(c);
+  const parsed = rgba(c);
+  if (!parsed) return String(c);
+  const [r, g, b, a] = parsed;
   const h = (n) => n.toString(16).padStart(2, '0');
   return `#${h(r)}${h(g)}${h(b)}${a < 1 ? `@${Math.round(a * 100)}%` : ''}`;
 }
+
+/**
+ * One family under its several names. The prototype loads "CS Mollwish
+ * Regular Demo" and the app registers the same file as "mollwish"; comparing
+ * the labels reported five font changes that were one font.
+ */
+const faceKey = (f) =>
+  f
+    .toLowerCase()
+    .replace(/^cs\s+/, '')
+    .replace(/(regular|demo|variable|trial|fit|bold)/g, '')
+    .replace(/[^a-z]/g, '');
 
 export function pair(proto, live) {
   const remaining = live.texts.map((t, i) => ({ ...t, i, k: norm(t.t) }));
@@ -122,7 +159,7 @@ export function compare(name) {
     if (Math.abs(l.fs - p.fs) > SIZE_TOL) issues.push(`size ${p.fs}→${l.fs}`);
     if (l.fw !== p.fw) issues.push(`weight ${p.fw}→${l.fw}`);
     if (colourDiff(l.c, p.c) > 18) issues.push(`colour ${hex(p.c)}→${hex(l.c)}`);
-    if (p.ff && l.ff && p.ff.toLowerCase() !== l.ff.toLowerCase()) issues.push(`face ${p.ff}→${l.ff}`);
+    if (p.ff && l.ff && faceKey(p.ff) !== faceKey(l.ff)) issues.push(`face ${p.ff}→${l.ff}`);
     if (issues.length) drift.push({ t: p.t, at: `${p.x},${p.y}`, issues });
   }
 
@@ -172,8 +209,11 @@ function report(r, all) {
   }
 }
 
-const args = process.argv.slice(2);
-if (args.includes('--summary')) {
+const isCli = process.argv[1] !== undefined && import.meta.url.endsWith(String(process.argv[1]).split(String.fromCharCode(92)).join('/').split('/').pop());
+const args = isCli ? process.argv.slice(2) : ['--quiet'];
+if (args.includes('--quiet')) {
+  // imported as a module — no output
+} else if (args.includes('--summary')) {
   console.log('screen'.padEnd(26), 'paired'.padStart(10), 'drift'.padStart(7), 'missing'.padStart(8), 'extra'.padStart(6), ' offset');
   for (const n of screens()) {
     const r = compare(n);

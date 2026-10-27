@@ -49,50 +49,57 @@ export function BrandKitsSection() {
   return (
     <div className="grid grid-cols-1 gap-[27px]">
       {/*
-        Autonomy leads, because it decides whether anything below is reached
-        without a person in the loop — the ordering the previous page argued for
-        and which the design does not contradict.
-      */}
-      <div className="grid grid-cols-1 gap-[18px]">
-        <ApprovalModeControl />
-        <AgentControlBar />
-      </div>
-
-      {/*
         Not wrapped in a section: `GovernancePanel` emits the design's own four
         cards (Workspace logo · Color Theme · Brand Voice · Typography Style)
         plus Strict Compliance and Watermark. Wrapping it would put a panel
         inside a panel, which the design never does.
       */}
-      <GovernancePanel />
+      <GovernancePanel
+        afterCompliance={
+          <>
+            <KitSection
+              title="Brand Knowledge"
+              hint="What SPARK is allowed to claim. With nothing attached, guardrails hold every specific statement."
+            >
+              {/*
+                `OfferPanel` was here and is gone — see the note in `OffersSection`.
 
-      <KitSection
-        title="Brand Knowledge"
-        hint="What SPARK is allowed to claim. With nothing attached, guardrails hold every specific statement."
-      >
-        {/*
-          `OfferPanel` was here and is gone — see the note in `OffersSection`.
+                Two screens wrote `genome.offer.set`: this one, which could set the
+                call-to-action and nothing else, and `/settings/offers`, which sets
+                the CTA *and* the products a brand actually sells. Two controls over
+                one field, in two places, with no way to tell from either that the
+                other existed.
 
-          Two screens wrote `genome.offer.set`: this one, which could set the
-          call-to-action and nothing else, and `/settings/offers`, which sets
-          the CTA *and* the products a brand actually sells. Two controls over
-          one field, in two places, with no way to tell from either that the
-          other existed.
+                This one also could not show what was already stored — its own
+                comment said so, because when it was written no tool returned a
+                genome's offer. `genome.get` returns it now, which is what made the
+                fuller screen possible and this one misleading: it rendered an empty
+                box whether or not a CTA was set.
+              */}
+              <div className="grid grid-cols-1 gap-[22px]">
+                <KnowledgePanel />
+              </div>
+            </KitSection>
 
-          This one also could not show what was already stored — its own
-          comment said so, because when it was written no tool returned a
-          genome's offer. `genome.get` returns it now, which is what made the
-          fuller screen possible and this one misleading: it rendered an empty
-          box whether or not a CTA was set.
-        */}
-        <div className="grid grid-cols-1 gap-[22px]">
-          <KnowledgePanel />
-        </div>
-      </KitSection>
+            <KitSection title="Templates" hint="The layouts a post is built into.">
+              <BrandTemplatesPanel />
+            </KitSection>
+          </>
+        }
+      />
 
-      <KitSection title="Templates" hint="The layouts a post is built into.">
-        <BrandTemplatesPanel />
-      </KitSection>
+      {/*
+        Autonomy used to lead the page, on the argument that it decides whether
+        anything below is reached without a person in the loop. The design does
+        contradict that: its first thing under the title is the four kit cards,
+        and with these two above them the whole screen measured 161px below the
+        prototype. They have no slot in the design, so they follow its content
+        rather than displacing it.
+      */}
+      <div className="grid grid-cols-1 gap-[18px]">
+        <ApprovalModeControl />
+        <AgentControlBar />
+      </div>
 
       <KitSection
         title="People and likeness"

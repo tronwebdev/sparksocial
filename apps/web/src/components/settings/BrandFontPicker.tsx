@@ -31,7 +31,7 @@ import { BRAND_FONTS, fontStack } from '@sparksocial/shared';
  * column existed.
  */
 
-const GOOGLE_CSS = `https://fonts.googleapis.com/css2?${BRAND_FONTS.map(
+export const GOOGLE_CSS = `https://fonts.googleapis.com/css2?${BRAND_FONTS.map(
   (f) => `family=${encodeURIComponent(f.family).replace(/%20/g, '+')}:wght@${f.weight}`,
 ).join('&')}&display=swap`;
 
@@ -63,7 +63,7 @@ export function BrandFontPicker({
       <link rel="stylesheet" href={GOOGLE_CSS} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Select
+        <FontSelect
           id="gov-font-display"
           label="Headlines"
           hint="Text-only posts and titles"
@@ -71,7 +71,7 @@ export function BrandFontPicker({
           onChange={(id) => onChange({ ...value, display: id })}
           filter={(role) => role !== 'body'}
         />
-        <Select
+        <FontSelect
           id="gov-font-body"
           label="Captions"
           hint={value.display && !value.body ? 'Following your headline font' : 'Running text on posts'}
@@ -101,7 +101,7 @@ export function BrandFontPicker({
   );
 }
 
-function Select({
+export function FontSelect({
   id,
   label,
   hint,

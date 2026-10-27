@@ -55,6 +55,12 @@ export function SettingsShell({
   footer,
   /** Height of the content card. The design sizes it per section. */
   contentClassName,
+  /**
+   * The page-sized heading. Every settings section is titled 20/600 in its
+   * prototype except Brand Kits, which is 28.6/600 over a 19.3/500 subtitle
+   * at 80% grey — it is the one section that reads as a page of its own.
+   */
+  large,
 }: {
   heading: string;
   subtitle?: ReactNode;
@@ -62,6 +68,7 @@ export function SettingsShell({
   bare?: boolean;
   footer?: ReactNode;
   contentClassName?: string;
+  large?: boolean;
 }) {
   const pathname = usePathname();
   const tree = treeFor(pathname);
@@ -78,11 +85,18 @@ export function SettingsShell({
     <div className="min-h-screen bg-white p-[15px] pt-[18px]">
       <div className="relative min-h-[calc(100vh-36px)] overflow-hidden rounded-[30px] bg-set-card">
         {/* ── header ──────────────────────────────────────────────────── */}
-        <div className="relative flex flex-wrap items-start gap-[20px] px-[11px] sm:h-[99px]">
-          {/* 26,30 on the stage is 11,12 inside a card that starts at 15,18. */}
+        {/*
+          Back and the wordmark are centred on the switcher row, not pinned to
+          the top of the card: the rendered prototype puts Back at 41,50 and
+          "Settings" at 153,53 on the page, i.e. 26,32 and 138,35 inside a card
+          that starts at 15,18. They were placed at 26,30 and 138,34 on the
+          *page* — the card-relative numbers read as page ones — which left both
+          15px left and 19px above the row they belong to.
+        */}
+        <div className="relative flex flex-wrap items-start gap-[20px] px-[26px] sm:h-[99px]">
           <Link
             href="/home"
-            className="mt-[12px] flex h-[36.392px] w-[92px] shrink-0 items-center justify-center gap-[10px] rounded-[7.072px] text-17 font-medium leading-[1.269] transition-colors hover:bg-white"
+            className="mt-[32px] flex h-[36.392px] w-[92px] shrink-0 items-center justify-center gap-[10px] rounded-[7.072px] text-17 font-medium leading-[1.269] transition-colors hover:bg-white"
             style={{ boxShadow: '0 0 0 0.707px rgb(131,131,131)', color: 'rgb(131,131,131)' }}
           >
             <svg width="7.468" height="14.936" viewBox="0 0 8 16" fill="none" aria-hidden>
@@ -91,10 +105,12 @@ export function SettingsShell({
             Back
           </Link>
 
-          {/* 138,34 → 123,16 in the card; the 31px box sits 4px below Back. */}
-          <h1 className="mt-[16px] text-28 font-normal leading-[1.13] text-ink">Settings</h1>
+          {/* In the wordmark's face, as on all twenty-six settings prototypes
+              ("CS Mollwish", 27.49px) — it was set in the body face. */}
+          <h1 className="mt-[35px] font-display text-28 font-normal leading-[1.13] text-ink">Settings</h1>
 
-          <div className="ml-auto flex min-w-0 items-start gap-[13px] pr-[15px]">
+          {/* Switcher 1033→1468, Ask from 1491 to 1687: a 23 gap and the card's own 26 inset. */}
+          <div className="ml-auto flex min-w-0 items-start gap-[23px]">
             <span className="mt-[26px] hidden xl:block">
               <NotificationBell compact />
             </span>
@@ -155,14 +171,21 @@ export function SettingsShell({
             ) : (
               <>
                 <div className="px-[30px] pt-[21px]">
-                  <h2 className="text-20 font-semibold leading-[1.3] text-ink">{heading}</h2>
+                  <h2 className={cn('font-semibold leading-[1.3] text-ink', large ? 'text-28' : 'text-20')}>{heading}</h2>
                   {subtitle ? (
-                    <p className="mt-[8px] max-w-[840px] text-18 font-normal leading-[1.22]" style={{ color: 'rgb(131,131,131)' }}>
+                    <p
+                      className={cn(
+                        'mt-[8px] max-w-[840px] leading-[1.22]',
+                        large ? 'text-19 font-medium' : 'text-18 font-normal',
+                      )}
+                      style={{ color: large ? 'rgba(131,131,131,0.8)' : 'rgb(131,131,131)' }}
+                    >
                       {subtitle}
                     </p>
                   ) : null}
                 </div>
-                <div className="px-[30px] pb-[30px] pt-[22px]">{children}</div>
+                {/* 50 between the large subtitle and the first card (231 → 281). */}
+                <div className={cn('px-[30px] pb-[30px]', large ? 'pt-[49px]' : 'pt-[22px]')}>{children}</div>
                 {footer}
               </>
             )}

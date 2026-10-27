@@ -164,7 +164,7 @@ export function AgentActivityFeed({
     return (
       <section>
         <SectionHeading />
-        <div className="mt-dash-label-gap rounded-lg bg-white">
+        <div className="mt-dash-label-gap min-h-[361px] rounded-lg bg-white">
           {/*
             Empty because no agent run exists — not because no campaign does.
             Drafting a post through the tools does not create a run, so a brand
@@ -187,7 +187,12 @@ export function AgentActivityFeed({
     <section>
       <SectionHeading />
 
-      <div className="mt-dash-label-gap rounded-lg bg-white">
+      {/*
+        361 is the design's card height for four rows. A floor rather than a
+        height: with fewer runs, or none, the card stayed short and the
+        Upcoming Contents card below it rode up 34px out of its band.
+      */}
+      <div className="mt-dash-label-gap min-h-[361px] rounded-lg bg-white">
         <ul>
           {runs.slice(0, VISIBLE).map((run, i) => {
             const kind = KIND[runKind(run.goal, run.agent)];

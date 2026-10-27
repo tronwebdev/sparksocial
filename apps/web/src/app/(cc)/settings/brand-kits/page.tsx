@@ -13,6 +13,7 @@ export default function BrandKitsPage() {
   return (
     <SettingsShell
       heading="Brand Kits"
+      large
       subtitle="Voice, guardrails, logo and colours, what SPARK knows, and whose face and voice it may use."
     >
       <BrandKitsSection />

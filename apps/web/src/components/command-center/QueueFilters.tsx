@@ -161,6 +161,7 @@ export function QueueFilters({
   mediaTypes,
   statuses,
   statusLabel,
+  caption = true,
 }: {
   value: QueueFilterState;
   onChange: (next: QueueFilterState) => void;
@@ -170,6 +171,12 @@ export function QueueFilters({
   statuses: readonly string[];
   /** Turns a `content_items.status` into the chip's own wording. */
   statusLabel: (s: string) => string;
+  /**
+   * The "Filters:" caption. The queue cards have it; the Calendar screen's
+   * month grid does not (`SparkSocial Calendar.dc.html`, the `filtersGrid`
+   * row is the stepper and five boxes, nothing between them).
+   */
+  caption?: boolean;
 }) {
   const set = (patch: Partial<QueueFilterState>) => onChange({ ...value, ...patch });
 
@@ -195,12 +202,14 @@ export function QueueFilters({
       content does.
     */
     <div className="flex flex-wrap items-center gap-[16px] canvas:ml-auto canvas:flex-nowrap">
-      <span className="mr-[36px] flex shrink-0 items-center gap-[11px] max-canvas:mr-0">
-        <svg width="24" height="17" viewBox="0 0 24 17" fill="none" aria-hidden>
-          <path d="M1 2h22M4.5 8.5h15M9 15h6" stroke="#838383" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-        <span className="text-16 font-semibold text-ink-muted">Filters:</span>
-      </span>
+      {caption ? (
+        <span className="mr-[36px] flex shrink-0 items-center gap-[11px] max-canvas:mr-0">
+          <svg width="24" height="17" viewBox="0 0 24 17" fill="none" aria-hidden>
+            <path d="M1 2h22M4.5 8.5h15M9 15h6" stroke="#838383" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <span className="text-16 font-semibold text-ink-muted">Filters:</span>
+        </span>
+      ) : null}
 
       <FilterSelect
         label="Date"

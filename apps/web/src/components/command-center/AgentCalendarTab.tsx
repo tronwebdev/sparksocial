@@ -127,7 +127,7 @@ export function AgentCalendarTab({
           <span className="absolute left-[26px] top-[24px] block h-[100px] w-[100px] max-canvas:static max-canvas:h-[64px] max-canvas:w-[64px] max-canvas:shrink-0">
             <SparkMark variant="shell" size={100} />
           </span>
-          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-32 font-semibold leading-[1.27] text-ink max-canvas:static max-canvas:min-w-0 max-canvas:flex-1">
+          <p className="absolute left-[150px] right-[14px] top-[34px] truncate text-30 font-semibold leading-[1.27] text-ink max-canvas:static max-canvas:min-w-0 max-canvas:flex-1">
             {agentName ?? UNNAMED_AGENT}
           </p>
           <span className="absolute left-[152px] top-[92px] text-16 leading-none text-ink max-canvas:static">Status</span>

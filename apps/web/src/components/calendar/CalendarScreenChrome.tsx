@@ -160,7 +160,7 @@ export function CalendarScreenChrome({
         {/* Title on 150: 33 under the divider. 64 on the stage is 49 in. */}
         <div className="flex flex-wrap items-start gap-4 px-[17px] pt-[33px] sm:pl-[49px] sm:pr-[37px]">
           <div className="min-w-0">
-            <h1 className="text-32 font-semibold leading-[1.27] text-ink">Calendar</h1>
+            <h1 className="text-30 font-semibold leading-[1.27] text-ink">Calendar</h1>
             <p className="mt-[8px] text-16 text-ink-muted">
               A sleek and intuitive calendar interface for easy scheduling and management.
             </p>

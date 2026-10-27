@@ -106,7 +106,7 @@ export function AutomationHome({
           style={{ backgroundImage: 'var(--ss-grad-auto-stars)' }}
         />
 
-        <p className="absolute inset-x-0 top-[38px] text-center text-36 font-bold text-auto-hero-title">
+        <p className="absolute inset-x-0 top-[38px] text-center text-34 font-bold text-auto-hero-title">
           Automation Recipes
         </p>
         <p className="absolute inset-x-0 top-[94px] text-center text-17 font-normal leading-[1.4] text-white/85">
