@@ -116,10 +116,11 @@ export function CompletionScreen({ onDone }: { onDone: () => void }) {
       <div
         style={{ position: 'absolute', left: 760.5, top: 864, width: 240, textAlign: 'center', fontSize: 16, lineHeight: 1.25, color: '#838383' }}
       >
-        Press &amp; Hold button to continue
+        Click the button to continue
       </div>
 
-      <StageHoldButton tone="light" label="Continue to Dashboard" onComplete={onDone} />
+      {/* A click, not a hold: in testing the hold read as a dead button. */}
+      <StageHoldButton tone="light" label="Continue to Dashboard" onComplete={onDone} mode="click" />
     </Stage>
   );
 }

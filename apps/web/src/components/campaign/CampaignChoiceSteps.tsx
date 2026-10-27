@@ -64,7 +64,9 @@ function ChoiceCard({
         {title}
       </span>
       <span
-        className="absolute left-[35.5px] top-[118px] block w-[181px] text-center text-16 font-medium leading-[0.9986]"
+        // Inset both sides rather than a fixed 181: identical in the design's
+        // 252 card, and still centred when the narrow column widens the card.
+        className="absolute left-[35.5px] right-[35.5px] top-[118px] block text-center text-16 font-medium leading-[0.9986]"
         style={{ color: 'rgb(131,131,131)' }}
       >
         {desc}

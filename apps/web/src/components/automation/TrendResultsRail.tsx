@@ -186,7 +186,7 @@ export function TrendResultsRail({
                     <span className="block text-16 font-medium" style={{ color: '#838383' }}>
                       {t.media?.kind === 'video' ? 'Video' : t.media ? 'Image' : 'Topic'}
                     </span>
-                    <span className="mt-[6px] line-clamp-3 block text-17 font-bold leading-[1.3] text-ink">{t.topic}</span>
+                    <span className="mt-[6px] line-clamp-3 text-17 font-bold leading-[1.3] text-ink">{t.topic}</span>
                   </span>
                 </div>
 

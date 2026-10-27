@@ -351,6 +351,9 @@ export function StepPanel({
           'flex flex-col gap-[14px]',
           FLATTEN,
           '[&_*]:!whitespace-normal',
+          // The goal and type cards fill the column: at the design's fixed 252
+          // they sat in a strip down the left with the rest of the panel empty.
+          '[&>button.w-cmp-card]:!w-full',
         )}
       >
         {children}

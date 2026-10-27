@@ -46,12 +46,15 @@ export function OfferStep({
   ctaUrl,
   onToggleCta,
   onCtaUrl,
+  oneLiner = '',
 }: {
   brand: BrandCard | null;
   ctaOn: boolean;
   ctaUrl: string;
   onToggleCta: () => void;
   onCtaUrl: (v: string) => void;
+  /** `identity.one_liner` — the description onboarding wrote. */
+  oneLiner?: string;
 }) {
   const doc = brand?.docs[0];
   return (
@@ -93,8 +96,18 @@ export function OfferStep({
             {brand ? `${brand.docs.length} source ${brand.docs.length === 1 ? 'document' : 'documents'}` : ''}
           </span>
 
-          <span className="absolute left-[1px] top-[78px] line-clamp-2 block w-[386px] text-16 font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
-            {doc?.preview ??
+          {/*
+            Two lines, then the tone chips at 132. It was `line-clamp-2 block`,
+            and `block` overrides the `-webkit-box` the clamp needs — so the
+            clamp never applied and four lines of text ran under the chips.
+
+            The brand's own description first. The source document's preview
+            is the raw page scrape ("Skip to content Click here to pre-order…
+            LOCATIONS ABOUT US"), which is not a sentence about the brand.
+          */}
+          <span className="absolute left-[1px] top-[78px] line-clamp-2 w-[386px] max-w-full text-16 font-medium leading-[1.269]" style={{ color: 'rgb(131,131,131)' }}>
+            {oneLiner.trim() ||
+              doc?.preview ||
               'Nothing is attached yet. SPARK will write from the brand voice alone until you add a document.'}
           </span>
 

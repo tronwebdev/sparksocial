@@ -322,19 +322,28 @@ export function StageHoldButton({
   tone,
   label,
   onComplete,
+  mode = 'hold',
 }: {
   tone: 'dark' | 'light';
   label: string;
   onComplete: () => void;
+  /**
+   * `click` completes on an ordinary click: the fill plays fast (350ms) and
+   * then it goes. A hold reads as a broken button to anyone who just clicks —
+   * a short press released early cancelled the fill and did nothing at all,
+   * which is how "Continue to Dashboard" looked in testing.
+   */
+  mode?: 'hold' | 'click';
 }) {
   const [held, setHeld] = useState(false);
   const dark = tone === 'dark';
+  const fillMs = mode === 'click' ? 350 : 900;
 
   useEffect(() => {
     if (!held) return;
-    const t = setTimeout(onComplete, 900);
+    const t = setTimeout(onComplete, fillMs);
     return () => clearTimeout(t);
-  }, [held, onComplete]);
+  }, [held, onComplete, fillMs]);
 
   const fill = (
     <div
@@ -344,17 +353,23 @@ export function StageHoldButton({
         borderRadius: dark ? undefined : 228.41,
         background: 'linear-gradient(90deg,#6CE8FF 0%,#F56BFF 50%,#A341FF 100%)',
         ...(dark ? { opacity: 0.85 } : {}),
-        transition: held ? 'width 900ms linear' : 'width 160ms ease-out',
+        transition: held ? `width ${fillMs}ms ${mode === 'click' ? 'ease-out' : 'linear'}` : 'width 160ms ease-out',
       }}
     />
   );
 
+  const pointer =
+    mode === 'click'
+      ? { onClick: () => setHeld(true) }
+      : {
+          onMouseDown: () => setHeld(true),
+          onMouseUp: () => setHeld(false),
+          onMouseLeave: () => setHeld(false),
+          onTouchStart: () => setHeld(true),
+          onTouchEnd: () => setHeld(false),
+        };
   const common = {
-    onMouseDown: () => setHeld(true),
-    onMouseUp: () => setHeld(false),
-    onMouseLeave: () => setHeld(false),
-    onTouchStart: () => setHeld(true),
-    onTouchEnd: () => setHeld(false),
+    ...pointer,
     // Enter and Space must also work; a hold is an affordance, not a gate.
     onKeyDown: (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {

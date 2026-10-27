@@ -194,6 +194,16 @@ export function CampaignWizard({
    */
   const [goalKey, setGoalKey] = useState<string | null>('leads');
   const [objective, setObjective] = useState<string>('leads');
+  /**
+   * Whether the owner has picked a goal here. Until they do, step 1 follows
+   * the objective onboarding recorded (`dimensions.objective`) — it defaulted
+   * to "Get Leads" for a brand that had just answered "More sales".
+   */
+  const goalTouched = useRef(false);
+  /** `offer.primary_cta` — the words the review step's Primary CTA shows. */
+  const [ctaText, setCtaText] = useState('');
+  /** `identity.one_liner`, for the brand card on step 3. */
+  const [oneLiner, setOneLiner] = useState('');
   const [windowDays, setWindowDays] = useState(30);
 
   // CMP-01.2
@@ -273,7 +283,12 @@ export function CampaignWizard({
   const [answersDismissed, setAnswersDismissed] = useState(false);
 
   /* CMP-01.2 — SPARK's proposal, fetched when the goal is settled. */
-  const propose = useCallback(async () => {
+  /*
+    `advance` is false when re-proposing from step 3 ("Save and replan"): the
+    plan is refreshed in place. It always jumped to step 2, so saving a CTA
+    sent the owner back a step to a screen they had already answered.
+  */
+  const propose = useCallback(async (advance = true) => {
     setBusy(true);
     setError(null);
     const res = await invoke<ProposedPlan>('campaign.propose_plan', { genomeId, objective, windowDays });
@@ -283,7 +298,7 @@ export function CampaignWizard({
       return;
     }
     setPlan(res.output);
-    setStep(2);
+    if (advance) setStep(2);
   }, [genomeId, objective, windowDays]);
 
   /**
@@ -541,6 +556,43 @@ export function CampaignWizard({
   }, [genomeId]);
 
   /**
+   * The brand's offer and objective, from `genome.get`.
+   *
+   * The CTA line is what the review step prints as "Primary CTA" — it showed
+   * the design's placeholder, "Visit Opt-in page", whatever the brand had set.
+   * The objective seeds step 1 until the owner picks a goal themselves.
+   */
+  const refreshOffer = useCallback(async () => {
+    const res = await invoke<{
+      genome: { identity: Record<string, unknown>; dimensions: Record<string, unknown>; offer: Record<string, unknown> };
+    }>(
+      'genome.get',
+      { genomeId },
+    );
+    if (res.status !== 'succeeded') return;
+    const cta = res.output.genome.offer.primary_cta;
+    setCtaText(typeof cta === 'string' ? cta.trim() : '');
+    const line = res.output.genome.identity.one_liner;
+    setOneLiner(typeof line === 'string' ? line : '');
+
+    const dim = res.output.genome.dimensions.objective;
+    if (goalTouched.current || typeof dim !== 'string') return;
+    const card = GOAL_CARDS.find((c) => c.objective === dim);
+    if (card) {
+      setGoalKey(card.key);
+      setObjective(card.objective);
+      setSuggestedType(card.type);
+    } else if (EXTRA_OBJECTIVES.some((o) => o.value === dim)) {
+      setGoalKey(null);
+      setObjective(dim);
+    }
+  }, [genomeId]);
+
+  useEffect(() => {
+    void refreshOffer();
+  }, [refreshOffer]);
+
+  /**
    * Connecting an account from the tile grid.
    *
    * `integration.connect` is `human_only`, so it can only run from a real
@@ -737,6 +789,7 @@ export function CampaignWizard({
       goalKey={goalKey}
       objective={objective}
       onPickCard={(c) => {
+        goalTouched.current = true;
         setGoalKey(c.key);
         setObjective(c.objective);
         // The card carries the type it implies; an explicit later
@@ -745,6 +798,7 @@ export function CampaignWizard({
         setSuggestedType(c.type);
       }}
       onPickExtra={(v) => {
+        goalTouched.current = true;
         setGoalKey(null);
         setObjective(v);
       }}
@@ -757,6 +811,7 @@ export function CampaignWizard({
     <>
       <OfferStep
         brand={brand}
+        oneLiner={oneLiner}
         ctaOn={ctaOn}
         ctaUrl={ctaUrl}
         onToggleCta={() => {
@@ -779,7 +834,11 @@ export function CampaignWizard({
             facts={plan.answers.missing}
             unlocksPosts={plan.answers.unlocksPosts}
             blockedPlaybooks={plan.answers.blockedPlaybooks}
-            onFilled={propose}
+            onFilled={async () => {
+              await propose(false);
+              // The CTA line the review step shows is the one just saved.
+              void refreshOffer();
+            }}
             onSkip={() => setAnswersDismissed(true)}
           />
         </div>
@@ -830,6 +889,8 @@ export function CampaignWizard({
       windowDays={windowDays}
       weight={weight}
       ctaUrl={ctaUrl.trim()}
+      ctaText={ctaText}
+      objective={objective}
       requireApproval={approvalMode === 'review_everything'}
       onRequireApproval={() => {
         governanceTouched.current = true;

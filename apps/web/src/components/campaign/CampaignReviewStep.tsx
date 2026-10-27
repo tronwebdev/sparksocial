@@ -34,6 +34,8 @@ export function ReviewStep({
   windowDays,
   weight,
   ctaUrl,
+  ctaText = '',
+  objective = '',
   requireApproval,
   onRequireApproval,
   onActivate,
@@ -47,6 +49,10 @@ export function ReviewStep({
   windowDays: number;
   weight: CampaignWeight;
   ctaUrl: string;
+  /** `offer.primary_cta` — the words posts close on. */
+  ctaText?: string;
+  /** The campaign's objective, for the line that says what the CTA is tuned for. */
+  objective?: string;
   requireApproval: boolean;
   onRequireApproval: () => void;
   onActivate: () => void;
@@ -62,21 +68,38 @@ export function ReviewStep({
     ['Weight -', weightLabel],
     [
       'Primary CTA -',
-      ctaUrl ? (
-        <a href={ctaUrl} target="_blank" rel="noreferrer" className="text-link-blue underline">
-          Visit Opt-in page
-        </a>
+      /* The brand's own CTA, linked to the campaign's destination when there
+         is one. This printed the design's placeholder, "Visit Opt-in page",
+         whatever had been set — a sales campaign closing on "Pre-order now"
+         reviewed as an opt-in. */
+      ctaText || ctaUrl ? (
+        ctaUrl ? (
+          <a href={ctaUrl} target="_blank" rel="noreferrer" className="text-link-blue underline">
+            {ctaText || ctaUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+          </a>
+        ) : (
+          <span>{ctaText}</span>
+        )
       ) : (
         <span style={{ color: 'rgb(131,131,131)' }}>None set</span>
       ),
     ],
   ];
 
+  /* What the CTA cadence is tuned toward, in the goal's own terms. */
+  const TUNED_FOR: Record<string, string> = {
+    leads: 'leads',
+    sales: 'sales',
+    bookings: 'bookings',
+    trials: 'sign-ups',
+    audience: 'reach',
+    hiring: 'applications',
+  };
   const WILL_DO = [
     'Create campaign-focused posts across selected channels',
     'Blend campaign content with baseline growth posts',
     'Optimize posting times based on performance',
-    'Adjust CTA frequency to maximize leads',
+    `Adjust CTA frequency to maximize ${TUNED_FOR[objective] ?? 'results'}`,
   ];
 
   return (
