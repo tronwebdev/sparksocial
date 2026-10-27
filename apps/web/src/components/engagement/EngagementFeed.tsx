@@ -168,7 +168,7 @@ export function EngagementFeed() {
         divider   0,196
         cards     16,216  three 364px columns, 12px apart, 16px stack
     */
-    <section className="ml-0 rounded-[20px] bg-white px-[32px] pb-[24px] pt-[44px] xl:ml-[21px]">
+    <section className="ml-0 rounded-[20px] bg-white px-[32px] pb-[24px] pt-[44px] [container-type:inline-size] xl:ml-[21px]">
       <div className="relative flex flex-wrap items-center gap-x-[38px] gap-y-4">
         <div className="flex items-center gap-3">
           {/* 36 in the design; its filter row below sits on 32. */}
@@ -183,11 +183,17 @@ export function EngagementFeed() {
         </div>
 
         {/* 390 in the design, regardless of how wide the heading runs. In a flex
-            row they followed the heading and started on 299. */}
+            row they followed the heading and started on 299.
+
+            Pinned there only when the card can hold them: 358 plus ~740 of
+            tabs. It was `xl:`, a window width, but beside the rail at 1440 the
+            card is 921 wide — the tabs wrapped inside the pinned box and the
+            second row ("Auto-Handled", "Sales Leads") was drawn over the
+            filters. Narrower than that they take their own row. */}
         <div
           role="tablist"
           aria-label="Engagement categories"
-          className="flex flex-wrap items-center xl:absolute xl:left-[358px] xl:top-[-4px]"
+          className="flex flex-wrap items-center [@container(min-width:1100px)]:absolute [@container(min-width:1100px)]:left-[358px] [@container(min-width:1100px)]:top-[-4px]"
         >
           {TABS.map((t) => (
             <button

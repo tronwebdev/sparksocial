@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { pillarStyle } from '@/components/calendar/pillars';
+import { AdjustFrequency } from './AdjustFrequency';
 
 /**
  * The prototype's "Current Focus" hero card (`SparkSocial Command
@@ -160,9 +161,9 @@ export function CampaignFocusCard({
 
         {/*
           "Edit Campaign" is the calendar, which is where a campaign is actually
-          edited. "Adjust Frequency" scrolls to `AgentControlBar` rather than
-          opening its own dial - `agent.frequency.set` has one control on this
-          page and two would be two ways to disagree about the same number.
+          edited. "Adjust Frequency" linked to `#agent-frequency`, an anchor on
+          `AgentControlBar` — which moved to Settings → Brand Kit, so the link
+          scrolled nowhere. It opens the same dial the dashboard banner uses.
         */}
         <Link
           href="/calendar"
@@ -175,13 +176,10 @@ export function CampaignFocusCard({
           Edit Campaign
         </Link>
 
-        <a
-          href="#agent-frequency"
+        <AdjustFrequency
           className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-ink"
           style={{ background: 'rgba(255,255,255,0.4)', boxShadow: 'inset 0 0 0 0.57px #0C0C0C' }}
-        >
-          Adjust Frequency
-        </a>
+        />
       </div>
 
       <h2 className="mt-[20px] text-34 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { invoke } from '@/lib/tools';
 import type { EngagementItem } from './EngagementFeed';
 import { userMessage } from '@/lib/errorCopy';
@@ -71,6 +72,7 @@ export function ReplyAction({
     );
     if (res.status === 'succeeded') {
       setPhase('sent');
+      toast('Reply sent');
       onReplied(item.id);
       return;
     }

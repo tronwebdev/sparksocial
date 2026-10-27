@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
@@ -1215,6 +1216,7 @@ export function DraftPanel({
     // the attempt count and the last error, so leaving them on screen would show
     // a stall that no longer exists.
     setDraft((d) => (d ? { ...d, status: 'scheduled', publishAttempts: 0, lastPublishError: undefined, blockedReason: undefined } : d));
+    toast('Rescheduled for tomorrow at 9:00');
   }
 
   if (!open) return null;

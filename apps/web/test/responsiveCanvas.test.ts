@@ -278,7 +278,7 @@ describe('the calendar filters fold instead of overflowing', () => {
   });
 
   it('keeps the captured width as a ceiling when the dropdowns give way', () => {
-    const select = all.find((c) => c.includes('w-[194px]'));
+    const select = all.find((c) => c.includes('max-w-[194px]'));
     expect(select).toBeDefined();
 
     /*
@@ -287,10 +287,34 @@ describe('the calendar filters fold instead of overflowing', () => {
      * because 50% of a wide container is wide. The cap is what stops a `grow`
      * overshooting the capture.
      */
-    expect(select).toContain('max-canvas:max-w-[194px]');
+    // At every width now, not only below canvas — see the next test.
+    expect(select).toMatch(/(^|\s)max-w-\[194px\]/);
     expect(select).not.toContain('calc(50%');
     expect(select).toContain('max-canvas:grow');
     expect(select).toContain('max-canvas:basis-[160px]');
+  });
+
+  /*
+   * Above canvas the boxes were `w-[194px] shrink-0`. The Agent Calendar card at
+   * 1440 is 1343 wide and its header needs ~1440 at 194 apiece, so the boxes
+   * held and squeezed "Upcoming action queue" onto three lines instead. A
+   * basis rather than a width, too: a width makes each box's min-content 194,
+   * so the row could never shrink as a whole, only drop a line.
+   */
+  it('gives way to 160 above canvas too, from a basis rather than a width', () => {
+    const select = all.find((c) => c.includes('basis-[194px]'));
+    expect(select).toBeDefined();
+    expect(select).not.toMatch(/(^|\s)w-\[194px\]/);
+    expect(select).not.toContain('shrink-0');
+    expect(select).toMatch(/(^|\s)min-w-\[160px\]/);
+  });
+
+  it('does not let the queue heading be squeezed by its filters', () => {
+    const header = classNames(read('src/components/command-center/QueueFilters.tsx')).find((c) =>
+      c.includes('text-20 font-semibold'),
+    );
+    expect(header).toContain('whitespace-nowrap');
+    expect(header).toContain('shrink-0');
   });
 });
 
@@ -596,5 +620,45 @@ describe('settings sections measure their card, not the window', () => {
     const raw = readFileSync(join(__dirname, '../src/components/settings/OverviewSection.tsx'), 'utf8');
     expect(raw).toContain('cq-canvas:min-w-[1300px]');
     expect(raw).not.toMatch(/(?<![-\w])max-canvas:/);
+  });
+});
+
+/**
+ * The Command Center walk-through against `SparkSocial Command Center.dc.html`,
+ * at 1440 beside the rail.
+ */
+describe('the Command Center holds together beside the rail', () => {
+  it('pins the engagement tabs on the card’s width, not the window’s', () => {
+    const raw = readFileSync(join(__dirname, '../src/components/engagement/EngagementFeed.tsx'), 'utf8');
+    const tablist = classNames(raw).find((c) => c.includes('left-[358px]'));
+    expect(tablist).toBeDefined();
+    // `xl:absolute` pinned them at 358 in a 921px card; the second row of
+    // tabs was drawn over the filters.
+    expect(tablist).not.toContain('xl:absolute');
+    expect(tablist).toContain('[@container(min-width:1100px)]:absolute');
+    expect(classNames(raw).some((c) => c.includes('[container-type:inline-size]'))).toBe(true);
+  });
+
+  it('does not clip the rail’s two buttons', () => {
+    const raw = readFileSync(join(__dirname, '../src/components/command-center/SparkRail.tsx'), 'utf8');
+    const row = classNames(raw).find((c) => c.includes('top-[598px]'));
+    expect(row).toContain('[container-type:inline-size]');
+    // A centred flex box with `truncate` clips both ends; the label is a span.
+    const identity = classNames(raw).filter((c) => c.includes('basis-0'));
+    for (const c of identity) expect(c).not.toMatch(/(^|\s)truncate(\s|$)/);
+  });
+
+  it('has no anchor to a section that is not on the page', () => {
+    const raw = readFileSync(join(__dirname, '../src/components/command-center/CampaignFocusCard.tsx'), 'utf8');
+    expect(raw).not.toContain('href="#agent-frequency"');
+    expect(raw).toContain('<AdjustFrequency');
+  });
+
+  it('draws the prototype’s toast rather than Sonner’s default', () => {
+    const raw = readFileSync(join(__dirname, '../src/components/ui/toaster.tsx'), 'utf8');
+    // Without `unstyled`, Sonner's `[data-styled=true]` rule wins over the classes.
+    expect(raw).toContain('unstyled: true');
+    expect(raw).toContain('rounded-[12px]');
+    expect(raw).toContain('px-[22px] py-[13px]');
   });
 });

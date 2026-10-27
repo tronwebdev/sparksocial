@@ -249,7 +249,7 @@ export function CommandCenterShell({
               {thumb ? (
                 <span
                   aria-hidden
-                  className="absolute top-1 h-[42px] rounded-[76.4px] transition-[left,width] duration-200 ease-shell motion-reduce:transition-none"
+                  className="absolute top-1 h-[42px] rounded-[76.4px] transition-[left,width] duration-300 ease-shell motion-reduce:transition-none"
                   style={{ left: thumb.left, width: thumb.width, background: '#0C0C0C' }}
                 />
               ) : null}

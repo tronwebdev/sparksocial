@@ -294,12 +294,17 @@ export function PlanQueue({
           'flex gap-3',
           /* 86 on the calendar card — its 54px filter buttons sit on 16..70 —
              and 70 on the Overview's, whose heading sits on 24. */
+          /* `flex-wrap` and a heading that will not shrink: the filters gave
+             way to nothing, so at 1440 they squeezed "Upcoming action queue"
+             onto three lines. Same rule as `QueueCardHeader`. */
           layout === 'table'
-            ? 'items-center pl-7 pr-0 pb-[16px] pt-[16px]'
+            ? 'flex-wrap items-center pl-7 pr-0 pb-[16px] pt-[16px]'
             : 'items-start px-5 pb-[20.4px] pt-6',
         )}
       >
-        <h2 className="text-20 font-semibold leading-[1.28] text-ink">{title}</h2>
+        <h2 className={cn('text-20 font-semibold leading-[1.28] text-ink', layout === 'table' && 'shrink-0 whitespace-nowrap')}>
+          {title}
+        </h2>
         {/* Beside the heading, which is where both cards put it - the
             calendar's at 265 and the Overview's directly after its title.
             Last in the row it took ~30px off the right edge and shifted the
@@ -516,7 +521,7 @@ export function PlanQueue({
                   <RowAction
                     disabled
                     label="Remove"
-                    title="No delete tool exists — a planned post is removed from the calendar."
+                    title="Removing a planned post isn’t available yet."
                     style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
                   >
                     <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
@@ -731,7 +736,7 @@ export function PlanQueue({
                 <RowAction
                   disabled
                                     label="Remove"
-                  title="No delete tool exists - a planned post is removed from the calendar."
+                  title="Removing a planned post isn’t available yet."
                   style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
                 >
                   <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>

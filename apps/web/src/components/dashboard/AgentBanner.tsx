@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { invoke } from '@/lib/tools';
 import { SparkMark } from '@/components/brand/SparkMark';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
+import { AdjustFrequency } from '@/components/command-center/AdjustFrequency';
 
 /**
  * The dashboard's agent banner — `SparkSocial Dashboard.dc.html`, the dark card
@@ -84,8 +86,6 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
   const name = identity?.named ? identity.name : null;
 
   const [busy, setBusy] = useState(false);
-  const [freqOpen, setFreqOpen] = useState(false);
-  const [perWeek, setPerWeek] = useState(5);
   const [error, setError] = useState<string | null>(null);
 
   async function togglePause() {
@@ -98,20 +98,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
       setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
       return;
     }
-    onChanged?.();
-  }
-
-  async function setFrequency() {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    const res = await invoke('agent.frequency.set', { postsPerWeek: perWeek });
-    setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
-      return;
-    }
-    setFreqOpen(false);
+    toast(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
     onChanged?.();
   }
 
@@ -312,50 +299,18 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               {busy ? '…' : paused ? 'Resume Agent' : 'Pause Agent'}
             </button>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setFreqOpen((v) => !v)}
-                aria-expanded={freqOpen}
-                className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-white"
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  boxShadow: 'inset 0 0 0 0.57px rgba(255,255,255,0.4)',
-                }}
-              >
-                Adjust Frequency
-              </button>
-
-              {/*
-                The prototype toasts a mock here. `agent.frequency.set` is real,
-                so this is the smallest thing that can actually call it — a
-                number and a confirm, in place, rather than a trip to settings.
-              */}
-              {freqOpen ? (
-                <div className="absolute left-0 top-[44px] z-20 w-[236px] rounded-md bg-white p-3 shadow-overlay">
-                  <label className="block text-14 text-ink-muted" htmlFor="ss-freq">
-                    Posts per week
-                  </label>
-                  <input
-                    id="ss-freq"
-                    type="number"
-                    min={1}
-                    max={21}
-                    value={perWeek}
-                    onChange={(e) => setPerWeek(Number(e.target.value))}
-                    className="mt-1.5 h-10 w-full rounded border border-border px-3 text-16 text-ink outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void setFrequency()}
-                    disabled={busy}
-                    className="mt-2 h-9 w-full rounded bg-ink text-14 font-medium text-white disabled:opacity-50"
-                  >
-                    {busy ? 'Saving…' : 'Set frequency'}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            {/*
+              The prototype toasts a mock here. `agent.frequency.set` is real, so
+              this opens the shared dial — the current value, the tool's bounds.
+            */}
+            <AdjustFrequency
+              className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-white"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                boxShadow: 'inset 0 0 0 0.57px rgba(255,255,255,0.4)',
+              }}
+              {...(onChanged ? { onChanged } : {})}
+            />
 
             <Link
               href="/agents"

@@ -146,7 +146,9 @@ export function CalendarWeekGrid({
           </button>
         </div>
 
-        <div className="ml-auto">
+        {/* Fills the rest of the row so the boxes keep the design's 194 — sized
+            to its content it gave them their text width. See `QueueFilters`. */}
+        <div className="ml-auto flex flex-1 justify-end">
           <QueueFilters
             value={filters}
             onChange={setFilters}

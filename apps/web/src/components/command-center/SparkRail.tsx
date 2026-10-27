@@ -391,12 +391,18 @@ export function SparkRail({
           with `grow` is what makes them equal halves rather than sized by their
           labels, which differ by five characters.
         */}
-        <div className="absolute left-[25px] right-[25px] top-[598px] flex items-center gap-[8px]">
+        {/*
+          A size container too. At 1440 the rail is 310 wide, each half is 126,
+          and "View Agent Identity" needs 134 — `truncate` on a centred flex box
+          does not ellipsise, it clips both ends ("iew Agent Identit"). Under
+          300 the label drops its verb; the span truncates if even that fails.
+        */}
+        <div className="absolute left-[25px] right-[25px] top-[598px] flex items-center gap-[8px] [container-type:inline-size]">
           <button
             type="button"
             onClick={onTogglePause}
             disabled={busy}
-            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center gap-[9px] rounded-[8.37px] text-15 font-medium text-ink disabled:opacity-50"
+            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center gap-[9px] rounded-[8.37px] px-2 text-15 font-medium text-ink disabled:opacity-50"
             style={{
               background: 'rgba(131,131,131,0.1)',
               backdropFilter: 'blur(10px)',
@@ -404,30 +410,35 @@ export function SparkRail({
             }}
           >
             {paused ? (
-              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden className="shrink-0">
                 <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
                 <path d="M6.8 5.6v5.8L11.4 8.5 6.8 5.6Z" fill="#0C0C0C" />
               </svg>
             ) : (
-              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden>
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden className="shrink-0">
                 <circle cx="8.5" cy="8.5" r="7.5" stroke="#0C0C0C" strokeWidth="1.3" />
                 <path d="M6.6 5.8v5.4M10.4 5.8v5.4" stroke="#0C0C0C" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             )}
-            {paused ? 'Resume Agent' : 'Pause Agent'}
+            <span className="min-w-0 truncate">
+              {paused ? 'Resume' : 'Pause'}
+              <span className="[@container(max-width:299px)]:hidden"> Agent</span>
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setIdentityOpen(true)}
-            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center truncate rounded-[8.37px] text-15 font-medium text-ink"
+            className="flex h-[41.3px] min-w-0 shrink grow basis-0 items-center justify-center rounded-[8.37px] px-2 text-15 font-medium text-ink"
             style={{
               background: 'rgba(131,131,131,0.1)',
               backdropFilter: 'blur(10px)',
               boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.1)',
             }}
           >
-            View Agent Identity
+            <span className="min-w-0 truncate">
+              <span className="[@container(max-width:299px)]:hidden">View </span>Agent Identity
+            </span>
           </button>
         </div>
       </div>

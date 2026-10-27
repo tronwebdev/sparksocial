@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 import { openAskSpark } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SparkRail } from './SparkRail';
@@ -64,8 +66,12 @@ export function SparkRailContainer() {
   async function togglePause() {
     if (busy) return;
     setBusy(true);
-    await invoke(paused ? 'agent.resume' : 'agent.pause', {});
+    // It used to ignore the result, so a refused pause looked like a button
+    // that did nothing. Pausing is the one control that must never fail quietly.
+    const res = await invoke(paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
+    if (res.status === 'succeeded') toast(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
+    else toast(res.status === 'failed' ? userMessage(res.error) : 'That change is waiting for approval.');
     void load();
   }
 

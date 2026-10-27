@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { invoke } from '@/lib/tools';
 import { Skeleton } from '@/components/ui/skeleton';
 import { humaniseGoal } from '@/lib/runGoal';
@@ -116,6 +117,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
         return;
       }
       setError(null);
+      toast(decision === 'approve' ? 'Approved — your agent will carry on' : 'Rejected — it won’t go ahead');
       await load();
     },
     [load],

@@ -114,8 +114,17 @@ function FilterSelect({
         before the wrap and `grow` fills the line back out to 183 each, with
         `max-w` holding the capture's 194 as a ceiling so growing cannot
         overshoot it on a wider row.
+
+        Above `canvas` it was `shrink-0`, on the theory that a wide window has
+        room. The Agent Calendar card at 1440 is 1343 wide and the row needs
+        ~1440 at 194 apiece, so the boxes held their width and squeezed the
+        heading instead — "Upcoming action queue" on three lines, "By Account"
+        past the card's edge. They give way to 160 at every width now.
+
+        A basis, not a width: `w-[194px]` made each box's min-content 194, so
+        the row as a whole could never shrink — only drop to the next line.
       */
-      className={`relative flex h-[54px] w-[194px] shrink-0 items-center gap-[11px] rounded bg-white px-4 transition-shadow max-canvas:min-w-[160px] max-canvas:max-w-[194px] max-canvas:shrink max-canvas:grow max-canvas:basis-[160px] ${
+      className={`relative flex h-[54px] min-w-[160px] max-w-[194px] shrink basis-[194px] items-center gap-[11px] rounded bg-white px-4 transition-shadow max-canvas:grow max-canvas:basis-[160px] ${
         inert ? 'opacity-55' : 'hover:shadow-[inset_0_0_0_1.4px_#838383]'
       }`}
       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
@@ -200,8 +209,13 @@ export function QueueFilters({
       keeps showing all five. `ml-auto` goes with it: pushing the block right
       is what a single line wants, and once it wraps it should start where the
       content does.
+
+      `flex-1` + `justify-end` on a wide screen: sized to its content, the block
+      took each box at its text width (~165) rather than the design's 194.
+      Filling the rest of the header lets them sit at 194 when there is room
+      and give way to 160 when there is not.
     */
-    <div className="flex flex-wrap items-center gap-[16px] canvas:ml-auto canvas:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-[16px] canvas:ml-auto canvas:flex-1 canvas:flex-nowrap canvas:justify-end">
       {caption ? (
         <span className="mr-[36px] flex shrink-0 items-center gap-[11px] max-canvas:mr-0">
           <svg width="24" height="17" viewBox="0 0 24 17" fill="none" aria-hidden>
@@ -274,8 +288,11 @@ export function QueueCardHeader({
   filters?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 pb-[16px] pl-7 pr-0 pt-[16px]">
-      <h2 className="text-20 font-semibold leading-[1.28] text-ink">{title}</h2>
+    // Wraps rather than squeezes: when the filters cannot fit beside the
+    // heading even at their 160 floor, they take the next line and the heading
+    // keeps its one.
+    <div className="flex flex-wrap items-center gap-3 pb-[16px] pl-7 pr-0 pt-[16px]">
+      <h2 className="shrink-0 whitespace-nowrap text-20 font-semibold leading-[1.28] text-ink">{title}</h2>
       <span
         title={hint}
         className="flex h-[18px] w-[18px] shrink-0 cursor-help items-center justify-center rounded-full text-11 text-ink-muted"

@@ -150,7 +150,8 @@ export function CalendarDayQueue({
           i
         </span>
 
-        <div className="ml-auto flex items-center gap-[10px]">
+        {/* `flex-1`: see the same note on the week grid. */}
+        <div className="ml-auto flex flex-1 items-center justify-end gap-[10px]">
           <span className="text-14 font-medium text-ink-muted">Filters:</span>
           <QueueFilters
             value={filters}
