@@ -81,6 +81,12 @@ const SCHEMA = {
             scope: { type: 'string', enum: ['global', 'national', 'local'] },
             locale: { type: 'string', description: 'BCP-47, e.g. en-GB. Infer from the site, do not default.' },
             radiusKm: { type: ['number', 'null'], description: 'Null unless the site states a service area.' },
+            timezone: {
+              type: ['string', 'null'],
+              description:
+                'IANA zone of where the business operates, e.g. America/Los_Angeles. Only when the site ' +
+                'states an address, city or region; null otherwise. Never guess from the language alone.',
+            },
           },
           required: ['scope', 'locale', 'radiusKm'],
         },

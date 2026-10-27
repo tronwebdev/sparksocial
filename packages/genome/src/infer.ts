@@ -37,6 +37,8 @@ export interface GenomeIdentity {
     scope: 'global' | 'national' | 'local';
     locale: string;
     radiusKm: number | null;
+    /** IANA zone, when the site states where the business is. */
+    timezone?: string | null;
   };
   languages: string[];
   priceTier: 'budget' | 'mid' | 'premium' | 'enterprise';
@@ -98,6 +100,9 @@ const InferenceResponse = z.object({
       scope: z.enum(['global', 'national', 'local']),
       locale: z.string().min(2),
       radiusKm: z.number().nullable(),
+      // Optional so an answer without it still parses; validated as a real
+      // IANA zone where it is used (`saveTimezone` in bootstrap.ts).
+      timezone: z.string().nullable().optional(),
     }),
     languages: z.array(z.string()).min(1),
     priceTier: z.enum(['budget', 'mid', 'premium', 'enterprise']),
@@ -246,7 +251,7 @@ export function buildPrompt(corpus: Untrusted<string>[], sourceUrl: string): str
     'You are analysing a business from its own public website to produce a brand genome.',
     '',
     'Return JSON only, matching this shape:',
-    '{ identity: { businessName, category, subCategory?, oneLiner, geography: { scope, locale, radiusKm },',
+    '{ identity: { businessName, category, subCategory?, oneLiner, geography: { scope, locale, radiusKm, timezone? },',
     '  languages, priceTier }, dimensions: { proof_asset?, capture_capability?, objective?,',
     '  talent_availability? }, voice: {}, chips: [{ field, value, confidence }] }',
     '',
@@ -256,6 +261,8 @@ export function buildPrompt(corpus: Untrusted<string>[], sourceUrl: string): str
     '  answer is worse than an absent one — the owner will be asked directly.',
     '- Give each chip a calibrated confidence. Anything you are unsure of belongs below 0.6.',
     '- `category` is for display only. Never let it drive a dimension.',
+    '- `geography.timezone` is an IANA zone (e.g. America/Los_Angeles), only when the site states',
+    '  an address, city or region. Otherwise null — the owner will pick it.',
     '',
     `Source: ${sourceUrl}`,
     '',

@@ -279,6 +279,7 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
             businessName: inferred.identity.businessName,
             embed: deps.embed,
           });
+          await saveTimezone(ctx, input.brandId, inferred.identity.geography.timezone);
           await saveKnowledge(ctx, existing.id, pages, deps.embed);
           return bootstrapOutput(input, existing.id, inferred, pages, kit);
         }
@@ -320,6 +321,7 @@ export function makeGenomeBootstrap(deps: GenomeBootstrapDeps) {
         businessName: inferred.identity.businessName,
         embed: deps.embed,
       });
+      await saveTimezone(ctx, input.brandId, inferred.identity.geography.timezone);
       await saveKnowledge(ctx, draft.id, pages, deps.embed);
       return bootstrapOutput(input, draft.id, inferred, pages, kit);
     });
@@ -511,6 +513,42 @@ const CAPTION_COLOURS = 4;
  * one path that produces a logo for most brands was the one path that never
  * registered it.
  */
+/**
+ * The business's own timezone, when the site says where it is.
+ *
+ * Onboarding's timezone field fell back to the *browser's* zone, so an owner
+ * setting up a San Francisco bakery from Lagos got `Etc/GMT-1`, and every
+ * posting window would have landed at 3am for the people it was for. The
+ * inference now returns the zone when the site states an address or city.
+ *
+ * Applied only while the brand is on the column's `UTC` default — which is
+ * "unanswered", see `BrandKitStep` — so it never overwrites a choice. Validated
+ * as a real IANA zone first: this is model output from an untrusted page.
+ * Best-effort, like `saveKit`: a failure here must not fail the crawl.
+ */
+async function saveTimezone(
+  ctx: { orgId: string; db: ToolCtx['db']; logger: ToolCtx['logger'] },
+  brandId: string,
+  timezone: string | null | undefined,
+): Promise<void> {
+  const tz = timezone?.trim();
+  if (!tz || tz === 'UTC') return;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+  } catch {
+    ctx.logger.warn('crawl returned an unknown timezone', { brandId });
+    return;
+  }
+  try {
+    const existing = await ctx.db.brands.get(brandId, ctx.orgId);
+    if (existing.timezone && existing.timezone !== 'UTC') return;
+    await ctx.db.brands.setGovernance({ brandId, orgId: ctx.orgId, patch: { timezone: tz } });
+    ctx.logger.info('brand timezone proposed from crawl', { brandId, timezone: tz });
+  } catch (err) {
+    ctx.logger.warn('could not save crawled timezone', { brandId, error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
 async function saveKit(
   ctx: { orgId: string; db: ToolCtx['db']; logger: ToolCtx['logger'] },
   brandId: string,

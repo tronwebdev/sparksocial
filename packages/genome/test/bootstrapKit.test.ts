@@ -56,6 +56,8 @@ function harness(
     heldBrandKit?: number;
     heldKnowledge?: unknown[];
     embed?: (t: string) => Promise<number[]>;
+    /** What the inference says the business's timezone is. */
+    timezone?: string | null;
   } = {},
 ) {
   const setGovernance = vi.fn<SetGovernance>(async () => ({}));
@@ -99,7 +101,13 @@ function harness(
 
   const tool = makeGenomeBootstrap({
     crawl: async () => ({ pages: PAGES, kit: KIT, failure: undefined, reason: undefined }),
-    infer: { async infer() { return INFERRED; } },
+    infer: {
+      async infer() {
+        return opts.timezone === undefined
+          ? INFERRED
+          : { ...INFERRED, identity: { ...INFERRED.identity, geography: { ...INFERRED.identity.geography, timezone: opts.timezone } } };
+      },
+    },
     ...(opts.embed ? { embed: opts.embed } : {}),
   } as never);
 
@@ -122,7 +130,9 @@ describe('the crawl proposes a brand kit', () => {
     expect(setGovernance).toHaveBeenCalledWith(
       expect.objectContaining({
         brandId: 'brand_1',
-        patch: { brandColors: KIT.colors, logoUrl: KIT.logoUrl, brandFonts: KIT.fonts },
+        // The crawled families mapped to faces the renderers can fetch
+        // (`matchBrandFont`): neither of these is one, both are plain sans.
+        patch: { brandColors: KIT.colors, logoUrl: KIT.logoUrl, brandFonts: { display: 'inter', body: 'inter' } },
       }),
     );
   });
@@ -351,5 +361,34 @@ describe('a palette is a bonus; the genome is the promise', () => {
     const out = await tool.handler(input, ctx);
     expect(out.kit).toBeUndefined();
     expect(setGovernance).not.toHaveBeenCalled();
+  });
+});
+
+describe('the crawl proposes the business timezone', () => {
+  const tzPatches = (spy: ReturnType<typeof harness>['setGovernance']) =>
+    spy.mock.calls.map(([args]) => args.patch).filter((p) => 'timezone' in p);
+
+  it('writes the zone the site states while the brand is on the UTC default', async () => {
+    const { tool, ctx, setGovernance } = harness({ timezone: 'UTC' }, { timezone: 'Europe/London' });
+    await tool.handler(input, ctx);
+    expect(tzPatches(setGovernance)).toEqual([{ timezone: 'Europe/London' }]);
+  });
+
+  it('never overwrites a timezone the owner already chose', async () => {
+    const { tool, ctx, setGovernance } = harness({ timezone: 'Africa/Lagos' }, { timezone: 'Europe/London' });
+    await tool.handler(input, ctx);
+    expect(tzPatches(setGovernance)).toEqual([]);
+  });
+
+  it('ignores a zone that is not a real IANA zone — it is model output from an untrusted page', async () => {
+    const { tool, ctx, setGovernance } = harness({ timezone: 'UTC' }, { timezone: 'Mars/Olympus_Mons' });
+    await tool.handler(input, ctx);
+    expect(tzPatches(setGovernance)).toEqual([]);
+  });
+
+  it('writes nothing when the site does not say where the business is', async () => {
+    const { tool, ctx, setGovernance } = harness({ timezone: 'UTC' }, { timezone: null });
+    await tool.handler(input, ctx);
+    expect(tzPatches(setGovernance)).toEqual([]);
   });
 });
