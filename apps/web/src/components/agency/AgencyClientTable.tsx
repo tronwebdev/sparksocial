@@ -70,6 +70,15 @@ const ROW = 108;
 const ROW_OPEN = 196;
 const GAP = 8;
 
+/**
+ * The card's height for `count` rows — the same walk the component does, so
+ * the stage can be sized to it. See `AgencyPortalScreen`.
+ */
+export function clientTableHeight(count: number, rowOpen: boolean): number {
+  const rows = count * (ROW + GAP) + (rowOpen ? ROW_OPEN - ROW : 0);
+  return 67 + rows + (count === 0 ? 56 : 0) + 66;
+}
+
 export function AgencyClientTable({
   top,
   brands,

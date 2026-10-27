@@ -196,14 +196,17 @@ export function ColorThemeCard({
     accent, which is the role a swatch row is usually being used to pick —
     replacing the background on a click would repaint every post.
   */
-  const pick = (c: string) => onChange(colors.length < 3 ? [...colors, c] : [colors[0]!, colors[1]!, c]);
+  // Replaces the accent *in place*. It rebuilt the list as `[0, 1, c]`, which
+  // was fine for three colours and silently dropped the rest of a crawled
+  // palette — onboarding stores six.
+  const pick = (c: string) => onChange(colors.length < 3 ? [...colors, c] : colors.map((x, i) => (i === 2 ? c : x)));
 
   return (
     <KitSection title="Color Theme" rule={61.8} style={{ minHeight: 321.6 }}>
       {/* Row at 80.8: the label, then three 35.9 swatches from 176 on an 8px pitch. */}
-      <div className="mt-[18px] flex h-[38.5px] items-center gap-[17.3px]">
+      <div className="mt-[18px] flex min-h-[38.5px] items-center gap-[17.3px]">
         <span className="w-[136px] shrink-0 text-18 font-normal text-ink">Selected Colors</span>
-        <div className="flex items-center gap-[8px]">
+        <div className="flex flex-wrap items-center gap-[8px]">
           {colors.length === 0 ? <span className="text-14 text-ink-muted">Pick from the templates below</span> : null}
           {colors.map((c, i) => (
             <span key={`${c}-${i}`} className="group relative block h-[35.9px] w-[35.9px]">

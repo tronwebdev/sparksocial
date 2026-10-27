@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AgencyStage } from './AgencyStage';
 import { AgencyGrowthTools, AgencyHomeHero, AgencyHomeSummary } from './AgencyHome';
-import { AgencyClientTable } from './AgencyClientTable';
+import { AgencyClientTable, clientTableHeight } from './AgencyClientTable';
 import { AgencyClientFinder } from './AgencyClientFinder';
 import { AgencyJobFinder } from './AgencyJobFinder';
 import { AgencyWizard, WIZ_HEIGHTS, emptyWizardDraft, type WizardDraft } from './AgencyWizard';
@@ -98,6 +98,16 @@ export function AgencyPortalScreen() {
 
   const q = query.trim().toLowerCase();
   const visible = (roster?.brands ?? []).filter((b) => (q === '' ? true : b.name.toLowerCase().includes(q)));
+
+  /*
+    The home view's 1330 is the design's, for its three mock clients. The stage
+    clips at its own height, so a real org with seven brands had its last four
+    rows cut off below it. The stage grows to the table, keeping the design's
+    175 of space beneath it.
+  */
+  if (view === 'home' && wizStep === null) {
+    height = Math.max(height, (launched ? 674 : 745) + clientTableHeight(visible.length, rowOpen) + 175);
+  }
 
   const toolTitle =
     view === 'clientFinder' ? (cfHasLeads ? 'Client Pipeline' : 'Client Finder') : view === 'jobFinder' ? 'Job Finder' : undefined;
