@@ -427,7 +427,37 @@ if (!envSet('WHATSAPP_APP_SECRET')) {
  * and gating it on an env flag would just be one more way to forget to turn
  * it on.
  */
-const scheduler = startScheduler(
+/**
+ * Background workers, on unless explicitly turned off.
+ *
+ * ── Why there is a switch at all ────────────────────────────────────────
+ *
+ * Every worker below was "started unconditionally", and the comments say why:
+ * an env flag to turn one *on* is one more way to forget to. That reasoning
+ * holds, and it is why this is the opposite kind of flag — on by default,
+ * off only when somebody writes `BACKGROUND_WORKERS=off`. Nobody can forget
+ * to enable what is enabled.
+ *
+ * What it exists for: a developer's API, pointed at the shared database to
+ * serve real screens, must not also run the publishing machinery. Started
+ * locally against production, this process came up as `(production)` with
+ * the scheduler, the draft and render queues, the token refresher and the
+ * recipe scheduler all ticking — the only thing stopping a laptop publishing
+ * scheduled posts and spending credits in parallel with the deployed API was
+ * that its database connection happened to be failing.
+ *
+ * Off means not started, rather than started and stopped: several of these
+ * tick once immediately, and a stop after start would let that first tick
+ * through.
+ */
+const workersOn = (process.env.BACKGROUND_WORKERS ?? 'on').trim().toLowerCase() !== 'off';
+if (!workersOn) {
+  console.warn('[warn] BACKGROUND_WORKERS=off — no scheduler, queues, observers or refreshers in this process.');
+}
+
+const scheduler = !workersOn
+  ? undefined
+  : startScheduler(
   {
     source: pg ? { findDue: pg.findDue } : { findDue: devStore!.findDue },
     db: scopedDb,
@@ -444,7 +474,9 @@ const scheduler = startScheduler(
  * an env flag is one more way to forget to turn it on, and one no-op query
  * per tick when nothing is due costs nothing.
  */
-const recipeScheduler = startRecipeScheduler(
+const recipeScheduler = !workersOn
+  ? undefined
+  : startRecipeScheduler(
   {
     db: scopedDb,
     invoke: invokeDeps,
@@ -476,7 +508,7 @@ const recipeScheduler = startRecipeScheduler(
  * money, so there is nothing to gain from asking more often than the work
  * takes.
  */
-const renderQueue = pg
+const renderQueue = pg && workersOn
   ? startRenderQueue(
       {
         source: { findUnrendered: pg.findUnrendered },
@@ -518,7 +550,7 @@ const renderQueue = pg
  * two at a time) and short enough that a calendar the owner is still editing has
  * not been written in full and paid for.
  */
-const draftQueue = pg
+const draftQueue = pg && workersOn
   ? startDraftQueue(
       {
         source: { findUndrafted: pg.findUndrafted },
@@ -532,7 +564,9 @@ const draftQueue = pg
     )
   : undefined;
 
-const trendObserver = startTrendObserver(
+const trendObserver = !workersOn
+  ? undefined
+  : startTrendObserver(
   {
     db: scopedDb,
     invoke: invokeDeps,
@@ -546,7 +580,9 @@ const trendObserver = startTrendObserver(
  * silently failing. Every six hours: the warning window is seven days, so a
  * tighter interval only re-reads the same rows.
  */
-const connectionWatcher = startConnectionWatcher(
+const connectionWatcher = !workersOn
+  ? undefined
+  : startConnectionWatcher(
   {
     db: scopedDb,
     invoke: invokeDeps,
@@ -567,7 +603,9 @@ const connectionWatcher = startConnectionWatcher(
  * has credentials for and returns immediately when that set is empty, so an
  * operator with no native apps configured pays one no-op function call per tick.
  */
-const tokenRefresher = startTokenRefresher(
+const tokenRefresher = !workersOn
+  ? undefined
+  : startTokenRefresher(
   { db: scopedDb, clientIds: socialClientIds(), clientSecrets: socialClientSecrets() },
   /*
    * Five minutes, not fifteen. The refresh lead is three ticks (see `leadFor`),
@@ -593,7 +631,9 @@ const tokenRefresher = startTokenRefresher(
  * — the frequency is here so a post published between ticks is picked up
  * promptly on its first sync, not to re-read the same rows.
  */
-const outcomeObserver = startOutcomeObserver(
+const outcomeObserver = !workersOn
+  ? undefined
+  : startOutcomeObserver(
   {
     source: pg ? pg.outcomes : devStore!,
     db: scopedDb,
@@ -755,14 +795,14 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
-    scheduler.stop();
-    recipeScheduler.stop();
-    trendObserver.stop();
+    scheduler?.stop();
+    recipeScheduler?.stop();
+    trendObserver?.stop();
     renderQueue?.stop();
     draftQueue?.stop();
-    connectionWatcher.stop();
-    tokenRefresher.stop();
-    outcomeObserver.stop();
+    connectionWatcher?.stop();
+    tokenRefresher?.stop();
+    outcomeObserver?.stop();
     server.close(async () => {
       // Flush before exit: containers are killed without warning, and a
       // dropped buffer is exactly the trace you wanted for the crash.
