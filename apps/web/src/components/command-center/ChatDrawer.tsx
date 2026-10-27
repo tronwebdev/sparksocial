@@ -105,6 +105,8 @@ interface RunSummary {
   costCents: number;
   /** What SPARK answered. Absent on runs recorded before replies were stored. */
   reply?: string;
+  /** Set on a subagent's run — part of a conversation, not one. */
+  parentRunId?: string;
 }
 
 /**
@@ -209,7 +211,9 @@ export function ChatDrawer({
 
   const loadRuns = useCallback(async () => {
     const res = await invoke<{ runs: RunSummary[] }>('agent.run.list', { limit: 20 });
-    setRuns(res.status === 'succeeded' ? res.output.runs : []);
+    // A conversation is something you asked. A subagent's run is SPARK
+    // briefing itself, and listing it here offered its instructions as a chat.
+    setRuns(res.status === 'succeeded' ? res.output.runs.filter((r) => !r.parentRunId) : []);
 
     /* One extra read so a goal can name the post it was about. Skipped without
        a brand in scope, where there is nothing to name it from. */

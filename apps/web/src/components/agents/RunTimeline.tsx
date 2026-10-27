@@ -7,6 +7,10 @@ import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { userMessage } from '@/lib/errorCopy';
+import { humaniseGoal } from '@/lib/runGoal';
+
+/** The Timeline has no post names to hand; ids are dropped, not resolved. */
+const NO_TITLES = new Map<string, string>();
 
 /**
  * THE AGENT TIMELINE (plan §4.5).
@@ -150,7 +154,7 @@ export function RunTimeline() {
               )}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-14 font-medium text-ink">{run.goal}</span>
+                <span className="truncate text-14 font-medium text-ink">{humaniseGoal(run.goal, NO_TITLES)}</span>
                 <StatusBadge status={run.status} />
               </div>
               <p className="mt-1 text-12 text-ink-muted">

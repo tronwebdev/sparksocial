@@ -51,6 +51,11 @@ export function humaniseGoal(goal: string, titles: Map<string, string>): string 
     .replace(/Change only what I asked for[^.]*\.?/gi, '')
     .replace(/and say what you changed\.?/gi, '')
     .replace(new RegExp(`in genome ${UUID.source}\.?`, 'gi'), '')
+    /* A delegation brief names the brand the way a model needs it —
+       "(genomeId 2488468f-…)" — and an id means nothing on screen. */
+    .replace(new RegExp(`\\(?\\s*(?:for )?(?:genome|brand)(?:\\s*id)?[\\s:=]*${UUID.source}\\s*\\)?`, 'gi'), '')
+    .replace(new RegExp(UUID.source, 'gi'), '')
+    .replace(/\(\s*\)/g, '')
     .replace(new RegExp(`content item ${UUID.source}`, 'gi'), 'a post')
     .replace(/\s+/g, ' ')
     .trim()

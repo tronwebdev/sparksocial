@@ -153,13 +153,23 @@ const KIND: Record<RunKind, { tint: string; stroke: string; icon: React.ReactNod
 };
 
 export function AgentActivityFeed({
-  runs,
+  runs: all,
   titles,
 }: {
   runs: AgentRun[];
   /** contentItemId → summary, so a goal can name the post instead of its id. */
   titles?: Map<string, string>;
 }) {
+  /*
+    Only the runs somebody started. When SPARK delegates, the subagent's run
+    is recorded with the orchestrator's instruction as its goal — "Retrieve the
+    current content calendar … (genomeId 2488468f-…). I need the substance, not
+    the config" — which is a brief written for a model, ids and all. It is part
+    of the parent's work, and the parent (the question that was asked) is
+    already a row. The Timeline still shows every run, children included.
+  */
+  const runs = all.filter((r) => !r.parentRunId);
+
   if (runs.length === 0) {
     return (
       <section>

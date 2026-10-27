@@ -53,6 +53,8 @@ const LABELS: Record<string, string> = {
   'org.audit.query': 'Read the audit log',
   'org.credits.grant': 'Add credits',
   'org.usage.get': 'Read credit usage',
+  'org.rename': 'Rename the organisation',
+  'brand.usage.get': 'Read a brand’s credit usage',
   'brand.create': 'Add a brand',
   'brand.settings.patch': 'Change brand settings',
   'brand.governance.get': 'Read brand settings',

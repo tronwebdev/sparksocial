@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
  * `Settings WS Credit Usage` — the 2662-tall screen, measured off the
@@ -58,16 +59,6 @@ interface Usage {
   periodStart: string;
   why: Explanation;
 }
-
-/**
- * A tool's registry name in words — `content.generate_image` reads "Content
- * generate image". The name is the honest key (it is what was billed), so this
- * only respaces it; it does not invent a friendlier label that could drift.
- */
-export const toolLabel = (tool: string) => {
-  const words = tool.replace(/[._]+/g, ' ').trim();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-};
 
 const compact = (n: number) =>
   n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}K` : String(n);

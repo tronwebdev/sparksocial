@@ -76,6 +76,8 @@ export interface AgentRun {
   startedAt: string;
   endedAt?: string;
   durationMs: number | null;
+  /** Set on a subagent's run, pointing at the orchestrator run that delegated it. */
+  parentRunId?: string;
 }
 
 /** `engage.opportunity.list` */

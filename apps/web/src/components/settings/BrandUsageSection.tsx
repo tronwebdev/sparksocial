@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { toolLabel } from './CreditUsageSection';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
  * Credit & Usage for one brand — `Settings WS Credit Usage.dc.html`.
