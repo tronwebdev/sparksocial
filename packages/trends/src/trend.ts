@@ -13,7 +13,20 @@ import { z } from 'zod';
  * brand can credibly join — and to refuse the ones it cannot.
  */
 
-export const TrendSourceName = z.enum(['tiktok', 'x', 'youtube', 'reddit', 'google', 'hackernews', 'producthunt', 'pinterest', 'manual']);
+export const TrendSourceName = z.enum([
+  'tiktok',
+  'x',
+  'youtube',
+  'reddit',
+  'google',
+  'hackernews',
+  'producthunt',
+  'pinterest',
+  'bluesky',
+  'mastodon',
+  'rss',
+  'manual',
+]);
 export type TrendSourceName = z.infer<typeof TrendSourceName>;
 
 export const TrendMetrics = z.object({

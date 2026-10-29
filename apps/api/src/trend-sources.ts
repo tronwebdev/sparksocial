@@ -8,6 +8,9 @@ import {
   createTikTokTrendSource,
   createXTrendSource,
   createGoogleTrendsSource,
+  createBlueskyTrendSource,
+  createMastodonTrendSource,
+  createRssTrendSource,
   createMultiRegionTrendSource,
   createStubTrendSource,
   type TrendSource,
@@ -116,6 +119,28 @@ export function buildTrendSourceEntries(): TrendSourceEntry[] {
     entries.push({
       source: createGoogleTrendsSource({ regionCode: envStr('GOOGLE_TREND_REGION', 'US') }),
       enabled: true,
+    });
+  }
+
+  // Bluesky and Mastodon publish their trends openly — keyless, so opt-in like
+  // Google and Hacker News. They are the PRD's social feeds that need no paid
+  // tier or expiring token (X, TikTok), and no partner (Instagram).
+  if (envBool('TREND_SOURCE_BLUESKY_ENABLED', false)) {
+    entries.push({ source: createBlueskyTrendSource(), enabled: true });
+  }
+  if (envBool('TREND_SOURCE_MASTODON_ENABLED', false)) {
+    entries.push({
+      source: createMastodonTrendSource({ instance: envStr('MASTODON_TREND_INSTANCE', 'mastodon.social') }),
+      enabled: true,
+    });
+  }
+
+  // The PRD's "RSS feeds (general news, industry blogs)". Configured means the
+  // operator listed feeds; an empty list is off.
+  if (envList('TREND_RSS_FEEDS', []).length > 0) {
+    entries.push({
+      source: createRssTrendSource({ feeds: envList('TREND_RSS_FEEDS', []) }),
+      enabled: envBool('TREND_SOURCE_RSS_ENABLED', true),
     });
   }
 
@@ -254,6 +279,29 @@ const KNOWN_SOURCES: Array<{
     enabledVar: 'TREND_SOURCE_PINTEREST_ENABLED',
     note: 'Needs Trends API access approved on a Pinterest developer app.',
   },
+  {
+    name: 'bluesky',
+    keywordSupport: 'filter',
+    requires: [],
+    enabledVar: 'TREND_SOURCE_BLUESKY_ENABLED',
+    keyless: true,
+    note: 'Public AppView trends — no credential, so it is opt-in rather than automatic.',
+  },
+  {
+    name: 'mastodon',
+    keywordSupport: 'filter',
+    requires: [],
+    enabledVar: 'TREND_SOURCE_MASTODON_ENABLED',
+    keyless: true,
+    note: 'Public trending tags on mastodon.social (or MASTODON_TREND_INSTANCE) — opt-in.',
+  },
+  {
+    name: 'rss',
+    keywordSupport: 'filter',
+    requires: ['TREND_RSS_FEEDS'],
+    enabledVar: 'TREND_SOURCE_RSS_ENABLED',
+    note: 'News and industry feeds — list their URLs, comma-separated, in TREND_RSS_FEEDS.',
+  },
 ];
 
 export function describeAllTrendSources(): TrendSourceStatus[] {
@@ -283,7 +331,8 @@ export function buildTrendSource(): TrendSource {
     console.warn(
       '[warn] No trend source configured (REDDIT_CLIENT_ID/SECRET, YOUTUBE_API_KEY, TREND_SOURCE_HACKERNEWS_ENABLED, ' +
         'PRODUCTHUNT_CLIENT_ID/SECRET, PINTEREST_ACCESS_TOKEN, X_BEARER_TOKEN, TIKTOK_CREATIVE_TOKEN, ' +
-        'TREND_SOURCE_GOOGLE_ENABLED) — trend.* uses the deterministic stub source, not a live feed.',
+        'TREND_SOURCE_GOOGLE_ENABLED, TREND_SOURCE_BLUESKY_ENABLED, TREND_SOURCE_MASTODON_ENABLED, TREND_RSS_FEEDS) — ' +
+        'trend.* uses the deterministic stub source, not a live feed.',
     );
     return createStubTrendSource();
   }

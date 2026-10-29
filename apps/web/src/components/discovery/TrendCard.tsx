@@ -129,6 +129,9 @@ export const SOURCE_LABELS: Record<string, string> = {
   tiktok: 'TikTok',
   x: 'X / Twitter',
   google: 'Google Trends',
+  bluesky: 'Bluesky',
+  mastodon: 'Mastodon',
+  rss: 'News & blogs',
   stub: 'Sample set',
 };
 

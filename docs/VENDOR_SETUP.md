@@ -405,7 +405,28 @@ where the publishing connection belongs to a brand and posts on its behalf.
 2. Generate an access token with a read scope.
 3. → `PINTEREST_ACCESS_TOKEN`.
 
-#### The two that are already live, for reference
+#### Bluesky, Mastodon and news feeds (no key)
+
+Three sources need no account at all, so — like Google Trends and Hacker News —
+they are switched on deliberately rather than by a key being present:
+
+```bash
+TREND_SOURCE_BLUESKY_ENABLED=true     # Bluesky's public trending topics, with post counts
+TREND_SOURCE_MASTODON_ENABLED=true    # trending hashtags with 7 days of usage history
+MASTODON_TREND_INSTANCE=mastodon.social   # optional: another instance's trends
+TREND_RSS_FEEDS=https://www.socialmediatoday.com/feeds/news/,https://blog.hootsuite.com/feed/
+```
+
+`TREND_RSS_FEEDS` is the PRD's "RSS feeds (general news, industry blogs)": list
+the trade press and blogs for the markets your brands are in, comma-separated.
+A story carried by several of the feeds counts as one trend with more volume.
+All three were checked live with `scripts/check-trend-sources.mts` on 30 Oct.
+
+**Not available, and why:** Instagram has no compliant trends endpoint (the PRD
+notes it is partner-only), and Sora has no public API. TikTok's Creative Center
+and X's trends endpoint are above, and both cost money or a session that expires.
+
+#### The ones already live, for reference
 
 **YouTube** — `YOUTUBE_API_KEY` is a plain API key, not the OAuth client used for
 publishing: **console.cloud.google.com** → Credentials → Create credentials →
