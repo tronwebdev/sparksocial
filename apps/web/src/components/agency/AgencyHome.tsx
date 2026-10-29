@@ -207,16 +207,24 @@ export function AgencyHomeSummary({
       className={cn('absolute left-ag-gutter top-[118px] h-[372px] w-ag-wide overflow-hidden rounded-[22px] bg-ag-card', SECTION)}
       style={{ boxShadow: '0 20px 50px -42px rgba(12,12,12,0.4)' }}
     >
-      <h2 className="absolute left-[66px] top-[150px] whitespace-nowrap text-28 font-bold leading-none text-ink">
+      {/*
+        Every position below is relative to this card. The design draws the card
+        as an empty shape and places its contents on the page (heading at
+        66,150; asset panel at 826,142), and those page coordinates were copied
+        in as if they were the card's — so the whole card's contents sat 42px
+        right and 118px down, and the asset panel lost its bottom 96px to the
+        card's edge. Measured on staging, the first time this state rendered.
+      */}
+      <h2 className="absolute left-[24px] top-[32px] whitespace-nowrap text-28 font-bold leading-none text-ink">
         Welcome to your Agency Portal
       </h2>
-      <p className="absolute left-[66px] top-[196px] text-16 font-normal" style={{ color: 'rgb(131,131,131)' }}>
+      <p className="absolute left-[24px] top-[78px] text-16 font-normal" style={{ color: 'rgb(131,131,131)' }}>
         Your central hub for managing agency tasks and resources.
       </p>
 
       {/* ── setup card ─────────────────────────────────────────────────── */}
       <div
-        className="absolute left-[66px] top-[240px] h-[112px] w-[246px] rounded-[14px] bg-white"
+        className="absolute left-[24px] top-[122px] h-[112px] w-[246px] rounded-[14px] bg-white"
         style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
       >
         <span className="absolute left-[17px] top-[14px] text-15 font-medium" style={{ color: 'rgb(91,91,91)' }}>
@@ -244,16 +252,16 @@ export function AgencyHomeSummary({
       </div>
 
       {/* ── the two stats ──────────────────────────────────────────────── */}
-      <Stat x={330} tint="bg-ag-mint" label="Total Workspaces" value={totals.brands} />
+      <Stat x={288} tint="bg-ag-mint" label="Total Workspaces" value={totals.brands} />
       <Stat
-        x={572}
+        x={530}
         tint="bg-ag-peach"
         label="Active client accounts"
         value={active}
         note={totals.quiet > 0 ? `${totals.quiet} quiet` : undefined}
       />
 
-      <p className="absolute left-[66px] top-[374px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
+      <p className="absolute left-[24px] top-[256px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
         Website URL:{' '}
         {websiteUrl ? (
           <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline" style={{ color: 'rgb(59,59,59)' }}>
@@ -267,7 +275,7 @@ export function AgencyHomeSummary({
       </p>
 
       {/* ── the account chips ──────────────────────────────────────────── */}
-      <div className="absolute left-[66px] top-[406px] flex w-[740px] flex-wrap gap-[10px]">
+      <div className="absolute left-[24px] top-[288px] flex w-[740px] flex-wrap gap-[10px]">
         {accounts.length === 0 ? (
           <span className="text-14" style={{ color: 'rgb(131,131,131)' }}>
             No publishing accounts connected yet.
@@ -304,7 +312,7 @@ export function AgencyHomeSummary({
       */}
       <div
         className={cn(
-          'absolute left-[826px] top-[142px] h-[326px] w-[836px] overflow-hidden rounded-[16px] bg-ag-assets',
+          'absolute left-[784px] top-[24px] h-[326px] w-[836px] overflow-hidden rounded-[16px] bg-ag-assets',
           SECTION,
         )}
       >
@@ -444,7 +452,7 @@ function Stat({
   note?: string;
 }) {
   return (
-    <div className={`absolute top-[240px] h-[112px] w-[224px] rounded-[14px] ${tint}`} style={{ left: x }}>
+    <div className={`absolute top-[122px] h-[112px] w-[224px] rounded-[14px] ${tint}`} style={{ left: x }}>
       <span className="absolute left-[18px] top-[16px] text-16 font-medium" style={{ color: 'rgb(59,59,59)' }}>
         {label}
       </span>

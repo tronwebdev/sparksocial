@@ -32,7 +32,7 @@ const COPY: SiteContent = {
   contactHeading: 'Tell us about you',
 };
 
-const deps = { rootDomain: 'sparkai.social' };
+const deps = { rootDomain: 'sparkai.social', subdomainsLive: true };
 
 function world(orgId = 'org_1', profile: unknown = { ...DEFAULT_AGENCY_PROFILE, name: 'Northside Social' }) {
   const sites = new Map<string, AgencySiteRecord>();
@@ -114,7 +114,23 @@ describe('agency.site.generate', () => {
     await expect(makeAgencySiteGenerate(writer, deps).handler({}, w.ctx())).rejects.toMatchObject({ code: 'INVALID_INPUT' });
   });
 
-  it('refuses copy that does not fit the page', async () => {
+  it('fits over-long copy to the page instead of failing it', async () => {
+    const w = world();
+    const long = {
+      write: async () => ({
+        ...COPY,
+        headline: 'word '.repeat(60),
+        services: Array.from({ length: 9 }, (_, i) => ({ title: `Service ${i}`, description: 'x '.repeat(200) })),
+      }),
+    };
+    const out = await makeAgencySiteGenerate(long, deps).handler({}, w.ctx());
+    expect(out.site.content.headline.length).toBeLessThanOrEqual(120);
+    expect(out.site.content.headline.endsWith('…')).toBe(true);
+    expect(out.site.content.services).toHaveLength(6);
+    expect(out.site.content.services[0]!.description.length).toBeLessThanOrEqual(240);
+  });
+
+  it('still refuses a page with no headline', async () => {
     const w = world();
     const bad = { write: async () => ({ headline: '' }) };
     await expect(makeAgencySiteGenerate(bad, deps).handler({}, w.ctx())).rejects.toMatchObject({ code: 'UPSTREAM_FAILED' });
@@ -125,6 +141,15 @@ describe('agency.site.generate', () => {
     expect(decide(tool, 'agent').kind).toBe('deny');
     expect(decide(tool, 'user', 'editor').kind).toBe('deny');
     expect(decide(tool).kind).toBe('allow');
+  });
+});
+
+describe('agency.site.get before the wildcard DNS exists', () => {
+  it('links to the path on the app host, which works from the first deploy', async () => {
+    const w = world();
+    await makeAgencySiteGenerate(writer, { rootDomain: 'sparkai.social', appUrl: 'https://app.sparkai.social/' }).handler({}, w.ctx());
+    const out = await makeAgencySiteGet({ rootDomain: 'sparkai.social', appUrl: 'https://app.sparkai.social' }).handler({}, w.ctx());
+    expect(out.site!.url).toBe('https://app.sparkai.social/s/northside-social');
   });
 });
 

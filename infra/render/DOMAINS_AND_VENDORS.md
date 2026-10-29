@@ -374,6 +374,9 @@ run before the API that reads them, as with every migration here.
    work. `sparkai.social` already does (it is `sparksocial-marketing`); if that
    ever moves off Render, the wildcard stops issuing certificates.
 4. On Cloudflare, keep these records **DNS only** (grey cloud).
+5. Set `SITE_SUBDOMAINS=on` on `sparksocial-api`. Until it is, the product links every
+   site as `https://app.sparkai.social/s/<slug>`, so nobody is sent to a name that does
+   not resolve yet.
 
 Explicit records win over the wildcard, so `app.`, `api.`, `clerk.`,
 `accounts.` and `mautic.` are unaffected. `lib/siteHost.ts` also refuses to

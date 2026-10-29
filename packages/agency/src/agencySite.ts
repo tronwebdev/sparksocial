@@ -92,10 +92,21 @@ export const AgencySiteView = z.object({
 export interface SiteDeps {
   /** `sparkai.social` — the root every agency's subdomain hangs off. */
   rootDomain: string;
+  /**
+   * Whether `<slug>.<rootDomain>` resolves yet — the wildcard DNS and Render
+   * domain are a one-time manual step. Until they are, every link the product
+   * shows is the path on the app host, which works from the first deploy;
+   * on staging the subdomain links pointed at a name that did not resolve.
+   */
+  subdomainsLive?: boolean;
+  /** The app's own origin, for the path form: `https://app.sparkai.social`. */
+  appUrl?: string;
 }
 
 function view(rec: { slug: string; domain?: string; content: unknown; publishedAt?: Date }, deps: SiteDeps) {
-  const subdomainUrl = `https://${rec.slug}.${deps.rootDomain}`;
+  const subdomainUrl = deps.subdomainsLive
+    ? `https://${rec.slug}.${deps.rootDomain}`
+    : `${(deps.appUrl ?? `https://app.${deps.rootDomain}`).replace(/\/$/, '')}/s/${rec.slug}`;
   const content = SiteContent.safeParse(rec.content);
   return {
     slug: rec.slug,
@@ -137,6 +148,42 @@ export function makeAgencySiteGet(deps: SiteDeps) {
 }
 
 /* ── generate ─────────────────────────────────────────────────────────── */
+
+/** Cut at the last word boundary that fits, so a long line ends on a word, not mid-syllable. */
+function clip(v: unknown, max: number): string {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const at = cut.lastIndexOf(' ');
+  return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[,;:\s]+$/, '')}…`;
+}
+
+/**
+ * The writer's copy, fitted to the page before it is checked.
+ *
+ * The model is asked for lengths and mostly keeps to them, but not always — on
+ * staging a first press failed with "copy that did not fit the page" and the
+ * second worked. One sentence too long is not a reason to throw the whole page
+ * away and bill again: over-long text is trimmed at a word, services beyond six
+ * are dropped, and only a page with no headline or no services still fails.
+ */
+export function fitContent(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const r = raw as Record<string, unknown>;
+  const services = Array.isArray(r.services) ? r.services : [];
+  return {
+    headline: clip(r.headline, 120),
+    subheadline: clip(r.subheadline, 280),
+    services: services
+      .filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === 'object')
+      .map((x) => ({ title: clip(x.title, 60), description: clip(x.description, 240) }))
+      .filter((x) => x.title)
+      .slice(0, 6),
+    about: clip(r.about, 1200),
+    ctaLabel: clip(r.ctaLabel, 40) || 'Get in touch',
+    contactHeading: clip(r.contactHeading, 120),
+  };
+}
 
 export interface SiteWriter {
   write(args: { prompt: string }): Promise<unknown>;
@@ -182,11 +229,14 @@ export function makeAgencySiteGenerate(writer: SiteWriter, deps: SiteDeps) {
           'services each with a short description, a short "about" paragraph, a call-to-action button label ' +
           'and a heading for the contact form.',
         'Write in the tone given. Do not invent clients, results, statistics, prices, awards or years in business.',
+        // On staging the first site reused the tagline word for word as its
+        // headline, so the page opened on the same sentence twice.
+        profile.tagline ? 'The headline must be new wording — not the tagline repeated.' : '',
       ]
         .filter(Boolean)
         .join('\n');
 
-      const parsed = SiteContent.safeParse(await writer.write({ prompt }));
+      const parsed = SiteContent.safeParse(fitContent(await writer.write({ prompt })));
       if (!parsed.success) {
         throw new ToolError('UPSTREAM_FAILED', 'The website writer returned copy that did not fit the page.', {
           issues: parsed.error.issues.slice(0, 3).map((i) => i.message),

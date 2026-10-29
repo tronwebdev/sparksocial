@@ -94,7 +94,8 @@ export function AgencySite({ site, logo, sendLead }: { site: PublicSite; logo?: 
 
   const heroText = (
     <div className={layout === 1 ? 'mx-auto max-w-[760px] text-center' : 'max-w-[640px]'}>
-      {site.tagline ? (
+      {/* Not when it is the headline again, which a model will sometimes write. */}
+      {site.tagline && site.tagline.trim().toLowerCase() !== content.headline.trim().toLowerCase() ? (
         <p className="text-14 font-semibold uppercase tracking-[0.08em]" style={{ color: template === 1 ? accent : primary }}>
           {site.tagline}
         </p>

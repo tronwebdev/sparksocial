@@ -1161,7 +1161,13 @@ export function registerAgencyTools(deps: {
   // Job Finder's listings — Himalayas' free public API; see the tool for its terms.
   register(makeAgencyJobsSearch(himalayasJobBoard()));
   // The agency website: `<slug>.<SITE_ROOT_DOMAIN>`, written from the wizard.
-  const sites = { rootDomain: envStr('SITE_ROOT_DOMAIN', 'sparkai.social') };
+  const sites = {
+    rootDomain: envStr('SITE_ROOT_DOMAIN', 'sparkai.social'),
+    // Set SITE_SUBDOMAINS=on once the wildcard DNS is live
+    // (infra/render/DOMAINS_AND_VENDORS.md); until then links use /s/<slug>.
+    subdomainsLive: envStr('SITE_SUBDOMAINS', '') === 'on',
+    appUrl: envStr('WEB_APP_URL', 'http://localhost:3000'),
+  };
   register(makeAgencySiteGet(sites));
   register(makeAgencySiteGenerate(siteWriter(), sites));
   register(makeAgencySiteSet(sites));
