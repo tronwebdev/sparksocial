@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import type { Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
+import { platformLabel } from '@/lib/platforms';
 
 /**
  * `agency.roster` — one row per brand in the organisation, over a trailing
@@ -67,28 +68,19 @@ export function useAgencyRoster() {
 }
 
 /**
- * The connected publishing accounts, for the home card's chip row.
+ * The connected publishing accounts across every client, for the home card's
+ * chip row and the wizard's summary — one chip per platform, saying how many
+ * clients post through it.
  *
- * `integration.health` rather than anything agency-specific: the chips in the
- * design are the accounts posts go out through, which is exactly what that
- * read answers.
+ * Read from the roster rather than `integration.health`. That tool answers for
+ * *one selected brand*, and the Agency Portal is above any brand: on staging it
+ * came back 400 "A brand must be selected" on every load, so the chips were
+ * always empty. The roster already carries each brand's platforms.
  */
-export function useConnectedAccounts() {
-  const [accounts, setAccounts] = useState<Array<{ platform: string; label: string }>>([]);
-
-  useEffect(() => {
-    void (async () => {
-      const res = await invoke<{
-        platforms: Array<{ platform: string; connected: boolean; accountLabel?: string }>;
-      }>('integration.health', {});
-      if (res.status !== 'succeeded') return;
-      setAccounts(
-        res.output.platforms
-          .filter((p) => p.connected)
-          .map((p) => ({ platform: p.platform, label: p.accountLabel ?? p.platform })),
-      );
-    })();
-  }, []);
-
-  return accounts;
+export function connectedAccounts(brands: RosterBrand[] | undefined): Array<{ platform: string; label: string }> {
+  const count = new Map<string, number>();
+  for (const b of brands ?? []) for (const p of b.platforms) count.set(p, (count.get(p) ?? 0) + 1);
+  return [...count.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([platform, n]) => ({ platform, label: `${platformLabel(platform)} · ${n} ${n === 1 ? 'client' : 'clients'}` }));
 }

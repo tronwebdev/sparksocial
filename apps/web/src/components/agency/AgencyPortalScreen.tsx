@@ -7,7 +7,7 @@ import { AgencyClientTable, clientTableHeight } from './AgencyClientTable';
 import { AgencyClientFinder } from './AgencyClientFinder';
 import { AgencyJobFinder } from './AgencyJobFinder';
 import { AgencyWizard, WIZ_HEIGHTS, emptyWizardDraft, type WizardDraft } from './AgencyWizard';
-import { useAgencyRoster, useConnectedAccounts } from './useAgencyRoster';
+import { connectedAccounts, useAgencyRoster } from './useAgencyRoster';
 import { useAgencySite } from './useAgencySite';
 import { useNotifications } from '@/lib/notifications';
 import { invoke } from '@/lib/tools';
@@ -93,7 +93,7 @@ export function AgencyPortalScreen() {
 
   const { roster, error, reload } = useAgencyRoster();
   const { toast } = useNotifications();
-  const accounts = useConnectedAccounts();
+  const accounts = connectedAccounts(roster?.brands);
   const site = useAgencySite();
 
   /* Read once on mount — `localStorage` is not available while prerendering. */

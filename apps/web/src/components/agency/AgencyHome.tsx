@@ -280,7 +280,7 @@ export function AgencyHomeSummary({
               style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
             >
               <PlatformDot platform={a.platform} />
-              <span className="max-w-[110px] truncate">{a.label}</span>
+              <span className="max-w-[180px] truncate">{a.label}</span>
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden className="block">
                 <path d="M1 9 9 1M9 1H3M9 1v6" stroke="rgb(91,91,91)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
