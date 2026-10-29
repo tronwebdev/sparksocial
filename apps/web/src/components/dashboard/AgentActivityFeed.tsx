@@ -155,11 +155,43 @@ const KIND: Record<RunKind, { tint: string; stroke: string; icon: React.ReactNod
 export function AgentActivityFeed({
   runs: all,
   titles,
+  onRetry,
 }: {
-  runs: AgentRun[];
+  /** Null when `agent.run.list` failed. */
+  runs: AgentRun[] | null;
   /** contentItemId → summary, so a goal can name the post instead of its id. */
   titles?: Map<string, string>;
+  onRetry?: () => void;
 }) {
+  /*
+    A failed read says so. It used to arrive as an empty list and render
+    "Your agent hasn't run yet" — a confident claim about the account made on
+    no evidence at all, to a brand with runs on record.
+  */
+  if (all === null) {
+    return (
+      <section>
+        <SectionHeading />
+        <div className="mt-dash-label-gap flex min-h-[361px] flex-col items-center justify-center rounded-lg bg-white px-6 text-center">
+          <p className="text-16 font-semibold text-ink">Couldn&rsquo;t load your agent&rsquo;s activity</p>
+          <p className="mt-2 max-w-[34ch] text-14 leading-[1.5] text-ink-muted">
+            Nothing is lost — the list just didn&rsquo;t come back this time.
+          </p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-6 flex h-10 items-center rounded-lg bg-white px-4 text-14 font-medium text-ink transition-shadow hover:shadow-card"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.35)' }}
+            >
+              Try again
+            </button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   /*
     Only the runs somebody started. When SPARK delegates, the subagent's run
     is recorded with the orchestrator's instruction as its goal — "Retrieve the

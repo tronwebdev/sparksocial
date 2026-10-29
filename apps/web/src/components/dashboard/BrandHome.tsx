@@ -66,7 +66,8 @@ interface Snapshot {
   paused: boolean;
   needsReview: number;
   brandKit: BrandKit | null;
-  runs: AgentRun[];
+  /** Null when the read failed — which is not the same claim as "no runs". */
+  runs: AgentRun[] | null;
   series: BrandSeries | null;
   leads: Lead[];
   leadCounts: { hot: number; warm: number; cold: number };
@@ -155,7 +156,11 @@ export function BrandHome() {
         paused: agent.status === 'succeeded' ? agent.output.paused : false,
         needsReview: review.status === 'succeeded' ? review.output.items.length : 0,
         brandKit: gov.status === 'succeeded' ? (gov.output.brandKit ?? null) : null,
-        runs: runs.status === 'succeeded' ? runs.output.runs : [],
+        // Null on failure, as `trends` is. It was `[]`, so a refused or
+        // failed read — seen right after sign-in, before the brand is settled
+        // on the session — told a brand with a history of runs that its agent
+        // "hasn't run yet".
+        runs: runs.status === 'succeeded' ? runs.output.runs : null,
         series: series.status === 'succeeded' ? series.output : null,
         leads: leads.status === 'succeeded' ? leads.output.items : [],
         leadCounts:
@@ -398,6 +403,7 @@ export function BrandHome() {
               no extra call. */}
           <AgentActivityFeed
             runs={snap.runs}
+            onRetry={() => setReloads((n) => n + 1)}
             /* Scheduled *and* published — both lists are already loaded, and a
                run's goal is at least as likely to name a post that has gone out
                as one still waiting. Anything outside both still reads "a post",

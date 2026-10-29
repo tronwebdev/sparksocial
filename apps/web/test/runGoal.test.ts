@@ -40,6 +40,15 @@ describe('the lists of things you asked list only what you asked', () => {
     expect(src('src/components/dashboard/AgentActivityFeed.tsx')).toContain('all.filter((r) => !r.parentRunId)');
   });
 
+  /* Seen on production right after sign-in: a 400 from `agent.run.list`
+     rendered "Your agent hasn't run yet" for a brand with runs on record. */
+  it('says a failed read failed, rather than that the agent never ran', () => {
+    expect(src('src/components/dashboard/BrandHome.tsx')).toContain(
+      "runs: runs.status === 'succeeded' ? runs.output.runs : null",
+    );
+    expect(src('src/components/dashboard/AgentActivityFeed.tsx')).toContain('Couldn&rsquo;t load your agent&rsquo;s activity');
+  });
+
   it('drops them from My conversations too', () => {
     expect(src('src/components/command-center/ChatDrawer.tsx')).toContain('.filter((r) => !r.parentRunId)');
   });
