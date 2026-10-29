@@ -57,6 +57,7 @@ const LABELS: Record<string, string> = {
   'agency.profile.get': 'Read the agency profile',
   'agency.profile.set': 'Save the agency profile',
   'agency.identity.generate': 'Suggest an agency identity',
+  'agency.jobs.search': 'Search job listings',
   'brand.usage.get': 'Read a brand’s credit usage',
   'brand.create': 'Add a brand',
   'brand.settings.patch': 'Change brand settings',

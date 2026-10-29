@@ -11,13 +11,17 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 226 tools.
+ * 227 tools.
  */
 
 export interface ToolIO {
   "agency.identity.generate": {
     input: { part: "identity" | "theme"; model: "local_business" | "personal_brand"; name?: string; service?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative" };
     output: { name?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; colors?: Array<string>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
+  "agency.jobs.search": {
+    input: { q?: string; country?: string; employmentType?: "Full Time" | "Part Time" | "Contractor" | "Temporary" | "Intern"; sort?: "relevant" | "recent" | "salaryDesc"; page?: number };
+    output: { jobs: Array<{ id: string; title: string; company: string; companyLogo?: string; employmentType?: string; salary?: string; locations: Array<string>; postedAt?: string; expiresAt?: string; applyUrl: string }>; totalCount: number; page: number; source: { name: string; url: string } };
   };
   "agency.profile.get": {
     input: Record<string, never>;

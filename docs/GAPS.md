@@ -81,9 +81,12 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       deliberately has no web surface: the loop *is* WhatsApp, and a page in the middle would
       defeat it.
 - [ ] **The agency portal's three capabilities (§8.13)** — website wizard, lead/job finder,
-      trainings. Concretely, as of 17 Oct: no tool writes an agency identity or brand theme,
-      no domain can be bound (`whitelabel.link.create` exists, domain binding does not), and
-      no job source is connected. "Find Clients" is **deliberately** inert — it is prospecting
+      trainings. **Updated 29 Oct:** the identity and theme are now real — the launch wizard
+      saves on the org (`agency.profile.*`), "Generate With Ai" suggests a name, tagline, tone
+      and colours (`agency.identity.generate`), and the logo is the Clerk organisation's image.
+      Job Finder searches Himalayas' public remote-jobs API (`agency.jobs.search`). Still
+      absent: a generated, hosted agency website, and domain binding
+      (`whitelabel.link.create` exists, domain binding does not). "Find Clients" is **deliberately** inert — it is prospecting
       by harvesting, and that was a decision, not an omission. §8.13 names them and then says their outputs are *"defined by separate PRD if
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a

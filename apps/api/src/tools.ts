@@ -140,6 +140,7 @@ import {
   agencyProfileGet,
   agencyProfileSet,
   makeAgencyIdentityGenerate,
+  makeAgencyJobsSearch,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -266,6 +267,7 @@ import { engageClassifier } from './engage-classifier.js';
 import { replyWriter } from './reply-writer.js';
 import { hookWriter } from './hook-writer.js';
 import { agencyIdentityWriter } from './agency-identity-writer.js';
+import { himalayasJobBoard } from './himalayas-client.js';
 import { whatsappTransportClient } from './whatsapp-transport-client.js';
 import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
@@ -1145,6 +1147,8 @@ export function registerAgencyTools(deps: {
   register(agencyProfileGet);
   register(agencyProfileSet);
   register(makeAgencyIdentityGenerate(agencyIdentityWriter()));
+  // Job Finder's listings — Himalayas' free public API; see the tool for its terms.
+  register(makeAgencyJobsSearch(himalayasJobBoard()));
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.
