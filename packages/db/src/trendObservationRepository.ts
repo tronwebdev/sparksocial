@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { TrendObservation, TrendObservationStore } from '@sparksocial/tools/defineTool';
 import type { Database } from './client.js';
 import { trendObservations } from './schema.js';
@@ -74,17 +74,45 @@ export function createTrendObservationRepository(db: Database): TrendObservation
         .orderBy(asc(trendObservations.observedAt))
         .limit(limit ?? 720); // 30 days of hourly points
 
-      return rows.map((r) => ({
-        source: r.source,
-        trendId: r.trendId,
-        topic: r.topic,
-        observedAt: r.observedAt,
-        volume: r.volume,
-        velocity: fromBp(r.velocityBp),
-        saturation: fromBp(r.saturationBp),
-        growth: fromBp(r.growthBp),
-      }));
+      return rows.map(toObservation);
     },
+
+    async baselines({ keys, sinceDays, minAgeHours }) {
+      if (keys.length === 0) return [];
+      const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+      const until = new Date(Date.now() - minAgeHours * 60 * 60 * 1000);
+      const pairs = sql.join(
+        keys.slice(0, 500).map((k) => sql`(${k.source}, ${k.trendId})`),
+        sql`, `,
+      );
+      // DISTINCT ON keeps the first row per trend in the ORDER BY — the oldest —
+      // and the unique index on (source, trend_id, observed_at) serves the scan.
+      const rows = await db
+        .selectDistinctOn([trendObservations.source, trendObservations.trendId])
+        .from(trendObservations)
+        .where(
+          and(
+            sql`(${trendObservations.source}, ${trendObservations.trendId}) in (${pairs})`,
+            gte(trendObservations.observedAt, since),
+            lte(trendObservations.observedAt, until),
+          ),
+        )
+        .orderBy(trendObservations.source, trendObservations.trendId, asc(trendObservations.observedAt));
+      return rows.map(toObservation);
+    },
+  };
+}
+
+function toObservation(r: typeof trendObservations.$inferSelect): TrendObservation {
+  return {
+    source: r.source,
+    trendId: r.trendId,
+    topic: r.topic,
+    observedAt: r.observedAt,
+    volume: r.volume,
+    velocity: fromBp(r.velocityBp),
+    saturation: fromBp(r.saturationBp),
+    growth: fromBp(r.growthBp),
   };
 }
 

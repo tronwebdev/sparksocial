@@ -584,3 +584,94 @@ describe('trend.rank — registered alongside the rest of the family', () => {
     expect(out.trends.length).toBeGreaterThan(0);
   });
 });
+
+describe('trend.rank — growth measured from history', () => {
+  /**
+   * Single-snapshot sources (YouTube, Reddit, Hacker News…) report growth 0,
+   * and on staging every card read "growth n/a". `trend.rank` now measures it
+   * against the oldest reading at least six hours old.
+   */
+  const snapshot = (volume: number) => ({
+    name: 'snap',
+    async fetch() {
+      return [
+        {
+          id: 'v1',
+          source: 'youtube' as const,
+          topic: 'Barber fade tutorial',
+          tags: ['barber', 'fade', 'haircut'],
+          metrics: { volume, velocity: 0.6, saturation: 0.3, growth: 0 },
+          samples: [],
+          language: 'en',
+          regions: [],
+        },
+      ];
+    },
+  });
+
+  function withBaseline(volume: number, hoursAgo: number) {
+    const obs = observationStore();
+    const at = new Date(Date.now() - hoursAgo * 3_600_000);
+    void obs.store.record([
+      { source: 'youtube', trendId: 'v1', topic: 'x', observedAt: at, volume, velocity: 0.5, saturation: 0.3, growth: 0 },
+    ]);
+    const store = {
+      ...obs.store,
+      async baselines({ minAgeHours }: { minAgeHours: number }) {
+        return [...obs.rows.values()].filter((o) => o.observedAt.getTime() <= Date.now() - minAgeHours * 3_600_000);
+      },
+    };
+    return store;
+  }
+
+  const growthOf = (out: { trends: Array<{ metrics: { growth: number } }>; excluded: Array<{ metrics: { growth: number } }> }) =>
+    [...out.trends, ...out.excluded][0]!.metrics.growth;
+
+  it('turns a volume that doubled since yesterday into +100% growth', async () => {
+    const out = await makeTrendRank(snapshot(2000) as never).handler({ genomeId: 'gen_barber', limit: 5 }, ctx({}, withBaseline(1000, 24) as never));
+    expect(growthOf(out)).toBeCloseTo(1, 5);
+  });
+
+  it('leaves a trend seen for the first time unmeasured', async () => {
+    const out = await makeTrendRank(snapshot(2000) as never).handler({ genomeId: 'gen_barber', limit: 5 }, ctx({}, withBaseline(1000, 1) as never));
+    expect(growthOf(out)).toBe(0);
+  });
+
+  it('leaves growth alone when the store cannot provide baselines', async () => {
+    const out = await makeTrendRank(snapshot(2000) as never).handler({ genomeId: 'gen_barber', limit: 5 }, ctx());
+    expect(growthOf(out)).toBe(0);
+  });
+});
+
+describe('trend.detail — a card the brand search found', () => {
+  it('opens a trend the feed served even when the source cannot look it up', async () => {
+    // The general page never holds a brand-search result, and this source has
+    // no `get`: on staging that card opened to "No such trend."
+    const general = [] as never[];
+    const searched = [
+      {
+        id: 'yt_search_hit',
+        source: 'youtube' as const,
+        topic: 'Barber fade tutorial',
+        tags: ['barber', 'fade'],
+        metrics: { volume: 900, velocity: 0.5, saturation: 0.3, growth: 0 },
+        samples: [],
+        language: 'en',
+        regions: [],
+      },
+    ];
+    const src = {
+      name: 'searchy',
+      keywordSupport: 'server' as const,
+      async fetch(args: { keywords?: readonly string[] }) {
+        return args.keywords?.length ? searched : general;
+      },
+    };
+    await makeTrendRank(src as never).handler({ genomeId: 'gen_barber', limit: 5 }, ctx());
+    const detail = await makeTrendDetail(src as never).handler(
+      { genomeId: 'gen_barber', trendId: 'yt_search_hit', seriesDays: 14 } as never,
+      ctx(),
+    );
+    expect(detail.trend.topic).toBe('Barber fade tutorial');
+  });
+});

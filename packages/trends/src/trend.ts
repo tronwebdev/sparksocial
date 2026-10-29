@@ -334,7 +334,41 @@ export function createStubTrendSource(): TrendSource {
  * doesn't actually support.
  */
 export async function getTrendById(source: TrendSource, id: string): Promise<Trend | undefined> {
-  if (source.get) return source.get(id);
-  const trends = await source.fetch({ limit: 200 });
-  return trends.find((t) => t.id === id);
+  const found = source.get ? await source.get(id) : (await source.fetch({ limit: 200 })).find((t) => t.id === id);
+  return found ?? recallTrend(id);
+}
+
+/* ── Recently served ──────────────────────────────────────────────────── */
+
+/**
+ * The trends `trend.rank` handed to a screen in the last few hours, by id.
+ *
+ * Opening a card's detail looks the trend up again by id, and for most
+ * sources that means scanning the *general* trending page — which never holds
+ * a trend the brand-keyword search found. On staging the first card of a
+ * coffee roaster's feed (a YouTube search result) opened to "No such trend."
+ * The source is asked first, always; this only answers when it cannot, with
+ * the trend exactly as the feed showed it. Process-local and bounded: a
+ * restart forgets, and the next feed load refills it.
+ */
+const RECENT_TTL_MS = 6 * 60 * 60 * 1000;
+const RECENT_MAX = 2000;
+const recent = new Map<string, { at: number; trend: Trend }>();
+
+export function rememberTrends(trends: readonly Trend[], now = Date.now()): void {
+  for (const t of trends) {
+    recent.delete(t.id);
+    recent.set(t.id, { at: now, trend: t });
+  }
+  while (recent.size > RECENT_MAX) recent.delete(recent.keys().next().value!);
+}
+
+export function recallTrend(id: string, now = Date.now()): Trend | undefined {
+  const hit = recent.get(id);
+  if (!hit) return undefined;
+  if (now - hit.at > RECENT_TTL_MS) {
+    recent.delete(id);
+    return undefined;
+  }
+  return hit.trend;
 }

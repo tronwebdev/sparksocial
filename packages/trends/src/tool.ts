@@ -5,7 +5,7 @@ import { rankTrends, scoreTrend, type RankedTrend } from './rank.js';
 import { brandTerms } from './brandTerms.js';
 import { assessSafety } from './safety.js';
 import { suggestRepurpose } from './repurpose.js';
-import { Trend, TrendSourceName, type TrendSource, getTrendById } from './trend.js';
+import { Trend, TrendSourceName, type TrendSource, getTrendById, rememberTrends } from './trend.js';
 
 /**
  * `trend.rank` — PRD §8.9 `DISC-01`, plan §3.2 `trend.*`.
@@ -163,8 +163,13 @@ export function makeTrendRank(source: TrendSource, now: () => number = Date.now)
       // for this brand is still a trend whose numbers another brand's detail
       // screen will want the history of.
       await observe(fetched, ctx, new Date());
+      // So a card opened from this feed can be found by id even when its
+      // source cannot look one up — see `recallTrend`.
+      rememberTrends(fetched);
 
-      const { ranked, excluded } = rankTrends(genome, fetched);
+      // Before ranking, so the ranker's "already past its peak" sees it too.
+      const measured = await withMeasuredGrowth(fetched, ctx);
+      const { ranked, excluded } = rankTrends(genome, measured);
       const top = ranked.slice(0, input.limit);
 
       ctx.logger.info('trends ranked', {
@@ -185,6 +190,48 @@ export function makeTrendRank(source: TrendSource, now: () => number = Date.now)
         why: explain(top, excluded, source.name),
       };
     },
+  });
+}
+
+/** How old a reading has to be before growth against it means anything. */
+const GROWTH_MIN_AGE_HOURS = 6;
+const GROWTH_WINDOW_DAYS = 7;
+
+/**
+ * Growth, measured from this product's own history, for every trend whose
+ * source reported none.
+ *
+ * Most sources return one snapshot — YouTube's view count, Reddit's score,
+ * Hacker News' points — and set `growth` to 0, so on staging every card in the
+ * feed read "growth n/a" and "Accel: –", and the PRD's fourth card metric was
+ * never shown. But `observe()` has been recording every trend's volume on
+ * every read and on a clock: the earlier reading is already here. Growth is
+ * now against the oldest reading at least six hours old within the week.
+ * A trend seen for the first time, or a source that reports its own growth,
+ * is left as it was. Never fails the caller.
+ */
+async function withMeasuredGrowth(trends: Trend[], ctx: ToolCtx): Promise<Trend[]> {
+  const unmeasured = trends.filter((t) => t.metrics.growth === 0 && t.metrics.volume > 0);
+  if (unmeasured.length === 0 || !ctx.db.trendObservations.baselines) return trends;
+  let baselines: Awaited<ReturnType<NonNullable<typeof ctx.db.trendObservations.baselines>>>;
+  try {
+    baselines = await ctx.db.trendObservations.baselines({
+      keys: unmeasured.map((t) => ({ source: t.source, trendId: t.id })),
+      sinceDays: GROWTH_WINDOW_DAYS,
+      minAgeHours: GROWTH_MIN_AGE_HOURS,
+    });
+  } catch (e) {
+    ctx.logger.warn('trend growth baselines unavailable', { error: e instanceof Error ? e.message : String(e) });
+    return trends;
+  }
+  const base = new Map(baselines.map((b) => [`${b.source}|${b.trendId}`, b.volume]));
+  return trends.map((t) => {
+    if (t.metrics.growth !== 0 || t.metrics.volume <= 0) return t;
+    const before = base.get(`${t.source}|${t.id}`);
+    if (!before || before <= 0) return t;
+    const growth = Math.max(-1, Math.min(50, t.metrics.volume / before - 1));
+    /* A trend exactly where it was is flat, not unmeasured; nudge so the card can say "0%". */
+    return { ...t, metrics: { ...t.metrics, growth: growth === 0 ? 1e-9 : growth } };
   });
 }
 

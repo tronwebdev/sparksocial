@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation, ToolError, renderUntrusted } from '@sparksocial/shared';
-import { Trend, type TrendSource } from './trend.js';
+import { Trend, getTrendById, type TrendSource } from './trend.js';
 
 /**
  * `trend.hooks` — `DISC-02`'s "multiple hook ideas", where the build offered one.
@@ -100,9 +100,7 @@ export function makeTrendHooks(source: TrendSource, writer: HookWriter) {
       const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
       if (!genome) throw new ToolError('NOT_FOUND', 'No such brand.', { genomeId: input.genomeId });
 
-      const found = source.get
-        ? await source.get(input.trendId)
-        : (await source.fetch({ limit: 50 })).find((t) => t.id === input.trendId);
+      const found = await getTrendById(source, input.trendId);
       if (!found) {
         throw new ToolError('NOT_FOUND', 'That trend is no longer in the source.', { trendId: input.trendId });
       }

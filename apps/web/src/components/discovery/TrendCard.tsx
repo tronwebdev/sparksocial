@@ -201,6 +201,9 @@ export function TrendCard({
   const velocityPct = Math.round(trend.metrics.velocity * 100);
   const growthPct = Math.round(trend.metrics.growth * 100);
   /**
+   * `trend.rank` now measures growth from its own observation history where a
+   * source reports none, so this "n/a" is only a trend seen for the first time.
+   * Before that:
    * `growth` is 0 for every source that reports one snapshot — YouTube, Reddit,
    * Hacker News and Product Hunt all set it to 0 rather than derive a
    * period-over-period figure they cannot see, and only Pinterest returns a
@@ -313,8 +316,8 @@ export function TrendCard({
         >
           Accel:&nbsp;
           {measuredGrowth ? (
-            <b className="font-bold" style={{ color: rising ? '#13D711' : '#F35525' }}>
-              {rising ? '↑' : '↓'}
+            <b className="font-bold" style={{ color: rising ? '#13D711' : growthPct < 0 ? '#F35525' : '#838383' }}>
+              {rising ? '↑' : growthPct < 0 ? '↓' : '→'}
             </b>
           ) : (
             <b className="font-bold text-ink-muted">–</b>

@@ -1294,6 +1294,20 @@ export function createDevStore(
           .sort((a, b) => a.observedAt.getTime() - b.observedAt.getTime())
           .slice(0, limit ?? 720);
       },
+      async baselines({ keys, sinceDays, minAgeHours }) {
+        const since = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+        const until = Date.now() - minAgeHours * 60 * 60 * 1000;
+        const wanted = new Set(keys.map((k) => `${k.source}|${k.trendId}`));
+        const oldest = new Map<string, (typeof trendObservationRows extends Map<string, infer V> ? V : never)>();
+        for (const o of trendObservationRows.values()) {
+          const key = `${o.source}|${o.trendId}`;
+          const t = o.observedAt.getTime();
+          if (!wanted.has(key) || t < since || t > until) continue;
+          const prev = oldest.get(key);
+          if (!prev || t < prev.observedAt.getTime()) oldest.set(key, o);
+        }
+        return [...oldest.values()];
+      },
     },
 
     learning: {

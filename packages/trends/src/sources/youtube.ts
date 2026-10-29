@@ -117,6 +117,19 @@ export function createYouTubeTrendSource(config: YouTubeTrendSourceConfig): Tren
   return {
     name: 'youtube',
     keywordSupport: 'server',
+    /**
+     * One video by id — `videos.list` with `id=`, 1 quota unit. Without it the
+     * detail screen scanned the trending chart for a video the brand search
+     * found, which is never there.
+     */
+    async get(id) {
+      const params = new URLSearchParams({ part: 'snippet,statistics', id, key: config.apiKey });
+      const res = await timedFetch(`https://www.googleapis.com/youtube/v3/videos?${params.toString()}`, {}, fetchImpl);
+      if (!res.ok) throw new Error(`YouTube video fetch failed: ${res.status} ${res.statusText}`);
+      const body = (await res.json()) as YouTubeVideosResponse;
+      const item = body.items?.[0];
+      return item ? toTrend(item) : undefined;
+    },
     async fetch({ limit, region, keywords, excludeKeywords }) {
       const searched = Boolean(keywords?.length);
       const trends = searched

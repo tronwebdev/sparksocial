@@ -9,6 +9,7 @@ import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from
 import { RepurposeModal } from './RepurposeModal';
 import { ReshareModal } from './ReshareModal';
 import { TrendMediaViewer, youTubeId } from './TrendMediaViewer';
+import { TrendContentPack } from './TrendContentPack';
 import { userMessage } from '@/lib/errorCopy';
 
 /**
@@ -420,7 +421,14 @@ export function TrendDetail({
   const regions =
     regionsFromFeed && regionsFromFeed.length > view.trend.regions.length ? regionsFromFeed : view.trend.regions;
 
-  const m = view.trend.metrics;
+  /*
+    "Last 14d" read "n/a" beside a chart of 50 readings: the source reports no
+    growth, but SPARK's own history does. Over the window shown, when the
+    readings span at least six hours, growth is last volume over first.
+  */
+  const t = view.trajectory;
+  const fromSeries = t && t.volumeChange !== null && t.spanHours >= 6 ? t.volumeChange - 1 : null;
+  const m = view.trend.metrics.growth === 0 && fromSeries !== null ? { ...view.trend.metrics, growth: fromSeries || 1e-9 } : view.trend.metrics;
   const measuredGrowth = m.growth !== 0;
   const sat = saturationWord(m.saturation);
 
@@ -832,66 +840,22 @@ export function TrendDetail({
               )}
             </div>
 
-            {/* Recommendations — 848x520 */}
-            <div className={cn(CARD, 'relative mt-[36px] w-full')} style={CARD_RING}>
-              <div className="flex items-center gap-[10px] px-[24px] pt-[24px]">
-                <p className="text-18 font-bold text-ink">Recommendations</p>
-                <InfoGlyph title="What SPARK can actually do with this trend, and what each route needs. No expected-engagement figures: nothing predicts engagement for a post that does not exist yet." />
-              </div>
-
-              <div className="flex flex-col gap-[22px] px-[24px] py-[22px]">
-                {[
-                  {
-                    kind: 'Re-purpose',
-                    desc: 'A new post from this trend — SPARK picks the best-fit playbook you can run right now.',
-                    bg: '#FBE6FA',
-                    ring: 'rgba(245,107,255,0.35)',
-                    action: () => setModal('repurpose'),
-                    cta: 'Open',
-                  },
-                  {
-                    kind: 'Re-share',
-                    desc: 'Reframe one of your own posts around this trend, reusing its playbook and assets.',
-                    bg: '#FCEBD4',
-                    ring: 'rgba(228,137,21,0.3)',
-                    action: () => setModal('reshare'),
-                    cta: 'Pick a post',
-                  },
-                  {
-                    kind: view.trend.media ? 'Watch it first' : 'Read the source',
-                    desc: view.trend.media
-                      ? 'See what people are actually making before you commit a slot to it.'
-                      : 'This trend is text — the examples above link out to the originals.',
-                    bg: '#DDEBFB',
-                    ring: 'rgba(36,116,237,0.3)',
-                    action: view.trend.media ? () => setModal('media') : undefined,
-                    cta: 'Play',
-                  },
-                ].map((r) => (
-                  <div
-                    key={r.kind}
-                    className="flex min-h-[118px] flex-wrap items-center gap-x-[18px] gap-y-3 rounded-[14px] px-[24px] py-[20px]"
-                    style={{ background: r.bg, boxShadow: `inset 0 0 0 1px ${r.ring}` }}
-                  >
-                    <div className="min-w-[240px] flex-1 max-canvas:min-w-0 max-canvas:basis-full">
-                      <p className="text-19 font-bold text-ink">{r.kind}</p>
-                      <p className="mt-[10px] text-17 font-medium" style={{ color: '#5B5B5B' }}>
-                        {r.desc}
-                      </p>
-                    </div>
-                    {r.action ? (
-                      <button
-                        type="button"
-                        onClick={r.action}
-                        className="flex h-[44px] shrink-0 items-center rounded-xl bg-ink px-[20px] text-15 font-semibold text-white transition-colors hover:bg-[#242424]"
-                      >
-                        {r.cta}
-                      </button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/*
+              The content pack and the PRD's recommendations row (Time Shift,
+              Format, Hook). These were three navigation buttons — Re-purpose,
+              Re-share, Watch it first — where §8.9 and the prototype both ask
+              for the three recommendations, and nothing on the page let a brief
+              (title, goal, CTA, post types) shape a pack. See the component.
+            */}
+            <TrendContentPack
+              genomeId={genomeId}
+              trendId={view.trend.id}
+              topic={view.trend.topic}
+              saturation={view.trend.metrics.saturation}
+              velocity={view.trend.metrics.velocity}
+              onOpenDraft={(id) => window.location.assign(`/agents?draft=${encodeURIComponent(id)}`)}
+              onReshare={() => setModal('reshare')}
+            />
           </div>
         </div>
       </div>

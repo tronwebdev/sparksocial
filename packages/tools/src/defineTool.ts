@@ -2248,6 +2248,17 @@ export interface TrendObservationStore {
   record(observations: TrendObservation[]): Promise<void>;
   /** Oldest first — a chart reads left to right. */
   series(args: { source: string; trendId: string; sinceDays: number; limit?: number }): Promise<TrendObservation[]>;
+  /**
+   * For each trend, its oldest observation in the window that is at least
+   * `minAgeHours` old — one read for a whole feed, so `trend.rank` can turn a
+   * single-snapshot source's volume into measured growth. Optional: a store
+   * without it leaves growth as the source reported it.
+   */
+  baselines?(args: {
+    keys: ReadonlyArray<{ source: string; trendId: string }>;
+    sinceDays: number;
+    minAgeHours: number;
+  }): Promise<TrendObservation[]>;
 }
 
 /** One (genome, pillar) Thompson-sampling arm — `learning.*`'s storage (plan §6.7). */
