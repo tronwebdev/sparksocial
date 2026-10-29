@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { SECTION } from '@/components/shell/narrowStage';
+import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -182,9 +182,15 @@ export function AgencyJobFinder() {
 
   return (
     <>
-      <section className={cn('absolute left-ag-tool-x top-[190px] h-[300px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-jf', SECTION)}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- decorative full-bleed backdrop off the prototype */}
-        <img src="/agency/jobfinder-hero.png" alt="" aria-hidden className="absolute left-0 top-0 h-full w-full object-cover" />
+      {/*
+        The starfield is the section's background rather than an <img> child:
+        below the breakpoint `SECTION` turns every child into a flow item, and
+        a full-bleed image became a 300px block of stars above the headline.
+      */}
+      <section
+        className={cn('absolute left-ag-tool-x top-[190px] h-[300px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-jf bg-cover bg-center', SECTION)}
+        style={{ backgroundImage: 'url(/agency/jobfinder-hero.png)' }}
+      >
 
         {/*
           The design's chip reads "NEW: 15 opportunities waiting". There are no
@@ -265,14 +271,21 @@ export function AgencyJobFinder() {
         guard. Saved shows its subtitle and the list, and nothing else.
       */}
       {tab === 'discover' ? (
+        /*
+          On the stage every control sits at the design's coordinate. Below the
+          breakpoint the stage flattens its own children, and this form is one
+          of them — so its controls flatten here, into a wrapping row: search
+          on a line of its own, the three drops sharing the next, then Browse.
+        */
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void search(1, false);
           }}
+          className={cn('max-canvas:flex max-canvas:flex-wrap max-canvas:gap-[10px]', FLATTEN_NARROW)}
         >
           <label
-            className="absolute left-ag-tool-x top-[648px] flex h-[58px] w-[560px] items-center rounded-[13px] bg-white px-[18px]"
+            className="absolute left-ag-tool-x top-[648px] flex h-[58px] w-[560px] items-center rounded-[13px] bg-white px-[18px] max-canvas:!w-full"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
           >
             <input
@@ -292,13 +305,17 @@ export function AgencyJobFinder() {
               { x: 1010, label: 'Job type', value: type, set: setType, options: TYPES },
             ] as const
           ).map((d) => (
-            <span key={d.label} className="contents">
+            <span
+              key={d.label}
+              className="absolute top-[648px] block h-[58px] w-[170px] max-canvas:min-w-[150px] max-canvas:flex-1"
+              style={{ left: d.x }}
+            >
               <select
                 value={d.value}
                 onChange={(e) => d.set(e.target.value)}
                 aria-label={d.label}
-                className="absolute top-[648px] h-[58px] w-[170px] cursor-pointer appearance-none rounded-[13px] bg-white pl-[18px] pr-[34px] text-16 font-semibold text-ink outline-none"
-                style={{ left: d.x, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
+                className="h-full w-full cursor-pointer appearance-none rounded-[13px] bg-white pl-[18px] pr-[34px] text-16 font-semibold text-ink outline-none"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' }}
               >
                 {d.options.map(([v, l]) => (
                   <option key={v} value={v}>
@@ -312,8 +329,7 @@ export function AgencyJobFinder() {
                 viewBox="0 0 13 8"
                 fill="none"
                 aria-hidden
-                className="pointer-events-none absolute top-[674px] block"
-                style={{ left: d.x + 142 }}
+                className="pointer-events-none absolute right-[16px] top-1/2 block -translate-y-1/2"
               >
                 <path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -323,7 +339,7 @@ export function AgencyJobFinder() {
           <button
             type="submit"
             disabled={busy}
-            className="absolute left-[1500px] top-[648px] flex h-[58px] items-center rounded-[13px] bg-ink px-[24px] text-16 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="absolute left-[1500px] top-[648px] flex h-[58px] items-center justify-center rounded-[13px] bg-ink px-[24px] text-16 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 max-canvas:w-full"
           >
             {busy ? 'Searching…' : 'Browse Jobs'}
           </button>
@@ -373,7 +389,9 @@ export function AgencyJobFinder() {
         </section>
       ) : (
         <div
-          className={cn('absolute left-ag-tool-x top-[772px] grid w-ag-tool-wide grid-cols-3 gap-[18px] max-canvas:grid-cols-1', SECTION)}
+          /* Three across on the stage, two on a tablet, one on a phone. Not
+             `SECTION`, whose flex column would undo the grid. */
+          className="absolute left-ag-tool-x top-[772px] grid w-ag-tool-wide grid-cols-3 gap-[18px] max-canvas:grid-cols-2 max-sm:grid-cols-1"
         >
           {shown.map((j) => {
             const on = savedIds.has(j.id);
