@@ -32,6 +32,10 @@ export function createOAuthConnectionRepository(db: Database): OAuthConnectionSt
       await scoped.removeOAuthConnection(db, { orgId, brandId: orgId, genomeId }, provider);
     },
 
+    async providersForOrg(orgId) {
+      return scoped.listOAuthProvidersForOrg(db, { orgId });
+    },
+
     /**
      * The one read on this store that is not inside a tenant — see the
      * `findExpiringOAuthConnections` comment in `scoped.ts` for why a clock has

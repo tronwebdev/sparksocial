@@ -3330,6 +3330,21 @@ export async function saveOAuthConnection(
   return row;
 }
 
+/**
+ * Which providers each genome in an org has connected. Names only — no token,
+ * no account id — so nothing a genome owns crosses into another's view beyond
+ * "Instagram is connected". Org-filtered, for the Agency Portal's roster.
+ */
+export async function listOAuthProvidersForOrg(
+  db: Database,
+  scope: { orgId: string },
+): Promise<Array<{ genomeId: string; provider: string }>> {
+  return db
+    .select({ genomeId: oauthConnections.genomeId, provider: oauthConnections.provider })
+    .from(oauthConnections)
+    .where(eq(oauthConnections.orgId, scope.orgId));
+}
+
 export async function getOAuthConnection(db: Database, scope: Scope, provider: string): Promise<OAuthConnectionRow | undefined> {
   const [row] = await db
     .select(oauthConnectionColumns)

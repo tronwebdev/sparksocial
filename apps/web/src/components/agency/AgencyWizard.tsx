@@ -436,17 +436,17 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
               See `packages/shared/src/timezones.ts` for why a real country list
               is a dataset rather than a computation.
             */}
-            <div className="flex gap-[28px]">
-              <div className="w-[180px]">
-                <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Region</span>
-                <div className="mt-[12px]">
-                  <TimezoneField
-                    value={draft.timezone}
-                    onChange={(timezone: string) => set({ timezone })}
-                    Select={WizardSelect}
-                  />
-                </div>
-              </div>
+            {/* Side by side, as the design draws Country | Timezone. The two
+                selects were stacked in one 180px column under a single label,
+                so "UTC" sat on top of "Select" with nothing naming either. */}
+            <div className="grid grid-cols-2 gap-x-[28px] gap-y-[12px]">
+              <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Region</span>
+              <span className="block text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>Timezone</span>
+              <TimezoneField
+                value={draft.timezone}
+                onChange={(timezone: string) => set({ timezone })}
+                Select={WizardSelect}
+              />
             </div>
           </div>
         </Field>
@@ -466,25 +466,23 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
 
       <div className="mt-[26px] w-[428px]">
         <Field label="Tone">
-          <select
-            value={draft.tone}
-            onChange={(e) => set({ tone: e.target.value })}
-            aria-label="Tone"
-            className={`${FIELD} cursor-pointer appearance-none`}
-            style={RING}
-          >
-            {['Professional', 'Friendly', 'Bold', 'Playful', 'Authoritative'].map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
+          <span className="relative block">
+            <select
+              value={draft.tone}
+              onChange={(e) => set({ tone: e.target.value })}
+              aria-label="Tone"
+              className={`${FIELD} cursor-pointer appearance-none pr-[40px]`}
+              style={RING}
+            >
+              {['Professional', 'Friendly', 'Bold', 'Playful', 'Authoritative'].map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+            <Chevron />
+          </span>
         </Field>
       </div>
 
-      <p className="mt-[24px] max-w-[720px] text-15 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
-        The design puts a logo upload and a colour theme here too. Both belong to a brand rather than
-        an agency, and the Brand Kit already owns them — a second place to set a palette is a second
-        place for it to be wrong. brand.logo.generate is the tool that fills one, per brand.
-      </p>
     </div>
   );
 }
@@ -526,6 +524,22 @@ function GenerateWithAi() {
  * one is what lets onboarding's 190px field and this 180px one share a list
  * without either being dragged to the other's measurements.
  */
+/** The design's 13x8 chevron, over a select that has `appearance-none`. */
+function Chevron() {
+  return (
+    <svg
+      width="13"
+      height="8"
+      viewBox="0 0 13 8"
+      fill="none"
+      aria-hidden
+      className="pointer-events-none absolute right-[16px] top-1/2 -translate-y-1/2"
+    >
+      <path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function WizardSelect({
   value,
   onChange,
@@ -540,20 +554,23 @@ function WizardSelect({
   placeholder?: string;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={ariaLabel}
-      className="h-[52px] w-full cursor-pointer appearance-none rounded-[11px] px-[16px] text-15 font-medium outline-none"
-      style={{ background: '#F2F3F5', color: value ? 'rgb(59,59,59)' : '#9B9B9B' }}
-    >
-      {placeholder ? <option value="">{placeholder}</option> : null}
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <span className="relative block">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className="h-[52px] w-full cursor-pointer appearance-none truncate rounded-[11px] pl-[16px] pr-[36px] text-15 font-medium outline-none"
+        style={{ background: '#F2F3F5', color: value ? 'rgb(59,59,59)' : '#9B9B9B' }}
+      >
+        {placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <Chevron />
+    </span>
   );
 }
 
@@ -630,30 +647,36 @@ function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiza
 
       <div className="mt-[28px] grid grid-cols-2 gap-x-[44px]">
         <Field label="Title Fonts Style">
-          <select
-            value={draft.titleFont}
-            onChange={(e) => set({ titleFont: e.target.value })}
-            aria-label="Title fonts style"
-            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-18 font-bold text-ink outline-none"
-            style={RING}
-          >
-            {['Asgard', 'Inter', 'Playfair Display', 'Space Grotesk', 'DM Serif'].map((f) => (
-              <option key={f}>{f}</option>
-            ))}
-          </select>
+          <span className="relative block">
+            <select
+              value={draft.titleFont}
+              onChange={(e) => set({ titleFont: e.target.value })}
+              aria-label="Title fonts style"
+              className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white pl-[18px] pr-[40px] text-18 font-bold text-ink outline-none"
+              style={RING}
+            >
+              {['Asgard', 'Inter', 'Playfair Display', 'Space Grotesk', 'DM Serif'].map((f) => (
+                <option key={f}>{f}</option>
+              ))}
+            </select>
+            <Chevron />
+          </span>
         </Field>
         <Field label="Select services">
-          <select
-            value={draft.service}
-            onChange={(e) => set({ service: e.target.value })}
-            aria-label="Select services"
-            className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white px-[18px] text-16 font-medium outline-none"
-            style={{ ...RING, color: 'rgb(59,59,59)' }}
-          >
-            {['Content creation', 'Social media management', 'Paid ads', 'Strategy & consulting', 'Community management'].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
+          <span className="relative block">
+            <select
+              value={draft.service}
+              onChange={(e) => set({ service: e.target.value })}
+              aria-label="Select services"
+              className="h-[58px] w-full cursor-pointer appearance-none rounded-[12px] bg-white pl-[18px] pr-[40px] text-16 font-medium outline-none"
+              style={{ ...RING, color: 'rgb(59,59,59)' }}
+            >
+              {['Content creation', 'Social media management', 'Paid ads', 'Strategy & consulting', 'Community management'].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+            <Chevron />
+          </span>
         </Field>
       </div>
 

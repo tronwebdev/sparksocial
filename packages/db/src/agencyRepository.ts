@@ -36,6 +36,11 @@ export function createBrandMemberRepository(db: Database): BrandMemberStore {
       const rows = await db.select().from(brandMembers).where(and(eq(brandMembers.orgId, orgId), eq(brandMembers.userId, userId)));
       return rows.map(toMember);
     },
+
+    async listForOrg(orgId) {
+      const rows = await db.select().from(brandMembers).where(eq(brandMembers.orgId, orgId));
+      return rows.map(toMember);
+    },
   };
 }
 

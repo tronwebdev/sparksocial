@@ -29,7 +29,13 @@ interface Roll {
   engagements: number;
 }
 
-function ctx(brands: Brand[], rollup: Roll[], calls: unknown[] = []): ToolCtx {
+function ctx(
+  brands: Brand[],
+  rollup: Roll[],
+  calls: unknown[] = [],
+  members: Array<{ brandId: string; userId: string }> = [],
+  connections: Array<{ genomeId: string; provider: string }> = [],
+): ToolCtx {
   return {
     orgId: 'org_1',
     role: 'owner',
@@ -43,6 +49,10 @@ function ctx(brands: Brand[], rollup: Roll[], calls: unknown[] = []): ToolCtx {
           return rollup;
         },
       },
+      brandMembers: { listForOrg: async (orgId: string) => { calls.push({ members: orgId }); return members; } },
+      oauthConnections: {
+        providersForOrg: async (orgId: string) => { calls.push({ connections: orgId }); return connections; },
+      },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -54,6 +64,33 @@ const brand = (id: string, name: string): Brand => ({
   brandId: `brand_${id}`,
   name,
   updatedAt: new Date('2026-08-01T00:00:00Z'),
+});
+
+describe('agency.roster — the design’s client columns, from real data', () => {
+  it('returns each brand’s industry, team size and connected platforms', async () => {
+    const out = await agencyRoster.handler(
+      { windowDays: 30 },
+      ctx(
+        [{ ...brand('gen_a', 'A'), category: 'Restaurant' } as Brand, brand('gen_b', 'B')],
+        [],
+        [],
+        [
+          { brandId: 'brand_gen_a', userId: 'u1' },
+          { brandId: 'brand_gen_a', userId: 'u2' },
+        ],
+        [
+          { genomeId: 'gen_a', provider: 'instagram' },
+          { genomeId: 'gen_a', provider: 'canva' },
+          { genomeId: 'gen_a', provider: 'instagram' },
+        ],
+      ),
+    );
+    const a = out.brands.find((b) => b.genomeId === 'gen_a')!;
+    expect(a).toMatchObject({ industry: 'Restaurant', teamMembers: 2, platforms: ['instagram'] });
+    const b = out.brands.find((x) => x.genomeId === 'gen_b')!;
+    expect(b.industry).toBeUndefined();
+    expect(b).toMatchObject({ teamMembers: 0, platforms: [] });
+  });
 });
 
 describe('agency.roster', () => {
@@ -115,8 +152,22 @@ describe('agency.roster', () => {
       ctx([brand('gen_a', 'Atlas')], [{ genomeId: 'gen_a', publishedCount: 3, impressions: 10, engagements: 4 }]),
     );
 
+    // `teamMembers` is a count and `platforms` is provider names ("instagram"),
+    // added for the design's client columns — still nothing a brand wrote.
+    // `industry` is absent here because this brand has no category.
     expect(Object.keys(out.brands[0]!).sort()).toEqual(
-      ['brandId', 'engagements', 'genomeId', 'impressions', 'name', 'publishedCount', 'quiet', 'updatedAt'].sort(),
+      [
+        'brandId',
+        'engagements',
+        'genomeId',
+        'impressions',
+        'name',
+        'platforms',
+        'publishedCount',
+        'quiet',
+        'teamMembers',
+        'updatedAt',
+      ].sort(),
     );
   });
 
@@ -146,7 +197,8 @@ describe('agency.roster', () => {
       { windowDays: 7 },
       ctx([brand('gen_a', 'A'), brand('gen_b', 'B'), brand('gen_c', 'C')], [], calls),
     );
-    expect(calls).toHaveLength(2);
+    // Four org-wide reads — brands, numbers, members, connections — never one per brand.
+    expect(calls).toHaveLength(4);
     expect(calls).toContainEqual({ orgRollup: 'org_1', windowDays: 7 });
   });
 

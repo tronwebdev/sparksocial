@@ -51,6 +51,16 @@ const RosterBrand = z.object({
    * a client paying every month whose account has gone quiet.
    */
   quiet: z.boolean(),
+  /**
+   * The design's three client columns — Industry, Team members, Social
+   * Accounts Connected — from real data. The table showed activity columns
+   * instead because nothing returned these; activity moves into the row.
+   */
+  industry: z.string().optional(),
+  /** People assigned to this brand. Owners and admins reach every brand and are not counted. */
+  teamMembers: z.number().int(),
+  /** Publishing platforms this brand has connected (not Canva, which is a design tool). */
+  platforms: z.array(z.string()),
 });
 
 export const AgencyRosterInput = z.object({
@@ -100,12 +110,23 @@ export const agencyRoster = defineTool({
      * page load *and* forty slightly different window boundaries, so brands
      * rendered later would be compared against a later cutoff.
      */
-    const [brands, rollup] = await Promise.all([
+    const [brands, rollup, members, connections] = await Promise.all([
       ctx.db.genomes.listForOrg(ctx.orgId),
       ctx.db.analytics.orgRollup(ctx.orgId, input.windowDays),
+      ctx.db.brandMembers.listForOrg(ctx.orgId),
+      ctx.db.oauthConnections.providersForOrg(ctx.orgId),
     ]);
 
     const byGenome = new Map(rollup.map((r) => [r.genomeId, r]));
+    const teamByBrand = new Map<string, number>();
+    for (const m of members) teamByBrand.set(m.brandId, (teamByBrand.get(m.brandId) ?? 0) + 1);
+    const platformsByGenome = new Map<string, string[]>();
+    for (const c of connections) {
+      if (c.provider === 'canva') continue;
+      const list = platformsByGenome.get(c.genomeId) ?? [];
+      if (!list.includes(c.provider)) list.push(c.provider);
+      platformsByGenome.set(c.genomeId, list);
+    }
 
     const rows = brands
       .map((b) => {
@@ -120,6 +141,9 @@ export const agencyRoster = defineTool({
           impressions: m?.impressions ?? 0,
           engagements: m?.engagements ?? 0,
           quiet: publishedCount === 0,
+          ...(b.category ? { industry: b.category } : {}),
+          teamMembers: teamByBrand.get(b.brandId) ?? 0,
+          platforms: platformsByGenome.get(b.id) ?? [],
         };
       })
       /**

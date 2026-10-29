@@ -208,6 +208,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         findExpiring: async () => [],
         findRefreshable: async () => [],
         markExpiryNotified: async () => {},
+        providersForOrg: async () => [],
       },
       knowledge: {
         attach: async () => { throw new Error('knowledge.attach not stubbed in this test'); },
@@ -241,6 +242,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         remove: async () => {},
         listForBrand: async () => [],
         listForUser: async () => [],
+        listForOrg: async () => [],
       },
       reviewLinks: {
         create: async () => { throw new Error('reviewLinks.create not stubbed in this test'); },

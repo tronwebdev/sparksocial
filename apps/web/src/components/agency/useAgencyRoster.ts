@@ -23,6 +23,12 @@ export interface RosterBrand {
   engagements: number;
   /** True when nothing published in the window — the cell an agency opens this for. */
   quiet: boolean;
+  /** The genome's category label, when it has one. */
+  industry?: string;
+  /** People assigned to the brand; owners and admins are not counted. */
+  teamMembers: number;
+  /** Publishing platforms the brand has connected. */
+  platforms: string[];
 }
 
 export interface Roster {

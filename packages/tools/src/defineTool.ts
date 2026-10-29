@@ -230,7 +230,17 @@ export interface ScopedDb {
      */
     listForOrg(
       orgId: string,
-    ): Promise<Array<{ id: string; brandId: string; name: string; logoUrl?: string; updatedAt: Date }>>;
+    ): Promise<
+      Array<{
+        id: string;
+        brandId: string;
+        name: string;
+        logoUrl?: string;
+        updatedAt: Date;
+        /** The genome's own category label — display only, never branched on (invariant 5). */
+        category?: string;
+      }>
+    >;
   };
   assets: {
     /**
@@ -2460,6 +2470,13 @@ export interface OAuthConnectionStore {
   remove(genomeId: string, orgId: string, provider: string): Promise<void>;
 
   /**
+   * Which providers each of the org's genomes has connected — names only, no
+   * tokens. One read for the Agency Portal's "Social Accounts Connected"
+   * column, which otherwise meant a `get` per brand per platform.
+   */
+  providersForOrg(orgId: string): Promise<Array<{ genomeId: string; provider: string }>>;
+
+  /**
    * Connections whose token expires before `before` and that have not been
    * warned about since it was last saved — PRD §10's connection alerts.
    *
@@ -2655,6 +2672,8 @@ export interface BrandMemberStore {
   remove(args: { orgId: string; brandId: string; userId: string }): Promise<void>;
   listForBrand(orgId: string, brandId: string): Promise<BrandMember[]>;
   listForUser(orgId: string, userId: string): Promise<BrandMember[]>;
+  /** Every assignment in the org, in one read — the Agency Portal's per-brand team count. */
+  listForOrg(orgId: string): Promise<BrandMember[]>;
 }
 
 /** `whitelabel.link.create`'s storage — a signed, expiring, brand-scoped public review token. */

@@ -38,7 +38,8 @@ type Tab = 'discover' | 'saved';
 
 export function AgencyJobFinder() {
   const [tab, setTab] = useState<Tab>('discover');
-  const [saved, setSaved] = useState<string[]>([]);
+  /* Nothing can be saved until a job source exists; the Saved tab counts this. */
+  const [saved] = useState<string[]>([]);
 
   return (
     <>
@@ -180,18 +181,11 @@ export function AgencyJobFinder() {
         <p className="mx-auto mt-[12px] max-w-[660px] text-16 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
           {tab === 'saved'
             ? 'Jobs you bookmark from Discover appear here.'
-            : 'Nothing in the registry queries job listings yet, so there is no board to search. The filters and the save toggle are built and will work the moment a source exists.'}
+            : 'Job listings aren’t connected to SparkSocial yet, so there’s nothing to search. Once a job board is connected, jobs for agencies like yours appear here and you can save them.'}
         </p>
-        {/* Kept so the design's own control is present and exercisable. */}
-        {tab === 'discover' ? (
-          <button
-            type="button"
-            onClick={() => setSaved((s) => (s.includes('demo') ? s.filter((x) => x !== 'demo') : [...s, 'demo']))}
-            className="mx-auto mt-[20px] flex h-[38px] items-center rounded-[9px] bg-cyan-200 px-[16px] text-14 font-semibold text-ink"
-          >
-            {saved.includes('demo') ? 'Remove sample bookmark' : 'Save a sample bookmark'}
-          </button>
-        ) : null}
+        {/* A "Save a sample bookmark" button lived here, so the save toggle
+            could be exercised with no jobs — it saved a fake job to the Saved
+            tab, which reads to a customer as a real listing. Removed. */}
       </section>
     </>
   );

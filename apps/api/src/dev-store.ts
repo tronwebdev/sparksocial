@@ -1614,6 +1614,12 @@ export function createDevStore(
           if (row.id === id && row.orgId === org) row.expiryNotifiedAt = at;
         }
       },
+
+      async providersForOrg(org) {
+        return [...oauthConnectionsMap.values()]
+          .filter((r) => r.orgId === org)
+          .map((r) => ({ genomeId: r.genomeId, provider: r.provider }));
+      },
     },
 
     knowledge: {
@@ -1693,6 +1699,9 @@ export function createDevStore(
       },
       async listForUser(orgId, userId) {
         return [...brandMemberRows.values()].filter((r) => r.orgId === orgId && r.userId === userId);
+      },
+      async listForOrg(orgId) {
+        return [...brandMemberRows.values()].filter((r) => r.orgId === orgId);
       },
     },
 

@@ -8,6 +8,8 @@ import { DeleteBrandModal } from './DeleteBrandModal';
 import type { RosterBrand } from './useAgencyRoster';
 import { SECTION } from '@/components/shell/narrowStage';
 import { cn } from '@/lib/utils';
+import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { platformLabel } from '@/lib/platforms';
 
 /**
  * The workspace table — the prototype's client list, measured off the stage
@@ -124,11 +126,18 @@ export function AgencyClientTable({
     >
       {/* ── headers ────────────────────────────────────────────────────── */}
       {[
+        /*
+          The design's columns — Team members, Social Accounts Connected,
+          Industry — from real data now that `agency.roster` returns them. The
+          table showed publishing figures there instead; those move into the
+          expanded row. The design's "Client Name" (a contact person) has no
+          field in the data model, so that slot keeps Last activity.
+        */
         { x: 96, label: 'Name' },
         { x: 388, label: 'Last activity' },
-        { x: 742, label: `Published (${windowDays}d)` },
-        { x: 1046, label: 'Impressions' },
-        { x: 1330, label: 'Status' },
+        { x: 742, label: 'Team members' },
+        { x: 1046, label: 'Social Accounts Connected' },
+        { x: 1330, label: 'Industry' },
         { x: 1544, label: 'Action' },
       ].map((h) => (
         /*
@@ -187,25 +196,44 @@ export function AgencyClientTable({
           </span>
 
           <span className="absolute left-[742px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
-            {b.publishedCount} {b.publishedCount === 1 ? 'post' : 'posts'}
+            {b.teamMembers === 0 ? 'No one assigned' : `${b.teamMembers} ${b.teamMembers === 1 ? 'member' : 'members'}`}
           </span>
 
-          <span className="absolute left-[1046px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
-            {b.impressions.toLocaleString()}
+          {/* The design overlaps four avatars, each badged with a platform; the
+              real fact is which platforms are connected, so it overlaps those. */}
+          <span className="absolute left-[1046px] top-[36px] flex items-center">
+            {b.platforms.length === 0 ? (
+              <span className="mt-[10px] text-17 font-medium" style={{ color: 'rgb(131,131,131)' }}>
+                None connected
+              </span>
+            ) : (
+              b.platforms.slice(0, 5).map((p, k) => (
+                <span
+                  key={p}
+                  title={platformLabel(p)}
+                  className="flex h-[44px] w-[44px] items-center justify-center rounded-full bg-white"
+                  style={{ marginLeft: k === 0 ? 0 : -12, boxShadow: '0 0 0 2px #FFFFFF, 0 4px 10px -6px rgba(12,12,12,0.4)' }}
+                >
+                  <PlatformIcon platform={p} size={24} />
+                </span>
+              ))
+            )}
           </span>
 
-          {/* The design's industry chip, carrying the fact the roster exists to
-              surface: a paying client whose account has gone silent. */}
-          <span
-            className="absolute left-[1318px] flex h-[40px] items-center rounded-[9px] px-[15px] text-15 font-semibold"
-            style={{
-              top: 38,
-              background: b.quiet ? '#FBD9FA' : '#D8F5E6',
-              color: b.quiet ? '#D24ED9' : '#1F7A46',
-            }}
-          >
-            {b.quiet ? 'Quiet' : 'Active'}
-          </span>
+          {/* The design's industry chip, on the pink it draws it in. */}
+          {b.industry ? (
+            <span
+              className="absolute left-[1318px] flex h-[40px] max-w-[190px] items-center rounded-[9px] px-[15px] text-15 font-semibold"
+              style={{ top: 38, background: '#FBD9FA', color: '#D24ED9' }}
+              title={b.industry}
+            >
+              <span className="truncate">{b.industry}</span>
+            </span>
+          ) : (
+            <span className="absolute left-[1330px] top-[46px] text-17 font-medium" style={{ color: 'rgb(131,131,131)' }}>
+              —
+            </span>
+          )}
 
           {/* ── the three actions ──────────────────────────────────────── */}
           <Link
@@ -274,12 +302,26 @@ export function AgencyClientTable({
           {/* ── the expanded half ─────────────────────────────────────── */}
           {isOpen ? (
             <div className="absolute left-[26px] top-[108px] flex flex-wrap items-center gap-[18px]">
-              <span className="flex h-[52px] items-center gap-[8px] rounded-[11px] bg-ag-peach px-[14px]">
-                <span className="text-22 font-bold leading-none text-ink">{b.engagements.toLocaleString()}</span>
-                <span className="text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
-                  engagements / {windowDays}d
-                </span>
+              {/* Whether anything went out — the fact an agency opens this for —
+                  then the window's numbers, which used to be columns. */}
+              <span
+                className="flex h-[40px] items-center rounded-[9px] px-[15px] text-15 font-semibold"
+                style={{ background: b.quiet ? '#FBD9FA' : '#D8F5E6', color: b.quiet ? '#D24ED9' : '#1F7A46' }}
+              >
+                {b.quiet ? 'Quiet' : 'Active'}
               </span>
+              {[
+                { n: b.publishedCount, label: `${b.publishedCount === 1 ? 'post' : 'posts'} / ${windowDays}d` },
+                { n: b.impressions, label: 'impressions' },
+                { n: b.engagements, label: `engagements / ${windowDays}d` },
+              ].map((m) => (
+                <span key={m.label} className="flex h-[52px] items-center gap-[8px] rounded-[11px] bg-ag-peach px-[14px]">
+                  <span className="text-22 font-bold leading-none text-ink">{m.n.toLocaleString()}</span>
+                  <span className="text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
+                    {m.label}
+                  </span>
+                </span>
+              ))}
 
               <span className="flex h-[60px] items-center gap-[12px] rounded-[12px] bg-ag-pay px-[16px]">
                 <span className="text-16 font-semibold text-ink">Payment Information</span>

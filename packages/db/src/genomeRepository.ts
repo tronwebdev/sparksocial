@@ -384,6 +384,9 @@ export function createGenomeRepository(db: Database): ScopedDb['genomes'] {
           'Untitled brand',
         ...(r.logoUrl ? { logoUrl: r.logoUrl } : {}),
         updatedAt: r.updatedAt,
+        ...((r.identity as { category?: string } | null)?.category
+          ? { category: (r.identity as { category: string }).category }
+          : {}),
       }));
     },
   };
