@@ -102,6 +102,7 @@ const CATEGORY_BY_TOOL: Record<string, CreditCategory> = {
   'draft.repurpose': 'ai_generation',
   'trend.hooks': 'ai_generation',
   'brand.logo.generate': 'ai_generation',
+  'agency.identity.generate': 'ai_generation',
   'direct.brief.generate': 'ai_generation',
   'direct.session.batch': 'ai_generation',
   'engage.classify': 'ai_generation',

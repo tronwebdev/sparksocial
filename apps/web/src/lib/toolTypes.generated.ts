@@ -11,13 +11,25 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 223 tools.
+ * 226 tools.
  */
 
 export interface ToolIO {
+  "agency.identity.generate": {
+    input: { part: "identity" | "theme"; model: "local_business" | "personal_brand"; name?: string; service?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative" };
+    output: { name?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; colors?: Array<string>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
+  "agency.profile.get": {
+    input: Record<string, never>;
+    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string }) | (null); launched: boolean };
+  };
+  "agency.profile.set": {
+    input: { profile: { model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string }; launch?: boolean };
+    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string }) | (null); launched: boolean };
+  };
   "agency.roster": {
     input: { windowDays?: number };
-    output: { windowDays: number; brands: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string; publishedCount: number; impressions: number; engagements: number; quiet: boolean }>; totals: { brands: number; quiet: number; publishedCount: number; impressions: number; engagements: number }; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { windowDays: number; brands: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string; publishedCount: number; impressions: number; engagements: number; quiet: boolean; industry?: string; teamMembers: number; platforms: Array<string> }>; totals: { brands: number; quiet: number; publishedCount: number; impressions: number; engagements: number }; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "agent.approval_mode.get": {
     input: Record<string, never>;
@@ -357,7 +369,7 @@ export interface ToolIO {
   };
   "content.list": {
     input: { genomeId: string; status?: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; limit?: number };
-    output: { items: Array<{ contentItemId: string; playbookId: string; playbookName: string; mediaType?: "video" | "image" | "carousel" | "text"; platform?: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky"; status: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; summary: string; scheduledAt?: string; createdAt: string; variantGroupId?: string; variantLabel?: string; blockedReason?: string; publishAttempts?: number; thumbnailUrl?: string }> };
+    output: { items: Array<{ contentItemId: string; playbookId: string; playbookName: string; mediaType?: "video" | "image" | "carousel" | "text"; platform?: "instagram" | "instagram_story" | "tiktok" | "linkedin" | "x" | "youtube_shorts" | "youtube_long" | "facebook" | "facebook_group" | "threads" | "pinterest" | "google_business" | "reddit" | "bluesky"; status: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back"; summary: string; scheduledAt?: string; createdAt: string; variantGroupId?: string; variantLabel?: string; blockedReason?: string; publishAttempts?: number; thumbnailUrl?: string; campaignId?: string }> };
   };
   "content.publish_payload": {
     input: { contentItemId: string; genomeId: string };
@@ -637,7 +649,7 @@ export interface ToolIO {
   };
   "learning.confidence": {
     input: { genomeId: string };
-    output: { confidence: number; active: boolean; mixWeightsOverride: (Record<string, number>) | (null); arms: Array<{ pillar: "educational" | "product" | "proof" | "personality" | "community"; alpha: number; beta: number; observations: number; posteriorMean: number; qualifies: boolean }> };
+    output: { confidence: number; active: boolean; mixWeightsOverride: (Record<string, number>) | (null); arms: Array<{ pillar: "educational" | "product" | "proof" | "personality" | "community"; alpha: number; beta: number; observations: number; posteriorMean: number; qualifies: boolean }>; observationFloor: number };
   };
   "learning.explain": {
     input: { genomeId: string };

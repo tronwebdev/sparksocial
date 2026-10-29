@@ -1,7 +1,11 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { useOrganization } from '@clerk/nextjs';
 import { TimezoneField } from '@/components/common/TimezoneField';
 import { SECTION } from '@/components/shell/narrowStage';
+import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 import { cn } from '@/lib/utils';
 
 
@@ -24,15 +28,12 @@ import { cn } from '@/lib/utils';
  *
  * ── What Launch actually does ─────────────────────────────────────────────
  *
- * The prototype writes `ss-agency-launched=1` to `localStorage` and toasts. That
- * is the whole of it — there is no agency record, no website generator, no DNS
- * provisioning behind any of these fields.
- *
- * This keeps the same latch, because the two home states are real states worth
- * having, and it says on the last step what did and did not happen. The one
- * field with a real destination is the agency name: `org.create` provisions an
- * organisation, which is the closest thing the registry has to an agency, and
- * it is offered as an explicit action rather than a side effect of "Launch".
+ * The prototype writes `ss-agency-launched=1` to `localStorage` and toasts.
+ * Here the answers are saved on the organisation (`agency.profile.set`) on
+ * every Continue, and Launch stamps the agency launched — so "Edit Wizard"
+ * opens what was entered, on any device. The logo is the Clerk organisation's
+ * own image. What is still not behind these fields is a website: nothing
+ * builds or hosts one, and the last step says "Not connected yet".
  */
 
 export const WIZ_HEIGHTS = [760, 1280, 1400, 1360] as const;
@@ -54,6 +55,8 @@ export interface WizardDraft {
   layout: number;
   template: number;
   domain: string;
+  /** The design's "Selected Colors", up to five. */
+  colors: string[];
 }
 
 export const emptyWizardDraft = (): WizardDraft => ({
@@ -71,6 +74,7 @@ export const emptyWizardDraft = (): WizardDraft => ({
   layout: 0,
   template: 0,
   domain: '',
+  colors: [],
 });
 
 const MODELS = [
@@ -385,7 +389,58 @@ function StepModel({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wizard
 const FIELD = 'h-[56px] w-full rounded-[12px] bg-white px-[18px] text-15 font-medium text-ink outline-none';
 const RING = { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.25)' } as const;
 
+const AGENCY_MODEL = ['local_business', 'personal_brand'] as const;
+
+/** The design's seven colour templates. */
+const COLOR_TEMPLATES = ['#0A66FF', '#22C55E', '#5B5BF5', '#7EE0F2', '#F472B6', '#F35555', '#9333EA'];
+const MAX_COLORS = 5;
+
 function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
+  const [generating, setGenerating] = useState<'identity' | 'theme' | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  /*
+    "Generate With Ai", for each half of the step. A suggestion written into the
+    fields, where it can be edited like anything typed — nothing is saved until
+    the wizard is. The name is only filled when it is blank: overwriting a name
+    somebody typed would be the button undoing their work.
+  */
+  async function generate(part: 'identity' | 'theme') {
+    if (generating) return;
+    setGenerating(part);
+    setGenError(null);
+    const res = await invoke<{ name?: string; tagline?: string; tone?: string; colors?: string[] }>(
+      'agency.identity.generate',
+      {
+        part,
+        model: AGENCY_MODEL[draft.model],
+        name: draft.name,
+        service: draft.service,
+        tagline: draft.tagline,
+        tone: draft.tone,
+      },
+      // Each press asks for a fresh suggestion.
+      crypto.randomUUID(),
+    );
+    setGenerating(null);
+    if (res.status !== 'succeeded') {
+      setGenError(res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.');
+      return;
+    }
+    const out = res.output;
+    set(
+      part === 'identity'
+        ? { ...(out.name && !draft.name.trim() ? { name: out.name } : {}), ...(out.tagline ? { tagline: out.tagline } : {}) }
+        : { ...(out.tone ? { tone: out.tone } : {}), ...(out.colors?.length ? { colors: out.colors } : {}) },
+    );
+  }
+
+  function toggleColor(c: string) {
+    const has = draft.colors.some((x) => x.toLowerCase() === c.toLowerCase());
+    if (has) set({ colors: draft.colors.filter((x) => x.toLowerCase() !== c.toLowerCase()) });
+    else if (draft.colors.length < MAX_COLORS) set({ colors: [...draft.colors, c.toUpperCase()] });
+  }
+
   return (
     <div className="px-[44px] pb-[40px] pt-[56px]">
       <div className="flex items-start justify-between">
@@ -395,8 +450,9 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
             Create the business identity
           </p>
         </div>
-        <GenerateWithAi />
+        <GenerateWithAi busy={generating === 'identity'} onClick={() => void generate('identity')} />
       </div>
+      {genError ? <p className="mt-[12px] text-14 text-destructive">{genError}</p> : null}
 
       <div className="mt-[34px] grid grid-cols-2 gap-x-[44px] gap-y-[28px]">
         <Field label="Agency Name">
@@ -461,45 +517,209 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
             Choose unique brand theme tailored to your vision.
           </p>
         </div>
-        <GenerateWithAi />
+        <GenerateWithAi busy={generating === 'theme'} onClick={() => void generate('theme')} />
       </div>
 
-      <div className="mt-[26px] w-[428px]">
-        <Field label="Tone">
-          <span className="relative block">
-            <select
-              value={draft.tone}
-              onChange={(e) => set({ tone: e.target.value })}
-              aria-label="Tone"
-              className={`${FIELD} cursor-pointer appearance-none pr-[40px]`}
-              style={RING}
-            >
-              {['Professional', 'Friendly', 'Bold', 'Playful', 'Authoritative'].map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-            <Chevron />
-          </span>
+      <div className="mt-[26px] grid grid-cols-2 gap-x-[44px]">
+        <div className="flex flex-col gap-[28px]">
+          <Field label="Tone">
+            <span className="relative block">
+              <select
+                value={draft.tone}
+                onChange={(e) => set({ tone: e.target.value })}
+                aria-label="Tone"
+                className={`${FIELD} cursor-pointer appearance-none pr-[40px]`}
+                style={RING}
+              >
+                {['Professional', 'Friendly', 'Bold', 'Playful', 'Authoritative'].map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+              <Chevron />
+            </span>
+          </Field>
+          <AgencyLogoField />
+        </div>
+
+        <Field label="Color Theme">
+          <ColorTheme colors={draft.colors} onToggle={toggleColor} />
         </Field>
       </div>
-
     </div>
   );
 }
 
 /**
- * The design's `#93E1F2` "Generate With Ai" button, twice on this step.
- *
- * Present and inert: no tool writes an agency identity or a brand theme — there
- * is no agency record for either to land on — so it says that on hover rather
- * than filling the fields with invented copy the user would have to undo.
+ * The design's "Logo upload (optional)" drop zone. The agency's logo is the
+ * Clerk organisation's own image, so the account switcher and the portal show
+ * one mark — the same arrangement as a person's profile photo.
  */
-function GenerateWithAi() {
+function AgencyLogoField() {
+  const { organization } = useOrganization();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File | undefined) {
+    if (!file || !organization) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      setError('Use a PNG, JPEG or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('That image is over 10MB.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await organization.setLogo({ file });
+    } catch {
+      setError('The logo could not be saved. Owners and admins can change it — try again in a moment.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const logo = organization?.hasImage ? organization.imageUrl : null;
+
   return (
-    <span
-      className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-[10px] px-[15px] text-14 font-semibold text-ink"
-      style={{ background: '#93E1F2', opacity: 0.55 }}
-      title="Generating an agency identity isn’t available yet"
+    <Field label="Logo upload (optional)">
+      <button
+        type="button"
+        onClick={() => input.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          void upload(e.dataTransfer.files[0]);
+        }}
+        disabled={busy || !organization}
+        className="flex h-[100px] w-full items-center gap-[16px] rounded-[12px] px-[20px] text-left transition-colors hover:bg-[rgba(131,131,131,0.04)] disabled:opacity-60"
+        style={{ border: '1.5px dashed rgba(131,131,131,0.4)' }}
+      >
+        <span className="flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden rounded-[10px]" style={{ background: '#F2F3F5' }}>
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="Agency logo" className="h-full w-full object-cover" />
+          ) : (
+            <svg width="26" height="24" viewBox="0 0 26 24" fill="none" aria-hidden className="block">
+              <rect x="2" y="3" width="22" height="18" rx="3" stroke="#9B9B9B" strokeWidth="1.6" />
+              <circle cx="9" cy="10" r="2.4" stroke="#9B9B9B" strokeWidth="1.6" />
+              <path d="m3 20 7-6 4 3.4 4-3 5 4.6" stroke="#9B9B9B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+        <span className="flex flex-col gap-[3px]">
+          <span className="text-15 font-semibold" style={{ color: '#3B3B3B' }}>
+            {busy ? 'Uploading…' : logo ? 'Replace the logo' : 'Drop files here or browse'}
+          </span>
+          <span className="text-13 font-normal" style={{ color: '#9B9B9B' }}>Png, Jpeg or WebP up to 10MB</span>
+          <span className="mt-[4px] text-13 font-semibold underline" style={{ color: '#5B5B5B' }}>Browse files</span>
+        </span>
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          void upload(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+      {error ? <p className="mt-[8px] text-14 text-destructive">{error}</p> : null}
+    </Field>
+  );
+}
+
+/**
+ * The design's Color Theme panel: the selected swatches across the top, the
+ * seven templates below, and a pencil for a colour of one's own. A selected
+ * swatch is removed by clicking it.
+ */
+function ColorTheme({ colors, onToggle }: { colors: string[]; onToggle: (c: string) => void }) {
+  const custom = useRef<HTMLInputElement>(null);
+  const full = colors.length >= MAX_COLORS;
+  return (
+    <div className="relative h-[214px] rounded-[12px]" style={RING}>
+      <span className="absolute left-[20px] top-[22px] text-15 font-medium" style={{ color: '#3B3B3B' }}>
+        Selected Colors
+      </span>
+      <div className="absolute left-[154px] top-[16px] flex gap-[8px]">
+        {colors.length === 0 ? (
+          <span className="mt-[6px] text-13" style={{ color: '#9B9B9B' }}>Pick from the templates below</span>
+        ) : (
+          colors.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onToggle(c)}
+              aria-label={`Remove ${c}`}
+              title={`${c} — click to remove`}
+              className="block h-[30px] w-[30px] rounded-[8px] transition-transform hover:scale-105"
+              style={{ background: c }}
+            />
+          ))
+        )}
+      </div>
+      <div className="absolute bottom-[16px] left-[16px] right-[16px] top-[66px] rounded-[12px]" style={{ background: '#F2F3F5' }}>
+        <span className="absolute left-[16px] top-[14px] text-14 font-medium" style={{ color: '#9B9B9B' }}>
+          Colors templates
+        </span>
+        <div className="absolute left-[16px] right-[16px] top-[46px] flex flex-wrap items-center gap-[9px]">
+          {COLOR_TEMPLATES.map((c) => {
+            const on = colors.some((x) => x.toLowerCase() === c.toLowerCase());
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onToggle(c)}
+                disabled={!on && full}
+                aria-pressed={on}
+                aria-label={on ? `Remove ${c}` : `Add ${c}`}
+                className="block h-[32px] w-[32px] rounded-[9px] transition-transform hover:scale-[1.08] disabled:opacity-40"
+                style={{ background: c, boxShadow: on ? '0 0 0 2px #FFFFFF, 0 0 0 3.5px #0C0C0C' : undefined }}
+              />
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => custom.current?.click()}
+            disabled={full}
+            aria-label="Add a colour of your own"
+            className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-white transition-shadow disabled:opacity-40"
+            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 17 17" fill="none" aria-hidden className="block">
+              <path d="M11.5 2.5a1.8 1.8 0 0 1 2.6 2.6l-.9.9 1 1-1.3 1.3-1-1-5.3 5.3-2.6.6.6-2.6 5.3-5.3-1-1L10.2 3l1 1 .3-1.5Z" stroke="#5B5B5B" strokeWidth="1.3" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <input
+            ref={custom}
+            type="color"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => onToggle(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The design's `#93E1F2` "Generate With Ai" button, twice on this step —
+ * `agency.identity.generate` for the identity half and the theme half.
+ */
+function GenerateWithAi({ busy, onClick }: { busy: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-[10px] px-[15px] text-14 font-semibold text-ink transition-colors hover:bg-[#7FD8ED] disabled:opacity-60"
+      style={{ background: '#93E1F2' }}
     >
       <svg width="15" height="15" viewBox="0 0 20 19" fill="none" aria-hidden className="block">
         <defs>
@@ -510,8 +730,8 @@ function GenerateWithAi() {
         </defs>
         <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#ss-wiz-spark)" />
       </svg>
-      <span className="whitespace-nowrap">Generate With Ai</span>
-    </span>
+      <span className="whitespace-nowrap">{busy ? 'Generating…' : 'Generate With Ai'}</span>
+    </button>
   );
 }
 

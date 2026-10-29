@@ -221,6 +221,10 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         setGovernance: async () => { throw new Error('orgSettings.setGovernance not stubbed in this test'); },
         setSso: async () => { throw new Error('orgSettings.setSso not stubbed in this test'); },
       },
+      agencyProfiles: {
+        get: async () => undefined,
+        set: async () => { throw new Error('agencyProfiles.set not stubbed in this test'); },
+      },
       leads: {
         create: async () => { throw new Error('leads.create not stubbed in this test'); },
         importMany: async () => ({ inserted: [], skippedKeys: [] }),

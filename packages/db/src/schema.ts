@@ -1998,6 +1998,16 @@ export const orgSettings = pgTable('org_settings', {
    * the worst possible reading of this feature.
    */
   retentionDays: integer('retention_days'),
+  /**
+   * The Agency Portal's launch wizard — the agency's own name, contact, tagline,
+   * tone, colours and website choices (`agency.profile.set`). Null until the
+   * wizard is first launched, which is what "launched" means; the wizard kept
+   * this in one browser's `localStorage` before, so the portal forgot it had
+   * launched on every other device. JSON because the tool's Zod schema owns the
+   * shape: a new wizard field should not need a migration.
+   */
+  agencyProfile: jsonb('agency_profile'),
+  agencyProfileUpdatedAt: timestamp('agency_profile_updated_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

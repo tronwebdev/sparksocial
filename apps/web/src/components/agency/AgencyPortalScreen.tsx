@@ -9,6 +9,8 @@ import { AgencyJobFinder } from './AgencyJobFinder';
 import { AgencyWizard, WIZ_HEIGHTS, emptyWizardDraft, type WizardDraft } from './AgencyWizard';
 import { useAgencyRoster, useConnectedAccounts } from './useAgencyRoster';
 import { useNotifications } from '@/lib/notifications';
+import { invoke } from '@/lib/tools';
+import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The Agency Portal's view switch — the prototype's own `view` / `cfState` /
@@ -24,16 +26,43 @@ import { useNotifications } from '@/lib/notifications';
  *   jobFinder     1200
  *   wizard open   max(that, 30 + wizard height + 40)
  *
- * ── The launch latch ─────────────────────────────────────────────────────
+ * ── Launched, and what the wizard remembers ──────────────────────────────
  *
- * `ss-agency-launched` in `localStorage`, the prototype's own key. It is a
- * per-browser flag rather than server state because there is nothing on the
- * server to hold it: no agency record exists. That is a real limitation and the
- * last wizard step says so, rather than this pretending the portal was
- * provisioned.
+ * `agency.profile.get` — the wizard's answers saved on the org, and whether it
+ * has been launched. This used to be `ss-agency-launched` in `localStorage`,
+ * the prototype's own key, so the portal was launched in one browser and not
+ * in any other, and "Edit Wizard" opened an empty form. The old key is still
+ * read once, so an agency launched that way does not drop back to the
+ * pre-launch hero; its next save moves it to the server.
  */
 
-const LATCH = 'ss-agency-launched';
+const LEGACY_LATCH = 'ss-agency-launched';
+
+/** The wizard's draft as `agency.profile.set` takes it. */
+function toProfile(d: WizardDraft) {
+  return {
+    model: d.model === 1 ? 'personal_brand' : 'local_business',
+    name: d.name,
+    yourName: d.yourName,
+    phone: d.phone,
+    email: d.email.trim(),
+    tagline: d.tagline,
+    tone: d.tone,
+    timezone: d.timezone,
+    colors: d.colors,
+    titleFont: d.titleFont,
+    service: d.service,
+    layout: d.layout,
+    template: d.template,
+    domain: d.domain,
+  };
+}
+
+type SavedProfile = ReturnType<typeof toProfile>;
+
+function fromProfile(p: SavedProfile): WizardDraft {
+  return { ...emptyWizardDraft(), ...p, model: p.model === 'personal_brand' ? 1 : 0 };
+}
 
 type View = 'home' | 'clientFinder' | 'jobFinder';
 /** 0..3 while the wizard is open; `null` when it is closed. */
@@ -51,6 +80,9 @@ export function AgencyPortalScreen() {
   const [cfHasLeads, setCfHasLeads] = useState(false);
   const [wizStep, setWizStep] = useState<WizStep | null>(null);
   const [draft, setDraft] = useState<WizardDraft>(emptyWizardDraft);
+  const [saving, setSaving] = useState(false);
+  /** Why the last save failed, shown on the wizard's last step. */
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   /** The design's Search Workspace box, filtering the roster by brand name. */
   const [query, setQuery] = useState('');
 
@@ -60,11 +92,18 @@ export function AgencyPortalScreen() {
 
   /* Read once on mount — `localStorage` is not available while prerendering. */
   useEffect(() => {
+    let legacy = false;
     try {
-      setLaunched(window.localStorage.getItem(LATCH) === '1');
+      legacy = window.localStorage.getItem(LEGACY_LATCH) === '1';
     } catch {
       /* Private mode. Not launched is the safe reading. */
     }
+    setLaunched(legacy);
+    void invoke<{ profile: SavedProfile | null; launched: boolean }>('agency.profile.get', {}).then((res) => {
+      if (res.status !== 'succeeded') return;
+      if (res.output.profile) setDraft(fromProfile(res.output.profile));
+      setLaunched(res.output.launched || legacy);
+    });
     const hash = window.location.hash;
     if (hash === '#wizard') setWizStep(0);
     else if (hash === '#clientFinder') setView('clientFinder');
@@ -82,11 +121,26 @@ export function AgencyPortalScreen() {
 
   if (wizStep !== null) height = Math.max(height, 30 + WIZ_HEIGHTS[wizStep] + 40);
 
-  function launch() {
+  /** Saves the wizard's answers on the org. Launch also stamps it launched. */
+  async function save(launch: boolean): Promise<boolean> {
+    const res = await invoke('agency.profile.set', { profile: toProfile(draft), launch });
+    if (res.status === 'succeeded') {
+      setSaveNote(null);
+      return true;
+    }
+    setSaveNote(res.status === 'failed' ? userMessage(res.error) : 'Saving the agency needs an approval first.');
+    return false;
+  }
+
+  async function launch() {
+    setSaving(true);
+    const ok = await save(true);
+    setSaving(false);
+    if (!ok) return;
     try {
-      window.localStorage.setItem(LATCH, '1');
+      window.localStorage.removeItem(LEGACY_LATCH);
     } catch {
-      /* The flag is a convenience; the portal still opens this session. */
+      /* Nothing to clean up. */
     }
     setLaunched(true);
     setWizStep(null);
@@ -193,12 +247,17 @@ export function AgencyPortalScreen() {
           onBack={() => setWizStep((s) => (s === null || s === 0 ? null : ((s - 1) as WizStep)))}
           onNext={() => {
             if (wizStep === 3) {
-              launch();
+              void launch();
               return;
             }
+            /* Each Continue saves, so closing half-way keeps what was entered. A
+               failure is held for the last step, where Launch tries again. */
+            void save(false);
             setWizStep((s) => (s === null ? 0 : ((s + 1) as WizStep)));
           }}
           onClose={() => setWizStep(null)}
+          busy={saving}
+          note={wizStep === 3 ? saveNote : null}
         />
       ) : null}
     </AgencyStage>

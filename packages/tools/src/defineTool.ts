@@ -449,6 +449,8 @@ export interface ScopedDb {
   approvalRules: ApprovalRuleStore;
   /** Org-level plan/governance/SSO config — `org.*` (plan §6.9, §12 P6). See {@link OrgSettingsStore}. */
   orgSettings: OrgSettingsStore;
+  /** What the Agency Portal's launch wizard collects — `agency.profile.*`. See {@link AgencyProfileStore}. */
+  agencyProfiles: AgencyProfileStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
   trends: TrendWatchlistStore;
   /** Sources this brand has muted — `trend.source.mute`. See {@link TrendSourceMuteStore}. */
@@ -2562,6 +2564,22 @@ export interface OrgSettingsStore {
     retentionDays?: number | null;
   }): Promise<OrgSettingsRecord>;
   setSso(args: { orgId: string; required: boolean }): Promise<OrgSettingsRecord>;
+}
+
+/**
+ * THE AGENCY'S OWN PROFILE — one per org, written by the Agency Portal's
+ * launch wizard (`agency.profile.set`).
+ *
+ * The store holds the profile as opaque JSON and the tool's Zod schema is what
+ * gives it a shape, so adding a wizard field is a schema change in one place
+ * rather than a migration. Org-level and not client material: it describes the
+ * agency, never one of its brands, which is why it is not behind `scoped.ts`.
+ */
+export interface AgencyProfileStore {
+  /** `undefined` when the org has never saved one — which is what "not launched" means. */
+  get(orgId: string): Promise<{ profile: unknown; updatedAt: Date } | undefined>;
+  /** A whole-profile replace; the wizard always sends every field. */
+  set(orgId: string, profile: unknown): Promise<{ profile: unknown; updatedAt: Date }>;
 }
 
 /** One team member's brand-level access — `team.permission.set` (plan §6.9). Clerk owns org membership; this owns which specific brands within it a member can reach. */

@@ -137,6 +137,9 @@ import {
   brandEngagementPlatformsGet,
   brandEngagementPlatformsSet,
   agencyRoster,
+  agencyProfileGet,
+  agencyProfileSet,
+  makeAgencyIdentityGenerate,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -262,6 +265,7 @@ import { ayrshareAdapterClient } from './ayrshare-adapter-client.js';
 import { engageClassifier } from './engage-classifier.js';
 import { replyWriter } from './reply-writer.js';
 import { hookWriter } from './hook-writer.js';
+import { agencyIdentityWriter } from './agency-identity-writer.js';
 import { whatsappTransportClient } from './whatsapp-transport-client.js';
 import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
@@ -1136,6 +1140,11 @@ export function registerAgencyTools(deps: {
   // The agency roster's roll-up — the one org-level read in the product. Owner
   // and admin only; aggregates keyed by brand, never rows. See the tool.
   register(agencyRoster);
+  // The Agency Portal wizard's answers, saved on the org rather than in one
+  // browser's localStorage, and its two "Generate With Ai" buttons.
+  register(agencyProfileGet);
+  register(agencyProfileSet);
+  register(makeAgencyIdentityGenerate(agencyIdentityWriter()));
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.

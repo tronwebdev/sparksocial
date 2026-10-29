@@ -256,6 +256,7 @@ export function createDevStore(
   // the inline literal is how this drifted when §8.12's 2FA/residency/retention
   // columns landed.
   const orgSettingsMap = new Map<string, OrgSettingsRecord>();
+  const agencyProfileMap = new Map<string, { profile: unknown; updatedAt: Date }>();
   const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
   const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
   /** The agency pipeline's dev rows. Same lifetime as every other map here. */
@@ -1681,6 +1682,17 @@ export function createDevStore(
       async setSso({ orgId, required }) {
         const row = { ...(await this.get(orgId)), ssoRequired: required, updatedAt: new Date() };
         orgSettingsMap.set(orgId, row);
+        return row;
+      },
+    },
+
+    agencyProfiles: {
+      async get(orgId) {
+        return agencyProfileMap.get(orgId);
+      },
+      async set(orgId, profile) {
+        const row = { profile, updatedAt: new Date() };
+        agencyProfileMap.set(orgId, row);
         return row;
       },
     },

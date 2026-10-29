@@ -421,6 +421,13 @@
       "when": 1792776170082,
       "tag": "0059_sad_klaw",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793289837201,
+      "tag": "0060_aberrant_tattoo",
+      "breakpoints": true
     }
   ]
 }
