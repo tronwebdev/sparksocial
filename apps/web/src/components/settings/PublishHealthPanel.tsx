@@ -197,7 +197,7 @@ export function PublishHealthPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Publishing health</h2>
@@ -258,7 +258,7 @@ export function PublishHealthPanel() {
                  overflowed its own box and rendered *underneath* the badge.
                  A floor plus wrapping drops the controls to a second line
                  instead, which is legible at every width. */
-              <li key={p.platform} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded border border-border p-3">
+              <li key={p.platform} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                 <div className="min-w-[9rem] flex-1 break-words">
                   <p className="text-14 font-medium text-ink">{platformLabel(p.platform)}</p>
                   <p className="mt-0.5 text-12 text-ink-muted">

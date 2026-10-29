@@ -161,7 +161,7 @@ export function DayActionSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-full w-full max-w-lg overflow-auto rounded-t-xl border border-border bg-surface p-5 sm:rounded-xl"
+        className="max-h-full w-full max-w-lg overflow-auto rounded-t-xl shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5 sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -178,7 +178,7 @@ export function DayActionSheet({
               <button
                 type="button"
                 onClick={() => void ask([], [])}
-                className="rounded-lg border border-border p-3 text-left hover:border-ink-muted"
+                className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3 text-left hover:shadow-[inset_0_0_0_1px_#838383]"
               >
                 <span className="block text-14 font-medium text-ink">Ask the agent to plan it</span>
                 <span className="mt-0.5 block text-13 text-ink-muted">
@@ -191,7 +191,7 @@ export function DayActionSheet({
                   onClose();
                   onCreateSpecific(day);
                 }}
-                className="rounded-lg border border-border p-3 text-left hover:border-ink-muted"
+                className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3 text-left hover:shadow-[inset_0_0_0_1px_#838383]"
               >
                 <span className="block text-14 font-medium text-ink">Create something specific</span>
                 <span className="mt-0.5 block text-13 text-ink-muted">
@@ -214,7 +214,7 @@ export function DayActionSheet({
         {rec && !asking ? (
           <div className="mt-4 grid grid-cols-1 gap-3">
             {rec.create ? (
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-15 font-medium text-ink">{rec.create.playbookName}</p>
                   <Badge variant={rec.create.readiness === 'ready' ? 'success' : 'warn'}>
@@ -288,7 +288,7 @@ export function DayActionSheet({
             ) : null}
 
             {rec.move ? (
-              <div className="rounded-lg border border-border p-4">
+              <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
                 <p className="text-15 font-medium text-ink">Move a post here</p>
                 <p className="mt-1 text-13 text-ink-muted">
                   {rec.move.playbookName} — currently{' '}

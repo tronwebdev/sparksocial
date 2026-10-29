@@ -158,7 +158,7 @@ export function AuditPanel() {
     : (calls ?? []);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Audit log</h2>
@@ -232,7 +232,7 @@ export function AuditPanel() {
             id="audit-limit"
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
+            className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
           >
             {LIMITS.map((n) => (
               <option key={n} value={n}>
@@ -326,7 +326,7 @@ export function AuditPanel() {
           ) : (
             <ul className="grid grid-cols-1 gap-2">
               {(engagement ?? []).map((m) => (
-                <li key={m.id} className="rounded-lg border border-border p-3">
+                <li key={m.id} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-13 font-medium text-ink">
                       {m.authorName ?? m.authorHandle}{' '}

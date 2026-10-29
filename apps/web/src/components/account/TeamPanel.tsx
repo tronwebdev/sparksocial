@@ -176,7 +176,7 @@ export function TeamPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <h2 className="text-18 font-semibold text-ink">Team</h2>
       <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Who is in this account, and which brands each of them can open. Being in the account is not the
@@ -190,7 +190,7 @@ export function TeamPanel() {
       ) : null}
 
       {/* ── Invite ──────────────────────────────────────────────────────── */}
-      <div className="mt-5 rounded-lg border border-border p-4">
+      <div className="mt-5 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
         <p className="text-13 font-medium text-ink">Invite someone</p>
         <p className="mt-1 text-12 text-ink-muted">
           Clerk sends the email. They join the account with the role you pick here, and reach no brand until
@@ -218,7 +218,7 @@ export function TeamPanel() {
               id="team-role"
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
-              className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
+              className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
             >
               {ORG_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -242,7 +242,7 @@ export function TeamPanel() {
         ) : members ? (
           <ul className="grid grid-cols-1 gap-3">
             {members.map((m) => (
-              <li key={m.userId} className="rounded-lg border border-border p-4">
+              <li key={m.userId} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-14 font-medium text-ink">
@@ -264,7 +264,7 @@ export function TeamPanel() {
                       value={`org:${m.orgRole}`}
                       disabled={busy !== null || m.orgRole === 'owner'}
                       onChange={(e) => void setOrgRole(m.userId, e.target.value)}
-                      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-12 text-ink disabled:opacity-50"
+                      className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1.5 text-12 text-ink disabled:opacity-50"
                     >
                       {/* The owner is listed so the select shows the truth, and
                           disabled so this screen cannot orphan an account by
@@ -310,7 +310,7 @@ export function TeamPanel() {
                                 onChange={(e) =>
                                   void setBrandAccess(m.userId, b.brandId, e.target.value || undefined)
                                 }
-                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-12 text-ink disabled:opacity-50"
+                                className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1 text-12 text-ink disabled:opacity-50"
                               >
                                 <option value="">No access</option>
                                 {BRAND_ROLES.map((r) => (

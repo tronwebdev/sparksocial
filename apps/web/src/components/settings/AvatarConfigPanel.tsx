@@ -82,7 +82,7 @@ export function AvatarConfigPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Avatar &amp; voice</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Which trained HeyGen avatar and ElevenLabs voice this brand generates from. Set this after training
@@ -99,7 +99,7 @@ export function AvatarConfigPanel() {
             value={heygenAvatarId}
             onChange={(e) => setHeygenAvatarId(e.target.value)}
             placeholder="e.g. abc123"
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 gap-1">
@@ -111,7 +111,7 @@ export function AvatarConfigPanel() {
             value={elevenlabsVoiceId}
             onChange={(e) => setElevenlabsVoiceId(e.target.value)}
             placeholder="e.g. xyz789"
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
       </div>
@@ -145,7 +145,7 @@ export function AvatarConfigPanel() {
             value={overrideReason}
             onChange={(e) => setOverrideReason(e.target.value)}
             placeholder="e.g. Founder wants to appear on camera for LinkedIn thought leadership"
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 

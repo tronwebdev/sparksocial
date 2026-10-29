@@ -137,7 +137,7 @@ export function PolicyPanel() {
   if (loading) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Escalation policy</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Finer-grained rules on top of the approval mode above — platforms/content types that always need review,
@@ -172,7 +172,7 @@ export function PolicyPanel() {
             value={contentTypesText}
             onChange={(e) => setContentTypesText(e.target.value)}
             placeholder="e.g. ai_ugc_testimonial, offer_availability"
-            className="mt-1 h-9 w-full rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder"
+            className="mt-1 h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -249,14 +249,14 @@ export function PolicyPanel() {
             inputMode="numeric"
             onChange={(e) => setMaxPendingReview(e.target.value.replace(/[^0-9]/g, ''))}
             placeholder="e.g. 25"
-            className="mt-1.5 h-9 w-full rounded border border-border bg-input px-2 text-13 text-ink placeholder:text-ink-placeholder"
+            className="mt-1.5 h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
 
         <div>
           <p className="text-13 font-medium text-ink">Quiet windows (publishing frozen)</p>
           {quietWindows.map((w, i) => (
-            <div key={i} className="mt-1 flex items-center justify-between rounded border border-border px-2 py-1.5 text-12 text-ink-muted">
+            <div key={i} className="mt-1 flex items-center justify-between rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] px-2 py-1.5 text-12 text-ink-muted">
               <span>
                 {new Date(w.from).toLocaleString()} → {new Date(w.to).toLocaleString()} — {w.reason}
               </span>
@@ -270,19 +270,19 @@ export function PolicyPanel() {
               type="datetime-local"
               value={newWindow.from}
               onChange={(e) => setNewWindow((w) => ({ ...w, from: e.target.value }))}
-              className="h-9 rounded border border-border bg-input px-2 text-12 text-ink"
+              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
             />
             <input
               type="datetime-local"
               value={newWindow.to}
               onChange={(e) => setNewWindow((w) => ({ ...w, to: e.target.value }))}
-              className="h-9 rounded border border-border bg-input px-2 text-12 text-ink"
+              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
             />
             <input
               value={newWindow.reason}
               onChange={(e) => setNewWindow((w) => ({ ...w, reason: e.target.value }))}
               placeholder="reason"
-              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <Button size="sm" variant="outline" onClick={addWindow}>
               Add window
@@ -293,7 +293,7 @@ export function PolicyPanel() {
         <div>
           <p className="text-13 font-medium text-ink">Tool-family autonomy overrides</p>
           {Object.entries(familyOverrides).map(([family, autonomy]) => (
-            <div key={family} className="mt-1 flex items-center justify-between rounded border border-border px-2 py-1.5 text-12 text-ink-muted">
+            <div key={family} className="mt-1 flex items-center justify-between rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] px-2 py-1.5 text-12 text-ink-muted">
               <span>
                 <b className="text-ink">{family}</b> — {autonomy}
               </span>
@@ -311,12 +311,12 @@ export function PolicyPanel() {
               value={newFamily.family}
               onChange={(e) => setNewFamily((f) => ({ ...f, family: e.target.value }))}
               placeholder="e.g. content, publish, learning"
-              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded border border-border bg-input px-2 text-12 text-ink placeholder:text-ink-placeholder"
+              className="h-9 min-w-[140px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink placeholder:text-ink-placeholder"
             />
             <select
               value={newFamily.autonomy}
               onChange={(e) => setNewFamily((f) => ({ ...f, autonomy: e.target.value }))}
-              className="h-9 rounded border border-border bg-surface px-2 text-12 text-ink"
+              className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-12 text-ink"
             >
               {AUTONOMY_OPTIONS.map((a) => (
                 <option key={a} value={a}>

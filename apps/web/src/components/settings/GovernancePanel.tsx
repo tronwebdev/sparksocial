@@ -374,7 +374,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                 />
               </div>
 
-              <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <label className="flex items-start gap-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                 <input
                   type="checkbox"
                   checked={strictMode}
@@ -423,7 +423,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                 logo field is a switch wired to nothing.
               */}
               {logoUrl ? (
-                <div className="mt-3 rounded-lg border border-border p-3">
+                <div className="mt-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                   <label className="flex items-center gap-2 text-13 text-ink">
                     <input
                       type="checkbox"
@@ -508,7 +508,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
           <KitSection title="Fine-tune" hint="Finer control over the voice and type chosen above.">
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <h3 className="text-14 font-medium text-ink">Tone</h3>
+                <h3 className="text-15 font-semibold text-ink">Tone</h3>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {TONE_AXES.map((axis) => (
                     <div key={axis.key}>
@@ -564,7 +564,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                       setUsingDefaultVoice(false);
                       setStockVoiceId(e.target.value);
                     }}
-                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
+                    className="mt-1.5 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-14 text-ink"
                   >
                     {STOCK_VOICES.map((v) => (
                       <option key={v.id} value={v.id}>
@@ -608,7 +608,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
               </div>
               {/* ── When it posts ──────────────────────────────────────────── */}
               <div>
-                <h3 className="text-14 font-medium text-ink">When it posts</h3>
+                <h3 className="text-15 font-semibold text-ink">When it posts</h3>
                 <p className="mt-0.5 text-12 text-ink-muted">
                   Your timezone decides what &ldquo;Tuesday&rdquo; means, and the hours below are the times of day
                   posts land in.
@@ -622,7 +622,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                     id="gov-tz"
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="mt-1.5 w-full rounded-lg border border-border bg-field px-3 py-2 text-14 text-ink"
+                    className="mt-1.5 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-14 text-ink"
                   >
                     {zoneRegions.map((r) => {
                       const members = zonesInRegion(r, zoneOptions);

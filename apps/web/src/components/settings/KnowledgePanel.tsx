@@ -279,7 +279,7 @@ export function KnowledgePanel() {
   if (!genomeId) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">What this brand knows</h2>
       <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Policies, FAQs, spec sheets, pages from your site. SPARK checks every specific claim it writes against
@@ -316,7 +316,7 @@ export function KnowledgePanel() {
             </div>
             <ul className="mt-2 grid grid-cols-1 gap-2">
               {list.docs.map((d) => (
-                <li key={d.docId} className="rounded-lg border border-border p-3">
+                <li key={d.docId} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     {/*
                       `docId` is a URL for a crawled source, and a URL has no
@@ -350,7 +350,7 @@ export function KnowledgePanel() {
 
       {/* ── The two ways in ─────────────────────────────────────────────── */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink">Read my website</p>
           <p className="mt-1 text-12 text-ink-muted">
             SPARK opens each page and reads it. Roughly a cent a page, and it takes a few seconds per page —
@@ -389,7 +389,7 @@ export function KnowledgePanel() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink">Add a document</p>
           {/*
             This said "PDFs and Word documents need a parser SPARK does not
@@ -422,7 +422,7 @@ export function KnowledgePanel() {
             value={docText}
             onChange={(e) => setDocText(e.target.value)}
             rows={5}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
+            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
             placeholder="Paste the policy, FAQ or spec sheet here."
           />
           <p className="mt-1 text-11 tabular-nums text-ink-muted">
@@ -483,7 +483,7 @@ export function KnowledgePanel() {
       </div>
 
       {/* ── The feedback loop ───────────────────────────────────────────── */}
-      <div className="mt-4 rounded-lg border border-border p-4">
+      <div className="mt-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
         <p className="text-13 font-medium text-ink">Will this claim pass?</p>
         <p className="mt-1 text-12 text-ink-muted">
           The same check SPARK runs before publishing. Try a sentence you want it to be able to write.

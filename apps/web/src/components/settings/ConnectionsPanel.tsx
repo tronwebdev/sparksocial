@@ -81,7 +81,7 @@ export function ConnectionsPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Connections</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Third-party accounts this brand reads from — currently just Canva, for the Bulk Connector automation

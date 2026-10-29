@@ -100,7 +100,7 @@ export function ReplyAction({
   }
 
   return (
-    <div className="mt-3 rounded border border-border bg-surface-muted p-3">
+    <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
           {source === 'suggested' ? 'Suggested reply' : 'Drafted reply'} — edit before sending
@@ -121,7 +121,7 @@ export function ReplyAction({
         disabled={phase === 'sending'}
         rows={3}
         className={
-          'mt-2 w-full resize-y rounded border border-border bg-surface p-2 text-14 text-ink ' +
+          'mt-2 w-full resize-y rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-2 text-14 text-ink ' +
           'focus:outline-none focus:ring-[1.5px] focus:ring-ring disabled:opacity-50'
         }
       />

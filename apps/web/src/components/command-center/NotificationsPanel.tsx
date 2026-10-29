@@ -138,10 +138,10 @@ export function NotificationsPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-border">
+    <section className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-13 font-medium text-ink">What SPARK told you</h2>
+          <h2 className="text-18 font-semibold text-ink">What SPARK told you</h2>
           {unread > 0 ? <Badge variant="warn">{unread} new</Badge> : null}
         </div>
         {unread > 0 ? (

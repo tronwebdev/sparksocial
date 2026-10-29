@@ -165,7 +165,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
       {error ? <p className="text-13 text-destructive">{error}</p> : null}
 
       {/* ── Add ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-4">
+      <div className="flex flex-wrap items-end gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
         <div>
           <label className="block text-12 text-ink-muted" htmlFor="inf-platform">
             Where
@@ -174,7 +174,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
             id="inf-platform"
             value={platform}
             onChange={(e) => setPlatform(e.target.value as Platform)}
-            className="mt-1 rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
+            className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
           >
             {PLATFORMS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -225,7 +225,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
             {watchlist.map((w) => (
               <li
                 key={`${w.platform}:${w.handle}`}
-                className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                className="flex items-start justify-between gap-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3"
               >
                 <div className="min-w-0">
                   <p className="truncate text-14 font-medium text-ink">@{w.handle}</p>
@@ -261,13 +261,13 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
       ) : null}
 
       {review ? (
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <WhyPopover why={review.why} label={review.why.summary} className="mt-0" />
 
           {review.posts.length > 0 ? (
             <ul className="mt-3 grid grid-cols-1 gap-2">
               {review.posts.map((p) => (
-                <li key={`${p.handle}:${p.trendId}`} className="rounded-lg border border-border p-3">
+                <li key={`${p.handle}:${p.trendId}`} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-14 text-ink">{p.topic}</p>
                     <div className="flex shrink-0 items-center gap-2">
@@ -293,7 +293,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
           )}
 
           {review.quiet.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-border bg-surface-muted p-3">
+            <div className="mt-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
               <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
                 {review.quiet.length} account{review.quiet.length === 1 ? '' : 's'} with nothing to show
               </p>

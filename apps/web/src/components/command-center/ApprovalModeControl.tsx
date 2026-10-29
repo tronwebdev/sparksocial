@@ -60,7 +60,7 @@ export function ApprovalModeControl() {
   if (!view) return <Skeleton className="h-16 w-full rounded" />;
 
   return (
-    <section className="rounded border border-border bg-surface p-4">
+    <section className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
       <div className="flex items-center justify-between">
         <p className="text-13 font-medium text-ink-muted">Before publishing</p>
         {view.approvalMode === 'review_first_week' && view.graduatesInDays !== null ? (

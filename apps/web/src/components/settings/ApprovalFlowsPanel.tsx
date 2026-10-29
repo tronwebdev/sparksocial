@@ -118,7 +118,7 @@ export function ApprovalFlowsPanel() {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Approval flows</h2>
@@ -161,7 +161,7 @@ export function ApprovalFlowsPanel() {
             <li
               key={rule.id}
               className={cn(
-                'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3',
+                'flex flex-wrap items-center justify-between gap-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3',
                 // A switched-off rule is kept visible but visibly inert. Hiding it
                 // would lose the answer to "we turned that off in March".
                 !rule.enabled && 'opacity-60',
@@ -237,7 +237,7 @@ function RuleForm({
   };
 
   return (
-    <div className="mt-4 grid grid-cols-1 gap-4 rounded-lg border border-border bg-surface-muted p-4">
+    <div className="mt-4 grid grid-cols-1 gap-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-4">
       <div className="grid gap-1">
         <span className="text-12 font-medium text-ink">What should wait for sign-off?</span>
         <div className="mt-1 flex flex-wrap gap-2">

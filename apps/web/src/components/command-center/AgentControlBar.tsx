@@ -101,7 +101,7 @@ export function AgentControlBar({
   if (!status) return <Skeleton className="h-20 w-full rounded" />;
 
   return (
-    <section className="rounded border border-border bg-surface p-4">
+    <section className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
       <div className="flex flex-wrap items-center gap-4">
         <Badge variant={status.paused ? 'warn' : 'success'}>{status.paused ? 'Paused' : 'Running'}</Badge>
         <p className="min-w-0 flex-1 text-13 text-ink-muted">{status.effect}</p>

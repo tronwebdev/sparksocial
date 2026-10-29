@@ -96,14 +96,14 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
 
   if (!opportunityId) {
     return (
-      <div className="mt-3 rounded border border-border bg-surface-muted p-3">
+      <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
         <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Raise as an opportunity</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
             value={temperature}
             onChange={(e) => setTemperature(e.target.value as Temperature)}
             disabled={busy}
-            className="h-9 rounded border border-border bg-surface px-2 text-13 text-ink disabled:opacity-50"
+            className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2 text-13 text-ink disabled:opacity-50"
             aria-label="Temperature"
           >
             <option value="hot">Hot</option>
@@ -115,7 +115,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
             onChange={(e) => setRecommendedAction(e.target.value)}
             disabled={busy}
             placeholder="Recommended action, e.g. Call within the hour"
-            className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+            className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button size="sm" disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
             {busy ? 'Creating…' : 'Create opportunity'}
@@ -142,7 +142,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
   }
 
   return (
-    <div className="mt-3 rounded border border-border bg-surface-muted p-3">
+    <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="success">Opportunity raised</Badge>
         <span className="text-12 text-ink-muted">{temperature}</span>
@@ -167,7 +167,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
           onChange={(e) => setRoutedTo(e.target.value)}
           disabled={busy}
           placeholder="Route to — a person, email, or CRM reference"
-          className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-surface px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+          className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
         />
         <Button size="sm" variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
           {busy ? 'Routing…' : 'Route'}

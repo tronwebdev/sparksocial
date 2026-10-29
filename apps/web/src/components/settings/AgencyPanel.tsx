@@ -121,13 +121,13 @@ export function AgencyPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Agency</h2>
       <p className="mt-1 text-14 text-ink-muted">Org plan, governance defaults, and every brand in this account.</p>
       {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">Plan</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {(['starter', 'growth', 'agency'] as const).map((p) => (
@@ -147,7 +147,7 @@ export function AgencyPanel() {
           <p className="mt-2 text-12 text-ink-muted">Spend cap: ${(settings.monthlyCapCents / 100).toLocaleString()} / month</p>
         </div>
 
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">New brands start on</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {(['autopublish', 'review_first_week', 'review_everything'] as const).map((m) => (
@@ -169,7 +169,7 @@ export function AgencyPanel() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">Security</p>
           <label className="mt-2 flex items-center gap-2 text-13 text-ink">
             <input type="checkbox" checked={settings.ssoRequired} disabled={busy} onChange={() => void toggleSso()} />
@@ -191,7 +191,7 @@ export function AgencyPanel() {
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink-muted">Data governance</p>
 
           <label className="mt-2 block text-12 text-ink-muted" htmlFor="org-residency">
@@ -202,7 +202,7 @@ export function AgencyPanel() {
             value={settings.dataResidency}
             disabled={busy}
             onChange={(e) => void changeGovernance({ dataResidency: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-13 text-ink disabled:opacity-50"
+            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-1.5 text-13 text-ink disabled:opacity-50"
           >
             {Object.entries(RESIDENCY_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
@@ -219,7 +219,7 @@ export function AgencyPanel() {
             value={settings.retentionDays == null ? '' : String(settings.retentionDays)}
             disabled={busy}
             onChange={(e) => void changeGovernance({ retentionDays: e.target.value === '' ? null : Number(e.target.value) })}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-13 text-ink disabled:opacity-50"
+            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-1.5 text-13 text-ink disabled:opacity-50"
           >
             {RETENTION_CHOICES.map((c) => (
               <option key={c.label} value={c.value == null ? '' : String(c.value)}>
@@ -262,7 +262,7 @@ export function AgencyPanel() {
         ) : (
           <ul className="mt-3 grid grid-cols-1 gap-2">
             {brands.map((b) => (
-              <li key={b.genomeId} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <li key={b.genomeId} className="flex items-center justify-between gap-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
                 <div className="min-w-0">
                   <p className="truncate text-14 font-medium text-ink">{b.name || 'Untitled brand'}</p>
                   <p className="text-12 text-ink-muted">
@@ -315,7 +315,7 @@ function CreditsCard({
   }
 
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
       <p className="text-13 font-medium text-ink-muted">Credits</p>
       {balance ? (
         <p className="mt-1 text-14 text-ink">
@@ -332,7 +332,7 @@ function CreditsCard({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="50.00"
             inputMode="decimal"
-            className="h-9 w-28 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
+            className="h-9 w-28 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 flex-1 gap-1">
@@ -341,7 +341,7 @@ function CreditsCard({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Goodwill credit for a slow month"
-            className="h-9 w-full rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
+            className="h-9 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <Button size="sm" variant="outline" disabled={busy || !amount || !reason.trim()} onClick={() => void grant()}>
@@ -373,14 +373,14 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-border bg-surface-muted p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div className="mt-3 grid grid-cols-1 gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <div className="grid grid-cols-1 gap-1">
         <label className="text-12 font-medium text-ink-muted">Brand name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Client name"
-          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
+          className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
       </div>
       <div className="grid grid-cols-1 gap-1">
@@ -389,7 +389,7 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           placeholder="e.g. Barbershop"
-          className="h-9 rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder"
+          className="h-9 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder"
         />
       </div>
       <Button size="sm" disabled={busy || !name.trim() || !category.trim()} onClick={() => void create()}>

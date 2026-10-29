@@ -93,7 +93,7 @@ export function ConsentPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <h2 className="text-18 font-semibold text-ink">Likeness &amp; voice consent</h2>
       <p className="mt-1 text-13 text-ink-muted">
         Required before any avatar or voice-clone format can pass the rights guardrail. Recording consent here is an
@@ -111,7 +111,7 @@ export function ConsentPanel() {
             id="consent-kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink"
           >
             {KINDS.map((k) => (
               <option key={k.value} value={k.value}>
@@ -129,7 +129,7 @@ export function ConsentPanel() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="e.g. Emeka Okafor"
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <div className="grid grid-cols-1 min-w-[200px] flex-1 max-cq-canvas:min-w-0 max-cq-canvas:basis-full gap-1">
@@ -141,7 +141,7 @@ export function ConsentPanel() {
             value={evidenceUrl}
             onChange={(e) => setEvidenceUrl(e.target.value)}
             placeholder="https://…"
-            className="h-10 rounded border border-border bg-surface px-3 text-14 text-ink placeholder:text-ink-placeholder"
+            className="h-10 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-14 text-ink placeholder:text-ink-placeholder"
           />
         </div>
         <Button size="sm" disabled={busy || !subject.trim()} onClick={() => void grant()}>
@@ -161,7 +161,7 @@ export function ConsentPanel() {
               return (
                 <li
                   key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded border border-border p-3"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3"
                 >
                   <div className="min-w-0">
                     <p className="text-14 font-medium text-ink">

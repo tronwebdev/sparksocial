@@ -98,7 +98,7 @@ export function PendingQuestionsPanel() {
   if (questions !== null && questions.length === 0 && !error) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <h2 className="text-18 font-semibold text-ink">SPARK is waiting on you</h2>
 
       {questions === null ? (
@@ -108,7 +108,7 @@ export function PendingQuestionsPanel() {
       ) : (
         <ul className="mt-4 grid grid-cols-1 gap-3">
           {questions.map((q) => (
-            <li key={q.messageId} className="rounded-lg border border-border p-4">
+            <li key={q.messageId} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="text-14 text-ink">{q.question}</p>
                 <Badge variant={URGENCY_TONE[q.urgency]} className="shrink-0 capitalize">
@@ -145,7 +145,7 @@ export function PendingQuestionsPanel() {
                   onChange={(e) => setDrafts((d) => ({ ...d, [q.messageId]: e.target.value }))}
                   disabled={answering === q.messageId}
                   placeholder="Type an answer, or pick an option above"
-                  className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded border border-border bg-input px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
+                  className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
                 />
                 <Button
                   size="sm"

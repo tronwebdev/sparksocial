@@ -81,7 +81,7 @@ export function ReadinessModal({ genomeId, objective, windowDays, onProceed, onC
       onClick={onClose}
     >
       <div
-        className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-xl"
+        className="max-h-[86vh] w-full max-w-[560px] overflow-y-auto rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {error ? (

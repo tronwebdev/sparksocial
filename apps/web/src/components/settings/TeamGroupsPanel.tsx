@@ -156,7 +156,7 @@ export function TeamGroupsPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6 max-sm:p-4">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 max-sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-18 font-semibold text-ink">Team groups</h2>
@@ -173,7 +173,7 @@ export function TeamGroupsPanel() {
       </div>
 
       {creating && (
-        <div className="mt-4 rounded-lg border border-border p-4">
+        <div className="mt-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <label className="block text-12 font-medium text-ink-muted" htmlFor="group-name">
             Group name
           </label>
@@ -243,7 +243,7 @@ export function TeamGroupsPanel() {
       ) : (
         <ul className="mt-4 space-y-3">
           {groups.map((group) => (
-            <li key={group.id} className="rounded-lg border border-border p-4">
+            <li key={group.id} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-14 font-medium text-ink">{group.name}</span>
                 <span className="text-12 text-ink-muted">
@@ -319,7 +319,7 @@ export function TeamGroupsPanel() {
                       onChange={(e) => setMemberDrafts((prev) => ({ ...prev, [group.id]: e.target.value }))}
                       aria-label={`Add somebody to ${group.name}`}
                       disabled={busy === group.id || addable(group).length === 0}
-                      className="max-w-[260px] rounded-md border border-border bg-surface px-2.5 py-1.5 text-13 text-ink disabled:opacity-50"
+                      className="max-w-[260px] rounded-md shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-2.5 py-1.5 text-13 text-ink disabled:opacity-50"
                     >
                       <option value="">
                         {addable(group).length === 0 ? 'Everyone is already in this group' : 'Add somebody…'}

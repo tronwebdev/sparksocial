@@ -185,7 +185,7 @@ export function BrandTransferPanel() {
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <h2 className="text-18 font-semibold text-ink">Move a brand</h2>
       <p className="mt-1 max-w-prose text-14 text-ink-muted">
         Export a brand&rsquo;s answers as a file, or create a new brand from one. Identity, the five questions,
@@ -199,7 +199,7 @@ export function BrandTransferPanel() {
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* ── Out ──────────────────────────────────────────────────────── */}
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink">Export</p>
           <p className="mt-1 text-12 text-ink-muted">
             Downloads a JSON file. Safe to hand to the client it belongs to — it carries their answers, not your
@@ -214,7 +214,7 @@ export function BrandTransferPanel() {
                 id="export-brand"
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-13 text-ink"
+                className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
               >
                 {brands.length === 0 ? <option value="">No brands yet</option> : null}
                 {brands.map((b) => (
@@ -231,7 +231,7 @@ export function BrandTransferPanel() {
         </div>
 
         {/* ── In ───────────────────────────────────────────────────────── */}
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
           <p className="text-13 font-medium text-ink">Import</p>
           <p className="mt-1 text-12 text-ink-muted">
             Creates a <span className="font-medium text-ink">new</span> brand. It does not overwrite an existing
@@ -258,7 +258,7 @@ export function BrandTransferPanel() {
             onChange={(e) => setJson(e.target.value)}
             rows={5}
             spellCheck={false}
-            className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-12 text-ink"
+            className="mt-1 w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 font-mono text-12 text-ink"
             placeholder='{ "name": "…", "identity": { … }, "dimensions": { … }, … }'
           />
 

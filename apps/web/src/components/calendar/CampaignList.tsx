@@ -188,10 +188,10 @@ export function CampaignList({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-16 font-medium text-ink">Campaigns</h2>
+          <h2 className="text-18 font-semibold text-ink">Campaigns</h2>
           <p className="mt-0.5 text-13 text-ink-muted">
             {campaigns.length === 1 ? 'One campaign.' : `${campaigns.length} campaigns.`} Each is an outcome
             over a window &mdash; you can run more than one at a time.
