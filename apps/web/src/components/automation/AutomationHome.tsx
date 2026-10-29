@@ -342,7 +342,7 @@ export function AutomationHome({
             fix: cap the width and the scroll container becomes one.
           */}
           <div
-            className="inline-flex h-[56px] max-w-full items-center gap-[6px] overflow-x-auto rounded-[14px] bg-white px-[8px]"
+            className="inline-flex h-[56px] max-w-full items-center gap-[6px] overflow-x-auto overflow-y-hidden rounded-[14px] bg-white px-[8px]"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
             role="tablist"
             aria-label="Queue state"

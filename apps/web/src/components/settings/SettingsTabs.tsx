@@ -36,8 +36,12 @@ export function SettingsTabs<T extends string>({
         430px, the Export / Import / Clone row was cut at 419 with nothing
         scrollable over it. One tablist, used by every settings section, so the
         cap and the scroll container fix all of them at once.
+
+        `overflow-y-hidden` because `overflow-x: auto` turns the other axis to
+        `auto` as well, and the tabs sit a pixel taller than the strip — so a
+        vertical scrollbar's arrows were drawn beside the last tab.
       */
-      className="inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto rounded-[10.828px] bg-white p-[5px]"
+      className="inline-flex h-[50px] max-w-full items-center gap-[5px] overflow-x-auto overflow-y-hidden rounded-[10.828px] bg-white p-[5px]"
       style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.15)' }}
     >
       {tabs.map((t) => {

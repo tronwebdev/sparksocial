@@ -215,133 +215,144 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
   }
 
   return (
-    <div className="-mx-[30px] overflow-x-auto pl-[24px] pr-[32px]">
-      <div className="min-w-[1294px]">
-        {/* search — the design puts it level with the tab strip, on the right */}
-        <div className="mb-[18px] flex justify-end">
-          <label
-            className="flex h-[43px] w-[333px] items-center gap-[10px] rounded-[10px] bg-white px-[19px]"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
-              <circle cx="8" cy="8" r="6.2" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" />
-              <path d="m12.6 12.6 3.4 3.4" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search team"
-              aria-label="Search team"
-              className="w-full bg-transparent text-16 font-medium text-ink outline-none placeholder:text-[rgba(12,12,12,0.4)]"
-            />
-          </label>
-        </div>
-
-        {/* column headers, on the design's rule */}
-        <div
-          className="grid items-center pb-[13px] text-18 font-medium"
-          style={{ gridTemplateColumns: '48px 69px 211px 186px 409px 125px 164px 82px', color: 'rgb(131,131,131)' }}
+    <>
+      {/* search — the design puts it level with the tab strip, on the right.
+          Outside the scroller, so a narrow window never scrolls it off. */}
+      <div className="mb-[18px] flex justify-end">
+        <label
+          className="flex h-[43px] w-[333px] items-center gap-[10px] rounded-[10px] bg-white px-[19px]"
+          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}
         >
-          <span />
-          <span />
-          <span>Name</span>
-          <span>Role</span>
-          <span>Email</span>
-          <span>Status</span>
-          <span>Last Login</span>
-          <span />
-        </div>
-        <div aria-hidden className="h-px w-full" style={{ background: 'rgba(131,131,131,0.25)' }} />
-
-        {members === null ? (
-          <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>Reading the team…</p>
-        ) : shown.length === 0 ? (
-          <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>
-            {q ? 'Nobody matches that.' : 'Nobody else is in this organisation yet.'}
-          </p>
-        ) : (
-          <ul>
-            {shown.map((m) => {
-              const role = m.orgRole.replace(/^org:/, '');
-              const hue = ROLE_HUE[role] ?? 'var(--ss-set-role-viewer)';
-              return (
-                <li
-                  key={m.userId}
-                  className="grid items-center border-b border-[rgba(131,131,131,0.25)]"
-                  style={{ gridTemplateColumns: '48px 69px 211px 186px 409px 125px 164px 82px', height: 83 }}
-                >
-                  <span
-                    aria-hidden
-                    className="block h-[24px] w-[24px] rounded-[5.63px]"
-                    style={{ boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.2)' }}
-                  />
-
-                  <span
-                    aria-hidden
-                    className="flex h-[53px] w-[53px] items-center justify-center rounded-[12.322px] text-20 font-bold text-black"
-                    style={{ background: hueFor(m.userId) }}
-                  >
-                    {monogram(m)}
-                  </span>
-
-                  <span className="truncate pr-[12px] text-18 font-medium text-ink">{m.name ?? '—'}</span>
-
-                  {/* The role chip is also the control — `team.role.set`. */}
-                  <span className="relative block h-[39px] w-[131px]">
-                    <select
-                      value={role}
-                      disabled={busyId === m.userId}
-                      onChange={(e) => void setRole(m, e.target.value)}
-                      aria-label={`Role for ${m.name ?? m.email ?? 'this member'}`}
-                      className="h-full w-full cursor-pointer appearance-none rounded-[8.202px] text-center text-18 font-medium outline-none"
-                      style={{ background: `color-mix(in srgb, ${hue} 10%, transparent)`, color: hue }}
-                    >
-                      {['owner', 'admin', 'editor', 'approver', 'viewer', 'client'].map((r) => (
-                        <option key={r} value={r} style={{ color: '#0C0C0C' }}>
-                          {r[0]!.toUpperCase() + r.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </span>
-
-                  <span className="truncate pr-[12px] text-18 font-medium text-ink">{m.email ?? '—'}</span>
-
-                  {/*
-                    The design's Online/Offline pill. Nothing tracks presence, so
-                    this says what is known — whether the member reaches every
-                    brand or only some — rather than inventing a green dot.
-                  */}
-                  <span
-                    className="flex h-[34px] w-[89px] items-center justify-center rounded-[7.087px] text-16 font-medium"
-                    style={{ background: 'rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
-                    title={m.allBrands ? 'Administers every brand in this organisation' : `${m.brands.length} brand(s)`}
-                  >
-                    {m.allBrands ? 'All brands' : `${m.brands.length} brand${m.brands.length === 1 ? '' : 's'}`}
-                  </span>
-
-                  <span className="text-18 font-normal" style={{ color: 'rgb(131,131,131)' }}>
-                    {new Date(m.joinedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-
-                  <span className="flex items-center justify-self-end">
-                    <RowButton label="Copy email" onClick={() => void navigator.clipboard?.writeText(m.email ?? '')}>
-                      <svg width="15" height="15" viewBox="0 0 18 18" fill="none" aria-hidden>
-                        <rect x="6" y="6" width="10" height="11" rx="2" stroke="rgb(131,131,131)" strokeWidth="1.5" />
-                        <path d="M12 6V3.6a1.6 1.6 0 0 0-1.6-1.6H3.6A1.6 1.6 0 0 0 2 3.6v6.8A1.6 1.6 0 0 0 3.6 12H6" stroke="rgb(131,131,131)" strokeWidth="1.5" />
-                      </svg>
-                    </RowButton>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {error ? <p className="mt-[16px] text-16 text-destructive">{error}</p> : null}
+          <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-hidden>
+            <circle cx="8" cy="8" r="6.2" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" />
+            <path d="m12.6 12.6 3.4 3.4" stroke="rgba(12,12,12,0.4)" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search team"
+            aria-label="Search team"
+            className="w-full bg-transparent text-16 font-medium text-ink outline-none placeholder:text-[rgba(12,12,12,0.4)]"
+          />
+        </label>
       </div>
-    </div>
+
+      {/*
+        The design's columns are fixed pixels drawn at 1920 wide — 1294 in all —
+        so at 1440 the table scrolled sideways and the search was cut off. The
+        narrow columns keep the design's widths; Name and Email share what is
+        left, and it scrolls only below 940px.
+      */}
+      <div className="-mx-[30px] overflow-x-auto pl-[24px] pr-[32px]">
+        <div className="min-w-[940px]">
+          {/* column headers, on the design's rule */}
+          <div
+            className="grid items-center pb-[13px] text-18 font-medium"
+            style={{ gridTemplateColumns: MEMBER_COLUMNS, color: 'rgb(131,131,131)' }}
+          >
+            <span />
+            <span />
+            <span>Name</span>
+            <span>Role</span>
+            <span>Email</span>
+            <span>Status</span>
+            <span>Last Login</span>
+            <span />
+          </div>
+          <div aria-hidden className="h-px w-full" style={{ background: 'rgba(131,131,131,0.25)' }} />
+
+          {members === null ? (
+            <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>Reading the team…</p>
+          ) : shown.length === 0 ? (
+            <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>
+              {q ? 'Nobody matches that.' : 'Nobody else is in this organisation yet.'}
+            </p>
+          ) : (
+            <ul>
+              {shown.map((m) => {
+                const role = m.orgRole.replace(/^org:/, '');
+                const hue = ROLE_HUE[role] ?? 'var(--ss-set-role-viewer)';
+                return (
+                  <li
+                    key={m.userId}
+                    className="grid items-center border-b border-[rgba(131,131,131,0.25)]"
+                    style={{ gridTemplateColumns: MEMBER_COLUMNS, height: 83 }}
+                  >
+                    <span
+                      aria-hidden
+                      className="block h-[24px] w-[24px] rounded-[5.63px]"
+                      style={{ boxShadow: 'inset 0 0 0 1.5px rgba(12,12,12,0.2)' }}
+                    />
+
+                    <span
+                      aria-hidden
+                      className="flex h-[53px] w-[53px] items-center justify-center rounded-[12.322px] text-20 font-bold text-black"
+                      style={{ background: hueFor(m.userId) }}
+                    >
+                      {monogram(m)}
+                    </span>
+
+                    <span className="truncate pr-[12px] text-18 font-medium text-ink">{m.name ?? '—'}</span>
+
+                    {/* The role chip is also the control — `team.role.set`. */}
+                    <span className="relative block h-[39px] w-[131px]">
+                      <select
+                        value={role}
+                        disabled={busyId === m.userId}
+                        onChange={(e) => void setRole(m, e.target.value)}
+                        aria-label={`Role for ${m.name ?? m.email ?? 'this member'}`}
+                        className="h-full w-full cursor-pointer appearance-none rounded-[8.202px] text-center text-18 font-medium outline-none"
+                        style={{ background: `color-mix(in srgb, ${hue} 10%, transparent)`, color: hue }}
+                      >
+                        {['owner', 'admin', 'editor', 'approver', 'viewer', 'client'].map((r) => (
+                          <option key={r} value={r} style={{ color: '#0C0C0C' }}>
+                            {r[0]!.toUpperCase() + r.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </span>
+
+                    <span className="truncate pr-[12px] text-18 font-medium text-ink">{m.email ?? '—'}</span>
+
+                    {/*
+                      The design's Online/Offline pill. Nothing tracks presence, so
+                      this says what is known — whether the member reaches every
+                      brand or only some — rather than inventing a green dot.
+                    */}
+                    <span
+                      className="flex h-[34px] w-[89px] items-center justify-center rounded-[7.087px] text-16 font-medium"
+                      style={{ background: 'rgba(131,131,131,0.2)', color: 'rgb(131,131,131)' }}
+                      title={m.allBrands ? 'Administers every brand in this organisation' : `${m.brands.length} brand(s)`}
+                    >
+                      {m.allBrands ? 'All brands' : `${m.brands.length} brand${m.brands.length === 1 ? '' : 's'}`}
+                    </span>
+
+                    <span className="text-18 font-normal" style={{ color: 'rgb(131,131,131)' }}>
+                      {new Date(m.joinedAt).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+
+                    <span className="flex items-center justify-self-end">
+                      <RowButton label="Copy email" onClick={() => void navigator.clipboard?.writeText(m.email ?? '')}>
+                        <svg width="15" height="15" viewBox="0 0 18 18" fill="none" aria-hidden>
+                          <rect x="6" y="6" width="10" height="11" rx="2" stroke="rgb(131,131,131)" strokeWidth="1.5" />
+                          <path d="M12 6V3.6a1.6 1.6 0 0 0-1.6-1.6H3.6A1.6 1.6 0 0 0 2 3.6v6.8A1.6 1.6 0 0 0 3.6 12H6" stroke="rgb(131,131,131)" strokeWidth="1.5" />
+                        </svg>
+                      </RowButton>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {error ? <p className="mt-[16px] text-16 text-destructive">{error}</p> : null}
+        </div>
+      </div>
+    </>
   );
 }
+
+const MEMBER_COLUMNS = '48px 69px minmax(150px, 2fr) 160px minmax(200px, 3fr) 125px 150px 60px';
 
 /** The design's 39x39 round row button. */
 function RowButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
