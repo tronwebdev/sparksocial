@@ -428,6 +428,13 @@
       "when": 1793289837201,
       "tag": "0060_aberrant_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1793298028667,
+      "tag": "0061_yellow_patch",
+      "breakpoints": true
     }
   ]
 }

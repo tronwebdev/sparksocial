@@ -29,6 +29,7 @@ import { createRecipeRepository } from './recipeRepository.js';
 import { createOAuthConnectionRepository } from './oauthConnectionRepository.js';
 import { createOrgSettingsRepository } from './orgSettingsRepository.js';
 import { createAgencyProfileRepository } from './agencyProfileRepository.js';
+import { createAgencySiteRepository } from './agencySiteRepository.js';
 import { createBrandMemberRepository, createReviewLinkRepository } from './agencyRepository.js';
 import { createKnowledgeRepository } from './knowledgeRepository.js';
 import { createLeadRepository, createProposalRepository } from './pipelineRepository.js';
@@ -59,6 +60,7 @@ export function createPostgresScopedDb(db: Database): ScopedDb {
     knowledge: createKnowledgeRepository(db),
     orgSettings: createOrgSettingsRepository(db),
     agencyProfiles: createAgencyProfileRepository(db),
+    agencySites: createAgencySiteRepository(db),
     brandMembers: createBrandMemberRepository(db),
     reviewLinks: createReviewLinkRepository(db),
     leads: createLeadRepository(db),

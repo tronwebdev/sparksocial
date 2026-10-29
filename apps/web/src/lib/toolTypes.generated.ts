@@ -11,10 +11,22 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 227 tools.
+ * 233 tools.
  */
 
 export interface ToolIO {
+  "agency.domain.connect": {
+    input: { domain: string };
+    output: { domain: string; verified: boolean; records: Array<{ type: "CNAME" | "A"; host: string; value: string; note?: string }> };
+  };
+  "agency.domain.remove": {
+    input: Record<string, never>;
+    output: { removed: (string) | (null) };
+  };
+  "agency.domain.status": {
+    input: Record<string, never>;
+    output: { domain: string; verified: boolean; records: Array<{ type: "CNAME" | "A"; host: string; value: string; note?: string }> };
+  };
   "agency.identity.generate": {
     input: { part: "identity" | "theme"; model: "local_business" | "personal_brand"; name?: string; service?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative" };
     output: { name?: string; tagline?: string; tone?: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; colors?: Array<string>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
@@ -34,6 +46,18 @@ export interface ToolIO {
   "agency.roster": {
     input: { windowDays?: number };
     output: { windowDays: number; brands: Array<{ genomeId: string; brandId: string; name: string; updatedAt: string; publishedCount: number; impressions: number; engagements: number; quiet: boolean; industry?: string; teamMembers: number; platforms: Array<string> }>; totals: { brands: number; quiet: number; publishedCount: number; impressions: number; engagements: number }; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
+  "agency.site.generate": {
+    input: Record<string, never>;
+    output: { site: { slug: string; url: string; subdomainUrl: string; domain?: string; published: boolean; publishedAt?: string; content: { headline: string; subheadline: string; services: Array<{ title: string; description: string }>; about: string; ctaLabel: string; contactHeading: string } }; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
+  "agency.site.get": {
+    input: Record<string, never>;
+    output: { site: ({ slug: string; url: string; subdomainUrl: string; domain?: string; published: boolean; publishedAt?: string; content: { headline: string; subheadline: string; services: Array<{ title: string; description: string }>; about: string; ctaLabel: string; contactHeading: string } }) | (null); rootDomain: string };
+  };
+  "agency.site.set": {
+    input: { slug?: string; content?: { headline: string; subheadline: string; services: Array<{ title: string; description: string }>; about: string; ctaLabel: string; contactHeading: string }; published?: boolean };
+    output: { site: { slug: string; url: string; subdomainUrl: string; domain?: string; published: boolean; publishedAt?: string; content: { headline: string; subheadline: string; services: Array<{ title: string; description: string }>; about: string; ctaLabel: string; contactHeading: string } } };
   };
   "agent.approval_mode.get": {
     input: Record<string, never>;

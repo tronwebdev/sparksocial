@@ -2008,6 +2008,17 @@ export const orgSettings = pgTable('org_settings', {
    */
   agencyProfile: jsonb('agency_profile'),
   agencyProfileUpdatedAt: timestamp('agency_profile_updated_at', { withTimezone: true }),
+  /**
+   * The agency's generated website (`agency.site.*`). `site_slug` is its
+   * address under the sites root (`<slug>.sparkai.social`) and `site_domain`
+   * a custom domain bound to it; both are how a public request finds the org,
+   * so both are unique. The page copy is JSON for the same reason the profile
+   * is. Published means `site_published_at` is set — nothing is served before.
+   */
+  siteSlug: text('site_slug').unique(),
+  siteDomain: text('site_domain').unique(),
+  siteContent: jsonb('site_content'),
+  sitePublishedAt: timestamp('site_published_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

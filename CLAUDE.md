@@ -141,8 +141,9 @@ which is the only reason it is worth recording that it was wrong.
 
 Measured against the registry and the deployed manifest, not from memory:
 
-- **227 tools defined, 226 live** (generator, 29 Oct). Only `analytics.sync` is unregistered, gated on
-  `AYRSHARE_API_KEY`. Nothing else is held back by configuration. The count comes from
+- **233 tools defined, 229 live** (generator, 29 Oct). Unregistered by configuration: `analytics.sync`
+  (gated on `AYRSHARE_API_KEY`) and the three `agency.domain.*` tools (gated on `RENDER_API_KEY`,
+  `RENDER_WEB_SERVICE_ID` and `SITE_CNAME_TARGET`). The count comes from
   `npm run generate:tool-types`, which walks every `defineTool` in the source and so counts
   what is *defined* regardless of env gating — it read 214 before `brand.delete` and
   `brand.deletion.preview` were added, so the "212" this line used to carry had already

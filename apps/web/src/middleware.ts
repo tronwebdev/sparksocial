@@ -1,4 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { siteForHost } from './lib/siteHost';
 
 /**
  * Everything is protected except the auth surfaces. `auth.protect()` redirects an
@@ -26,6 +28,12 @@ const isPublic = createRouteMatcher([
     narrow: one page, read-only, no accept.
   */
   '/p/(.*)',
+  /*
+    `AG-WIZ-03`: agency websites. Public for the same reason — their visitors
+    have no account — and read-only apart from the contact form, which posts
+    through a server action to the API's rate-limited public lead endpoint.
+  */
+  '/s/(.*)',
 ]);
 
 /**
@@ -35,7 +43,7 @@ const isPublic = createRouteMatcher([
  */
 const TASKS_URL = '/sign-in/tasks';
 
-export default clerkMiddleware(
+const clerk = clerkMiddleware(
   async (auth, req) => {
     if (isPublic(req)) return;
 
@@ -68,6 +76,26 @@ export default clerkMiddleware(
     signUpUrl: '/sign-up',
   },
 );
+
+/**
+ * Agency websites first, then the app.
+ *
+ * A request for `<slug>.sparkai.social` or a bound custom domain is not the
+ * app at all: it is rewritten to the site page and never reaches Clerk, which
+ * has no business on an agency's domain. Everything else — `app.`, the
+ * `onrender.com` host, `localhost` — is the app, unchanged. See
+ * `lib/siteHost.ts` for how a host is classified.
+ */
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  const site = siteForHost(req.headers.get('x-forwarded-host') ?? req.headers.get('host'));
+  if (site) {
+    const url = req.nextUrl.clone();
+    url.pathname = 'slug' in site ? `/s/${site.slug}` : `/s/by-domain/${encodeURIComponent(site.domain)}`;
+    url.search = '';
+    return NextResponse.rewrite(url);
+  }
+  return clerk(req, event);
+}
 
 export const config = {
   matcher: [

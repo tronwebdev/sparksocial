@@ -114,7 +114,7 @@ const DEFAULTS = { max: 60, windowMs: 60_000 };
  * than implied, because a limiter that quietly does less than it looks like it
  * does is worse than none.
  */
-function createLimiter({ max, windowMs }: { max: number; windowMs: number }) {
+export function createLimiter({ max, windowMs }: { max: number; windowMs: number }) {
   const hits = new Map<string, { n: number; resetAt: number }>();
 
   return function take(key: string): boolean {

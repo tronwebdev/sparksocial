@@ -245,6 +245,14 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         get: async () => undefined,
         set: async () => { throw new Error('agencyProfiles.set not stubbed in this test'); },
       },
+      agencySites: {
+        get: async () => undefined,
+        save: async () => { throw new Error('agencySites.save not stubbed in this test'); },
+        setDomain: async () => undefined,
+        slugTaken: async () => false,
+        domainTaken: async () => false,
+        findPublished: async () => undefined,
+      },
       leads: {
         create: async () => { throw new Error('leads.create not stubbed in this test'); },
         importMany: async () => ({ inserted: [], skippedKeys: [] }),

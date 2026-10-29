@@ -141,6 +141,12 @@ import {
   agencyProfileSet,
   makeAgencyIdentityGenerate,
   makeAgencyJobsSearch,
+  makeAgencySiteGet,
+  makeAgencySiteGenerate,
+  makeAgencySiteSet,
+  makeAgencyDomainConnect,
+  makeAgencyDomainStatus,
+  makeAgencyDomainRemove,
   makeBrandKnowledgeAttach,
   makeBrandKnowledgeAttachDocument,
   brandExport,
@@ -268,6 +274,8 @@ import { replyWriter } from './reply-writer.js';
 import { hookWriter } from './hook-writer.js';
 import { agencyIdentityWriter } from './agency-identity-writer.js';
 import { himalayasJobBoard } from './himalayas-client.js';
+import { siteWriter } from './site-writer.js';
+import { renderDomainProvider } from './render-domains.js';
 import { whatsappTransportClient } from './whatsapp-transport-client.js';
 import { createFfmpegRunner } from './ffmpeg-runner.js';
 import { createRemotionRunner } from './remotion-runner.js';
@@ -1149,6 +1157,25 @@ export function registerAgencyTools(deps: {
   register(makeAgencyIdentityGenerate(agencyIdentityWriter()));
   // Job Finder's listings — Himalayas' free public API; see the tool for its terms.
   register(makeAgencyJobsSearch(himalayasJobBoard()));
+  // The agency website: `<slug>.<SITE_ROOT_DOMAIN>`, written from the wizard.
+  const sites = { rootDomain: envStr('SITE_ROOT_DOMAIN', 'sparkai.social') };
+  register(makeAgencySiteGet(sites));
+  register(makeAgencySiteGenerate(siteWriter(), sites));
+  register(makeAgencySiteSet(sites));
+  // Custom domains need the Render API. Absent settings leave the tools
+  // unregistered, so the wizard says domains are not set up rather than failing.
+  if (envSet('RENDER_API_KEY') && envSet('RENDER_WEB_SERVICE_ID') && envSet('SITE_CNAME_TARGET')) {
+    const render = renderDomainProvider({
+      apiKey: envStr('RENDER_API_KEY', ''),
+      serviceId: envStr('RENDER_WEB_SERVICE_ID', ''),
+      cnameTarget: envStr('SITE_CNAME_TARGET', ''),
+    });
+    register(makeAgencyDomainConnect(render, sites));
+    register(makeAgencyDomainStatus(render));
+    register(makeAgencyDomainRemove(render));
+  } else {
+    console.warn('[warn] RENDER_API_KEY / RENDER_WEB_SERVICE_ID / SITE_CNAME_TARGET unset — agency custom domains are not registered.');
+  }
   register(makeBrandKnowledgeAttach(embedClient()));
   // F6's document upload. The reader is injected so the package stays free of a
   // PDF parser — see document-reader.ts.

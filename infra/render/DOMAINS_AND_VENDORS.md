@@ -343,3 +343,61 @@ privacy, terms URLs) — Stripe shows them on checkout.
 6. Swap the single-URL webhooks: WhatsApp, Meta webhooks, Stripe (new secret), Ayrshare.
 7. Test end to end: sign in, sign up with Google, connect one social account, upload an asset, send a WhatsApp clip, run a Stripe test checkout.
 8. After a day of clean traffic: remove old URLs from vendor dashboards, drop `onrender.com` from `CLERK_AUTHORIZED_PARTIES` and `r2-cors.json`, then follow `MIGRATION.md` §7–8 to delete Azure.
+
+---
+
+## Agency websites — `<agency>.sparkai.social` and custom domains
+
+Each agency's generated website (`agency.site.generate`) is served by the
+**`sparksocial-web`** service: `apps/web/src/middleware.ts` reads the request's
+host (`lib/siteHost.ts`) and rewrites `northside.sparkai.social` or a bound
+custom domain to `/s/...`. Nothing about this needs a deploy per agency — only
+the one-time setup below. Until it is done, sites still render at
+`https://app.sparkai.social/s/<slug>`.
+
+**Order matters:** migration `0061` (four nullable `org_settings` columns) must
+run before the API that reads them, as with every migration here.
+
+### 1. The wildcard subdomain (once)
+
+1. Render → `sparksocial-web` → Settings → Custom Domains → add `*.sparkai.social`.
+2. At the DNS host for `sparkai.social`, add the three records Render shows for a
+   wildcard. They are of this form (copy Render's exact values):
+
+   | Type | Name | Value |
+   | --- | --- | --- |
+   | CNAME | `*` | `sparksocial-web.onrender.com` |
+   | CNAME | `_acme-challenge` | `sparksocial-web.verify.renderdns.com` |
+   | CNAME | `_cf-custom-hostname` | `sparksocial-web.hostname.renderdns.com` |
+
+3. Render requires the **root domain to point at Render** for a wildcard to
+   work. `sparkai.social` already does (it is `sparksocial-marketing`); if that
+   ever moves off Render, the wildcard stops issuing certificates.
+4. On Cloudflare, keep these records **DNS only** (grey cloud).
+
+Explicit records win over the wildcard, so `app.`, `api.`, `clerk.`,
+`accounts.` and `mautic.` are unaffected. `lib/siteHost.ts` also refuses to
+treat any of the product's own labels as an agency.
+
+### 2. Custom domains (optional)
+
+`agency.domain.connect` adds the agency's domain to `sparksocial-web` through
+Render's API, and the wizard shows the DNS records the agency must set (a CNAME
+for a subdomain; an `A` record to `216.24.57.1`, or an ALIAS, for a root domain,
+plus `www`). Render issues the certificate once DNS resolves.
+
+Set these three on **`sparksocial-api`** (the env group) to switch it on. Leave
+all three out to keep it off — the domain tools then stay unregistered and the
+wizard says custom domains are not switched on:
+
+| Key | Value |
+| --- | --- |
+| `RENDER_API_KEY` | Account Settings → API Keys. It can manage every service in the workspace — treat it like a root password. |
+| `RENDER_WEB_SERVICE_ID` | `srv-…` from `sparksocial-web`'s URL in the dashboard. |
+| `SITE_CNAME_TARGET` | `sparksocial-web.onrender.com` |
+
+**The bill:** Render counts custom domains per workspace — 15 on Pro, then
+$0.25 a month each — and every agency that connects one adds to it.
+
+`SITE_ROOT_DOMAIN` (default `sparkai.social`) is read by both services if the
+sites ever move to another root.

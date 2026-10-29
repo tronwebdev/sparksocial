@@ -7,6 +7,7 @@ import { SECTION } from '@/components/shell/narrowStage';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { cn } from '@/lib/utils';
+import type { AgencySiteApi } from './useAgencySite';
 
 
 /**
@@ -32,8 +33,10 @@ import { cn } from '@/lib/utils';
  * Here the answers are saved on the organisation (`agency.profile.set`) on
  * every Continue, and Launch stamps the agency launched — so "Edit Wizard"
  * opens what was entered, on any device. The logo is the Clerk organisation's
- * own image. What is still not behind these fields is a website: nothing
- * builds or hosts one, and the last step says "Not connected yet".
+ * own image. Step 3 writes and publishes the agency's website
+ * (`agency.site.generate`) at `<slug>.sparkai.social`, and step 4 binds a
+ * custom domain to it (`agency.domain.*`) when this deployment has Render's
+ * API configured.
  */
 
 export const WIZ_HEIGHTS = [760, 1280, 1400, 1360] as const;
@@ -100,6 +103,8 @@ export function AgencyWizard({
   onClose,
   busy,
   note,
+  onSaveProfile,
+  site,
 }: {
   step: 0 | 1 | 2 | 3;
   draft: WizardDraft;
@@ -111,6 +116,10 @@ export function AgencyWizard({
   onClose: () => void;
   busy?: boolean;
   note?: string | null;
+  /** Saves the draft as the agency profile — the website is written from what is saved. */
+  onSaveProfile: () => Promise<boolean>;
+  /** The portal's one `useAgencySite` — shared, so a domain check is not run twice. */
+  site: AgencySiteApi;
 }) {
   const h = WIZ_HEIGHTS[step];
   const set = (patch: Partial<WizardDraft>) => onDraft({ ...draft, ...patch });
@@ -298,8 +307,8 @@ export function AgencyWizard({
         >
           {step === 0 ? <StepModel draft={draft} set={set} /> : null}
           {step === 1 ? <StepIdentity draft={draft} set={set} /> : null}
-          {step === 2 ? <StepWebsite draft={draft} set={set} /> : null}
-          {step === 3 ? <StepDone draft={draft} set={set} accounts={accounts} note={note} /> : null}
+          {step === 2 ? <StepWebsite draft={draft} set={set} site={site} onSaveProfile={onSaveProfile} /> : null}
+          {step === 3 ? <StepDone draft={draft} set={set} accounts={accounts} note={note} site={site} onSkip={onNext} /> : null}
         </div>
       </div>
     </>
@@ -805,13 +814,74 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 /* ── step 3 · website ────────────────────────────────────────────────── */
 
-function StepWebsite({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
+/** Roughly the address `agency.site.generate` will choose — the tool settles collisions. */
+function previewSlug(name: string): string {
+  const s = name.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  return s.length >= 3 ? s : 'your-agency';
+}
+
+function StepWebsite({
+  draft,
+  set,
+  site,
+  onSaveProfile,
+}: {
+  draft: WizardDraft;
+  set: (p: Partial<WizardDraft>) => void;
+  site: AgencySiteApi;
+  onSaveProfile: () => Promise<boolean>;
+}) {
   return (
     <div className="px-[44px] pb-[40px] pt-[56px]">
       <h3 className="text-22 font-bold leading-none text-ink">Agency Website</h3>
       <p className="mt-[14px] text-15 font-normal" style={{ color: 'rgb(131,131,131)' }}>
         A cutting-edge AI-driven agency website
       </p>
+
+      {/*
+        The website itself. Written from the answers on step 2 and styled by the
+        choices below — so the choices can be changed after generating and the
+        live site picks them up, while the copy only changes when regenerated.
+      */}
+      <div className="mt-[24px] flex flex-wrap items-center justify-between gap-[16px] rounded-[16px] p-[20px]" style={{ background: '#F2F7FF', boxShadow: 'inset 0 0 0 1px rgba(49,87,214,0.18)' }}>
+        <div className="min-w-0">
+          <p className="text-16 font-semibold text-ink">
+            {site.site ? (site.site.published ? 'Your website is live' : 'Your website is offline') : 'Your website'}
+          </p>
+          {site.site ? (
+            <a href={site.site.url} target="_blank" rel="noopener noreferrer" className="mt-[4px] block truncate text-15 font-medium underline" style={{ color: '#3157D6' }}>
+              {site.site.url.replace(/^https:\/\//, '')}
+            </a>
+          ) : (
+            <p className="mt-[4px] text-14" style={{ color: 'rgb(131,131,131)' }}>
+              Written from your answers and published at {previewSlug(draft.name)}.{site.rootDomain}.
+            </p>
+          )}
+          {site.error ? <p className="mt-[6px] text-14 text-destructive">{site.error}</p> : null}
+        </div>
+        <div className="flex shrink-0 gap-[10px]">
+          {site.site ? (
+            <button
+              type="button"
+              onClick={() => void site.setPublished(!site.site!.published)}
+              disabled={site.busy !== null}
+              className="flex h-[44px] items-center rounded-[10px] bg-white px-[16px] text-15 font-semibold text-ink disabled:opacity-60"
+              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
+            >
+              {site.site.published ? 'Take offline' : 'Put back online'}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void site.generate(onSaveProfile)}
+            disabled={site.busy !== null || !draft.name.trim()}
+            title={draft.name.trim() ? undefined : 'Give the agency a name on step 2 first'}
+            className="flex h-[44px] items-center rounded-[10px] bg-ink px-[18px] text-15 font-semibold text-white disabled:opacity-60"
+          >
+            {site.busy === 'generate' ? 'Writing your site…' : site.site ? 'Rewrite the copy' : 'Generate my website'}
+          </button>
+        </div>
+      </div>
 
       <p className="mt-[28px] text-16 font-semibold text-ink">Layout Style</p>
       <div className="mt-[14px] rounded-[16px] p-[22px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
@@ -965,13 +1035,19 @@ function StepDone({
   set,
   accounts,
   note,
+  site,
+  onSkip,
 }: {
   draft: WizardDraft;
   set: (p: Partial<WizardDraft>) => void;
   /** Connected publishing accounts, for the design's Accounts row. */
   accounts: Array<{ platform: string; label: string }>;
   note?: string | null;
+  site: AgencySiteApi;
+  /** The design's "Skip for now" — finishes the wizard without a domain. */
+  onSkip: () => void;
 }) {
+  const domain = site.domain;
   return (
     <div className="relative px-[44px] pb-[44px] pt-[56px]">
       {/* ── the two tiles the design floats either side of the headline ── */}
@@ -1027,14 +1103,17 @@ function StepDone({
           {draft.name.trim() || 'Your agency'}
         </p>
 
-        {/*
-          The design prints a live website URL here. Nothing provisions one, so
-          this names the field and says it is unset rather than showing an
-          address that would 404.
-        */}
-        <p className="absolute left-[24px] top-[114px] text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
+        <p className="absolute left-[24px] top-[114px] max-w-[460px] truncate text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Website URL:{' '}
-          <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>Not connected yet</b>
+          {site.site?.published ? (
+            <a href={site.site.url} target="_blank" rel="noopener noreferrer" className="font-semibold underline" style={{ color: 'rgb(59,59,59)' }}>
+              {site.site.url.replace(/^https:\/\//, '')}
+            </a>
+          ) : (
+            <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>
+              {site.site ? 'Offline' : 'Not generated yet — step 3'}
+            </b>
+          )}
         </p>
         <p className="absolute left-[24px] top-[150px] text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
           Agency Email:{' '}
@@ -1084,105 +1163,145 @@ function StepDone({
       {/* ── domain ───────────────────────────────────────────────────── */}
       <div className="mt-[38px] flex items-start justify-between">
         <p className="text-19 font-bold text-ink">Connect your own domain</p>
-        {/*
-          The design's "Skip for now" advances the same way Launch does — it is
-          the wizard's own escape from a step that cannot complete.
-        */}
-        <span
-          className="flex h-[40px] items-center gap-[9px] rounded-[10px] bg-white px-[16px] text-15 font-semibold"
-          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)', opacity: 0.55 }}
-          title="Nothing to skip — no domain can be linked yet"
+        <button
+          type="button"
+          onClick={onSkip}
+          className="flex h-[40px] items-center gap-[9px] rounded-[10px] bg-white px-[16px] text-15 font-semibold transition-colors hover:bg-[#F4F5F7]"
+          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)' }}
         >
           Skip for now
           <svg width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden className="block">
             <path d="m1 1 4.5 4.5L1 10M7 1l4.5 4.5L7 10" stroke="#5B5B5B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </span>
+        </button>
       </div>
 
       <div className="mt-[14px] rounded-[16px] p-[24px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.2)' }}>
-        <p className="text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
-          Enter the domain you want to connect to your website
-        </p>
-        <div className="mt-[14px] flex h-[56px] items-center justify-between rounded-[11px] px-[20px]" style={{ background: '#F2F3F5' }}>
-          <input
-            value={draft.domain}
-            onChange={(e) => set({ domain: e.target.value })}
-            placeholder="youragency.com"
-            aria-label="Domain"
-            className="h-full w-full bg-transparent text-16 font-semibold text-ink outline-none"
-          />
-          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden className="block shrink-0">
-            <path d="m12.4 4.2 3.4 3.4M2.6 17.4l.7-3.3a2 2 0 0 1 .54-1L11.4 5.8a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.6 7.6a2 2 0 0 1-1 .54l-3.3.7-.7-1.2Z" stroke="#5B5B5B" strokeWidth="1.5" strokeLinejoin="round" />
-          </svg>
-        </div>
-
-        <p className="mt-[26px] text-16 font-bold text-ink">DNS Records</p>
-        <p className="mt-[8px] text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>
-          Next, add the following records to your domain&apos;s DNS settings.
-        </p>
-
-        {/*
-          The design's table, with its own two rows blanked. Its fixtures are a
-          real A record and a real `replit.verify` token from whatever host
-          served the mock — publishing either would point this user's domain at
-          someone else's box. The shape stays so the step reads correctly.
-        */}
-        <div className="mt-[16px] overflow-hidden rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}>
-          <div className="grid h-[48px] grid-cols-[148px_210px_1fr] items-center px-[22px]" style={{ background: '#ECEDF0' }}>
-            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Type</span>
-            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Hostname</span>
-            <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Records</span>
-          </div>
-          {(['A', 'TXT'] as const).map((t) => (
-            <div
-              key={t}
-              className="grid h-[60px] grid-cols-[148px_210px_1fr] items-center px-[22px]"
-              style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}
-            >
-              <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>{t}</span>
-              <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>@</span>
-              <span className="text-15 font-medium" style={{ color: 'rgb(155,155,155)' }}>
-                Issued when a host is provisioned
-              </span>
+        {site.domainsAvailable === false ? (
+          <p className="text-15" style={{ color: 'rgb(91,91,91)' }}>
+            Custom domains aren&rsquo;t switched on for this account yet. Your site is live at its{' '}
+            {site.rootDomain} address in the meantime.
+          </p>
+        ) : !site.site ? (
+          <p className="text-15" style={{ color: 'rgb(91,91,91)' }}>
+            Generate your website on step 3 first — a domain is pointed at it.
+          </p>
+        ) : (
+          <>
+            <p className="text-15 font-normal" style={{ color: 'rgb(91,91,91)' }}>
+              {domain ? 'Your domain' : 'Enter the domain you want to connect to your website'}
+            </p>
+            <div className="mt-[14px] flex h-[56px] items-center justify-between gap-[12px] rounded-[11px] px-[20px]" style={{ background: '#F2F3F5' }}>
+              {domain ? (
+                <span className="truncate text-16 font-semibold text-ink">{domain.domain}</span>
+              ) : (
+                <input
+                  value={draft.domain}
+                  onChange={(e) => set({ domain: e.target.value })}
+                  placeholder="youragency.com"
+                  aria-label="Domain"
+                  className="h-full w-full bg-transparent text-16 font-semibold text-ink outline-none"
+                />
+              )}
+              {domain ? (
+                <span
+                  className="flex h-[30px] shrink-0 items-center rounded-[8px] px-[10px] text-13 font-semibold"
+                  style={
+                    domain.verified
+                      ? { background: '#E9F9E7', color: '#13A711', boxShadow: 'inset 0 0 0 1px #13D711' }
+                      : { background: '#FFF6E9', color: '#E48915', boxShadow: 'inset 0 0 0 1px #FFB453' }
+                  }
+                >
+                  {domain.verified ? 'Connected' : 'Waiting for DNS'}
+                </span>
+              ) : null}
             </div>
-          ))}
+
+            {domain ? (
+              <>
+                <p className="mt-[26px] text-16 font-bold text-ink">DNS Records</p>
+                <p className="mt-[8px] text-14 font-normal" style={{ color: 'rgb(131,131,131)' }}>
+                  {domain.verified
+                    ? 'These are set and resolving. Keep them as they are.'
+                    : 'Add these at your domain registrar, then check again. DNS can take up to a few hours; the certificate follows automatically.'}
+                </p>
+                <div className="mt-[16px] overflow-hidden rounded-[10px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}>
+                  <div className="grid h-[48px] grid-cols-[110px_140px_1fr] items-center px-[22px]" style={{ background: '#ECEDF0' }}>
+                    <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Type</span>
+                    <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Hostname</span>
+                    <span className="text-15 font-semibold" style={{ color: 'rgb(59,59,59)' }}>Value</span>
+                  </div>
+                  {domain.records.map((r) => (
+                    <div
+                      key={`${r.type}-${r.host}`}
+                      className="grid min-h-[60px] grid-cols-[110px_140px_1fr] items-center px-[22px] py-[10px]"
+                      style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.14)' }}
+                    >
+                      <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>{r.type}</span>
+                      <span className="text-15 font-medium" style={{ color: 'rgb(59,59,59)' }}>{r.host}</span>
+                      <span className="min-w-0">
+                        <span className="block select-all break-all font-mono text-14" style={{ color: 'rgb(59,59,59)' }}>{r.value}</span>
+                        {r.note ? <span className="mt-[2px] block text-12" style={{ color: 'rgb(131,131,131)' }}>{r.note}</span> : null}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            {site.error ? <p className="mt-[14px] text-14 text-destructive">{site.error}</p> : null}
+          </>
+        )}
+      </div>
+
+      {/* The design's Cancel / Link pair, doing what they say. */}
+      {site.domainsAvailable && site.site ? (
+        <div className="mt-[28px] flex justify-center gap-[12px]">
+          {domain ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void site.remove()}
+                disabled={site.busy !== null}
+                className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-16 font-semibold disabled:opacity-60"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)' }}
+              >
+                {site.busy === 'remove' ? 'Removing…' : 'Remove domain'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void site.check()}
+                disabled={site.busy !== null}
+                className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-ink text-16 font-semibold text-white disabled:opacity-60"
+              >
+                {site.busy === 'check' ? 'Checking…' : 'Check again'}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => set({ domain: '' })}
+                className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-16 font-semibold"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void site.connect(draft.domain)}
+                disabled={site.busy !== null || !draft.domain.trim()}
+                className="flex h-[52px] w-[180px] items-center justify-center gap-[9px] rounded-[11px] bg-ink text-16 font-semibold text-white disabled:opacity-60"
+              >
+                {site.busy === 'connect' ? 'Linking…' : 'Link'}
+                <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden className="block">
+                  <path d="M1 9 9 1M9 1H3M9 1v6" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      ) : null}
 
-      {/*
-        The design's Cancel / Link pair. Link is what Launch already does at the
-        top of the modal, so this is the same action rather than a second one.
-      */}
-      <div className="mt-[28px] flex justify-center gap-[12px]">
-        <span
-          className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-16 font-semibold"
-          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)', opacity: 0.55 }}
-          title="Use Back, or close the wizard"
-        >
-          Cancel
-        </span>
-        <span
-          className="flex h-[52px] w-[180px] items-center justify-center gap-[9px] rounded-[11px] bg-ink text-16 font-semibold text-white"
-          style={{ opacity: 0.55 }}
-          title="No domain can be linked yet — use Launch to finish"
-        >
-          Link
-          <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden className="block">
-            <path d="M1 9 9 1M9 1H3M9 1v6" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      </div>
-
-      {/*
-        The one honest statement this step owes. Everything above is a draft;
-        Launch records that the portal has been set up.
-      */}
-      <p className="mt-[26px] max-w-[820px] text-15 leading-[1.55]" style={{ color: 'rgb(131,131,131)' }}>
-        Launch marks the portal as set up and takes you to it. No website, collateral or DNS is
-        generated — none of that exists in the product yet, and the fields above are kept as a draft
-        rather than sent somewhere that would discard them.
-      </p>
       {note ? <p className="mt-[14px] text-15 text-destructive">{note}</p> : null}
     </div>
   );

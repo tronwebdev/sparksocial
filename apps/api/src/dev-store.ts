@@ -25,6 +25,7 @@ import type {
   OAuthConnectionRecord,
   TeamGroup,
   OrgSettingsRecord,
+  AgencySiteRecord,
   Opportunity,
   RecipeOutputRecord,
   RecipeRecord,
@@ -257,6 +258,7 @@ export function createDevStore(
   // columns landed.
   const orgSettingsMap = new Map<string, OrgSettingsRecord>();
   const agencyProfileMap = new Map<string, { profile: unknown; updatedAt: Date }>();
+  const agencySiteMap = new Map<string, AgencySiteRecord>();
   const brandMemberRows = new Map<string, { orgId: string; brandId: string; userId: string; role: Role; createdAt: Date }>();
   const reviewLinkRows = new Map<string, { id: string; orgId: string; token: string; brandId: string; scope: 'calendar' | 'content_item'; targetId?: string; createdBy: string; expiresAt: Date; createdAt: Date; revokedAt?: Date }>();
   /** The agency pipeline's dev rows. Same lifetime as every other map here. */
@@ -1694,6 +1696,43 @@ export function createDevStore(
         const row = { profile, updatedAt: new Date() };
         agencyProfileMap.set(orgId, row);
         return row;
+      },
+    },
+
+    agencySites: {
+      async get(orgId) {
+        return agencySiteMap.get(orgId);
+      },
+      async save({ orgId, slug, content, publishedAt }) {
+        const prev = agencySiteMap.get(orgId);
+        const row: AgencySiteRecord = {
+          orgId,
+          slug,
+          content,
+          ...(prev?.domain ? { domain: prev.domain } : {}),
+          ...(publishedAt ? { publishedAt } : {}),
+        };
+        agencySiteMap.set(orgId, row);
+        return row;
+      },
+      async setDomain(orgId, domain) {
+        const prev = agencySiteMap.get(orgId);
+        if (!prev) return undefined;
+        const { domain: _old, ...rest } = prev;
+        const row: AgencySiteRecord = domain ? { ...rest, domain } : rest;
+        agencySiteMap.set(orgId, row);
+        return row;
+      },
+      async slugTaken(slug, exceptOrgId) {
+        return [...agencySiteMap.values()].some((s) => s.slug === slug && s.orgId !== exceptOrgId);
+      },
+      async domainTaken(domain, exceptOrgId) {
+        return [...agencySiteMap.values()].some((s) => s.domain === domain && s.orgId !== exceptOrgId);
+      },
+      async findPublished(by) {
+        return [...agencySiteMap.values()].find(
+          (s) => s.publishedAt && ('slug' in by ? s.slug === by.slug : s.domain === by.domain),
+        );
       },
     },
 

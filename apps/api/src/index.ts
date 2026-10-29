@@ -8,6 +8,7 @@ import {
 } from '@sparksocial/spark';
 import { createApp, memoryInvokeDeps } from './app.js';
 import { registerPublicProposal } from './public-proposal.js';
+import { registerPublicSites } from './public-site.js';
 import { createClerkClient } from '@clerk/backend';
 import { registerAlphaTools, registerAgencyTools, blobStore, localBlobStoreForRoutes } from './tools.js';
 import { registerLocalStorageRoutes } from './local-storage-routes.js';
@@ -704,6 +705,28 @@ registerPublicProposal(app, {
           /* Name only. `org.imageUrl` base64-embeds the org and instance ids —
              see `Agency` in `public-proposal.ts`. */
           return org.name ? { name: org.name } : undefined;
+        },
+      }
+    : {}),
+});
+
+/*
+  The agency websites' public surface — the page data by slug or host, the
+  logo bytes, and the contact form that adds an inbound lead. Not tools, for
+  the same reason as the proposal route; see `public-site.ts`.
+*/
+registerPublicSites(app, {
+  db: scopedDb,
+  ...(clerk
+    ? {
+        /* Fetched here so the browser never sees Clerk's image URL, which
+           base64-embeds the org id. */
+        resolveLogo: async (orgId: string) => {
+          const org = await clerk.organizations.getOrganization({ organizationId: orgId });
+          if (!org.hasImage || !org.imageUrl) return undefined;
+          const res = await fetch(org.imageUrl, { signal: AbortSignal.timeout(10_000) });
+          if (!res.ok) return undefined;
+          return { contentType: res.headers.get('content-type') ?? 'image/png', bytes: await res.arrayBuffer() };
         },
       }
     : {}),

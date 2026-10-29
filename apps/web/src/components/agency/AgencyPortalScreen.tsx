@@ -8,6 +8,7 @@ import { AgencyClientFinder } from './AgencyClientFinder';
 import { AgencyJobFinder } from './AgencyJobFinder';
 import { AgencyWizard, WIZ_HEIGHTS, emptyWizardDraft, type WizardDraft } from './AgencyWizard';
 import { useAgencyRoster, useConnectedAccounts } from './useAgencyRoster';
+import { useAgencySite } from './useAgencySite';
 import { useNotifications } from '@/lib/notifications';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
@@ -89,6 +90,7 @@ export function AgencyPortalScreen() {
   const { roster, error, reload } = useAgencyRoster();
   const { toast } = useNotifications();
   const accounts = useConnectedAccounts();
+  const site = useAgencySite();
 
   /* Read once on mount — `localStorage` is not available while prerendering. */
   useEffect(() => {
@@ -175,6 +177,7 @@ export function AgencyPortalScreen() {
               totals={roster?.totals ?? { brands: 0, quiet: 0 }}
               accounts={accounts}
               onEditWizard={() => setWizStep(0)}
+              websiteUrl={site.site?.published ? site.site.url : null}
             />
           ) : (
             <AgencyHomeHero onLaunch={() => setWizStep(0)} />
@@ -258,6 +261,8 @@ export function AgencyPortalScreen() {
           onClose={() => setWizStep(null)}
           busy={saving}
           note={wizStep === 3 ? saveNote : null}
+          onSaveProfile={() => save(false)}
+          site={site}
         />
       ) : null}
     </AgencyStage>

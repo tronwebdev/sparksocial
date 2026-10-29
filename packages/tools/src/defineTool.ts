@@ -451,6 +451,8 @@ export interface ScopedDb {
   orgSettings: OrgSettingsStore;
   /** What the Agency Portal's launch wizard collects — `agency.profile.*`. See {@link AgencyProfileStore}. */
   agencyProfiles: AgencyProfileStore;
+  /** The agency's generated website and its domain — `agency.site.*`, `agency.domain.*`. See {@link AgencySiteStore}. */
+  agencySites: AgencySiteStore;
   /** Saved/tracked trends per genome — `trend.watchlist`. See {@link TrendWatchlistStore}. */
   trends: TrendWatchlistStore;
   /** Sources this brand has muted — `trend.source.mute`. See {@link TrendSourceMuteStore}. */
@@ -2580,6 +2582,35 @@ export interface AgencyProfileStore {
   get(orgId: string): Promise<{ profile: unknown; updatedAt: Date } | undefined>;
   /** A whole-profile replace; the wizard always sends every field. */
   set(orgId: string, profile: unknown): Promise<{ profile: unknown; updatedAt: Date }>;
+}
+
+/** One org's website row. `content` is opaque here; `agency.site.*`'s schema owns its shape. */
+export interface AgencySiteRecord {
+  orgId: string;
+  slug: string;
+  domain?: string;
+  content: unknown;
+  publishedAt?: Date;
+}
+
+/**
+ * THE AGENCY'S WEBSITE — one per org, found publicly by its slug or its custom
+ * domain. The two public lookups are the only org-crossing reads, which is why
+ * they return the org id to the API's public route and nothing returns it
+ * further: the route projects an allow-list.
+ */
+export interface AgencySiteStore {
+  get(orgId: string): Promise<AgencySiteRecord | undefined>;
+  /** Writes slug and content; `publishedAt` is set or cleared as given. The unique index backs `slugTaken`. */
+  save(args: { orgId: string; slug: string; content: unknown; publishedAt: Date | null }): Promise<AgencySiteRecord>;
+  /** Binds or clears the custom domain. The unique index backs `domainTaken`. */
+  setDomain(orgId: string, domain: string | null): Promise<AgencySiteRecord | undefined>;
+  /** Whether any other org already uses this slug. */
+  slugTaken(slug: string, exceptOrgId: string): Promise<boolean>;
+  /** Whether any other org already uses this domain. */
+  domainTaken(domain: string, exceptOrgId: string): Promise<boolean>;
+  /** The public lookups. Only published sites are returned. */
+  findPublished(by: { slug: string } | { domain: string }): Promise<AgencySiteRecord | undefined>;
 }
 
 /** One team member's brand-level access — `team.permission.set` (plan §6.9). Clerk owns org membership; this owns which specific brands within it a member can reach. */

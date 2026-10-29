@@ -76,7 +76,7 @@ export const DEFAULT_AGENCY_PROFILE: AgencyProfile = {
  * make an agency's whole saved profile unreadable, so each field falls back to
  * its default on its own rather than the record failing as one.
  */
-function readStored(raw: unknown): AgencyProfile {
+export function readStoredProfile(raw: unknown): AgencyProfile {
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const out: Record<string, unknown> = { ...DEFAULT_AGENCY_PROFILE };
   for (const [key, field] of Object.entries(AgencyProfile.shape)) {
@@ -113,7 +113,7 @@ export const agencyProfileGet = defineTool({
   async handler(_input, ctx) {
     const stored = await ctx.db.agencyProfiles.get(ctx.orgId);
     if (!stored) return { profile: null, launched: false };
-    const profile = readStored(stored.profile);
+    const profile = readStoredProfile(stored.profile);
     return { profile, launched: Boolean(profile.launchedAt) };
   },
 });
@@ -149,7 +149,7 @@ export const agencyProfileSet = defineTool({
 
   async handler(input, ctx) {
     const existing = await ctx.db.agencyProfiles.get(ctx.orgId);
-    const previousLaunch = existing ? readStored(existing.profile).launchedAt : undefined;
+    const previousLaunch = existing ? readStoredProfile(existing.profile).launchedAt : undefined;
     const launchedAt = previousLaunch ?? (input.launch ? new Date().toISOString() : undefined);
 
     const profile: AgencyProfile = { ...input.profile, ...(launchedAt ? { launchedAt } : {}) };

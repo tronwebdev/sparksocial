@@ -174,11 +174,14 @@ export function AgencyHomeSummary({
   totals,
   accounts,
   onEditWizard,
+  websiteUrl,
 }: {
   totals: { brands: number; quiet: number };
   /** Connected publishing accounts, for the design's chip row. */
   accounts: Array<{ platform: string; label: string }>;
   onEditWizard: () => void;
+  /** The live agency website, or null when none is published. */
+  websiteUrl?: string | null;
 }) {
   const active = Math.max(0, totals.brands - totals.quiet);
 
@@ -235,9 +238,15 @@ export function AgencyHomeSummary({
 
       <p className="absolute left-[66px] top-[374px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
         Website URL:{' '}
-        <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>
-          Not connected yet
-        </b>
+        {websiteUrl ? (
+          <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline" style={{ color: 'rgb(59,59,59)' }}>
+            {websiteUrl.replace(/^https:\/\//, '')}
+          </a>
+        ) : (
+          <b className="font-semibold" style={{ color: 'rgb(59,59,59)' }}>
+            Not generated yet
+          </b>
+        )}
       </p>
 
       {/* ── the account chips ──────────────────────────────────────────── */}

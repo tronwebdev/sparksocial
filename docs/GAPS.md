@@ -84,9 +84,11 @@ Blocked on somebody outside this repo. No amount of implementation moves them.
       trainings. **Updated 29 Oct:** the identity and theme are now real — the launch wizard
       saves on the org (`agency.profile.*`), "Generate With Ai" suggests a name, tagline, tone
       and colours (`agency.identity.generate`), and the logo is the Clerk organisation's image.
-      Job Finder searches Himalayas' public remote-jobs API (`agency.jobs.search`). Still
-      absent: a generated, hosted agency website, and domain binding
-      (`whitelabel.link.create` exists, domain binding does not). "Find Clients" is **deliberately** inert — it is prospecting
+      Job Finder searches Himalayas' public remote-jobs API (`agency.jobs.search`). The agency
+      website is generated and served at `<slug>.sparkai.social` (`agency.site.*`), and custom
+      domains bind through Render's API (`agency.domain.*`, off until its three settings are in
+      the env group — `infra/render/DOMAINS_AND_VENDORS.md`). Find Clients takes Clientforce's
+      contacts export (Clientforce has no API). "Find Clients" is **deliberately** not a prospector — it is prospecting
       by harvesting, and that was a decision, not an omission. §8.13 names them and then says their outputs are *"defined by separate PRD if
       deeper"*, so there is nothing to build against and building anyway would be inventing
       product. They appear on Account Home marked as not built. **The one item here blocked on a
