@@ -75,6 +75,15 @@ function sizeFor(aspectRatio: string): string {
       return '1024x1536';
     case '16:9':
       return '1536x1024';
+    /*
+      The agency banners (21:9 Facebook cover, 4:1 LinkedIn banner). They fell
+      to the default and came back square on staging, where this is the vendor
+      answering. The widest standard size is the honest nearest; the portal
+      shows them cropped to the banner's shape.
+    */
+    case '21:9':
+    case '4:1':
+      return '1536x1024';
     default:
       return '1024x1024';
   }

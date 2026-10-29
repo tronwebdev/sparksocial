@@ -193,7 +193,8 @@ const EXTRA = parseExtra('FAL_IMAGE_EXTRA_PARAMS');
 
 function aspectParam(aspectRatio: string): Record<string, unknown> {
   return ASPECT_PARAM === 'aspect_ratio'
-    ? { aspect_ratio: aspectRatio }
+    ? /* Models that take a ratio name list 21:9 as their widest; none take 4:1. */
+      { aspect_ratio: aspectRatio === '4:1' ? '21:9' : aspectRatio }
     : { image_size: falImageSize(aspectRatio) };
 }
 
