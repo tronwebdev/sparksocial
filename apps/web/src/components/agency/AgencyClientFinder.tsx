@@ -214,8 +214,8 @@ export function AgencyClientFinder({
           </h2>
 
           <p className="absolute left-[82px] top-[196px] w-[700px] text-24 font-normal leading-[1.35]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Export your contacts from Clientforce as a CSV and import the file — or any CRM&rsquo;s export,
-            or add prospects one at a time. Nothing is imported twice, so re-running the same sheet is safe.
+            Export your Clientforce contacts as a CSV and import them, or add prospects one at a time.
+            Nothing is imported twice.
           </p>
 
           <div className="absolute left-[82px] top-[300px] flex items-center gap-[14px]">

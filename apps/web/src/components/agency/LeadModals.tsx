@@ -100,6 +100,19 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
  * computed here first, and the rows that will not import are named before
  * anybody presses the button.
  */
+/** What `parseLeadCsv` mapped, in the words the table above it uses. */
+const FIELD_LABEL: Record<string, string> = {
+  businessName: 'Business',
+  contactName: 'Contact',
+  email: 'Email',
+  phone: 'Phone',
+  location: 'Location',
+  website: 'Website',
+  interest: 'Interest',
+  notes: 'Notes',
+  rating: 'Rating',
+};
+
 export function LeadImportModal({
   onClose,
   onImport,
@@ -234,7 +247,8 @@ export function LeadImportModal({
             </p>
           ) : (
             <p className="text-15" style={{ color: 'rgb(131,131,131)' }}>
-              Matched columns: <b className="font-semibold text-ink">{preview.mapped.join(', ')}</b>
+              Matched columns:{' '}
+              <b className="font-semibold text-ink">{preview.mapped.map((m) => FIELD_LABEL[m] ?? m).join(', ')}</b>
             </p>
           )}
 

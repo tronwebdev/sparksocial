@@ -189,7 +189,9 @@ export function AgencyJobFinder() {
       */}
       <section
         className={cn('absolute left-ag-tool-x top-[190px] h-[300px] w-ag-tool-wide overflow-hidden rounded-[24px] bg-ag-jf bg-cover bg-center', SECTION)}
-        style={{ backgroundImage: 'url(/agency/jobfinder-hero.png)' }}
+        /* The starfield is transparent: layered over the panel's own dark
+           gradient, not instead of it — replacing it left white text on pale. */
+        style={{ backgroundImage: 'url(/agency/jobfinder-hero.png), var(--ss-grad-ag-jf)' }}
       >
 
         {/*
