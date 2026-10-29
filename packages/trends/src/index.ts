@@ -1,6 +1,7 @@
 export * from './trend.js';
 export * from './safety.js';
 export * from './rank.js';
+export * from './brandTerms.js';
 export * from './repurpose.js';
 export * from './composite.js';
 export * from './sources/reddit.js';

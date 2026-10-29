@@ -213,8 +213,12 @@ export const BRAND_SECTIONS: readonly SettingsSection[] = [
  */
 export const ORG_SECTIONS: readonly SettingsSection[] = [
   { href: '/organization', label: 'Organisation', icon: Icons.org },
+  /* The next three were `/account`'s, which nothing linked to. */
+  { href: '/organization/policies', label: 'Plan & policies', icon: Icons.privacy },
+  { href: '/organization/members', label: 'Members', icon: Icons.team },
   { href: '/organization/billing', label: 'Billing & Credits', icon: Icons.billing },
-  { href: '/organization/brands', label: 'Brand budgets', icon: Icons.budgets },
+  { href: '/organization/brands', label: 'Brands & budgets', icon: Icons.budgets },
+  { href: '/organization/transfer', label: 'Move a brand', icon: Icons.importExport },
   { href: '/organization/audit', label: 'Audit log', icon: Icons.audit },
 ];
 

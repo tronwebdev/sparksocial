@@ -14,6 +14,7 @@ import { TrendMediaViewer } from './TrendMediaViewer';
 import { RepurposeModal } from './RepurposeModal';
 import { ReshareModal } from './ReshareModal';
 import { userMessage } from '@/lib/errorCopy';
+import { TREND_REGION_OPTIONS } from '@/lib/trendRegions';
 
 /**
  * Discovery — `SparkSocial Discovery.dc.html`, `DISC-01`/`DISC-02`, plan §12 P5.
@@ -119,7 +120,8 @@ const SORTS = [
 type SortKey = (typeof SORTS)[number]['key'];
 
 /**
- * The three sorts the prototype toasts that no field supports.
+ * The two sorts the prototype toasts that no field supports. (Region was a
+ * third; it is a real select now.)
  *
  * The reasons are read by the person hovering, so they say what is true for
  * them, not which tool lacks which field. The industry label was the prototype's
@@ -127,7 +129,6 @@ type SortKey = (typeof SORTS)[number]['key'];
  */
 const DEAD_SORTS = [
   { label: 'Time frame', why: 'Trends are ranked on what is moving right now. Open a trend to see its last 14 days.' },
-  { label: 'Region: Global', why: 'The trend sources here are global feeds, so there is no region to choose yet.' },
   { label: 'Industry: Your brand', why: 'Trends are already matched to your brand, so there is no industry to switch between.' },
 ];
 
@@ -211,14 +212,21 @@ export function DiscoveryFeed() {
   const [modal, setModal] = useState<{ kind: 'media' | 'repurpose' | 'reshare'; trend: RankedTrendItem } | null>(null);
   const router = useRouter();
 
-  const loadTrending = useCallback(async (id: string) => {
+  /*
+    Region was a disabled button saying no source returns one. `trend.rank`
+    takes a region and Google Trends and Pinterest honour it — the AutoTrend
+    wizard already sent it. Global feeds ignore it, so Global stays the default.
+  */
+  const [region, setRegion] = useState('');
+
+  const loadTrending = useCallback(async (id: string, inRegion = '') => {
     setTrends(null);
     setError(null);
     const res = await invoke<{
       trends: RankedTrendItem[];
       excluded: SkippedTrendItem[];
       why: { summary: string };
-    }>('trend.rank', { genomeId: id, limit: 15 });
+    }>('trend.rank', { genomeId: id, limit: 15, ...(inRegion ? { region: inRegion } : {}) });
     if (res.status !== 'succeeded') {
       setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setTrends([]);
@@ -251,19 +259,24 @@ export function DiscoveryFeed() {
       /* Re-rank: a muted source is excluded before the fetch, so the feed that
          is on screen was built from a different set of vendors than the one
          now configured. */
-      void loadTrending(genomeId);
+      void loadTrending(genomeId, region);
     },
-    [genomeId, loadTrending],
+    [genomeId, loadTrending, region],
   );
 
   useEffect(() => {
     if (!genomeId) return;
-    void loadTrending(genomeId);
+    void loadTrending(genomeId, region);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genomeId, region]);
+
+  useEffect(() => {
+    if (!genomeId) return;
     // The watchlist is read once rather than per tab: the rail's Saved
     // Watchlist section and every card's bookmark both need it, on every tab.
     void loadWatchlist(genomeId);
     void loadSources(genomeId);
-  }, [genomeId, loadTrending, loadWatchlist, loadSources]);
+  }, [genomeId, loadWatchlist, loadSources]);
 
   const savedIds = useMemo(() => new Set(watchlist.map((w) => w.trendId)), [watchlist]);
 
@@ -521,6 +534,25 @@ export function DiscoveryFeed() {
               </div>
             ) : null}
           </div>
+
+          <label className="relative flex h-[38px] items-center gap-[9px] rounded-lg bg-white px-[13px] text-15 font-medium text-ink" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
+            <span className="sr-only">Region</span>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              title="Narrow regional sources (Google Trends, Pinterest) to one country. Global feeds are the same everywhere."
+              className="appearance-none bg-transparent pr-[18px] outline-none"
+            >
+              {TREND_REGION_OPTIONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  Region: {r.label}
+                </option>
+              ))}
+            </select>
+            <svg width="11" height="7" viewBox="0 0 13 8" fill="none" aria-hidden className="pointer-events-none absolute right-[13px]">
+              <path d="m1 1 5.5 6L12 1" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </label>
 
           {DEAD_SORTS.map((d) => (
             <button

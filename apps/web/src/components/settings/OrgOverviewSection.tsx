@@ -95,14 +95,29 @@ export function OrgOverviewSection() {
         <h2 className="text-18 font-semibold text-ink">What lives here</h2>
         <ul className="mt-[14px] flex flex-col gap-[10px]">
           <Row
+            href="/organization/policies"
+            title="Plan & policies"
+            body="Your plan, and the approval, security and retention defaults every brand starts from."
+          />
+          <Row
+            href="/organization/members"
+            title="Members"
+            body="Who is in this organisation, their role, and which brands each of them can reach."
+          />
+          <Row
             href="/organization/billing"
             title="Billing & Credits"
             body="The balance every brand draws on, what it has been spent on, and where to buy more."
           />
           <Row
             href="/organization/brands"
-            title="Brand budgets"
-            body="A hard monthly limit per brand, so one client cannot spend another client's month."
+            title="Brands & budgets"
+            body="Which brands are active, and a hard monthly limit per brand so one client cannot spend another's month."
+          />
+          <Row
+            href="/organization/transfer"
+            title="Move a brand"
+            body="Take a brand to another account, or bring one in."
           />
           <Row
             href="/organization/audit"

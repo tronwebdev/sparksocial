@@ -1,6 +1,7 @@
 import type { Genome } from '@sparksocial/shared/genome';
 import { assessSafety, type SafetyVerdict } from './safety.js';
 import type { Trend } from './trend.js';
+import { brandTerms, stem } from './brandTerms.js';
 
 /**
  * TREND RANKING — PRD §8.9, plan §3.2 `trend.rank`
@@ -135,7 +136,7 @@ export function relevanceFor(genome: Genome, trend: Trend): number {
     `before_after` still matches its phrase ("before after"), and a plural
     ("products") still counts for its singular.
   */
-  const words = new Set(topic.split(/[^a-z0-9]+/).filter(Boolean));
+  const words = new Set(topic.split(/[^\p{L}\p{N}]+/u).filter(Boolean));
   const has = (t: string) =>
     tags.has(t) ||
     words.has(t) ||
@@ -143,6 +144,17 @@ export function relevanceFor(genome: Genome, trend: Trend): number {
     (t.includes('_') && ` ${topic.replace(/[^a-z0-9]+/g, ' ')} `.includes(` ${t.replace(/_/g, ' ')} `));
 
   let signal = RELEVANCE_BASELINE;
+
+  /*
+    Subject — whether the trend is about what this brand is about. Every signal
+    below is *format* fit, and on its own that let any hot video a roaster could
+    film reach a roaster's feed. A trend naming the brand's own words (its
+    products, its sub-category; see `brandTerms`) is the strongest single
+    signal there is, so it counts for as much as a proof-asset match.
+  */
+  const subject = brandTerms(genome).words;
+  const titleWords = [...words, ...tags].map(stem);
+  if (titleWords.some((w) => subject.has(w))) signal += 0.35;
 
   // Proof asset — what this brand can actually show.
   const proof = genome.dimensions.proof_asset;

@@ -43,6 +43,22 @@ describe('what the production sweep found', () => {
     expect(src('src/components/agency/AgencyWizard.tsx')).not.toContain('No tool generates');
   });
 
+  /* The dashboard's "View" links to /agents?draft=<id>, which mounts the panel
+     before the genome is known; it sat on its skeleton for good. */
+  it('loads a linked draft once the brand arrives, not only when the panel opens', () => {
+    const panel = src('src/components/command-center/draft-panel/DraftPanel.tsx');
+    expect(panel).toContain("if (open && genomeId && initialContentItemId && phase === 'loading' && !draft)");
+  });
+
+  it('folds /account into Account Settings, so members can be given brands', () => {
+    expect(src('src/app/(app)/account/page.tsx')).toContain("redirect('/organization')");
+    const tree = src('src/components/settings/settingsTree.tsx');
+    for (const p of ['/organization/members', '/organization/policies', '/organization/transfer']) {
+      expect(tree).toContain(`href: '${p}'`);
+    }
+    expect(src('src/app/organization/members/page.tsx')).toContain('<TeamPanel />');
+  });
+
   it('writes the calendar screen’s statuses as words', () => {
     expect(src('src/components/command-center/CalendarMonthGrid.tsx')).not.toContain(
       'statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1)}',

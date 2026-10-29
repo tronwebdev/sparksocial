@@ -7,6 +7,7 @@ import { AccountPicker } from './AccountPicker';
 import { InfluencerPanel } from './InfluencerPanel';
 import { RecipeGlyph } from './RecipeGlyph';
 import { folderIdFrom, type WizardDraft } from './wizardDraft';
+import { TREND_REGION_OPTIONS } from '@/lib/trendRegions';
 
 /**
  * The wizard's step bodies. The chrome lives in `RecipeWizard`.
@@ -277,18 +278,8 @@ export function NameStep({ genomeId, draft, set }: { genomeId: string; draft: Wi
 
 /* ── step 2 (AutoTrend): the query ─────────────────────────────────────── */
 
-const REGIONS = [
-  { value: '', label: 'Global' },
-  { value: 'US', label: 'United States' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'NG', label: 'Nigeria' },
-  { value: 'IN', label: 'India' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'BR', label: 'Brazil' },
-];
+/* Shared with Discovery's Region filter — see `lib/trendRegions`. */
+const REGIONS = [...TREND_REGION_OPTIONS];
 
 const LANGUAGES = [
   { value: '', label: 'Every language' },

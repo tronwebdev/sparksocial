@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
 import { ContentPillar, Explanation, GenerationMode, ToolError, assetRoleWordList } from '@sparksocial/shared';
 import { rankTrends, scoreTrend, type RankedTrend } from './rank.js';
+import { brandTerms } from './brandTerms.js';
 import { assessSafety } from './safety.js';
 import { suggestRepurpose } from './repurpose.js';
 import { Trend, TrendSourceName, type TrendSource, getTrendById } from './trend.js';
@@ -66,7 +67,21 @@ export const TrendRankOutput = z.object({
   why: Explanation,
 });
 
-export function makeTrendRank(source: TrendSource) {
+/**
+ * How long a brand's own search is reused.
+ *
+ * `trend.rank` runs on every dashboard and Discovery load, and YouTube's
+ * `search.list` costs 100 of a default 10,000 daily units — a search per load
+ * would spend a project's whole day in a hundred page views. Three hours keeps
+ * a brand's feed to eight searches a day however often it is opened, and a
+ * trend that has not moved in three hours has not moved.
+ */
+const BRAND_SEARCH_TTL_MS = 3 * 60 * 60 * 1000;
+
+export function makeTrendRank(source: TrendSource, now: () => number = Date.now) {
+  /** `${genomeId}|${region}|${phrases}` → what the brand's own search found. */
+  const brandSearches = new Map<string, { at: number; trends: Trend[] }>();
+
   return defineTool({
     name: 'trend.rank',
     version: 1,
@@ -97,11 +112,51 @@ export function makeTrendRank(source: TrendSource) {
        */
       const excludeSources = await ctx.db.trendSourceMutes.list(input.genomeId, ctx.orgId);
 
-      const fetched = await source.fetch({
+      const common = {
         limit: Math.max(input.limit * 3, 20), // over-fetch: safety removes some
         ...(input.region ? { region: input.region } : {}),
         ...(input.language ? { language: input.language } : {}),
         ...(excludeSources.length ? { excludeSources } : {}),
+      };
+
+      /*
+        Two fetches. The general trending list, as before — what is moving
+        everywhere — and a search for what this brand is about (`brandTerms`),
+        so a roaster's feed has coffee in it to rank. Sources that search
+        server-side run the query; the rest narrow the page they already
+        fetch. The brand search is cached (see BRAND_SEARCH_TTL_MS) and may
+        fail on its own without taking the general feed with it.
+      */
+      const { phrases } = brandTerms(genome);
+      const key = `${input.genomeId}|${input.region ?? ''}|${phrases.join('|')}`;
+      const cached = brandSearches.get(key);
+      const brandSearch =
+        phrases.length === 0
+          ? Promise.resolve([] as Trend[])
+          : cached && now() - cached.at < BRAND_SEARCH_TTL_MS
+            ? Promise.resolve(cached.trends)
+            : source
+                .fetch({ ...common, keywords: phrases })
+                .then((trends) => {
+                  brandSearches.set(key, { at: now(), trends });
+                  return trends;
+                })
+                .catch((e: unknown) => {
+                  ctx.logger.warn('brand trend search failed', {
+                    genomeId: input.genomeId,
+                    error: e instanceof Error ? e.message : String(e),
+                  });
+                  return [] as Trend[];
+                });
+
+      const [general, searched] = await Promise.all([source.fetch(common), brandSearch]);
+      // The brand's own matches first, so a trend found both ways keeps one row.
+      const seen = new Set<string>();
+      const fetched = [...searched, ...general].filter((t) => {
+        const id = `${t.source}:${t.id}`;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
       });
 
       // Everything fetched, not just what survived ranking: a trend excluded

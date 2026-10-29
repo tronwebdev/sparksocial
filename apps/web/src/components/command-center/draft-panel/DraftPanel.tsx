@@ -412,6 +412,21 @@ export function DraftPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialContentItemId]);
 
+  /*
+    The brand can arrive after the panel opens. A link to `/agents?draft=<id>`
+    — the dashboard's "View" — mounts the panel at once, before the page has
+    resolved which genome is selected; `loadDraft` returned early on the
+    missing `genomeId` and nothing tried again, so the panel sat on its
+    loading skeleton for good. Opening from the calendar worked only because
+    the genome was already known there. Load once it is, if still waiting.
+  */
+  useEffect(() => {
+    if (open && genomeId && initialContentItemId && phase === 'loading' && !draft) {
+      void loadDraft(initialContentItemId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genomeId]);
+
   useEffect(() => {
     if (!open || phase !== 'trigger' || !genomeId || playbooks !== null) return;
     void (async () => {
