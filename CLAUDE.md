@@ -141,7 +141,7 @@ which is the only reason it is worth recording that it was wrong.
 
 Measured against the registry and the deployed manifest, not from memory:
 
-- **233 tools defined, 229 live** (generator, 29 Oct). Unregistered by configuration: `analytics.sync`
+- **234 tools defined, 230 live** (generator, 29 Oct). Unregistered by configuration: `analytics.sync`
   (gated on `AYRSHARE_API_KEY`) and the three `agency.domain.*` tools (gated on `RENDER_API_KEY`,
   `RENDER_WEB_SERVICE_ID` and `SITE_CNAME_TARGET`). The count comes from
   `npm run generate:tool-types`, which walks every `defineTool` in the source and so counts
