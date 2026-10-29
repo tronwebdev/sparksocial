@@ -157,14 +157,12 @@ export interface AvatarClient {
     /**
      * Which kind of HeyGen character `avatarId` names.
      *
-     * HeyGen has two, and they are **not interchangeable in the request**: a
-     * trained avatar is `{ type: 'avatar', avatar_id }`, a photo-derived one is
-     * `{ type: 'talking_photo', talking_photo_id }`. Sending a talking-photo id
-     * in the `avatar_id` field is not a validation error — it is an upstream
-     * failure at render time, long after the id was accepted and stored.
-     *
-     * Defaults to `'avatar'`, so every existing caller keeps its behaviour and
-     * only the photo path has to say what it is.
+     * On HeyGen's v2 API the two were different request shapes
+     * (`talking_photo_id` vs `avatar_id`) and confusing them failed at render
+     * time. v3 — the only version after 2026-10-31 — addresses both as
+     * `avatar_id`, so the HeyGen client no longer reads this. It is kept
+     * because callers record which kind an id is, and another vendor may need
+     * the distinction.
      */
     avatarKind?: 'avatar' | 'talking_photo';
   }): Promise<{ url: string }>;

@@ -249,11 +249,16 @@ Each verified against the registry, not inferred from a comment.
       `talking_photo` upload said "HeyGen rejected the photo (400)". The live 400 was
       `{"code": 400133, "message": "Insufficient credit…"}`. Mapped by cause now; only a
       genuine image rejection mentions the image.
-- [ ] **HeyGen's `v1/talking_photo` is a legacy endpoint.** Its own responses carry a notice
-      that it is removed on **2026-10-31**. Not acted on from that text alone — it arrived
-      inside an API response rather than from the documentation — but it wants checking
-      against HeyGen's docs and migrating before the date, because avatar-from-photo stops
-      working entirely when it goes.
+- [x] **HeyGen v1/v2 retire on 2026-10-31 — migrated to v3, 29 Oct.** Wider than this entry
+      said: HeyGen's changelog retires *every* v1 and v2 endpoint, so avatar video
+      (`/v2/video/generate`, `/v1/video_status.get`) would have stopped too, not only
+      avatar-from-photo. `apps/api/src/avatar-client.ts` now uses `/v3/assets`,
+      `/v3/avatars` (`type: photo`), `/v3/videos` and `/v3/videos/{id}`; paths and auth
+      confirmed live with non-mutating probes. Two things still owed: the HeyGen account
+      returned `402 insufficient_credit` on a valid render request, so avatar video and
+      avatar-from-photo fail on credit until it is topped up; and `talking_photo_id`s minted
+      by the old v1 upload are untested as v3 `avatar_id`s — a brand that made its avatar
+      before today may need to upload its photo again.
 - [x] **The browser recorder could not upload at all — closed 19 Oct.** `MediaRecorder`
       emits `audio/webm;codecs=opus`; `audio/webm` was missing from the allowlist (while
       `video/webm` was present) and the enum compared the parameterised string literally.
