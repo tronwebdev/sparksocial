@@ -5,6 +5,7 @@ import {
   DEFAULT_AGENCY_PROFILE,
   agencyProfileGet,
   agencyProfileSet,
+  makeAgencyCollateralGenerate,
   makeAgencyIdentityGenerate,
   type AgencyIdentityWriter,
 } from '../src/agencyProfile.js';
@@ -139,5 +140,42 @@ describe('agency.identity.generate', () => {
 
   it('is refused to an editor', () => {
     expect(decide(makeAgencyIdentityGenerate(writer({})), { role: 'editor' }).kind).toBe('deny');
+  });
+});
+
+describe('agency.collateral.generate', () => {
+  it('draws the banner at the platform’s shape, with no text, and keeps it on the profile', async () => {
+    const store = new Map<string, unknown>();
+    await agencyProfileSet.handler(agencyProfileSet.input.parse({ profile: answers, launch: true }), ctx(store));
+    const seen: Array<{ prompt: string; aspectRatio: string }> = [];
+    const tool = makeAgencyCollateralGenerate({
+      generate: async (args) => {
+        seen.push(args);
+        return { url: 'https://cdn.example/cover.png' };
+      },
+    });
+    const out = await tool.handler({ kind: 'linkedin_banner' }, ctx(store));
+    expect(out.url).toBe('https://cdn.example/cover.png');
+    expect(seen[0]!.aspectRatio).toBe('4:1');
+    expect(seen[0]!.prompt).toMatch(/no text/i);
+    expect(seen[0]!.prompt).toMatch(/#3157D6/);
+    expect((await agencyProfileGet.handler({}, ctx(store))).profile!.collateral).toEqual({
+      linkedinBanner: 'https://cdn.example/cover.png',
+    });
+  });
+
+  it('survives the wizard saving again', async () => {
+    const store = new Map<string, unknown>();
+    await agencyProfileSet.handler(agencyProfileSet.input.parse({ profile: answers }), ctx(store));
+    const tool = makeAgencyCollateralGenerate({ generate: async () => ({ url: 'https://cdn.example/fb.png' }) });
+    await tool.handler({ kind: 'facebook_cover' }, ctx(store));
+    await agencyProfileSet.handler(agencyProfileSet.input.parse({ profile: { ...answers, tagline: 'edited' } }), ctx(store));
+    expect((await agencyProfileGet.handler({}, ctx(store))).profile!.collateral.facebookCover).toBe('https://cdn.example/fb.png');
+  });
+
+  it('asks for the wizard first, and is refused to an editor', async () => {
+    const tool = makeAgencyCollateralGenerate({ generate: async () => ({ url: 'https://x.example/a.png' }) });
+    await expect(tool.handler({ kind: 'facebook_cover' }, ctx())).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+    expect(decide(tool, { role: 'editor' }).kind).toBe('deny');
   });
 });

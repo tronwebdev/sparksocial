@@ -16,10 +16,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return siteMetadata(await loadSite({ slug: (await params).slug }));
 }
 
-export default async function SitePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function SitePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ template?: string; layout?: string }>;
+}) {
   const { slug } = await params;
-  const site = await loadSite({ slug });
-  if (!site) notFound();
+  const loaded = await loadSite({ slug });
+  if (!loaded) notFound();
+  /* The wizard's template preview: the same site, another look. Styling only. */
+  const sp = await searchParams;
+  const pick = (v: string | undefined, max: number) => (v !== undefined && /^\d$/.test(v) && Number(v) <= max ? Number(v) : undefined);
+  const template = pick(sp.template, 2);
+  const layout = pick(sp.layout, 5);
+  const site = {
+    ...loaded,
+    style: { ...loaded.style, ...(template !== undefined ? { template } : {}), ...(layout !== undefined ? { layout } : {}) },
+  };
   const logo = site.hasLogo ? await loadLogo(site.slug) : undefined;
   return <AgencySite site={site} {...(logo ? { logo } : {})} sendLead={sendSiteLead.bind(null, site.slug)} />;
 }

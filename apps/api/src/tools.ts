@@ -141,6 +141,7 @@ import {
   agencyProfileSet,
   makeAgencyIdentityGenerate,
   makeAgencyJobsSearch,
+  makeAgencyCollateralGenerate,
   makeAgencySiteGet,
   makeAgencySiteGenerate,
   makeAgencySiteSet,
@@ -488,6 +489,8 @@ export function registerAlphaTools(): void {
   if (images) register(makeContentGenerateImage(images));
   // SET-WS-BRAND-KITS' "Generate logo" — a placeholder mark, not identity work.
   if (images) register(makeBrandLogoGenerate(images, (t) => embed.embed(t)));
+  // Portal Home's Facebook cover and LinkedIn banner — same image seam, same gate.
+  if (images) register(makeAgencyCollateralGenerate(images));
   const videos = videoClient();
   if (videos) register(makeContentGenerateBroll(videos));
   // Same "unset → not registered" rule as the image tool, and for the same

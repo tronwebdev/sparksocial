@@ -354,25 +354,10 @@ export function AgencyClientTable({
       </span>
 
       {/*
-        The design's pagers. `agency.roster` returns the whole org in one read —
-        there is no cursor and no second page — so both are present and inert
-        rather than wired to a page that does not exist.
+        The design draws two pagers here. `agency.roster` returns the whole org
+        in one read and every row is on screen, so there is never a page to
+        turn to — they were drawn disabled, which reads as broken. Left out.
       */}
-      {([
-        { left: 1548, flip: true },
-        { left: 1592, flip: false },
-      ] as const).map((pg) => (
-        <span
-          key={pg.left}
-          aria-hidden
-          className="absolute bottom-[20px] flex h-[34px] w-[34px] items-center justify-center rounded-full"
-          style={{ left: pg.left, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', opacity: 0.45 }}
-        >
-          <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="block" style={{ transform: pg.flip ? 'scaleX(-1)' : undefined }}>
-            <path d="m1 1 5 5-5 5" stroke="#838383" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      ))}
       {deleting ? (
         <DeleteBrandModal
           brandId={deleting.brandId}

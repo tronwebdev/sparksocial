@@ -59,7 +59,9 @@ function toProfile(d: WizardDraft) {
   };
 }
 
-type SavedProfile = ReturnType<typeof toProfile>;
+type SavedProfile = ReturnType<typeof toProfile> & {
+  collateral?: { facebookCover?: string; linkedinBanner?: string };
+};
 
 function fromProfile(p: SavedProfile): WizardDraft {
   return { ...emptyWizardDraft(), ...p, model: p.model === 'personal_brand' ? 1 : 0 };
@@ -82,6 +84,8 @@ export function AgencyPortalScreen() {
   const [wizStep, setWizStep] = useState<WizStep | null>(null);
   const [draft, setDraft] = useState<WizardDraft>(emptyWizardDraft);
   const [saving, setSaving] = useState(false);
+  const [collateral, setCollateral] = useState<{ facebookCover?: string; linkedinBanner?: string }>({});
+  const [generating, setGenerating] = useState<'facebook_cover' | 'linkedin_banner' | null>(null);
   /** Why the last save failed, shown on the wizard's last step. */
   const [saveNote, setSaveNote] = useState<string | null>(null);
   /** The design's Search Workspace box, filtering the roster by brand name. */
@@ -103,7 +107,10 @@ export function AgencyPortalScreen() {
     setLaunched(legacy);
     void invoke<{ profile: SavedProfile | null; launched: boolean }>('agency.profile.get', {}).then((res) => {
       if (res.status !== 'succeeded') return;
-      if (res.output.profile) setDraft(fromProfile(res.output.profile));
+      if (res.output.profile) {
+        setDraft(fromProfile(res.output.profile));
+        setCollateral(res.output.profile.collateral ?? {});
+      }
       setLaunched(res.output.launched || legacy);
     });
     const hash = window.location.hash;
@@ -132,6 +139,23 @@ export function AgencyPortalScreen() {
     }
     setSaveNote(res.status === 'failed' ? userMessage(res.error) : 'Saving the agency needs an approval first.');
     return false;
+  }
+
+  /** Portal Home's banner cards. */
+  async function generateBanner(kind: 'facebook_cover' | 'linkedin_banner') {
+    if (generating) return;
+    setGenerating(kind);
+    const res = await invoke<{ url: string }>('agency.collateral.generate', { kind }, crypto.randomUUID());
+    setGenerating(null);
+    if (res.status === 'succeeded') {
+      setCollateral((c) => ({ ...c, [kind === 'facebook_cover' ? 'facebookCover' : 'linkedinBanner']: res.output.url }));
+      return;
+    }
+    toast({
+      title: 'The banner wasn’t made',
+      body: res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.',
+      topic: 'generic',
+    });
   }
 
   async function launch() {
@@ -178,6 +202,9 @@ export function AgencyPortalScreen() {
               accounts={accounts}
               onEditWizard={() => setWizStep(0)}
               websiteUrl={site.site?.published ? site.site.url : null}
+              collateral={collateral}
+              onGenerate={(kind) => void generateBanner(kind)}
+              generating={generating}
             />
           ) : (
             <AgencyHomeHero onLaunch={() => setWizStep(0)} />

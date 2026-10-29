@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RosterBrand } from './useAgencyRoster';
 import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
 import { cn } from '@/lib/utils';
@@ -175,6 +175,9 @@ export function AgencyHomeSummary({
   accounts,
   onEditWizard,
   websiteUrl,
+  collateral,
+  onGenerate,
+  generating,
 }: {
   totals: { brands: number; quiet: number };
   /** Connected publishing accounts, for the design's chip row. */
@@ -182,7 +185,21 @@ export function AgencyHomeSummary({
   onEditWizard: () => void;
   /** The live agency website, or null when none is published. */
   websiteUrl?: string | null;
+  /** The banners `agency.collateral.generate` has made. */
+  collateral?: { facebookCover?: string; linkedinBanner?: string };
+  /** Absent when this deployment has no image generator — the buttons are then not shown. */
+  onGenerate?: (kind: 'facebook_cover' | 'linkedin_banner') => void;
+  generating?: 'facebook_cover' | 'linkedin_banner' | null;
 }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState<{ start: boolean; end: boolean }>({ start: true, end: false });
+  const measure = () => {
+    const el = track.current;
+    if (!el) return;
+    setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+  };
+  useEffect(measure, []);
+
   const active = Math.max(0, totals.brands - totals.quiet);
 
   return (
@@ -291,70 +308,64 @@ export function AgencyHomeSummary({
           SECTION,
         )}
       >
-        {/* Agency Website — the design's own tinted card with a phone mock. */}
-        <div
-          className="absolute left-[16px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px]"
-          style={{ background: 'linear-gradient(160deg, #CBECF6 0%, #EAF7FB 100%)', boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
-        >
-          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">Agency Website</span>
-          <AssetEye filled />
-          <span
-            aria-hidden
-            className="absolute left-[70px] top-[76px] block h-[250px] w-[160px] rounded-t-[10px] bg-white max-canvas:hidden"
-            style={{ boxShadow: '0 -6px 24px -12px rgba(12,12,12,0.2)' }}
-          />
-          <span className="absolute bottom-[14px] left-0 right-0 text-center text-13" style={{ color: 'rgb(91,91,91)' }}>
-            Generated in the launch wizard.
-          </span>
-        </div>
-
-        {/* Facebook cover */}
-        <div
-          className="absolute left-[332px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px] bg-white"
-          style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
-        >
-          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">Facebook cover</span>
-          <AssetEye />
-          <span className="absolute left-[16px] right-[16px] top-[150px] text-center text-13 leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
-            Generated in the launch wizard.
-          </span>
-        </div>
-
-        {/* LinkedIn banners — the design's empty 200x96 frame at 16,150. */}
-        <div
-          className="absolute left-[648px] top-[16px] h-[294px] w-[300px] overflow-hidden rounded-[12px] bg-white"
-          style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
-        >
-          <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">LinkedIn banners</span>
-          <span
-            aria-hidden
-            className="absolute left-[16px] top-[150px] block h-[96px] w-[200px] rounded-[8px]"
-            style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
-          />
-          <span className="absolute left-[16px] right-[16px] top-[258px] text-13" style={{ color: 'rgb(131,131,131)' }}>
-            Generated in the launch wizard.
-          </span>
-        </div>
-
         {/*
-          The carousel pagers. There are exactly three cards and nothing to
-          page to, so they are present and disabled rather than wired to a
-          scroll that would not move.
+          A real carousel now: the three cards run to 948px inside an 836px
+          panel, which is why the design draws pagers. The track scrolls and the
+          pagers move it a card at a time, each fading at its own end.
         */}
+        <div
+          ref={track}
+          onScroll={measure}
+          className="absolute inset-0 flex gap-[16px] overflow-x-auto scroll-smooth p-[16px] [scrollbar-width:none] max-canvas:!relative max-canvas:!inset-auto [&::-webkit-scrollbar]:hidden"
+        >
+          {/* Agency Website — the design's own tinted card with a phone mock. */}
+          <div
+            className="relative h-[294px] w-[300px] shrink-0 overflow-hidden rounded-[12px]"
+            style={{ background: 'linear-gradient(160deg, #CBECF6 0%, #EAF7FB 100%)', boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
+          >
+            <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">Agency Website</span>
+            <AssetEye filled href={websiteUrl ?? undefined} label="Open your website" />
+            <span
+              aria-hidden
+              className="absolute left-[70px] top-[76px] block h-[250px] w-[160px] rounded-t-[10px] bg-white max-canvas:hidden"
+              style={{ boxShadow: '0 -6px 24px -12px rgba(12,12,12,0.2)' }}
+            />
+            <span className="absolute bottom-[14px] left-[12px] right-[12px] truncate text-center text-13" style={{ color: 'rgb(91,91,91)' }}>
+              {websiteUrl ? websiteUrl.replace(/^https:\/\//, '') : 'Generate it in the launch wizard, step 3.'}
+            </span>
+          </div>
+
+          <BannerCard
+            title="Facebook cover"
+            url={collateral?.facebookCover}
+            {...(onGenerate ? { onGenerate: () => onGenerate('facebook_cover') } : {})}
+            busy={generating === 'facebook_cover'}
+          />
+          <BannerCard
+            title="LinkedIn banner"
+            url={collateral?.linkedinBanner}
+            {...(onGenerate ? { onGenerate: () => onGenerate('linkedin_banner') } : {})}
+            busy={generating === 'linkedin_banner'}
+          />
+        </div>
+
         {[
-          { side: 'left' as const, flip: true },
-          { side: 'right' as const, flip: false },
+          { side: 'left' as const, flip: true, off: edge.start, by: -316 },
+          { side: 'right' as const, flip: false, off: edge.end, by: 316 },
         ].map((p) => (
-          <span
+          <button
             key={p.side}
-            aria-hidden
-            className="absolute top-[148px] z-[3] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white"
-            style={{ [p.side]: 10, boxShadow: '0 6px 16px -8px rgba(12,12,12,0.4)', opacity: 0.55 }}
+            type="button"
+            aria-label={p.side === 'left' ? 'Previous asset' : 'Next asset'}
+            onClick={() => track.current?.scrollBy({ left: p.by, behavior: 'smooth' })}
+            disabled={p.off}
+            className="absolute top-[148px] z-[3] flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white transition-opacity disabled:pointer-events-none disabled:opacity-0 max-canvas:hidden"
+            style={{ [p.side]: 10, boxShadow: '0 6px 16px -8px rgba(12,12,12,0.4)' }}
           >
             <svg width="7" height="12" viewBox="0 0 7 12" fill="none" className="block" style={{ transform: p.flip ? 'scaleX(-1)' : undefined }}>
               <path d="m1 1 5 5-5 5" stroke="#3B3B3B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </span>
+          </button>
         ))}
       </div>
     </section>
@@ -362,22 +373,60 @@ export function AgencyHomeSummary({
 }
 
 /**
- * The 32px preview affordance each asset card carries. Nothing generates the
- * collateral yet, so it is inert and says why on hover rather than opening an
- * empty preview.
+ * The 32px preview affordance each asset card carries — a link to the thing
+ * itself in a new tab, or nothing at all when there is nothing yet to open.
  */
-function AssetEye({ filled = false }: { filled?: boolean }) {
+function AssetEye({ filled = false, href, label }: { filled?: boolean; href?: string; label: string }) {
+  if (!href) return null;
   return (
-    <span
-      className="absolute right-[12px] top-[10px] flex h-[32px] w-[32px] items-center justify-center rounded-full"
-      style={filled ? { background: '#FFFFFF', opacity: 0.55 } : { boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', opacity: 0.55 }}
-      title="Nothing generated to preview yet"
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      title={label}
+      className="absolute right-[12px] top-[10px] z-[2] flex h-[32px] w-[32px] items-center justify-center rounded-full transition-colors hover:bg-white"
+      style={filled ? { background: 'rgba(255,255,255,0.85)' } : { background: 'rgba(255,255,255,0.85)', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
     >
       <svg width="15" height="12" viewBox="0 0 19 15" fill="none" aria-hidden className="block">
         <path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" strokeWidth="1.3" strokeLinejoin="round" />
         <circle cx="9.5" cy="7.5" r="2.2" stroke="#5B5B5B" strokeWidth="1.3" />
       </svg>
-    </span>
+    </a>
+  );
+}
+
+/** A Facebook cover or LinkedIn banner card: the image when there is one, else the button that makes it. */
+function BannerCard({ title, url, onGenerate, busy }: { title: string; url?: string; onGenerate?: () => void; busy: boolean }) {
+  return (
+    <div
+      className="relative h-[294px] w-[300px] shrink-0 overflow-hidden rounded-[12px] bg-white"
+      style={{ boxShadow: '0 12px 30px -24px rgba(12,12,12,0.35)' }}
+    >
+      <span className="absolute left-[16px] top-[14px] text-15 font-bold text-ink">{title}</span>
+      <AssetEye href={url} label={`Open the ${title.toLowerCase()}`} />
+      <div className="absolute left-[16px] right-[16px] top-[56px] flex h-[150px] items-center justify-center overflow-hidden rounded-[8px]" style={{ background: '#F2F3F5' }}>
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- a generated image on our own storage
+          <img src={url} alt={title} className="h-full w-full object-cover" />
+        ) : (
+          <span className="px-[12px] text-center text-13 leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
+            {onGenerate ? 'Made from your agency’s colours and tone.' : 'Image generation isn’t set up on this account.'}
+          </span>
+        )}
+      </div>
+      {onGenerate ? (
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={busy}
+          className="absolute bottom-[16px] left-[16px] right-[16px] flex h-[40px] items-center justify-center rounded-[10px] text-14 font-semibold transition-colors disabled:opacity-60"
+          style={url ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: '#0C0C0C' } : { background: '#0C0C0C', color: '#FFFFFF' }}
+        >
+          {busy ? 'Making it…' : url ? 'Make another' : `Generate ${title.toLowerCase()}`}
+        </button>
+      ) : null}
+    </div>
   );
 }
 

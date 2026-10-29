@@ -60,6 +60,7 @@ const LABELS: Record<string, string> = {
   'agency.jobs.search': 'Search job listings',
   'agency.site.get': 'Read the agency website',
   'agency.site.generate': 'Write the agency website',
+  'agency.collateral.generate': 'Make an agency banner',
   'agency.site.set': 'Edit the agency website',
   'agency.domain.connect': 'Connect a custom domain',
   'agency.domain.status': 'Check a custom domain',

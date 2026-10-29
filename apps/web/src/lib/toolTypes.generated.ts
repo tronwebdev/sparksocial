@@ -11,10 +11,14 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 233 tools.
+ * 234 tools.
  */
 
 export interface ToolIO {
+  "agency.collateral.generate": {
+    input: { kind: "facebook_cover" | "linkedin_banner" };
+    output: { kind: "facebook_cover" | "linkedin_banner"; url: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
   "agency.domain.connect": {
     input: { domain: string };
     output: { domain: string; verified: boolean; records: Array<{ type: "CNAME" | "A"; host: string; value: string; note?: string }> };
@@ -37,11 +41,11 @@ export interface ToolIO {
   };
   "agency.profile.get": {
     input: Record<string, never>;
-    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string }) | (null); launched: boolean };
+    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string; collateral: { facebookCover?: string; linkedinBanner?: string } }) | (null); launched: boolean };
   };
   "agency.profile.set": {
     input: { profile: { model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string }; launch?: boolean };
-    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string }) | (null); launched: boolean };
+    output: { profile: ({ model: "local_business" | "personal_brand"; name: string; yourName: string; phone: string; email: ("") | (string); tagline: string; tone: "Professional" | "Friendly" | "Bold" | "Playful" | "Authoritative"; timezone: string; colors: Array<string>; titleFont: string; service: string; layout: number; template: number; domain: string; launchedAt?: string; collateral: { facebookCover?: string; linkedinBanner?: string } }) | (null); launched: boolean };
   };
   "agency.roster": {
     input: { windowDays?: number };

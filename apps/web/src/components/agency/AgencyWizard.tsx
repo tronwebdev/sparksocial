@@ -987,17 +987,37 @@ function StepWebsite({
                 >
                   <span className="block px-[16px] pt-[13px] text-14 font-semibold text-ink">Style {i + 1}</span>
 
-                  {/* The design's preview eye. Nothing renders a template yet. */}
+                  {/*
+                    The design's preview eye: the agency's own site in this
+                    template, in a new tab. Inside the card's <button>, so it is
+                    a span with its own click rather than a nested link. Shown
+                    once there is a site to preview.
+                  */}
+                  {site.site ? (
                   <span
-                    aria-hidden
-                    className="absolute right-[48px] top-[11px] flex h-[26px] w-[26px] items-center justify-center rounded-full max-canvas:hidden"
-                    style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)', opacity: 0.55 }}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Preview your site in style ${i + 1}`}
+                    title="Preview your site in this style"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`/s/${site.site!.slug}?template=${i}&layout=${draft.layout}`, '_blank', 'noopener');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return;
+                      e.stopPropagation();
+                      e.preventDefault();
+                      window.open(`/s/${site.site!.slug}?template=${i}&layout=${draft.layout}`, '_blank', 'noopener');
+                    }}
+                    className="absolute right-[48px] top-[11px] flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-[rgba(131,131,131,0.1)] max-canvas:hidden"
+                    style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
                   >
                     <svg width="15" height="12" viewBox="0 0 19 15" fill="none" aria-hidden className="block">
                       <path d="M1.5 7.5S4.4 1.8 9.5 1.8s8 5.7 8 5.7-2.9 5.7-8 5.7-8-5.7-8-5.7Z" stroke="#5B5B5B" strokeWidth="1.3" strokeLinejoin="round" />
                       <circle cx="9.5" cy="7.5" r="2.2" stroke="#5B5B5B" strokeWidth="1.3" />
                     </svg>
                   </span>
+                  ) : null}
 
                   <span
                     aria-hidden

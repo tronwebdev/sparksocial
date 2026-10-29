@@ -51,6 +51,13 @@ export const AgencyProfile = z.object({
   domain: z.string().trim().max(253),
   /** Set by the first launch and never moved by later edits. */
   launchedAt: z.string().datetime().optional(),
+  /**
+   * The social banners `agency.collateral.generate` made — Portal Home's asset
+   * cards. Written only by that tool; the wizard's save keeps them as they are.
+   */
+  collateral: z
+    .object({ facebookCover: z.string().url().optional(), linkedinBanner: z.string().url().optional() })
+    .default({}),
 });
 export type AgencyProfile = z.infer<typeof AgencyProfile>;
 
@@ -69,6 +76,7 @@ export const DEFAULT_AGENCY_PROFILE: AgencyProfile = {
   layout: 0,
   template: 0,
   domain: '',
+  collateral: {},
 };
 
 /**
@@ -119,7 +127,7 @@ export const agencyProfileGet = defineTool({
 });
 
 export const AgencyProfileSetInput = z.object({
-  profile: AgencyProfile.omit({ launchedAt: true }),
+  profile: AgencyProfile.omit({ launchedAt: true, collateral: true }),
   /** True from the wizard's Launch button. Stamps `launchedAt` the first time only. */
   launch: z.boolean().default(false),
 });
@@ -149,10 +157,15 @@ export const agencyProfileSet = defineTool({
 
   async handler(input, ctx) {
     const existing = await ctx.db.agencyProfiles.get(ctx.orgId);
-    const previousLaunch = existing ? readStoredProfile(existing.profile).launchedAt : undefined;
-    const launchedAt = previousLaunch ?? (input.launch ? new Date().toISOString() : undefined);
+    const previous = existing ? readStoredProfile(existing.profile) : undefined;
+    const launchedAt = previous?.launchedAt ?? (input.launch ? new Date().toISOString() : undefined);
 
-    const profile: AgencyProfile = { ...input.profile, ...(launchedAt ? { launchedAt } : {}) };
+    const profile: AgencyProfile = {
+      ...input.profile,
+      ...(launchedAt ? { launchedAt } : {}),
+      /* Generated banners are not the wizard's to overwrite. */
+      collateral: previous?.collateral ?? {},
+    };
     await ctx.db.agencyProfiles.set(ctx.orgId, profile);
     ctx.logger.info('agency profile saved', { orgId: ctx.orgId, launched: Boolean(launchedAt) });
     return { profile, launched: Boolean(launchedAt) };
@@ -278,6 +291,95 @@ export function makeAgencyIdentityGenerate(writer: AgencyIdentityWriter) {
           factors: [
             { label: 'Agency model', detail: MODEL_LABEL[input.model] },
             ...(input.service ? [{ label: 'Service', detail: input.service }] : []),
+          ],
+          evidence: [],
+          alternatives: [],
+        },
+      };
+    },
+  });
+}
+
+/* ── Social collateral ────────────────────────────────────────────────── */
+
+/** The image seam `brand.logo.generate` already uses. */
+export interface CollateralImageClient {
+  generate(args: { prompt: string; aspectRatio: string }): Promise<{ url: string }>;
+}
+
+const COLLATERAL = {
+  facebook_cover: { key: 'facebookCover', label: 'Facebook cover', aspectRatio: '21:9' },
+  linkedin_banner: { key: 'linkedinBanner', label: 'LinkedIn banner', aspectRatio: '4:1' },
+} as const;
+
+export const AgencyCollateralGenerateInput = z.object({ kind: z.enum(['facebook_cover', 'linkedin_banner']) });
+
+/**
+ * `agency.collateral.generate` — Portal Home's Facebook cover and LinkedIn
+ * banner, drawn from the agency's own profile and palette.
+ *
+ * No words in the image, deliberately: image models cannot reliably spell, and
+ * a cover with "Nortshide Socail" on it is worse than none. The platforms lay
+ * the page name over the cover anyway. The prompt carries the agency's model,
+ * service, tone and colours as subject and style, never as text to render.
+ */
+export function makeAgencyCollateralGenerate(images: CollateralImageClient) {
+  return defineTool({
+    name: 'agency.collateral.generate',
+    version: 1,
+    summary:
+      'Make the agency a Facebook cover or LinkedIn banner from its profile and colours, sized for the ' +
+      'platform, with no text in the image. Saved to Portal Home. Spends real money.',
+    input: AgencyCollateralGenerateInput,
+    output: z.object({ kind: AgencyCollateralGenerateInput.shape.kind, url: z.string(), why: Explanation }),
+    effect: 'write',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin'],
+    /** Pressing it again asks for a different image. */
+    idempotent: false,
+    surfaces: ['AG-HOME-02'],
+    estimateCents: () => 4,
+
+    async handler(input, ctx) {
+      const stored = await ctx.db.agencyProfiles.get(ctx.orgId);
+      const profile = stored ? readStoredProfile(stored.profile) : undefined;
+      if (!profile || !profile.name.trim()) {
+        throw new ToolError('INVALID_INPUT', 'Finish the launch wizard first — the banner is drawn from it.', {});
+      }
+      const spec = COLLATERAL[input.kind];
+      const palette = profile.colors.length ? profile.colors.join(', ') : 'a modern blue and violet palette';
+      const prompt = [
+        `A wide ${spec.label.toLowerCase()} background for ${MODEL_LABEL[profile.model]}.`,
+        profile.service ? `Theme: ${profile.service.toLowerCase()} for small businesses on social media.` : '',
+        `Mood: ${profile.tone.toLowerCase()}. Colour palette: ${palette}.`,
+        'Clean, modern, abstract or lightly illustrative, with calm space on the left for the page name.',
+        'Absolutely no text, letters, numbers, logos or watermarks anywhere in the image.',
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      let url: string;
+      try {
+        ({ url } = await images.generate({ prompt, aspectRatio: spec.aspectRatio }));
+      } catch (e) {
+        if (e instanceof ToolError) throw e;
+        throw new ToolError('UPSTREAM_FAILED', 'The image could not be made. Nothing was saved — try again in a moment.', {
+          cause: e instanceof Error ? e.message : String(e),
+        });
+      }
+
+      const next: AgencyProfile = { ...profile, collateral: { ...profile.collateral, [spec.key]: url } };
+      await ctx.db.agencyProfiles.set(ctx.orgId, next);
+      ctx.logger.info('agency collateral generated', { orgId: ctx.orgId, kind: input.kind });
+      return {
+        kind: input.kind,
+        url,
+        why: {
+          summary: `A ${spec.label} in ${profile.name}'s colours and tone, sized for the platform.`,
+          factors: [
+            { label: 'Colours', detail: palette },
+            { label: 'Tone', detail: profile.tone },
+            { label: 'Shape', detail: spec.aspectRatio },
           ],
           evidence: [],
           alternatives: [],

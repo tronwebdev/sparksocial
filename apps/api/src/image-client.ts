@@ -191,7 +191,7 @@ const ASPECT_PARAM = envStr('FAL_IMAGE_ASPECT_PARAM', 'image_size');
  */
 const EXTRA = parseExtra('FAL_IMAGE_EXTRA_PARAMS');
 
-function aspectParam(aspectRatio: string): Record<string, string> {
+function aspectParam(aspectRatio: string): Record<string, unknown> {
   return ASPECT_PARAM === 'aspect_ratio'
     ? { aspect_ratio: aspectRatio }
     : { image_size: falImageSize(aspectRatio) };
@@ -219,8 +219,18 @@ export function parseExtra(envName: string): Record<string, unknown> {
  * (`1:1`, `4:5`(~portrait), `9:16`, `16:9`), so a lookup beats computing pixel
  * dimensions for a handful of known ratios.
  */
-function falImageSize(aspectRatio: string): string {
+function falImageSize(aspectRatio: string): string | { width: number; height: number } {
   switch (aspectRatio) {
+    /*
+      The agency's banners, which no preset covers: a Facebook cover is about
+      2.6:1 and a LinkedIn banner 4:1. Explicit pixels (multiples of 16, which
+      FLUX wants) rather than the nearest preset, so the image is not cropped
+      to a third of itself when it is uploaded.
+    */
+    case '21:9':
+      return { width: 1680, height: 720 };
+    case '4:1':
+      return { width: 1584, height: 400 };
     case '1:1':
       return 'square_hd';
     case '9:16':

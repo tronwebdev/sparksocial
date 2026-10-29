@@ -104,6 +104,7 @@ const CATEGORY_BY_TOOL: Record<string, CreditCategory> = {
   'brand.logo.generate': 'ai_generation',
   'agency.identity.generate': 'ai_generation',
   'agency.site.generate': 'ai_generation',
+  'agency.collateral.generate': 'ai_generation',
   'direct.brief.generate': 'ai_generation',
   'direct.session.batch': 'ai_generation',
   'engage.classify': 'ai_generation',
