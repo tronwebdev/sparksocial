@@ -634,6 +634,45 @@ describe('scheduler', () => {
     vi.restoreAllMocks();
   });
 
+  it('tells somebody when a publish is held for their approval', async () => {
+    // Found on production: a post held for a day, Needs Attention showing it,
+    // and the notification centre — which promises to say when a post is
+    // ready to review — reading "Nothing yet".
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { tool } = fakePublishNow({ campaignApprovalMode: 'review_everything' });
+    register(tool);
+    const notified: string[] = [];
+    register(
+      defineTool({
+        name: 'human.notify',
+        version: 1,
+        summary: 'fake human.notify for scheduler hold tests',
+        input: z.object({ message: z.string(), urgency: z.string() }),
+        output: z.object({ id: z.string() }),
+        effect: 'external',
+        autonomy: 'auto',
+        scopes: ['owner', 'admin', 'editor'],
+        idempotent: true,
+        async handler(input) {
+          notified.push(input.message);
+          return { id: 'msg_1' };
+        },
+      }),
+    );
+    const { deps } = makeDeps({
+      db: {
+        genomes: { get: async () => genome() },
+        content: { ...publishable(), markBlocked: async () => {}, markNeedsReview: async () => {} },
+      } as unknown as ScopedDb,
+    });
+
+    await runOnce(deps);
+
+    expect(notified).toHaveLength(1);
+    expect(notified[0]).toMatch(/waiting for your approval/i);
+    vi.restoreAllMocks();
+  });
+
   it('processes every due item even when one throws mid-batch', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { tool, calls } = fakePublishNow();

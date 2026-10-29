@@ -501,7 +501,7 @@ function GenerateWithAi() {
     <span
       className="flex h-[38px] shrink-0 items-center gap-[8px] rounded-[10px] px-[15px] text-14 font-semibold text-ink"
       style={{ background: '#93E1F2', opacity: 0.55 }}
-      title="No tool generates an agency identity yet"
+      title="Generating an agency identity isn’t available yet"
     >
       <svg width="15" height="15" viewBox="0 0 20 19" fill="none" aria-hidden className="block">
         <defs>

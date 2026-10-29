@@ -698,7 +698,7 @@ export function PlanQueue({
                   <RowAction
                     disabled
                                         label="Approve"
-                    title="Approving is keyed on the held call, not the post - use the review list below."
+                    title="Approve it from Needs Attention — the review list at the top of the Command Center."
                     style={{ background: '#3EC332', opacity: 0.45 }}
                   >
                     <svg width="15" height="12" viewBox="0 0 16 12" fill="none" aria-hidden>

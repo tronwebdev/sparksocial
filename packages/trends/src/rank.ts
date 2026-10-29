@@ -128,7 +128,19 @@ export function scoreTrend(genome: Genome, trend: Trend): RankedTrend {
 export function relevanceFor(genome: Genome, trend: Trend): number {
   const tags = new Set(trend.tags.map((t) => t.toLowerCase()));
   const topic = trend.topic.toLowerCase();
-  const has = (t: string) => tags.has(t) || topic.includes(t);
+  /*
+    Whole words, not substrings. `topic.includes('craft')` matched
+    "Minecraft", so a gaming video scored 0.55 for a coffee roaster with
+    `physical_craft` as a proof asset and led its Discovery feed. A tag like
+    `before_after` still matches its phrase ("before after"), and a plural
+    ("products") still counts for its singular.
+  */
+  const words = new Set(topic.split(/[^a-z0-9]+/).filter(Boolean));
+  const has = (t: string) =>
+    tags.has(t) ||
+    words.has(t) ||
+    words.has(`${t}s`) ||
+    (t.includes('_') && ` ${topic.replace(/[^a-z0-9]+/g, ' ')} `.includes(` ${t.replace(/_/g, ' ')} `));
 
   let signal = RELEVANCE_BASELINE;
 

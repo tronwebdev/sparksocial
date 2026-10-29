@@ -270,7 +270,8 @@ export function CalendarMonthGrid({
             platforms={platforms}
             mediaTypes={mediaTypes}
             statuses={statuses}
-            statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1)}
+            // Underscores too — "Needs_review" was the raw status.
+            statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1).replace(/_/g, ' ')}
             caption={false}
           />
         </div>

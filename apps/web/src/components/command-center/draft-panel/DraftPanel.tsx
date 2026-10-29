@@ -2001,7 +2001,7 @@ export function DraftPanel({
                         <Button
                           size="sm"
                           variant="outline"
-                          title="compose.fanout — autofill a Canva Brand Template and export it"
+                          title="Fill a Canva brand template with this post and export it"
                           onClick={() => {
                             if (!fanoutOpen) setFanoutData(defaultFanoutData());
                             setFanoutOpen((v) => !v);

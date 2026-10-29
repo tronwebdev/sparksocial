@@ -594,7 +594,11 @@ export function AssetsLibraryScreen() {
         <div className="px-lib-inset pt-[30px]">
           <p className="text-16 text-ink-muted">Loading folders…</p>
         </div>
-      ) : folders.length === 0 ? (
+      ) : folders.length === 0 && (unfiled?.length ?? 0) === 0 ? (
+        /* Empty only when there is truly nothing. It was "no folders", which
+           hid the Unfiled shelf — so a brand whose onboarding filed its brand
+           kit and knowledge document there was told it had nothing, with no
+           way to reach either. */
         <FoldersEmptyState onCreate={() => setModal('create')} />
       ) : (
         /* ── folder list ──────────────────────────────────────────────── */

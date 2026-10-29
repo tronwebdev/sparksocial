@@ -6,6 +6,7 @@ import { useAuth, useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { DeleteBrandModal } from '@/components/agency/DeleteBrandModal';
 
 /**
  * Workspaces — `ui build/SparkSocial Account Home.dc.html`.
@@ -86,6 +87,8 @@ export default function WorkspacesPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** The brand whose Delete was pressed — `DeleteBrandModal` takes it from there. */
+  const [deleting, setDeleting] = useState<BrandCard | null>(null);
 
   /**
    * The brands in this account.
@@ -537,11 +540,13 @@ export default function WorkspacesPage() {
 
                     {/*
                       Rename and delete are drawn because the prototype draws
-                      them, and both are mocks there. Rename goes to the team
-                      settings screen, which is the real one. Delete is inert on
-                      purpose: `organization.destroy()` takes every genome, asset
-                      and scheduled post with it, and a 40px circle on a picker
-                      is the wrong place for that.
+                      them, and both are mocks there. Rename goes to the brand's
+                      settings. Delete was inert, titled "Nothing in the product
+                      deletes a brand" — true until `brand.delete` existed. It
+                      opens the same `DeleteBrandModal` the Agency Portal uses:
+                      a preview of what goes, the brand's name typed to confirm,
+                      and a tool that policy routes to approval. The circle is
+                      only the way in; the safety is in the modal and the tool.
                     */}
                     <CardAction
                       onClick={() => {
@@ -557,9 +562,9 @@ export default function WorkspacesPage() {
                       </svg>
                     </CardAction>
                     <CardAction
-                      disabled
-                      title="Nothing in the product deletes a brand — it would take every campaign and asset with it."
-                      label={`Delete ${b.name} (unavailable)`}
+                      onClick={() => setDeleting(b)}
+                      title={`Delete ${b.name}`}
+                      label={`Delete ${b.name}`}
                       className="right-[18px]"
                     >
                       <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden>
@@ -586,6 +591,20 @@ export default function WorkspacesPage() {
           )}
         </div>
       </div>
+
+      {deleting ? (
+        <DeleteBrandModal
+          brandId={deleting.brandId}
+          onClose={() => setDeleting(null)}
+          onDeleted={(name) => {
+            const gone = deleting.brandId;
+            setDeleting(null);
+            // Every genome of the brand goes with it, so drop them all.
+            setBrands((list) => (list ? list.filter((x) => x.brandId !== gone) : list));
+            setToast(`${name} deleted`);
+          }}
+        />
+      ) : null}
 
       {toast ? (
         <div

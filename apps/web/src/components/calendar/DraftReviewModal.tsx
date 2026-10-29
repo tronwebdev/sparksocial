@@ -256,7 +256,7 @@ export function DraftReviewModal({
         <button
           type="button"
           disabled
-          title="Approving is keyed on the held call, not the post — approval.decide takes a callId, so this cannot approve a draft from here. The review queue on the Command Center can."
+          title="Approve it from Needs Attention on the Command Center."
           className="flex h-[52px] cursor-not-allowed items-center rounded-xl bg-ink px-[26px] text-17 font-semibold text-white opacity-50"
         >
           Approve &amp; Schedule

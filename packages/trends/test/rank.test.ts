@@ -63,6 +63,19 @@ describe('relevanceFor', () => {
     expect(withoutScreen).toBeLessThan(withScreen);
   });
 
+  /* Seen on production: "Beating Minecraft With The Phobia Mod" led a coffee
+     roaster's feed, because the topic contains the letters "craft". */
+  it('matches whole words in a topic, not letters inside one', () => {
+    const minecraft = trend({ id: 't', topic: 'Beating Minecraft With The Phobia Mod', tags: ['category_20'] });
+    const nothing = trend({ id: 't0', topic: 'a topic', tags: [] });
+    expect(relevanceFor(barber, minecraft)).toBe(relevanceFor(barber, nothing));
+
+    const real = trend({ id: 't1', topic: 'Leather craft restoration, before and after', tags: [] });
+    expect(relevanceFor(barber, real)).toBeGreaterThan(relevanceFor(barber, nothing));
+    const phrase = trend({ id: 't2', topic: 'Fade haircut before after', tags: [] });
+    expect(relevanceFor(barber, phrase)).toBeGreaterThan(relevanceFor(barber, nothing));
+  });
+
   it('stays within 0–1', () => {
     const everything = trend({
       id: 't',

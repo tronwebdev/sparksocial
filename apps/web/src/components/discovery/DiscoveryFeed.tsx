@@ -118,11 +118,17 @@ const SORTS = [
 ] as const;
 type SortKey = (typeof SORTS)[number]['key'];
 
-/** The three sorts the prototype toasts that no field supports. */
+/**
+ * The three sorts the prototype toasts that no field supports.
+ *
+ * The reasons are read by the person hovering, so they say what is true for
+ * them, not which tool lacks which field. The industry label was the prototype's
+ * fixture printed for every brand — a coffee roaster was told it was SaaS.
+ */
 const DEAD_SORTS = [
-  { label: 'Time frame', why: 'A ranked trend carries no observation window — trend.rank returns the current metrics, not a series. The detail view has the 14-day series.' },
-  { label: 'Region: Global', why: 'No source returns a region. Reddit, YouTube, Pinterest, Hacker News and Product Hunt are all global feeds here.' },
-  { label: 'Industry: SaaS', why: 'Industry is a genome dimension, not a trend one — trends are already ranked against your genome, so there is nothing to switch between.' },
+  { label: 'Time frame', why: 'Trends are ranked on what is moving right now. Open a trend to see its last 14 days.' },
+  { label: 'Region: Global', why: 'The trend sources here are global feeds, so there is no region to choose yet.' },
+  { label: 'Industry: Your brand', why: 'Trends are already matched to your brand, so there is no industry to switch between.' },
 ];
 
 
@@ -283,13 +289,15 @@ export function DiscoveryFeed() {
                      checkbox is disabled and the row says what is missing. */
                   return {
                     label: `${label} — not connected`,
-                    disabledReason: `${label} is supported but not configured. Set ${s.requires.join(' and ')} in the API environment to turn it on.${s.note ? ` ${s.note}` : ''}`,
+                    // Environment variable names were printed here — the
+                    // operator's to-do list, shown to a customer.
+                    disabledReason: `${label} isn’t connected for this account yet.`,
                   };
                 }
                 if (!s.enabled) {
                   return {
                     label: `${label} — off`,
-                    disabledReason: `${label} has credentials but is switched off for this deployment (TREND_SOURCE_${s.name.toUpperCase()}_ENABLED=false). That is the operator's switch, not this brand's — muting is the per-brand one.`,
+                    disabledReason: `${label} is switched off for this account.`,
                   };
                 }
                 return {
@@ -314,7 +322,7 @@ export function DiscoveryFeed() {
           {
             label: 'Novelty',
             disabledReason:
-              'No source returns a novelty score — a trend carries volume, velocity, saturation and growth. Velocity and Acceleration are the early-signal filters here.',
+              'No trend source reports novelty. Velocity and Acceleration show what is new and rising.',
           },
           { label: 'Saturation' },
         ],
@@ -323,14 +331,14 @@ export function DiscoveryFeed() {
         label: 'Language',
         icon: SEC_ICONS.Language,
         items: [{ label: 'English' }, { label: 'French' }, { label: 'Spanish' }, { label: 'Arabic' }],
-        disabledReason: 'A ranked trend carries no language. Nothing in trend.rank tags one, so this cannot narrow the feed.',
+        disabledReason: 'Trend sources don’t report a language yet, so this can’t narrow the feed.',
       },
       {
         label: 'Brand Safety',
         icon: SEC_ICONS['Brand Safety'],
         items: [{ label: 'Hide NSFW' }, { label: 'Hide Politics' }, { label: 'Hide Competitors' }],
         disabledReason:
-          'Brand safety is applied before you see the feed — packages/trends/src/safety.ts drops unsafe trends inside trend.rank, and the ones it dropped are listed under the grid with the reason. There is nothing left here to hide.',
+          'Brand safety is applied before you see the feed: unsafe trends are already removed, and the ones that were are listed under the grid with the reason.',
       },
       {
         label: 'Saved Watchlist',

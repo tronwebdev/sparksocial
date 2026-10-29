@@ -401,6 +401,39 @@ async function publishOne(
       decision: result.decision.kind,
       ...(result.decision.kind !== 'allow' ? { ruleId: result.decision.ruleId } : {}),
     });
+
+    /**
+     * And say so. A held post sat in Needs Attention while the notification
+     * centre — which promises to say "when a post is ready to review" — read
+     * "Nothing yet". Found testing production: a publish held for a day and
+     * nobody told. One per item (the idempotency key), and a failure to notify
+     * is logged, not thrown, for the same reason as the give-up branch above.
+     */
+    const notified = await invokeTool(
+      {
+        tool: 'human.notify',
+        input: {
+          message:
+            result.decision.kind === 'deny'
+              ? `A scheduled post (${platform}) was blocked and won’t go out: ${result.decision.reason}`
+              : `A scheduled post (${platform}) is waiting for your approval before it goes out.`,
+          urgency: 'normal',
+          topic: 'content_ready',
+          target: { type: 'content_item', id: item.id },
+        },
+        caller: 'agent',
+        ctx,
+        brand,
+        idempotencyKey: `publish-held:${item.id}`,
+      },
+      deps.invoke,
+    );
+    if (notified.status === 'failed') {
+      console.error('[error] scheduler: could not notify about a held item', {
+        contentItemId: item.id,
+        code: notified.error.code,
+      });
+    }
   }
 }
 

@@ -6,6 +6,8 @@ import { invoke } from '@/lib/tools';
 import { Skeleton } from '@/components/ui/skeleton';
 import { humaniseGoal } from '@/lib/runGoal';
 import { userMessage } from '@/lib/errorCopy';
+import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
  * AGENT COMMAND CENTER — NEEDS ATTENTION.
@@ -52,6 +54,15 @@ interface ReviewItem {
   goal?: string;
   requestedAt?: string;
   because?: string;
+  /** The held call's own input — where the post it acts on is named. */
+  input?: unknown;
+}
+
+/** The post a held call acts on, when its input names one. */
+function heldPostId(input: unknown): string | null {
+  if (!input || typeof input !== 'object') return null;
+  const id = (input as { contentItemId?: unknown }).contentItemId;
+  return typeof id === 'string' ? id.toLowerCase() : null;
 }
 
 interface AgentStatus {
@@ -68,6 +79,9 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
   const [failed, setFailed] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { genome } = useSelectedGenome();
+  /** contentItemId → summary, so a held publish names its post. */
+  const [titles, setTitles] = useState<Map<string, string>>(new Map());
 
   const load = useCallback(async () => {
     const [review, agent] = await Promise.all([
@@ -89,20 +103,36 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
    * did not land.
    */
   useEffect(() => {
+    /*
+      The brand you are looking at. This read `genomes[0]` — the account's
+      first brand, whichever that was — so with several brands "Nothing has
+      been posted incorrectly" could be a statement about a different one.
+    */
+    if (!genome) return;
     void (async () => {
-      const res = await invoke<{ genomes: Array<{ genomeId: string }> }>('genome.list', {});
-      if (res.status !== 'succeeded' || res.output.genomes.length === 0) {
-        setFailed(0);
-        return;
-      }
-      const list = await invoke<{ items: Array<{ status: string }> }>('content.list', {
-        genomeId: res.output.genomes[0]!.genomeId,
-        status: 'failed',
-        limit: 100,
-      });
+      const [list, all] = await Promise.all([
+        invoke<{ items: Array<{ status: string }> }>('content.list', {
+          genomeId: genome.genomeId,
+          status: 'failed',
+          limit: 100,
+        }),
+        invoke<{ items: Array<{ contentItemId: string; summary: string }> }>('content.list', {
+          genomeId: genome.genomeId,
+          limit: 100,
+        }),
+      ]);
       setFailed(list.status === 'succeeded' ? list.output.items.length : 0);
+      if (all.status === 'succeeded') {
+        setTitles(
+          new Map(
+            all.output.items
+              .filter((i) => i.summary && i.summary !== '(no copy yet)')
+              .map((i) => [i.contentItemId.toLowerCase(), i.summary]),
+          ),
+        );
+      }
     })();
-  }, []);
+  }, [genome]);
 
   const decide = useCallback(
     async (callId: string, decision: 'approve' | 'reject') => {
@@ -187,7 +217,15 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
                     {/* The tool name is what is actually held; the goal is what
                         it was for. Both go through `humaniseGoal` so a held
                         `content.publish` on a UUID reads as a sentence. */}
-                    {it.goal ? humaniseGoal(it.goal, new Map()) : `${it.tool} is waiting for your approval`}
+                    {/* It printed the registry name — "publish.now is waiting
+                        for your approval" — and never said which post. */}
+                    {it.goal
+                      ? humaniseGoal(it.goal, titles)
+                      : (() => {
+                          const id = heldPostId(it.input);
+                          const post = id ? titles.get(id) : undefined;
+                          return post ? `${toolLabel(it.tool)} — “${post}”` : `${toolLabel(it.tool)} is waiting for your approval`;
+                        })()}
                   </span>
                   {it.because ? <span className="block text-15 text-ink-muted">{it.because}</span> : null}
                 </span>
