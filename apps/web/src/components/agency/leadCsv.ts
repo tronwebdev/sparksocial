@@ -1,5 +1,5 @@
 import { leadDedupeKey } from '@sparksocial/shared/agencyPipeline';
-import { csvColumn, parseCsvRecords, toCsv } from '@/lib/csv';
+import { parseCsvRecords, toCsv } from '@/lib/csv';
 
 /**
  * A CSV of businesses, mapped onto what `lead.import` accepts.
@@ -25,16 +25,26 @@ import { csvColumn, parseCsvRecords, toCsv } from '@/lib/csv';
  * between an import that reports a surprise and one that was predicted.
  */
 
-/** Every spelling of each column this has met in a real CRM export. */
+/**
+ * Every spelling of each column this has met in a real CRM export.
+ *
+ * Headers are compared after `normaliseHeader`, so `company_name`,
+ * `Company-Name` and `Company Name` are one spelling. Clientforce — the lead
+ * tool the Agency Portal names — has no API, and its documented way out is a
+ * contacts CSV, so its spellings are here too: a contacts export is people
+ * first (First Name / Last Name), with the company as one column among many.
+ */
 const COLUMNS = {
-  businessName: ['business name', 'business', 'company', 'company name', 'name', 'organisation', 'organization', 'account'],
-  contactName: ['contact name', 'contact', 'person', 'full name', 'first name', 'owner'],
-  email: ['email', 'e-mail', 'email address', 'mail'],
-  phone: ['phone', 'telephone', 'tel', 'mobile', 'phone number', 'number'],
+  businessName: ['business name', 'business', 'company', 'company name', 'name', 'organisation', 'organization', 'account', 'account name'],
+  contactName: ['contact name', 'contact', 'person', 'full name', 'owner', 'lead name'],
+  firstName: ['first name', 'firstname', 'given name'],
+  lastName: ['last name', 'lastname', 'surname', 'family name'],
+  email: ['email', 'e-mail', 'email address', 'mail', 'work email'],
+  phone: ['phone', 'telephone', 'tel', 'mobile', 'phone number', 'number', 'mobile number', 'cell'],
   location: ['location', 'city', 'address', 'town', 'area', 'region'],
   website: ['website', 'url', 'site', 'web', 'domain'],
   interest: ['interest', 'service', 'services', 'enquiry', 'inquiry', 'looking for'],
-  notes: ['notes', 'note', 'comment', 'comments', 'description'],
+  notes: ['notes', 'note', 'comment', 'comments', 'description', 'tags'],
   rating: ['rating', 'ranking', 'score', 'stars'],
 } as const;
 
@@ -107,6 +117,17 @@ function normaliseRating(raw: string): number | undefined {
 
 const clean = (v: string): string | undefined => (v.trim() === '' ? undefined : v.trim());
 
+/** `Company_Name`, `company-name` and `Company Name` are one header. */
+const normaliseHeader = (h: string) => h.trim().toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+
+/** `csvColumn`, against normalised headers. */
+function column(record: Record<string, string>, names: readonly string[]): string {
+  for (const [key, value] of Object.entries(record)) {
+    if (names.includes(normaliseHeader(key))) return value.trim();
+  }
+  return '';
+}
+
 export function parseLeadCsv(text: string): LeadCsvPreview | null {
   if (!text.trim()) return null;
 
@@ -122,10 +143,11 @@ export function parseLeadCsv(text: string): LeadCsvPreview | null {
     };
   }
 
-  const lower = headers.map((h) => h.trim().toLowerCase());
+  const lower = headers.map(normaliseHeader);
   const mapped = (Object.entries(COLUMNS) as Array<[string, readonly string[]]>)
     .filter(([, names]) => lower.some((h) => names.includes(h)))
-    .map(([field]) => field);
+    .map(([field]) => (field === 'firstName' || field === 'lastName' ? 'contactName' : field))
+    .filter((f, i, all) => all.indexOf(f) === i);
 
   const rows: LeadCsvRow[] = [];
   /** dedupe key → the line that first claimed it. */
@@ -140,8 +162,18 @@ export function parseLeadCsv(text: string): LeadCsvPreview | null {
      * first column as the name recovers the whole file, and the preview shows
      * exactly what it decided.
      */
+    /* A contacts export splits the person's name; put it back together. */
+    const person =
+      column(record, COLUMNS.contactName) ||
+      [column(record, COLUMNS.firstName), column(record, COLUMNS.lastName)].filter(Boolean).join(' ');
+
+    /*
+      With no company column, a person-first export (Clientforce's) would
+      otherwise fall back to its first column — usually an id or a first name.
+      The person's full name is the better thing to call the lead.
+    */
     const businessName =
-      csvColumn(record, COLUMNS.businessName) || (Object.values(record)[0] ?? '').trim();
+      column(record, COLUMNS.businessName) || person || (Object.values(record)[0] ?? '').trim();
 
     if (!businessName) {
       rows.push({ line, row: { businessName: '' }, problem: 'No business name' });
@@ -150,14 +182,14 @@ export function parseLeadCsv(text: string): LeadCsvPreview | null {
 
     const row: LeadImportRow = {
       businessName,
-      contactName: clean(csvColumn(record, COLUMNS.contactName)),
-      email: normaliseEmail(csvColumn(record, COLUMNS.email)),
-      phone: clean(csvColumn(record, COLUMNS.phone)),
-      location: clean(csvColumn(record, COLUMNS.location)),
-      website: normaliseWebsite(csvColumn(record, COLUMNS.website)),
-      interest: clean(csvColumn(record, COLUMNS.interest)),
-      notes: clean(csvColumn(record, COLUMNS.notes)),
-      rating: normaliseRating(csvColumn(record, COLUMNS.rating)),
+      contactName: clean(person),
+      email: normaliseEmail(column(record, COLUMNS.email)),
+      phone: clean(column(record, COLUMNS.phone)),
+      location: clean(column(record, COLUMNS.location)),
+      website: normaliseWebsite(column(record, COLUMNS.website)),
+      interest: clean(column(record, COLUMNS.interest)),
+      notes: clean(column(record, COLUMNS.notes)),
+      rating: normaliseRating(column(record, COLUMNS.rating)),
     };
 
     /* The same key the tool and the unique index will use. */
@@ -184,7 +216,7 @@ export function parseLeadCsv(text: string): LeadCsvPreview | null {
       duplicatesInFile: rows.filter((r) => r.duplicateOfLine !== undefined).length,
     },
     mapped,
-    looksUnmapped: !mapped.includes('businessName') && !mapped.includes('email'),
+    looksUnmapped: !mapped.includes('businessName') && !mapped.includes('email') && !mapped.includes('contactName'),
   };
 }
 

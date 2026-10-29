@@ -30,12 +30,12 @@ import { SECTION } from '@/components/shell/narrowStage';
  *
  * ── Where the design describes a product that does not exist ─────────────
  *
- * The design's empty state is "Connect to Clienforce", a third-party lead
- * product invented for the mock. There is no such connector — but there *is*
- * real lead capture now, so the honest version of that panel offers the two
- * routes that work: import a sheet, or add one by hand. Keeping the fictional
- * branding on a screen whose feature actually functions would be worse than
- * dropping it: it would advertise an integration nobody can complete.
+ * The design's empty state is "Connect to Clienforce". Clientforce is real —
+ * Nsite Technology Studios' AI sales tool — but it publishes no API: its own
+ * guide documents Zapier and CSV as the ways leads move in and out. So the
+ * connection is its contacts export: the panel says "Import from Clientforce",
+ * the import window says where Clientforce's export button is, and
+ * `leadCsv.ts` reads its person-first columns. Any other CRM's CSV still works.
  *
  * **"Find Clients"** stays deliberately inert. It is prospecting — harvesting
  * businesses out of a directory — which collects personal data with no lawful
@@ -210,12 +210,12 @@ export function AgencyClientFinder({
           <img src="/agency/jobfinder-hero.png" alt="" aria-hidden className="absolute left-0 top-0 h-full w-full object-cover" />
 
           <h2 className="absolute left-[82px] top-[74px] w-[760px] text-48 font-semibold leading-[1.1] text-white">
-            Bring your client list in
+            Bring your Clientforce leads in
           </h2>
 
           <p className="absolute left-[82px] top-[196px] w-[700px] text-24 font-normal leading-[1.35]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Import a CSV from your CRM, or add prospects one at a time. Nothing is imported twice, so
-            re-running the same sheet is safe.
+            Export your contacts from Clientforce as a CSV and import the file — or any CRM&rsquo;s export,
+            or add prospects one at a time. Nothing is imported twice, so re-running the same sheet is safe.
           </p>
 
           <div className="absolute left-[82px] top-[300px] flex items-center gap-[14px]">
@@ -225,7 +225,7 @@ export function AgencyClientFinder({
               className="flex h-[58px] items-center rounded-[10px] px-[24px] text-18 font-bold text-white transition-[background-color,transform] hover:bg-[#1FBE41] active:scale-[0.985]"
               style={{ background: 'var(--ss-ag-clienforce)' }}
             >
-              Import a CSV
+              Import from Clientforce
             </button>
             <button
               type="button"

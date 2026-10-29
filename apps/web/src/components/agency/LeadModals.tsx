@@ -163,7 +163,7 @@ export function LeadImportModal({
   return (
     <Modal
       title="Import leads"
-      subtitle="A CSV from your CRM or a spreadsheet. Columns are matched by name, in any order."
+      subtitle="From Clientforce: Contacts, select the leads, Export CSV — then drop the file here. Any CRM or spreadsheet works the same way; columns are matched by name, in any order."
       width={820}
       onClose={onClose}
       footer={
