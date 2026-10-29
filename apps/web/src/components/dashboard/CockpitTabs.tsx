@@ -7,6 +7,8 @@ import { platformLabel, postKindLabel } from '@/lib/platforms';
 import { compactNumber, relativeTime, slotDateTime } from '@/lib/relativeTime';
 import { cn } from '@/lib/utils';
 import type { BrandSeries, Lead, UpcomingPost } from './types';
+import { CampaignTag } from '@/components/common/CampaignTag';
+import type { CampaignInfo } from '@/lib/useCampaigns';
 
 /**
  * The cockpit's three-tab card — the prototype's "Upcoming Contents /
@@ -31,8 +33,11 @@ export function CockpitTabs({
   series,
   leads,
   leadCounts,
+  campaigns,
 }: {
   upcoming: UpcomingPost[];
+  /** The brand's campaigns by id; with more than one, each upcoming post names its own. */
+  campaigns?: ReadonlyMap<string, CampaignInfo>;
   series: BrandSeries | null;
   leads: Lead[];
   leadCounts: { hot: number; warm: number; cold: number };
@@ -142,7 +147,7 @@ export function CockpitTabs({
         rules 17px off both card edges, so each panel sets its own.
       */}
       <div>
-        {tab === 'upcoming' ? <Upcoming posts={upcoming} /> : null}
+        {tab === 'upcoming' ? <Upcoming posts={upcoming} {...(campaigns ? { campaigns } : {})} /> : null}
         {tab === 'insights' ? <Insights series={series} /> : null}
         {tab === 'sales' ? <Sales leads={leads} counts={leadCounts} /> : null}
       </div>
@@ -172,7 +177,7 @@ function SlotCalendarGlyph() {
   );
 }
 
-function Upcoming({ posts }: { posts: UpcomingPost[] }) {
+function Upcoming({ posts, campaigns }: { posts: UpcomingPost[]; campaigns?: ReadonlyMap<string, CampaignInfo> }) {
   if (posts.length === 0) {
     return (
       <EmptyCard
@@ -285,11 +290,17 @@ function Upcoming({ posts }: { posts: UpcomingPost[] }) {
                 "Carousel" became "C…". Percentage padding resolves against the
                 row, so this is 98 at the design's width and gives way below it.
               */}
-              <span
-                className="min-w-0 flex-1 truncate text-18 font-medium text-ink max-sm:hidden xl:pl-[clamp(0px,calc(100%-712px),98px)]"
-                title={p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
-              >
-                {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+              <span className="flex min-w-0 flex-1 flex-col items-start gap-[6px] max-sm:hidden xl:pl-[clamp(0px,calc(100%-712px),98px)]">
+                <span
+                  className="max-w-full truncate text-18 font-medium text-ink"
+                  title={p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+                >
+                  {p.platform ? postKindLabel(p.platform, p.mediaType) : 'no account chosen'}
+                </span>
+                {/* Whose post, when the brand runs more than one campaign. */}
+                {campaigns && campaigns.size > 1 && p.campaignId && campaigns.get(p.campaignId) ? (
+                  <CampaignTag campaign={campaigns.get(p.campaignId)!} />
+                ) : null}
               </span>
 
               <Link

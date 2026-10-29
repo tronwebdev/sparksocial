@@ -39,18 +39,21 @@ export function SparkRailContainer() {
 
   const [paused, setPaused] = useState(false);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  /** Every running campaign's name — the rail says each, not only one. */
+  const [running, setRunning] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const [status, campaigns] = await Promise.all([
       invoke<{ paused: boolean }>('agent.status', {}),
       genomeId
-        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 5 })
+        ? invoke<{ campaigns: Campaign[] }>('campaign.list', { genomeId, limit: 20 })
         : Promise.resolve(null),
     ]);
 
     if (status.status === 'succeeded') setPaused(status.output.paused);
     if (campaigns && campaigns.status === 'succeeded') {
+      setRunning(campaigns.output.campaigns.filter((c) => c.status === 'active').map((c) => c.name));
       setCampaign(
         campaigns.output.campaigns.find((c) => c.status === 'active') ??
           campaigns.output.campaigns[0] ??
@@ -77,6 +80,7 @@ export function SparkRailContainer() {
 
   return (
     <SparkRail
+      running={running}
       paused={paused}
       campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
       onOpenChat={() => openAskSpark()}

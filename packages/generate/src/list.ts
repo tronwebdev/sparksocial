@@ -76,6 +76,15 @@ const ContentListItem = z.object({
    * real and common state — a slot is planned days before it is written.
    */
   thumbnailUrl: z.string().optional(),
+  /**
+   * The campaign this post belongs to. Absent for a one-off post made outside
+   * any campaign (the Draft Panel's free draft, Ask Spark's "Create a Post").
+   *
+   * Returned so a brand running more than one campaign can tell whose post a
+   * row is: the queue, the dashboard and the calendar all list a genome's
+   * posts together, and with two campaigns live they were indistinguishable.
+   */
+  campaignId: z.string().optional(),
 });
 
 export const ContentListOutput = z.object({ items: z.array(ContentListItem) });
@@ -143,6 +152,7 @@ export const contentList = defineTool({
       ...(r.blockedReason ? { blockedReason: r.blockedReason } : {}),
       ...(r.publishAttempts ? { publishAttempts: r.publishAttempts } : {}),
           ...(thumbnail ? { thumbnailUrl: thumbnail } : {}),
+          ...(r.campaignId ? { campaignId: r.campaignId } : {}),
         };
       }),
     };

@@ -74,10 +74,41 @@ describe('what the production sweep found', () => {
     expect(src('src/components/campaign/CampaignWizard.tsx')).not.toContain('activate it from the calendar');
   });
 
-  it('shows the running campaign as Current Focus, not the newest one', () => {
+  it('shows the running campaign as Current Focus, not the newest one', async () => {
+    const { orderCampaigns } = await import('../src/lib/useCampaigns');
+    const c = (id: string, status: string, startAt: string) =>
+      ({ campaignId: id, name: id, status, objective: 'sales', windowDays: 30, startAt });
+    const ordered = orderCampaigns([
+      c('newest-draft', 'draft', '2026-10-28'),
+      c('running', 'active', '2026-10-01'),
+      c('ended', 'completed', '2026-10-27'),
+    ]);
+    expect(ordered.map((x) => x.campaignId)).toEqual(['running', 'newest-draft', 'ended']);
+    // The hero falls back to the first of that order when no chip is chosen.
     expect(src('src/components/command-center/CommandCenterOverview.tsx')).toContain(
-      "res.output.campaigns.find((c) => c.status === 'active') ?? res.output.campaigns[0]!",
+      '(focusId && byId.get(focusId)) || ordered[0]!',
     );
+  });
+
+  /* "If I create more than one campaign, how do I see which is running, and
+     how do I tell their activity apart?" */
+  it('switches between campaigns on the Command Center hero, the prototype’s own chip row', () => {
+    const card = src('src/components/command-center/CampaignFocusCard.tsx');
+    expect(card).toContain('onClick={() => onSelectCampaign?.(c.campaignId)}');
+    expect(card).toContain('CAMPAIGN_STATE[campaign.status]');
+    const overview = src('src/components/command-center/CommandCenterOverview.tsx');
+    expect(overview).toContain('useCampaigns(genome?.genomeId)');
+    expect(overview).toContain('campaigns={byId}');
+  });
+
+  it('tags each queued or upcoming post with its campaign when there are several', () => {
+    expect(src('src/components/command-center/PlanQueue.tsx')).toContain('campaigns && campaigns.size > 1');
+    expect(src('src/components/dashboard/CockpitTabs.tsx')).toContain('<CampaignTag campaign={campaigns.get(p.campaignId)!} />');
+  });
+
+  it('names every running campaign on the dashboard banner and the Spark rail', () => {
+    expect(src('src/components/dashboard/AgentBanner.tsx')).toContain('running.map((name) => ({ label: `Running ${name}`');
+    expect(src('src/components/command-center/SparkRail.tsx')).toContain('running.map((name) => ({ label: `Running ${name}`');
   });
 
   it('writes the calendar screen’s statuses as words', () => {

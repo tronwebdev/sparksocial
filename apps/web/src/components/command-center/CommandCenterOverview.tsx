@@ -1,10 +1,11 @@
 ﻿'use client';
 
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
+import { orderCampaigns, useCampaigns } from '@/lib/useCampaigns';
 import { CampaignFocusCard, type CampaignSummary, type CalendarView } from './CampaignFocusCard';
 import { PlanQueue } from './PlanQueue';
 
@@ -55,7 +56,20 @@ export function CommandCenterOverview({
 }) {
   const { genome, loading: genomeLoading, error: genomeError } = useSelectedGenome();
 
-  const [campaign, setCampaign] = useState<CampaignSummary | null | undefined>(undefined); // undefined = not checked yet, null = none exists
+  /*
+    Every campaign, and which one the hero is about.
+
+    A brand can run several. This read `campaign.list` and kept one — first
+    the newest, then the active one — so a second campaign had no presence on
+    this screen at all and nothing said which was running. The hero's chip row
+    is the prototype's own campaign switcher now; `focusId` is the chip that is
+    on, defaulting to the running campaign.
+  */
+  const { campaigns, byId, reload: reloadCampaigns } = useCampaigns(genome?.genomeId);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const ordered = campaigns ? orderCampaigns(campaigns) : null;
+  const campaign: CampaignSummary | null | undefined =
+    ordered === null ? undefined : ordered.length === 0 ? null : ((focusId && byId.get(focusId)) || ordered[0]!);
   const [calendarView, setCalendarView] = useState<CalendarView | null>(null);
   /*
     The hero's "Primary CTA" slot. It lives on the brand rather than the
@@ -64,32 +78,20 @@ export function CommandCenterOverview({
   */
   const [primaryCta, setPrimaryCta] = useState<string | undefined>(undefined);
 
-  const loadCampaign = useCallback(async () => {
-    if (!genome) return;
-    const res = await invoke<{ campaigns: CampaignSummary[] }>('campaign.list', {
-      genomeId: genome.genomeId,
-      limit: 20,
-    });
-    if (res.status !== 'succeeded' || res.output.campaigns.length === 0) {
-      setCampaign(null);
-      return;
-    }
-    /*
-      The active one, not the newest. This read `limit: 1`, so duplicating a
-      campaign — or starting a draft — put the copy in "Current Focus" while
-      a different campaign was the one actually running. Newest is the
-      fallback when nothing is active, which is what the dashboard does too.
-    */
-    const active = res.output.campaigns.find((c) => c.status === 'active') ?? res.output.campaigns[0]!;
-    setCampaign(active);
-
-    const cal = await invoke<CalendarView>('calendar.get', { campaignId: active.campaignId });
-    if (cal.status === 'succeeded') setCalendarView(cal.output);
-  }, [genome]);
-
+  /* The focused campaign's own slots, for the hero's strip of upcoming posts. */
+  const focusedId = campaign?.campaignId;
   useEffect(() => {
-    void loadCampaign();
-  }, [loadCampaign]);
+    if (!focusedId) return;
+    let cancelled = false;
+    setCalendarView(null);
+    void (async () => {
+      const cal = await invoke<CalendarView>('calendar.get', { campaignId: focusedId });
+      if (!cancelled && cal.status === 'succeeded') setCalendarView(cal.output);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [focusedId]);
 
   useEffect(() => {
     if (!genome) return;
@@ -148,7 +150,9 @@ export function CommandCenterOverview({
         genomeName={genome?.name}
         primaryCta={primaryCta}
         {...(genome ? { genomeId: genome.genomeId } : {})}
-        onCampaignsChanged={() => void loadCampaign()}
+        campaigns={ordered ?? []}
+        onSelectCampaign={setFocusId}
+        onCampaignsChanged={() => void reloadCampaigns()}
       />
 
       {/*
@@ -177,6 +181,7 @@ export function CommandCenterOverview({
       <PlanQueue
         genomeId={genome?.genomeId}
         onOpen={onOpenDraft}
+        campaigns={byId}
       />
 
       {/*

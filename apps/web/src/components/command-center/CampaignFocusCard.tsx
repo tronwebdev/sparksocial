@@ -6,6 +6,7 @@ import { pillarStyle } from '@/components/calendar/pillars';
 import { useState } from 'react';
 import { AdjustFrequency } from './AdjustFrequency';
 import { CampaignManageModal } from './CampaignManageModal';
+import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 
 /**
  * The prototype's "Current Focus" hero card (`SparkSocial Command
@@ -73,6 +74,8 @@ export function CampaignFocusCard({
   primaryCta,
   genomeId,
   onCampaignsChanged,
+  campaigns,
+  onSelectCampaign,
 }: {
   campaign: CampaignSummary | null | undefined;
   calendarView: CalendarView | null;
@@ -83,6 +86,9 @@ export function CampaignFocusCard({
   genomeId?: string;
   /** After a pause, resume, rename or duplicate, so the card re-reads its campaign. */
   onCampaignsChanged?: () => void;
+  /** Every campaign, running first — the chip row switches between them. */
+  campaigns?: CampaignSummary[];
+  onSelectCampaign?: (campaignId: string) => void;
 }) {
   const [managing, setManaging] = useState(false);
 
@@ -195,7 +201,26 @@ export function CampaignFocusCard({
         />
       </div>
 
-      <h2 className="mt-[20px] text-34 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
+      {/*
+        The campaign's state beside its name. With more than one campaign, the
+        title alone could not say whether the one on screen was the one SPARK
+        is working on — a draft and a running campaign looked identical.
+      */}
+      <div className="mt-[20px] flex flex-wrap items-center gap-x-[14px] gap-y-2">
+        <h2 className="text-34 font-semibold leading-[1.27] text-ink">{campaign.name}</h2>
+        {(() => {
+          const state = CAMPAIGN_STATE[campaign.status] ?? CAMPAIGN_STATE.paused!;
+          return (
+            <span
+              className="inline-flex h-[30px] items-center gap-[7px] rounded-full bg-white px-[12px] text-14 font-semibold text-ink"
+              style={{ boxShadow: 'inset 0 0 0 0.94px #838383' }}
+            >
+              <span aria-hidden className="h-[8px] w-[8px] rounded-full" style={{ background: state.dot }} />
+              {state.label}
+            </span>
+          );
+        })()}
+      </div>
 
       <div className="mt-[16px] flex flex-wrap items-baseline gap-x-[26px] gap-y-2 text-16 leading-[1.3]">
         <span className="text-ink-muted">
@@ -380,7 +405,50 @@ export function CampaignFocusCard({
         just not these three words with a tick glued to the first.
       */}
       <div className="mt-[15px] flex flex-wrap gap-[8.5px]">
-        {campaign.campaignType ? (
+        {campaigns && campaigns.length > 1 ? (
+          /*
+            The prototype's chip row is a campaign switcher — three chips,
+            one ticked, each `click` setting the hero's campaign. With one
+            campaign it showed the campaign's kind instead (below), because a
+            switcher with one option switches nothing. With several, it is
+            what the design drew: one chip per campaign, the one on screen
+            ticked, each carrying its state so "which is running" is
+            answered without opening anything. Ended campaigns stay in Edit
+            Campaign rather than crowding the row.
+          */
+          campaigns
+            .filter((c) => c.status !== 'completed')
+            .slice(0, 6)
+            .map((c) => {
+              const on = c.campaignId === campaign.campaignId;
+              const state = CAMPAIGN_STATE[c.status] ?? CAMPAIGN_STATE.paused!;
+              return (
+                <button
+                  key={c.campaignId}
+                  type="button"
+                  onClick={() => onSelectCampaign?.(c.campaignId)}
+                  aria-pressed={on}
+                  title={`${c.name} — ${state.label.toLowerCase()}`}
+                  className="flex h-[38.5px] min-w-[150px] max-w-[260px] items-center justify-center gap-[7px] rounded-[11.42px] px-[14px] text-13 font-semibold transition-colors"
+                  style={{
+                    background: on ? '#FFFFFF' : 'rgba(131,131,131,0.05)',
+                    boxShadow: on ? 'inset 0 0 0 0.94px #838383' : 'inset 0 0 0 0.73px rgba(12,12,12,0.1)',
+                    color: on ? '#0C0C0C' : '#838383',
+                  }}
+                >
+                  <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: state.dot }} />
+                  <span className="truncate">{c.name}</span>
+                  {on ? (
+                    <span className="inline-flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full bg-ink">
+                      <svg width="7" height="6" viewBox="0 0 8 7" fill="none" aria-hidden>
+                        <path d="m1 3.4 2 2.1L7 1" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })
+        ) : campaign.campaignType ? (
           <span
             className="flex h-[38.5px] min-w-[150px] items-center justify-center gap-[7px] rounded-[11.42px] px-[14px] text-13 font-semibold"
             style={{ background: '#FFFFFF', boxShadow: 'inset 0 0 0 0.94px #838383', color: '#0C0C0C' }}

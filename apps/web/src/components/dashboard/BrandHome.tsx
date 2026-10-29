@@ -14,6 +14,7 @@ import { CockpitTabs } from './CockpitTabs';
 import { KpiRow } from './KpiRow';
 import { RightRail } from './RightRail';
 import type { AgentRun, BrandKit, BrandSeries, Lead, RankedTrend, UpcomingPost } from './types';
+import { useCampaigns } from '@/lib/useCampaigns';
 
 /**
  * `/home` AS THE COCKPIT — `DASH-B-01` (PRD §8.3), F7, M1, M2.
@@ -83,6 +84,10 @@ const FEED_LIMIT = 8;
 export function BrandHome() {
   const { genome, loading } = useSelectedGenome();
   const genomeId = genome?.genomeId;
+  /* Every campaign — so the banner can name each running one and an upcoming
+     post can say whose it is. The snapshot below keeps reading the one it shows. */
+  const { campaigns: allCampaigns, byId: campaignsById, reload: reloadCampaigns } = useCampaigns(genomeId);
+  const runningNames = (allCampaigns ?? []).filter((c) => c.status === 'active').map((c) => c.name);
   const [snap, setSnap] = useState<Snapshot | null>(null);
   /*
     Pausing the agent from the banner changes `agent.status`, which this page
@@ -282,7 +287,9 @@ export function BrandHome() {
               ? 'No campaign yet, so nothing is going out.'
               : snap.campaign!.status === 'draft'
                 ? 'A campaign is planned and waiting to be activated.'
-                : 'Your Ai Agents are running campaigns'
+                : runningNames.length > 1
+                  ? `Your Ai Agents are running ${runningNames.length} campaigns`
+                  : 'Your Ai Agents are running campaigns'
         }
         actions={
           <>
@@ -350,7 +357,11 @@ export function BrandHome() {
         campaign={snap.campaign ? { name: snap.campaign.name, status: snap.campaign.status } : null}
         paused={snap.paused}
         planning={snap.needsReview}
-        onChanged={() => setReloads((n) => n + 1)}
+        running={runningNames}
+        onChanged={() => {
+          setReloads((n) => n + 1);
+          void reloadCampaigns();
+        }}
       />
 
       {/*
@@ -415,6 +426,7 @@ export function BrandHome() {
             }
           />
           <CockpitTabs
+            campaigns={campaignsById}
             upcoming={snap.upcoming}
             series={snap.series}
             leads={snap.leads}

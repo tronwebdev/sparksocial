@@ -15,6 +15,8 @@ import {
 import { PlatformIcon } from '@/components/common/PlatformIcon';
 import { EmptyCard } from '@/components/common/EmptyCard';
 import { userMessage } from '@/lib/errorCopy';
+import { CampaignTag } from '@/components/common/CampaignTag';
+import type { CampaignInfo } from '@/lib/useCampaigns';
 
 /**
  * §7.5's **Plan** queue — the fourth of the four the PRD makes first-class.
@@ -64,6 +66,8 @@ interface PlanItem {
   /** Why it stopped — `content.list` carries this as of `5.5`. */
   blockedReason?: string;
   publishAttempts?: number;
+  /** Absent on a one-off post made outside any campaign. */
+  campaignId?: string;
 }
 
 /** `content.list`'s own placeholder for a slot with no written beats yet. */
@@ -90,8 +94,15 @@ export function PlanQueue({
   genomeId,
   onOpen,
   layout = 'rows',
+  campaigns,
 }: {
   genomeId: string | undefined;
+  /**
+   * The brand's campaigns, by id. With more than one, each row names its
+   * campaign — this queue lists every campaign's posts together, and two
+   * campaigns' posts were otherwise indistinguishable.
+   */
+  campaigns?: ReadonlyMap<string, CampaignInfo>;
   /**
    * Opens one post in the Draft Panel.
    *
@@ -121,6 +132,8 @@ export function PlanQueue({
    */
   title?: string;
 }) {
+  const tagFor = (item: PlanItem) =>
+    campaigns && campaigns.size > 1 && item.campaignId ? campaigns.get(item.campaignId) : undefined;
   const [items, setItems] = useState<PlanItem[] | null>(null);
   /* The design's five filter boxes, over the rows already in memory. */
   const [filters, setFilters] = useState<QueueFilterState>(EMPTY_FILTERS);
@@ -475,6 +488,10 @@ export function PlanQueue({
                     </svg>
                     {item.scheduledAt ? when(item.scheduledAt) : 'No slot yet'}
                   </p>
+                  {(() => {
+                    const c = tagFor(item);
+                    return c ? <CampaignTag campaign={c} className="mt-2" /> : null;
+                  })()}
                 </div>
 
                 <span className="text-18 font-medium text-ink-muted">{item.mediaType ?? 'text'}</span>
@@ -598,9 +615,21 @@ export function PlanQueue({
                     <span className="ml-2 align-middle text-14 font-medium text-primary">Next</span>
                   ) : null}
                 </p>
-                <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted [@container(max-width:1099px)]:static [@container(max-width:1099px)]:basis-full">
-                  Confidence: <b className="font-semibold text-ink">High</b>
-                </p>
+                {(() => {
+                  /* With more than one campaign this line says whose post it
+                     is. The design's "Confidence: High" stays otherwise — a
+                     fixed string, as it is in the prototype. */
+                  const c = tagFor(item);
+                  return c ? (
+                    <span className="absolute left-[55px] top-[52px] [@container(max-width:1099px)]:static [@container(max-width:1099px)]:basis-full">
+                      <CampaignTag campaign={c} />
+                    </span>
+                  ) : (
+                    <p className="absolute left-[55px] top-[56px] whitespace-nowrap text-16 leading-[1.3] text-ink-muted [@container(max-width:1099px)]:static [@container(max-width:1099px)]:basis-full">
+                      Confidence: <b className="font-semibold text-ink">High</b>
+                    </p>
+                  );
+                })()}
 
                 {/*
                   The 127x80 media well at 320,12. `content.list` carries

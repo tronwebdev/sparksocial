@@ -52,6 +52,7 @@ interface Governance {
 export function SparkRail({
   paused,
   campaign,
+  running,
   planning = 0,
   approvalMode,
   onOpenChat,
@@ -60,6 +61,8 @@ export function SparkRail({
 }: {
   paused: boolean;
   campaign: { name: string; status: string } | null;
+  /** Every running campaign's name, so a second live campaign is not invisible. */
+  running?: string[];
   planning?: number;
   /** Passed through to the identity modal's Autonomy row. */
   approvalMode?: string;
@@ -101,7 +104,11 @@ export function SparkRail({
       : campaign.status === 'draft'
         ? [{ label: `${campaign.name} is planned, not activated`, spin: false }]
         : [
-            { label: `Running ${campaign.name}`, spin: true },
+            /* One line per running campaign when there are several — it said
+               "Running <one>" and a second live campaign was invisible here. */
+            ...(running && running.length > 1
+              ? running.map((name) => ({ label: `Running ${name}`, spin: true }))
+              : [{ label: `Running ${campaign.name}`, spin: true }]),
             ...(planning > 0 ? [{ label: `Planning ${planning} post${planning === 1 ? '' : 's'}`, spin: true }] : []),
             { label: 'Analyzing engagement signals', spin: true },
           ];

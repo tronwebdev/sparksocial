@@ -114,6 +114,8 @@ export interface UpcomingPost {
   status: string;
   summary: string;
   scheduledAt?: string;
+  /** Which campaign the post belongs to — absent on a one-off post. */
+  campaignId?: string;
 }
 
 /** `brand.governance.get`, the part the cockpit uses. */

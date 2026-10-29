@@ -6,6 +6,7 @@ import { SparkMark } from '@/components/brand/SparkMark';
 import { NeedsAttentionBanner } from './NeedsAttentionBanner';
 import { AgentIdentityModal } from './AgentIdentityModal';
 import { PlanQueue } from './PlanQueue';
+import { useCampaigns } from '@/lib/useCampaigns';
 import { CalendarMonthGrid } from './CalendarMonthGrid';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +65,8 @@ export function AgentCalendarTab({
   busy?: boolean;
 }) {
   const [view, setView] = useState<'list' | 'calendar'>('list');
+  /* So each queue row can name its campaign when the brand runs several. */
+  const { byId: campaignsById } = useCampaigns(genomeId);
   const [identityOpen, setIdentityOpen] = useState(false);
 
   return (
@@ -315,6 +318,7 @@ export function AgentCalendarTab({
           onOpen={onOpenDraft}
           layout="table"
           title="Upcoming action queue"
+          campaigns={campaignsById}
         />
       ) : (
         <CalendarMonthGrid genomeId={genomeId} onOpenDraft={onOpenDraft} />

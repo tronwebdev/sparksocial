@@ -60,6 +60,12 @@ interface AgentBannerProps {
   /** Posts queued but not yet approved — a real "planning" signal. */
   planning?: number;
   onChanged?: () => void;
+  /**
+   * Every running campaign's name. A brand can run several, and the banner
+   * said "Running <one of them>" — so a second live campaign was invisible on
+   * the one card that says what the agent is doing.
+   */
+  running?: string[];
 }
 
 interface Governance {
@@ -69,7 +75,7 @@ interface Governance {
 const WHITE_60 = 'rgba(255,255,255,0.6)';
 const WHITE_75 = 'rgba(255,255,255,0.75)';
 
-export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChanged }: AgentBannerProps) {
+export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChanged, running }: AgentBannerProps) {
   /*
     Read here rather than threaded down from the page's snapshot: the name is
     the agent's own, it changes on a settings screen this component links to,
@@ -112,7 +118,9 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
         : campaign.status === 'paused'
           ? [{ label: `${campaign.name} is paused`, spin: false }]
           : [
-              { label: `Running ${campaign.name}`, spin: true },
+              ...(running && running.length > 1
+                ? running.map((name) => ({ label: `Running ${name}`, spin: true }))
+                : [{ label: `Running ${campaign.name}`, spin: true }]),
               ...(planning > 0
                 ? [{ label: `Planning ${planning} post${planning === 1 ? '' : 's'} for the week ahead`, spin: true }]
                 : []),
