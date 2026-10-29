@@ -139,6 +139,7 @@ import {
   agencyRoster,
   agencyProfileGet,
   agencyProfileSet,
+  agencyClientSetInternal,
   makeAgencyIdentityGenerate,
   makeAgencyJobsSearch,
   makeAgencyCollateralGenerate,
@@ -1157,6 +1158,7 @@ export function registerAgencyTools(deps: {
   // browser's localStorage, and its two "Generate With Ai" buttons.
   register(agencyProfileGet);
   register(agencyProfileSet);
+  register(agencyClientSetInternal);
   register(makeAgencyIdentityGenerate(agencyIdentityWriter()));
   // Job Finder's listings — Himalayas' free public API; see the tool for its terms.
   register(makeAgencyJobsSearch(himalayasJobBoard()));

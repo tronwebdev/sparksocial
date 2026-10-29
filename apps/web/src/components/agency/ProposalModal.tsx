@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useOrganization } from '@clerk/nextjs';
 import {
@@ -150,7 +151,11 @@ export function ProposalModal({
     setView({ kind: 'sent', proposal: p, token, expiresAt });
   }
 
-  return (
+  /* On <body>: on a narrow Agency Portal the stage flattens its children into
+     the page flow, which would turn this fixed overlay into a block at the
+     bottom of the column — the launch wizard's bug. */
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto px-4 py-[5vh]"
       role="dialog"
@@ -237,7 +242,8 @@ export function ProposalModal({
 
         {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

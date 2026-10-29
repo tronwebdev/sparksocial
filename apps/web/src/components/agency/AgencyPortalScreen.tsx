@@ -90,6 +90,9 @@ export function AgencyPortalScreen() {
   const [saveNote, setSaveNote] = useState<string | null>(null);
   /** The design's Search Workspace box, filtering the roster by brand name. */
   const [query, setQuery] = useState('');
+  /** Internal workspaces are out of "My Clients" unless asked for. */
+  const [showInternal, setShowInternal] = useState(false);
+  const [classifying, setClassifying] = useState<string | null>(null);
 
   const { roster, error, reload } = useAgencyRoster();
   const { toast } = useNotifications();
@@ -177,7 +180,25 @@ export function AgencyPortalScreen() {
   }
 
   const q = query.trim().toLowerCase();
-  const visible = (roster?.brands ?? []).filter((b) => (q === '' ? true : b.name.toLowerCase().includes(q)));
+  const matching = (roster?.brands ?? []).filter((b) => (q === '' ? true : b.name.toLowerCase().includes(q)));
+  const visible = showInternal ? matching : matching.filter((b) => !b.internal);
+  const hiddenInternal = matching.length - visible.length;
+
+  async function setInternal(b: { brandId: string; name: string }, internal: boolean) {
+    setClassifying(b.brandId);
+    const res = await invoke('agency.client.set_internal', { brandId: b.brandId, internal });
+    setClassifying(null);
+    if (res.status !== 'succeeded') {
+      toast({ title: 'That didn’t save', body: res.status === 'failed' ? userMessage(res.error) : 'It needs an approval first.', topic: 'generic' });
+      return;
+    }
+    toast({
+      title: internal ? `${b.name} is internal` : `${b.name} is a client again`,
+      body: internal ? 'It’s out of My Clients and the client totals. Nothing else about it changed.' : 'It’s back in My Clients.',
+      topic: 'generic',
+    });
+    await reload();
+  }
 
   /*
     The home view's 1330 is the design's, for its three mock clients. The stage
@@ -198,7 +219,7 @@ export function AgencyPortalScreen() {
         <>
           {launched ? (
             <AgencyHomeSummary
-              totals={roster?.totals ?? { brands: 0, quiet: 0 }}
+              totals={roster?.totals ?? { brands: 0, clients: 0, clientsQuiet: 0 }}
               accounts={accounts}
               onEditWizard={() => setWizStep(0)}
               websiteUrl={site.site?.published ? site.site.url : null}
@@ -221,6 +242,11 @@ export function AgencyPortalScreen() {
             windowDays={roster?.windowDays ?? 30}
             onOpenRow={setRowOpen}
             onDeleted={() => void reload()}
+            hiddenInternal={hiddenInternal}
+            showingInternal={showInternal}
+            onShowInternal={setShowInternal}
+            onSetInternal={(b, internal) => void setInternal(b, internal)}
+            busyId={classifying}
           />
 
           {/*

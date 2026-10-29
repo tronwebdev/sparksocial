@@ -30,6 +30,8 @@ export interface RosterBrand {
   teamMembers: number;
   /** Publishing platforms the brand has connected. */
   platforms: string[];
+  /** Marked as the agency's own workspace rather than a client's. */
+  internal: boolean;
 }
 
 export interface Roster {
@@ -38,6 +40,9 @@ export interface Roster {
   totals: {
     brands: number;
     quiet: number;
+    /** Workspaces not marked internal. */
+    clients: number;
+    clientsQuiet: number;
     publishedCount: number;
     impressions: number;
     engagements: number;

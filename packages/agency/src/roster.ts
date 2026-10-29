@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineTool } from '@sparksocial/tools/defineTool';
 import { Explanation } from '@sparksocial/shared';
+import { readStoredProfile } from './agencyProfile.js';
 
 /**
  * `agency.roster` — every brand in the org, with how each is doing.
@@ -61,6 +62,8 @@ const RosterBrand = z.object({
   teamMembers: z.number().int(),
   /** Publishing platforms this brand has connected (not Canva, which is a design tool). */
   platforms: z.array(z.string()),
+  /** The agency marked this workspace as its own, not a client's (`agency.client.set_internal`). */
+  internal: z.boolean(),
 });
 
 export const AgencyRosterInput = z.object({
@@ -75,6 +78,10 @@ export const AgencyRosterOutput = z.object({
   totals: z.object({
     brands: z.number().int(),
     quiet: z.number().int(),
+    /** Workspaces that are clients — every one not marked internal. */
+    clients: z.number().int(),
+    /** Of those, how many published nothing in the window. */
+    clientsQuiet: z.number().int(),
     publishedCount: z.number().int(),
     impressions: z.number().int(),
     engagements: z.number().int(),
@@ -110,12 +117,14 @@ export const agencyRoster = defineTool({
      * page load *and* forty slightly different window boundaries, so brands
      * rendered later would be compared against a later cutoff.
      */
-    const [brands, rollup, members, connections] = await Promise.all([
+    const [brands, rollup, members, connections, agency] = await Promise.all([
       ctx.db.genomes.listForOrg(ctx.orgId),
       ctx.db.analytics.orgRollup(ctx.orgId, input.windowDays),
       ctx.db.brandMembers.listForOrg(ctx.orgId),
       ctx.db.oauthConnections.providersForOrg(ctx.orgId),
+      ctx.db.agencyProfiles.get(ctx.orgId),
     ]);
+    const internal = new Set(agency ? readStoredProfile(agency.profile).internalBrandIds : []);
 
     const byGenome = new Map(rollup.map((r) => [r.genomeId, r]));
     const teamByBrand = new Map<string, number>();
@@ -144,6 +153,7 @@ export const agencyRoster = defineTool({
           ...(b.category ? { industry: b.category } : {}),
           teamMembers: teamByBrand.get(b.brandId) ?? 0,
           platforms: platformsByGenome.get(b.id) ?? [],
+          internal: internal.has(b.brandId),
         };
       })
       /**
@@ -159,6 +169,8 @@ export const agencyRoster = defineTool({
     const totals = {
       brands: rows.length,
       quiet: rows.filter((r) => r.quiet).length,
+      clients: rows.filter((r) => !r.internal).length,
+      clientsQuiet: rows.filter((r) => !r.internal && r.quiet).length,
       publishedCount: rows.reduce((s, r) => s + r.publishedCount, 0),
       impressions: rows.reduce((s, r) => s + r.impressions, 0),
       engagements: rows.reduce((s, r) => s + r.engagements, 0),

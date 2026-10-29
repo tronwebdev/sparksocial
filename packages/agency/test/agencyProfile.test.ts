@@ -5,6 +5,7 @@ import {
   DEFAULT_AGENCY_PROFILE,
   agencyProfileGet,
   agencyProfileSet,
+  agencyClientSetInternal,
   makeAgencyCollateralGenerate,
   makeAgencyIdentityGenerate,
   type AgencyIdentityWriter,
@@ -177,5 +178,32 @@ describe('agency.collateral.generate', () => {
     const tool = makeAgencyCollateralGenerate({ generate: async () => ({ url: 'https://x.example/a.png' }) });
     await expect(tool.handler({ kind: 'facebook_cover' }, ctx())).rejects.toMatchObject({ code: 'INVALID_INPUT' });
     expect(decide(tool, { role: 'editor' }).kind).toBe('deny');
+  });
+});
+
+describe('agency.client.set_internal', () => {
+  const withBrands = (store: Map<string, unknown>) => {
+    const c = ctx(store) as unknown as { db: Record<string, unknown> };
+    c.db.genomes = { listForOrg: async () => [{ id: 'gen_a', brandId: 'brand_a', name: 'Ours', updatedAt: new Date() }] };
+    return c as unknown as ToolCtx;
+  };
+
+  it('marks a workspace internal and back, without touching the wizard’s answers', async () => {
+    const store = new Map<string, unknown>();
+    await agencyProfileSet.handler(agencyProfileSet.input.parse({ profile: answers }), ctx(store));
+    await agencyClientSetInternal.handler({ brandId: 'brand_a', internal: true }, withBrands(store));
+    expect((await agencyProfileGet.handler({}, ctx(store))).profile).toMatchObject({ name: 'Northside Social', internalBrandIds: ['brand_a'] });
+    // A wizard save keeps the split.
+    await agencyProfileSet.handler(agencyProfileSet.input.parse({ profile: { ...answers, tagline: 'x' } }), ctx(store));
+    expect((await agencyProfileGet.handler({}, ctx(store))).profile!.internalBrandIds).toEqual(['brand_a']);
+    await agencyClientSetInternal.handler({ brandId: 'brand_a', internal: false }, withBrands(store));
+    expect((await agencyProfileGet.handler({}, ctx(store))).profile!.internalBrandIds).toEqual([]);
+  });
+
+  it('refuses a workspace that is not in this account, and an editor', async () => {
+    await expect(
+      agencyClientSetInternal.handler({ brandId: 'brand_elsewhere', internal: true }, withBrands(new Map())),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(decide(agencyClientSetInternal, { role: 'editor' }).kind).toBe('deny');
   });
 });

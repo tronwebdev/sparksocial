@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useOrganization } from '@clerk/nextjs';
 import { TimezoneField } from '@/components/common/TimezoneField';
-import { SECTION } from '@/components/shell/narrowStage';
+import { SECTION, useNarrowStage } from '@/components/shell/narrowStage';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { cn } from '@/lib/utils';
@@ -123,8 +124,9 @@ export function AgencyWizard({
 }) {
   const h = WIZ_HEIGHTS[step];
   const set = (patch: Partial<WizardDraft>) => onDraft({ ...draft, ...patch });
+  const narrow = useNarrowStage();
 
-  return (
+  const ui = (
     <>
       <button
         type="button"
@@ -313,6 +315,17 @@ export function AgencyWizard({
       </div>
     </>
   );
+
+  /*
+    Below the stage breakpoint the stage flattens its direct children into the
+    page flow (`FLATTEN`, `!relative`), and that beat this dialog's own
+    `max-canvas:!fixed` — so on a tablet "Edit Wizard" rendered the sheet at
+    the bottom of a 6,000px column, out of sight, and looked like nothing
+    happened. On a narrow stage it is portalled to <body>, where nothing
+    flattens it and the fixed sheet is what shows. The wide stage keeps it in
+    place, since there it is positioned and scaled with everything else.
+  */
+  return narrow && typeof document !== 'undefined' ? createPortal(ui, document.body) : ui;
 }
 
 /* ── step 1 · model ──────────────────────────────────────────────────── */

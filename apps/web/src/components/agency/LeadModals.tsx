@@ -1,5 +1,6 @@
 'use client';
 
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { parseLeadCsv, type LeadCsvPreview, type LeadImportRow } from './leadCsv';
@@ -40,7 +41,11 @@ function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  /* On <body>: on a narrow Agency Portal the stage flattens its children into
+     the page flow, which would turn this fixed overlay into a block at the
+     bottom of the column — the launch wizard's bug. */
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto px-4 py-[6vh]"
       role="dialog"
@@ -67,7 +72,8 @@ function Modal({
         <div className="mt-[24px]">{children}</div>
         <div className="mt-[28px] flex flex-wrap items-center justify-end gap-[12px]">{footer}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

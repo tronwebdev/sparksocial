@@ -87,10 +87,22 @@ export function AgencyClientTable({
   windowDays,
   onOpenRow,
   onDeleted,
+  hiddenInternal,
+  showingInternal,
+  onShowInternal,
+  onSetInternal,
+  busyId,
 }: {
   top: number;
   brands: RosterBrand[];
   windowDays: number;
+  /** Internal workspaces left out of the list right now. */
+  hiddenInternal: number;
+  showingInternal: boolean;
+  onShowInternal: (show: boolean) => void;
+  onSetInternal: (brand: RosterBrand, internal: boolean) => void;
+  /** The workspace whose client/internal flag is being saved. */
+  busyId?: string | null;
   /** Lifted so the stage can grow by 100 when a row expands, as the design does. */
   onOpenRow: (open: boolean) => void;
   /** Re-reads the roster once a brand is gone, so the row it was on disappears. */
@@ -187,8 +199,13 @@ export function AgencyClientTable({
             {b.name.slice(0, 1).toUpperCase()}
           </span>
 
-          <span className="absolute left-[96px] top-[44px] max-w-[270px] truncate text-19 font-bold text-ink">
-            {b.name}
+          <span className="absolute left-[96px] top-[44px] flex max-w-[270px] items-center gap-[8px] text-19 font-bold text-ink">
+            <span className="truncate">{b.name}</span>
+            {b.internal ? (
+              <span className="shrink-0 rounded-[7px] px-[8px] py-[2px] text-12 font-semibold" style={{ background: 'rgba(131,131,131,0.14)', color: 'rgb(91,91,91)' }}>
+                Internal
+              </span>
+            ) : null}
           </span>
 
           <span className="absolute left-[388px] top-[46px] text-17 font-medium" style={{ color: 'rgb(91,91,91)' }}>
@@ -342,6 +359,22 @@ export function AgencyClientTable({
                   Billing is org-wide
                 </Link>
               </span>
+
+              {/*
+                Not every workspace is a client: the agency's own brand and its
+                test workspaces sat in this list and in the client totals. This
+                takes one out (or puts it back); the workspace itself is untouched.
+              */}
+              <button
+                type="button"
+                onClick={() => onSetInternal(b, !b.internal)}
+                disabled={busyId === b.brandId}
+                className="flex h-[44px] items-center rounded-[11px] bg-white px-[16px] text-15 font-semibold text-ink transition-shadow hover:shadow-card disabled:opacity-60"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
+                title={b.internal ? 'Count this workspace as a client again' : 'Your own brand or a test — leave it out of My Clients'}
+              >
+                {busyId === b.brandId ? 'Saving…' : b.internal ? 'Mark as a client' : 'Not a client — mark internal'}
+              </button>
             </div>
           ) : null}
         </div>
@@ -349,8 +382,19 @@ export function AgencyClientTable({
 
       {/* ── footer ─────────────────────────────────────────────────────── */}
       <div aria-hidden className="absolute left-0 h-px w-full" style={{ top: height - 66, background: 'rgba(131,131,131,0.1)' }} />
-      <span className="absolute bottom-[24px] left-[26px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
-        {brands.length} {brands.length === 1 ? 'workspace' : 'workspaces'}
+      <span className="absolute bottom-[24px] left-[26px] flex items-center gap-[14px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>
+        <span>
+          {brands.length} {brands.length === 1 ? 'workspace' : 'workspaces'}
+        </span>
+        {hiddenInternal > 0 || showingInternal ? (
+          <button
+            type="button"
+            onClick={() => onShowInternal(!showingInternal)}
+            className="underline underline-offset-2 hover:text-ink"
+          >
+            {showingInternal ? 'Hide internal workspaces' : `Show ${hiddenInternal} internal`}
+          </button>
+        ) : null}
       </span>
 
       {/*

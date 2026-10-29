@@ -58,6 +58,14 @@ export const AgencyProfile = z.object({
   collateral: z
     .object({ facebookCover: z.string().url().optional(), linkedinBanner: z.string().url().optional() })
     .default({}),
+  /**
+   * Workspaces that are the agency's own — its brand, a test, an internal
+   * project — rather than clients. `agency.client.set_internal` writes it;
+   * the roster flags them and the portal keeps them out of "My Clients".
+   * Kept here, on the agency's own record, because it is the agency's
+   * classification of its workspaces, not a property any brand has.
+   */
+  internalBrandIds: z.array(z.string()).max(500).default([]),
 });
 export type AgencyProfile = z.infer<typeof AgencyProfile>;
 
@@ -77,6 +85,7 @@ export const DEFAULT_AGENCY_PROFILE: AgencyProfile = {
   template: 0,
   domain: '',
   collateral: {},
+  internalBrandIds: [],
 };
 
 /**
@@ -127,7 +136,7 @@ export const agencyProfileGet = defineTool({
 });
 
 export const AgencyProfileSetInput = z.object({
-  profile: AgencyProfile.omit({ launchedAt: true, collateral: true }),
+  profile: AgencyProfile.omit({ launchedAt: true, collateral: true, internalBrandIds: true }),
   /** True from the wizard's Launch button. Stamps `launchedAt` the first time only. */
   launch: z.boolean().default(false),
 });
@@ -163,8 +172,9 @@ export const agencyProfileSet = defineTool({
     const profile: AgencyProfile = {
       ...input.profile,
       ...(launchedAt ? { launchedAt } : {}),
-      /* Generated banners are not the wizard's to overwrite. */
+      /* Generated banners and the client/internal split are not the wizard's to overwrite. */
       collateral: previous?.collateral ?? {},
+      internalBrandIds: previous?.internalBrandIds ?? [],
     };
     await ctx.db.agencyProfiles.set(ctx.orgId, profile);
     ctx.logger.info('agency profile saved', { orgId: ctx.orgId, launched: Boolean(launchedAt) });
@@ -388,3 +398,49 @@ export function makeAgencyCollateralGenerate(images: CollateralImageClient) {
     },
   });
 }
+
+/* ── Client or internal ───────────────────────────────────────────────── */
+
+export const AgencyClientSetInternalInput = z.object({
+  brandId: z.string().min(1),
+  internal: z.boolean(),
+});
+
+/**
+ * `agency.client.set_internal` — mark a workspace as the agency's own rather
+ * than a client's.
+ *
+ * Every workspace in an agency's org used to count as a client: its own brand
+ * and its test workspaces sat in "My Clients" and in the client totals. This
+ * flips one workspace in or out of that list. Nothing about the workspace
+ * itself changes — it stays in the brand switcher and works as before.
+ */
+export const agencyClientSetInternal = defineTool({
+  name: 'agency.client.set_internal',
+  version: 1,
+  summary:
+    'Mark a workspace as internal (the agency’s own brand, a test) or as a client. Internal workspaces are ' +
+    'left out of the Agency Portal’s client list and client totals; nothing else about them changes.',
+  input: AgencyClientSetInternalInput,
+  output: z.object({ brandId: z.string(), internal: z.boolean() }),
+  effect: 'write',
+  autonomy: 'auto',
+  scopes: ['owner', 'admin'],
+  /** Setting the same flag twice leaves the same list. */
+  idempotent: true,
+  surfaces: ['AG-HOME-01'],
+
+  async handler(input, ctx) {
+    const brands = await ctx.db.genomes.listForOrg(ctx.orgId);
+    if (!brands.some((b) => b.brandId === input.brandId)) {
+      throw new ToolError('NOT_FOUND', 'No such workspace in this account.', { brandId: input.brandId });
+    }
+    const stored = await ctx.db.agencyProfiles.get(ctx.orgId);
+    const profile = stored ? readStoredProfile(stored.profile) : DEFAULT_AGENCY_PROFILE;
+    const rest = profile.internalBrandIds.filter((id) => id !== input.brandId);
+    const internalBrandIds = input.internal ? [...rest, input.brandId] : rest;
+    await ctx.db.agencyProfiles.set(ctx.orgId, { ...profile, internalBrandIds });
+    ctx.logger.info('agency workspace classified', { orgId: ctx.orgId, internal: input.internal });
+    return { brandId: input.brandId, internal: input.internal };
+  },
+});

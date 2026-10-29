@@ -35,6 +35,7 @@ function ctx(
   calls: unknown[] = [],
   members: Array<{ brandId: string; userId: string }> = [],
   connections: Array<{ genomeId: string; provider: string }> = [],
+  internalBrandIds: string[] = [],
 ): ToolCtx {
   return {
     orgId: 'org_1',
@@ -52,6 +53,12 @@ function ctx(
       brandMembers: { listForOrg: async (orgId: string) => { calls.push({ members: orgId }); return members; } },
       oauthConnections: {
         providersForOrg: async (orgId: string) => { calls.push({ connections: orgId }); return connections; },
+      },
+      agencyProfiles: {
+        get: async (orgId: string) => {
+          calls.push({ agency: orgId });
+          return internalBrandIds.length ? { profile: { internalBrandIds }, updatedAt: new Date() } : undefined;
+        },
       },
     },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
@@ -90,6 +97,18 @@ describe('agency.roster — the design’s client columns, from real data', () =
     const b = out.brands.find((x) => x.genomeId === 'gen_b')!;
     expect(b.industry).toBeUndefined();
     expect(b).toMatchObject({ teamMembers: 0, platforms: [] });
+  });
+});
+
+describe('agency.roster — clients and the agency’s own workspaces', () => {
+  it('flags internal workspaces and leaves them out of the client totals', async () => {
+    const out = await agencyRoster.handler(
+      { windowDays: 30 },
+      ctx([brand('gen_a', 'Client A'), brand('gen_b', 'Our own brand')], [], [], [], [], ['brand_gen_b']),
+    );
+    expect(out.brands.find((b) => b.name === 'Our own brand')!.internal).toBe(true);
+    expect(out.brands.find((b) => b.name === 'Client A')!.internal).toBe(false);
+    expect(out.totals).toMatchObject({ brands: 2, clients: 1, clientsQuiet: 1 });
   });
 });
 
@@ -161,6 +180,7 @@ describe('agency.roster', () => {
         'engagements',
         'genomeId',
         'impressions',
+        'internal',
         'name',
         'platforms',
         'publishedCount',
@@ -182,7 +202,7 @@ describe('agency.roster', () => {
         ],
       ),
     );
-    expect(out.totals).toEqual({ brands: 3, quiet: 1, publishedCount: 8, impressions: 150, engagements: 16 });
+    expect(out.totals).toEqual({ brands: 3, quiet: 1, clients: 3, clientsQuiet: 1, publishedCount: 8, impressions: 150, engagements: 16 });
   });
 
   it('reads the org once, not once per brand', async () => {
@@ -197,8 +217,9 @@ describe('agency.roster', () => {
       { windowDays: 7 },
       ctx([brand('gen_a', 'A'), brand('gen_b', 'B'), brand('gen_c', 'C')], [], calls),
     );
-    // Four org-wide reads — brands, numbers, members, connections — never one per brand.
-    expect(calls).toHaveLength(4);
+    // Five org-wide reads — brands, numbers, members, connections, the agency's
+    // client/internal split — never one per brand.
+    expect(calls).toHaveLength(5);
     expect(calls).toContainEqual({ orgRollup: 'org_1', windowDays: 7 });
   });
 

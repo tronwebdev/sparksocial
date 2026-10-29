@@ -179,7 +179,8 @@ export function AgencyHomeSummary({
   onGenerate,
   generating,
 }: {
-  totals: { brands: number; quiet: number };
+  /** Every workspace, and of them the clients — internal ones are not clients. */
+  totals: { brands: number; clients: number; clientsQuiet: number };
   /** Connected publishing accounts, for the design's chip row. */
   accounts: Array<{ platform: string; label: string }>;
   onEditWizard: () => void;
@@ -200,7 +201,7 @@ export function AgencyHomeSummary({
   };
   useEffect(measure, []);
 
-  const active = Math.max(0, totals.brands - totals.quiet);
+  const active = Math.max(0, totals.clients - totals.clientsQuiet);
 
   return (
     <section
@@ -258,7 +259,7 @@ export function AgencyHomeSummary({
         tint="bg-ag-peach"
         label="Active client accounts"
         value={active}
-        note={totals.quiet > 0 ? `${totals.quiet} quiet` : undefined}
+        note={totals.clientsQuiet > 0 ? `${totals.clientsQuiet} quiet` : undefined}
       />
 
       <p className="absolute left-[24px] top-[256px] text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>

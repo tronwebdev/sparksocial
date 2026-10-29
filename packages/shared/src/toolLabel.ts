@@ -56,6 +56,7 @@ const LABELS: Record<string, string> = {
   'org.rename': 'Rename the organisation',
   'agency.profile.get': 'Read the agency profile',
   'agency.profile.set': 'Save the agency profile',
+  'agency.client.set_internal': 'Mark a workspace internal or a client',
   'agency.identity.generate': 'Suggest an agency identity',
   'agency.jobs.search': 'Search job listings',
   'agency.site.get': 'Read the agency website',
