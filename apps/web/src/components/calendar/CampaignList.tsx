@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,14 +70,18 @@ export function CampaignList({
   onChanged,
   onNew,
   busy,
+  genomeId,
 }: {
   campaigns: CampaignRow[];
   selectedId: string | undefined;
-  onSelect: (campaignId: string) => void;
-  /** Called after a rename or a status change, so the caller can re-read the list. */
+  /** Optional: where there is nothing to "open" a campaign into, rows are not links. */
+  onSelect?: (campaignId: string) => void;
+  /** Called after a rename, a status change or a duplicate, so the caller can re-read the list. */
   onChanged: () => void;
   onNew: () => void;
   busy?: boolean;
+  /** Needed by `campaign.duplicate`, which checks the campaign is this brand's. Duplicate shows only with it. */
+  genomeId?: string;
 }) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -106,6 +111,46 @@ export function CampaignList({
       return;
     }
     setRenaming(null);
+    toast(`Renamed to ${res.output.name}`);
+    onChanged();
+  }
+
+  /**
+   * `campaign.duplicate` with its own defaults — "<name> (copy)", starting now,
+   * as a draft. Registered since August and reachable from no screen until this.
+   * A fresh key per press: two presses are two copies, and the tool declares
+   * `idempotent: false` for exactly that reason.
+   *
+   * Then `calendar.generate`, as the wizard does after `campaign.create`: the
+   * duplicate copies the campaign's terms, not its slots, so without this the
+   * copy is a campaign with an empty calendar that activating would not fill.
+   */
+  async function duplicate(campaignId: string) {
+    if (!genomeId) return;
+    setWorking(campaignId);
+    setError(null);
+    const res = await invoke<{ campaignId: string; name: string }>(
+      'campaign.duplicate',
+      { campaignId, genomeId },
+      crypto.randomUUID(),
+    );
+    if (res.status !== 'succeeded') {
+      setWorking(null);
+      setError(res.status === 'failed' ? userMessage(res.error) : 'That copy needs approval.');
+      return;
+    }
+    const planned = await invoke<{ slotCount: number }>('calendar.generate', { campaignId: res.output.campaignId });
+    setWorking(null);
+    if (planned.status !== 'succeeded') {
+      setError(
+        `“${res.output.name}” was created, but its calendar was not: ${
+          planned.status === 'failed' ? userMessage(planned.error) : 'planning it needs approval.'
+        }`,
+      );
+      onChanged();
+      return;
+    }
+    toast(`Created “${res.output.name}” as a draft, with ${planned.output.slotCount} posts planned`);
     onChanged();
   }
 
@@ -138,6 +183,7 @@ export function CampaignList({
       setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
       return;
     }
+    toast(to === 'active' ? 'Campaign is active — SPARK is planning against it' : 'Campaign paused');
     onChanged();
   }
 
@@ -204,7 +250,7 @@ export function CampaignList({
                         Cancel
                       </Button>
                     </div>
-                  ) : (
+                  ) : onSelect ? (
                     <button
                       type="button"
                       onClick={() => onSelect(c.campaignId)}
@@ -212,6 +258,8 @@ export function CampaignList({
                     >
                       {c.name}
                     </button>
+                  ) : (
+                    <p className="max-w-full truncate text-14 font-medium text-ink">{c.name}</p>
                   )}
 
                   <p className="mt-0.5 text-12 text-ink-muted">
@@ -265,7 +313,18 @@ export function CampaignList({
                     </Button>
                   ) : null}
 
-                  {!selected && !editing ? (
+                  {genomeId && !editing ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isWorking || busy}
+                      onClick={() => void duplicate(c.campaignId)}
+                    >
+                      Duplicate
+                    </Button>
+                  ) : null}
+
+                  {onSelect && !selected && !editing ? (
                     <Button size="sm" variant="ghost" disabled={busy} onClick={() => onSelect(c.campaignId)}>
                       Open
                     </Button>

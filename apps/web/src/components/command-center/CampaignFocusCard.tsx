@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { pillarStyle } from '@/components/calendar/pillars';
+import { useState } from 'react';
 import { AdjustFrequency } from './AdjustFrequency';
+import { CampaignManageModal } from './CampaignManageModal';
 
 /**
  * The prototype's "Current Focus" hero card (`SparkSocial Command
@@ -69,13 +71,20 @@ export function CampaignFocusCard({
   calendarView,
   genomeName,
   primaryCta,
+  genomeId,
+  onCampaignsChanged,
 }: {
   campaign: CampaignSummary | null | undefined;
   calendarView: CalendarView | null;
   genomeName?: string;
   /** `offer.primary_cta` from the brand's genome. Absent until it is set. */
   primaryCta?: string;
+  /** For Edit Campaign's list. Without it the button stays a link to the calendar. */
+  genomeId?: string;
+  /** After a pause, resume, rename or duplicate, so the card re-reads its campaign. */
+  onCampaignsChanged?: () => void;
 }) {
+  const [managing, setManaging] = useState(false);
 
   if (campaign === undefined) return <Skeleton className="h-40 w-full rounded-xl" />;
 
@@ -160,13 +169,17 @@ export function CampaignFocusCard({
         </span>
 
         {/*
-          "Edit Campaign" is the calendar, which is where a campaign is actually
-          edited. "Adjust Frequency" linked to `#agent-frequency`, an anchor on
-          `AgentControlBar` — which moved to Settings → Brand Kit, so the link
-          scrolled nowhere. It opens the same dial the dashboard banner uses.
+          "Edit Campaign" linked to the calendar, which shows a campaign's dates
+          and edits none of it. It opens `CampaignManageModal`: every campaign,
+          with pause / resume / activate / rename / duplicate — controls whose
+          tools were registered and reachable from no screen. "Adjust
+          Frequency" opens the same dial the dashboard banner uses.
         */}
-        <Link
-          href="/calendar"
+        <button
+          type="button"
+          onClick={() => setManaging(true)}
+          disabled={!genomeId}
+          aria-haspopup="dialog"
           className="flex h-[36.6px] w-[150px] items-center justify-center gap-2 rounded-[7.43px] text-14 font-medium text-ink"
           style={{ background: 'rgba(255,255,255,0.4)', boxShadow: 'inset 0 0 0 0.57px #0C0C0C' }}
         >
@@ -174,7 +187,7 @@ export function CampaignFocusCard({
             <path d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Edit Campaign
-        </Link>
+        </button>
 
         <AdjustFrequency
           className="flex h-[36.6px] w-[150px] items-center justify-center rounded-[7.43px] text-14 font-medium text-ink"
@@ -385,23 +398,27 @@ export function CampaignFocusCard({
     </section>
 
       {/*
-        ── Pause, resume and duplicate are not on this screen ─────────────
+        ── Pause, resume and duplicate are not drawn on this card ─────────
 
-        They were, as text actions under the card, because the design's hero has
-        no such control and they had to go somewhere. Two things were wrong with
-        that. `order-last` put them after *every* sibling in this container
-        rather than after the hero, so they rendered beneath the queue — under
-        the heading "What is your Agent doing next?", which is not what they do.
-        And the design does not draw them here at all; a label-diff against
-        `SparkSocial Command Center.dc.html` found "Pause campaign" and
-        "Duplicate" among exactly four strings on this screen that the prototype
-        has no trace of.
+        They were, as text actions under the card, and two things were wrong
+        with that: `order-last` put them beneath the queue, under "What is your
+        Agent doing next?", and the design does not draw them here at all.
 
-        `campaign.pause`, `campaign.resume` and `campaign.duplicate` are all
-        still registered and reachable. This removes a control the design never
-        had, not a capability.
+        They live behind the design's own Edit Campaign button now
+        (`CampaignManageModal`). Removing them here once left them reachable
+        from nowhere — the calendar's list was switched off at the same time —
+        which is the failure that comment did not foresee.
       */}
 
+
+      {managing && genomeId ? (
+        <CampaignManageModal
+          genomeId={genomeId}
+          currentId={campaign.campaignId}
+          onClose={() => setManaging(false)}
+          onChanged={() => onCampaignsChanged?.()}
+        />
+      ) : null}
     </>
   );
 }

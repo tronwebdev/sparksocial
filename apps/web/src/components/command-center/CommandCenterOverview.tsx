@@ -68,13 +68,19 @@ export function CommandCenterOverview({
     if (!genome) return;
     const res = await invoke<{ campaigns: CampaignSummary[] }>('campaign.list', {
       genomeId: genome.genomeId,
-      limit: 1,
+      limit: 20,
     });
     if (res.status !== 'succeeded' || res.output.campaigns.length === 0) {
       setCampaign(null);
       return;
     }
-    const active = res.output.campaigns[0]!;
+    /*
+      The active one, not the newest. This read `limit: 1`, so duplicating a
+      campaign — or starting a draft — put the copy in "Current Focus" while
+      a different campaign was the one actually running. Newest is the
+      fallback when nothing is active, which is what the dashboard does too.
+    */
+    const active = res.output.campaigns.find((c) => c.status === 'active') ?? res.output.campaigns[0]!;
     setCampaign(active);
 
     const cal = await invoke<CalendarView>('calendar.get', { campaignId: active.campaignId });
@@ -141,6 +147,8 @@ export function CommandCenterOverview({
         calendarView={calendarView}
         genomeName={genome?.name}
         primaryCta={primaryCta}
+        {...(genome ? { genomeId: genome.genomeId } : {})}
+        onCampaignsChanged={() => void loadCampaign()}
       />
 
       {/*

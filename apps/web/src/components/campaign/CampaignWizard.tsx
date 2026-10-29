@@ -476,7 +476,7 @@ export function CampaignWizard({
     if (activated.status !== 'succeeded') {
       setError(
         activated.status === 'failed'
-          ? `The campaign and its calendar were created, but activating it did not finish: ${userMessage(activated.error)}. You can activate it from the calendar.`
+          ? `The campaign and its calendar were created, but activating it did not finish: ${userMessage(activated.error)}. You can activate it from Edit Campaign in the Command Center.`
           : 'The campaign and its calendar were created. Activating it needs approval — do it from the calendar.',
       );
       return;

@@ -59,6 +59,27 @@ describe('what the production sweep found', () => {
     expect(src('src/app/organization/members/page.tsx')).toContain('<TeamPanel />');
   });
 
+  /* PRD audit: pause, resume, rename, duplicate and activate were registered
+     tools reachable from no screen. */
+  it('reaches every campaign control from Edit Campaign', () => {
+    const card = src('src/components/command-center/CampaignFocusCard.tsx');
+    expect(card).toContain('<CampaignManageModal');
+    expect(card).toContain('onClick={() => setManaging(true)}');
+    const list = src('src/components/calendar/CampaignList.tsx');
+    for (const tool of ['campaign.resume', 'campaign.pause', 'campaign.rename', 'campaign.duplicate']) {
+      expect(list).toContain(`'${tool}'`);
+    }
+    // A duplicate copies terms, not slots — it is planned straight after.
+    expect(list).toContain("invoke<{ slotCount: number }>('calendar.generate'");
+    expect(src('src/components/campaign/CampaignWizard.tsx')).not.toContain('activate it from the calendar');
+  });
+
+  it('shows the running campaign as Current Focus, not the newest one', () => {
+    expect(src('src/components/command-center/CommandCenterOverview.tsx')).toContain(
+      "res.output.campaigns.find((c) => c.status === 'active') ?? res.output.campaigns[0]!",
+    );
+  });
+
   it('writes the calendar screen’s statuses as words', () => {
     expect(src('src/components/command-center/CalendarMonthGrid.tsx')).not.toContain(
       'statusLabel={(st) => st[0]!.toUpperCase() + st.slice(1)}',
