@@ -54,7 +54,7 @@ const ACTIONS: Action[] = [
 
 export function QuickActions({ onOpenChat, agentName = 'Spark' }: { onOpenChat: () => void; agentName?: string }) {
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <h2 className="text-18 font-semibold text-ink">Quick actions</h2>
       <p className="mt-1 text-13 text-ink-muted">The five things people come here to do.</p>
 
@@ -62,7 +62,7 @@ export function QuickActions({ onOpenChat, agentName = 'Spark' }: { onOpenChat: 
         {ACTIONS.map((a) => {
           const chat = a.href === '#chat';
           const className = cn(
-            'block rounded-lg border border-border px-3.5 py-2.5 text-left transition-colors',
+            'block rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] px-3.5 py-2.5 text-left transition-colors',
             'hover:bg-surface-muted focus-visible:outline focus-visible:outline-2',
             'focus-visible:outline-offset-2 focus-visible:outline-primary',
           );

@@ -136,7 +136,7 @@ export function BrandTemplatesPanel() {
 
   if (templates === null) {
     return (
-      <section className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
+      <section>
         <Skeleton className="h-5 w-40" />
         <Skeleton className="mt-3 h-24 w-full" />
       </section>
@@ -147,9 +147,8 @@ export function BrandTemplatesPanel() {
   const activeTab = TABS.find((t) => t.key === tab);
 
   return (
-    <section className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
-      <h2 className="text-18 font-semibold text-ink">Templates</h2>
-      <p className="mt-1 text-13 text-ink-muted">
+    <section>
+      <p className="text-13 text-ink-muted">
         Lines you reuse &mdash; how a post opens, how it signs off, what goes on screen. Saved here, applied from
         a draft&rsquo;s storyboard.
       </p>

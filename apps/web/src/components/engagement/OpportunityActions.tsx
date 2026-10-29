@@ -96,7 +96,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
 
   if (!opportunityId) {
     return (
-      <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
+      <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-3">
         <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">Raise as an opportunity</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
@@ -142,7 +142,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
   }
 
   return (
-    <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
+    <div className="mt-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="success">Opportunity raised</Badge>
         <span className="text-12 text-ink-muted">{temperature}</span>

@@ -1,7 +1,6 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
@@ -269,7 +268,6 @@ export function AgencyPanel() {
                     Updated {new Date(b.updatedAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
-                <Badge variant="neutral" className="hidden shrink-0 sm:inline-flex">{b.brandId}</Badge>
               </li>
             ))}
           </ul>
@@ -373,7 +371,7 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <div className="mt-3 grid grid-cols-1 gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div className="mt-3 grid grid-cols-1 gap-2 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
       <div className="grid grid-cols-1 gap-1">
         <label className="text-12 font-medium text-ink-muted">Brand name</label>
         <input

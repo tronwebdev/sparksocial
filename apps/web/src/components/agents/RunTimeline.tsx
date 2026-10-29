@@ -110,7 +110,7 @@ export function RunTimeline() {
 
   if (error) {
     return (
-      <p className="rounded border border-border bg-surface p-4 text-14 text-ink-muted">
+      <p className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4 text-14 text-ink-muted">
         Could not load runs: {error}
       </p>
     );
@@ -128,7 +128,7 @@ export function RunTimeline() {
 
   if (runs.length === 0) {
     return (
-      <div className="rounded border border-border bg-surface p-8 text-center">
+      <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-8 text-center">
         <p className="text-16 font-medium text-ink">No runs yet</p>
         <p className="mt-1 text-14 text-ink-muted">
           When SPARK does something, every step it takes will show up here.
@@ -232,7 +232,7 @@ function RunDetailPanel({
 
   if (error) {
     return (
-      <div className="rounded border border-border bg-surface p-4 text-14 text-ink-muted">
+      <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4 text-14 text-ink-muted">
         Could not load this run: {error}
       </div>
     );
@@ -241,7 +241,7 @@ function RunDetailPanel({
   if (!detail) return <Skeleton className="h-64 w-full rounded" />;
 
   return (
-    <div className="rounded border border-border bg-surface p-5">
+    <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="min-w-0">
           <p className="text-16 font-medium text-ink">{detail.goal}</p>

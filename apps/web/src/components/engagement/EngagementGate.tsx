@@ -153,7 +153,7 @@ export function EngagementGate({
       */}
 
       {state.kind === 'ineligible' && showLearningNotice ? (
-        <section className="rounded-xl border border-border bg-surface-muted p-6">
+        <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-6">
           <h2 className="text-18 font-semibold text-ink">SPARK is still learning your voice</h2>
           <p className="mt-1 max-w-prose text-14 text-ink-muted">{state.eligibility.reason}</p>
 

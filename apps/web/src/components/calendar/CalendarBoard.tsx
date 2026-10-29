@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -485,7 +486,7 @@ export function CalendarBoard({
 
   if ((error || genomeError) && !view) {
     return (
-      <div className="rounded border border-border bg-surface p-6">
+      <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
         <p className="text-14 text-ink-muted">{error ?? genomeError}</p>
       </div>
     );
@@ -534,10 +535,10 @@ export function CalendarBoard({
         />
       ) : null}
 
-      <section className="rounded border border-border bg-surface p-5">
+      <section className="rounded-[16px] bg-white p-5 shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]">
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-16 font-medium text-ink">{view.name}</h2>
+            <h2 className="text-18 font-semibold text-ink">{view.name}</h2>
             <p className="mt-0.5 text-13 text-ink-muted">
               {view.slots.length} posts · for {view.objective}
             </p>
@@ -545,7 +546,9 @@ export function CalendarBoard({
           {/* The status and its controls live in the list above, beside every
               other campaign's — see `CampaignList`. Repeating them here would give
               two places to activate one campaign. */}
-          <Badge className="bg-surface-muted capitalize text-ink-muted">{view.status}</Badge>
+          <Badge variant={CAMPAIGN_STATE[view.status]?.tone ?? 'neutral'}>
+            {CAMPAIGN_STATE[view.status]?.label ?? view.status}
+          </Badge>
         </header>
 
         {/*
@@ -602,7 +605,7 @@ export function CalendarBoard({
           renders days that already have a slot, so an empty day needs its own
           entry point. */}
       {SHOW_POST_PICKER ? (
-        <section className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface p-4">
+        <section className="flex flex-wrap items-center gap-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
           <span className="text-13 font-medium text-ink-muted">What would you like to post, and when?</span>
           <Input
             type="date"
@@ -618,7 +621,7 @@ export function CalendarBoard({
       ) : null}
 
       {undo ? (
-        <div className="flex items-center gap-3 rounded border border-border bg-surface-muted px-4 py-2 text-13 text-ink-muted">
+        <div className="flex items-center gap-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] px-4 py-2 text-13 text-ink-muted">
           <span>Moved &ldquo;{undo.label}&rdquo;.</span>
           <button type="button" onClick={() => void undoMove()} className="font-medium text-brand-purple underline">
             Undo
@@ -637,7 +640,7 @@ export function CalendarBoard({
           */}
           {/* Only when nothing above is driving it — see the prop. */}
           {layoutProp === undefined ? (
-          <div className="flex shrink-0 items-center gap-1 rounded border border-border p-0.5">
+          <div className="flex shrink-0 items-center gap-1 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-0.5">
             {(['calendar', 'list'] as const).map((l) => (
               <button
                 key={l}
@@ -754,7 +757,7 @@ function MonthGrid({
   }
 
   return (
-    <section className={cn('rounded border border-border bg-surface p-5', busy && 'opacity-60')}>
+    <section className={cn('rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5', busy && 'opacity-60')}>
       <h3 className="mb-4 text-14 font-medium text-ink">The month</h3>
       <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[...byDay.entries()].map(([day, daySlots]) => (
@@ -768,7 +771,7 @@ function MonthGrid({
               const dropped = daySlots.find((s) => s.id === slotId) ?? slots.find((s) => s.id === slotId);
               if (dropped) onDropSlot(dropped, day);
             }}
-            className="rounded border border-border p-3"
+            className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3"
           >
             <div className="flex items-center justify-between">
               <p className="text-12 uppercase tracking-wide text-ink-muted">
@@ -879,7 +882,7 @@ function SlotFilters({
   if (!useful) return null;
 
   return (
-    <section className="flex flex-wrap items-end gap-3 rounded border border-border bg-surface p-4">
+    <section className="flex flex-wrap items-end gap-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
       <span className="pb-2 text-13 font-medium text-ink-muted">Show</span>
 
       {statuses.length > 1 ? (
@@ -952,7 +955,7 @@ function FilterSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-13 capitalize text-ink"
+        className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-1.5 text-13 capitalize text-ink"
       >
         <option value="all">All</option>
         {options.map((o) => (
@@ -1024,7 +1027,7 @@ function SlotList({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="overflow-hidden rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]">
       <ul className="grid grid-cols-1">
         {[...dated, ...undated].map((slot) => {
           const style = pillarStyle(slot.pillar);

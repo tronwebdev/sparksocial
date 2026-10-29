@@ -154,7 +154,7 @@ export function ConversationDrawer({
           ) : null}
 
           {thread?.single ? (
-            <p className="mb-3 rounded-lg border border-border bg-surface-muted px-3 py-2 text-13 text-ink-muted">
+            <p className="mb-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] px-3 py-2 text-13 text-ink-muted">
               This message arrived before SPARK tracked conversations, so there is nothing to thread it to. The
               next message from this person will be.
             </p>
@@ -178,7 +178,7 @@ export function ConversationDrawer({
                       'max-w-[85%] rounded-2xl px-3.5 py-2.5',
                       turn.direction === 'outbound'
                         ? 'bg-primary/10 text-ink'
-                        : 'border border-border bg-surface-muted text-ink',
+                        : 'shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] text-ink',
                     )}
                   >
                     <p className="whitespace-pre-wrap text-14">{turn.text}</p>

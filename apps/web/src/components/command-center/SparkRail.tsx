@@ -60,7 +60,8 @@ export function SparkRail({
   busy,
 }: {
   paused: boolean;
-  campaign: { name: string; status: string } | null;
+  /** `undefined` while it is still being read — not the same as having none. */
+  campaign: { name: string; status: string } | null | undefined;
   /** Every running campaign's name, so a second live campaign is not invisible. */
   running?: string[];
   planning?: number;
@@ -99,19 +100,21 @@ export function SparkRail({
   */
   const statuses: Array<{ label: string; spin: boolean }> = paused
     ? [{ label: 'Paused — it will not act until you resume', spin: false }]
-    : !campaign
-      ? [{ label: 'No campaign yet, so nothing is planned', spin: false }]
-      : campaign.status === 'draft'
-        ? [{ label: `${campaign.name} is planned, not activated`, spin: false }]
-        : [
-            /* One line per running campaign when there are several — it said
-               "Running <one>" and a second live campaign was invisible here. */
-            ...(running && running.length > 1
-              ? running.map((name) => ({ label: `Running ${name}`, spin: true }))
-              : [{ label: `Running ${campaign.name}`, spin: true }]),
-            ...(planning > 0 ? [{ label: `Planning ${planning} post${planning === 1 ? '' : 's'}`, spin: true }] : []),
-            { label: 'Analyzing engagement signals', spin: true },
-          ];
+    : campaign === undefined
+      ? []
+      : !campaign
+        ? [{ label: 'No campaign yet, so nothing is planned', spin: false }]
+        : campaign.status === 'draft'
+          ? [{ label: `${campaign.name} is planned, not activated`, spin: false }]
+          : [
+              /* One line per running campaign when there are several — it said
+                 "Running <one>" and a second live campaign was invisible here. */
+              ...(running && running.length > 1
+                ? running.map((name) => ({ label: `Running ${name}`, spin: true }))
+                : [{ label: `Running ${campaign.name}`, spin: true }]),
+              ...(planning > 0 ? [{ label: `Planning ${planning} post${planning === 1 ? '' : 's'}`, spin: true }] : []),
+              { label: 'Analyzing engagement signals', spin: true },
+            ];
 
   return (
     <aside

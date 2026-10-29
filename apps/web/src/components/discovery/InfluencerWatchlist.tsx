@@ -174,7 +174,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
             id="inf-platform"
             value={platform}
             onChange={(e) => setPlatform(e.target.value as Platform)}
-            className="mt-1 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 py-2 text-13 text-ink"
+            className="mt-1 h-[69px] rounded-lg bg-input px-4 text-16 text-ink"
           >
             {PLATFORMS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -293,7 +293,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
           )}
 
           {review.quiet.length > 0 ? (
-            <div className="mt-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-3">
+            <div className="mt-3 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-3">
               <p className="text-12 font-medium uppercase tracking-wide text-ink-muted">
                 {review.quiet.length} account{review.quiet.length === 1 ? '' : 's'} with nothing to show
               </p>

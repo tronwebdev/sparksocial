@@ -122,7 +122,7 @@ export function EngagementFeed() {
   if (loading) return <Skeleton className="h-64 w-full rounded-xl" />;
   if (genomeError || !genomeId) {
     return (
-      <section className="rounded-xl border border-border bg-surface p-6">
+      <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
         <p className="text-14 text-ink-muted">{genomeError ?? 'No brand selected.'}</p>
       </section>
     );
@@ -311,8 +311,11 @@ export function EngagementFeed() {
           body={
             tab === 'sales_opportunity'
               ? 'Leads appear here once your agent spots buying intent in a reply or a DM.'
-              : 'Comments, DMs and story replies land here once your campaign is running and people start answering.'
+              : 'Comments, DMs and story replies land here as people answer your posts on a connected account.'
           }
+          // The inbox fills from connected accounts, not from a campaign — the
+          // default "Create Campaign" was offered even with one already running.
+          action={{ label: 'Connect accounts', href: '/settings/accounts' }}
         />
       ) : (
         <div className="mt-[20px] flex flex-col gap-3 lg:flex-row lg:items-start">

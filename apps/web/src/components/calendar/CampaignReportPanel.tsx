@@ -69,7 +69,7 @@ export function CampaignReportPanel({ campaignId }: { campaignId: string }) {
   }
 
   return (
-    <div className="w-full rounded-lg border border-border bg-surface-muted p-4">
+    <div className="w-full rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-4">
       <div className="flex items-center justify-between">
         <p className="text-13 font-medium text-ink">Report vs. outcome</p>
         <button type="button" onClick={() => setOpen(false)} className="text-12 text-ink-muted hover:text-ink">

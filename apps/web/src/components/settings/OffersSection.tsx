@@ -172,8 +172,7 @@ export function OffersSection() {
           {products.map((p, i) => (
             <li
               key={i}
-              className="rounded-[12px] p-[16px]"
-              style={{ background: 'rgba(131,131,131,0.06)' }}
+              className="rounded-[12px] bg-white p-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]"
             >
               <div className="flex flex-wrap items-end gap-[12px]">
                 <label className="grid min-w-[200px] flex-1 gap-[6px]">

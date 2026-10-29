@@ -16,6 +16,13 @@ import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@spar
 import { userMessage } from '@/lib/errorCopy';
 
 /**
+ * A text field on a kit card. `Input`'s fill is `--ss-field`, the same grey as
+ * the card, so on one it has no visible edge at all. The prototype's field on
+ * these cards (Brand Voice's select) is white, 57px tall, 10px radius.
+ */
+const KIT_FIELD = 'mt-1.5 h-[57px] rounded-[10px] bg-white';
+
+/**
  * `brand.governance.get`/`.set` — PRD §8.2 (`ONB-03`) and §8.12 (`SET-WS-01`).
  *
  * The screen for the half of brand configuration that did not exist in any
@@ -341,7 +348,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   value={topicsText}
                   onChange={(e) => setTopicsText(e.target.value)}
                   placeholder="politics, competitor names, staff turnover"
-                  className="mt-1.5"
+                  className={KIT_FIELD}
                 />
               </div>
 
@@ -357,7 +364,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   value={claimsText}
                   onChange={(e) => setClaimsText(e.target.value)}
                   placeholder="guaranteed, cheapest, clinically proven"
-                  className="mt-1.5"
+                  className={KIT_FIELD}
                 />
               </div>
 
@@ -370,7 +377,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   value={phrasesText}
                   onChange={(e) => setPhrasesText(e.target.value)}
                   placeholder="synergy, game-changer, revolutionary"
-                  className="mt-1.5"
+                  className={KIT_FIELD}
                 />
               </div>
 
@@ -458,7 +465,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                             setUsingDefaultWatermark(false);
                             setWatermark({ ...watermark, opacity: Number(e.target.value) / 100 });
                           }}
-                          className="mt-1.5 w-full"
+                          className="mt-1.5 w-full accent-[--ss-primary]"
                         />
                       </div>
                       <div>
@@ -476,7 +483,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                             setUsingDefaultWatermark(false);
                             setWatermark({ ...watermark, scale: Number(e.target.value) / 100 });
                           }}
-                          className="mt-1.5 w-full"
+                          className="mt-1.5 w-full accent-[--ss-primary]"
                         />
                       </div>
                     </div>
@@ -603,7 +610,7 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
                   onChange={(e) => setAgentName(e.target.value)}
                   placeholder="Ada, Studio Bot, The Intern…"
                   maxLength={60}
-                  className="mt-1.5"
+                  className={KIT_FIELD}
                 />
               </div>
               {/* ── When it posts ──────────────────────────────────────────── */}

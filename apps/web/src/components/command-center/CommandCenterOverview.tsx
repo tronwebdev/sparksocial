@@ -120,7 +120,7 @@ export function CommandCenterOverview({
 
   if (genomeError) {
     return (
-      <div className="rounded border border-border bg-surface p-6">
+      <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
         <p className="text-14 text-ink-muted">{genomeError}</p>
       </div>
     );

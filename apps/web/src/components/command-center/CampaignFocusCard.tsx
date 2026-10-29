@@ -96,7 +96,7 @@ export function CampaignFocusCard({
 
   if (campaign === null) {
     return (
-      <section className="rounded-xl border border-border bg-surface p-6 text-center">
+      <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6 text-center">
         <p className="text-16 font-medium text-ink">No campaign running yet</p>
         <p className="mx-auto mt-1 max-w-md text-14 text-ink-muted">
           {genomeName ?? 'This brand'} doesn&rsquo;t have an active campaign — plan one from the calendar to give

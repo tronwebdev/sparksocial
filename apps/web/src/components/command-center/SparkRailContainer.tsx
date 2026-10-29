@@ -38,7 +38,9 @@ export function SparkRailContainer() {
   const genomeId = genome?.genomeId;
 
   const [paused, setPaused] = useState(false);
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  // `undefined` until `campaign.list` answers, so the rail does not announce
+  // "No campaign yet" for the second before it knows.
+  const [campaign, setCampaign] = useState<Campaign | null | undefined>(undefined);
   /** Every running campaign's name — the rail says each, not only one. */
   const [running, setRunning] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -82,7 +84,7 @@ export function SparkRailContainer() {
     <SparkRail
       running={running}
       paused={paused}
-      campaign={campaign ? { name: campaign.name, status: campaign.status } : null}
+      campaign={campaign ? { name: campaign.name, status: campaign.status } : campaign}
       onOpenChat={() => openAskSpark()}
       onTogglePause={() => void togglePause()}
       busy={busy}

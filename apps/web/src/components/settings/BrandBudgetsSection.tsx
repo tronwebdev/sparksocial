@@ -145,7 +145,7 @@ export function BrandBudgetsSection() {
           const used = cap && cap.monthlyCapCents > 0 ? Math.min(1, cap.spentCents / cap.monthlyCapCents) : 0;
 
           return (
-            <li key={b.brandId} className="rounded-[12px] p-[16px]" style={{ background: 'rgba(131,131,131,0.06)' }}>
+            <li key={b.brandId} className="rounded-[12px] bg-white p-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]">
               <div className="flex flex-wrap items-end justify-between gap-[14px]">
                 <div className="min-w-[180px] flex-1">
                   <p className="text-16 font-semibold text-ink">{b.name}</p>

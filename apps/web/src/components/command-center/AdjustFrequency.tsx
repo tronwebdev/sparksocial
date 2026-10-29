@@ -119,7 +119,7 @@ export function AdjustFrequency({
             onKeyDown={(e) => {
               if (e.key === 'Enter') void save();
             }}
-            className="mt-1.5 h-10 w-full rounded border border-border px-3 text-16 text-ink outline-none"
+            className="mt-1.5 h-10 w-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] px-3 text-16 text-ink outline-none"
           />
           {error ? <p className="mt-1.5 text-13 text-destructive">{error}</p> : null}
           <button

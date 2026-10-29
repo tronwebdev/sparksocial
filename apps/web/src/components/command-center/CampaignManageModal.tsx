@@ -103,6 +103,7 @@ export function CampaignManageModal({
             campaigns={campaigns}
             selectedId={currentId}
             genomeId={genomeId}
+            headerClassName="flex-nowrap pr-[40px]"
             onChanged={() => {
               void load();
               onChanged();

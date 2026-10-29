@@ -48,10 +48,17 @@ export function orderCampaigns(list: readonly CampaignInfo[]): CampaignInfo[] {
   );
 }
 
-/** What a campaign's state is called on screen, and the colour of its dot. */
-export const CAMPAIGN_STATE: Record<string, { label: string; dot: string }> = {
-  active: { label: 'Running', dot: '#13D711' },
-  draft: { label: 'Draft', dot: '#FFB453' },
-  paused: { label: 'Paused', dot: '#838383' },
-  completed: { label: 'Ended', dot: 'rgba(131,131,131,0.5)' },
+/**
+ * What a campaign's state is called on screen, the colour of its dot, and the
+ * badge tone where it is a chip. One table, so the Current Focus card, the
+ * campaign list and the calendar never disagree about what to call a state.
+ */
+export const CAMPAIGN_STATE: Record<
+  string,
+  { label: string; dot: string; tone: 'success' | 'warn' | 'neutral' }
+> = {
+  active: { label: 'Running', dot: '#13D711', tone: 'success' },
+  draft: { label: 'Draft', dot: '#FFB453', tone: 'warn' },
+  paused: { label: 'Paused', dot: '#838383', tone: 'neutral' },
+  completed: { label: 'Ended', dot: 'rgba(131,131,131,0.5)', tone: 'neutral' },
 };

@@ -321,7 +321,7 @@ export function OverviewSection() {
               <div className="mt-[17px]">
                 <Field
                   label="Workspace URL"
-                  hint="No tool stores a workspace address, so this is shown rather than saved."
+                  hint="Set from this brand's ID, so it can't be edited."
                   icon={
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
                       <path d="M9 13a3.6 3.6 0 0 0 5.1 0l2.9-2.9a3.6 3.6 0 0 0-5.1-5.1l-1 1" stroke="rgb(12,12,12)" strokeWidth="1.5" strokeLinecap="round" />

@@ -80,7 +80,7 @@ export function AgentIdentityCard({
 
   if (loading) {
     return (
-      <section aria-busy className="rounded-xl border border-border bg-surface p-6">
+      <section aria-busy className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
         <div className="flex flex-col gap-3">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-7 w-52" />
@@ -91,7 +91,7 @@ export function AgentIdentityCard({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <Badge className="bg-brand-cyan/20 text-ink">Your agent</Badge>

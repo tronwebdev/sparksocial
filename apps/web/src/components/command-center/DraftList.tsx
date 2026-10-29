@@ -146,7 +146,7 @@ export function DraftList({
   if (!genomeId) return null;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-6">
+    <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
       <h2 className="text-18 font-semibold text-ink">Drafts</h2>
 
       {items === null ? (
@@ -164,7 +164,7 @@ export function DraftList({
           {items.map((item) => {
             const snapshot = metrics[item.contentItemId];
             return (
-              <li key={item.contentItemId} className="rounded-lg border border-border">
+              <li key={item.contentItemId} className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)]">
                 <button
                   type="button"
                   onClick={() => onOpen(item.contentItemId)}

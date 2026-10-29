@@ -118,7 +118,7 @@ export function VariantResult({
   const winnerArm = result.arms.find((a) => a.label === result.winner);
 
   return (
-    <div className="rounded-lg border border-border p-3">
+    <div className="rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-13 font-medium text-ink">
           {result.winner

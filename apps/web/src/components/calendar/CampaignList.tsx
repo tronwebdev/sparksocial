@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -56,13 +57,6 @@ const STATUS_NOTE: Record<string, string> = {
   completed: 'Its window has closed.',
 };
 
-const STATUS_TONE: Record<string, string> = {
-  draft: 'bg-warn/10 text-ink',
-  active: 'bg-ok/10 text-ink',
-  paused: 'bg-surface-muted text-ink-muted',
-  completed: 'bg-surface-muted text-ink-muted',
-};
-
 export function CampaignList({
   campaigns,
   selectedId,
@@ -71,6 +65,7 @@ export function CampaignList({
   onNew,
   busy,
   genomeId,
+  headerClassName,
 }: {
   campaigns: CampaignRow[];
   selectedId: string | undefined;
@@ -82,6 +77,8 @@ export function CampaignList({
   busy?: boolean;
   /** Needed by `campaign.duplicate`, which checks the campaign is this brand's. Duplicate shows only with it. */
   genomeId?: string;
+  /** Room on the header's right, for a modal whose close button sits over it. */
+  headerClassName?: string;
 }) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -189,7 +186,7 @@ export function CampaignList({
 
   return (
     <section className="rounded-[16px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
+      <div className={cn('flex flex-wrap items-baseline justify-between gap-3', headerClassName)}>
         <div>
           <h2 className="text-18 font-semibold text-ink">Campaigns</h2>
           <p className="mt-0.5 text-13 text-ink-muted">
@@ -273,8 +270,8 @@ export function CampaignList({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className={cn('capitalize', STATUS_TONE[c.status] ?? 'bg-surface-muted text-ink-muted')}>
-                    {c.status}
+                  <Badge variant={CAMPAIGN_STATE[c.status]?.tone ?? 'neutral'}>
+                    {CAMPAIGN_STATE[c.status]?.label ?? c.status}
                   </Badge>
 
                   {c.status === 'active' ? (

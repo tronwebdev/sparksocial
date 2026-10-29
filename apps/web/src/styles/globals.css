@@ -27,4 +27,12 @@
   select:focus {
     outline: none;
   }
+
+  /* Native checkboxes, radios and sliders otherwise take the browser's blue,
+     which no screen in the prototype uses; its controls are ink. */
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'] {
+    accent-color: var(--ss-primary);
+  }
 }

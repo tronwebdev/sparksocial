@@ -237,7 +237,7 @@ function RuleForm({
   };
 
   return (
-    <div className="mt-4 grid grid-cols-1 gap-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] p-4">
+    <div className="mt-4 grid grid-cols-1 gap-4 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-4">
       <div className="grid gap-1">
         <span className="text-12 font-medium text-ink">What should wait for sign-off?</span>
         <div className="mt-1 flex flex-wrap gap-2">
