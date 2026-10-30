@@ -268,6 +268,10 @@ export function AutomationScreen() {
     if (res.status !== 'succeeded') {
       setBusyId(null);
       say(whyNot(res));
+      /* The usual cause is a stale screen — the item was decided somewhere
+         else since this list loaded — so show the queue as it is now rather
+         than leaving a button that will fail the same way again. */
+      void reload();
       return;
     }
 

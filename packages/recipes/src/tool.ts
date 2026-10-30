@@ -863,7 +863,13 @@ export const recipeOutputDecide = defineTool({
     if (!existing) throw new ToolError('NOT_FOUND', 'No such output.', { id: input.id });
     if (existing.status === input.status) return toOutputOut(existing);
     if (existing.status !== 'pending_review') {
-      throw new ToolError('INVALID_INPUT', `This output was already ${existing.status}.`, { id: input.id });
+      throw new ToolError(
+        'INVALID_INPUT',
+        existing.status === 'rejected'
+          ? 'This item was already removed from the queue.'
+          : 'This item was already approved and scheduled.',
+        { id: input.id, status: existing.status },
+      );
     }
 
     if (input.status === 'rejected' || input.contentItemId) {

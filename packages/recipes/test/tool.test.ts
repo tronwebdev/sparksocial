@@ -387,7 +387,7 @@ describe('recipe.output.list / recipe.output.decide', () => {
     // And it cannot be flipped to rejected once it is on the calendar.
     await expect(
       recipeOutputDecide.handler({ id: pending.id, genomeId: 'gen_barber', status: 'rejected' }, ctx(f.store, {}, f.content)),
-    ).rejects.toThrow(/already approved/);
+    ).rejects.toThrow(/already approved and scheduled/);
   });
 
   it('refuses to approve an output that matched no format', async () => {
