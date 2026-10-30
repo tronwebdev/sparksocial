@@ -112,6 +112,12 @@ export function TrendContentPack({
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Which card the failed action lives in. The two cards are a screen apart, so
+   * an error printed under the content pack was invisible to someone who had
+   * just pressed "Write hooks" — the button reset and nothing else happened.
+   */
+  const [errorIn, setErrorIn] = useState<'pack' | 'recs'>('pack');
   const [made, setMade] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -182,6 +188,7 @@ export function TrendContentPack({
     if (busy || types.length === 0) return;
     setBusy('pack');
     setError(null);
+    setErrorIn('pack');
     const out: Array<{ id: string; name: string }> = [];
     for (const id of types) {
       const contentItemId = await draft(id);
@@ -200,6 +207,7 @@ export function TrendContentPack({
     if (busy || !playbookId) return;
     setBusy(kind);
     setError(null);
+    setErrorIn('recs');
     const id = await draft(playbookId, opening);
     setBusy(null);
     if (id) onOpenDraft(id);
@@ -209,6 +217,7 @@ export function TrendContentPack({
     if (busy) return;
     setBusy('hooks');
     setError(null);
+    setErrorIn('recs');
     const res = await invoke<{ hooks: string[] }>('trend.hooks', { genomeId, trendId, count: 3 }, crypto.randomUUID());
     setBusy(null);
     if (res.status !== 'succeeded') {
@@ -308,7 +317,7 @@ export function TrendContentPack({
             </Button>
           ))}
         </div>
-        {error ? <p className="mt-[12px] text-14 text-destructive">{error}</p> : null}
+        {error && errorIn === 'pack' ? <p className="mt-[12px] text-14 text-destructive">{error}</p> : null}
       </div>
 
       {/* ── Recommendations: Time Shift · Format · Hook ──────────────── */}
@@ -388,6 +397,8 @@ export function TrendContentPack({
               </ul>
             ) : null}
           </div>
+
+          {error && errorIn === 'recs' ? <p className="text-14 text-destructive">{error}</p> : null}
 
           <p className="text-14 text-ink-muted">
             Want this trend to drive a goal, with your CTA link on every post?{' '}

@@ -119,21 +119,39 @@ export function createCompositeTrendSource(entries: TrendSourceEntry[], deps: Co
         live.map((e) => e.source.fetch(args)),
       );
 
-      const trends: Trend[] = [];
+      const signal = (t: Trend) => t.metrics.velocity * (1 - t.metrics.saturation);
+      const bySignal = (a: Trend, b: Trend) => signal(b) - signal(a);
+
+      const perSource: Trend[][] = [];
       results.forEach((result, i) => {
         const entryName = live[i]!.source.name;
         if (result.status === 'fulfilled') {
-          trends.push(...result.value.map((t) => rePrefix(entryName, t)));
+          perSource.push(result.value.map((t) => rePrefix(entryName, t)).sort(bySignal));
         } else {
           onError(entryName, result.reason);
         }
       });
 
+      /*
+        Each source takes turns, its own best first, until the limit is
+        filled. Cutting the merged list by signal alone let whichever source
+        reads "fresh" most generously take every seat: once seven news feeds
+        were listed, ~200 hours-old headlines at velocity ~1 filled all 45, and
+        Google, Hacker News, Product Hunt, Bluesky and Mastodon were fetched on
+        every rank and never reached the feed. Velocities are not comparable
+        across sources (each derives its own), so the fair cut is by turn.
+      */
+      const picked: Trend[] = [];
+      for (let round = 0; picked.length < args.limit; round++) {
+        const turn = perSource.flatMap((list) => (round < list.length ? [list[round]!] : []));
+        if (turn.length === 0) break;
+        picked.push(...turn.slice(0, args.limit - picked.length));
+      }
+
       // Highest opportunity signal first as a rough pre-sort — trend.rank
       // re-scores everything against the genome anyway, so this only matters
       // for callers (trend.fetch) that read the merged list unranked.
-      trends.sort((a, b) => b.metrics.velocity * (1 - b.metrics.saturation) - a.metrics.velocity * (1 - a.metrics.saturation));
-      return trends.slice(0, args.limit);
+      return picked.sort(bySignal);
     },
 
     async get(id) {

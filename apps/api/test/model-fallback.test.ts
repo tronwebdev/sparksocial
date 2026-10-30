@@ -440,3 +440,53 @@ describe('openAIMessages — the agent loop shape', () => {
     expect(sent).not.toHaveProperty('tool_choice');
   });
 });
+
+/**
+ * Sonnet answered `trend.hooks`' forced call with the array serialised into a
+ * string — sometimes wrapped in the tool's own object a second time — and every
+ * hook request on staging failed. The client decodes it, for every writer.
+ */
+describe('modelClient — tool arguments that arrive as JSON strings', () => {
+  const tools = [
+    {
+      name: 'record_hooks',
+      input_schema: {
+        type: 'object',
+        properties: { hooks: { type: 'array' }, meta: { type: 'object' }, note: { type: 'string' } },
+      },
+    },
+  ];
+  const reply = (input: unknown) => ({
+    messages: {
+      create: async () => ({
+        content: [{ type: 'tool_use' as const, id: 't1', name: 'record_hooks', input }],
+        stop_reason: 'tool_use',
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }),
+    },
+  });
+  const inputOf = async (input: unknown, fallback: null | ReturnType<typeof reply> = null) => {
+    const client = modelClient({ primary: reply(input), fallback });
+    const res = (await client.messages.create({ model: 'm', max_tokens: 10, messages: [], tools } as never)) as unknown as {
+      content: Array<{ input: Record<string, unknown> }>;
+    };
+    return res.content[0]!.input;
+  };
+
+  it('decodes a stringified array, and the field wrapped in its own object', async () => {
+    expect((await inputOf({ hooks: '["a","b"]' })).hooks).toEqual(['a', 'b']);
+    expect((await inputOf({ hooks: '{"hooks": ["a","b","c"]}' })).hooks).toEqual(['a', 'b', 'c']);
+    expect((await inputOf({ meta: '{"k":1}' })).meta).toEqual({ k: 1 });
+  });
+
+  it('leaves real arrays, string fields, and strings that do not decode to the declared type alone', async () => {
+    expect((await inputOf({ hooks: ['a'] })).hooks).toEqual(['a']);
+    expect((await inputOf({ note: '["not","decoded"]' })).note).toBe('["not","decoded"]');
+    expect((await inputOf({ hooks: 'just a line' })).hooks).toBe('just a line');
+    expect((await inputOf({ hooks: '{"other":1}' })).hooks).toBe('{"other":1}');
+  });
+
+  it('repairs on the path with a fallback configured too', async () => {
+    expect((await inputOf({ hooks: '["a"]' }, reply({}))).hooks).toEqual(['a']);
+  });
+});

@@ -33,6 +33,23 @@ const trendOf = (id: string, topic: string): Trend => ({
 });
 
 describe('createCompositeTrendSource', () => {
+  it('shares the limit across sources instead of letting the freshest-reading one take every seat', async () => {
+    const hot = (i: number): Trend => ({ ...trendOf(`n${i}`, `headline ${i}`), metrics: { volume: 1, velocity: 1, saturation: 0, growth: 0 } });
+    const news = fakeSource('rss', Array.from({ length: 40 }, (_, i) => hot(i)));
+    const social = fakeSource('bluesky', [trendOf('b1', 'social one'), trendOf('b2', 'social two')]);
+    const forum = fakeSource('hackernews', [trendOf('h1', 'forum one')]);
+    const composite = createCompositeTrendSource([{ source: news }, { source: social }, { source: forum }]);
+
+    const out = await composite.fetch({ limit: 10 });
+    expect(out).toHaveLength(10);
+    // Every source is represented; the news feed fills only what the others leave.
+    expect(out.filter((t) => t.topic.startsWith('social'))).toHaveLength(2);
+    expect(out.filter((t) => t.topic.startsWith('forum'))).toHaveLength(1);
+    expect(out.filter((t) => t.topic.startsWith('headline'))).toHaveLength(7);
+    // Still pre-sorted by signal for unranked readers.
+    expect(out[0]!.topic).toMatch(/^headline/);
+  });
+
   it('merges results from every enabled source', async () => {
     const a = fakeSource('a', [trendOf('1', 'from a')]);
     const b = fakeSource('b', [trendOf('1', 'from b')]); // deliberately colliding raw id

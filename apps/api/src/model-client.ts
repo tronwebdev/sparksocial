@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { openAIMessages, type MessagesClient } from '@sparksocial/shared';
+import { openAIMessages, type MessagesClient, type MessagesRequest, type MessagesResponse } from '@sparksocial/shared';
 import { envSet } from './env.js';
 
 /**
@@ -55,15 +55,25 @@ export function modelClient(opts: ModelClientOptions = {}): Anthropic {
   const fallback = opts.fallback === undefined ? openAIMessages() : opts.fallback;
   const warn = opts.warn ?? ((m, meta) => console.warn(m, meta));
 
-  if (!fallback) return primary as unknown as Anthropic;
+  if (!fallback) {
+    return {
+      ...primary,
+      messages: {
+        ...primary.messages,
+        async create(body: MessagesRequest) {
+          return repairToolInputs(await primary.messages.create(body), body);
+        },
+      },
+    } as unknown as Anthropic;
+  }
 
   return {
     ...primary,
     messages: {
       ...primary.messages,
-      async create(body: Parameters<MessagesClient['messages']['create']>[0]) {
+      async create(body: MessagesRequest) {
         try {
-          return await primary.messages.create(body);
+          return repairToolInputs(await primary.messages.create(body), body);
         } catch (e) {
           const detail = e instanceof Error ? e.message : String(e);
           /**
@@ -75,11 +85,69 @@ export function modelClient(opts: ModelClientOptions = {}): Anthropic {
             model: body.model,
             detail: detail.slice(0, 300),
           });
-          return await fallback.messages.create(body);
+          return repairToolInputs(await fallback.messages.create(body), body);
         }
       },
     },
   } as unknown as Anthropic;
+}
+
+/**
+ * A tool call whose array or object argument arrived as a JSON *string*.
+ *
+ * Measured on 30 Oct 2026: with `trend.hooks`' real prompt, Sonnet answered the
+ * forced `record_hooks` call with `{"hooks": "{\"hooks\": [\"…\", …]}"}` on two
+ * runs out of two: the right lines, serialised, and sometimes wrapped in the
+ * tool's own object a second time. `hook-writer.ts` saw a string where its
+ * schema says array, and every hook request on staging failed with "The hook
+ * writer returned no lines." The OpenAI fallback, given the same request,
+ * returned a real array.
+ *
+ * Every writer here that forces a tool with an array field (hashtags, site
+ * sections, brief shots, agency colours, inference lists) is exposed to the
+ * same thing, so the repair is made once, where every one of them gets its
+ * client, rather than five times. It is strictly a decoding step: a string is
+ * replaced only when the declared type is array or object *and* the string
+ * parses to that type, so a genuine string field is never touched and a value
+ * that does not parse is left for the caller's own check to reject.
+ */
+export function repairToolInputs(response: MessagesResponse, body: MessagesRequest): MessagesResponse {
+  if (!body.tools?.length || !response.content.some((b) => b.type === 'tool_use')) return response;
+  return {
+    ...response,
+    content: response.content.map((block) => {
+      if (block.type !== 'tool_use' || !isRecord(block.input)) return block;
+      const schema = body.tools!.find((t) => t.name === block.name)?.input_schema;
+      const properties = isRecord(schema) && isRecord(schema.properties) ? schema.properties : undefined;
+      if (!properties) return block;
+      const input: Record<string, unknown> = { ...block.input };
+      for (const [key, value] of Object.entries(input)) {
+        const declared = properties[key];
+        const type = isRecord(declared) ? declared.type : undefined;
+        if (typeof value !== 'string' || (type !== 'array' && type !== 'object')) continue;
+        const decoded = decodeAs(value, type, key);
+        if (decoded !== undefined) input[key] = decoded;
+      }
+      return { ...block, input };
+    }),
+  };
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function decodeAs(raw: string, type: 'array' | 'object', key: string): unknown {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  /* `{"hooks": "{\"hooks\": [...]}"}` — the field's own object, serialised into the field. */
+  if (isRecord(parsed) && key in parsed && Object.keys(parsed).length === 1) parsed = parsed[key];
+  if (type === 'array') return Array.isArray(parsed) ? parsed : undefined;
+  return isRecord(parsed) ? parsed : undefined;
 }
 
 /** Printed at boot so a running instance says which vendors it can actually reach. */

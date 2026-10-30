@@ -147,6 +147,29 @@ export function createYouTubeTrendSource(config: YouTubeTrendSourceConfig): Tren
 }
 
 
+/**
+ * YouTube's video categories by id. The list is fixed — `videoCategories.list`
+ * has returned the same ids for years — so a lookup costs nothing, where the
+ * raw id reached DISC-02's "Related Topics" as `category_22`.
+ */
+const CATEGORY_NAMES: Record<string, string> = {
+  '1': 'Film & Animation',
+  '2': 'Autos & Vehicles',
+  '10': 'Music',
+  '15': 'Pets & Animals',
+  '17': 'Sports',
+  '19': 'Travel & Events',
+  '20': 'Gaming',
+  '22': 'People & Blogs',
+  '23': 'Comedy',
+  '24': 'Entertainment',
+  '25': 'News & Politics',
+  '26': 'Howto & Style',
+  '27': 'Education',
+  '28': 'Science & Technology',
+  '29': 'Nonprofits & Activism',
+};
+
 function toTrend(item: YouTubeVideoItem): Trend {
   const publishedAt = new Date(item.snippet.publishedAt).getTime();
   const ageHours = Math.max(0.1, (Date.now() - publishedAt) / 3_600_000);
@@ -162,7 +185,9 @@ function toTrend(item: YouTubeVideoItem): Trend {
     id: item.id,
     source: 'youtube',
     topic: item.snippet.title,
-    tags: item.snippet.tags?.slice(0, 5) ?? (item.snippet.categoryId ? [`category_${item.snippet.categoryId}`] : []),
+    tags:
+      item.snippet.tags?.slice(0, 5) ??
+      (item.snippet.categoryId && CATEGORY_NAMES[item.snippet.categoryId] ? [CATEGORY_NAMES[item.snippet.categoryId]!] : []),
     metrics: { volume: views, velocity, saturation, growth: 0 },
     samples: [{ url: `https://youtube.com/watch?v=${item.id}`, caption: item.snippet.title }],
     media: { url: bestThumbnail(item), kind: 'video' },

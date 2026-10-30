@@ -85,7 +85,7 @@ describe('createYouTubeTrendSource', () => {
     await expect(source.fetch({ limit: 10 })).rejects.toThrow(/403/);
   });
 
-  it('falls back to a category tag when the video has no tags', async () => {
+  it('falls back to the category name when the video has no tags', async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({
         items: [
@@ -99,6 +99,6 @@ describe('createYouTubeTrendSource', () => {
     );
     const source = createYouTubeTrendSource({ apiKey: 'key', fetchImpl: fetchImpl as unknown as typeof fetch });
     const out = await source.fetch({ limit: 10 });
-    expect(out[0]!.tags).toEqual(['category_28']);
+    expect(out[0]!.tags).toEqual(['Science & Technology']);
   });
 });
