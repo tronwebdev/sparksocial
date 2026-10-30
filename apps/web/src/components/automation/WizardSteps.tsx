@@ -6,7 +6,8 @@ import { parseCsvPreview } from './csvPreview';
 import { AccountPicker } from './AccountPicker';
 import { InfluencerPanel } from './InfluencerPanel';
 import { RecipeGlyph } from './RecipeGlyph';
-import { folderIdFrom, type WizardDraft } from './wizardDraft';
+import { RecipePreview } from './RecipePreview';
+import { configFor, folderIdFrom, type WizardDraft } from './wizardDraft';
 import { TREND_REGION_OPTIONS } from '@/lib/trendRegions';
 
 /**
@@ -290,14 +291,37 @@ const LANGUAGES = [
   { value: 'pt', label: 'Portuguese' },
 ];
 
+/*
+ * `minScore`, on the scale `rankTrends` actually produces. These were 0.2–0.8,
+ * and a brand-relevant trend scores relevance × (opportunity, plus a little for
+ * reach) — the best of thirty on staging read 0.06–0.09 — so "Balanced" never
+ * let anything through. See `AutoTrendConfig.minScore`.
+ */
 const SIGNALS = [
-  { value: '0.2', label: 'Anything trending' },
-  { value: '0.4', label: 'Balanced' },
-  { value: '0.6', label: 'Strong signal only' },
-  { value: '0.8', label: 'Only the strongest' },
+  { value: '0', label: 'Anything relevant' },
+  { value: '0.05', label: 'Balanced' },
+  { value: '0.15', label: 'Strong signal only' },
+  { value: '0.3', label: 'Only the strongest' },
+];
+
+/* A recipe saved on the old scale keeps its number, and says so, rather than
+   silently showing a setting it does not have. */
+function signalOptions(current: number) {
+  return SIGNALS.some((s) => Number(s.value) === current)
+    ? SIGNALS
+    : [...SIGNALS, { value: String(current), label: `Custom (${current}) — stricter than any setting here` }];
+}
+
+const AGES = [
+  { value: '0', label: 'Any age' },
+  { value: '24', label: 'Last 24 hours' },
+  { value: '72', label: 'Last 3 days' },
+  { value: '168', label: 'Last 7 days' },
+  { value: '720', label: 'Last 30 days' },
 ];
 
 const OUTPUTS = [1, 2, 3, 5, 8, 10].map((n) => ({ value: String(n), label: `${n} post${n === 1 ? '' : 's'} per run` }));
+const ITEMS = [1, 2, 3, 5, 8, 10, 20].map((n) => ({ value: String(n), label: `${n} new item${n === 1 ? '' : 's'} per run` }));
 
 export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: WizardDraft; set: Set }) {
   return (
@@ -337,10 +361,10 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
       )}
 
       <h3 className="mt-[34px] text-22 font-bold text-ink">Refine your query</h3>
-      {/* Four dropdowns, not the design's six. Region and Language are passed
-          to `TrendSource.fetch`; Signal is `minScore` and Posts per run is
-          `maxOutputs`. The design's other two — Max post age and Saved
-          watchlist — have no field on `AutoTrendConfig` to write to, and a
+      {/* Five dropdowns, not the design's six. Region and Language are passed
+          to `TrendSource.fetch`; Signal is `minScore`, Posts per run is
+          `maxOutputs` and Max post age is `maxAgeHours`. The design's sixth —
+          Saved watchlist — has no field on `AutoTrendConfig` to write to, and a
           select that sets nothing is worse than one fewer select. */}
       <div className="mt-[18px] grid grid-cols-2 gap-x-[30px] gap-y-[22px] max-md:grid-cols-1">
         <Dropdown label="Region" value={draft.region} onChange={(region) => set({ region })} options={REGIONS} />
@@ -349,7 +373,7 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
           label="Signal"
           value={String(draft.signal)}
           onChange={(v) => set({ signal: Number(v) })}
-          options={SIGNALS}
+          options={signalOptions(draft.signal)}
           hint="How strong a trend has to score before this recipe acts on it."
         />
         <Dropdown
@@ -357,6 +381,13 @@ export function QueryStep({ genomeId, draft, set }: { genomeId: string; draft: W
           value={String(draft.maxOutputs)}
           onChange={(v) => set({ maxOutputs: Number(v) })}
           options={OUTPUTS}
+        />
+        <Dropdown
+          label="Max post age"
+          value={String(draft.maxAgeHours)}
+          onChange={(v) => set({ maxAgeHours: Number(v) })}
+          options={AGES}
+          hint="Searches and hashtags have no publish time, so they are always kept."
         />
       </div>
 
@@ -579,9 +610,11 @@ export function SourceStep({
 /* ── step 3 (Bulk): preview & validate ─────────────────────────────────── */
 
 export function ValidateStep({
+  genomeId,
   draft,
   validation,
 }: {
+  genomeId: string;
   draft: WizardDraft;
   validation: { valid: boolean; error?: string; notApplied: Array<{ field: string; because: string }> } | null;
 }) {
@@ -670,9 +703,14 @@ export function ValidateStep({
               ))}
               {rows.rows.length > 12 ? (
                 <p className="pt-[14px] text-15" style={{ color: '#838383' }}>
-                  and {rows.rows.length - 12} more — all of them are read when the recipe runs.
+                  and {rows.rows.length - 12} more.
                 </p>
               ) : null}
+              <p className="pt-[14px] text-15" style={{ color: '#838383' }}>
+                Each run posts the next {draft.perRun} row{draft.perRun === 1 ? '' : 's'} it has not used yet, so
+                this sheet lasts {Math.ceil(rows.rows.length / Math.max(1, draft.perRun))} run
+                {Math.ceil(rows.rows.length / Math.max(1, draft.perRun)) === 1 ? '' : 's'}. Set how many on the last step.
+              </p>
             </div>
           </div>
         )
@@ -691,19 +729,28 @@ export function ValidateStep({
               </dd>
             </div>
           ))}
-          <p className="col-span-2 text-15" style={{ color: '#838383' }}>
-            The folder&rsquo;s files are listed by the first run — nothing here can read it before the
-            recipe holds the credential it uses.
-          </p>
         </dl>
       )}
+
+      {/* Drive and Canva can be read now: Drive through the shared key, Canva
+          through the brand's own connection. A preview here is what tells the
+          person their folder is private before the first run does. */}
+      {!rows && draft.bulkSource !== 'folder' ? (
+        <RecipePreview
+          genomeId={genomeId}
+          kind="bulk_connector"
+          config={configFor(draft)}
+          ready={validation?.valid === true}
+          idle="Shown once the folder link is in."
+        />
+      ) : null}
     </section>
   );
 }
 
 /* ── step 2 (RSS): the feed ────────────────────────────────────────────── */
 
-export function FeedStep({ draft, set }: { draft: WizardDraft; set: Set }) {
+export function FeedStep({ genomeId, draft, set }: { genomeId: string; draft: WizardDraft; set: Set }) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
       <h2 className="text-24 font-bold text-ink">RSS feed URL</h2>
@@ -749,6 +796,26 @@ export function FeedStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         })}
       </div>
 
+      <div className="mt-[24px] max-w-[360px]">
+        <Dropdown
+          label="Posts per run"
+          value={String(draft.perRun)}
+          onChange={(v) => set({ perRun: Number(v) })}
+          options={ITEMS}
+          hint="New items only — anything this recipe already posted is skipped."
+        />
+      </div>
+
+      {/* AUTO-04.3's preview: the feed, read now, with the format each item
+          would become. */}
+      <RecipePreview
+        genomeId={genomeId}
+        kind="rss"
+        config={configFor(draft)}
+        ready={/^https?:\/\/\S+\.\S+/i.test(draft.feedUrl.trim())}
+        idle="Paste the feed's URL to see what it would post."
+      />
+
       <div className="mt-[26px] flex items-center gap-[14px] rounded-[14px] px-[22px] py-[18px]" style={{ background: 'var(--ss-auto-note)' }}>
         <span aria-hidden className="shrink-0 text-ink">
           <RecipeGlyph kind="rss" size={22} />
@@ -790,10 +857,10 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         Folded into every post this recipe writes.
       </p>
 
-      {/* Two fields where the design has one. `goal` is applied — it reaches the
-          copy through the output's intent — and `ctaUrl` is stored and not,
-          because a URL in prose becomes spoken copy. Sharing one box would hide
-          that difference. */}
+      {/* Two fields where the design has one, because they reach the post
+          differently: `goal` goes into the brief the copy is written from, and
+          `ctaUrl` is added to the caption at publish time — a URL inside the
+          brief gets read aloud. */}
       <label htmlFor="auto-cta" className="mt-[20px] block text-17 font-semibold text-ink">
         CTA URL
       </label>
@@ -805,10 +872,21 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
         className={cn(FIELD, 'mt-[10px] text-17')}
         style={FIELD_RING}
       />
-      <p className="mt-[9px] text-15" style={{ color: '#838383' }}>
-        Saved on the recipe. A recipe output has no link field yet, so SPARK does not paste it into the
-        copy — putting a URL in prose is how posts end up reciting one out loud.
+      <p className="mt-[9px] text-15 font-medium" style={{ color: '#2AA02A' }}>
+        Added to the end of every post&rsquo;s caption.
       </p>
+
+      {draft.kind === 'bulk_connector' ? (
+        <div className="mt-[20px] max-w-[360px]">
+          <Dropdown
+            label="Posting cycle"
+            value={String(draft.perRun)}
+            onChange={(v) => set({ perRun: Number(v) })}
+            options={ITEMS}
+            hint="Each run posts the next rows or files it has not used, until the source runs out."
+          />
+        </div>
+      ) : null}
 
       <div className="mt-[24px] flex flex-wrap items-center justify-between gap-[16px]">
         <PillToggle
@@ -854,7 +932,7 @@ export function FreqStep({ draft, set }: { draft: WizardDraft; set: Set }) {
             <div
               className="mt-[9px] flex h-[58px] cursor-not-allowed items-center rounded-[12px] bg-white px-[20px] opacity-70"
               style={FIELD_RING}
-              title="A recipe has no posting-window field. When a run produces posts, the scheduler staggers them by 11 minutes and the brand's own posting windows apply."
+              title="A recipe has no posting-window field. Each new post queues 11 minutes after the recipe's last one, and the brand's own posting windows apply."
             >
               <span className="truncate text-17 font-medium" style={{ color: '#5B5B5B' }}>
                 Your brand&rsquo;s posting windows

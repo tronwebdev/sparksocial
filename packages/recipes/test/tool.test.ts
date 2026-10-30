@@ -12,6 +12,7 @@ import {
   recipeSchedule,
   recipeDelete,
   makeRecipeRun,
+  makeRecipePreview,
   recipeOutputList,
   recipeOutputDecide,
 } from '../src/tool.js';
@@ -22,12 +23,22 @@ const trendSource = createStubTrendSource();
 function fakeStore() {
   const recipes = new Map<string, RecipeRecord>();
   const outputs: RecipeOutputRecord[] = [];
+  /** What `content.createDraft` was asked to make — the posts a recipe scheduled. */
+  const posts: Array<Record<string, any> & { id: string }> = [];
   let nextId = 1;
   let nextRunId = 1;
 
   return {
     recipes,
     outputs,
+    posts,
+    content: {
+      async createDraft(args: any) {
+        const row = { ...args, id: `ci_${posts.length + 1}`, status: args.scheduledAt ? 'scheduled' : 'draft' };
+        posts.push(row);
+        return row;
+      },
+    },
     store: {
       async create(args: any) {
         const id = `recipe_${nextId++}`;
@@ -77,10 +88,28 @@ function fakeStore() {
       },
       async recordRun(args: any) {
         const runId = `run_${nextRunId++}`;
-        for (const preview of args.outputs) {
-          outputs.push({ id: `out_${outputs.length + 1}`, recipeId: args.recipeId, runId, genomeId: args.genomeId, status: 'pending_review', preview, createdAt: new Date() });
+        for (const o of args.outputs) {
+          outputs.push({
+            id: `out_${outputs.length + 1}`,
+            recipeId: args.recipeId,
+            runId,
+            genomeId: args.genomeId,
+            status: o.status ?? 'pending_review',
+            preview: o.preview,
+            createdAt: new Date(),
+            ...(o.contentItemId ? { contentItemId: o.contentItemId } : {}),
+          });
         }
         return { runId };
+      },
+      async getOutput(id: string) {
+        return outputs.find((o) => o.id === id);
+      },
+      async recentOutputPreviews(recipeId: string) {
+        return outputs.filter((o) => o.recipeId === recipeId).map((o) => o.preview);
+      },
+      async lastScheduledAt() {
+        return undefined;
       },
       async listOutputs(genomeId: string, _orgId: string, args: any) {
         return outputs.filter((o) => o.genomeId === genomeId && (!args.status || o.status === args.status)).slice(0, args.limit);
@@ -91,13 +120,20 @@ function fakeStore() {
         row.status = args.status;
         row.decidedAt = new Date();
         if (args.contentItemId) row.contentItemId = args.contentItemId;
+        if (args.preview !== undefined) row.preview = args.preview;
         return row;
       },
     },
   };
 }
 
-function ctx(store: ReturnType<typeof fakeStore>['store'], over: Partial<ToolCtx> = {}): ToolCtx {
+const sharedContent = fakeStore().content;
+
+function ctx(
+  store: ReturnType<typeof fakeStore>['store'],
+  over: Partial<ToolCtx> = {},
+  content: ReturnType<typeof fakeStore>['content'] = sharedContent,
+): ToolCtx {
   return {
     orgId: 'org_1',
     role: 'owner',
@@ -105,8 +141,10 @@ function ctx(store: ReturnType<typeof fakeStore>['store'], over: Partial<ToolCtx
     budget: { remainingCents: 10_000, monthlyCapCents: 50_000 },
     db: {
       recipes: store,
+      content,
       genomes: { get: async () => barber },
       assets: { inventory: async () => ({}) },
+      oauthConnections: { get: async () => undefined },
     } as unknown as ToolCtx['db'],
     logger: { info: () => {}, warn: () => {}, error: () => {} },
     trace: { span: async (_n: string, fn: () => unknown) => fn(), event: () => {} },
@@ -198,6 +236,79 @@ describe('recipe.run', () => {
     const run = makeRecipeRun({ trendSource, fetchText: async () => '' });
     expect(run.idempotent).toBe(false);
   });
+
+  const feed = `<rss><channel>${['a', 'b', 'c']
+    .map((x) => `<item><title>Story ${x}</title><link>https://example.com/${x}</link></item>`)
+    .join('')}</channel></rss>`;
+
+  it('does not propose the same feed items on the next run', async () => {
+    // A second run of an RSS recipe used to queue the same five articles again.
+    const f = fakeStore();
+    const created = await recipeCreate.handler(
+      { genomeId: 'gen_barber', kind: 'rss', name: 'Feed', config: { feedUrl: 'https://example.com/feed.xml', maxItems: 2 } },
+      ctx(f.store),
+    );
+    const run = makeRecipeRun({ trendSource, fetchText: async () => feed });
+    expect((await run.handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store))).outputCount).toBe(2);
+    expect((await run.handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store))).outputCount).toBe(1);
+    const third = await run.handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store));
+    expect(third.outputCount).toBe(0);
+    expect(f.outputs.map((o) => (o.preview as { title: string }).title)).toEqual(['Story a', 'Story b', 'Story c']);
+  });
+
+  it('with review off, schedules a post per chosen account with the CTA link, and records them approved', async () => {
+    const f = fakeStore();
+    const created = await recipeCreate.handler(
+      {
+        genomeId: 'gen_barber',
+        kind: 'rss',
+        name: 'Autopost',
+        config: {
+          feedUrl: 'https://example.com/feed.xml',
+          maxItems: 1,
+          reviewBeforePublish: false,
+          targetPlatforms: ['instagram', 'tiktok'],
+          ctaUrl: 'https://example.com/book',
+        },
+      },
+      ctx(f.store),
+    );
+    const run = makeRecipeRun({ trendSource, fetchText: async () => feed });
+    const out = await run.handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store, {}, f.content));
+
+    expect(f.posts.length).toBeGreaterThan(0);
+    expect(f.posts.every((p) => p.recipeId === created.id && p.linkUrl === 'https://example.com/book' && p.scheduledAt)).toBe(true);
+    expect(f.posts.every((p) => ['instagram', 'tiktok'].includes(p.platform))).toBe(true);
+    // Not waiting on anybody: already on the calendar.
+    expect(f.outputs[0]!.status).toBe('approved');
+    expect(f.outputs[0]!.contentItemId).toBe(f.posts[0]!.id);
+    expect(out.why.summary).toMatch(/scheduled/);
+  });
+});
+
+describe('recipe.preview', () => {
+  it('reads the source and saves nothing', async () => {
+    const f = fakeStore();
+    const preview = makeRecipePreview({
+      trendSource,
+      fetchText: async () => '<rss><channel><item><title>Hello</title><link>https://e.com/h</link></item></channel></rss>',
+    });
+    const out = await preview.handler(
+      { genomeId: 'gen_barber', kind: 'rss', config: { feedUrl: 'https://e.com/feed.xml' } },
+      ctx(f.store),
+    );
+    expect(out.items).toHaveLength(1);
+    expect(out.items[0]).toMatchObject({ title: 'Hello', sourceUrl: 'https://e.com/h', playbookName: expect.any(String) });
+    expect(f.outputs).toEqual([]);
+    expect(preview.effect).toBe('read');
+  });
+
+  it('answers an unfinished config with the reason rather than throwing', async () => {
+    const preview = makeRecipePreview({ trendSource, fetchText: async () => '' });
+    const out = await preview.handler({ genomeId: 'gen_barber', kind: 'rss', config: { feedUrl: 'nope' } }, ctx(fakeStore().store));
+    expect(out.items).toEqual([]);
+    expect(out.error).toBeTruthy();
+  });
 });
 
 describe('recipe.output.list / recipe.output.decide', () => {
@@ -221,7 +332,57 @@ describe('recipe.output.list / recipe.output.decide', () => {
     expect(decided.contentItemId).toBe('ci_1');
   });
 
-  it('refuses to approve an output without a contentItemId', async () => {
+  it('approving schedules the post on the chosen account, linked to the recipe', async () => {
+    // Approving used to need a draft the caller had made, which had no schedule,
+    // no recipe and no account — so with review on, nothing ever published.
+    const f = fakeStore();
+    const created = await recipeCreate.handler(
+      {
+        genomeId: 'gen_barber',
+        kind: 'auto_trend',
+        name: 'Trend watcher',
+        config: { minScore: 0.1, targetPlatforms: ['instagram'], ctaUrl: 'https://example.com/book' },
+      },
+      ctx(f.store),
+    );
+    await makeRecipeRun({ trendSource, fetchText: async () => '' }).handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store));
+    const pending = f.outputs[0]!;
+    expect(pending.status).toBe('pending_review');
+
+    const decided = await recipeOutputDecide.handler(
+      { id: pending.id, genomeId: 'gen_barber', status: 'approved' },
+      ctx(f.store, {}, f.content),
+    );
+    expect(decided.status).toBe('approved');
+    expect(f.posts).toHaveLength(1);
+    expect(f.posts[0]).toMatchObject({
+      recipeId: created.id,
+      platform: 'instagram',
+      linkUrl: 'https://example.com/book',
+      sourceTrendId: (pending.preview as { trendId: string }).trendId,
+    });
+    expect(f.posts[0]!.scheduledAt.getTime()).toBeGreaterThan(Date.now());
+    expect(decided.contentItemId).toBe(f.posts[0]!.id);
+    expect((decided.preview as { contentItemIds: string[] }).contentItemIds).toEqual([f.posts[0]!.id]);
+
+    // A replay returns the approved row instead of scheduling a second post.
+    await recipeOutputDecide.handler({ id: pending.id, genomeId: 'gen_barber', status: 'approved' }, ctx(f.store, {}, f.content));
+    expect(f.posts).toHaveLength(1);
+    // And it cannot be flipped to rejected once it is on the calendar.
+    await expect(
+      recipeOutputDecide.handler({ id: pending.id, genomeId: 'gen_barber', status: 'rejected' }, ctx(f.store, {}, f.content)),
+    ).rejects.toThrow(/already approved/);
+  });
+
+  it('refuses to approve an output that matched no format', async () => {
+    const f = fakeStore();
+    f.outputs.push({ id: 'out_x', recipeId: 'r', runId: 'run', genomeId: 'gen_barber', status: 'pending_review', preview: { title: 'T', intent: 'I' }, createdAt: new Date() });
+    await expect(
+      recipeOutputDecide.handler({ id: 'out_x', genomeId: 'gen_barber', status: 'approved' }, ctx(f.store)),
+    ).rejects.toThrow(/Remove it instead/);
+  });
+
+  it('404s an unknown output', async () => {
     const { store } = fakeStore();
     await expect(
       recipeOutputDecide.handler({ id: 'out_1', genomeId: 'gen_barber', status: 'approved' }, ctx(store)),

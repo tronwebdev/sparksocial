@@ -1843,6 +1843,8 @@ export interface ContentDraftRow {
   externalId: string | null;
   publishVia: string | null;
   publishUrl: string | null;
+  /** The link the caption carries — see `content_items.link_url`. */
+  linkUrl: string | null;
   blockedReason: string | null;
   /** §10's retry state — see `recordContentPublishFailure`. */
   publishAttempts: number;
@@ -1873,6 +1875,7 @@ const contentDraftColumns = {
   externalId: contentItems.externalId,
   publishVia: contentItems.publishVia,
   publishUrl: contentItems.publishUrl,
+  linkUrl: contentItems.linkUrl,
   blockedReason: contentItems.blockedReason,
   // §10's retry flow: a stalled item has to be able to explain how many times
   // it has been tried and what happened, or the only record is a console line.
@@ -1935,6 +1938,10 @@ export async function createContentDraft(
     intent?: string;
     sourceTrendId?: string;
     scheduledAt?: Date;
+    /** The account this post is for, when the caller already knows — a recipe's chosen accounts. */
+    platform?: string;
+    /** See `content_items.link_url`. */
+    linkUrl?: string;
     /** `DISC-02`'s A/B group — set only by `content.variant.split`. */
     variantGroupId?: string;
     variantLabel?: string;
@@ -1953,6 +1960,8 @@ export async function createContentDraft(
       ...(args.recipeId ? { recipeId: args.recipeId } : {}),
       ...(args.intent ? { intent: args.intent } : {}),
       ...(args.sourceTrendId ? { sourceTrendId: args.sourceTrendId } : {}),
+      ...(args.platform ? { platform: args.platform } : {}),
+      ...(args.linkUrl ? { linkUrl: args.linkUrl } : {}),
       ...(args.variantGroupId ? { variantGroupId: args.variantGroupId } : {}),
       ...(args.variantLabel ? { variantLabel: args.variantLabel } : {}),
       // A row created with a date is created scheduled; the column default
@@ -2136,6 +2145,8 @@ export interface DueContentItem {
   copy: unknown;
   /** The brief, for a slot the scheduler has to draft before it can publish it. */
   intent: string | null;
+  /** Appended to the caption at publish time — see `content_items.link_url`. */
+  linkUrl: string | null;
   scheduledAt: Date;
 }
 
@@ -2160,6 +2171,21 @@ export async function contentPublishOrigin(
       recipeId: contentItems.recipeId,
       config: recipes.config,
       campaignApprovalMode: campaigns.approvalMode,
+      /*
+       * Whether this post is the approved form of a recipe output. Approving an
+       * output in the queue *is* the review a "review before publish" recipe asks
+       * for, so the publish must not be held a second time for the same review.
+       * One output can become several posts (one per chosen account), which is
+       * why the preview's `contentItemIds` list is checked as well as the column.
+       */
+      approvedOutput: sql<boolean>`exists (
+        select 1 from ${recipeOutputs}
+        where ${recipeOutputs.orgId} = ${contentItems.orgId}
+          and ${recipeOutputs.genomeId} = ${contentItems.genomeId}
+          and ${recipeOutputs.status} = 'approved'
+          and (${recipeOutputs.contentItemId} = ${contentItems.id}
+            or ${recipeOutputs.preview} -> 'contentItemIds' @> to_jsonb(${contentItems.id}::text))
+      )`,
     })
     .from(contentItems)
     .leftJoin(recipes, eq(recipes.id, contentItems.recipeId))
@@ -2180,7 +2206,11 @@ export async function contentPublishOrigin(
   const cfg = row.config as { reviewBeforePublish?: unknown } | null;
   return {
     recipeId: row.recipeId,
-    reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+    reviewBeforePublish: row.approvedOutput
+      ? false
+      : typeof cfg?.reviewBeforePublish === 'boolean'
+        ? cfg.reviewBeforePublish
+        : true,
     ...campaignMode,
   };
 }
@@ -2209,6 +2239,7 @@ export async function findDueContentItems(db: Database, args: { before: Date; li
       platform: contentItems.platform,
       copy: contentItems.copy,
       intent: contentItems.intent,
+      linkUrl: contentItems.linkUrl,
       scheduledAt: contentItems.scheduledAt,
     })
     .from(contentItems)
@@ -3162,7 +3193,20 @@ const recipeOutputColumns = {
 export async function recordRecipeRun(
   db: Database,
   scope: Scope,
-  args: { recipeId: string; status: 'succeeded' | 'failed'; outputCount: number; error?: string; outputs: unknown[] },
+  args: {
+    recipeId: string;
+    status: 'succeeded' | 'failed';
+    outputCount: number;
+    error?: string;
+    /**
+     * Each output with the state it starts in. A recipe with review switched off
+     * has already scheduled its posts by the time this is written, so those rows
+     * start `approved` with the post they became — recording them as
+     * `pending_review` put already-scheduled posts in the approval queue, and
+     * approving one there made a second post.
+     */
+    outputs: Array<{ preview: unknown; status?: 'pending_review' | 'approved'; contentItemId?: string }>;
+  },
 ): Promise<{ runId: string }> {
   assertScope(scope);
   return db.transaction(async (tx) => {
@@ -3182,12 +3226,15 @@ export async function recordRecipeRun(
 
     if (args.outputs.length) {
       await tx.insert(recipeOutputs).values(
-        args.outputs.map((preview) => ({
+        args.outputs.map((o) => ({
           orgId: scope.orgId,
           genomeId: scope.genomeId,
           recipeId: args.recipeId,
           runId: run.id,
-          preview,
+          preview: o.preview,
+          ...(o.status ? { status: o.status } : {}),
+          ...(o.contentItemId ? { contentItemId: o.contentItemId } : {}),
+          ...(o.status === 'approved' ? { decidedAt: sql`now()` } : {}),
         })),
       );
     }
@@ -3212,15 +3259,74 @@ export async function listRecipeOutputs(
 export async function decideRecipeOutput(
   db: Database,
   scope: Scope,
-  args: { id: string; status: 'approved' | 'rejected'; contentItemId?: string },
+  args: { id: string; status: 'approved' | 'rejected'; contentItemId?: string; preview?: unknown },
 ): Promise<RecipeOutputRow | undefined> {
   assertScope(scope);
   const [row] = await db
     .update(recipeOutputs)
-    .set({ status: args.status, decidedAt: sql`now()`, ...(args.contentItemId ? { contentItemId: args.contentItemId } : {}) })
+    .set({
+      status: args.status,
+      decidedAt: sql`now()`,
+      ...(args.contentItemId ? { contentItemId: args.contentItemId } : {}),
+      ...(args.preview !== undefined ? { preview: args.preview as object } : {}),
+    })
     .where(and(eq(recipeOutputs.id, args.id), scopePredicate('recipeOutputs', scope)))
     .returning(recipeOutputColumns);
   return row;
+}
+
+/** One output, for `recipe.output.decide` to read the preview it is approving. */
+export async function getRecipeOutput(db: Database, scope: Scope, id: string): Promise<RecipeOutputRow | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .select(recipeOutputColumns)
+    .from(recipeOutputs)
+    .where(and(eq(recipeOutputs.id, id), scopePredicate('recipeOutputs', scope)))
+    .limit(1);
+  return row;
+}
+
+/**
+ * The previews a recipe has already produced, newest first — what `recipe.run`
+ * reads to skip anything it has proposed before.
+ *
+ * Every status counts, rejected included: an item somebody removed from the
+ * queue is an item they do not want, and offering it again on the next run is
+ * the duplicate the PRD's "non-duplicate output" exit line rules out. Bounded,
+ * because a feed's history is long and only its recent past can come round again.
+ */
+export async function recentRecipeOutputPreviews(
+  db: Database,
+  scope: Scope,
+  args: { recipeId: string; limit: number },
+): Promise<unknown[]> {
+  assertScope(scope);
+  const rows = await db
+    .select({ preview: recipeOutputs.preview })
+    .from(recipeOutputs)
+    .where(and(eq(recipeOutputs.recipeId, args.recipeId), scopePredicate('recipeOutputs', scope)))
+    .orderBy(desc(recipeOutputs.createdAt))
+    .limit(args.limit);
+  return rows.map((r) => r.preview);
+}
+
+/**
+ * The latest time this recipe already has a post waiting to go out, if any —
+ * so the next post it schedules goes after it rather than on top of it.
+ */
+export async function lastRecipeSlot(db: Database, scope: Scope, recipeId: string): Promise<Date | undefined> {
+  assertScope(scope);
+  const [row] = await db
+    .select({ at: sql<Date | string | null>`max(${contentItems.scheduledAt})` })
+    .from(contentItems)
+    .where(
+      and(
+        eq(contentItems.recipeId, recipeId),
+        eq(contentItems.status, 'scheduled'),
+        scopePredicate('contentItems', scope),
+      ),
+    );
+  return row?.at ? new Date(row.at) : undefined;
 }
 
 // ---------------------------------------------------------------------------

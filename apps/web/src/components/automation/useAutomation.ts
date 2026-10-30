@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { invoke } from '@/lib/tools';
+import { platformLabel } from '@/lib/platforms';
 import { KIND_META, statusChip, type RecipeKind, type StatusChip } from './recipeMeta';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -36,7 +37,15 @@ interface OutputItem {
   id: string;
   recipeId: string;
   status: 'pending_review' | 'approved' | 'rejected';
-  preview: { title?: string; intent?: string; sourceUrl?: string; playbookId?: string };
+  preview: {
+    title?: string;
+    intent?: string;
+    sourceUrl?: string;
+    playbookId?: string;
+    playbookName?: string;
+    /** Every post the output became — one per chosen account. */
+    contentItemIds?: string[];
+  };
   contentItemId?: string;
   createdAt: string;
 }
@@ -60,6 +69,10 @@ export interface QueueRow {
   createdAt: string;
   scheduledAt?: string;
   contentItemId?: string;
+  /** Every post the output became. `contentItemId` is the first of them. */
+  contentItemIds: string[];
+  /** The format's name, so a row can say what it will become. */
+  formatName?: string;
   /** True while the output is still `pending_review` — the only decidable state. */
   canDecide: boolean;
   /**
@@ -116,6 +129,11 @@ export function useAutomation(genomeId: string | undefined) {
         const recipe = byId.get(o.recipeId);
         const item = o.contentItemId ? contentById.get(o.contentItemId) : undefined;
         const kind = recipe?.kind ?? 'auto_trend';
+        const ids = o.preview.contentItemIds ?? (o.contentItemId ? [o.contentItemId] : []);
+        /* The posts' own platforms once they exist; the recipe's choice before. */
+        const posted = ids.map((id) => contentById.get(id)?.platform).filter((p): p is string => !!p);
+        const chosen = ((recipe?.config ?? {}) as { targetPlatforms?: unknown }).targetPlatforms;
+        const platforms = posted.length ? posted : Array.isArray(chosen) ? chosen.filter((p): p is string => typeof p === 'string') : [];
         /* `pending_review` wins over the content status: an output that is
            still waiting on a person is Waiting Approval whatever its draft
            looks like. */
@@ -127,11 +145,13 @@ export function useAutomation(genomeId: string | undefined) {
           recipeName: recipe?.name ?? KIND_META[kind].name,
           title: o.preview.title ?? item?.summary ?? o.preview.intent ?? 'Untitled post',
           ...(o.preview.sourceUrl ? { sub: hostOf(o.preview.sourceUrl) } : {}),
-          ...(item?.platform ? { account: item.platform } : {}),
+          ...(platforms.length ? { account: [...new Set(platforms)].map(platformLabel).join(', ') } : {}),
           chip,
           createdAt: o.createdAt,
           ...(item?.scheduledAt ? { scheduledAt: item.scheduledAt } : {}),
           ...(o.contentItemId ? { contentItemId: o.contentItemId } : {}),
+          contentItemIds: ids,
+          ...(o.preview.playbookName ? { formatName: o.preview.playbookName } : {}),
           canDecide: o.status === 'pending_review',
           ...(o.preview.playbookId ? { playbookId: o.preview.playbookId } : {}),
           ...(o.preview.intent ? { intent: o.preview.intent } : {}),
@@ -150,10 +170,10 @@ export function useAutomation(genomeId: string | undefined) {
             caption: output?.preview.intent ?? r.title,
             detail: r.canDecide
               ? r.playbookId
-                ? 'Waiting on you. Approving it drafts the post; rejecting drops it.'
-                : 'Waiting on you, but this run picked no format — there is nothing to draft from, so it can only be removed.'
-              : r.contentItemId
-                ? `Drafted as a content item, now ${r.chip.label.toLowerCase()}.`
+                ? `Waiting on you. Approving it writes the ${r.formatName ?? 'post'}${r.formatName ? ' post' : ''} and schedules it${r.account ? ` to ${r.account}` : ''}; rejecting drops it and the recipe will not offer it again.`
+                : 'Waiting on you, but no format this brand can make fits it — there is nothing to post, so it can only be removed.'
+              : r.contentItemIds.length
+                ? `${r.contentItemIds.length === 1 ? 'A post' : `${r.contentItemIds.length} posts`}${r.account ? ` to ${r.account}` : ''}, now ${r.chip.label.toLowerCase()}.`
                 : 'Produced by this recipe.',
           };
         }),

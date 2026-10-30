@@ -119,6 +119,7 @@ const dueItem = (over: Partial<DueContentItem> = {}): DueContentItem => ({
   platform: null,
   copy: [{ kind: 'text', beatId: 'b1', text: 'hello world' }],
   intent: null,
+  linkUrl: null,
   scheduledAt: new Date('2026-08-13T09:00:00Z'),
   ...over,
 });

@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 235 tools.
+ * 236 tools.
  */
 
 export interface ToolIO {
@@ -831,6 +831,10 @@ export interface ToolIO {
     input: { genomeId: string; status?: "pending_review" | "approved" | "rejected"; limit?: number };
     output: { outputs: Array<{ id: string; recipeId: string; runId: string; status: "pending_review" | "approved" | "rejected"; preview: unknown; contentItemId?: string; createdAt: string; decidedAt?: string }> };
   };
+  "recipe.preview": {
+    input: { genomeId: string; kind: "auto_trend" | "bulk_connector" | "rss"; config: unknown };
+    output: { items: Array<{ title: string; intent: string; sourceUrl?: string; playbookName?: string }>; error?: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+  };
   "recipe.run": {
     input: { id: string; genomeId: string };
     output: { runId: string; outputCount: number; error?: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
@@ -885,7 +889,7 @@ export interface ToolIO {
   };
   "trend.detail": {
     input: { genomeId: string; trendId: string; seriesDays?: number };
-    output: { trend: { id: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "manual"; topic: string; tags: Array<string>; metrics: { volume: number; velocity: number; saturation: number; growth: number }; samples: Array<{ url: string; caption?: string }>; media?: { url: string; kind: "image" | "video" }; regions: Array<{ code: string; volume?: number }>; language: string; region?: string }; score: number; relevance: number; opportunity: number; safety: { safe: boolean; reasons: Array<string>; detail?: string }; factors: Array<{ label: string; detail: string; weight?: number }>; series: Array<{ at: string; volume: number; velocity: number; saturation: number; growth: number }>; trajectory: ({ direction: "climbing" | "flat" | "cooling"; saturationChange: number; volumeChange: (number) | (null); observations: number; spanHours: number }) | (null); why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { trend: { id: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "bluesky" | "mastodon" | "rss" | "manual"; topic: string; tags: Array<string>; metrics: { volume: number; velocity: number; saturation: number; growth: number }; samples: Array<{ url: string; caption?: string }>; media?: { url: string; kind: "image" | "video" }; regions: Array<{ code: string; volume?: number }>; language: string; region?: string; startedAt?: string }; score: number; relevance: number; opportunity: number; safety: { safe: boolean; reasons: Array<string>; detail?: string }; factors: Array<{ label: string; detail: string; weight?: number }>; series: Array<{ at: string; volume: number; velocity: number; saturation: number; growth: number }>; trajectory: ({ direction: "climbing" | "flat" | "cooling"; saturationChange: number; volumeChange: (number) | (null); observations: number; spanHours: number }) | (null); why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "trend.explain": {
     input: { genomeId: string; trendId: string };
@@ -893,7 +897,7 @@ export interface ToolIO {
   };
   "trend.fetch": {
     input: { limit?: number; region?: string; language?: string };
-    output: { trends: Array<{ id: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "manual"; topic: string; tags: Array<string>; metrics: { volume: number; velocity: number; saturation: number; growth: number }; samples: Array<{ url: string; caption?: string }>; media?: { url: string; kind: "image" | "video" }; regions: Array<{ code: string; volume?: number }>; language: string; region?: string }>; source: string };
+    output: { trends: Array<{ id: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "bluesky" | "mastodon" | "rss" | "manual"; topic: string; tags: Array<string>; metrics: { volume: number; velocity: number; saturation: number; growth: number }; samples: Array<{ url: string; caption?: string }>; media?: { url: string; kind: "image" | "video" }; regions: Array<{ code: string; volume?: number }>; language: string; region?: string; startedAt?: string }>; source: string };
   };
   "trend.hooks": {
     input: { genomeId: string; trendId: string; count?: number };
@@ -901,7 +905,7 @@ export interface ToolIO {
   };
   "trend.influencer.review": {
     input: { genomeId: string; postsPerAccount?: number; limit?: number };
-    output: { posts: Array<{ platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; handle: string; trendId: string; topic: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "manual"; score: number; relevance: number; opportunity: number; safe: boolean; unsafeBecause?: string; metrics: { volume: number; velocity: number; saturation: number; growth: number } }>; quiet: Array<{ platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; handle: string; because: string }>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { posts: Array<{ platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; handle: string; trendId: string; topic: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "bluesky" | "mastodon" | "rss" | "manual"; score: number; relevance: number; opportunity: number; safe: boolean; unsafeBecause?: string; metrics: { volume: number; velocity: number; saturation: number; growth: number } }>; quiet: Array<{ platform: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; handle: string; because: string }>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "trend.influencer.watch": {
     input: { genomeId: string; action: "add" | "remove" | "list"; platform?: "instagram" | "tiktok" | "linkedin" | "x" | "youtube_shorts"; handle?: string; note?: string };
@@ -913,7 +917,7 @@ export interface ToolIO {
   };
   "trend.rank": {
     input: { genomeId: string; limit?: number; region?: string; language?: string };
-    output: { trends: Array<{ trendId: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "manual"; topic: string; score: number; relevance: number; opportunity: number; metrics: { volume: number; velocity: number; saturation: number; growth: number }; factors: Array<{ label: string; detail: string; weight?: number }>; media?: { url: string; kind: "image" | "video" }; samples: Array<{ url: string; caption?: string }>; tags: Array<string>; regions: Array<{ code: string; volume?: number }> }>; excluded: Array<{ trendId: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "manual"; topic: string; score: number; relevance: number; opportunity: number; metrics: { volume: number; velocity: number; saturation: number; growth: number }; factors: Array<{ label: string; detail: string; weight?: number }>; media?: { url: string; kind: "image" | "video" }; samples: Array<{ url: string; caption?: string }>; tags: Array<string>; regions: Array<{ code: string; volume?: number }>; because: string }>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { trends: Array<{ trendId: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "bluesky" | "mastodon" | "rss" | "manual"; topic: string; score: number; relevance: number; opportunity: number; metrics: { volume: number; velocity: number; saturation: number; growth: number }; factors: Array<{ label: string; detail: string; weight?: number }>; media?: { url: string; kind: "image" | "video" }; samples: Array<{ url: string; caption?: string }>; tags: Array<string>; regions: Array<{ code: string; volume?: number }> }>; excluded: Array<{ trendId: string; source: "tiktok" | "x" | "youtube" | "reddit" | "google" | "hackernews" | "producthunt" | "pinterest" | "bluesky" | "mastodon" | "rss" | "manual"; topic: string; score: number; relevance: number; opportunity: number; metrics: { volume: number; velocity: number; saturation: number; growth: number }; factors: Array<{ label: string; detail: string; weight?: number }>; media?: { url: string; kind: "image" | "video" }; samples: Array<{ url: string; caption?: string }>; tags: Array<string>; regions: Array<{ code: string; volume?: number }>; because: string }>; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "trend.repurpose": {
     input: { genomeId: string; trendId: string };

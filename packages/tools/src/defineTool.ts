@@ -1043,6 +1043,11 @@ export interface ContentDraft {
   externalId?: string;
   via?: string;
   url?: string;
+  /**
+   * The link the caption carries — an automation recipe's CTA URL. Appended at
+   * publish time by `withLink`, never written into the copy itself.
+   */
+  linkUrl?: string;
   /** Set only when `status === 'blocked'` — see `ContentStore.markBlocked`. */
   blockedReason?: string;
   /** Failed publish attempts so far. See `ContentStore.recordPublishFailure`. */
@@ -1138,6 +1143,14 @@ export interface ContentStore {
      * slot takes.
      */
     scheduledAt?: Date;
+    /**
+     * The account it is for, when the caller already knows — a recipe's chosen
+     * accounts. Absent leaves it to the playbook's first platform at publish
+     * time, the scheduler's long-standing fallback.
+     */
+    platform?: Platform;
+    /** See `ContentDraft.linkUrl`. */
+    linkUrl?: string;
     /** `content.variant.split`'s two writes — the only caller that sets these. */
     variantGroupId?: string;
     variantLabel?: string;
@@ -2384,16 +2397,31 @@ export interface RecipeStore {
     status: 'succeeded' | 'failed';
     outputCount: number;
     error?: string;
-    outputs: unknown[];
+    /**
+     * Each output with the state it starts in. Review-off recipes schedule their
+     * posts before this is written, so theirs start `approved` with the post
+     * they became; everything else starts `pending_review`.
+     */
+    outputs: Array<{ preview: unknown; status?: 'pending_review' | 'approved'; contentItemId?: string }>;
   }): Promise<{ runId: string }>;
   listOutputs(genomeId: string, orgId: string, args: { status?: string; limit: number }): Promise<RecipeOutputRecord[]>;
+  getOutput(id: string, genomeId: string, orgId: string): Promise<RecipeOutputRecord | undefined>;
   decideOutput(args: {
     id: string;
     genomeId: string;
     orgId: string;
     status: 'approved' | 'rejected';
     contentItemId?: string;
+    /** Replaces the stored preview — approval records every post the output became. */
+    preview?: unknown;
   }): Promise<RecipeOutputRecord | undefined>;
+  /**
+   * What this recipe has already proposed, newest first, any status — the
+   * memory `recipe.run` checks so a feed item or sheet row is offered once.
+   */
+  recentOutputPreviews(recipeId: string, genomeId: string, orgId: string, limit: number): Promise<unknown[]>;
+  /** The latest post this recipe already has waiting to go out, so the next one queues behind it. */
+  lastScheduledAt(recipeId: string, genomeId: string, orgId: string): Promise<Date | undefined>;
 }
 
 /** One named grouping of assets — `asset.folder.create`'s row. */

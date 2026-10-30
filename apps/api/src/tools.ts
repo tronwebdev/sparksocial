@@ -223,6 +223,7 @@ import {
   recipeSchedule,
   recipeDelete,
   makeRecipeRun,
+  makeRecipePreview,
   recipeOutputList,
   recipeOutputDecide,
 } from '@sparksocial/recipes';
@@ -776,14 +777,16 @@ export function registerAlphaTools(): void {
   register(recipeList);
   register(recipeSchedule);
   register(recipeDelete);
-  register(
-    makeRecipeRun({
-      trendSource,
-      fetchText: fetchTextForRecipes,
-      fetchWithAuth: fetchWithAuthForRecipes,
-      ...(envSet('GOOGLE_DRIVE_API_KEY') ? { driveApiKey: envStr('GOOGLE_DRIVE_API_KEY', '') } : {}),
-    }),
-  );
+  const recipeDeps = {
+    trendSource,
+    fetchText: fetchTextForRecipes,
+    fetchWithAuth: fetchWithAuthForRecipes,
+    ...(envSet('GOOGLE_DRIVE_API_KEY') ? { driveApiKey: envStr('GOOGLE_DRIVE_API_KEY', '') } : {}),
+  };
+  register(makeRecipeRun(recipeDeps));
+  // The wizard's preview step (AUTO-02.4 / 03.4 / 04.3): the same runner as
+  // `recipe.run`, reading the source without saving anything.
+  register(makeRecipePreview(recipeDeps));
   register(recipeOutputList);
   register(recipeOutputDecide);
 

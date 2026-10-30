@@ -185,6 +185,7 @@ function toTrend(item: YouTubeVideoItem): Trend {
     id: item.id,
     source: 'youtube',
     topic: item.snippet.title,
+    ...(Number.isFinite(publishedAt) ? { startedAt: new Date(publishedAt).toISOString() } : {}),
     tags:
       item.snippet.tags?.slice(0, 5) ??
       (item.snippet.categoryId && CATEGORY_NAMES[item.snippet.categoryId] ? [CATEGORY_NAMES[item.snippet.categoryId]!] : []),

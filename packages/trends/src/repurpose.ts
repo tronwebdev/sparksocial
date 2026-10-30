@@ -38,7 +38,11 @@ export interface RepurposeSuggestion {
 export function suggestRepurpose(
   genome: Genome,
   assets: AssetInventory,
-  trend: Trend,
+  /*
+   * Only the words are read — which is what lets a recipe ask the same question
+   * of a feed item or a sheet row, neither of which is a trend.
+   */
+  trend: Pick<Trend, 'topic' | 'tags'>,
 ): { suggestion: RepurposeSuggestion | undefined; ranked: ResolvedPlaybook[] } {
   const { ranked } = resolve(genome, assets);
   if (ranked.length === 0) return { suggestion: undefined, ranked };
@@ -86,7 +90,7 @@ function overlap(
   return { count: new Set(matched).size, matched: [...new Set(matched)] };
 }
 
-function buildIntent(trend: Trend, r: ResolvedPlaybook): string {
+function buildIntent(trend: Pick<Trend, 'topic'>, r: ResolvedPlaybook): string {
   const base = `Join the trend "${trend.topic}" with a ${r.playbook.name.toLowerCase()} post`;
   if (!r.unlockable) return base;
   // "footage" only when footage is actually what is missing — a brand kit or a

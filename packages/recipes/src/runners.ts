@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { Platform } from '@sparksocial/shared';
 import type { Genome } from '@sparksocial/shared/genome';
 import { checkPublicHttpUrl } from '@sparksocial/shared/safeUrl';
-import type { AssetInventory } from '@sparksocial/playbooks';
+import { byId, type AssetInventory } from '@sparksocial/playbooks';
 import { rankTrends, suggestRepurpose, type TrendSource } from '@sparksocial/trends';
 import { csvToRecords } from './csv.js';
 import { parseFeed } from './rss.js';
@@ -41,7 +42,73 @@ export interface RecipeOutputPreview {
   intent: string;
   sourceUrl?: string;
   playbookId?: string;
+  /** The format's display name, so the queue can say what it will become. */
+  playbookName?: string;
+  /** The trend an `auto_trend` output came from — `content_items.source_trend_id`. */
+  trendId?: string;
   referencedAssetIds?: string[];
+  /** Set once the output has become posts — one per chosen account. */
+  contentItemIds?: string[];
+}
+
+/**
+ * Everything an output can be recognised by: its link, its trend, its title.
+ *
+ * `recipe.run` collects these from what the recipe already produced and skips any
+ * new output that shares one — the PRD's "skip items it has already posted".
+ * All three rather than one, because the identity that matters differs by kind
+ * (a feed item has a link, a trend an id, a sheet row only its words) and because
+ * outputs stored before `trendId` existed can only be matched by title.
+ */
+export function outputKeys(preview: unknown): string[] {
+  const p = (preview ?? {}) as Partial<RecipeOutputPreview>;
+  const keys: string[] = [];
+  if (typeof p.sourceUrl === 'string' && p.sourceUrl) keys.push(`url:${p.sourceUrl.trim().replace(/\/+$/, '').toLowerCase()}`);
+  if (typeof p.trendId === 'string' && p.trendId) keys.push(`trend:${p.trendId}`);
+  if (typeof p.title === 'string' && p.title.trim()) {
+    keys.push(`title:${p.title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()}`);
+  }
+  return keys;
+}
+
+/**
+ * The format an item becomes, preferring one the brand can make today.
+ *
+ * Only `auto_trend` used to pick a format at all, so a feed item or a sheet row
+ * reached the queue with nothing to draft from: approving it failed with "No
+ * format picked", and with review off it was silently skipped — RSS and Bulk
+ * recipes could not produce a single post. They now ask the same matcher the
+ * trend path uses, on their own words.
+ *
+ * "Can make today" because a recipe posts unattended: a format waiting on footage
+ * nobody has shot would fail when the scheduler drafts it. The matcher's own pick
+ * wins when it is makeable; otherwise the best-ranked makeable format, and a
+ * format that supports one of the recipe's chosen accounts is preferred over one
+ * that supports none of them.
+ */
+export function pickFormat(
+  ctx: Pick<RecipeRunContext, 'genome' | 'assets'>,
+  item: { topic: string; tags: string[] },
+  targetPlatforms: readonly string[] = [],
+): { playbookId: string; playbookName: string; intent: string } | undefined {
+  const { suggestion, ranked } = suggestRepurpose(ctx.genome, ctx.assets, item);
+  const fits = (id: string) =>
+    targetPlatforms.length === 0 || (byId(id)?.output.platforms ?? []).some((p) => targetPlatforms.includes(p));
+  if (suggestion && !suggestion.unlockable && fits(suggestion.playbookId)) {
+    return { playbookId: suggestion.playbookId, playbookName: suggestion.playbookName, intent: suggestion.intent };
+  }
+  const makeable = ranked.filter((r) => !r.unlockable);
+  const best = makeable.find((r) => fits(r.playbook.playbook_id)) ?? makeable[0];
+  if (best) {
+    return {
+      playbookId: best.playbook.playbook_id,
+      playbookName: best.playbook.name,
+      intent: `Join the trend "${item.topic}" with a ${best.playbook.name.toLowerCase()} post`,
+    };
+  }
+  return suggestion
+    ? { playbookId: suggestion.playbookId, playbookName: suggestion.playbookName, intent: suggestion.intent }
+    : undefined;
 }
 
 export interface RecipeRunContext {
@@ -73,6 +140,19 @@ export interface RecipeRunContext {
    * when the brand has never connected Canva.
    */
   getOAuthAccessToken?: (provider: 'canva') => Promise<string | undefined>;
+  /**
+   * `outputKeys` of everything this recipe produced before. A runner drops any
+   * candidate sharing one *before* it applies its per-run cap, so a run is
+   * "the next N new items" rather than "the first N items, minus the ones already
+   * seen" — the second shrinks to nothing on a feed that publishes slowly.
+   * Absent for a preview of an unsaved recipe, which has no history.
+   */
+  seen?: ReadonlySet<string>;
+}
+
+/** Whether a candidate is new to this recipe. */
+function isNew(ctx: RecipeRunContext, preview: Partial<RecipeOutputPreview>): boolean {
+  return !ctx.seen || !outputKeys(preview).some((k) => ctx.seen!.has(k));
 }
 
 export interface RecipeRunResult {
@@ -105,23 +185,13 @@ export const RecipeCommonConfig = z.object({
   /** Route review through a person before anything goes out. AUTO-02.5 / 03.5 / 04.4's checkbox. */
   reviewBeforePublish: z.boolean().default(true),
   /**
-   * Which connected accounts this recipe posts to. Empty means "whatever the
-   * chosen playbook declares" — the same honest default the scheduler applies
-   * to a campaign slot with no platform of its own.
+   * Which connected accounts this recipe posts to. **Applied** — each output
+   * becomes one post per chosen account the format supports (or per chosen
+   * account, when the format supports none of them: the person picked them).
+   * Empty means "whatever the chosen playbook declares" — the same default the
+   * scheduler applies to a campaign slot with no platform of its own.
    */
-  /**
-   * NOT YET APPLIED. Accepted, stored, and read by nothing.
-   *
-   * An output becomes a post in two steps — `recipe.output.decide` approves it,
-   * then a caller turns it into a draft with `content.draft` — and neither step
-   * takes a platform. Routing a recipe's posts to chosen accounts needs the
-   * platform to survive that handover, which is a change to `recipe_outputs` and
-   * to the approval path, not a field read.
-   *
-   * `recipe.validate` reports this explicitly rather than letting it look
-   * configured. See the `notApplied` note there.
-   */
-  targetPlatforms: z.array(z.string()).default([]),
+  targetPlatforms: z.array(Platform).default([]),
   /**
    * The goal every output is written toward. **Applied** — folded into the
    * output's `intent`, which is what reaches `content.draft` and grounds the
@@ -129,14 +199,13 @@ export const RecipeCommonConfig = z.object({
    */
   goal: z.string().max(200).optional(),
   /**
-   * NOT YET APPLIED, and deliberately not folded into `intent` like `goal` is.
+   * The link every post carries. **Applied** — stored on each post as
+   * `content_items.link_url` and appended to the caption when it publishes.
    *
-   * `intent` is prose a writer reads, so a URL placed there becomes *spoken*
-   * copy — the exact defect found on 22 August, when a campaign's CTA URL was
-   * written to `genome.offer.primary_cta` and sixteen playbooks read that field
-   * as the line to say out loud, so posts recited "https://…". A link belongs in
-   * a link field, and a recipe output has none: `campaigns.primary_cta` is the
-   * per-campaign one and a recipe is not a campaign.
+   * Deliberately not folded into `intent` like `goal` is. `intent` is prose a
+   * writer reads, so a URL placed there becomes *spoken* copy — the defect found
+   * on 22 August, when sixteen playbooks recited "https://…". A link belongs in a
+   * link field, which is what `link_url` is.
    */
   ctaUrl: z.string().url().optional(),
   /** Not before / not after. A recipe outside its window produces nothing and says so. */
@@ -197,8 +266,23 @@ export async function runRecipe(kind: string, config: unknown, ctx: RecipeRunCon
 export const AutoTrendConfig = RecipeCommonConfig.extend({
   region: z.string().optional(),
   language: z.string().optional(),
-  minScore: z.number().min(0).max(1).default(0.4),
+  /**
+   * The lowest `rankTrends` score this recipe acts on.
+   *
+   * The default was 0.4, and on real feeds nothing reaches it: a brand-relevant
+   * trend scores relevance × (opportunity, plus a little for reach), and staging
+   * on 30 Oct read 0.06–0.09 for the best of thirty relevant trends. A recipe
+   * left on its default therefore never posted. 0.05 keeps everything relevant
+   * that is not dead weight; the wizard's stricter settings are 0.15 and 0.3.
+   */
+  minScore: z.number().min(0).max(1).default(0.05),
   maxOutputs: z.number().int().min(1).max(10).default(3),
+  /**
+   * AUTO-02.3's "post age": skip anything first published more than this many
+   * hours ago. A trend whose source reports no time (a search query, a hashtag)
+   * is kept — it is not a post, and guessing its age would be inventing data.
+   */
+  maxAgeHours: z.number().int().min(1).max(24 * 90).optional(),
   /**
    * `AUTO-02`'s keyword step. **Applied** — passed through to
    * `TrendSource.fetch`, which took no keyword parameter until now, which is why
@@ -249,30 +333,72 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
     };
   }
 
-  const { ranked } = rankTrends(ctx.genome, fetched);
-  const eligible = ranked.filter((r) => r.score >= config.minScore).slice(0, config.maxOutputs);
+  const now = Date.now();
+  const fresh = config.maxAgeHours
+    ? fetched.filter((t) => !t.startedAt || now - Date.parse(t.startedAt) <= config.maxAgeHours! * 3_600_000)
+    : fetched;
+  if (fresh.length === 0 && fetched.length > 0) {
+    return {
+      outputs: [],
+      error: `${fetched.length} trends came back, but every one was published more than ${config.maxAgeHours} hours ago. Allow older posts, or try again later.`,
+    };
+  }
 
-  if (eligible.length === 0 && fetched.length > 0 && config.keywords.length > 0) {
+  const { ranked } = rankTrends(ctx.genome, fresh);
+  const scored = ranked.filter((r) => r.score >= config.minScore);
+  const unseen = scored.filter((r) => isNew(ctx, { trendId: r.trend.id, title: r.trend.topic }));
+  const eligible = unseen.slice(0, config.maxOutputs);
+
+  if (eligible.length === 0 && scored.length > 0) {
+    // Not an error: the recipe already proposed everything that qualifies.
+    return { outputs: [] };
+  }
+  if (eligible.length === 0 && fresh.length > 0 && config.keywords.length > 0) {
     return {
       outputs: [],
       error:
-        `${fetched.length} trends matched those keywords, but none scored above ${config.minScore} for this ` +
-        `brand. Lower the score threshold, or use words closer to what the brand actually does.`,
+        `${fresh.length} trends matched those keywords, but none scored above ${config.minScore} for this ` +
+        `brand. Lower the signal setting, or use words closer to what the brand actually does.`,
     };
   }
 
   const outputs: RecipeOutputPreview[] = [];
   for (const r of eligible) {
-    const { suggestion } = suggestRepurpose(ctx.genome, ctx.assets, r.trend);
-    if (!suggestion) continue;
+    const format = pickFormat(ctx, r.trend, config.targetPlatforms);
+    if (!format) continue;
     outputs.push({
       title: r.trend.topic,
-      intent: withGoal(suggestion.intent, config.goal),
-      playbookId: suggestion.playbookId,
+      intent: withGoal(format.intent, config.goal),
+      playbookId: format.playbookId,
+      playbookName: format.playbookName,
+      trendId: r.trend.id,
+      ...(r.trend.samples[0]?.url ? { sourceUrl: r.trend.samples[0].url } : {}),
       referencedAssetIds: [],
     });
   }
   return { outputs };
+}
+
+/**
+ * A feed item or sheet row as an output: its own words, plus the format the
+ * matcher picks for them. An item no format fits is still returned, without a
+ * `playbookId` — `recipe.run` reports it rather than dropping it unseen.
+ */
+function itemOutput(
+  ctx: RecipeRunContext,
+  config: { goal?: string; targetPlatforms: string[] },
+  item: { title: string; lead: string; sourceUrl?: string; tags?: string[] },
+): RecipeOutputPreview {
+  const format = pickFormat(ctx, { topic: item.title, tags: item.tags ?? [] }, config.targetPlatforms);
+  return {
+    title: item.title,
+    intent: withGoal(
+      format ? `${item.lead}: "${item.title}" — as a ${format.playbookName.toLowerCase()} post` : `${item.lead}: "${item.title}"`,
+      config.goal,
+    ),
+    ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(format ? { playbookId: format.playbookId, playbookName: format.playbookName } : {}),
+  };
 }
 
 /* ── rss ─────────────────────────────────────────────────────────────── */
@@ -280,6 +406,12 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
 export const RssConfig = RecipeCommonConfig.extend({
   feedUrl: z.string().url(),
   maxItems: z.number().int().min(1).max(20).default(5),
+  /**
+   * AUTO-04.3's feed type. A podcast item is an episode, and a brief that calls
+   * it "new from the feed" gets written like a news recap; this is the one word
+   * that tells the writer which it is.
+   */
+  feedType: z.enum(['news', 'podcast']).default('news'),
 });
 
 async function runRss(rawConfig: unknown, ctx: RecipeRunContext): Promise<RecipeRunResult> {
@@ -297,13 +429,18 @@ async function runRss(rawConfig: unknown, ctx: RecipeRunContext): Promise<Recipe
     return { outputs: [], error: `Could not fetch the feed: ${e instanceof Error ? e.message : String(e)}` };
   }
 
-  const items = parseFeed(xml, config.maxItems);
+  /* Read deep, then take the first `maxItems` this recipe has not proposed. */
+  const items = parseFeed(xml, 50).filter((item) => isNew(ctx, { sourceUrl: item.link, title: item.title }));
   return {
-    outputs: items.map((item) => ({
-      title: item.title,
-      intent: withGoal(`New from the feed: "${item.title}"`, config.goal),
-      sourceUrl: item.link,
-    })),
+    outputs: items
+      .slice(0, config.maxItems)
+      .map((item) =>
+        itemOutput(ctx, config, {
+          title: item.title,
+          lead: config.feedType === 'podcast' ? 'New podcast episode' : 'New from the feed',
+          sourceUrl: item.link,
+        }),
+      ),
   };
 }
 
@@ -317,6 +454,15 @@ export const BulkConnectorConfig = RecipeCommonConfig.extend({
   driveFolderId: z.string().optional(),
   /** The Canva folder to list designs from — read through the brand's own connected Canva account (brand.oauth.connect). */
   canvaFolderId: z.string().optional(),
+  /**
+   * AUTO-03.5's posting cycle: how many rows or files one run takes.
+   *
+   * There was no cycle — every run turned the whole sheet into outputs, so a
+   * daily recipe over a 60-row sheet proposed 60 posts every day. Now each run
+   * takes the next `perRun` items it has not produced before, and a sheet is
+   * worked through at that pace until it is used up.
+   */
+  perRun: z.number().int().min(1).max(20).default(3),
 });
 
 async function runBulkConnector(rawConfig: unknown, ctx: RecipeRunContext): Promise<RecipeRunResult> {
@@ -342,7 +488,10 @@ async function runBulkConnector(rawConfig: unknown, ctx: RecipeRunContext): Prom
   }
 }
 
-async function runBulkConnectorCsv(config: { csvUrl?: string; csvText?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+/** Every bulk source shares the cycle: drop what was produced before, take the next `perRun`. */
+type BulkRun = z.infer<typeof BulkConnectorConfig>;
+
+async function runBulkConnectorCsv(config: BulkRun, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   let text = config.csvText;
   if (!text) {
     if (!config.csvUrl) return { outputs: [], error: 'A csvUrl or csvText is required for the csv source.' };
@@ -356,12 +505,13 @@ async function runBulkConnectorCsv(config: { csvUrl?: string; csvText?: string; 
   }
 
   const records = csvToRecords(text);
-  return {
-    outputs: records.map((row) => {
-      const title = row.title || row.topic || Object.values(row)[0] || 'Untitled row';
-      return { title, intent: withGoal(`From the imported sheet: "${title}"`, config.goal) };
-    }),
-  };
+  const rows = records.map((row) => {
+    const title = row.title || row.topic || Object.values(row)[0] || 'Untitled row';
+    const link = row.link || row.url;
+    return { title, ...(link && /^https?:\/\//i.test(link) ? { sourceUrl: link } : {}) };
+  });
+  const fresh = rows.filter((r) => isNew(ctx, r)).slice(0, config.perRun);
+  return { outputs: fresh.map((r) => itemOutput(ctx, config, { ...r, lead: 'From the imported sheet' })) };
 }
 
 interface DriveFile {
@@ -372,7 +522,7 @@ interface DriveFile {
   createdTime?: string;
 }
 
-async function runBulkConnectorDrive(config: { driveFolderId?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+async function runBulkConnectorDrive(config: BulkRun, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   if (!config.driveFolderId) return { outputs: [], error: 'A driveFolderId is required for the drive source.' };
   if (!ctx.driveApiKey) {
     return { outputs: [], error: 'Google Drive is not connected — GOOGLE_DRIVE_API_KEY is not configured for this workspace.' };
@@ -402,12 +552,15 @@ async function runBulkConnectorDrive(config: { driveFolderId?: string; goal?: st
     return { outputs: [], error: 'Drive returned a response that was not valid JSON.' };
   }
 
+  const files = (body.files ?? []).map((f) => ({
+    title: f.name,
+    sourceUrl: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
+  }));
   return {
-    outputs: (body.files ?? []).map((f) => ({
-      title: f.name,
-      intent: withGoal(`From the connected Drive folder: "${f.name}"`, config.goal),
-      sourceUrl: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
-    })),
+    outputs: files
+      .filter((f) => isNew(ctx, f))
+      .slice(0, config.perRun)
+      .map((f) => itemOutput(ctx, config, { ...f, lead: 'From the connected Drive folder' })),
   };
 }
 
@@ -418,7 +571,7 @@ interface CanvaDesign {
   thumbnail?: { url?: string };
 }
 
-async function runBulkConnectorCanva(config: { canvaFolderId?: string; goal?: string }, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+async function runBulkConnectorCanva(config: BulkRun, ctx: RecipeRunContext): Promise<RecipeRunResult> {
   if (!ctx.getOAuthAccessToken || !ctx.fetchWithAuth) {
     return { outputs: [], error: 'Canva is not connected — no OAuth integration is wired into this run context.' };
   }
@@ -445,14 +598,14 @@ async function runBulkConnectorCanva(config: { canvaFolderId?: string; goal?: st
     return { outputs: [], error: 'Canva returned a response that was not valid JSON.' };
   }
 
+  const designs = (body.items ?? [])
+    .map((i) => i.design)
+    .filter((d): d is CanvaDesign => !!d)
+    .map((d) => ({ title: d.title ?? 'Untitled design', sourceUrl: d.urls?.view_url ?? `https://www.canva.com/design/${d.id}` }));
   return {
-    outputs: (body.items ?? [])
-      .map((i) => i.design)
-      .filter((d): d is CanvaDesign => !!d)
-      .map((d) => ({
-        title: d.title ?? 'Untitled design',
-        intent: withGoal(`From the connected Canva folder: "${d.title ?? 'Untitled design'}"`, config.goal),
-        sourceUrl: d.urls?.view_url ?? `https://www.canva.com/design/${d.id}`,
-      })),
+    outputs: designs
+      .filter((d) => isNew(ctx, d))
+      .slice(0, config.perRun)
+      .map((d) => itemOutput(ctx, config, { ...d, lead: 'From the connected Canva folder' })),
   };
 }

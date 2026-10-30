@@ -30,26 +30,35 @@ import type { WizardDraft } from './wizardDraft';
  * remaining choice: whether its output waits for approval.
  */
 
+/*
+ * Each line is something the engine does — the RSS row "Skip items it has
+ * already posted" used to be a promise nothing kept. The last line depends on
+ * the approval choice below, so it is written per launch rather than fixed.
+ */
 const LAUNCH_ROWS: Record<RecipeKind, readonly string[]> = {
   auto_trend: [
     'Scan the trend sources on the cycle you set',
     'Score what it finds against this brand and its keywords',
-    'Draft on-brand posts from the strongest topics',
-    'Route each one to the output queue',
+    'Pick a format for each strong topic, skipping any it already used',
   ],
   bulk_connector: [
     'Read the source on the cycle you set',
-    'Turn each row into a draft post',
-    'Skip anything it cannot read, and say so in the queue',
-    'Route each one to the output queue',
+    'Take the next rows or files it has not used yet',
+    'Pick a format for each, and say so in the queue when none fits',
   ],
   rss: [
     'Poll the feed on the cycle you set',
-    'Turn new items into drafts with your CTA',
     'Skip items it has already posted',
-    'Route each one to the output queue',
+    'Pick a format for each new item',
   ],
 };
+
+function finalRow(draft: WizardDraft, requireApproval: boolean): string {
+  const link = draft.ctaUrl.trim() ? ' with your link' : '';
+  return requireApproval
+    ? `Hold each one for your approval, then schedule it${link}`
+    : `Schedule each one to publish${link} — no approval needed`;
+}
 
 export function LaunchModal({
   draft,
@@ -132,7 +141,7 @@ export function LaunchModal({
           </p>
           <div className="mt-[14px] flex flex-wrap items-center gap-[10px]">
             <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-14 font-semibold" style={{ boxShadow: 'inset 0 0 0 1.2px #8F8FF0', color: 'var(--ss-auto-scheduled)' }}>
-              {draft.reviewFirst ? 'Waits for review' : 'Publishes on its own'}
+              {requireApproval ? 'Waits for review' : 'Publishes on its own'}
             </span>
             {draft.kind === 'bulk_connector' ? (
               <span className="inline-flex h-[30px] items-center rounded-[8px] bg-white px-[11px] text-14 font-semibold text-ink" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
@@ -155,7 +164,7 @@ export function LaunchModal({
         </div>
 
         <ul className="mt-[16px] flex flex-col gap-[12px] px-[76px] max-md:px-[24px]">
-          {LAUNCH_ROWS[draft.kind].map((row) => (
+          {[...LAUNCH_ROWS[draft.kind], finalRow(draft, requireApproval)].map((row) => (
             <li key={row} className="flex h-[54px] items-center gap-[14px] rounded-[14px] px-[22px]" style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}>
               <svg width="17" height="17" viewBox="0 0 19 19" fill="none" aria-hidden className="shrink-0">
                 <path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#5B5B5B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -182,6 +191,11 @@ export function LaunchModal({
           </span>
           <span className="max-w-[500px] text-17 font-normal leading-[1.4]" style={{ color: '#5B5B5B' }}>
             Require approval for this recipe&rsquo;s posts. Your baseline posts carry on automatically.
+            {draft.kind === 'auto_trend' && draft.brandSafety && !requireApproval ? (
+              <span className="mt-[4px] block text-14" style={{ color: 'var(--ss-amber-500)' }}>
+                Brand safety is on for this recipe, so its posts are still held for review.
+              </span>
+            ) : null}
           </span>
         </label>
 

@@ -5,6 +5,7 @@ import {
   ResolvedBeat,
   mediaUrls,
   referencedAssetIds,
+  withLink,
   writtenText,
 } from '@sparksocial/generate';
 import type { DueContentSource } from '@sparksocial/db';
@@ -281,7 +282,7 @@ async function publishOne(
         genomeId: item.genomeId,
         playbookId: item.playbookId,
         platform,
-        text,
+        text: withLink(text, item.linkUrl),
         referencedAssetIds: assetIds,
         mediaUrls: media,
       },

@@ -200,6 +200,9 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         recordRun: async () => { throw new Error('recipes.recordRun not stubbed in this test'); },
         listOutputs: async () => [],
         decideOutput: async () => undefined,
+        getOutput: async () => undefined,
+        recentOutputPreviews: async () => [],
+        lastScheduledAt: async () => undefined,
       },
       oauthConnections: {
         get: async () => undefined,

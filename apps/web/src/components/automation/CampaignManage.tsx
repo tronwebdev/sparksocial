@@ -36,6 +36,8 @@ export function CampaignManage({
   onRun,
   onPause,
   onDelete,
+  onEdit,
+  onOpenDraft,
   onApprove,
   onReject,
   busyId,
@@ -47,6 +49,10 @@ export function CampaignManage({
   onRun: (r: RecipeItem) => void;
   onPause: (r: RecipeItem) => void;
   onDelete: (r: RecipeItem) => void;
+  /** AUTO-02.1's edit — reopens the wizard over this recipe. */
+  onEdit: (r: RecipeItem) => void;
+  /** The design's per-post pencil: "opens the Draft Panel in Command Center". */
+  onOpenDraft: (contentItemId: string) => void;
   onApprove: (row: ManageRow) => void;
   onReject: (row: ManageRow) => void;
   busyId: string | null;
@@ -148,6 +154,25 @@ export function CampaignManage({
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
               >
                 {r.status === 'paused' ? 'Resume' : 'Pause'}
+              </button>
+              {/* The design's 38px pencil (`cp.edit`), at the row's 40px. */}
+              <button
+                type="button"
+                onClick={() => onEdit(r)}
+                disabled={busyId === r.id}
+                aria-label={`Edit ${r.name}`}
+                className="flex h-[40px] w-[40px] items-center justify-center rounded-[10px] bg-white transition-colors hover:bg-[rgba(131,131,131,0.08)] disabled:opacity-50"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
+              >
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path
+                    d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z"
+                    stroke="#838383"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
               <button
                 type="button"
@@ -258,14 +283,33 @@ export function CampaignManage({
                         </button>
                       ) : null}
 
-                      {/* An output that named no format cannot be approved:
-                          `recipe.output.decide` demands the content item it
-                          became, and there is nothing to draft one from. Saying
-                          so beats a tick that always errors. */}
+                      {/* An output no format fits cannot be approved — there is
+                          nothing to post it as. Saying so beats a tick that
+                          always errors. */}
                       {row.canDecide && !row.playbookId ? (
                         <span className="text-14" style={{ color: '#838383' }}>
-                          No format picked — nothing to draft from
+                          No format fits this one — remove it
                         </span>
+                      ) : null}
+
+                      {row.contentItemId ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenDraft(row.contentItemId!)}
+                          aria-label="Edit this post"
+                          className="flex h-[38px] w-[38px] items-center justify-center rounded-[9px] bg-white transition-colors hover:bg-[rgba(131,131,131,0.08)]"
+                          style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.4)' }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
+                  <path
+                    d="m12.4 4.2 3.4 3.4M2.2 17.8l.7-3.3a2 2 0 0 1 .54-1L11.2 5.7a1.7 1.7 0 0 1 2.4 0l1.4 1.4a1.7 1.7 0 0 1 0 2.4l-7.8 7.8a2 2 0 0 1-1 .54l-3.3.7-.7-.74Z"
+                    stroke="#838383"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                        </button>
                       ) : null}
 
                       <button

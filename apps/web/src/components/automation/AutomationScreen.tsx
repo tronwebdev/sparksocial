@@ -8,7 +8,7 @@ import { AutomationHome } from './AutomationHome';
 import { CampaignManage } from './CampaignManage';
 import { LaunchModal, RecipeChooserModal } from './LaunchModal';
 import { RecipeWizard, type Validation } from './RecipeWizard';
-import { configFor, emptyDraft, intervalMinutesFor, type WizardDraft } from './wizardDraft';
+import { configFor, draftFromRecipe, emptyDraft, intervalMinutesFor, type WizardDraft } from './wizardDraft';
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import { useAutomation, type ManageRow, type QueueRow, type RecipeItem } from './useAutomation';
 import { userMessage } from '@/lib/errorCopy';
@@ -58,6 +58,8 @@ export function AutomationScreen() {
   const [manageKind, setManageKind] = useState<RecipeKind>('auto_trend');
 
   const [draft, setDraft] = useState<WizardDraft | null>(null);
+  /* The saved recipe the wizard is editing, when it is — AUTO-02.1. */
+  const [editing, setEditing] = useState<RecipeItem | null>(null);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,10 +150,45 @@ export function AutomationScreen() {
     setConnectNote('Finish in the Canva tab, then come back — press Continue to re-check.');
   }
 
+  function openWizard(next: WizardDraft, recipe: RecipeItem | null) {
+    setDraft(next);
+    setEditing(recipe);
+    setStep(0);
+    setError(null);
+    setView('wizard');
+    window.scrollTo(0, 0);
+  }
+
   async function launch() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
     setError(null);
+
+    /* Editing saves over the recipe — `recipe.update` validates the config
+       against the stored kind and keeps its history and queued outputs. */
+    if (editing) {
+      const saved = await invoke('recipe.update', {
+        id: editing.id,
+        genomeId,
+        name: draft.name.trim() || KIND_META[draft.kind].name,
+        config: configFor(draft),
+        intervalMinutes: intervalMinutesFor(draft),
+      });
+      setBusy(false);
+      if (saved.status !== 'succeeded') {
+        setError(whyNot(saved));
+        return;
+      }
+      const kind = draft.kind;
+      setEditing(null);
+      setDraft(null);
+      setManageKind(kind);
+      setView('manage');
+      window.scrollTo(0, 0);
+      say('Changes saved');
+      void reload();
+      return;
+    }
 
     const res = await invoke<{ id: string }>(
       'recipe.create',
@@ -174,8 +211,39 @@ export function AutomationScreen() {
       return;
     }
 
-    setRequireApproval(draft.reviewFirst);
+    setRequireApproval(draft.reviewFirst || (draft.kind === 'auto_trend' && draft.brandSafety));
     setLaunched({ draft, recipeId: res.output.id });
+    void reload();
+  }
+
+  /**
+   * The launch modal's "Require approval" box. It used to change nothing but
+   * its own tick — the recipe kept whatever the last wizard step had set — so
+   * unticking it there left a recipe that still waited for review. Saved here,
+   * and only when it differs from what was launched.
+   */
+  async function activate() {
+    if (!launched || !genomeId || busy) return;
+    const { draft: d, recipeId } = launched;
+    if (requireApproval !== d.reviewFirst) {
+      setBusy(true);
+      const saved = await invoke('recipe.update', {
+        id: recipeId,
+        genomeId,
+        config: configFor({ ...d, reviewFirst: requireApproval }),
+      });
+      setBusy(false);
+      if (saved.status !== 'succeeded') {
+        say(whyNot(saved));
+        return;
+      }
+    }
+    setLaunched(null);
+    setDraft(null);
+    setManageKind(d.kind);
+    setView('manage');
+    window.scrollTo(0, 0);
+    say(`${KIND_META[d.kind].name} campaign activated`);
     void reload();
   }
 
@@ -184,55 +252,56 @@ export function AutomationScreen() {
     setBusyId(row.id);
 
     /*
-      Approving turns the preview into a real draft first, because
-      `recipe.output.decide` refuses an approval without the `contentItemId` it
-      became — "Approving an output requires the contentItemId it became."
-
-      That needs a playbook, and only the AutoTrend runner records one
-      (`packages/recipes/src/runners.ts`); the RSS and bulk runners write a
-      title and a source link and no format. So an output from those two cannot
-      be approved at all today, and the button is not offered for them — see
-      `canDraft` in `CampaignManage`. This guard is the second line of defence.
+      Approving schedules the post: `recipe.output.decide` makes one scheduled
+      post per chosen account, queued after the recipe's other posts and
+      carrying its link. It used to need a draft made here first, and that draft
+      had no schedule, no recipe and no account — so an approved post never went
+      out unless somebody scheduled it by hand.
     */
-    let contentItemId = row.contentItemId;
-    if (status === 'approved' && !contentItemId) {
-      if (!row.playbookId) {
-        setBusyId(null);
-        say('This run picked no format, so there is nothing to draft — remove it or let the recipe try again.');
-        return;
-      }
-      const drafted = await invoke<{ contentItemId: string }>(
-        'content.draft',
-        { genomeId, playbookId: row.playbookId, intent: row.intent ?? row.title },
-        crypto.randomUUID(),
-      );
-      if (drafted.status !== 'succeeded') {
-        setBusyId(null);
-        say(whyNot(drafted));
-        return;
-      }
-      contentItemId = drafted.output.contentItemId;
+    if (status === 'approved' && !row.playbookId) {
+      setBusyId(null);
+      say('No format this brand can make fits this one, so there is nothing to post — remove it instead.');
+      return;
     }
 
-    const res = await invoke('recipe.output.decide', {
-      id: row.id,
-      genomeId,
-      status,
-      ...(contentItemId ? { contentItemId } : {}),
-    });
-    setBusyId(null);
+    const res = await invoke<{ preview: { contentItemIds?: string[] } }>('recipe.output.decide', { id: row.id, genomeId, status });
     if (res.status !== 'succeeded') {
+      setBusyId(null);
       say(whyNot(res));
       return;
     }
-    say(status === 'approved' ? 'Post approved' : 'Removed from the queue');
+
+    /*
+      Then write the copy now, so Preview shows the real post before it goes
+      out. The scheduler would write it when the slot comes due anyway (and
+      will, if this fails), so a failure here is reported, not fatal.
+    */
+    let drafted = true;
+    if (status === 'approved' && row.playbookId) {
+      for (const contentItemId of res.output.preview.contentItemIds ?? []) {
+        const d = await invoke(
+          'content.draft',
+          { genomeId, playbookId: row.playbookId, contentItemId, intent: row.intent ?? row.title },
+          crypto.randomUUID(),
+        );
+        if (d.status !== 'succeeded') drafted = false;
+      }
+    }
+    setBusyId(null);
+    say(
+      status === 'rejected'
+        ? 'Removed from the queue'
+        : drafted
+          ? 'Approved and scheduled'
+          : 'Approved and scheduled — SPARK will write it before it goes out',
+    );
     void reload();
   }
 
   async function recipeAction(r: RecipeItem, action: 'run' | 'pause' | 'delete') {
     if (!genomeId || busyId) return;
     setBusyId(r.id);
-    const res =
+    const res: { status: string; output?: unknown; error?: { message: string }; decision?: { reason?: string } } =
       action === 'run'
         ? await invoke('recipe.run', { id: r.id, genomeId }, crypto.randomUUID())
         : action === 'delete'
@@ -243,7 +312,18 @@ export function AutomationScreen() {
       say(whyNot(res));
       return;
     }
-    say(action === 'run' ? `${r.name} ran` : action === 'delete' ? `${r.name} deleted` : r.status === 'paused' ? `${r.name} resumed` : `${r.name} paused`);
+    /* A run says what it did — "scheduled 3 posts", "found nothing new" — in its
+       own words, rather than a bare "ran". */
+    const ranWhy = action === 'run' ? (res.output as { why?: { summary?: string } } | undefined)?.why?.summary : undefined;
+    say(
+      action === 'run'
+        ? ranWhy ?? `${r.name} ran`
+        : action === 'delete'
+          ? `${r.name} deleted`
+          : r.status === 'paused'
+            ? `${r.name} resumed`
+            : `${r.name} paused`,
+    );
     void reload();
   }
 
@@ -259,13 +339,7 @@ export function AutomationScreen() {
           loading={recipes === null}
           needsReview={needsReview}
           onOpenChooser={() => setChooser(true)}
-          onAddNew={(kind) => {
-            setDraft(emptyDraft(kind));
-            setStep(0);
-            setError(null);
-            setView('wizard');
-            window.scrollTo(0, 0);
-          }}
+          onAddNew={(kind) => openWizard(emptyDraft(kind), null)}
           onManage={(kind) => {
             setManageKind(kind);
             setView('manage');
@@ -274,7 +348,11 @@ export function AutomationScreen() {
           onPreview={(row) =>
             row.contentItemId
               ? router.push(`/agents?draft=${encodeURIComponent(row.contentItemId)}`)
-              : say('This one has no draft yet — approve it and SPARK writes one.')
+              : say(
+                  row.playbookId
+                    ? `Not written yet — approve it and SPARK writes${row.formatName ? ` the ${row.formatName} post` : ' it'} and schedules it.`
+                    : 'No format fits this one, so there is no post to preview.',
+                )
           }
           onRemove={(row) => void decide(row, 'rejected')}
           onReview={() => {
@@ -290,14 +368,16 @@ export function AutomationScreen() {
       {view === 'wizard' && draft ? (
         <RecipeWizard
           genomeId={genomeId}
+          editing={editing !== null}
           draft={draft}
           onDraft={setDraft}
           step={step}
           onStep={setStep}
           onBack={() => {
             if (step === 0) {
-              setView('home');
+              setView(editing ? 'manage' : 'home');
               setDraft(null);
+              setEditing(null);
               return;
             }
             setStep(step - 1);
@@ -322,6 +402,8 @@ export function AutomationScreen() {
           onRun={(r) => void recipeAction(r, 'run')}
           onPause={(r) => void recipeAction(r, 'pause')}
           onDelete={(r) => void recipeAction(r, 'delete')}
+          onEdit={(r) => openWizard(draftFromRecipe(r), r)}
+          onOpenDraft={(id) => router.push(`/agents?draft=${encodeURIComponent(id)}`)}
           onApprove={(row) => void decide(row, 'approved')}
           onReject={(row) => void decide(row, 'rejected')}
           busyId={busyId}
@@ -333,11 +415,7 @@ export function AutomationScreen() {
           onClose={() => setChooser(false)}
           onPick={(kind) => {
             setChooser(false);
-            setDraft(emptyDraft(kind));
-            setStep(0);
-            setError(null);
-            setView('wizard');
-            window.scrollTo(0, 0);
+            openWizard(emptyDraft(kind), null);
           }}
         />
       ) : null}
@@ -353,15 +431,7 @@ export function AutomationScreen() {
             setDraft(null);
             setView('home');
           }}
-          onDone={() => {
-            const kind = launched.draft.kind;
-            setLaunched(null);
-            setDraft(null);
-            setManageKind(kind);
-            setView('manage');
-            window.scrollTo(0, 0);
-            say(`${KIND_META[kind].name} campaign activated`);
-          }}
+          onDone={() => void activate()}
         />
       ) : null}
 

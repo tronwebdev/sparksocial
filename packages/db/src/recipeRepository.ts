@@ -69,13 +69,26 @@ export function createRecipeRepository(db: Database): RecipeStore {
       return rows.map(toOutput);
     },
 
-    async decideOutput({ id, genomeId, orgId, status, contentItemId }) {
+    async getOutput(id, genomeId, orgId) {
+      const row = await scoped.getRecipeOutput(db, { orgId, brandId: orgId, genomeId }, id);
+      return row ? toOutput(row) : undefined;
+    },
+
+    async decideOutput({ id, genomeId, orgId, status, contentItemId, preview }) {
       const row = await scoped.decideRecipeOutput(
         db,
         { orgId, brandId: orgId, genomeId },
-        { id, status, ...(contentItemId ? { contentItemId } : {}) },
+        { id, status, ...(contentItemId ? { contentItemId } : {}), ...(preview !== undefined ? { preview } : {}) },
       );
       return row ? toOutput(row) : undefined;
+    },
+
+    async recentOutputPreviews(recipeId, genomeId, orgId, limit) {
+      return scoped.recentRecipeOutputPreviews(db, { orgId, brandId: orgId, genomeId }, { recipeId, limit });
+    },
+
+    async lastScheduledAt(recipeId, genomeId, orgId) {
+      return scoped.lastRecipeSlot(db, { orgId, brandId: orgId, genomeId }, recipeId);
     },
   };
 }

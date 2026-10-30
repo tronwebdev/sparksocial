@@ -27,15 +27,13 @@ import { userMessage } from '@/lib/errorCopy';
  *   **Select**   the connected ones are checkboxes, stored on the recipe as
  *                `config.targetPlatforms`.
  *
- * ── The one thing this cannot promise ─────────────────────────────────────
+ * ── Where the posts go ─────────────────────────────────────────────────────
  *
- * The engine stores `targetPlatforms` and does not yet read it. That is its
- * own documented state — `NOT_APPLIED` in `packages/recipes/src/tool.ts`:
- * *"An output becomes a post via recipe.output.decide and then content.draft,
- * and neither step carries a platform, so the choice does not survive the
- * handover yet."* So the step says exactly that under the picker. A screen that
- * let somebody tick four accounts and implied the posts would go there would be
- * making a promise the handover breaks.
+ * Every post the recipe schedules — at run time with review off, or when an
+ * output is approved — is made once per account ticked here (the ones its
+ * format supports, or all of them if it supports none). The engine used to
+ * store this and ignore it, and the line under the picker said so; it is
+ * applied now, so the line says that instead.
  *
  * ── Coming back from the consent screen ───────────────────────────────────
  *
@@ -282,8 +280,8 @@ export function AccountPicker({
           four accounts believing the posts route there today. */}
       <p className="mt-[14px] text-15 font-normal" style={{ color: '#838383' }}>
         {selected.length > 0
-          ? `Saved on the recipe. The draft handover does not carry a platform yet, so SPARK still decides where each post goes when it drafts it — this is recorded for when it does.`
-          : 'Pick the accounts this recipe is for. Posts publish to the accounts connected here.'}
+          ? `Each post this recipe makes goes to ${selected.length === 1 ? 'this account' : `each of these ${selected.length} accounts`} its format suits.`
+          : 'Pick the accounts this recipe posts to. With none picked, each post goes to its format’s first platform.'}
       </p>
     </div>
   );

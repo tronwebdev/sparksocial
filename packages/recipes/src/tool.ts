@@ -1,15 +1,18 @@
 import { z } from 'zod';
-import { defineTool } from '@sparksocial/tools/defineTool';
-import { Explanation, ToolError } from '@sparksocial/shared';
+import { defineTool, type ToolCtx } from '@sparksocial/tools/defineTool';
+import { Explanation, ToolError, type Platform } from '@sparksocial/shared';
 import type { TrendSource } from '@sparksocial/trends';
 import { byId } from '@sparksocial/playbooks';
 import {
   AutoTrendConfig,
   BulkConnectorConfig,
+  RecipeCommonConfig,
   RssConfig,
+  outputKeys,
   requiresReview,
   runRecipe,
   withinRunWindow,
+  type RecipeOutputPreview,
   type RecipeRunContext,
 } from './runners.js';
 
@@ -83,16 +86,12 @@ function scanNotApplied(config: unknown): Array<{ field: string; because: string
  * The fields the engine stores but does not read, and why. Keyed by config field.
  *
  * `goal` was in this list until 25 August and is not any more — it now reaches
- * the copy through the output's `intent` (`withGoal` in `runners.ts`).
+ * the copy through the output's `intent` (`withGoal` in `runners.ts`). `ctaUrl`
+ * and `targetPlatforms` left it on 30 October: every post a recipe schedules now
+ * carries the link (`content_items.link_url`) and goes to the chosen accounts.
+ * Empty, and kept: the next field added ahead of its engine belongs here.
  */
-const NOT_APPLIED: Record<string, string> = {
-  ctaUrl:
-    'Stored but not used. A link cannot be folded into the output intent — intent is prose a writer reads, ' +
-    'so a URL there becomes spoken copy — and a recipe output has no link field of its own yet.',
-  targetPlatforms:
-    'Stored but not used. An output becomes a post via recipe.output.decide and then content.draft, and ' +
-    'neither step carries a platform, so the choice does not survive the handover yet.',
-};
+const NOT_APPLIED: Record<string, string> = {};
 
 export const recipeValidate = defineTool({
   name: 'recipe.validate',
@@ -416,13 +415,121 @@ export const RecipeRunOutput = z.object({
   why: Explanation,
 });
 
+/** What a runner needs to read a source for one genome. Shared by `.run` and `.preview`. */
+async function runContextFor(deps: RecipeDeps, ctx: ToolCtx, genomeId: string): Promise<RecipeRunContext> {
+  const genome = await ctx.db.genomes.get(genomeId, ctx.orgId);
+  if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId });
+  const assets = await ctx.db.assets.inventory(genomeId, ctx.orgId);
+  return {
+    genome,
+    assets,
+    trendSource: deps.trendSource,
+    fetchText: deps.fetchText,
+    ...(deps.driveApiKey ? { driveApiKey: deps.driveApiKey } : {}),
+    ...(deps.fetchWithAuth ? { fetchWithAuth: deps.fetchWithAuth } : {}),
+    // Resolves per-call, against this specific genome — a fixed
+    // dependency injected once at registration couldn't know which
+    // brand's Canva connection to look up.
+    getOAuthAccessToken: async (provider) => {
+      const conn = await ctx.db.oauthConnections.get(genomeId, ctx.orgId, provider);
+      return conn?.accessToken;
+    },
+  };
+}
+
+/**
+ * When this recipe's next post can go out: after the last one it already has
+ * queued, and never sooner than one stagger from now.
+ *
+ * Reading the queue rather than counting from "now" is what keeps two approvals
+ * a minute apart, or a run landing while the previous run's posts are still
+ * waiting, from stacking posts on the same instant. The lead also leaves time for
+ * the queue's own drafting call to land before the scheduler would draft it.
+ */
+async function nextSlot(ctx: ToolCtx, recipeId: string, genomeId: string): Promise<Date> {
+  const last = await ctx.db.recipes.lastScheduledAt(recipeId, genomeId, ctx.orgId);
+  const soonest = Date.now() + RECIPE_STAGGER_MS;
+  return new Date(Math.max(soonest, last ? last.getTime() + RECIPE_STAGGER_MS : 0));
+}
+
+/**
+ * Turns one output into scheduled posts — one per chosen account — carrying the
+ * recipe's id, its CTA link and the output's brief. Returns the posts' ids and
+ * when the slot after them is.
+ *
+ * The copy is deliberately not written here. Each post carries its intent and
+ * the scheduler drafts it when it comes due — the same path a campaign slot
+ * takes, so there is one drafting path rather than two that can disagree about
+ * the same playbook. (The queue's Approve drafts the copy straight away so the
+ * person can read it; the scheduler then finds the copy written and publishes.)
+ *
+ * The chosen accounts the format supports, or every chosen account when it
+ * supports none of them: the person picked those accounts, and the format is
+ * the engine's guess. No accounts chosen leaves the platform to the playbook's
+ * first, the scheduler's long-standing fallback.
+ */
+async function schedulePosts(
+  ctx: ToolCtx,
+  recipe: { id: string; name: string; kind: string; config: unknown },
+  genomeId: string,
+  output: RecipeOutputPreview,
+  at: Date,
+): Promise<{ ids: string[]; next: Date }> {
+  const playbook = output.playbookId ? byId(output.playbookId) : undefined;
+  if (!output.playbookId || !playbook) return { ids: [], next: at };
+
+  const common = RecipeCommonConfig.partial().safeParse(recipe.config);
+  const targets = common.success ? (common.data.targetPlatforms ?? []) : [];
+  const ctaUrl = common.success ? common.data.ctaUrl : undefined;
+  const supported = targets.filter((p) => playbook.output.platforms.includes(p));
+  const platforms: Array<Platform | undefined> = targets.length ? (supported.length ? supported : targets) : [undefined];
+
+  const ids: string[] = [];
+  let slot = at.getTime();
+  for (const platform of platforms) {
+    const item = await ctx.db.content.createDraft({
+      genomeId,
+      orgId: ctx.orgId,
+      playbookId: output.playbookId,
+      mode: playbook.mode === 'direct_finish' ? 'direct_finish' : playbook.mode,
+      pillar: playbook.content_pillar,
+      copy: [],
+      why: {
+        summary: `${recipe.name} proposed this from ${output.sourceUrl ?? output.title}.`,
+        factors: [
+          { label: 'recipe', detail: recipe.name },
+          { label: 'kind', detail: recipe.kind },
+          ...(output.playbookName ? [{ label: 'format', detail: output.playbookName }] : []),
+          ...(platform ? [{ label: 'account', detail: `${platform}, chosen on the recipe` }] : []),
+          ...(output.sourceUrl ? [{ label: 'source', detail: output.sourceUrl }] : []),
+        ],
+        evidence: output.trendId ? [{ kind: 'trend' as const, id: output.trendId }] : [],
+        alternatives: [],
+      },
+      recipeId: recipe.id,
+      intent: output.intent,
+      // Counts toward PRD §5's trend-to-post rate like a hand-made one. The
+      // trend's id, not its title — the title was stored here before, so the
+      // join this column exists for matched nothing.
+      ...(output.trendId ? { sourceTrendId: output.trendId } : {}),
+      ...(platform ? { platform } : {}),
+      ...(ctaUrl ? { linkUrl: ctaUrl } : {}),
+      scheduledAt: new Date(slot),
+    });
+    ids.push(item.id);
+    slot += RECIPE_STAGGER_MS;
+  }
+  return { ids, next: new Date(slot) };
+}
+
 export function makeRecipeRun(deps: RecipeDeps) {
   return defineTool({
     name: 'recipe.run',
     version: 1,
 
-    summary: 'Run a recipe right now instead of waiting for its schedule. Outputs go to the review queue, ' +
-      'or straight onto the calendar when the recipe has review-before-publish switched off.',
+    summary: 'Run a recipe right now instead of waiting for its schedule. New items go to the review queue, ' +
+      'or straight onto the calendar when the recipe has review-before-publish switched off. Items the recipe ' +
+      'produced before are skipped.',
 
     input: z.object({ id: z.string().min(1), genomeId: z.string().min(1) }),
     output: RecipeRunOutput,
@@ -440,25 +547,7 @@ export function makeRecipeRun(deps: RecipeDeps) {
       const recipe = await ctx.db.recipes.get(input.id, input.genomeId, ctx.orgId);
       if (!recipe) throw new ToolError('NOT_FOUND', 'No such recipe.', { id: input.id });
 
-      const genome = await ctx.db.genomes.get(input.genomeId, ctx.orgId);
-      if (!genome) throw new ToolError('NOT_FOUND', 'No such genome.', { genomeId: input.genomeId });
-
-      const assets = await ctx.db.assets.inventory(input.genomeId, ctx.orgId);
-      const runCtx: RecipeRunContext = {
-        genome,
-        assets,
-        trendSource: deps.trendSource,
-        fetchText: deps.fetchText,
-        ...(deps.driveApiKey ? { driveApiKey: deps.driveApiKey } : {}),
-        ...(deps.fetchWithAuth ? { fetchWithAuth: deps.fetchWithAuth } : {}),
-        // Resolves per-call, against this specific genome — a fixed
-        // dependency injected once at registration couldn't know which
-        // brand's Canva connection to look up.
-        getOAuthAccessToken: async (provider) => {
-          const conn = await ctx.db.oauthConnections.get(input.genomeId, ctx.orgId, provider);
-          return conn?.accessToken;
-        },
-      };
+      const runCtx = await runContextFor(deps, ctx, input.genomeId);
 
       /**
        * PRD §8.10's start/end options. A recipe outside its window produces
@@ -508,71 +597,56 @@ export function makeRecipeRun(deps: RecipeDeps) {
         };
       }
 
+      /**
+       * "Skip items it has already posted" — the launch screen promised it and
+       * nothing did it: a second run of an RSS recipe proposed the same five
+       * articles again, and a bulk recipe re-proposed its whole sheet on every
+       * cycle. Everything this recipe produced before, any status, is the memory.
+       */
+      const previous = await ctx.db.recipes.recentOutputPreviews(recipe.id, input.genomeId, ctx.orgId, 500);
+      runCtx.seen = new Set(previous.flatMap(outputKeys));
+
       const { outputs, error } = await runRecipe(recipe.kind, recipe.config, runCtx);
 
       /**
        * ── Recipes publish now, which is the whole point of a recipe ──────────
        *
-       * Every output landed `pending_review` unconditionally, and this tool's
-       * own summary said so: *"never publishes, never creates a draft by
-       * itself."* PRD §8.10 specifies the opposite default — *"publish
-       * automatically if approvals are OFF and content not flagged"* — with a
-       * per-recipe "review before publish" checkbox as the opt-in, and §5's
-       * Goal 4 is "set-and-forget autopublishing". What existed was a proposal
-       * queue wearing an automation label.
-       *
-       * With review off, each output becomes a real scheduled `content_items`
-       * row carrying the recipe's id. That id is what `policy.ts` rule 7 reads
+       * PRD §8.10's default is *"publish automatically if approvals are OFF and
+       * content not flagged"*, with a per-recipe "review before publish"
+       * checkbox as the opt-in. With review off, each output becomes scheduled
+       * posts carrying the recipe's id. That id is what `policy.ts` rule 7 reads
        * back (via `publish.now`'s `policySubject`), so an unattended recipe post
        * is still subject to the workspace's approval mode, its restricted
        * platforms, its quiet windows and the `automationAutoPublish` permission.
        * "Autopublish" here means the *recipe* asks no further permission — not
        * that the brand's governance stops applying.
        *
-       * The copy is deliberately not written here. The slot carries the intent
-       * and the scheduler drafts it when it comes due — the same path a campaign
-       * slot takes, so there is one drafting path rather than two that can
-       * disagree about the same playbook.
+       * Those outputs are recorded `approved` with the posts they became. They
+       * used to be recorded `pending_review`, so the queue showed already-
+       * scheduled posts as waiting on a person, and approving one made a second.
        */
       const needsReview = requiresReview(recipe.config);
       const scheduled: string[] = [];
+      const records: Array<{ preview: unknown; status?: 'pending_review' | 'approved'; contentItemId?: string }> = [];
 
-      if (!needsReview && outputs.length) {
-        const startAt = new Date();
-        for (const [i, output] of outputs.entries()) {
-          if (!output.playbookId) continue; // nothing to schedule without a format
-          const playbook = byId(output.playbookId);
-          if (!playbook) continue;
-          const item = await ctx.db.content.createDraft({
-            genomeId: input.genomeId,
-            orgId: ctx.orgId,
-            playbookId: output.playbookId,
-            mode: playbook.mode === 'direct_finish' ? 'direct_finish' : playbook.mode,
-            pillar: playbook.content_pillar,
-            copy: [],
-            why: {
-              summary: `${recipe.name} proposed this from ${output.sourceUrl ?? output.title}.`,
-              factors: [
-                { label: 'recipe', detail: recipe.name },
-                { label: 'kind', detail: recipe.kind },
-              ],
-              evidence: [],
-              alternatives: [],
-            },
-            recipeId: recipe.id,
-            intent: output.intent,
-            // An `auto_trend` recipe's outputs are trend-derived by definition;
-            // `title` is the trend's own topic (see `runAutoTrend`). Counts
-            // toward PRD §5's trend-to-post rate like a hand-made one.
-            ...(recipe.kind === 'auto_trend' ? { sourceTrendId: output.title } : {}),
-            // Staggered so a run producing five posts does not queue five
-            // simultaneous publishes — `postingSlotAt` does this for campaign
-            // slots and the same reasoning applies here.
-            scheduledAt: new Date(startAt.getTime() + i * RECIPE_STAGGER_MS),
-          });
-          scheduled.push(item.id);
+      let at = needsReview || !outputs.length ? new Date() : await nextSlot(ctx, recipe.id, input.genomeId);
+      for (const output of outputs) {
+        if (needsReview) {
+          records.push({ preview: output });
+          continue;
         }
+        const { ids, next } = await schedulePosts(ctx, recipe, input.genomeId, output, at);
+        at = next;
+        if (!ids.length) {
+          // No format fits it, so there is nothing to schedule. Left in the queue
+          // where a person can see it and remove it, rather than dropped unseen.
+          records.push({ preview: output });
+          continue;
+        }
+        scheduled.push(...ids);
+        records.push({ preview: { ...output, contentItemIds: ids }, status: 'approved', contentItemId: ids[0]! });
       }
+      const unformatted = outputs.filter((o) => !o.playbookId).length;
 
       const { runId } = await ctx.db.recipes.recordRun({
         genomeId: input.genomeId,
@@ -581,11 +655,17 @@ export function makeRecipeRun(deps: RecipeDeps) {
         status: error ? 'failed' : 'succeeded',
         outputCount: outputs.length,
         ...(error ? { error } : {}),
-        outputs,
+        outputs: records,
       });
       await ctx.db.recipes.markRan(recipe.id, input.genomeId, ctx.orgId, new Date());
 
-      ctx.logger.info('recipe run', { recipeId: recipe.id, kind: recipe.kind, outputCount: outputs.length, failed: !!error });
+      ctx.logger.info('recipe run', {
+        recipeId: recipe.id,
+        kind: recipe.kind,
+        outputCount: outputs.length,
+        scheduled: scheduled.length,
+        failed: !!error,
+      });
 
       return {
         runId,
@@ -598,8 +678,93 @@ export function makeRecipeRun(deps: RecipeDeps) {
               ? `${recipe.name} scheduled ${scheduled.length} post${scheduled.length === 1 ? '' : 's'} to publish.`
               : outputs.length
                 ? `${recipe.name} produced ${outputs.length} item${outputs.length === 1 ? '' : 's'} for review.`
-                : `${recipe.name} ran but found nothing new.`,
-          factors: [{ label: 'kind', detail: recipe.kind }],
+                : `${recipe.name} ran and found nothing it has not already produced.`,
+          factors: [
+            { label: 'kind', detail: recipe.kind },
+            ...(unformatted
+              ? [{ label: 'no format', detail: `${unformatted} item${unformatted === 1 ? '' : 's'} matched no format this brand can make, so they can only be removed.` }]
+              : []),
+          ],
+          evidence: [],
+          alternatives: [],
+        },
+      };
+    },
+  });
+}
+
+/* ── recipe.preview ──────────────────────────────────────────────────── */
+
+export const RecipePreviewInput = z.object({
+  genomeId: z.string().min(1),
+  kind: KIND,
+  config: z.unknown(),
+});
+
+export const RecipePreviewOutput = z.object({
+  items: z.array(
+    z.object({
+      title: z.string(),
+      intent: z.string(),
+      sourceUrl: z.string().optional(),
+      /** The format it would become; absent when no format this brand can make fits it. */
+      playbookName: z.string().optional(),
+    }),
+  ),
+  error: z.string().optional(),
+  why: Explanation,
+});
+
+/**
+ * `recipe.preview` — what a recipe would produce if it ran now, without saving
+ * anything. AUTO-04.3's "RSS URL + Preview" and AUTO-02.4's "Preview Trends":
+ * the wizard had a feed URL box and nothing that read the feed, so a typo'd URL
+ * or a feed with no items was discovered a day later as an empty run.
+ *
+ * The same runner as `recipe.run`, minus the history (an unsaved recipe has
+ * none) and minus every write.
+ */
+export function makeRecipePreview(deps: RecipeDeps) {
+  return defineTool({
+    name: 'recipe.preview',
+    version: 1,
+
+    summary:
+      'Show what a recipe config would produce right now — the feed items, sheet rows or trends it would turn into ' +
+      'posts, and the format each would become. Reads the source; saves nothing. Free.',
+
+    input: RecipePreviewInput,
+    output: RecipePreviewOutput,
+
+    effect: 'read',
+    autonomy: 'auto',
+    scopes: ['owner', 'admin', 'editor'],
+    idempotent: true,
+    surfaces: ['AUTO-02.4', 'AUTO-03.4', 'AUTO-04.3'],
+
+    async handler(input, ctx) {
+      const parsed = schemaFor(input.kind).safeParse(input.config);
+      if (!parsed.success) {
+        const error = parsed.error.issues.map((i) => i.message).join('; ');
+        return { items: [], error, why: { summary: `Not a valid ${input.kind} config yet: ${error}`, factors: [], evidence: [], alternatives: [] } };
+      }
+      const runCtx = await runContextFor(deps, ctx, input.genomeId);
+      const { outputs, error } = await runRecipe(input.kind, parsed.data, runCtx);
+      return {
+        items: outputs.map((o) => ({
+          title: o.title,
+          intent: o.intent,
+          ...(o.sourceUrl ? { sourceUrl: o.sourceUrl } : {}),
+          ...(o.playbookName ? { playbookName: o.playbookName } : {}),
+        })),
+        ...(error ? { error } : {}),
+        why: {
+          summary: error
+            ? error
+            : outputs.length
+              ? `A run now would produce ${outputs.length} item${outputs.length === 1 ? '' : 's'}.`
+              : 'A run now would produce nothing.',
+          factors: [{ label: 'kind', detail: input.kind }],
           evidence: [],
           alternatives: [],
         },
@@ -638,14 +803,29 @@ export const recipeOutputList = defineTool({
   },
 });
 
+/**
+ * `recipe.output.decide` — approving schedules the post.
+ *
+ * Approving used to need a `contentItemId` the caller had already made with
+ * `content.draft`, and the draft that call made had no schedule, no recipe and no
+ * account: an approved output became a loose draft that published only if
+ * somebody went and scheduled it by hand. With review on — the default — no
+ * recipe post ever went out on its own. Approving now does what review-off does
+ * at run time: one scheduled post per chosen account, queued behind this
+ * recipe's other posts, carrying its link and its recipe id. Approval is the
+ * review the recipe asked for, so the publish is not held for it a second time
+ * (see `contentPublishOrigin`).
+ *
+ * Passing `contentItemId` still records a draft the caller made itself.
+ */
 export const recipeOutputDecide = defineTool({
   name: 'recipe.output.decide',
   version: 1,
 
   summary:
-    'Approve or reject one proposed output. Approving records which real draft it became (pass the ' +
-    'contentItemId from a content.draft call using this output\'s suggested playbook/intent) — this tool ' +
-    'never creates that draft itself.',
+    'Approve or reject one proposed output. Approving schedules it as a post on each of the recipe\'s chosen ' +
+    'accounts, queued after the recipe\'s other posts; the copy is written before it goes out. Rejecting removes ' +
+    'it, and the recipe will not propose it again.',
 
   input: z.object({
     id: z.string().min(1),
@@ -658,21 +838,58 @@ export const recipeOutputDecide = defineTool({
   effect: 'write',
   autonomy: 'auto',
   scopes: ['owner', 'admin', 'editor'],
+  // A repeated approval returns the already-approved row rather than scheduling
+  // the post twice, so a replay is safe.
   idempotent: true,
   surfaces: ['AUTO-04.4'],
 
   async handler(input, ctx) {
-    if (input.status === 'approved' && !input.contentItemId) {
-      throw new ToolError('INVALID_INPUT', 'Approving an output requires the contentItemId it became.', { id: input.id });
+    const existing = await ctx.db.recipes.getOutput(input.id, input.genomeId, ctx.orgId);
+    if (!existing) throw new ToolError('NOT_FOUND', 'No such output.', { id: input.id });
+    if (existing.status === input.status) return toOutputOut(existing);
+    if (existing.status !== 'pending_review') {
+      throw new ToolError('INVALID_INPUT', `This output was already ${existing.status}.`, { id: input.id });
     }
+
+    if (input.status === 'rejected' || input.contentItemId) {
+      const row = await ctx.db.recipes.decideOutput({
+        id: input.id,
+        genomeId: input.genomeId,
+        orgId: ctx.orgId,
+        status: input.status,
+        ...(input.contentItemId ? { contentItemId: input.contentItemId } : {}),
+      });
+      if (!row) throw new ToolError('NOT_FOUND', 'No such output.', { id: input.id });
+      return toOutputOut(row);
+    }
+
+    const preview = (existing.preview ?? {}) as RecipeOutputPreview;
+    if (!preview.playbookId) {
+      throw new ToolError(
+        'INVALID_INPUT',
+        'No format this brand can make fits this item, so there is nothing to post. Remove it instead.',
+        { id: input.id },
+      );
+    }
+    const recipe = await ctx.db.recipes.get(existing.recipeId, input.genomeId, ctx.orgId);
+    if (!recipe) throw new ToolError('NOT_FOUND', 'The recipe that produced this output no longer exists.', { id: input.id });
+
+    const at = await nextSlot(ctx, recipe.id, input.genomeId);
+    const { ids } = await schedulePosts(ctx, recipe, input.genomeId, preview, at);
+    if (!ids.length) {
+      throw new ToolError('INVALID_INPUT', `The format ${preview.playbookId} no longer exists, so this cannot be posted.`, { id: input.id });
+    }
+
     const row = await ctx.db.recipes.decideOutput({
       id: input.id,
       genomeId: input.genomeId,
       orgId: ctx.orgId,
-      status: input.status,
-      ...(input.contentItemId ? { contentItemId: input.contentItemId } : {}),
+      status: 'approved',
+      contentItemId: ids[0]!,
+      preview: { ...preview, contentItemIds: ids },
     });
     if (!row) throw new ToolError('NOT_FOUND', 'No such output.', { id: input.id });
+    ctx.logger.info('recipe output approved and scheduled', { id: input.id, posts: ids.length, at: at.toISOString() });
     return toOutputOut(row);
   },
 });

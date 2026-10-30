@@ -120,6 +120,17 @@ export const Trend = z.object({
     .default([]),
   language: z.string().default('en'),
   region: z.string().optional(),
+  /**
+   * When the thing that is trending was first published or started trending,
+   * where the source says — PRD AUTO-02.3's "post age" filter reads it.
+   *
+   * Optional because only some sources know: a YouTube video, a Reddit or Hacker
+   * News post, a Product Hunt launch, a Bluesky trend and a feed item carry a
+   * timestamp; a Google Trends query, a Mastodon hashtag and a Pinterest keyword
+   * are not *posts* and have none. A filter on age therefore keeps an undated
+   * trend rather than guessing, and says so where it is offered.
+   */
+  startedAt: z.string().datetime().optional(),
 });
 export type Trend = z.infer<typeof Trend>;
 

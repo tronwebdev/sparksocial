@@ -92,6 +92,7 @@ function toTrend(t: BskyTrend, nowMs: number): Trend | undefined {
     id: `bluesky::${t.topic ?? topic.toLowerCase().replace(/\s+/g, '_')}`,
     source: 'bluesky',
     topic,
+    ...(Number.isFinite(started) ? { startedAt: new Date(started).toISOString() } : {}),
     tags: [t.category, t.description].filter((x): x is string => Boolean(x)),
     metrics: { volume: posts, velocity, saturation, growth: 0 },
     samples: t.link ? [{ url: `https://bsky.app${t.link}`, ...(t.description ? { caption: t.description } : {}) }] : [],

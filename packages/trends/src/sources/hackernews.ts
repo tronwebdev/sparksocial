@@ -53,6 +53,7 @@ export function createHackerNewsTrendSource(config: HackerNewsTrendSourceConfig 
       id: String(item.id),
       source: 'hackernews',
       topic: item.title,
+      startedAt: new Date(item.time * 1000).toISOString(),
       tags: item.url ? [] : ['ask_hn'],
       metrics: {
         volume: (item.score ?? 0) + (item.descendants ?? 0),

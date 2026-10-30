@@ -137,6 +137,7 @@ function toTrend(post: ProductHuntPostNode): Trend {
     id: post.id,
     source: 'producthunt',
     topic: `${post.name} — ${post.tagline}`,
+    ...(Number.isFinite(Date.parse(post.createdAt)) ? { startedAt: new Date(post.createdAt).toISOString() } : {}),
     tags: post.topics.edges.map((e) => e.node.name),
     metrics: {
       volume: post.votesCount + post.commentsCount,

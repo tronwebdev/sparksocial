@@ -46,6 +46,7 @@ export interface Validation {
 
 export function RecipeWizard({
   genomeId,
+  editing = false,
   draft,
   onDraft,
   step,
@@ -61,6 +62,8 @@ export function RecipeWizard({
   connectNote,
 }: {
   genomeId: string;
+  /** AUTO-02.1's edit: the same steps over a saved recipe, ending in Save rather than Launch. */
+  editing?: boolean;
   draft: WizardDraft;
   onDraft: (next: WizardDraft) => void;
   step: number;
@@ -111,7 +114,8 @@ export function RecipeWizard({
                 <path d="M16.6 9.5a7.1 7.1 0 1 1-2.05-5M16.9 1.6v3.3h-3.3" stroke="#838383" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="whitespace-nowrap text-16" style={{ color: '#838383' }}>
-                Creating Automation for <b className="font-bold" style={{ color: '#5B5B5B' }}>{meta.name}</b>
+                {editing ? 'Editing Automation for' : 'Creating Automation for'}{' '}
+                <b className="font-bold" style={{ color: '#5B5B5B' }}>{meta.name}</b>
               </span>
             </span>
           </div>
@@ -131,7 +135,7 @@ export function RecipeWizard({
           className="ml-auto flex h-[44px] items-center gap-[16px] rounded-[10px] px-[8px] transition-colors hover:bg-white/70 disabled:opacity-60"
         >
           <span className="whitespace-nowrap text-19 font-semibold text-ink">
-            {busy ? 'Launching…' : last ? 'Launch Automation' : 'Continue'}
+            {busy ? (editing ? 'Saving…' : 'Launching…') : last ? (editing ? 'Save Changes' : 'Launch Automation') : 'Continue'}
           </span>
           <svg width="9" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -172,8 +176,8 @@ export function RecipeWizard({
                 connectNote={connectNote}
               />
             ) : null}
-            {kind === 'validate' ? <ValidateStep draft={draft} validation={validation} /> : null}
-            {kind === 'feed' ? <FeedStep draft={draft} set={set} /> : null}
+            {kind === 'validate' ? <ValidateStep genomeId={genomeId} draft={draft} validation={validation} /> : null}
+            {kind === 'feed' ? <FeedStep genomeId={genomeId} draft={draft} set={set} /> : null}
             {kind === 'freq' ? <FreqStep draft={draft} set={set} /> : null}
 
             {error ? <p className="mt-[16px] max-w-auto-form text-15 text-destructive">{error}</p> : null}
@@ -244,6 +248,7 @@ function SummaryRail({ draft, step }: { draft: WizardDraft; step: StepKind }) {
   if (draft.kind === 'rss') {
     rows.push(['Feed', draft.feedUrl || 'Not set']);
     rows.push(['Type', draft.feedType]);
+    rows.push(['Per run', `${draft.perRun} new item${draft.perRun === 1 ? '' : 's'}`]);
   }
 
   if (step === 'freq') {
@@ -253,8 +258,9 @@ function SummaryRail({ draft, step }: { draft: WizardDraft; step: StepKind }) {
         ? `every ${draft.everyN} ${draft.everyUnit === 'days' ? 'day' : 'hour'}${draft.everyN === 1 ? '' : 's'}`
         : draft.frequency,
     ]);
-    rows.push(['Review first', draft.reviewFirst ? 'Yes' : 'No']);
+    rows.push(['Review first', draft.reviewFirst || (draft.kind === 'auto_trend' && draft.brandSafety) ? 'Yes' : 'No']);
     if (draft.goal.trim()) rows.push(['Goal', draft.goal.trim()]);
+    if (draft.ctaUrl.trim()) rows.push(['Link', draft.ctaUrl.trim()]);
   }
 
   return (

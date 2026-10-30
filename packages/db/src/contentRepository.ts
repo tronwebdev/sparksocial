@@ -16,7 +16,7 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return scoped.recentContent(db, { orgId, brandId: orgId, genomeId }, windowDays);
     },
 
-    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, hashtags, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
+    async createDraft({ genomeId, orgId, playbookId, mode, pillar, copy, hashtags, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, platform, linkUrl, variantGroupId, variantLabel }) {
       const row = await scoped.createContentDraft(
         db,
         { orgId, brandId: orgId, genomeId },
@@ -32,6 +32,8 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
           ...(intent ? { intent } : {}),
           ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
+          ...(platform ? { platform } : {}),
+          ...(linkUrl ? { linkUrl } : {}),
           ...(variantGroupId ? { variantGroupId } : {}),
           ...(variantLabel ? { variantLabel } : {}),
         },
@@ -157,6 +159,7 @@ function toDraft(row: scoped.ContentDraftRow): ContentDraft {
     ...(row.externalId ? { externalId: row.externalId } : {}),
     ...(row.publishVia ? { via: row.publishVia } : {}),
     ...(row.publishUrl ? { url: row.publishUrl } : {}),
+    ...(row.linkUrl ? { linkUrl: row.linkUrl } : {}),
     ...(row.blockedReason ? { blockedReason: row.blockedReason } : {}),
     // §10's retry state. `publishAttempts` is included even at zero, unlike the
     // fields above: "tried 0 times" is a fact the Draft Panel can render, and an

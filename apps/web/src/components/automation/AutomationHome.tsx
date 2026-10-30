@@ -297,13 +297,13 @@ export function AutomationHome({
           </div>
 
           {/* 1002,32 and 1142,32 — both h44 r10. The design toasts each as a
-              mock. Account has nothing to filter on: an output records no
-              account, which is why the column below says so. Governance is
-              real and lives in Settings, so it goes there. */}
+              mock. The Account filter is not built yet; the column below shows
+              each row's accounts. Governance is real and lives in Settings, so
+              it goes there. */}
           <span
             className="inline-flex h-[44px] shrink-0 cursor-not-allowed items-center gap-[10px] rounded-[10px] bg-white px-[16px] opacity-70"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
-            title="A recipe output carries no account — where a post lands is decided by its playbook when the draft is made."
+            title="Filtering by account is not built yet — each row's accounts are listed in the Account column."
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
               <path d="M1.5 2h13L9.6 8.2v5.2l-3.2 1.4V8.2L1.5 2Z" stroke="#5B5B5B" strokeWidth="1.4" strokeLinejoin="round" />
@@ -471,13 +471,12 @@ export function AutomationHome({
                     </span>
                   </div>
 
-                  {/* The design draws an avatar and a handle here. Which account
-                      a queued output publishes to is decided by the playbook
-                      when it is drafted, and `recipe.output.list` does not carry
-                      one — so the column says which recipe kind produced it
-                      rather than inventing a person. */}
-                  <span className="truncate pr-[16px] text-16 font-medium" style={{ color: '#5B5B5B' }}>
-                    {row.account ?? 'Not assigned yet'}
+                  {/* The design draws an avatar and a handle here. What a row
+                      knows is the platform(s): the posts' own once scheduled,
+                      the recipe's chosen accounts before that — not a handle,
+                      so it does not invent one. */}
+                  <span className="truncate pr-[16px] text-16 font-medium" style={{ color: '#5B5B5B' }} title={row.account}>
+                    {row.account ?? 'Format’s default'}
                   </span>
 
                   <span className="pr-[16px]">

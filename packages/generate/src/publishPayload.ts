@@ -78,6 +78,20 @@ export function writtenText(beats: ResolvedBeat[]): string {
     .join('\n\n');
 }
 
+/**
+ * The caption with the post's link on its own line at the end.
+ *
+ * The link is added here, at the last moment, rather than written into the copy:
+ * a URL inside the text a writer is given gets read aloud by every playbook that
+ * speaks its copy. Skipped when the caption already carries it, so a writer who
+ * did include it, or a person who pasted it in, does not get it twice.
+ */
+export function withLink(text: string, linkUrl: string | null | undefined): string {
+  const url = linkUrl?.trim();
+  if (!url || text.includes(url)) return text;
+  return text ? `${text}\n\n${url}` : url;
+}
+
 /** Asset beats, which the rights guardrail checks and the receipt records. */
 export function referencedAssetIds(beats: ResolvedBeat[]): string[] {
   return beats
@@ -153,8 +167,8 @@ export const contentPublishPayload = defineTool({
 
     const parsed = z.array(ResolvedBeat).safeParse(item.copy);
     const beats = parsed.success ? parsed.data : [];
-    const text = writtenText(beats);
-    if (!text) {
+    const written = writtenText(beats);
+    if (!written) {
       throw new ToolError(
         'INVALID_INPUT',
         'This post has no written copy yet. Draft it before publishing.',
@@ -180,6 +194,7 @@ export const contentPublishPayload = defineTool({
       );
     }
 
+    const text = withLink(written, item.linkUrl);
     const assets = referencedAssetIds(beats);
     const media = mediaUrls(beats);
 
@@ -191,6 +206,7 @@ export const contentPublishPayload = defineTool({
           label: 'account',
           detail: item.platform ? 'set on this post' : `not set on the post — using ${platform}, the format's first`,
         },
+        ...(item.linkUrl ? [{ label: 'link', detail: `${item.linkUrl} added at the end` }] : []),
         ...(assets.length ? [{ label: 'assets', detail: `${assets.length} from the library` }] : []),
         ...(media.length ? [{ label: 'media', detail: `${media.length} generated file(s)` }] : []),
       ],

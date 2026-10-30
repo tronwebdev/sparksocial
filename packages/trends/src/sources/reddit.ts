@@ -183,6 +183,7 @@ function toTrend(post: RedditPostData, subreddit: string): Trend {
     id: post.id,
     source: 'reddit',
     topic: post.title,
+    startedAt: new Date(post.created_utc * 1000).toISOString(),
     tags: [subreddit, ...(post.link_flair_text ? [post.link_flair_text] : [])],
     metrics: {
       volume: post.score + post.num_comments,

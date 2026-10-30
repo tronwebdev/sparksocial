@@ -297,6 +297,16 @@ export const contentItems = pgTable(
     scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     platform: text('platform'),
+    /**
+     * The link this post carries — an automation recipe's CTA URL.
+     *
+     * A column rather than part of `intent` or `copy`: intent is prose a writer
+     * reads, so a URL there gets *spoken* (the 22 August defect, where sixteen
+     * playbooks recited "https://…"). The caption builder appends it at publish
+     * time instead (`withLink` in `@sparksocial/generate`), so the words are
+     * written without it and the post still carries it.
+     */
+    linkUrl: text('link_url'),
     /** The platform adapter's receipt (`PublishReceipt`), set once by `markPublished`. */
     externalId: text('external_id'),
     publishVia: text('publish_via'),

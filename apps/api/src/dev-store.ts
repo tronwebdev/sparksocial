@@ -694,7 +694,7 @@ export function createDevStore(
           .map((c) => ({ isAvatarFormat: c.isAvatarFormat, embedding: c.embedding }));
       },
 
-      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, variantGroupId, variantLabel }) {
+      async createDraft({ genomeId, orgId: org, playbookId, mode, pillar, copy, why, campaignId, recipeId, intent, sourceTrendId, scheduledAt, platform, linkUrl, variantGroupId, variantLabel }) {
         const row: ContentDraft & {
           orgId: string;
           recipeId?: string;
@@ -718,6 +718,8 @@ export function createDevStore(
           ...(intent ? { intent } : {}),
           ...(sourceTrendId ? { sourceTrendId } : {}),
           ...(scheduledAt ? { scheduledAt } : {}),
+          ...(platform ? { platform } : {}),
+          ...(linkUrl ? { linkUrl } : {}),
           ...(variantGroupId ? { variantGroupId } : {}),
           ...(variantLabel ? { variantLabel } : {}),
         };
@@ -880,9 +882,22 @@ export function createDevStore(
         const recipeId = (row as { recipeId?: string }).recipeId;
         if (!recipeId) return { reviewBeforePublish: false, ...modePart };
         const cfg = recipes.get(recipeId)?.config as { reviewBeforePublish?: unknown } | undefined;
+        // Same "approving the output was the review" rule as the real join.
+        const approved = recipeOutputs.some(
+          (o) =>
+            o.orgId === org &&
+            o.genomeId === genomeId &&
+            o.status === 'approved' &&
+            (o.contentItemId === id ||
+              ((o.preview as { contentItemIds?: unknown } | null)?.contentItemIds as string[] | undefined)?.includes(id)),
+        );
         return {
           recipeId,
-          reviewBeforePublish: typeof cfg?.reviewBeforePublish === 'boolean' ? cfg.reviewBeforePublish : true,
+          reviewBeforePublish: approved
+            ? false
+            : typeof cfg?.reviewBeforePublish === 'boolean'
+              ? cfg.reviewBeforePublish
+              : true,
           ...modePart,
         };
       },
@@ -1421,16 +1436,18 @@ export function createDevStore(
       async recordRun({ genomeId, orgId: org, recipeId, status, outputCount, outputs }) {
         const runId = `run_${nextRun++}`;
         recipeRuns.set(runId, { id: runId, recipeId, orgId: org, genomeId });
-        for (const preview of outputs) {
+        for (const o of outputs) {
           recipeOutputs.push({
             id: `output_${nextOutput++}`,
             recipeId,
             runId,
             genomeId,
             orgId: org,
-            status: 'pending_review',
-            preview,
+            status: o.status ?? 'pending_review',
+            preview: o.preview,
             createdAt: new Date(),
+            ...(o.contentItemId ? { contentItemId: o.contentItemId } : {}),
+            ...(o.status === 'approved' ? { decidedAt: new Date() } : {}),
           });
         }
         void status;
@@ -1443,13 +1460,37 @@ export function createDevStore(
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
           .slice(0, limit);
       },
-      async decideOutput({ id, genomeId, orgId: org, status, contentItemId }) {
+      async getOutput(id, genomeId, org) {
+        return recipeOutputs.find((o) => o.id === id && o.genomeId === genomeId && o.orgId === org);
+      },
+      async decideOutput({ id, genomeId, orgId: org, status, contentItemId, preview }) {
         const row = recipeOutputs.find((o) => o.id === id && o.genomeId === genomeId && o.orgId === org);
         if (!row) return undefined;
         row.status = status;
         row.decidedAt = new Date();
         if (contentItemId) row.contentItemId = contentItemId;
+        if (preview !== undefined) row.preview = preview;
         return row;
+      },
+      async recentOutputPreviews(recipeId, genomeId, org, limit) {
+        return recipeOutputs
+          .filter((o) => o.recipeId === recipeId && o.genomeId === genomeId && o.orgId === org)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, limit)
+          .map((o) => o.preview);
+      },
+      async lastScheduledAt(recipeId, genomeId, org) {
+        const times = [...drafts.values()]
+          .filter(
+            (d) =>
+              (d as { recipeId?: string }).recipeId === recipeId &&
+              d.genomeId === genomeId &&
+              d.orgId === org &&
+              d.status === 'scheduled' &&
+              d.scheduledAt,
+          )
+          .map((d) => d.scheduledAt!.getTime());
+        return times.length ? new Date(Math.max(...times)) : undefined;
       },
     },
 
@@ -2027,6 +2068,7 @@ export function createDevStore(
           platform: r.platform ?? null,
           copy: r.copy,
           intent: (r as { intent?: string }).intent ?? null,
+          linkUrl: r.linkUrl ?? null,
           scheduledAt: r.scheduledAt!,
         }));
     },

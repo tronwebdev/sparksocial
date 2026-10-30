@@ -138,6 +138,7 @@ export function createRssTrendSource(config: RssTrendSourceConfig): TrendSource 
           id: `rss::${normalise(first.title).slice(0, 80).replace(/ /g, '_')}`,
           source: 'rss',
           topic: first.title,
+          ...(newest > 0 ? { startedAt: new Date(newest).toISOString() } : {}),
           tags: [...new Set(group.flatMap((g) => [g.feedHost, ...g.categories]))],
           metrics: {
             volume: group.length,

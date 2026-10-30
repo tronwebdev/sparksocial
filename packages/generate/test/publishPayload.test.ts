@@ -4,6 +4,7 @@ import {
   contentPublishPayload,
   mediaUrls,
   referencedAssetIds,
+  withLink,
   writtenText,
 } from '../src/publishPayload.js';
 
@@ -57,6 +58,18 @@ const item = {
 };
 
 const input = { contentItemId: 'c_1', genomeId: 'gen_1' };
+
+describe('withLink — a recipe post carries its CTA', () => {
+  it('puts the link on its own line after the caption', () => {
+    expect(withLink('Fresh roast today.', 'https://brand.com/book')).toBe('Fresh roast today.' + String.fromCharCode(10, 10) + 'https://brand.com/book');
+  });
+
+  it('does not add a link the caption already carries, or one that is not there', () => {
+    expect(withLink('Book at https://brand.com/book now', 'https://brand.com/book')).toBe('Book at https://brand.com/book now');
+    expect(withLink('Caption', null)).toBe('Caption');
+    expect(withLink('Caption', '  ')).toBe('Caption');
+  });
+});
 
 describe('the assembly rule', () => {
   it('joins text beats in order, blank line between, and nothing else', () => {
