@@ -141,6 +141,10 @@ export function PlanQueue({
   const [error, setError] = useState<string | null>(null);
   /** The row being sent, so only its own button shows the in-flight state. */
   const [sending, setSending] = useState<string | null>(null);
+  /** The row being removed, likewise. */
+  const [removing, setRemoving] = useState<string | null>(null);
+  /** What happened, when it is not an error — a removal sent for approval. */
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
@@ -210,6 +214,35 @@ export function PlanQueue({
    * mean the same post going out differently depending on who sent it. See the
    * header of `packages/generate/src/publishPayload.ts`.
    */
+  /**
+   * `content.delete`. Destructive, so policy holds it for an owner or admin —
+   * for most people the answer is "sent for approval", and the row stays until
+   * someone approves it in Needs Attention. Saying so beats a row that seems
+   * to ignore the click.
+   */
+  async function remove(item: PlanItem) {
+    if (!genomeId || removing) return;
+    const what = item.playbookName ? `this ${item.playbookName} post` : 'this post';
+    if (!window.confirm(`Remove ${what}? Its copy, renders and links are deleted, and this cannot be undone.`)) return;
+    setRemoving(item.contentItemId);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await invoke('content.delete', { contentItemId: item.contentItemId, genomeId });
+      if (res.status === 'failed') {
+        setError(userMessage(res.error));
+        return;
+      }
+      if (res.status !== 'succeeded') {
+        setNotice('Removal sent for approval — an owner or admin approves it in Needs Attention, and the post stays until then.');
+        return;
+      }
+      await load();
+    } finally {
+      setRemoving(null);
+    }
+  }
+
   async function sendNow(item: PlanItem) {
     if (!genomeId || sending) return;
     setSending(item.contentItemId);
@@ -394,6 +427,7 @@ export function PlanQueue({
       ) : null}
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
+      {notice ? <p className="mt-3 text-13 text-ink-muted">{notice}</p> : null}
 
       {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 
@@ -676,8 +710,9 @@ export function PlanQueue({
                   fourth slot pushed the other two 47px left of where they go.
 
                   `approval.decide` is keyed on a held **callId**, not a content
-                  item - approving is the review list's job - and there is no
-                  `content.delete` in the registry at all.
+                  item - approving is the review list's job. Remove is real:
+                  `content.delete`, which waits for an owner or admin like every
+                  destructive tool, and refuses a post that has already gone out.
 
                   "Send now" is a different case, and this comment used to get it
                   wrong: it looked for `content.publish_now`, found nothing, and
@@ -763,10 +798,18 @@ export function PlanQueue({
                   </svg>
                 </RowAction>
                 <RowAction
-                  disabled
-                                    label="Remove"
-                  title="Removing a planned post isn’t available yet."
-                  style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
+                  label={removing === item.contentItemId ? 'Removing…' : 'Remove'}
+                  title={
+                    item.status === 'published'
+                      ? 'Published posts stay — their results feed analytics. Remove it on the platform itself.'
+                      : 'Remove this post. Needs an owner or admin to approve.'
+                  }
+                  onClick={() => void remove(item)}
+                  disabled={removing !== null || item.status === 'published'}
+                  style={{
+                    boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)',
+                    opacity: removing !== null || item.status === 'published' ? 0.55 : 1,
+                  }}
                 >
                   <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
                     <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />

@@ -11,7 +11,7 @@
  * them: a `z.date()` is a `string` (it has been through `JSON.stringify`), and
  * a `.default()` is optional on input but guaranteed on output.
  *
- * 236 tools.
+ * 237 tools.
  */
 
 export interface ToolIO {
@@ -374,6 +374,10 @@ export interface ToolIO {
   "content.beat.update": {
     input: { contentItemId: string; genomeId: string; beatId: string; text: string };
     output: { contentItemId: string; beats: Array<({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "asset"; assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; caption: (string) | (null) }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "text"; text: string }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "generated_image"; url: string; prompt: string }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "generated_video"; url: string; script: string }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "generated_broll"; url: string; prompt: string }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "dubbed_media"; url: string; targetLanguage: string; mediaType: "video" | "audio" }) | ({ beatId: string; durationSec?: number; label?: string; voice?: "brand" | "stock"; lowerThird?: string; backdrop?: { kind: "image" | "video"; urls: Array<string> }; backdropUrl?: string; backdropKind?: "image" | "video"; voiceoverUrl?: string; kind: "generated_audio"; url: string; script: string })> };
+  };
+  "content.delete": {
+    input: { contentItemId: string; genomeId: string };
+    output: { deleted: true; contentItemId: string; status: "draft" | "needs_review" | "approved" | "scheduled" | "published" | "blocked" | "failed" | "rolled_back" };
   };
   "content.draft": {
     input: { genomeId: string; playbookId: string; contentItemId?: string; intent?: string; fromTrendId?: string; discardSceneEdits?: boolean };

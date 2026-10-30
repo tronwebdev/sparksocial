@@ -41,6 +41,10 @@ export function createContentRepository(db: Database): ScopedDb['content'] {
       return toDraft(row);
     },
 
+    async delete({ id, genomeId, orgId }) {
+      return scoped.deleteContentItem(db, { orgId, brandId: orgId, genomeId }, id);
+    },
+
     async tagVariant({ id, genomeId, orgId, variantGroupId, variantLabel }) {
       const row = await scoped.tagContentVariant(db, { orgId, brandId: orgId, genomeId }, { id, variantGroupId, variantLabel });
       return row ? toDraft(row) : undefined;

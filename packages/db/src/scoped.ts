@@ -1,4 +1,4 @@
-import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, count, countDistinct, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, notExists, notInArray, or, sql, type SQL } from 'drizzle-orm';
 import {
   ToolError,
   type AssetMediaType,
@@ -3273,6 +3273,63 @@ export async function decideRecipeOutput(
     .where(and(eq(recipeOutputs.id, args.id), scopePredicate('recipeOutputs', scope)))
     .returning(recipeOutputColumns);
   return row;
+}
+
+/**
+ * `content.delete` — removes a post that has not been published, with the rows
+ * that only exist because of it.
+ *
+ * ── What it refuses ───────────────────────────────────────────────────────
+ *
+ * A published (or rolled-back) post is history: its metrics, learning outcomes
+ * and engagement threads point at it, and deleting the row would not un-post
+ * anything on the platform. So it is reported back rather than removed — the
+ * caller says why, and nothing is touched.
+ *
+ * ── What goes with it ─────────────────────────────────────────────────────
+ *
+ * Its renders and its tracked short links, which describe nothing once the post
+ * is gone. A recipe output that became this post is marked `rejected` rather than
+ * deleted: the queue drops it, and the recipe's history still remembers the item
+ * so the next run does not propose it again.
+ *
+ * One transaction, and the status is re-checked inside it, so a post the
+ * scheduler publishes between the read and the delete is not lost.
+ */
+export async function deleteContentItem(
+  db: Database,
+  scope: Scope,
+  id: string,
+): Promise<{ deleted: boolean; status?: ContentStatus }> {
+  assertScope(scope);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ status: contentItems.status })
+      .from(contentItems)
+      .where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)))
+      .for('update')
+      .limit(1);
+    if (!row) return { deleted: false };
+    const status = row.status as ContentStatus;
+    if (status === 'published' || status === 'rolled_back') return { deleted: false, status };
+
+    await tx.delete(renders).where(and(eq(renders.contentItemId, id), scopePredicate('renders', scope)));
+    await tx.delete(contentLinks).where(and(eq(contentLinks.contentItemId, id), scopePredicate('contentLinks', scope)));
+    await tx
+      .update(recipeOutputs)
+      .set({ status: 'rejected', decidedAt: sql`now()` })
+      .where(
+        and(
+          scopePredicate('recipeOutputs', scope),
+          or(
+            eq(recipeOutputs.contentItemId, id),
+            sql`${recipeOutputs.preview} -> 'contentItemIds' @> to_jsonb(${id}::text)`,
+          ),
+        ),
+      );
+    await tx.delete(contentItems).where(and(eq(contentItems.id, id), scopePredicate('contentItems', scope)));
+    return { deleted: true, status };
+  });
 }
 
 /** One output, for `recipe.output.decide` to read the preview it is approving. */

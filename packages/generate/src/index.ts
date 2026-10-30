@@ -6,6 +6,7 @@ export * from './beatUpdate.js';
 export * from './get.js';
 export * from './list.js';
 export * from './schedule.js';
+export * from './delete.js';
 export * from './image.js';
 export * from './avatar.js';
 export * from './voice.js';

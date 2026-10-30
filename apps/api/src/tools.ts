@@ -74,6 +74,7 @@ import {
   contentGet,
   contentList,
   contentSchedule,
+  contentDelete,
   contentBeatUpdate,
   sceneInsert,
   sceneRemove,
@@ -483,6 +484,9 @@ export function registerAlphaTools(): void {
   register(sceneLowerThird);
   register(contentList);
   register(contentSchedule);
+  // CAL-05/06: removing a planned post. Destructive, so policy routes every
+  // call to an owner or admin; published posts are refused.
+  register(contentDelete);
   // What `publish.now` needs, assembled server-side — the Plan Queue's "Send
   // now" and anything else that publishes a drafted post early. Read-only and
   // needs no vendor key, so it is always registered.

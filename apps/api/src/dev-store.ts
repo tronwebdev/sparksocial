@@ -727,6 +727,24 @@ export function createDevStore(
         return row;
       },
 
+      /** Mirrors `scoped.deleteContentItem`: published history stays, and so do the outputs' memories. */
+      async delete({ id, genomeId, orgId: org }) {
+        const row = drafts.get(id);
+        if (!row || row.orgId !== org || row.genomeId !== genomeId) return { deleted: false };
+        if (row.status === 'published' || row.status === 'rolled_back') return { deleted: false, status: row.status };
+        for (let i = renders.length - 1; i >= 0; i--) if (renders[i]!.contentItemId === id) renders.splice(i, 1);
+        for (let i = contentLinks.length - 1; i >= 0; i--) if (contentLinks[i]!.contentItemId === id) contentLinks.splice(i, 1);
+        for (const o of recipeOutputs) {
+          const ids = (o.preview as { contentItemIds?: unknown } | null)?.contentItemIds;
+          if (o.orgId === org && (o.contentItemId === id || (Array.isArray(ids) && ids.includes(id)))) {
+            o.status = 'rejected';
+            o.decidedAt = new Date();
+          }
+        }
+        drafts.delete(id);
+        return { deleted: true, status: row.status };
+      },
+
       async tagVariant({ id, genomeId, orgId: org, variantGroupId, variantLabel }) {
         const row = drafts.get(id);
         if (!row || row.orgId !== org || row.genomeId !== genomeId) return undefined;

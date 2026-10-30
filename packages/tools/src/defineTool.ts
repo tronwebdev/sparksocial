@@ -1157,6 +1157,14 @@ export interface ContentStore {
   }): Promise<ContentDraft>;
 
   /**
+   * Removes a post that has not been published, with its renders and short
+   * links — `content.delete`. A published or rolled-back post is left alone and
+   * its status returned, because its record is what analytics and learning read.
+   * `deleted: false` with no status means there was no such post.
+   */
+  delete(args: { id: string; genomeId: string; orgId: string }): Promise<{ deleted: boolean; status?: ContentStatus }>;
+
+  /**
    * Every arm of one A/B test, ordered by label — `content.variant.result`'s
    * read. Ordered rather than unordered so a two-arm verdict does not swap sides
    * between refreshes, which reads as a bug even when the numbers agree.

@@ -97,6 +97,7 @@ function ctx(over: Partial<ToolCtx> = {}): ToolCtx {
         createDraft: async () => { throw new Error('content.createDraft not stubbed in this test'); },
         get: async () => undefined,
         updateDraft: async () => undefined,
+        delete: async () => ({ deleted: false }),
         list: async () => [],
         schedule: async () => undefined,
         markPublished: async () => {},

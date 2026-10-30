@@ -141,7 +141,7 @@ which is the only reason it is worth recording that it was wrong.
 
 Measured against the registry and the deployed manifest, not from memory:
 
-- **236 tools defined, 232 live** (generator, 30 Oct — `recipe.preview` is the 236th). Unregistered by configuration: `analytics.sync`
+- **237 tools defined, 233 live** (generator, 30 Oct — `recipe.preview` and `content.delete` are the newest). Unregistered by configuration: `analytics.sync`
   (gated on `AYRSHARE_API_KEY`) and the three `agency.domain.*` tools (gated on `RENDER_API_KEY`,
   `RENDER_WEB_SERVICE_ID` and `SITE_CNAME_TARGET`). The count comes from
   `npm run generate:tool-types`, which walks every `defineTool` in the source and so counts
@@ -173,7 +173,7 @@ Measured against the registry and the deployed manifest, not from memory:
   the aggregator still in front.
 
 What is genuinely absent is in `docs/GAPS.md`, which is the file to keep current. The short
-version: no `content.delete`, no Sora Cameo (no public API), agency identity/theme generation
+version: no Sora Cameo (no public API), agency identity/theme generation
 and domain binding, palette-from-crawl, and analytics ingestion while Ayrshare is unset.
 
 **Verification owed:** this audit was structural — routes, registry, flow-ID references,

@@ -467,10 +467,11 @@ Each verified against the registry, not inferred from a comment.
       Fixed in the script, which now reads both forms — and the line that reads `rgb()` had
       its own bug: a `` written into the file as a literal backspace byte, so the regex
       silently matched nothing and the first "fixed" run reported the identical numbers.
-- [ ] **No `content.delete`.** The calendar and the Plan Queue both draw a delete control and
-      both disable it. Removing a planned post is a thing the PRD's calendar flows assume
-      (`CAL-05`, `CAL-06`) and the registry has no tool for. The nearest neighbours —
-      `asset.archive`, `recipe.delete` — show the shape it should take.
+- [x] **`content.delete` — closed 30 Oct.** Removes a post that has not been published, with its
+      renders and short links; a recipe output that became it is marked rejected so it is not
+      proposed again. Destructive, so policy holds every call for an owner or admin. Published
+      posts are refused — their record feeds analytics and learning, and deleting it would not
+      take the post down. The Plan Queue's Remove control (calendar and Command Center) calls it.
 - [x] **"Send now" — closed 17 Oct** by `content.publish_payload`, which assembles what
       `publish.now` takes and stops there. Not `content.publish_now`, deliberately: the invoke
       layer runs `claim_grounding` and `compliance_profile` against a tool's **input**, so a
