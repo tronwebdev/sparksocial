@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import type { EngagementItem } from './EngagementFeed';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `engage.opportunity.create` / `.route` — Sales Opportunities tab only
@@ -45,12 +46,10 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
   /** True when the rule routed it, rather than a person doing so afterwards. */
   const [routedByRule, setRoutedByRule] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function create() {
     if (!recommendedAction.trim()) return;
     setBusy(true);
-    setError(null);
     // idempotent: false — "calling twice creates a duplicate, not a refresh"
     // (packages/engage/src/opportunity.ts), so each click needs its own key.
     const res = await invoke<{ opportunityId: string; handoff: string; routedTo?: string }>(
@@ -64,10 +63,7 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t raise the opportunity')) return;
     setOpportunityId(res.output.opportunityId);
     setHandoff(res.output.handoff);
     // When the rule routed it, say so instead of offering the box again.
@@ -80,17 +76,13 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
   async function route() {
     if (!opportunityId || !routedTo.trim()) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ routedTo: string }>('engage.opportunity.route', {
       genomeId,
       opportunityId,
       routedTo: routedTo.trim(),
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t route the opportunity')) return;
     setRoutedAs(res.output.routedTo);
   }
 
@@ -118,10 +110,9 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
             className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
           />
           <Button size="sm" disabled={busy || !recommendedAction.trim()} onClick={() => void create()}>
-            {busy ? 'Creating…' : 'Create opportunity'}
+            {busy ? <Busy size={16}>Creating…</Busy> : 'Create opportunity'}
           </Button>
         </div>
-        {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
       </div>
     );
   }
@@ -170,10 +161,9 @@ export function OpportunityActions({ item, genomeId }: { item: EngagementItem; g
           className="h-9 min-w-[220px] flex-1 max-canvas:min-w-0 max-canvas:basis-full rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white px-3 text-13 text-ink placeholder:text-ink-placeholder disabled:opacity-50"
         />
         <Button size="sm" variant="outline" disabled={busy || !routedTo.trim()} onClick={() => void route()}>
-          {busy ? 'Routing…' : 'Route'}
+          {busy ? <Busy size={16}>Routing…</Busy> : 'Route'}
         </Button>
       </div>
-      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }

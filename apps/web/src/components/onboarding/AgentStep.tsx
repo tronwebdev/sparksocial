@@ -8,7 +8,8 @@ import { DropZone, SectionLabel, SelectField } from './kit';
 import { VoiceWaveform } from '@/components/common/VoiceWaveform';
 import { clockMMSS as clock, DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared';
 import { ProtoScale } from './Stage';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy as BusyLabel, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `F6`'s fourth group — "Name your agent", and the face and voice it uses.
@@ -80,9 +81,14 @@ type Busy = null | 'avatar-generate' | 'avatar-upload' | 'voice-upload' | 'recor
 export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName: string }) {
   const [name, setName] = useState('');
   const [testLine, setTestLine] = useState('');
+  /** The name as last saved, so a blur with nothing changed does not save again. */
   const [saved, setSaved] = useState<string | null>(null);
+  /**
+   * The one message that stays on the screen: the test box's own "type a line
+   * first". Everything an action comes to — saved, failed, sent for approval —
+   * is a notification instead.
+   */
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy>(null);
 
   /** The portrait currently representing the agent, for the preview tile. */
@@ -241,12 +247,9 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   async function save() {
     const next = name.trim();
     if (next === (saved ?? '')) return;
-    setError(null);
     const res = await invoke('brand.governance.set', { agentName: next || null });
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Naming it needs approval first.');
-      return;
-    }
+    const done = next ? { title: 'Agent named', body: `Saved as ${next}.` } : 'Agent name cleared';
+    if (!notifyResult(res, done, 'Couldn’t name your agent')) return;
     setSaved(next);
     /* The "Ask Spark?" orb caches the name per brand, and this is the only
        thing in the app that changes it — so this is the only place that has to
@@ -263,11 +266,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     setPreviewUrl(null);
     setError(null);
     const res = await invoke('brand.governance.set', { stockVoiceId: next });
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Changing the voice needs approval first.');
-      return;
-    }
-    setNotice('Voice set. Type a line on the right to hear it.');
+    notifyResult(res, { title: 'Voice set', body: 'Type a line on the right to hear it.' }, 'Couldn’t change the voice');
   }
 
   /**
@@ -286,7 +285,6 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     const { kind, run } = pendingConsent;
     setPendingConsent(null);
     setSubject('');
-    setError(null);
 
     const granted = await invoke(
       'genome.consent.grant',
@@ -302,13 +300,8 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
        */
       crypto.randomUUID(),
     );
-    if (granted.status !== 'succeeded') {
+    if (!notifyResult(granted, undefined, 'Couldn’t record consent')) {
       setBusy(null);
-      setError(
-        granted.status === 'failed'
-          ? userMessage(granted.error)
-          : 'Recording consent needs approval first.',
-      );
       return;
     }
 
@@ -324,7 +317,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
 
   /**
    * `asset.upload_url` → PUT → the storage URL, which is what every tool here
-   * takes. Returns `null` and sets the error, so callers read as a straight line.
+   * takes. Returns `null` and says why, so callers read as a straight line.
    */
   async function putBytes(file: Blob, filename: string, contentType: string): Promise<string | null> {
     const presigned = await invoke<PresignedUpload>('asset.upload_url', {
@@ -333,16 +326,13 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       contentType,
       sizeBytes: file.size,
     });
-    if (presigned.status !== 'succeeded') {
-      setError(presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload needs approval first.');
-      return null;
-    }
+    if (!notifyResult(presigned, undefined, 'Couldn’t upload that file')) return null;
     // `uploadToStorage` owns the failure wording, because `fetch`'s own is the
     // literal string "Failed to fetch" — which is what a missing CORS rule on
     // the bucket shows a user beside a drop zone.
     const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
-      setError(put.message);
+      notify.error('Couldn’t upload that file', { body: put.message });
       return null;
     }
     return presigned.output.readUrl;
@@ -372,10 +362,9 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     seekTo(e.clientX);
   }
 
-  /** Clear both banners; every action starts from a clean slate. */
+  /** Clear the test box's hint; every action starts from a clean slate. */
   function begin(next: Busy) {
     setError(null);
-    setNotice(null);
     setBusy(next);
   }
 
@@ -383,13 +372,10 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     begin('avatar-generate');
     const res = await invoke<{ imageUrl: string }>('genome.avatar.generate', { genomeId }, crypto.randomUUID());
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Generating an avatar needs approval first.');
-      return;
-    }
+    const done = { title: 'Avatar generated', body: 'A synthetic presenter is now your avatar.' };
+    if (!notifyResult(res, done, 'Couldn’t generate an avatar')) return;
     setAvatarUrl(res.output.imageUrl);
     setHasAvatar(true);
-    setNotice('Generated a presenter and set it as your avatar.');
   }
 
   /**
@@ -420,15 +406,11 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     setBusy('avatar-upload');
     const res = await invoke('genome.avatar.from_image', { genomeId, imageUrl: url, contentType }, crypto.randomUUID());
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Setting an avatar needs approval first.');
-      return;
-    }
+    if (!notifyResult(res, 'Avatar set from your photo', 'Couldn’t set your avatar')) return;
     /* Show the uploaded file itself rather than re-fetching: the browser already
        has it, and HeyGen returns an id, not a renderable image. */
     setAvatarUrl(URL.createObjectURL(file));
     setHasAvatar(true);
-    setNotice('Avatar set from your photo.');
   }
 
   /** Shared by the drop zone and the recorder — both end up as one audio blob. */
@@ -453,16 +435,17 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Cloning a voice needs approval first.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t create the voice')) return;
     setHasVoice(true);
-    setNotice(
-      res.output.requiresVerification
-        ? 'Voice created. ElevenLabs needs it verified in their dashboard before it will narrate.'
-        : 'Voice created. Type a line on the right to hear it.',
-    );
+    /* Created either way; whether it can narrate yet is the difference between
+       done and something still to do. */
+    if (res.output.requiresVerification) {
+      notify.warning('Voice created — verify it to use it', {
+        body: 'ElevenLabs needs it verified in their dashboard before it will narrate.',
+      });
+    } else {
+      notify.success('Voice created', { body: 'Type a line on the right to hear it.' });
+    }
   }
 
   /*
@@ -473,7 +456,6 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
    */
   function uploadVoice(file: File) {
     setError(null);
-    setNotice(null);
     setCaptured({ blob: file, name: file.name, type: file.type || 'audio/mpeg' });
   }
 
@@ -490,14 +472,13 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
   function toggleClip() {
     const el = clipRef.current;
     if (!el) return;
-    if (el.paused) void el.play().catch(() => setError('That clip could not be played back.'));
+    if (el.paused) void el.play().catch(() => notify.error('That clip could not be played back'));
     else el.pause();
   }
 
   function discardCaptured() {
     setCaptured(null);
     setError(null);
-    setNotice(null);
   }
 
   /**
@@ -520,7 +501,9 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     } catch {
       setBusy(null);
       setLiveStream(null);
-      setError('No microphone available, or permission was declined. You can upload a file instead.');
+      notify.error('Couldn’t start recording', {
+        body: 'No microphone available, or permission was declined. You can upload a file instead.',
+      });
       return;
     }
 
@@ -562,10 +545,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
     begin('preview');
     const res = await invoke<{ url: string }>('voice.preview', { genomeId, text: line }, crypto.randomUUID());
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Previewing the voice needs approval first.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t preview the voice')) return;
     setPreviewUrl(res.output.url);
   }
 
@@ -658,7 +638,7 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
             <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#agent-sparkle)" />
           </svg>
           <span style={{ position: 'absolute', left: 40, top: 12, fontSize: 16, fontWeight: 500, color: '#0C0C0C' }}>
-            {busy === 'avatar-generate' ? 'Generating…' : 'Generate Avatar'}
+            {busy === 'avatar-generate' ? <BusyLabel size={16}>Generating…</BusyLabel> : 'Generate Avatar'}
           </span>
         </button>
 
@@ -1149,22 +1129,19 @@ export function AgentStep({ genomeId, brandName }: { genomeId: string; brandName
           design gives to the elapsed time. It moved here rather than being
           dropped: the greyed play glyph alone is too quiet for a wait that is
           a paid vendor call, and the design has no room for a status string
-          between a clock and a seek track.
+          between a clock and a seek track. What each action came to — saved,
+          created, failed — is a notification, so this line is only ever the
+          wait or the test box's hint.
         */}
         {error ? (
           <p role="alert" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#F01C1C' }}>
             {error}
           </p>
         ) : busy === 'preview' ? (
-          <p role="status" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#838383' }}>
-            Synthesising…
-          </p>
-        ) : notice ? (
-          <p role="status" style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#838383' }}>
-            {notice}
-          </p>
-        ) : saved ? (
-          <p style={{ position: 'absolute', left: 4, top: 644, fontSize: 16, color: '#838383' }}>Saved as {saved}.</p>
+          // The 30px mark centres on the line, so the row starts 7px above where the text did.
+          <div style={{ position: 'absolute', left: 4, top: 637 }}>
+            <SparkLoader size="inline" label="Synthesising…" />
+          </div>
         ) : null}
       </div>
     </ProtoScale>

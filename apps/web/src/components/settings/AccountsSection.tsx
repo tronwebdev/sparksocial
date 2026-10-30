@@ -7,6 +7,8 @@ import { platformLabel } from '@/lib/platforms';
 import { CredentialConnectModal } from './CredentialConnectModal';
 import { PublishHealthPanel } from './PublishHealthPanel';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `Settings WS Social Accounts`, measured relative to the 1350 content card:
@@ -117,6 +119,7 @@ export function AccountsSection() {
   const [platforms, setPlatforms] = useState<Platform[] | null>(null);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [credentialFor, setCredentialFor] = useState<string | null>(null);
+  /* Only a failed read of the connections — what a Connect click came to is a notification. */
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -126,6 +129,7 @@ export function AccountsSection() {
       setError(res.status === 'failed' ? userMessage(res.error) : 'Reading connections needs an approval.');
       return;
     }
+    setError(null);
     setPlatforms(res.output.platforms);
   }, []);
 
@@ -142,7 +146,7 @@ export function AccountsSection() {
 
   async function connect(platform: string) {
     if (!genome) {
-      setError('Select a brand before connecting an account.');
+      notify.warning('Select a brand first', { body: 'An account connects to a brand — pick one before connecting.' });
       return;
     }
     /*
@@ -152,25 +156,16 @@ export function AccountsSection() {
      * yet" was.
      */
     if ((platforms ?? []).find((p) => p.platform === platform)?.connectMethod === 'credentials') {
-      setError(null);
       setCredentialFor(platform);
       return;
     }
     setConnecting(platform);
-    setError(null);
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
       genomeId: genome.genomeId,
       provider: platform,
     });
     setConnecting(null);
-    if (res.status !== 'succeeded') {
-      setError(
-        res.status === 'failed'
-          ? userMessage(res.error)
-          : 'Connecting an account needs an approval this screen cannot give.',
-      );
-      return;
-    }
+    if (!notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`)) return;
     window.open(res.output.authorizeUrl, '_blank', 'noopener');
   }
 
@@ -183,7 +178,7 @@ export function AccountsSection() {
         <p className="text-18 font-medium text-ink">Preselected Accounts</p>
 
         {platforms === null ? (
-          <p className="mt-[14px] text-16" style={{ color: 'rgb(131,131,131)' }}>Reading your connections…</p>
+          <SparkLoader size="inline" label="Reading your connections…" className="mt-[14px]" />
         ) : connected.length === 0 ? (
           <p className="mt-[14px] max-w-[620px] text-16 leading-[1.45]" style={{ color: 'rgb(131,131,131)' }}>
             Nothing is connected yet. Pick a platform below — a brand with no account has nowhere to
@@ -245,7 +240,7 @@ export function AccountsSection() {
                     {p.connectedVia
                       ? `via ${platformLabel(p.connectedVia)}`
                       : connecting === p.platform
-                        ? 'Opening…'
+                        ? <Busy size={16}>Opening…</Busy>
                         : 'Connect'}
                   </span>
                 )}

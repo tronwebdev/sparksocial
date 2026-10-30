@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
@@ -362,12 +364,10 @@ function NewRecipeForm({
   const [canvaFolderId, setCanvaFolderId] = useState('');
   const [intervalMinutes, setIntervalMinutes] = useState<number | ''>('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function create() {
     if (!name.trim() || busy) return;
     setBusy(true);
-    setError(null);
     const config =
       kind === 'rss'
         ? { feedUrl }
@@ -390,10 +390,7 @@ function NewRecipeForm({
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, 'Recipe created', 'Couldn’t create the recipe')) return;
     onCreated();
   }
 
@@ -523,9 +520,8 @@ function NewRecipeForm({
         />
       </div>
 
-      {error ? <p className="text-13 text-destructive">{error}</p> : null}
       <Button size="sm" disabled={busy || !name.trim()} onClick={() => void create()} className="w-fit">
-        {busy ? 'Creating…' : 'Create recipe'}
+        {busy ? <Busy size={16}>Creating…</Busy> : 'Create recipe'}
       </Button>
     </div>
   );
@@ -710,11 +706,9 @@ function EditRecipeForm({
   const [endAt, setEndAt] = useState(isoToDateInput(stored.endAt));
   const [intervalMinutes, setIntervalMinutes] = useState<number | ''>(recipe.intervalMinutes ?? '');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setBusy(true);
-    setError(null);
 
     /**
      * Spread over the stored config, so fields this form does not draw —
@@ -750,10 +744,7 @@ function EditRecipeForm({
     );
 
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
-      return;
-    }
+    if (!notifyResult(res, 'Changes saved', 'Couldn’t save the recipe')) return;
     onSaved();
   }
 
@@ -839,11 +830,9 @@ function EditRecipeForm({
         </div>
       </div>
 
-      {error ? <p className="text-13 text-destructive">{error}</p> : null}
-
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={busy || !name.trim()} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save changes'}
+          {busy ? <Busy size={16}>Saving…</Busy> : 'Save changes'}
         </Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={onClose}>
           Cancel

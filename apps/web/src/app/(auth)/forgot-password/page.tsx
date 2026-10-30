@@ -7,6 +7,7 @@ import { useAuth, useSignIn } from '@clerk/nextjs';
 import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, SuccessMark } from '@/components/auth/AuthShell';
 import { AuthField, MailIcon, LockIcon } from '@/components/auth/AuthField';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 
 /**
@@ -79,7 +80,7 @@ export default function ForgotPasswordPage() {
       fallback={
         <AuthBackdrop tone="light">
           <AuthPanel tone="light">
-            <AuthHeader title="Reset password" subtitle="One moment…" />
+            <AuthHeader title="Reset password" subtitle={<Busy size={16}>One moment…</Busy>} />
           </AuthPanel>
         </AuthBackdrop>
       }
@@ -233,7 +234,7 @@ function ForgotPasswordFlow() {
               </p>
             ) : null}
             <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy}>
-              {busy ? 'Sending…' : 'Reset password'}
+              {busy ? <Busy>Sending…</Busy> : 'Reset password'}
             </Button>
           </form>
         ) : step === 'sent' ? (
@@ -305,7 +306,7 @@ function ForgotPasswordFlow() {
               className="mt-2 w-full"
               disabled={!isLoaded || busy || !linkCode || !password || confirm !== password}
             >
-              {busy ? 'Updating…' : 'Reset password'}
+              {busy ? <Busy>Updating…</Busy> : 'Reset password'}
             </Button>
           </form>
         )}

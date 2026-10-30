@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import { CampaignList, type CampaignRow } from '@/components/calendar/CampaignList';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * "Edit Campaign" — every campaign this brand has, and what can be done to it.
@@ -90,7 +91,9 @@ export function CampaignManageModal({
         {error ? <p className="mb-3 rounded-lg bg-white p-4 text-14 text-destructive">{error}</p> : null}
 
         {campaigns === null ? (
-          <div className="rounded-xl bg-white p-6 text-14 text-ink-muted">Reading campaigns…</div>
+          <div className="rounded-xl bg-white">
+            <SparkLoader size="panel" label="Reading campaigns…" />
+          </div>
         ) : campaigns.length === 0 ? (
           <div className="rounded-xl bg-white p-6 text-14 text-ink-muted">
             This brand has no campaigns yet.{' '}

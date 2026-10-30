@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { Skeleton } from '@/components/ui/skeleton';
 import { humaniseGoal } from '@/lib/runGoal';
-import { userMessage } from '@/lib/errorCopy';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 
@@ -72,13 +72,14 @@ interface AgentStatus {
 }
 
 const CARD = 'rounded-[15px] bg-white';
+const CHECKING_PUBLISH = 'Checking whether anything failed to publish…';
+const CHECKING_AGENT = 'Checking the agent…';
 
 export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentItemId: string) => void }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [failed, setFailed] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const { genome } = useSelectedGenome();
   /** contentItemId → summary, so a held publish names its post. */
   const [titles, setTitles] = useState<Map<string, string>>(new Map());
@@ -142,13 +143,9 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
          callId+decision so a double click or a network retry dedupes. */
       const res = await invoke('approval.decide', { callId, decision }, `approval-decide:${callId}:${decision}`);
       setBusy(null);
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? userMessage(res.error) : 'That decision was gated.');
-        return;
-      }
-      setError(null);
-      if (decision === 'approve') toast.success('Approved — your agent will carry on');
-      else toast('Rejected — it won’t go ahead');
+      if (!notifyResult(res, undefined, decision === 'approve' ? 'Couldn’t approve that' : 'Couldn’t reject that')) return;
+      if (decision === 'approve') notify.success('Approved — your agent will carry on');
+      else notify.info('Rejected — it won’t go ahead');
       await load();
     },
     [load],
@@ -242,7 +239,7 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
                     <svg width="14" height="11" viewBox="0 0 16 12" fill="none" aria-hidden>
                       <path d="m1 6 4.5 4.5L15 1" stroke="#13A711" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {busy === it.callId ? 'Resolving…' : 'Resolve Now'}
+                    {busy === it.callId ? <Busy>Resolving…</Busy> : 'Resolve Now'}
                   </button>
                   <button
                     type="button"
@@ -257,8 +254,6 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
             ))}
           </ul>
         )}
-
-        {error ? <p className="px-7 pb-6 text-14 text-destructive">{error}</p> : null}
       </section>
 
       {/* ── Reassurance ──────────────────────────────────────────────── */}
@@ -283,12 +278,12 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
         <ul className="flex flex-col gap-[16px] px-7 pb-[26px]">
           {[
             failed === null
-              ? 'Checking whether anything failed to publish…'
+              ? CHECKING_PUBLISH
               : failed === 0
                 ? 'Nothing has been posted incorrectly.'
                 : `${failed} post${failed === 1 ? '' : 's'} failed to publish — open the queue to see which.`,
             status === null
-              ? 'Checking the agent…'
+              ? CHECKING_AGENT
               : status.paused
                 ? `The Agent paused itself intentionally to protect your brand${status.reason ? ` — ${status.reason}` : ''}.`
                 : 'The Agent is running; nothing has been paused.',
@@ -300,7 +295,9 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="mt-[5px] shrink-0">
                 <path d="M7 1v12M1 7h12" stroke="#838383" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
-              {line}
+              {/* The two reads still in flight say so with SPARK thinking,
+                  rather than a sentence that reads like a settled fact. */}
+              {line === CHECKING_PUBLISH || line === CHECKING_AGENT ? <Busy size={16}>{line}</Busy> : line}
             </li>
           ))}
         </ul>

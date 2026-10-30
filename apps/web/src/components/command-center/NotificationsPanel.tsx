@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { useAuth } from '@clerk/nextjs';
 import { readSelectedGenome } from '@/lib/selectedGenome';
@@ -111,10 +113,7 @@ export function NotificationsPanel() {
     setMarking(true);
     const res = await invoke<{ unreadCount: number }>('human.notifications.read', { all: true });
     setMarking(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t mark them read')) return;
     // Reload rather than patching locally: the tool reports what it actually
     // changed, and another session may have read some of these already.
     await load();
@@ -146,7 +145,7 @@ export function NotificationsPanel() {
         </div>
         {unread > 0 ? (
           <Button size="sm" variant="outline" disabled={marking} onClick={() => void markAllRead()}>
-            {marking ? 'Marking…' : 'Mark all read'}
+            {marking ? <Busy>Marking…</Busy> : 'Mark all read'}
           </Button>
         ) : null}
       </header>

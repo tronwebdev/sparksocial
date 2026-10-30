@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -156,13 +157,13 @@ export function AgentIdentityModal({
       : (id.voice[0] as string)
     : 'Not set — the tone sliders are all mid';
 
-  const rows: Array<{ label: string; value: string; title?: string }> = [
+  const rows: Array<{ label: string; value: ReactNode; title?: string }> = [
     { label: 'Brand Voice', value: voice, title: 'Derived from the tone sliders in Settings → Brand Kit.' },
     {
       label: 'Autonomy',
       value: (() => {
         const mode = approvalMode ?? ownMode;
-        return mode ? (APPROVAL_LABEL[mode] ?? mode) : 'Reading…';
+        return mode ? (APPROVAL_LABEL[mode] ?? mode) : <Busy size={16}>Reading…</Busy>;
       })(),
       title:
         'The design labels this row "Primary Role", which nothing stores. This is the approval mode — what the agent may do without you — which is the closest real answer and the field the risk tolerance below is derived from.',
@@ -209,7 +210,7 @@ export function AgentIdentityModal({
               </span>
 
               <div className="min-w-0">
-                <p className="truncate text-32 font-bold leading-[1.2] text-ink">{id?.name ?? 'Loading…'}</p>
+                <p className="truncate text-32 font-bold leading-[1.2] text-ink">{id?.name ?? <Busy size={28}>Loading…</Busy>}</p>
 
                 <div className="mt-[10px] flex flex-wrap items-center gap-[12px]">
                   <span className="text-16 text-ink">Status</span>

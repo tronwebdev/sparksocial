@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -56,7 +58,6 @@ export function PendingQuestionsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [answering, setAnswering] = useState<string | null>(null);
-  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
 
   async function load() {
     const res = await invoke<{ questions: PendingQuestion[] }>('human.pending', { limit: 20 });
@@ -77,16 +78,9 @@ export function PendingQuestionsPanel() {
     const answer = (drafts[messageId] ?? '').trim();
     if (!answer || answering) return;
     setAnswering(messageId);
-    setAnswerErrors((e) => ({ ...e, [messageId]: '' }));
     const res = await invoke('human.answer', { messageId, answer });
     setAnswering(null);
-    if (res.status !== 'succeeded') {
-      setAnswerErrors((e) => ({
-        ...e,
-        [messageId]: res.status === 'failed' ? userMessage(res.error) : 'That answer was gated.',
-      }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t send your answer')) return;
     setDrafts((d) => ({ ...d, [messageId]: '' }));
     await load();
   }
@@ -152,12 +146,9 @@ export function PendingQuestionsPanel() {
                   disabled={answering === q.messageId || !(drafts[q.messageId] ?? '').trim()}
                   onClick={() => void submitAnswer(q.messageId)}
                 >
-                  {answering === q.messageId ? 'Sending…' : 'Answer'}
+                  {answering === q.messageId ? <Busy>Sending…</Busy> : 'Answer'}
                 </Button>
               </div>
-              {answerErrors[q.messageId] ? (
-                <p className="mt-1 text-12 text-destructive">{answerErrors[q.messageId]}</p>
-              ) : null}
             </li>
           ))}
         </ul>

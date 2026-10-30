@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { PanelSkeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
 import { AutonomyStep } from './engagement/AutonomyStep';
 import { BoundariesStep } from './engagement/BoundariesStep';
@@ -24,7 +23,8 @@ import {
   type PlatformsRead,
   type Step,
 } from './engagement/types';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * ENGAGEMENT INTELLIGENCE — `Settings WS Engagement Start` through `… Done`.
@@ -89,7 +89,6 @@ export function EngagementPanel() {
   const [destination, setDestination] = useState('');
 
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -183,7 +182,8 @@ export function EngagementPanel() {
     }
   }
 
-  async function savePlatforms(): Promise<string | null> {
+  /** Returns whether every row saved; the first one that did not says so itself. */
+  async function savePlatforms(): Promise<boolean> {
     /**
      * One call per row, sequentially. Five requests at once against a table with
      * a unique index on `(brand, platform)` is fine, but the failure reporting is
@@ -205,27 +205,21 @@ export function EngagementPanel() {
                 : { enabled: true, autonomy: draft.choice }),
               engagementTypes: draft.types,
             });
-      if (res.status !== 'succeeded') {
-        return res.status === 'failed' ? `${p.label}: ${userMessage(res.error)}` : `${p.label} needs approval.`;
-      }
+      if (!notifyResult(res, undefined, `Couldn’t save ${p.label}`)) return false;
     }
-    return null;
+    return true;
   }
 
   async function advance(from: Step) {
     setBusy(true);
-    setMessage(null);
 
     const index = STEPS.indexOf(from);
     const last = index === STEPS.length - 1;
 
     if (from === 'platforms') {
-      const err = await savePlatforms();
+      const saved = await savePlatforms();
       setBusy(false);
-      if (err) {
-        setMessage({ kind: 'err', text: err });
-        return;
-      }
+      if (!saved) return;
       setStep(STEPS[index + 1] ?? null);
       return;
     }
@@ -238,13 +232,7 @@ export function EngagementPanel() {
     });
 
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setMessage({
-        kind: 'err',
-        text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.',
-      });
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t save this step')) return;
 
     if (from === 'sales') {
       // Resolved server-side, so an incomplete map the client sent comes back as
@@ -255,7 +243,7 @@ export function EngagementPanel() {
     if (last) {
       setConfiguredAt(res.output.engagementConfiguredAt);
       setStep(null);
-      setMessage({ kind: 'ok', text: 'Engagement Intelligence is configured.' });
+      notify.success('Engagement Intelligence is configured');
       return;
     }
     setStep(STEPS[index + 1] ?? null);
@@ -367,12 +355,6 @@ export function EngagementPanel() {
               Configure Engagement Intelligence
             </button>
           )}
-
-          {message ? (
-            <p className={cn('mt-[14px] text-16', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
-              {message.text}
-            </p>
-          ) : null}
         </div>
       </div>
     );
@@ -477,15 +459,9 @@ export function EngagementPanel() {
               className="flex h-[43px] w-[132px] items-center justify-center rounded-[8.457px] text-17 font-medium text-ink transition-colors hover:bg-white disabled:opacity-60"
               style={{ background: 'rgba(255,255,255,0.6)' }}
             >
-              {busy ? 'Saving…' : last ? 'Finish Setup' : 'Continue'}
+              {busy ? <Busy>Saving…</Busy> : last ? 'Finish Setup' : 'Continue'}
             </button>
           </div>
-
-          {message ? (
-            <p className={cn('mt-[14px] text-right text-16', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
-              {message.text}
-            </p>
-          ) : null}
         </div>
       </div>
     </section>

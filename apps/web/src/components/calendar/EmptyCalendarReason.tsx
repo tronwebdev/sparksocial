@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * WHY A CAMPAIGN HAS NO POSTS IN IT.
@@ -190,7 +191,7 @@ export function EmptyCalendarReason({
             </Button>
             {onRegenerate ? (
               <Button size="sm" disabled={busy} onClick={onRegenerate}>
-                {busy ? 'Regenerating…' : 'Regenerate the calendar'}
+                {busy ? <Busy size={16}>Regenerating…</Busy> : 'Regenerate the calendar'}
               </Button>
             ) : null}
             {data.producibleIfFilmed > data.producibleNow ? (

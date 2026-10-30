@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * CC-01's approval-mode control — PRD §7.1/§9's approval ladder, made
@@ -35,7 +35,6 @@ interface ApprovalModeView {
 export function ApprovalModeControl() {
   const [view, setView] = useState<ApprovalModeView | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -47,13 +46,9 @@ export function ApprovalModeControl() {
   async function setMode(mode: ApprovalModeView['approvalMode']) {
     if (busy || mode === view?.approvalMode) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<ApprovalModeView>('agent.approval_mode.set', { mode });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t change the approval mode')) return;
     setView(res.output);
   }
 
@@ -89,8 +84,6 @@ export function ApprovalModeControl() {
           </button>
         ))}
       </div>
-
-      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </section>
   );
 }

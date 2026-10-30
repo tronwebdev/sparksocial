@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { Button } from '@/components/ui/button';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { StepShell } from '@/components/onboarding/StepShell';
 import { ComposerGlobeIcon, PromptComposer } from '@/components/onboarding/PromptComposer';
 import type { Chip } from '@/components/onboarding/ChipReview';
@@ -506,10 +507,10 @@ export default function OnboardingPage() {
             {busy ? (
               // Named, because thirty seconds of silence reads as a hang. The
               // steps are the real ones the tool performs.
-              <p className="text-14 text-ink-muted">
-                Opening your pages, reading them, and drafting your profile. This takes about half a
-                minute and only happens once.
-              </p>
+              <SparkLoader
+                size="inline"
+                label="Opening your pages, reading them, and drafting your profile. This takes about half a minute and only happens once."
+              />
             ) : null}
 
             {/*
@@ -528,7 +529,7 @@ export default function OnboardingPage() {
                 {crawlFailed ? 'Set up by answering questions instead' : 'I don’t have a website'}
               </button>
             ) : null}
-            {manualBusy ? <p className="text-14 text-ink-muted">Setting up your brand…</p> : null}
+            {manualBusy ? <SparkLoader size="inline" label="Setting up your brand…" /> : null}
             </div>
           </div>
         }
@@ -576,7 +577,7 @@ export default function OnboardingPage() {
           last ? () => void saveDimensions(DOCS) : () => setStep(step + 1)
         }
         continueDisabled={selected.length === 0 || savingDimensions}
-        {...(last && savingDimensions ? { continueLabel: 'Saving…' } : {})}
+        {...(last && savingDimensions ? { continueLabel: <Busy>Saving…</Busy> } : {})}
         inBubble
         bubbleWidth={493}
       >

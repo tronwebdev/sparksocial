@@ -1,12 +1,12 @@
 'use client';
 
-import { SparkLoader } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { CreditUsageSection } from './CreditUsageSection';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
 
 /**
  * Buying credits, and what has happened to the ones already bought.
@@ -48,7 +48,6 @@ export function BillingSection() {
   const [packs, setPacks] = useState<Pack[] | null>(null);
   const [currency, setCurrency] = useState('usd');
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await invoke<{ currency: string; packs: Pack[] }>('org.credits.packs', {});
@@ -71,13 +70,9 @@ export function BillingSection() {
 
   async function buy(packId: string) {
     setBusy(packId);
-    setError(null);
     const res = await invoke<{ url: string }>('org.credits.checkout', { packId }, crypto.randomUUID());
-    if (res.status !== 'succeeded') {
+    if (!notifyResult(res, undefined, 'Couldn’t open checkout')) {
       setBusy(null);
-      setError(
-        res.status === 'failed' ? userMessage(res.error) : 'Only an owner can buy credits for this organisation.',
-      );
       return;
     }
     /*
@@ -133,14 +128,13 @@ export function BillingSection() {
                   <span className="text-14 text-ink-muted">credits</span>
                   <span className="text-16 font-medium text-ink">{money(p.priceCents, currency)}</span>
                   <Button className="mt-[4px]" disabled={busy !== null} onClick={() => void buy(p.id)}>
-                    {busy === p.id ? 'Opening Stripe…' : 'Buy'}
+                    {busy === p.id ? <Busy>Opening Stripe…</Busy> : 'Buy'}
                   </Button>
                 </li>
               ))}
             </ul>
           </>
         )}
-        {error ? <p className="mt-[12px] text-14 text-destructive">{error}</p> : null}
       </section>
 
       {/*

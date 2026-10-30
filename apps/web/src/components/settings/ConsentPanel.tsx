@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `genome.consent.grant` / `.revoke` / `.list` — real since P3, unreached from
@@ -35,6 +37,7 @@ const KINDS = [
 
 export function ConsentPanel() {
   const [records, setRecords] = useState<ConsentRecord[] | null>(null);
+  /* The records failing to load. What a grant or revoke came to is a notification. */
   const [error, setError] = useState<string | null>(null);
   const [kind, setKind] = useState(KINDS[0]!.value);
   const [subject, setSubject] = useState('');
@@ -72,10 +75,7 @@ export function ConsentPanel() {
       `consent:${kind}:${subject.trim()}:${Date.now()}`,
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Consent recorded', body: subject.trim() }, 'Couldn’t record consent')) return;
     setSubject('');
     setEvidenceUrl('');
     await reload();
@@ -85,10 +85,7 @@ export function ConsentPanel() {
     setRevoking(consentId);
     const res = await invoke<ConsentRecord>('genome.consent.revoke', { consentId });
     setRevoking(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, 'Consent revoked', 'Couldn’t revoke consent')) return;
     await reload();
   }
 
@@ -145,7 +142,7 @@ export function ConsentPanel() {
           />
         </div>
         <Button size="sm" disabled={busy || !subject.trim()} onClick={() => void grant()}>
-          {busy ? 'Recording…' : 'Record consent'}
+          {busy ? <Busy>Recording…</Busy> : 'Record consent'}
         </Button>
       </div>
 
@@ -184,7 +181,7 @@ export function ConsentPanel() {
                         disabled={revoking === r.id}
                         onClick={() => void revoke(r.id)}
                       >
-                        {revoking === r.id ? 'Revoking…' : 'Revoke'}
+                        {revoking === r.id ? <Busy>Revoking…</Busy> : 'Revoke'}
                       </Button>
                     ) : null}
                   </div>

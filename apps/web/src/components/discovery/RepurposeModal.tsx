@@ -1,9 +1,11 @@
 'use client';
 
 import { SparkMark } from '@/components/brand/SparkMark';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from './TrendCard';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -80,7 +82,6 @@ export function RepurposeModal({
   const [hooksBusy, setHooksBusy] = useState(false);
   const [hooksError, setHooksError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
-  const [draftError, setDraftError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await invoke<{ suggestion: RepurposeSuggestion | null; why: { summary: string } }>(
@@ -115,11 +116,16 @@ export function RepurposeModal({
   useEffect(() => {
     if (asked.current) return;
     asked.current = true;
-    void writeHooks();
+    void writeHooks(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function writeHooks() {
+  /**
+   * `pressed` is "New angles". The two written on open are part of the panel,
+   * so their failure stays in it; a press that fails is news about the press,
+   * and leaves the hooks already shown where they are.
+   */
+  async function writeHooks(pressed: boolean) {
     if (hooksBusy) return;
     setHooksBusy(true);
     setHooksError(null);
@@ -132,7 +138,9 @@ export function RepurposeModal({
       crypto.randomUUID(),
     );
     setHooksBusy(false);
-    if (res.status !== 'succeeded') {
+    if (pressed) {
+      if (!notifyResult(res, undefined, 'Couldn’t write new angles')) return;
+    } else if (res.status !== 'succeeded') {
       setHooksError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       return;
     }
@@ -142,7 +150,6 @@ export function RepurposeModal({
   async function generateDraft() {
     if (!suggestion || drafting) return;
     setDrafting(true);
-    setDraftError(null);
     const res = await invoke<{ contentItemId: string }>(
       'content.draft',
       {
@@ -156,10 +163,7 @@ export function RepurposeModal({
       crypto.randomUUID(),
     );
     setDrafting(false);
-    if (res.status !== 'succeeded') {
-      setDraftError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t write the draft')) return;
     onOpenDraft(res.output.contentItemId);
   }
 
@@ -252,7 +256,7 @@ export function RepurposeModal({
           <p className="mt-[20px] text-15 font-medium text-ink-muted">Recommendations</p>
           <div className="mt-[10px] flex flex-col gap-[10px]">
             {hooksBusy && !hooks ? (
-              <p className="text-14 text-ink-muted">Writing hook ideas…</p>
+              <SparkLoader size="inline" label="Writing hook ideas…" />
             ) : hooksError ? (
               <p className="text-14 text-destructive">{hooksError}</p>
             ) : (
@@ -272,12 +276,12 @@ export function RepurposeModal({
             {hooks && hooks.length > 0 ? (
               <button
                 type="button"
-                onClick={() => void writeHooks()}
+                onClick={() => void writeHooks(true)}
                 disabled={hooksBusy}
                 className="self-start text-13 font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
                 style={{ color: '#2F8291' }}
               >
-                {hooksBusy ? 'Writing…' : 'New angles (2 credits)'}
+                {hooksBusy ? <Busy size={16}>Writing…</Busy> : 'New angles (2 credits)'}
               </button>
             ) : null}
           </div>
@@ -324,7 +328,7 @@ export function RepurposeModal({
               on press: `trend.repurpose` returns null when no playbook fits. */}
           <p className="mt-[14px] text-center text-13 leading-[1.45] text-ink-muted">
             {loading
-              ? 'Checking which playbook fits…'
+              ? <Busy size={16}>Checking which playbook fits…</Busy>
               : suggestion
                 ? `${suggestion.playbookName} · ${suggestion.pillar.replace(/_/g, ' ')}`
                 : (why ?? 'Nothing in this brand fits this trend.')}
@@ -340,10 +344,9 @@ export function RepurposeModal({
             <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden>
               <path d="M7 1v12M1 7h12" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
-            {drafting ? 'Generating…' : 'Generate Draft'}
+            {drafting ? <Busy>Generating…</Busy> : 'Generate Draft'}
           </button>
 
-          {draftError ? <p className="mt-[12px] text-center text-14 text-destructive">{draftError}</p> : null}
           {!loading && !suggestion ? (
             <p className="mt-[10px] text-center text-12 text-ink-muted">
               Add the assets it is missing, or pick a different trend.

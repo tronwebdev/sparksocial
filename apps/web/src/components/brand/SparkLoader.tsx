@@ -71,3 +71,23 @@ export function SparkFailure({ title, detail, className }: { title: string; deta
     </div>
   );
 }
+
+/**
+ * A button's label while its action runs: SPARK thinking, then the words.
+ *
+ *   <button disabled={saving}>{saving ? <Busy>Saving…</Busy> : 'Save'}</button>
+ *
+ * Every busy button in the app used to swap its label for a bare "Saving…",
+ * which reads the same as a button that has frozen. The mark says something is
+ * happening; the words say what. It takes the button's own text colour and
+ * sizes itself to the label, so it fits a 30px pill and a 56px call to action
+ * alike (`size` overrides).
+ */
+export function Busy({ children, size = 20, className }: { children: React.ReactNode; size?: number; className?: string }) {
+  return (
+    <span className={cn('inline-flex items-center justify-center gap-[8px] align-middle', className)}>
+      <SparkMark size={size} mood="thinking" decorative className="-my-[4px]" />
+      <span>{children}</span>
+    </span>
+  );
+}

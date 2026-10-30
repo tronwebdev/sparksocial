@@ -2,11 +2,12 @@
 
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notify, notifyResult } from '@/lib/notify';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The upload half of the Asset Graph — `asset.upload_url` → PUT bytes
@@ -74,18 +75,16 @@ export function AssetUploadForm({
   const [rightsCleared, setRightsCleared] = useState(true);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   async function upload(file: File) {
     if (!genome) return;
     const contentType = guessContentType(file);
     if (!contentType) {
-      setMessage({ kind: 'err', text: 'Unrecognized file type.' });
+      notify.error(`Couldn’t upload ${file.name}`, { body: 'That file type is not one the Asset Graph accepts.' });
       return;
     }
 
     setBusy(true);
-    setMessage(null);
 
     const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId: genome.genomeId,
@@ -96,7 +95,7 @@ export function AssetUploadForm({
 
     if (presigned.status !== 'succeeded') {
       setBusy(false);
-      setMessage({ kind: 'err', text: presigned.status === 'failed' ? userMessage(presigned.error) : 'Upload was gated.' });
+      notifyResult(presigned, undefined, `Couldn’t upload ${file.name}`);
       return;
     }
 
@@ -107,7 +106,7 @@ export function AssetUploadForm({
     const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
       setBusy(false);
-      setMessage({ kind: 'err', text: put.message });
+      notify.error(`Couldn’t upload ${file.name}`, { body: put.message });
       return;
     }
 
@@ -136,11 +135,8 @@ export function AssetUploadForm({
     );
 
     setBusy(false);
-    if (ingested.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: ingested.status === 'failed' ? userMessage(ingested.error) : 'Ingest was gated.' });
-      return;
-    }
-    setMessage({ kind: 'ok', text: `Added — captioned as "${ingested.output.caption}"` });
+    if (!notifyResult(ingested, undefined, `Couldn’t add ${file.name}`)) return;
+    notify.success(`${file.name} added`, { body: `Captioned as “${ingested.output.caption}”` });
     if (inputRef.current) inputRef.current.value = '';
     onIngested();
   }
@@ -232,9 +228,10 @@ export function AssetUploadForm({
         />
         This is my own photo/video, or I have permission to use it
       </label>
-      {busy ? <Button size="sm" disabled>Uploading…</Button> : null}
-      {message ? (
-        <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</span>
+      {busy ? (
+        <Button size="sm" disabled>
+          <Busy size={16}>Uploading…</Busy>
+        </Button>
       ) : null}
       </div>
 

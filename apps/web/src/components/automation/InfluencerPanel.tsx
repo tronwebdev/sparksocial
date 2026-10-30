@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { userMessage } from '@/lib/errorCopy';
 
 /**
@@ -54,7 +56,6 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
   async function change(action: 'add' | 'remove', p: string, h: string) {
     if (busy || !h.trim()) return;
     setBusy(true);
-    setError(null);
     /* `effect: 'write'` and idempotent — adding the same handle twice is the
        same watchlist, so no key is minted. */
     const res = await invoke('trend.influencer.watch', {
@@ -64,10 +65,7 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
       handle: h.trim(),
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, action === 'add' ? `Couldn’t watch @${h.trim()}` : `Couldn’t stop watching @${h.trim()}`)) return;
     if (action === 'add') setHandle('');
     void load();
   }
@@ -111,12 +109,12 @@ export function InfluencerPanel({ genomeId }: { genomeId: string }) {
           className="h-[60px] shrink-0 rounded-[13px] px-[22px] text-16 font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{ background: 'var(--ss-cyan-200)' }}
         >
-          {busy ? 'Saving…' : 'Watch'}
+          {busy ? <Busy>Saving…</Busy> : 'Watch'}
         </button>
       </div>
 
       {list === null ? (
-        <p className="mt-[14px] text-15 text-ink-muted">Loading the watchlist…</p>
+        <SparkLoader size="inline" label="Loading the watchlist…" className="mt-[14px]" />
       ) : list.length === 0 ? (
         <p className="mt-[14px] text-15" style={{ color: '#838383' }}>
           Nobody is being watched yet. Add an account and what it posts starts feeding the trend sources.

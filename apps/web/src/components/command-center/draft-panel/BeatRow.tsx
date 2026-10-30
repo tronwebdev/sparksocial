@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { backdropOf, clock, DUBBABLE_BEAT_KINDS, type DraftView, type KitTemplate, type ResolvedBeat } from './types';
 
 /**
@@ -20,7 +21,6 @@ export function BeatRow({
   beat,
   mediaType,
   busy,
-  error,
   index,
   startSec,
   timed,
@@ -43,7 +43,6 @@ export function BeatRow({
   beat: ResolvedBeat;
   mediaType: DraftView['mediaType'];
   busy: boolean;
-  error?: string;
   /** Zero-based position, for the "Scene N" caption the storyboard shows. */
   index: number;
   /** Where this scene starts in the finished cut, for the 0:00-0:04 range. */
@@ -199,12 +198,12 @@ export function BeatRow({
               onClick={() => onSaveText(beat.beatId, text)}
               title={dirty ? undefined : 'No changes to save'}
             >
-              {busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}
+              {busy ? <Busy>Saving…</Busy> : dirty ? 'Save' : 'Saved'}
             </Button>
           ) : null}
           {mediaType !== 'text' && (mediaType === 'image' || mediaType === 'carousel') && beat.kind !== 'generated_image' ? (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => onGenerateImage(beat.beatId, text)}>
-              {busy ? 'Generating…' : 'Generate image'}
+              {busy ? <Busy>Generating…</Busy> : 'Generate image'}
             </Button>
           ) : null}
           {mediaType === 'video' ? (
@@ -215,7 +214,7 @@ export function BeatRow({
                 disabled={busy}
                 onClick={() => onGenerateAvatarVideo(beat.beatId, text)}
               >
-                {busy ? 'Generating…' : 'Generate avatar video'}
+                {busy ? <Busy>Generating…</Busy> : 'Generate avatar video'}
               </Button>
               <Button
                 size="sm"
@@ -223,7 +222,7 @@ export function BeatRow({
                 disabled={busy}
                 onClick={() => onGenerateVoiceover(beat.beatId, text)}
               >
-                {busy ? 'Generating…' : 'Generate voiceover'}
+                {busy ? <Busy>Generating…</Busy> : 'Generate voiceover'}
               </Button>
               <Button
                 size="sm"
@@ -231,7 +230,7 @@ export function BeatRow({
                 disabled={busy}
                 onClick={() => onGenerateBroll(beat.beatId, text)}
               >
-                {busy ? 'Generating…' : 'Generate b-roll'}
+                {busy ? <Busy>Generating…</Busy> : 'Generate b-roll'}
               </Button>
             </>
           ) : null}
@@ -260,7 +259,7 @@ export function BeatRow({
               )
             }
           >
-            {busy ? 'Dubbing…' : 'Dub'}
+            {busy ? <Busy>Dubbing…</Busy> : 'Dub'}
           </Button>
         </div>
       ) : null}
@@ -362,7 +361,6 @@ export function BeatRow({
         </Button>
       </div>
 
-      {error ? <p className="mt-2 text-12 text-destructive">{error}</p> : null}
     </Frame>
   );
 }

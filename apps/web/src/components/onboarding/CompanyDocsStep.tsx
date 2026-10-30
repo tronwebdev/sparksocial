@@ -5,7 +5,7 @@ import { invoke } from '@/lib/tools';
 import { DropZone, PreviewTile } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
 
 /**
  * `F6` — "Upload company Docs (PDF)", with the sample guideline beside it.
@@ -55,6 +55,7 @@ interface Attached {
 export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
   const [busy, setBusy] = useState(false);
   const [attached, setAttached] = useState<Attached[]>([]);
+  /** The file itself is wrong (type, size) — said beside the drop zone. Failures to upload or read are notifications. */
   const [error, setError] = useState<string | null>(null);
 
   async function upload(file: File) {
@@ -77,16 +78,15 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       contentType: ACCEPT,
       sizeBytes: file.size,
     });
-    if (presigned.status !== 'succeeded') {
+    if (!notifyResult(presigned, undefined, 'Couldn’t upload that document')) {
       setBusy(false);
-      setError(presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.');
       return;
     }
 
     const put = await uploadToStorage(presigned.output.uploadUrl, file, ACCEPT, presigned.output.headers);
     if (!put.ok) {
       setBusy(false);
-      setError(put.message);
+      notify.error('Couldn’t upload that document', { body: put.message });
       return;
     }
 
@@ -103,12 +103,10 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
     );
     setBusy(false);
 
-    if (read.status !== 'succeeded') {
-      // The tool's own message is the useful one here — "that PDF has no text in
-      // it, it is probably a scan" is a different instruction from a failure.
-      setError(read.status === 'failed' ? userMessage(read.error) : 'Reading that document was gated.');
-      return;
-    }
+    // The tool's own message is the useful one here — "that PDF has no text in
+    // it, it is probably a scan" is a different instruction from a failure — so
+    // it is the notification's detail line rather than replaced.
+    if (!notifyResult(read, undefined, 'Couldn’t read that document')) return;
 
     setAttached((prev) => [
       ...prev,
@@ -230,7 +228,8 @@ export function CompanyDocsStep({ genomeId }: { genomeId: string }) {
       </div>
 
       {/*
-        Both hang below the 309.5 card rather than inside it. The read result is
+        Both hang below the 309.5 card rather than inside it: the file check,
+        and the read result. The read result is
         not in the prototype and is kept: a scanned PDF with no text layer
         attaches successfully and yields nothing, which is the one outcome the
         owner must not discover a week later.

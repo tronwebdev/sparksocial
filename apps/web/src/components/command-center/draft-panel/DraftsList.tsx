@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
 import type { PostType } from './DraftDrawer';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -187,7 +188,7 @@ export function DraftsList({
           <h2 className="text-20 font-medium text-ink">Draft List</h2>
           <p className="mt-[10px] text-16 font-medium text-ink-muted">
             {items === null
-              ? 'Loading…'
+              ? <Busy size={16}>Loading…</Busy>
               : `${counts.all} unfinished draft${counts.all === 1 ? '' : 's'} · auto-saved`}
           </p>
         </div>

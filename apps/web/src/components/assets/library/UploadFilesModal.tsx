@@ -2,7 +2,9 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notify } from '@/lib/notify';
 import { formatBytes } from '../AssetsLibraryScreen';
 import { ASSET_ROLES } from '../roles';
 import type { Folder } from './types';
@@ -142,7 +144,6 @@ export function UploadFilesModal({
   const [selected, setSelected] = useState(0);
   const [role, setRole] = useState<string>('product_screen');
   const [rightsCleared, setRightsCleared] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -292,7 +293,6 @@ export function UploadFilesModal({
     const picked = Array.from(list).slice(0, 10);
     if (picked.length === 0) return;
     setStage('uploading');
-    setNote(null);
     const results: Staged[] = [];
     for (const file of picked) {
       // eslint-disable-next-line no-await-in-loop -- one at a time: each is a
@@ -304,12 +304,17 @@ export function UploadFilesModal({
     setSelected(0);
     setStage('done');
     const failed = results.filter((r) => r.error);
-    if (failed.length) setNote(failed[0]!.error);
+    /* Each row keeps its own reason; this says that some did not go through. */
+    if (failed.length) {
+      notify.error(failed.length === 1 ? `Couldn’t upload ${failed[0]!.name}` : `Couldn’t upload ${failed.length} files`, {
+        ...(failed[0]!.error ? { body: failed[0]!.error } : {}),
+      });
+    }
   }
 
   async function continueFlow() {
     if (stage === 'uploading') {
-      setNote('Wait for the upload to finish');
+      notify.info('Wait for the upload to finish');
       return;
     }
     if (stage === 'done') {
@@ -453,7 +458,9 @@ export function UploadFilesModal({
           <div className="flex items-center gap-[14px] px-[16px] pt-[22px]">
             <FileGlyph />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-17 font-semibold text-ink">Uploading…</p>
+              <p className="truncate text-17 font-semibold text-ink">
+                <Busy size={16}>Uploading…</Busy>
+              </p>
               <div className="mt-[6px] flex items-center gap-[9px]">
                 <span className="text-15 font-medium" style={{ color: '#5B5B5B' }}>
                   sending to storage
@@ -646,8 +653,6 @@ export function UploadFilesModal({
         </div>
       ) : null}
 
-      {note ? <p className="px-[30px] pt-[18px] text-15 text-ink-muted">{note}</p> : null}
-
       {/* ── footer ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-[22px] px-[30px] pb-[44px] pt-[30px]">
         <button
@@ -668,7 +673,7 @@ export function UploadFilesModal({
           }}
           className="flex h-[54px] items-center gap-[18px] rounded-xl bg-white px-[26px] transition-opacity duration-200 active:scale-[0.985] motion-reduce:transition-none"
         >
-          <span className="text-17 font-semibold text-ink">{busy ? 'Saving…' : 'Continue'}</span>
+          <span className="text-17 font-semibold text-ink">{busy ? <Busy>Saving…</Busy> : 'Continue'}</span>
           <svg width="9" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

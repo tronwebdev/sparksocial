@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LeadSource, LeadStatus } from '@sparksocial/shared/agencyPipeline';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import type { Explanation } from '@/components/explain/WhyPopover';
 import type { LeadImportRow } from './leadCsv';
 import { userMessage } from '@/lib/errorCopy';
@@ -133,20 +134,19 @@ export function useLeads(query: LeadQuery) {
   }, [load, query.search]);
 
   /**
-   * Every mutation returns the tool's own message on failure rather than a
-   * generic one: "Sunnyvale Innovations is already in the pipeline" is
-   * actionable, and it is the sentence the tool already wrote.
+   * Every mutation says what failed with the tool's own message as the detail
+   * rather than a generic one: "Sunnyvale Innovations is already in the
+   * pipeline" is actionable, and it is the sentence the tool already wrote.
+   * Resolves to whether it succeeded.
    */
   const run = useCallback(
-    async (name: string, input: unknown, key?: string): Promise<string | null> => {
+    async (name: string, input: unknown, failTitle: string, key?: string): Promise<boolean> => {
       setBusy(true);
       try {
         const res = await invoke<unknown>(name, input, key);
-        if (res.status !== 'succeeded') {
-          return res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.';
-        }
+        if (!notifyResult(res, undefined, failTitle)) return false;
         await load();
-        return null;
+        return true;
       } finally {
         setBusy(false);
       }
@@ -154,15 +154,18 @@ export function useLeads(query: LeadQuery) {
     [load],
   );
 
-  const create = useCallback((row: LeadImportRow & { source?: LeadSource }) => run('lead.create', row), [run]);
+  const create = useCallback(
+    (row: LeadImportRow & { source?: LeadSource }) => run('lead.create', row, 'Couldn’t add the lead'),
+    [run],
+  );
 
   const update = useCallback(
-    (leadId: string, patch: Partial<Lead> & { status?: LeadStatus }) => run('lead.update', { leadId, ...patch }),
+    (leadId: string, patch: Partial<Lead> & { status?: LeadStatus }) => run('lead.update', { leadId, ...patch }, 'Couldn’t update the lead'),
     [run],
   );
 
   const convert = useCallback(
-    (leadId: string, brandId: string) => run('lead.convert', { leadId, brandId }),
+    (leadId: string, brandId: string) => run('lead.convert', { leadId, brandId }, 'Couldn’t convert the lead'),
     [run],
   );
 
@@ -174,15 +177,13 @@ export function useLeads(query: LeadQuery) {
    * return the first file's result.
    */
   const importRows = useCallback(
-    async (rows: LeadImportRow[]): Promise<{ result?: ImportResult; error?: string }> => {
+    async (rows: LeadImportRow[]): Promise<ImportResult | null> => {
       setBusy(true);
       try {
         const res = await invoke<ImportResult>('lead.import', { rows }, crypto.randomUUID());
-        if (res.status !== 'succeeded') {
-          return { error: res.status === 'failed' ? userMessage(res.error) : 'Importing needs an approval first.' };
-        }
+        if (!notifyResult(res, undefined, 'Couldn’t import the leads')) return null;
         await load();
-        return { result: res.output };
+        return res.output;
       } finally {
         setBusy(false);
       }

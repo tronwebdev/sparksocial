@@ -13,7 +13,8 @@ import { BrandKitGrid, ColorThemeCard, LogoCard, TONE_AXES, TypographyCard, Voic
 import { KitSection } from './KitSection';
 import { DEFAULT_STOCK_VOICE_ID, STOCK_VOICES } from '@sparksocial/shared/voices';
 import { timezoneRegions, zoneLabel, zonesIncluding, zonesInRegion } from '@sparksocial/shared';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * A text field on a kit card. `Input`'s fill is `--ss-field`, the same grey as
@@ -109,7 +110,6 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
   const genomeId = genome?.genomeId;
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -147,17 +147,18 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
    */
   async function uploadLogo(file: File) {
     if (!genomeId) {
-      setMessage({ kind: 'err', text: 'Pick a brand first.' });
+      notify.warning('Pick a brand first');
       return;
     }
     const contentType = file.type;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(contentType)) {
-      setMessage({ kind: 'err', text: 'PNG, JPEG or WebP. A vector logo needs exporting to one of those first.' });
+      notify.warning('That file type won’t work as a logo', {
+        body: 'PNG, JPEG or WebP. A vector logo needs exporting to one of those first.',
+      });
       return;
     }
 
     setUploading(true);
-    setMessage(null);
 
     const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
@@ -165,19 +166,15 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
       contentType,
       sizeBytes: file.size,
     });
-    if (presigned.status !== 'succeeded') {
+    if (!notifyResult(presigned, undefined, 'Couldn’t upload the logo')) {
       setUploading(false);
-      setMessage({
-        kind: 'err',
-        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
-      });
       return;
     }
 
     const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
     if (!put.ok) {
       setUploading(false);
-      setMessage({ kind: 'err', text: put.message });
+      notify.error('Couldn’t upload the logo', { body: put.message });
       return;
     }
 
@@ -186,20 +183,21 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
     // Not saved yet, and said so: the field is part of one form with a single
     // Save, and a logo that persisted on upload while the colours beside it did
     // not would be two different rules on one panel.
-    setMessage({ kind: 'ok', text: 'Uploaded. Save brand rules to apply it.' });
+    notify.success('Logo uploaded', { body: 'Save brand rules to apply it.' });
   }
 
   async function generateLogo() {
     if (generatingLogo) return;
     setGeneratingLogo(true);
-    setMessage(null);
     const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
     setGeneratingLogo(false);
-    if (res.status !== 'succeeded') {
-      setMessage({
-        kind: 'err',
-        text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can spend.',
-      });
+    if (
+      !notifyResult(
+        res,
+        { title: 'Placeholder logo set', body: 'Replace it with a real one when you have it.' },
+        'Couldn’t generate a logo',
+      )
+    ) {
       return;
     }
     /**
@@ -208,12 +206,10 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
      * back, which is harmless, and *not* pressing it must not lose the logo.
      */
     setLogoUrl(res.output.logoUrl);
-    setMessage({ kind: 'ok', text: 'Placeholder logo set. Replace it with a real one when you have it.' });
   }
 
   async function save() {
     setBusy(true);
-    setMessage(null);
 
     const topics = splitList(topicsText);
     const claims = splitList(claimsText);
@@ -255,20 +251,13 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
     });
 
     setBusy(false);
-    if (res.status === 'succeeded') {
-      setUsingDefaultWindows(res.output.usingDefaultWindows);
-      setWindows(res.output.postingWindows);
-      setUsingDefaultWatermark(res.output.usingDefaultWatermark);
-      setWatermark(res.output.watermark);
-      setUsingDefaultVoice(res.output.usingDefaultVoice);
-      setStockVoiceId(res.output.stockVoiceId);
-      setMessage({ kind: 'ok', text: 'Saved.' });
-      return;
-    }
-    setMessage({
-      kind: 'err',
-      text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.',
-    });
+    if (!notifyResult(res, 'Brand rules saved', 'Couldn’t save the brand rules')) return;
+    setUsingDefaultWindows(res.output.usingDefaultWindows);
+    setWindows(res.output.postingWindows);
+    setUsingDefaultWatermark(res.output.usingDefaultWatermark);
+    setWatermark(res.output.watermark);
+    setUsingDefaultVoice(res.output.usingDefaultVoice);
+    setStockVoiceId(res.output.stockVoiceId);
   }
 
   function toggleHour(hour: number) {
@@ -708,13 +697,8 @@ export function GovernancePanel({ afterCompliance }: { afterCompliance?: ReactNo
             style={{ boxShadow: '0 10px 30px -12px rgba(12,12,12,0.25), inset 0 0 0 1px rgba(12,12,12,0.06)' }}
           >
             <Button disabled={busy} onClick={() => void save()}>
-              {busy ? 'Saving…' : 'Save brand rules'}
+              {busy ? <Busy>Saving…</Busy> : 'Save brand rules'}
             </Button>
-            {message ? (
-              <p className={cn('text-13', message.kind === 'ok' ? 'text-success' : 'text-ink-muted')}>
-                {message.text}
-              </p>
-            ) : null}
           </div>
         </>
       )}

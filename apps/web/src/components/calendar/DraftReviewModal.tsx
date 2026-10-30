@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { CalendarModal } from './CalendarModal';
 import { postKindLabel } from '@/lib/platforms';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * Draft Review — `SparkSocial Calendar.dc.html`, what a planned day opens.
@@ -217,7 +218,7 @@ export function DraftReviewModal({
         >
           <p className="text-20 font-bold leading-[1.35] text-ink">
             {item === null
-              ? 'Loading…'
+              ? <Busy size={16}>Loading…</Busy>
               : item === 'missing'
                 ? 'This draft could not be found.'
                 : it && it.summary && it.summary !== '(no copy yet)'

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { Button } from '@/components/ui/button';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * Connecting a platform that has no OAuth redirect.
@@ -41,7 +42,6 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
   const [handle, setHandle] = useState('');
   const [appPassword, setAppPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const label = platformLabel(platform);
   const ready = handle.trim().length > 0 && appPassword.trim().length > 0;
@@ -49,7 +49,6 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
   async function submit() {
     if (!ready || busy) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ connected: boolean; accountLabel: string }>('integration.connect_credentials', {
       genomeId,
       provider: platform,
@@ -57,12 +56,10 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
       appPassword: appPassword.trim(),
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(
-        res.status === 'failed' ? userMessage(res.error) : 'Connecting an account needs an approval this screen cannot give.',
-      );
-      return;
-    }
+    if (!notifyResult(res, undefined, `Couldn’t connect ${label}`)) return;
+    // Named — the account, not just the platform — like every other connect
+    // confirmation; see `PublishHealthPanel`'s `?social=` handler for why.
+    notify.success(`${label} connected`, { body: `As ${res.output.accountLabel}.` });
     onConnected(res.output.accountLabel);
   }
 
@@ -121,14 +118,12 @@ export function CredentialConnectModal({ platform, genomeId, onClose, onConnecte
           You can revoke it there at any time without changing your real password.
         </p>
 
-        {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
-
         <div className="mt-5 flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button size="sm" onClick={() => void submit()} disabled={!ready || busy}>
-            {busy ? 'Checking…' : 'Connect'}
+            {busy ? <Busy>Checking…</Busy> : 'Connect'}
           </Button>
         </div>
       </div>

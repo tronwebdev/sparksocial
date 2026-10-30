@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notify, notifyResult } from '@/lib/notify';
 import { AssignmentNote, MemberChecklist, useTeam } from './FolderMembers';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -50,7 +52,6 @@ export function CreateFolderModal({
   const [members, setMembers] = useState<string[]>([]);
   const { team, error: teamError } = useTeam();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function save() {
     if (busy) return;
@@ -59,7 +60,6 @@ export function CreateFolderModal({
        than sending an empty string and reading back a validation error. */
     const folderName = name.trim() || 'My New Folder';
     setBusy(true);
-    setError(null);
     /* `asset.folder.create` is `idempotent: false` — two folders of the same
        name are two folders, so `invoke` refuses the call without a key. A fresh
        one per press: pressing Save twice deliberately is two folders, and a
@@ -70,10 +70,7 @@ export function CreateFolderModal({
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t create the folder')) return;
     if (members.length > 0) {
       /* Applied after the create, because it needs the id the create returns.
          `idempotent: true`, so no key. A failure here leaves a real folder with
@@ -85,11 +82,11 @@ export function CreateFolderModal({
         userIds: members,
       });
       if (assigned.status !== 'succeeded') {
-        setError(
-          `Folder created, but the people could not be assigned: ${
-            assigned.status === 'failed' ? userMessage(assigned.error) : 'that request was gated.'
-          } Use the folder's ⋯ menu to try again.`,
-        );
+        notify.warning('Folder created, but nobody was assigned', {
+          body: `${
+            assigned.status === 'failed' ? userMessage(assigned.error) : 'Assigning people needs an approval.'
+          } Use the folder’s ⋯ menu to try again.`,
+        });
         return;
       }
     }
@@ -138,7 +135,6 @@ export function CreateFolderModal({
         </div>
         <AssignmentNote />
 
-        {error ? <p className="mt-[14px] text-15 text-destructive">{error}</p> : null}
       </div>
 
       <div className="mt-[34px] flex items-center justify-center gap-[26px]">
@@ -162,7 +158,7 @@ export function CreateFolderModal({
           disabled={busy}
           className="flex h-[52px] items-center gap-[22px] rounded-[11px] px-[18px] transition-colors hover:bg-[rgba(255,255,255,0.7)] active:scale-[0.985] disabled:opacity-60"
         >
-          <span className="text-18 font-semibold text-ink">{busy ? 'Saving…' : 'Save'}</span>
+          <span className="text-18 font-semibold text-ink">{busy ? <Busy>Saving…</Busy> : 'Save'}</span>
           <svg width="9" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

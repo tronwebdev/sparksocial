@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { Busy } from '@/components/brand/SparkLoader';
 import { TypeIcon, type PostType } from './DraftDrawer';
 import { CarouselStoryboard, VideoStoryboard } from './Storyboard';
 import { clock, type ResolvedBeat } from './types';
@@ -399,7 +400,7 @@ export function ImageDraftForm({
           className="flex h-[43px] w-[190px] items-center justify-center gap-[10px] rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
         >
           <Sparkle />
-          {busy ? 'Generating…' : 'Generate Post'}
+          {busy ? <Busy>Generating…</Busy> : 'Generate Post'}
           <Sparkle className="h-[11px] w-[11px]" />
         </button>
 

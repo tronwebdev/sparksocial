@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { parseCsvPreview } from './csvPreview';
 import { AccountPicker } from './AccountPicker';
@@ -599,7 +600,7 @@ export function SourceStep({
             className="h-[46px] shrink-0 rounded-[11px] px-[22px] text-16 font-semibold text-white transition-opacity hover:opacity-92 disabled:opacity-60"
             style={{ background: 'var(--ss-grad-auto-connect)' }}
           >
-            {connecting ? 'Opening…' : '+ Connect'}
+            {connecting ? <Busy>Opening…</Busy> : '+ Connect'}
           </button>
         </div>
       ) : null}
@@ -630,7 +631,7 @@ export function ValidateStep({
 
       <div className="mt-[28px] flex items-center gap-[14px] rounded-[16px] px-[20px] py-[16px]" style={{ background: validation?.valid === false ? 'var(--ss-auto-failed-bg)' : 'var(--ss-auto-note)' }}>
         {validation === null ? (
-          <p className="text-17 font-medium text-ink">Checking this recipe…</p>
+          <SparkLoader size="inline" label="Checking this recipe…" />
         ) : !validation.valid ? (
           <p className="text-17 font-medium" style={{ color: 'var(--ss-auto-failed)' }}>
             {validation.error ?? 'This recipe is not valid yet.'}

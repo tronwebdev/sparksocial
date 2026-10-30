@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * APPROVAL FLOWS (`SET-WS-TEAM-GROUPS`) — the second half of the Team Roles
@@ -59,6 +61,7 @@ const REVIEWER_ROLES = [
 export function ApprovalFlowsPanel() {
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  /* The rules failing to load. What a switch, remove or add came to is a notification. */
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -105,16 +108,14 @@ export function ApprovalFlowsPanel() {
       crypto.randomUUID(),
     );
     setBusyId(null);
-    if (res.status === 'succeeded') await load();
-    else setError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can change approval flows.');
+    if (notifyResult(res, rule.enabled ? 'Rule switched off' : 'Rule switched on', 'Couldn’t change the rule')) await load();
   };
 
   const remove = async (rule: Rule) => {
     setBusyId(rule.id);
     const res = await invoke<unknown>('approval.rule.delete', { id: rule.id }, crypto.randomUUID());
     setBusyId(null);
-    if (res.status === 'succeeded') await load();
-    else setError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can change approval flows.');
+    if (notifyResult(res, 'Rule removed', 'Couldn’t remove the rule')) await load();
   };
 
   return (
@@ -145,7 +146,6 @@ export function ApprovalFlowsPanel() {
             setAdding(false);
             await load();
           }}
-          onError={setError}
         />
       )}
 
@@ -203,11 +203,9 @@ export function ApprovalFlowsPanel() {
 function RuleForm({
   groups,
   onSaved,
-  onError,
 }: {
   groups: Group[];
   onSaved: () => Promise<void>;
-  onError: (message: string) => void;
 }) {
   const [trigger, setTrigger] = useState<'publish' | 'spend_over'>('publish');
   const [amount, setAmount] = useState('100');
@@ -229,11 +227,7 @@ function RuleForm({
       crypto.randomUUID(),
     );
     setSaving(false);
-    if (res.status === 'succeeded') {
-      await onSaved();
-      return;
-    }
-    onError(res.status === 'failed' ? userMessage(res.error) : 'Only owners and admins can add approval flows.');
+    if (notifyResult(res, 'Rule added', 'Couldn’t add the rule')) await onSaved();
   };
 
   return (
@@ -329,7 +323,7 @@ function RuleForm({
 
       <div>
         <Button size="sm" onClick={() => void save()} disabled={saving}>
-          {saving ? 'Saving…' : 'Add rule'}
+          {saving ? <Busy>Saving…</Busy> : 'Add rule'}
         </Button>
       </div>
     </div>

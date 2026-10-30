@@ -101,7 +101,9 @@ export function ConnectedSection() {
 
         <ul className="mt-[15px] grid grid-cols-1 gap-[12px]">
           {health === null ? (
-            <li className="text-16" style={{ color: 'rgb(131,131,131)' }}>Reading connections…</li>
+            <li>
+              <SparkLoader size="inline" label="Reading connections…" />
+            </li>
           ) : publishing.length === 0 ? (
             <li
               className="rounded bg-white px-[22px] py-[18px] text-16"

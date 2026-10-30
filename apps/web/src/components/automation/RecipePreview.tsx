@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 import type { RecipeKind } from './recipeMeta';
@@ -92,9 +93,7 @@ export function RecipePreview({
           {idle}
         </p>
       ) : state.phase === 'loading' ? (
-        <p className="mt-[8px] text-15" style={{ color: '#838383' }}>
-          Reading it now…
-        </p>
+        <SparkLoader size="inline" label="Reading it now…" className="mt-[8px]" />
       ) : state.error ? (
         <p className="mt-[8px] text-15" style={{ color: 'var(--ss-auto-failed)' }}>
           {state.error}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 import { Badge } from '@/components/ui/badge';
 import { CAMPAIGN_STATE } from '@/lib/useCampaigns';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,6 @@ export function CampaignList({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [working, setWorking] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function rename(campaignId: string) {
     const name = draftName.trim();
@@ -94,7 +94,6 @@ export function CampaignList({
       return;
     }
     setWorking(campaignId);
-    setError(null);
     const res = await invoke<{ name: string }>(
       'campaign.rename',
       { campaignId, name },
@@ -103,12 +102,9 @@ export function CampaignList({
       `campaign.rename:${campaignId}:${name}`,
     );
     setWorking(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That rename needs approval.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t rename the campaign')) return;
     setRenaming(null);
-    toast.success(`Renamed to ${res.output.name}`);
+    notify.success(`Renamed to ${res.output.name}`);
     onChanged();
   }
 
@@ -125,35 +121,32 @@ export function CampaignList({
   async function duplicate(campaignId: string) {
     if (!genomeId) return;
     setWorking(campaignId);
-    setError(null);
     const res = await invoke<{ campaignId: string; name: string }>(
       'campaign.duplicate',
       { campaignId, genomeId },
       crypto.randomUUID(),
     );
-    if (res.status !== 'succeeded') {
+    if (!notifyResult(res, undefined, 'Couldn’t duplicate the campaign')) {
       setWorking(null);
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That copy needs approval.');
       return;
     }
     const planned = await invoke<{ slotCount: number }>('calendar.generate', { campaignId: res.output.campaignId });
     setWorking(null);
     if (planned.status !== 'succeeded') {
-      setError(
-        `“${res.output.name}” was created, but its calendar was not: ${
-          planned.status === 'failed' ? userMessage(planned.error) : 'planning it needs approval.'
-        }`,
-      );
+      if (planned.status === 'failed') {
+        notify.error(`“${res.output.name}” was created, but its calendar was not`, { body: userMessage(planned.error) });
+      } else {
+        notify.pending('Calendar sent for approval', { body: `“${res.output.name}” was created; planning it needs approval.` });
+      }
       onChanged();
       return;
     }
-    toast.success(`Created “${res.output.name}” as a draft, with ${planned.output.slotCount} posts planned`);
+    notify.success(`Created “${res.output.name}” as a draft, with ${planned.output.slotCount} posts planned`);
     onChanged();
   }
 
   async function setStatus(campaignId: string, to: 'active' | 'paused') {
     setWorking(campaignId);
-    setError(null);
     /**
      * One tool for both transitions into `active`. Draft → active and paused →
      * active are the same write, so `campaign.resume` covers both — see its own
@@ -176,11 +169,10 @@ export function CampaignList({
       crypto.randomUUID(),
     );
     setWorking(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
+    if (!notifyResult(res, undefined, to === 'active' ? 'Couldn’t activate the campaign' : 'Couldn’t pause the campaign')) {
       return;
     }
-    toast.success(to === 'active' ? 'Campaign is active — SPARK is planning against it' : 'Campaign paused');
+    notify.success(to === 'active' ? 'Campaign is active — SPARK is planning against it' : 'Campaign paused');
     onChanged();
   }
 
@@ -207,8 +199,6 @@ export function CampaignList({
           yet.
         </p>
       ) : null}
-
-      {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
 
       <ul className="mt-4 grid grid-cols-1 gap-2">
         {campaigns.map((c) => {
@@ -241,7 +231,7 @@ export function CampaignList({
                         aria-label={`Rename ${c.name}`}
                       />
                       <Button size="sm" disabled={isWorking} onClick={() => void rename(c.campaignId)}>
-                        {isWorking ? 'Saving…' : 'Save'}
+                        {isWorking ? <Busy size={16}>Saving…</Busy> : 'Save'}
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setRenaming(null)}>
                         Cancel

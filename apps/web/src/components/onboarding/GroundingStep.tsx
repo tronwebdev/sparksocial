@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AssetUploadForm } from '@/components/assets/AssetUploadForm';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-04` — the step that gives SPARK something to write *from*.
@@ -49,9 +50,6 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
   const [povText, setPovText] = useState('');
   const [savingCta, setSavingCta] = useState(false);
   const [savingPov, setSavingPov] = useState(false);
-  const [ctaMsg, setCtaMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const [povMsg, setPovMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-  const [uploadKey, setUploadKey] = useState(0);
   const [gaps, setGaps] = useState<{ role: string; count: number } | null>(null);
 
   /**
@@ -76,13 +74,12 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
   async function saveCta() {
     if (!cta.trim()) return;
     setSavingCta(true);
-    setCtaMsg(null);
     const res = await invoke('genome.offer.set', { genomeId, offer: { primary_cta: cta.trim() } });
     setSavingCta(false);
-    setCtaMsg(
-      res.status === 'succeeded'
-        ? { kind: 'ok', text: 'Saved. Every post that ends on an ask will use those words.' }
-        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.' },
+    notifyResult(
+      res,
+      { title: 'Call to action saved', body: 'Every post that ends on an ask will use those words.' },
+      'Couldn’t save your call to action',
     );
   }
 
@@ -96,16 +93,16 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
     if (statements.length === 0) return;
 
     setSavingPov(true);
-    setPovMsg(null);
     const res = await invoke('genome.voice.set', { genomeId, voice: { pov_statements: statements } });
     setSavingPov(false);
-    setPovMsg(
-      res.status === 'succeeded'
-        ? {
-            kind: 'ok',
-            text: `Saved ${statements.length} ${statements.length === 1 ? 'opinion' : 'opinions'}. SPARK will write from ${statements.length === 1 ? 'it' : 'them'} rather than around them.`,
-          }
-        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.' },
+    const one = statements.length === 1;
+    notifyResult(
+      res,
+      {
+        title: `Saved ${statements.length} ${one ? 'opinion' : 'opinions'}`,
+        body: `SPARK will write from ${one ? 'it' : 'them'} rather than around ${one ? 'it' : 'them'}.`,
+      },
+      'Couldn’t save your opinions',
     );
   }
 
@@ -130,14 +127,9 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
             className="w-full sm:max-w-xs"
           />
           <Button variant="outline" disabled={savingCta || !cta.trim()} onClick={() => void saveCta()}>
-            {savingCta ? 'Saving…' : 'Save'}
+            {savingCta ? <Busy>Saving…</Busy> : 'Save'}
           </Button>
         </div>
-        {ctaMsg ? (
-          <p className={`text-13 ${ctaMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
-            {ctaMsg.text}
-          </p>
-        ) : null}
       </section>
 
       {/* ── 2. Point of view. The biggest lever on whether copy sounds like you. ── */}
@@ -161,14 +153,9 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
         />
         <div>
           <Button variant="outline" disabled={savingPov || !povText.trim()} onClick={() => void savePov()}>
-            {savingPov ? 'Saving…' : 'Save opinions'}
+            {savingPov ? <Busy>Saving…</Busy> : 'Save opinions'}
           </Button>
         </div>
-        {povMsg ? (
-          <p className={`text-13 ${povMsg.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
-            {povMsg.text}
-          </p>
-        ) : null}
       </section>
 
       {/* ── 3. Something to build from. ── */}
@@ -182,13 +169,13 @@ export function GroundingStep({ genomeId }: { genomeId: string }) {
             You can add more any time from the Assets Library.
           </p>
         </div>
-        <AssetUploadForm genomeId={genomeId} onIngested={() => { setUploadKey((k) => k + 1); void loadGaps(); }} />
-        {uploadKey > 0 ? (
-          <p className="text-13 text-success">
-            Added. {uploadKey === 1 ? 'That is' : `${uploadKey} files are`} in the library — SPARK can build
-            from {uploadKey === 1 ? 'it' : 'them'} now.
-          </p>
-        ) : null}
+        <AssetUploadForm
+          genomeId={genomeId}
+          onIngested={() => {
+            notify.success('Added to the library', { body: 'SPARK can build from it now.' });
+            void loadGaps();
+          }}
+        />
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { compactVolume, saturationWord, type RankedTrendItem } from '@/components/discovery/TrendCard';
 import { userMessage } from '@/lib/errorCopy';
@@ -119,7 +120,7 @@ export function TrendResultsRail({
       </p>
 
       {trends === null ? (
-        <p className="px-[26px] pt-[24px] text-center text-15 text-ink-muted">Reading the trend sources…</p>
+        <SparkLoader size="inline" label="Reading the trend sources…" className="justify-center px-[26px] pt-[24px]" />
       ) : error ? (
         <p className="px-[26px] pt-[24px] text-center text-15 text-destructive">{error}</p>
       ) : shown.length === 0 ? (

@@ -265,7 +265,7 @@ export function PerformanceCards({
               </div>
             ) : (
               ranked === null ? (
-                <p className="mt-6 text-16 text-ink-muted">Working out which post did best…</p>
+                <SparkLoader size="inline" label="Working out which post did best…" className="mt-6 text-16" />
               ) : (
                 <EmptyCard
                   glyph="chart"

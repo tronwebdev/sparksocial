@@ -5,8 +5,9 @@ import { createPortal } from 'react-dom';
 import { useOrganization } from '@clerk/nextjs';
 import { TimezoneField } from '@/components/common/TimezoneField';
 import { SECTION, useNarrowStage } from '@/components/shell/narrowStage';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import type { AgencySiteApi } from './useAgencySite';
 
@@ -190,7 +191,7 @@ export function AgencyWizard({
           className="absolute right-[28px] top-[30px] z-[5] flex h-[46px] items-center gap-[9px] rounded-[10px] px-[16px] text-18 font-semibold text-ink transition-colors hover:bg-white disabled:opacity-60"
           style={{ background: 'rgba(255,255,255,0.45)' }}
         >
-          <span className="whitespace-nowrap">{busy ? 'Working…' : step === 3 ? 'Launch' : 'Continue'}</span>
+          <span className="whitespace-nowrap">{busy ? <Busy>Working…</Busy> : step === 3 ? 'Launch' : 'Continue'}</span>
           <svg width="8" height="14" viewBox="0 0 8 16" fill="none" aria-hidden className="block">
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -419,7 +420,6 @@ const MAX_COLORS = 5;
 
 function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<WizardDraft>) => void }) {
   const [generating, setGenerating] = useState<'identity' | 'theme' | null>(null);
-  const [genError, setGenError] = useState<string | null>(null);
 
   /*
     "Generate With Ai", for each half of the step. A suggestion written into the
@@ -430,7 +430,6 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
   async function generate(part: 'identity' | 'theme') {
     if (generating) return;
     setGenerating(part);
-    setGenError(null);
     const res = await invoke<{ name?: string; tagline?: string; tone?: string; colors?: string[] }>(
       'agency.identity.generate',
       {
@@ -445,10 +444,7 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
       crypto.randomUUID(),
     );
     setGenerating(null);
-    if (res.status !== 'succeeded') {
-      setGenError(res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t write a suggestion')) return;
     const out = res.output;
     set(
       part === 'identity'
@@ -474,7 +470,6 @@ function StepIdentity({ draft, set }: { draft: WizardDraft; set: (p: Partial<Wiz
         </div>
         <GenerateWithAi busy={generating === 'identity'} onClick={() => void generate('identity')} />
       </div>
-      {genError ? <p className="mt-[12px] text-14 text-destructive">{genError}</p> : null}
 
       <div className="mt-[34px] grid grid-cols-2 gap-x-[44px] gap-y-[28px]">
         <Field label="Agency Name">
@@ -597,7 +592,7 @@ function AgencyLogoField() {
     try {
       await organization.setLogo({ file });
     } catch {
-      setError('The logo could not be saved. Owners and admins can change it — try again in a moment.');
+      notify.error('Couldn’t save the logo', { body: 'Owners and admins can change it — try again in a moment.' });
     } finally {
       setBusy(false);
     }
@@ -633,7 +628,7 @@ function AgencyLogoField() {
         </span>
         <span className="flex flex-col gap-[3px]">
           <span className="text-15 font-semibold" style={{ color: '#3B3B3B' }}>
-            {busy ? 'Uploading…' : logo ? 'Replace the logo' : 'Drop files here or browse'}
+            {busy ? <Busy size={16}>Uploading…</Busy> : logo ? 'Replace the logo' : 'Drop files here or browse'}
           </span>
           <span className="text-13 font-normal" style={{ color: '#9B9B9B' }}>Png, Jpeg or WebP up to 10MB</span>
           <span className="mt-[4px] text-13 font-semibold underline" style={{ color: '#5B5B5B' }}>Browse files</span>
@@ -752,7 +747,7 @@ function GenerateWithAi({ busy, onClick }: { busy: boolean; onClick: () => void 
         </defs>
         <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill="url(#ss-wiz-spark)" />
       </svg>
-      <span className="whitespace-nowrap">{busy ? 'Generating…' : 'Generate With Ai'}</span>
+      <span className="whitespace-nowrap">{busy ? <Busy size={16}>Generating…</Busy> : 'Generate With Ai'}</span>
     </button>
   );
 }
@@ -870,7 +865,6 @@ function StepWebsite({
               Written from your answers and published at {previewSlug(draft.name)}.{site.rootDomain}.
             </p>
           )}
-          {site.error ? <p className="mt-[6px] text-14 text-destructive">{site.error}</p> : null}
         </div>
         <div className="flex shrink-0 gap-[10px]">
           {site.site ? (
@@ -891,7 +885,7 @@ function StepWebsite({
             title={draft.name.trim() ? undefined : 'Give the agency a name on step 2 first'}
             className="flex h-[44px] items-center rounded-[10px] bg-ink px-[18px] text-15 font-semibold text-white disabled:opacity-60"
           >
-            {site.busy === 'generate' ? 'Writing your site…' : site.site ? 'Rewrite the copy' : 'Generate my website'}
+            {site.busy === 'generate' ? <Busy>Writing your site…</Busy> : site.site ? 'Rewrite the copy' : 'Generate my website'}
           </button>
         </div>
       </div>
@@ -1281,7 +1275,6 @@ function StepDone({
                 </div>
               </>
             ) : null}
-            {site.error ? <p className="mt-[14px] text-14 text-destructive">{site.error}</p> : null}
           </>
         )}
       </div>
@@ -1298,7 +1291,7 @@ function StepDone({
                 className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-white text-16 font-semibold disabled:opacity-60"
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: 'rgb(91,91,91)' }}
               >
-                {site.busy === 'remove' ? 'Removing…' : 'Remove domain'}
+                {site.busy === 'remove' ? <Busy>Removing…</Busy> : 'Remove domain'}
               </button>
               <button
                 type="button"
@@ -1306,7 +1299,7 @@ function StepDone({
                 disabled={site.busy !== null}
                 className="flex h-[52px] w-[180px] items-center justify-center rounded-[11px] bg-ink text-16 font-semibold text-white disabled:opacity-60"
               >
-                {site.busy === 'check' ? 'Checking…' : 'Check again'}
+                {site.busy === 'check' ? <Busy>Checking…</Busy> : 'Check again'}
               </button>
             </>
           ) : (
@@ -1325,7 +1318,7 @@ function StepDone({
                 disabled={site.busy !== null || !draft.domain.trim()}
                 className="flex h-[52px] w-[180px] items-center justify-center gap-[9px] rounded-[11px] bg-ink text-16 font-semibold text-white disabled:opacity-60"
               >
-                {site.busy === 'connect' ? 'Linking…' : 'Link'}
+                {site.busy === 'connect' ? <Busy>Linking…</Busy> : 'Link'}
                 <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden className="block">
                   <path d="M1 9 9 1M9 1H3M9 1v6" stroke="#FFFFFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `genome.avatar_config.set` — real since P3, unreached from any screen until
@@ -28,57 +29,53 @@ export function AvatarConfigPanel() {
   const [heygenAvatarId, setHeygenAvatarId] = useState('');
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  /* The form's own validation only — what a save came to is a notification. */
+  const [invalid, setInvalid] = useState<string | null>(null);
 
   const [overrideReason, setOverrideReason] = useState('');
   const [overrideBusy, setOverrideBusy] = useState(false);
-  const [overrideMessage, setOverrideMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [overrideInvalid, setOverrideInvalid] = useState<string | null>(null);
 
   async function save() {
     if (!genome) return;
     if (!heygenAvatarId.trim() && !elevenlabsVoiceId.trim()) {
-      setMessage({ kind: 'err', text: 'Enter at least one id.' });
+      setInvalid('Enter at least one id.');
       return;
     }
     setBusy(true);
-    setMessage(null);
+    setInvalid(null);
     const res = await invoke<{ genomeId: string; version: number }>('genome.avatar_config.set', {
       genomeId: genome.genomeId,
       ...(heygenAvatarId.trim() ? { heygenAvatarId: heygenAvatarId.trim() } : {}),
       ...(elevenlabsVoiceId.trim() ? { elevenlabsVoiceId: elevenlabsVoiceId.trim() } : {}),
     });
     setBusy(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: 'Saved.' });
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    notifyResult(res, 'Avatar and voice saved', 'Couldn’t save the avatar and voice');
   }
 
   async function setOverride(enabled: boolean) {
     if (!genome) return;
     if (enabled && overrideReason.trim().length < 10) {
-      setOverrideMessage({ kind: 'err', text: 'Say why in at least 10 characters — this is recorded against the genome.' });
+      setOverrideInvalid('Say why in at least 10 characters — this is recorded against the genome.');
       return;
     }
     setOverrideBusy(true);
-    setOverrideMessage(null);
+    setOverrideInvalid(null);
     const res = await invoke<{ avatarEnabled: boolean }>('genome.avatar_override.set', {
       genomeId: genome.genomeId,
       enabled,
       ...(enabled ? { reason: overrideReason.trim() } : {}),
     });
     setOverrideBusy(false);
-    if (res.status === 'succeeded') {
-      setOverrideMessage({
-        kind: 'ok',
-        text: enabled ? 'Avatar explicitly turned on for this genome.' : 'Override cleared — back to the derived default.',
-      });
-      if (enabled) setOverrideReason('');
-    } else {
-      // Refused without a licensed, consented person to clone — `content.generate_avatar_video` checks the same two facts before spending.
-      setOverrideMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    // Refused without a licensed, consented person to clone — `content.generate_avatar_video` checks the same two facts before spending.
+    const ok = notifyResult(
+      res,
+      enabled
+        ? { title: 'Avatar turned on', body: 'Explicitly on for this genome.' }
+        : { title: 'Override cleared', body: 'Back to the derived default.' },
+      'Couldn’t change the avatar override',
+    );
+    if (ok && enabled) setOverrideReason('');
   }
 
   return (
@@ -118,13 +115,9 @@ export function AvatarConfigPanel() {
 
       <div className="mt-4 flex items-center gap-3">
         <Button size="sm" disabled={busy || !genome} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? <Busy>Saving…</Busy> : 'Save'}
         </Button>
-        {message ? (
-          <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
-            {message.text}
-          </span>
-        ) : null}
+        {invalid ? <span className="text-13 text-destructive">{invalid}</span> : null}
       </div>
 
       <div className="mt-6 border-t border-border pt-6">
@@ -151,16 +144,12 @@ export function AvatarConfigPanel() {
 
         <div className="mt-3 flex items-center gap-3">
           <Button size="sm" disabled={overrideBusy || !genome} onClick={() => void setOverride(true)}>
-            {overrideBusy ? 'Saving…' : 'Turn on'}
+            {overrideBusy ? <Busy>Saving…</Busy> : 'Turn on'}
           </Button>
           <Button size="sm" variant="outline" disabled={overrideBusy || !genome} onClick={() => void setOverride(false)}>
-            {overrideBusy ? 'Saving…' : 'Clear override'}
+            {overrideBusy ? <Busy>Saving…</Busy> : 'Clear override'}
           </Button>
-          {overrideMessage ? (
-            <span className={`text-13 ${overrideMessage.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
-              {overrideMessage.text}
-            </span>
-          ) : null}
+          {overrideInvalid ? <span className="text-13 text-destructive">{overrideInvalid}</span> : null}
         </div>
       </div>
     </section>

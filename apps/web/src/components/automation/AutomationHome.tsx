@@ -12,6 +12,7 @@ import {
 } from './recipeMeta';
 import type { QueueRow, RecipeItem } from './useAutomation';
 import { SparkMark } from '@/components/brand/SparkMark';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * The Automation Recipes home — `SparkSocial Automation.dc.html`, `isHome`.
@@ -410,7 +411,7 @@ export function AutomationHome({
         </div>
 
         {rows === null ? (
-          <p className="px-[28px] py-[40px] text-16 text-ink-muted">Loading the queue…</p>
+          <SparkLoader size="inline" label="Loading the queue…" className="px-[28px] py-[40px]" />
         ) : visible.length === 0 ? (
           <p className="px-[28px] py-[40px] text-16 text-ink-muted">
             {(rows.length ?? 0) === 0

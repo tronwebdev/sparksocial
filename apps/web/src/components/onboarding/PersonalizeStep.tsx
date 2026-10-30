@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-05` — the agent personalization step.
@@ -43,7 +45,8 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState('');
   const [subject, setSubject] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  /** The missing-name check, beside the field. What the save came to is a notification. */
+  const [subjectError, setSubjectError] = useState<string | null>(null);
 
   const wantsAvatar = heygenAvatarId.trim().length > 0;
   const wantsVoice = elevenlabsVoiceId.trim().length > 0;
@@ -52,12 +55,12 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
   async function save() {
     if (!wantsSomething) return;
     if (!subject.trim()) {
-      setMessage({ kind: 'err', text: 'Name the person this likeness belongs to — SPARK will not use it otherwise.' });
+      setSubjectError('Name the person this likeness belongs to — SPARK will not use it otherwise.');
       return;
     }
 
     setBusy(true);
-    setMessage(null);
+    setSubjectError(null);
 
     /**
      * Consent first, then the ids.
@@ -88,12 +91,8 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
          */
         `consent:${kind}:${subject.trim()}:${Date.now()}`,
       );
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, 'Couldn’t record consent')) {
         setBusy(false);
-        setMessage({
-          kind: 'err',
-          text: res.status === 'failed' ? userMessage(res.error) : 'Recording consent needs approval before it can run.',
-        });
         return;
       }
     }
@@ -105,17 +104,16 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
     });
     setBusy(false);
 
-    if (res.status !== 'succeeded') {
-      setMessage({
-        kind: 'err',
-        // The consent record stands even though the ids did not save. That is
-        // the right way round — a consent record with no avatar is harmless,
-        // and saying so stops somebody re-granting it and creating a duplicate.
-        text: `${res.status === 'failed' ? userMessage(res.error) : 'That needs approval before it can run.'} The consent record was saved; you can set the ids in Settings.`,
+    // The consent record stands even though the ids did not save. That is
+    // the right way round — a consent record with no avatar is harmless,
+    // and saying so stops somebody re-granting it and creating a duplicate.
+    if (res.status === 'failed') {
+      notify.error('Couldn’t save the ids', {
+        body: `${userMessage(res.error)} The consent record was saved; you can set the ids in Settings.`,
       });
       return;
     }
-    setMessage({ kind: 'ok', text: 'Saved. SPARK can use this likeness now.' });
+    notifyResult(res, { title: 'Likeness saved', body: 'SPARK can use this likeness now.' });
   }
 
   return (
@@ -171,16 +169,12 @@ export function PersonalizeStep({ genomeId }: { genomeId: string }) {
         </div>
       ) : null}
 
-      {message ? (
-        <p className={`text-14 ${message.kind === 'ok' ? 'text-success' : 'text-[var(--ss-danger)]'}`}>
-          {message.text}
-        </p>
-      ) : null}
+      {subjectError ? <p className="text-14 text-[var(--ss-danger)]">{subjectError}</p> : null}
 
       {wantsSomething ? (
         <div>
           <Button variant="outline" disabled={busy} onClick={() => void save()}>
-            {busy ? 'Saving…' : 'Save likeness'}
+            {busy ? <Busy>Saving…</Busy> : 'Save likeness'}
           </Button>
         </div>
       ) : null}

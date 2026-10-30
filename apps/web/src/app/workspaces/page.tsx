@@ -1,11 +1,13 @@
 'use client';
 
 import { SparkMark } from '@/components/brand/SparkMark';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
+import { notify } from '@/lib/notify';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { DeleteBrandModal } from '@/components/agency/DeleteBrandModal';
 
@@ -87,7 +89,6 @@ export default function WorkspacesPage() {
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   /** The brand whose Delete was pressed — `DeleteBrandModal` takes it from there. */
   const [deleting, setDeleting] = useState<BrandCard | null>(null);
 
@@ -116,12 +117,6 @@ export default function WorkspacesPage() {
       if (res.status === 'succeeded') setBrands(res.output.genomes);
     })();
   }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2300);
-    return () => clearTimeout(t);
-  }, [toast]);
 
   const memberships = userMemberships?.data ?? [];
 
@@ -429,7 +424,7 @@ export default function WorkspacesPage() {
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden className="block">
                   <path d="M7 1v12M1 7h12" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                {busy ? 'Opening…' : 'Add Brand'}
+                {busy ? <Busy>Opening…</Busy> : 'Add Brand'}
               </button>
             </div>
           </div>
@@ -438,9 +433,7 @@ export default function WorkspacesPage() {
         {/* ── cards ───────────────────────────────────────────────────────── */}
         <div className="mt-6 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3 xl:mt-[34px] xl:grid-cols-5">
           {brands === null ? (
-            <span className="text-17" style={{ color: MUTED }}>
-              Loading your brands…
-            </span>
+            <SparkLoader size="inline" label="Loading your brands…" className="col-span-full" />
           ) : cards.length === 0 ? (
             <span className="col-span-full text-17" style={{ color: MUTED }}>
               {query.trim()
@@ -597,20 +590,11 @@ export default function WorkspacesPage() {
             setDeleting(null);
             // Every genome of the brand goes with it, so drop them all.
             setBrands((list) => (list ? list.filter((x) => x.brandId !== gone) : list));
-            setToast(`${name} deleted`);
+            notify.success(`${name} deleted`);
           }}
         />
       ) : null}
 
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-[34px] left-1/2 z-[100] -translate-x-1/2 whitespace-nowrap rounded-xl px-[22px] py-[13px] text-15 font-medium text-white"
-          style={{ background: '#0C0C0C', boxShadow: '0 12px 32px -8px rgba(0,0,0,0.4)' }}
-        >
-          {toast}
-        </div>
-      ) : null}
     </div>
   );
 }

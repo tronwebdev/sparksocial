@@ -1,6 +1,7 @@
 'use client';
 
 import { SparkLoader } from '@/components/brand/SparkLoader';
+import { notify, notifyResult } from '@/lib/notify';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -140,14 +141,7 @@ export function AssetsLibraryScreen() {
   } | null>(null);
   const [modal, setModal] = useState<'create' | 'upload' | 'rights' | null>(null);
   const [preview, setPreview] = useState<Asset | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  /** The design's toast: bottom-centre, 2.2s, one at a time. */
-  const say = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 2300);
-  }, []);
 
   const loadFolders = useCallback(async () => {
     if (!genomeId) return;
@@ -222,9 +216,11 @@ export function AssetsLibraryScreen() {
       setOpenFolder(found);
       setView('grid');
     } else {
-      say('That folder link is not in this brand — pick a brand it belongs to, or ask whoever shared it.');
+      notify.warning('That folder isn’t in this brand', {
+        body: 'Pick a brand it belongs to, or ask whoever shared it.',
+      });
     }
-  }, [folders, say]);
+  }, [folders]);
 
   const loadAssets = useCallback(
     async (folder: Folder) => {
@@ -315,12 +311,8 @@ export function AssetsLibraryScreen() {
   async function removeAsset(a: Asset) {
     if (!genomeId) return;
     const res = await invoke('asset.archive', { genomeId, assetId: a.assetId }, `asset-archive:${a.assetId}`);
-    if (res.status !== 'succeeded') {
-      say(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, `${a.filename ?? a.caption ?? 'Asset'} deleted`, 'Couldn’t delete it')) return;
     setAssets((prev) => prev?.filter((x) => x.assetId !== a.assetId) ?? prev);
-    say(`${a.filename ?? a.caption ?? 'Asset'} deleted`);
     void loadFolders();
   }
 
@@ -597,7 +589,7 @@ export function AssetsLibraryScreen() {
         </div>
       ) : folders === null ? (
         <div className="px-lib-inset pt-[30px]">
-          <p className="text-16 text-ink-muted">Loading folders…</p>
+          <SparkLoader size="inline" label="Loading folders…" />
         </div>
       ) : folders.length === 0 && (unfiled?.length ?? 0) === 0 ? (
         /* Empty only when there is truly nothing. It was "no folders", which
@@ -736,7 +728,7 @@ export function AssetsLibraryScreen() {
           onClose={() => setModal(null)}
           onCreated={(name) => {
             setModal(null);
-            say(`Folder “${name}” created`);
+            notify.success(`Folder “${name}” created`);
             void loadFolders();
           }}
         />
@@ -749,7 +741,7 @@ export function AssetsLibraryScreen() {
           onClose={() => setModal(null)}
           onDone={(count) => {
             setModal(null);
-            say(`${count} ${count === 1 ? 'file' : 'files'} added to ${openFolder.name}`);
+            notify.success(`${count} ${count === 1 ? 'file' : 'files'} added to ${openFolder.name}`);
             void loadAssets(openFolder);
             void loadFolders();
             /* An upload without the rights box ticked lands as `pending`, which
@@ -766,7 +758,7 @@ export function AssetsLibraryScreen() {
           assets={folderPending}
           onClose={() => setModal(null)}
           onChanged={(message) => {
-            say(message);
+            notify.success(message);
             void loadPending();
             /* Cleared means retrievable, so the folder itself changes too. */
             if (openFolder) void loadAssets(openFolder);
@@ -781,7 +773,7 @@ export function AssetsLibraryScreen() {
           onClose={() => setActOn(null)}
           onSaved={(count) => {
             setActOn(null);
-            say(
+            notify.success(
               count === 0
                 ? `Nobody is assigned to “${actOn.folder.name}”`
                 : `${count} ${count === 1 ? 'person' : 'people'} assigned to “${actOn.folder.name}”`,
@@ -801,7 +793,7 @@ export function AssetsLibraryScreen() {
           onClose={() => setActOn(null)}
           onRenamed={(name) => {
             setActOn(null);
-            say(`Folder renamed to “${name}”`);
+            notify.success(`Folder renamed to “${name}”`);
             /* The open folder carries its own copy of the row. */
             setOpenFolder((cur) => (cur && cur.folderId === actOn.folder.folderId ? { ...cur, name } : cur));
             void loadFolders();
@@ -816,10 +808,9 @@ export function AssetsLibraryScreen() {
           onClose={() => setActOn(null)}
           onDeleted={(unfiled) => {
             setActOn(null);
-            say(
-              unfiled === 0
-                ? `“${actOn.folder.name}” deleted`
-                : `“${actOn.folder.name}” deleted — ${unfiled} ${unfiled === 1 ? 'file is' : 'files are'} now unfiled`,
+            notify.success(
+              `“${actOn.folder.name}” deleted`,
+              unfiled === 0 ? undefined : { body: `${unfiled} ${unfiled === 1 ? 'file is' : 'files are'} now unfiled.` },
             );
             if (openFolder?.folderId === actOn.folder.folderId) setOpenFolder(null);
             void loadFolders();
@@ -839,7 +830,7 @@ export function AssetsLibraryScreen() {
           onClose={() => setFiling(null)}
           onFiled={(name) => {
             setFiling(null);
-            say(`Moved to “${name}”`);
+            notify.success(`Moved to “${name}”`);
             void loadUnfiled();
             void loadFolders();
             if (openFolder) void loadAssets(openFolder);
@@ -848,17 +839,6 @@ export function AssetsLibraryScreen() {
       ) : null}
 
       {preview ? <ViewAssetModal asset={preview} onClose={() => setPreview(null)} /> : null}
-
-      {/* The design's toast — fixed, bottom-centre, `ss-toast 2.2s`. */}
-      {toast ? (
-        <div
-          role="status"
-          className="fixed bottom-[34px] left-1/2 z-[100] -translate-x-1/2 animate-toast-in whitespace-nowrap rounded-xl px-[22px] py-[13px] text-15 font-medium text-white motion-reduce:animate-none"
-          style={{ background: '#0C0C0C', boxShadow: '0 12px 32px -8px rgba(0,0,0,0.4)' }}
-        >
-          {toast}
-        </div>
-      ) : null}
     </div>
   );
 }

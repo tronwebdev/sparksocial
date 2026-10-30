@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * ASKING FOR THE MISSING FACT, AT THE MOMENT IT IS STILL CHEAP.
@@ -74,7 +75,6 @@ export function MissingFactsRequest({
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Only the ones this component knows how to write. A fact with no setter is
   // still worth naming — it tells somebody which screen to go to — but it must
@@ -85,17 +85,13 @@ export function MissingFactsRequest({
 
   const save = async () => {
     setBusy(true);
-    setError(null);
     for (const fact of writable) {
       const value = (values[fact.path] ?? '').trim();
       if (!value) continue;
       const { tool, input } = SETTER[fact.path]!(genomeId, value);
       const res = await invoke<unknown>(tool, input, crypto.randomUUID());
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, `Couldn’t save the ${fact.label}`)) {
         setBusy(false);
-        setError(
-          res.status === 'failed' ? userMessage(res.error) : 'You do not have permission to change brand settings.',
-        );
         return;
       }
     }
@@ -141,11 +137,9 @@ export function MissingFactsRequest({
         ))}
       </div>
 
-      {error && <p className="mt-3 text-12 text-destructive">{error}</p>}
-
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => void save()} disabled={busy || !filledAll}>
-          {busy ? 'Saving…' : 'Save and replan'}
+          {busy ? <Busy size={16}>Saving…</Busy> : 'Save and replan'}
         </Button>
         {/* The way past, labelled with what it costs rather than as "Skip". */}
         <Button size="sm" variant="ghost" onClick={onSkip}>

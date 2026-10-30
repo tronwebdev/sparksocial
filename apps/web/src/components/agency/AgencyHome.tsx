@@ -1,6 +1,7 @@
 'use client';
 
 import { SparkMark } from '@/components/brand/SparkMark';
+import { Busy } from '@/components/brand/SparkLoader';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RosterBrand } from './useAgencyRoster';
 import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
@@ -426,7 +427,7 @@ function BannerCard({ title, url, onGenerate, busy }: { title: string; url?: str
           className="absolute bottom-[16px] left-[16px] right-[16px] flex h-[40px] items-center justify-center rounded-[10px] text-14 font-semibold transition-colors disabled:opacity-60"
           style={url ? { background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', color: '#0C0C0C' } : { background: '#0C0C0C', color: '#FFFFFF' }}
         >
-          {busy ? 'Making it…' : url ? 'Make another' : `Generate ${title.toLowerCase()}`}
+          {busy ? <Busy>Making it…</Busy> : url ? 'Make another' : `Generate ${title.toLowerCase()}`}
         </button>
       ) : null}
     </div>

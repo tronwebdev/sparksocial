@@ -2,6 +2,7 @@
 
 import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { parseLeadCsv, type LeadCsvPreview, type LeadImportRow } from './leadCsv';
 import type { ImportResult } from './useLeads';
@@ -125,12 +126,12 @@ export function LeadImportModal({
   busy,
 }: {
   onClose: () => void;
-  onImport: (rows: LeadImportRow[]) => Promise<{ result?: ImportResult; error?: string }>;
+  /** Resolves to null when it failed — the failure is announced by `useLeads`. */
+  onImport: (rows: LeadImportRow[]) => Promise<ImportResult | null>;
   busy: boolean;
 }) {
   const [text, setText] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<ImportResult | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -138,13 +139,8 @@ export function LeadImportModal({
 
   async function commit() {
     if (!preview || preview.importable.length === 0) return;
-    setError(null);
-    const { result, error: err } = await onImport(preview.importable);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setDone(result ?? null);
+    const result = await onImport(preview.importable);
+    if (result) setDone(result);
   }
 
   /* ── the result screen, once it has run ───────────────────────────── */
@@ -197,7 +193,7 @@ export function LeadImportModal({
             className={BTN_SOLID}
           >
             {busy
-              ? 'Importing…'
+              ? <Busy>Importing…</Busy>
               : preview && preview.importable.length > 0
                 ? `Import ${preview.importable.length} ${preview.importable.length === 1 ? 'lead' : 'leads'}`
                 : 'Import'}
@@ -309,8 +305,6 @@ export function LeadImportModal({
           ) : null}
         </div>
       ) : null}
-
-      {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
     </Modal>
   );
 }
@@ -351,7 +345,8 @@ export function LeadAddModal({
   busy,
 }: {
   onClose: () => void;
-  onCreate: (row: LeadImportRow & { source?: 'manual' | 'referral' | 'inbound' }) => Promise<string | null>;
+  /** Resolves to whether it was added — a failure is announced by `useLeads`. */
+  onCreate: (row: LeadImportRow & { source?: 'manual' | 'referral' | 'inbound' }) => Promise<boolean>;
   busy: boolean;
 }) {
   const [row, setRow] = useState<LeadImportRow & { source: 'manual' | 'referral' | 'inbound' }>({
@@ -370,7 +365,7 @@ export function LeadAddModal({
     setError(null);
     /* Blank optional fields are omitted, not sent as empty strings — the tool
        validates the ones it receives, and `''` is not a valid email. */
-    const err = await onCreate({
+    const created = await onCreate({
       businessName: row.businessName.trim(),
       source: row.source,
       ...(row.contactName?.trim() ? { contactName: row.contactName.trim() } : {}),
@@ -380,11 +375,7 @@ export function LeadAddModal({
       ...(row.interest?.trim() ? { interest: row.interest.trim() } : {}),
       ...(row.notes?.trim() ? { notes: row.notes.trim() } : {}),
     });
-    if (err) {
-      setError(err);
-      return;
-    }
-    onClose();
+    if (created) onClose();
   }
 
   return (
@@ -398,7 +389,7 @@ export function LeadAddModal({
             Cancel
           </button>
           <button type="button" onClick={submit} disabled={busy} className={BTN_SOLID}>
-            {busy ? 'Adding…' : 'Add lead'}
+            {busy ? <Busy>Adding…</Busy> : 'Add lead'}
           </button>
         </>
       }

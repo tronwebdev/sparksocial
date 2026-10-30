@@ -1,11 +1,12 @@
 'use client';
 
-import { SparkLoader } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
 
 /**
  * One hard monthly limit per brand.
@@ -106,12 +107,14 @@ export function BrandBudgetsSection() {
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(
-        res.status === 'failed'
-          ? userMessage(res.error)
-          : 'Only an owner can set a spending limit.',
-      );
+    const name = brands?.find((b) => b.brandId === brandId)?.name;
+    if (
+      !notifyResult(
+        res,
+        { title: cents === null ? 'Limit removed' : 'Limit saved', ...(name ? { body: name } : {}) },
+        'Couldn’t save the limit',
+      )
+    ) {
       return;
     }
     // Re-read rather than patch local state: the spend figure moves on its own
@@ -205,7 +208,7 @@ export function BrandBudgetsSection() {
                       void save(b.brandId, draft?.trim() === '' ? null : Math.round(n * 100));
                     }}
                   >
-                    {busy === b.brandId ? 'Saving…' : 'Save'}
+                    {busy === b.brandId ? <Busy>Saving…</Busy> : 'Save'}
                   </Button>
                   {cap ? (
                     <Button

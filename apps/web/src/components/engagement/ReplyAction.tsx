@@ -3,25 +3,22 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import type { EngagementItem } from './EngagementFeed';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The "approve & send" loop PRD §8.8 describes, attached to one feed card:
  * draft → edit → send. `EngagementFeed` stays the read side (`engage.list`);
  * this owns the two write calls (`engage.reply.draft`/`.send`) for exactly
- * one message, so a busy/error/sent state on one card never touches its
- * siblings.
+ * one message, so a busy/sent state on one card never touches its siblings.
  *
  * `engage.reply.send` is gated by `policy.ts` rule 6 (eligibility + the
  * campaign's engagement rung — autonomy became a property of the campaign on
  * 22 August, so this is no longer a brand-wide setting) — a `gated` result is
- * expected, common,
- * and shown with its own reason rather than folded into the generic error
- * path a `failed` result gets. Same "handle gated explicitly" rule
- * `AgentControlBar`/`DraftPanel` already follow for their own write calls.
+ * expected, common, and goes through `notifyResult` as "sent for approval"
+ * with its own reason rather than as the error a `failed` result gets.
  */
 
 type Phase = 'idle' | 'loading' | 'editing' | 'sending' | 'sent';
@@ -38,21 +35,17 @@ export function ReplyAction({
   const [phase, setPhase] = useState<Phase>('idle');
   const [text, setText] = useState('');
   const [source, setSource] = useState<'suggested' | 'generated' | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [gated, setGated] = useState<string | null>(null);
 
   async function draft(regenerate: boolean) {
     setPhase('loading');
-    setError(null);
-    setGated(null);
     const res = await invoke<{ text: string; source: 'suggested' | 'generated' }>('engage.reply.draft', {
       genomeId,
       messageId: item.id,
       regenerate,
     });
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Drafting was held: check the review queue.');
-      setPhase('idle');
+    if (!notifyResult(res, undefined, 'Couldn’t draft a reply')) {
+      /* Back to where it was: a regenerate keeps the text being edited. */
+      setPhase(regenerate ? 'editing' : 'idle');
       return;
     }
     setText(res.output.text);
@@ -63,25 +56,18 @@ export function ReplyAction({
   async function send() {
     if (!text.trim()) return;
     setPhase('sending');
-    setError(null);
-    setGated(null);
     const res = await invoke<{ status: string }>(
       'engage.reply.send',
       { genomeId, messageId: item.id, text: text.trim() },
       `engage.reply.send:${item.id}`,
     );
-    if (res.status === 'succeeded') {
-      setPhase('sent');
-      toast.success('Reply sent');
-      onReplied(item.id);
+    if (!notifyResult(res, undefined, 'Couldn’t send the reply')) {
+      setPhase('editing');
       return;
     }
-    setPhase('editing');
-    if (res.status === 'gated') {
-      setGated(res.decision.reason ?? `Held: ${res.decision.kind}.`);
-    } else {
-      setError(userMessage(res.error));
-    }
+    setPhase('sent');
+    notify.success('Reply sent');
+    onReplied(item.id);
   }
 
   if (item.status === 'replied' || phase === 'sent') {
@@ -92,9 +78,8 @@ export function ReplyAction({
     return (
       <div className="mt-3">
         <Button size="sm" variant="outline" disabled={phase === 'loading'} onClick={() => void draft(false)}>
-          {phase === 'loading' ? 'Drafting…' : 'Draft reply'}
+          {phase === 'loading' ? <Busy size={16}>Drafting…</Busy> : 'Draft reply'}
         </Button>
-        {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
       </div>
     );
   }
@@ -128,7 +113,7 @@ export function ReplyAction({
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={phase === 'sending' || !text.trim()} onClick={() => void send()}>
-          {phase === 'sending' ? 'Sending…' : 'Send'}
+          {phase === 'sending' ? <Busy size={16}>Sending…</Busy> : 'Send'}
         </Button>
         <button
           type="button"
@@ -138,16 +123,11 @@ export function ReplyAction({
             setPhase('idle');
             setText('');
             setSource(null);
-            setError(null);
-            setGated(null);
           }}
         >
           Cancel
         </button>
       </div>
-
-      {gated ? <p className="mt-2 text-13 text-warn">Held: {gated}</p> : null}
-      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }

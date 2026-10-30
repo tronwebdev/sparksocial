@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The agent state the Command Center's chrome needs: name, voice, risk
@@ -90,9 +89,11 @@ export function useCcAgent(genomeId: string | undefined): CcAgent {
     // that did nothing. Pausing is the one control that must never fail quietly.
     const res = await invoke(paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
-    if (res.status === 'succeeded') toast.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
-    else if (res.status === 'failed') toast.error(userMessage(res.error));
-    else toast.warning('That change is waiting for approval.');
+    notifyResult(
+      res,
+      paused ? 'Agent resumed' : { title: 'Agent paused', body: 'It won’t act until you resume it.' },
+      paused ? 'Couldn’t resume the agent' : 'Couldn’t pause the agent',
+    );
     setReloads((n) => n + 1);
   }, [busy, paused]);
 

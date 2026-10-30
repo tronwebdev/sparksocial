@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import type { Folder } from './types';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The two folder actions that need a confirmation step — Rename and Delete.
@@ -32,7 +33,7 @@ function Footer({
 }: {
   onCancel: () => void;
   onConfirm: () => void;
-  confirmLabel: string;
+  confirmLabel: ReactNode;
   busy: boolean;
   danger?: boolean;
 }) {
@@ -168,7 +169,6 @@ export function RenameFolderModal({
 }) {
   const [name, setName] = useState(folder.name);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function save() {
     const next = name.trim();
@@ -178,7 +178,6 @@ export function RenameFolderModal({
       return;
     }
     setBusy(true);
-    setError(null);
     /* `idempotent: true` — the same name twice is the same state, so `invoke`
        needs no key here (unlike `asset.folder.create`, where it does). */
     const res = await invoke<{ name: string }>('asset.folder.rename', {
@@ -187,10 +186,7 @@ export function RenameFolderModal({
       name: next,
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t rename the folder')) return;
     onRenamed(res.output.name);
   }
 
@@ -224,10 +220,9 @@ export function RenameFolderModal({
         <p className="mt-[10px] text-14 text-ink-muted">
           Only the folder’s name changes. Nothing inside it moves.
         </p>
-        {error ? <p className="mt-[12px] text-15 text-destructive">{error}</p> : null}
       </div>
 
-      <Footer onCancel={onClose} onConfirm={() => void save()} confirmLabel={busy ? 'Saving…' : 'Save'} busy={busy} />
+      <Footer onCancel={onClose} onConfirm={() => void save()} confirmLabel={busy ? <Busy>Saving…</Busy> : 'Save'} busy={busy} />
     </ModalShell>
   );
 }
@@ -244,21 +239,16 @@ export function DeleteFolderModal({
   onDeleted: (unfiled: number) => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function remove() {
     if (busy) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ unfiled: number }>('asset.folder.delete', {
       genomeId,
       folderId: folder.folderId,
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t delete the folder')) return;
     onDeleted(res.output.unfiled);
   }
 
@@ -289,13 +279,12 @@ export function DeleteFolderModal({
               : 'They stay in the Asset Graph without a folder, SPARK can still use them, and posts that already reference them keep working. To remove a file for good, delete it from inside the folder first.'}
           </span>
         </p>
-        {error ? <p className="mt-[14px] text-center text-15 text-destructive">{error}</p> : null}
       </div>
 
       <Footer
         onCancel={onClose}
         onConfirm={() => void remove()}
-        confirmLabel={busy ? 'Deleting…' : 'Delete folder'}
+        confirmLabel={busy ? <Busy>Deleting…</Busy> : 'Delete folder'}
         busy={busy}
         danger
       />
@@ -323,18 +312,13 @@ export function PickFolderModal({
   onFiled: (folderName: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function file(f: Folder) {
     if (busy) return;
     setBusy(f.folderId);
-    setError(null);
     const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId: f.folderId }, `asset-move:${asset}:${f.folderId}`);
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, `Couldn’t move it to “${f.name}”`)) return;
     onFiled(f.name);
   }
 
@@ -371,14 +355,13 @@ export function PickFolderModal({
                 >
                   <span className="truncate text-16 font-semibold text-ink">{f.name}</span>
                   <span className="ml-[12px] shrink-0 text-14 font-medium" style={{ color: '#838383' }}>
-                    {busy === f.folderId ? 'Moving…' : `${f.assetCount} ${f.assetCount === 1 ? 'file' : 'files'}`}
+                    {busy === f.folderId ? <Busy size={16}>Moving…</Busy> : `${f.assetCount} ${f.assetCount === 1 ? 'file' : 'files'}`}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
-        {error ? <p className="mt-[12px] text-center text-15 text-destructive">{error}</p> : null}
       </div>
 
       <div className="mt-[22px] flex items-center justify-center">

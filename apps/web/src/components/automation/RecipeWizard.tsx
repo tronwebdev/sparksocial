@@ -1,5 +1,6 @@
 'use client';
 
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { platformLabel } from '@/lib/platforms';
 import { TrendResultsRail } from './TrendResultsRail';
@@ -54,7 +55,6 @@ export function RecipeWizard({
   onBack,
   onLaunch,
   busy,
-  error,
   validation,
   canvaConnected,
   connecting,
@@ -71,7 +71,6 @@ export function RecipeWizard({
   onBack: () => void;
   onLaunch: () => void;
   busy: boolean;
-  error: string | null;
   /** `recipe.validate`'s answer for the config being built. */
   validation: Validation | null;
   /** `brand.oauth.status` for Canva, for the source step's connect strip. */
@@ -136,7 +135,7 @@ export function RecipeWizard({
           className="ml-auto flex h-[44px] items-center gap-[16px] rounded-[10px] px-[8px] transition-colors hover:bg-white/70 disabled:opacity-60"
         >
           <span className="whitespace-nowrap text-19 font-semibold text-ink">
-            {busy ? (editing ? 'Saving…' : 'Launching…') : last ? (editing ? 'Save Changes' : 'Launch Automation') : 'Continue'}
+            {busy ? <Busy>{editing ? 'Saving…' : 'Launching…'}</Busy> : last ? (editing ? 'Save Changes' : 'Launch Automation') : 'Continue'}
           </span>
           <svg width="9" height="16" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -182,8 +181,6 @@ export function RecipeWizard({
             ) : null}
             {kind === 'feed' ? <FeedStep genomeId={genomeId} recipeId={editingId} draft={draft} set={set} /> : null}
             {kind === 'freq' ? <FreqStep draft={draft} set={set} /> : null}
-
-            {error ? <p className="mt-[16px] max-w-auto-form text-15 text-destructive">{error}</p> : null}
           </div>
         </div>
 

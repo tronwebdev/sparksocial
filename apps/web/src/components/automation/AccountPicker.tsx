@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { PlatformIcon } from '@/components/common/PlatformIcon';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
@@ -141,7 +142,7 @@ export function AccountPicker({
   const toggle = (platform: string) =>
     onSelected(selected.includes(platform) ? selected.filter((p) => p !== platform) : [...selected, platform]);
 
-  if (rows === null) return <p className="mt-[10px] text-15 text-ink-muted">Loading your accounts…</p>;
+  if (rows === null) return <SparkLoader size="inline" label="Loading your accounts…" className="mt-[10px]" />;
 
   if (loadError) {
     const brandMissing = /brand must be selected/i.test(loadError);
@@ -262,7 +263,7 @@ export function AccountPicker({
                   className="h-[40px] shrink-0 rounded-[11px] px-[18px] text-15 font-semibold text-white transition-opacity hover:opacity-92 disabled:opacity-60"
                   style={{ background: 'var(--ss-grad-auto-connect)' }}
                 >
-                  {busy === r.platform ? 'Opening…' : 'Connect'}
+                  {busy === r.platform ? <Busy>Opening…</Busy> : 'Connect'}
                 </button>
               </li>
             ))}

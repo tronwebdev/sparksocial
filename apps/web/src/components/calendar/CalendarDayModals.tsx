@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import type { ToolOutput } from '@/lib/toolTypes.generated';
 import { cn } from '@/lib/utils';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { CalendarModal } from './CalendarModal';
 import type { BoardActions } from './CalendarBoard';
 
@@ -142,7 +143,7 @@ export function AskAgentModal({
 
       <Section label="Agent Recommendation">
         {rec === null ? (
-          <p className="text-19 font-medium text-ink-muted">Working out what fits this day…</p>
+          <SparkLoader size="inline" label="Working out what fits this day…" />
         ) : rec === 'none' ? (
           <p className="text-19 font-medium text-ink-muted">
             {/* A recommendation nobody can produce is a real state — the campaign
@@ -352,7 +353,7 @@ export function MoveExistingModal({
 
       <div className="max-h-[240px] overflow-y-auto px-[40px] pt-[20px]">
         {items === null ? (
-          <p className="text-16 text-ink-muted">Loading scheduled posts…</p>
+          <SparkLoader size="inline" label="Loading scheduled posts…" />
         ) : items.length === 0 ? (
           <p className="text-16 text-ink-muted">Nothing is scheduled, so there is nothing to move.</p>
         ) : (

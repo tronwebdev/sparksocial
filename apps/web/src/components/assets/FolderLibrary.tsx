@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { ASSET_ROLES } from './roles';
@@ -94,13 +96,9 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
     const name = newName.trim();
     if (!name) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<Folder>('asset.folder.create', { genomeId, name }, crypto.randomUUID());
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a folder was gated.');
-      return;
-    }
+    if (!notifyResult(res, `Folder “${name}” created`, 'Couldn’t create the folder')) return;
     setNewName('');
     await loadFolders();
   }
@@ -149,7 +147,7 @@ export function FolderLibrary({ refreshKey }: { refreshKey: number }) {
           />
         </div>
         <Button disabled={busy || !newName.trim()} onClick={() => void createFolder()}>
-          {busy ? 'Creating…' : 'Create'}
+          {busy ? <Busy>Creating…</Busy> : 'Create'}
         </Button>
       </div>
 
@@ -214,7 +212,6 @@ function FolderDetail({
 }) {
   const [assets, setAssets] = useState<Asset[] | null>(null);
   const [mode, setMode] = useState<'grid' | 'list'>('grid');
-  const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setAssets(null);
@@ -243,26 +240,13 @@ function FolderDetail({
 
   async function move(assetId: string, folderId: string | null) {
     const res = await invoke('asset.folder.move', { genomeId, assetId, folderId });
-    setNote(
-      res.status === 'succeeded'
-        ? 'Moved.'
-        : res.status === 'failed'
-          ? userMessage(res.error)
-          : 'That move was gated.',
-    );
-    if (res.status === 'succeeded') await load();
+    if (notifyResult(res, 'Moved', 'Couldn’t move it')) await load();
   }
 
   async function reuse(assetId: string) {
     const res = await invoke('asset.reuse', { genomeId, assetId }, crypto.randomUUID());
-    setNote(
-      res.status === 'succeeded'
-        ? 'Marked as used — retrieval will rest it for a while before offering it again.'
-        : res.status === 'failed'
-          ? userMessage(res.error)
-          : 'That was gated.',
-    );
-    if (res.status === 'succeeded') await load();
+    const used = { title: 'Marked as used', body: 'Retrieval will rest it for a while before offering it again.' };
+    if (notifyResult(res, used, 'Couldn’t mark it used')) await load();
   }
 
   return (
@@ -271,7 +255,7 @@ function FolderDetail({
         <div>
           <h2 className="text-18 font-semibold text-ink">{folder.name}</h2>
           <p className="mt-0.5 text-13 text-ink-muted">
-            {assets === null ? 'Loading…' : `${assets.length} item${assets.length === 1 ? '' : 's'}`}
+            {assets === null ? <Busy size={16}>Loading…</Busy> : `${assets.length} item${assets.length === 1 ? '' : 's'}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -390,7 +374,6 @@ function FolderDetail({
         </div>
       )}
 
-      {note ? <p className="mt-3 text-13 text-ink-muted">{note}</p> : null}
     </section>
   );
 }

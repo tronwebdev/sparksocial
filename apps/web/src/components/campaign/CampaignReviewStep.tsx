@@ -4,6 +4,7 @@ import { UNNAMED_AGENT_INLINE } from '@sparksocial/shared/agentIdentity';
 import type { CampaignWeight } from '@sparksocial/shared';
 import { PANEL_CLIP, Spinner, StepPanel, TickPath } from './campaignChrome';
 import { DURATIONS, WEIGHT_STOPS } from './campaignDraft';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `Step 6 — Review & Activate`. The one step with no agent orb over it, which
@@ -204,7 +205,7 @@ export function ReviewStep({
         style={{ backdropFilter: 'blur(32.586px)' }}
       >
         <span className="absolute left-[21.558px] top-[13.021px] whitespace-nowrap text-19 font-medium leading-[1.269] text-white">
-          {busy ? 'Activating…' : 'Activate Campaign'}
+          {busy ? <Busy>Activating…</Busy> : 'Activate Campaign'}
         </span>
         <svg width="7.256" height="14.512" viewBox="0 0 9 17" fill="none" className="absolute left-[245.488px] top-[19.348px]" aria-hidden>
           <path d="M1 1l7 7.5L1 16" stroke="rgb(255,255,255)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `brand.oauth.*` — connects this brand's own Canva account, the credential
@@ -19,6 +20,9 @@ export function ConnectionsPanel() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectedBy, setConnectedBy] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  /* How the trip to Canva came back, read from the URL on arrival. That is page
+     state rather than an action on this screen, so it stays inline; what a
+     Connect or Disconnect click came to is a notification. */
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   async function refresh(genomeId: string) {
@@ -56,13 +60,7 @@ export function ConnectionsPanel() {
       return;
     }
     setBusy(false);
-    setMessage({
-      kind: 'err',
-      text:
-        res.status === 'failed'
-          ? userMessage(res.error)
-          : "That request was gated — Canva connections need an owner or admin, which you are not in this account.",
-    });
+    notifyResult(res, undefined, 'Couldn’t connect Canva');
   }
 
   async function disconnect() {
@@ -71,13 +69,9 @@ export function ConnectionsPanel() {
     setMessage(null);
     const res = await invoke<{ removed: boolean }>('brand.oauth.disconnect', { genomeId: genome.genomeId, provider: 'canva' });
     setBusy(false);
-    if (res.status === 'succeeded') {
-      setConnected(false);
-      setConnectedBy(undefined);
-      setMessage({ kind: 'ok', text: 'Disconnected.' });
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, 'Canva disconnected', 'Couldn’t disconnect Canva')) return;
+    setConnected(false);
+    setConnectedBy(undefined);
   }
 
   return (
@@ -93,7 +87,7 @@ export function ConnectionsPanel() {
           <p className="text-14 font-medium text-ink">Canva</p>
           <p className="text-13 text-ink-muted">
             {connected === null
-              ? 'Checking…'
+              ? <Busy size={16}>Checking…</Busy>
               : connected
                 ? `Connected${connectedBy ? ` by ${connectedBy}` : ''}.`
                 : 'Not connected.'}
@@ -105,7 +99,7 @@ export function ConnectionsPanel() {
           </Button>
         ) : (
           <Button size="sm" disabled={busy || !genome} onClick={() => void connect()}>
-            {busy ? 'Redirecting…' : 'Connect Canva'}
+            {busy ? <Busy>Redirecting…</Busy> : 'Connect Canva'}
           </Button>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { InfoIcon, PANEL_CLIP, StepPanel } from './campaignChrome';
 import { platformLabel } from '@/lib/platforms';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `Step 4 — Add Social Account`.
@@ -132,9 +133,8 @@ export function AccountsStep({
       </span>
 
       {platforms === null ? (
-        <p className="absolute left-[25px] top-[330px] text-16" style={{ color: 'rgb(131,131,131)' }}>
-          Reading your connections…
-        </p>
+        // 323, not 330: the 30px mark centres on the line, 7px above where the text sat.
+        <SparkLoader size="inline" label="Reading your connections…" className="absolute left-[25px] top-[323px]" />
       ) : (
         grid.map((p, i) => {
           const on = selected.includes(p.platform);
@@ -168,7 +168,7 @@ export function AccountsStep({
                   that decides whether choosing it means anything. */}
               {!p.connected ? (
                 <span className="absolute inset-x-0 top-[81px] block text-center text-11 font-medium" style={{ color: 'rgb(131,131,131)' }}>
-                  {connecting === p.platform ? 'Opening…' : 'Connect'}
+                  {connecting === p.platform ? <Busy size={14}>Opening…</Busy> : 'Connect'}
                 </span>
               ) : null}
             </button>

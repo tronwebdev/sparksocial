@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
-import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-01` — teams, roles, and which brands each person can reach.
@@ -83,7 +84,6 @@ export function TeamPanel() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [partial, setPartial] = useState<string | null>(null);
-  const [note, setNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState('');
@@ -118,7 +118,6 @@ export function TeamPanel() {
   async function invite() {
     if (!inviteEmail.trim()) return;
     setBusy('invite');
-    setNote(null);
     /**
      * The key is required, not optional — see `BrandTransferPanel` for the same
      * misreading. Without it `invoke.ts` refused the call before the handler ran,
@@ -135,43 +134,29 @@ export function TeamPanel() {
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That invitation was held for review.' });
-      return;
-    }
-    setNote({ kind: 'ok', text: `Invitation sent to ${inviteEmail.trim()}. They appear here once they accept.` });
+    const sent = { title: 'Invitation sent', body: `To ${inviteEmail.trim()}. They appear here once they accept.` };
+    if (!notifyResult(res, sent, 'Couldn’t send the invitation')) return;
     setInviteEmail('');
     await load();
   }
 
   async function setOrgRole(userId: string, role: string) {
     setBusy(`role:${userId}`);
-    setNote(null);
     const res = await invoke<{ role: string }>('team.role.set', { userId, role });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({
-        kind: 'err',
-        text: res.status === 'failed' ? userMessage(res.error) : 'Only the owner can change org roles.',
-      });
-      return;
-    }
+    if (!notifyResult(res, 'Role changed', 'Couldn’t change the role')) return;
     await load();
   }
 
   async function setBrandAccess(userId: string, brandId: string, role?: string) {
     setBusy(`brand:${userId}:${brandId}`);
-    setNote(null);
     const res = await invoke('team.permission.set', {
       userId,
       brandId,
       ...(role ? { role } : { revoke: true }),
     });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That change was held for review.' });
-      return;
-    }
+    if (!notifyResult(res, role ? 'Brand access changed' : 'Brand access removed', 'Couldn’t change brand access')) return;
     await load();
   }
 
@@ -185,10 +170,6 @@ export function TeamPanel() {
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       {partial ? <p className="mt-3 text-13 text-warn">{partial}</p> : null}
-      {note ? (
-        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
-      ) : null}
-
       {/* ── Invite ──────────────────────────────────────────────────────── */}
       <div className="mt-5 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] p-4">
         <p className="text-13 font-medium text-ink">Invite someone</p>
@@ -228,7 +209,7 @@ export function TeamPanel() {
             </select>
           </div>
           <Button disabled={busy !== null || !inviteEmail.trim()} onClick={() => void invite()}>
-            {busy === 'invite' ? 'Sending…' : 'Send invitation'}
+            {busy === 'invite' ? <Busy>Sending…</Busy> : 'Send invitation'}
           </Button>
         </div>
       </div>

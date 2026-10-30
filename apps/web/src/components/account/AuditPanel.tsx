@@ -10,6 +10,7 @@ import { toolLabel } from '@sparksocial/shared/toolLabel';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-ORG-01` / §10 — the audit log.
@@ -168,7 +169,7 @@ export function AuditPanel() {
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}>
-          {loading ? 'Loading…' : 'Refresh'}
+          {loading ? <Busy>Loading…</Busy> : 'Refresh'}
         </Button>
       </div>
 

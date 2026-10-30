@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `learning.freeze`/`.reset` — real since 17 Aug 2026, reached from no
@@ -29,7 +30,6 @@ export function LearningPanel() {
   const [freezeBusy, setFreezeBusy] = useState(false);
   const [resetArmed, setResetArmed] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     if (!genome) return;
@@ -42,30 +42,35 @@ export function LearningPanel() {
   async function setFreeze(enabled: boolean) {
     if (!genome) return;
     setFreezeBusy(true);
-    setMessage(null);
     const res = await invoke<{ frozen: boolean }>('learning.freeze', { genomeId: genome.genomeId, enabled });
     setFreezeBusy(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: res.output.frozen ? 'Mix locked — learning.reweight is now a no-op until unfrozen.' : 'Unfrozen — the mix can learn again.' });
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    notifyResult(
+      res,
+      // The tool's answer, not `enabled`: it says what the mix actually is now.
+      res.status === 'succeeded' && res.output.frozen
+        ? { title: 'Mix locked', body: 'Reweighting does nothing until it is unfrozen.' }
+        : { title: 'Mix unfrozen', body: 'The mix can learn again.' },
+      enabled ? 'Couldn’t freeze the mix' : 'Couldn’t unfreeze the mix',
+    );
   }
 
   async function reset() {
     if (!genome) return;
     setResetBusy(true);
-    setMessage(null);
     const res = await invoke<{ genomeId: string }>('learning.reset', { genomeId: genome.genomeId }, crypto.randomUUID());
     setResetBusy(false);
     setResetArmed(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: 'Reset to cold start — every arm and recorded outcome cleared.' });
-      const conf = await invoke<Confidence>('learning.confidence', { genomeId: genome.genomeId });
-      if (conf.status === 'succeeded') setConfidence(conf.output);
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
+    if (
+      !notifyResult(
+        res,
+        { title: 'Reset to cold start', body: 'Every arm and recorded outcome cleared.' },
+        'Couldn’t reset the learning',
+      )
+    ) {
+      return;
     }
+    const conf = await invoke<Confidence>('learning.confidence', { genomeId: genome.genomeId });
+    if (conf.status === 'succeeded') setConfidence(conf.output);
   }
 
   return (
@@ -90,10 +95,10 @@ export function LearningPanel() {
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button size="sm" variant="outline" disabled={freezeBusy || !genome} onClick={() => void setFreeze(true)}>
-          {freezeBusy ? 'Working…' : 'Freeze'}
+          {freezeBusy ? <Busy>Working…</Busy> : 'Freeze'}
         </Button>
         <Button size="sm" variant="outline" disabled={freezeBusy || !genome} onClick={() => void setFreeze(false)}>
-          {freezeBusy ? 'Working…' : 'Unfreeze'}
+          {freezeBusy ? <Busy>Working…</Busy> : 'Unfreeze'}
         </Button>
       </div>
 
@@ -102,7 +107,7 @@ export function LearningPanel() {
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-13 text-destructive">Not reversible — every arm and outcome is wiped. Sure?</p>
             <Button size="sm" variant="danger" disabled={resetBusy} onClick={() => void reset()}>
-              {resetBusy ? 'Resetting…' : 'Yes, reset'}
+              {resetBusy ? <Busy>Resetting…</Busy> : 'Yes, reset'}
             </Button>
             <Button size="sm" variant="ghost" disabled={resetBusy} onClick={() => setResetArmed(false)}>
               Cancel
@@ -115,9 +120,6 @@ export function LearningPanel() {
         )}
       </div>
 
-      {message ? (
-        <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
-      ) : null}
     </section>
   );
 }

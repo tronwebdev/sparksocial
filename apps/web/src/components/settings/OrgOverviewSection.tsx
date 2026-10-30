@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useOrganization } from '@clerk/nextjs';
-import { toast } from 'sonner';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The organisation, as a page rather than as an assumption.
@@ -144,7 +144,6 @@ function OrgName() {
   const current = organization?.name ?? '';
   const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const value = draft ?? current;
   const trimmed = value.trim();
@@ -153,20 +152,12 @@ function OrgName() {
   async function save() {
     if (!dirty || !trimmed) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ name: string }>('org.rename', { name: trimmed });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(
-        res.status === 'failed'
-          ? userMessage(res.error)
-          : 'Only an owner or admin can rename the organisation.',
-      );
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t rename the organisation')) return;
     await organization?.reload();
     setDraft(null);
-    toast.success(`Renamed to ${res.output.name}`);
+    notify.success(`Renamed to ${res.output.name}`);
   }
 
   return (
@@ -200,14 +191,9 @@ function OrgName() {
           disabled={!dirty || !trimmed || busy}
           className="h-[48px] rounded-[10px] bg-ink px-[22px] text-16 font-medium text-white disabled:opacity-40"
         >
-          {busy ? 'Saving…' : 'Save name'}
+          {busy ? <Busy>Saving…</Busy> : 'Save name'}
         </button>
       </form>
-      {error ? (
-        <p role="alert" className="mt-[8px] text-14 text-destructive">
-          {error}
-        </p>
-      ) : null}
     </section>
   );
 }

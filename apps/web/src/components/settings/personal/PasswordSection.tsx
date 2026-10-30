@@ -1,6 +1,7 @@
 'use client';
 
 import { useClerk, useUser } from '@clerk/nextjs';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `Settings PS Password` — "Password & Security".
@@ -23,7 +24,7 @@ export function PasswordSection() {
   const { openUserProfile } = useClerk();
 
   if (!isLoaded) {
-    return <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Loading your account…</p>;
+    return <SparkLoader size="panel" label="Loading your account…" />;
   }
 
   const rows: Array<{ label: string; value: string; tone?: 'good' | 'warn' }> = [

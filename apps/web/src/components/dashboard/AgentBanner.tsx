@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { SparkMark } from '@/components/brand/SparkMark';
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
-import { userMessage } from '@/lib/errorCopy';
 import { AdjustFrequency } from '@/components/command-center/AdjustFrequency';
 
 /**
@@ -92,19 +92,14 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
   const name = identity?.named ? identity.name : null;
 
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function togglePause() {
     if (busy) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ paused: boolean }>(paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
-      return;
-    }
-    toast.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
+    if (!notifyResult(res, undefined, paused ? 'Couldn’t resume the agent' : 'Couldn’t pause the agent')) return;
+    notify.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
     onChanged?.();
   }
 
@@ -304,7 +299,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
                   <path d="M1.5 1h3v12h-3zM7.5 1h3v12h-3z" fill="currentColor" />
                 </svg>
               )}
-              {busy ? '…' : paused ? 'Resume Agent' : 'Pause Agent'}
+              {busy ? <Busy size={16}>{paused ? 'Resuming…' : 'Pausing…'}</Busy> : paused ? 'Resume Agent' : 'Pause Agent'}
             </button>
 
             {/*
@@ -340,12 +335,6 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
               Command Center
             </Link>
           </div>
-
-          {error ? (
-            <p role="alert" className="mt-2 text-14" style={{ color: '#FF9A7A' }}>
-              {error}
-            </p>
-          ) : null}
         </div>
       </div>
     </section>

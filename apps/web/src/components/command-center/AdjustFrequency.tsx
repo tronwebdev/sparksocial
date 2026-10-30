@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { toast } from 'sonner';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
 import type { AgentStatusView } from './AgentControlBar';
 
 /** `agent.frequency.set`'s own bounds — `packages/campaign/src/agentControl.ts`. */
@@ -21,7 +21,8 @@ const MAX = 14;
  *
  * One component for both: it reads the current value from `agent.status` when
  * it opens, holds the input to the tool's bounds, and says what happened in a
- * toast, which is how the prototype answers this button.
+ * notification, which is how the prototype answers this button. Only a value
+ * outside those bounds stays inline, under the field it belongs to.
  */
 export function AdjustFrequency({
   className,
@@ -77,12 +78,9 @@ export function AdjustFrequency({
     setError(null);
     const res = await invoke<AgentStatusView>('agent.frequency.set', { postsPerWeek });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change is waiting for approval.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t change the posting frequency')) return;
     setOpen(false);
-    toast.success(`Your agent will post ${postsPerWeek} time${postsPerWeek === 1 ? '' : 's'} a week`);
+    notify.success(`Your agent will post ${postsPerWeek} time${postsPerWeek === 1 ? '' : 's'} a week`);
     onChanged?.();
   }
 
@@ -128,7 +126,7 @@ export function AdjustFrequency({
             disabled={busy || value === '' || Number(value) === current}
             className="mt-2 h-9 w-full rounded bg-ink text-14 font-medium text-white disabled:opacity-50"
           >
-            {busy ? 'Saving…' : 'Set frequency'}
+            {busy ? <Busy>Saving…</Busy> : 'Set frequency'}
           </button>
         </div>
       ) : null}

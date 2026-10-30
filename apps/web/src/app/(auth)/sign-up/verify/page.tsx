@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth, useSignUp } from '@clerk/nextjs';
 import { AuthBackdrop, AuthPanel, AuthHeader, SuccessBadge, SuccessMark, OtpInput } from '@/components/auth/AuthShell';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
+import { notify } from '@/lib/notify';
 
 /**
  * Verify Email — `Auth.dc.html` state 2. Full-bleed `#0C0C0C`, centred code entry.
@@ -35,7 +37,6 @@ export default function VerifyPage() {
   const [code, setCode] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
-  const [resent, setResent] = useState(false);
   /**
    * `AUTH-03`'s resend cooldown, which PRD §8.1 asks for ("OTP verification with
    * resend throttling") and which was drawn in the prototype as a live
@@ -108,7 +109,7 @@ export default function VerifyPage() {
     if (!isLoaded) return;
     try {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setResent(true);
+      notify.success('Code resent', { body: `Sent to ${signUp.emailAddress ?? 'your inbox'}.` });
       /**
        * Sixty seconds, started only on a *successful* resend. Starting it before
        * the call would leave somebody waiting out a cooldown for a code that was
@@ -173,7 +174,7 @@ export default function VerifyPage() {
                 className="text-white/80 underline disabled:no-underline disabled:opacity-50"
                 disabled={!isLoaded || cooldown > 0}
               >
-                {resent && cooldown === 0 ? 'Code resent' : 'Resend'}
+                Resend
               </button>
             </span>
             {/* The design shows a cooldown readout, so keep the slot occupied
@@ -198,7 +199,7 @@ export default function VerifyPage() {
             }}
             disabled={!isLoaded || busy || code.length < 6}
           >
-            {busy ? 'Verifying…' : 'Verify Account'}
+            {busy ? <Busy>Verifying…</Busy> : 'Verify Account'}
           </Button>
         </form>
 

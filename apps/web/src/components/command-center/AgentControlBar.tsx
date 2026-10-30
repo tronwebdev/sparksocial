@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * The "controls" PRD §CC-01 names: the kill switch (`agent.pause`/`agent.resume`)
@@ -63,7 +64,6 @@ export function AgentControlBar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [freqDraft, setFreqDraft] = useState<string | null>(null);
-  const [freqNote, setFreqNote] = useState<string | null>(null);
 
   async function toggle() {
     if (!status) return;
@@ -71,10 +71,7 @@ export function AgentControlBar({
     setError(null);
     const res = await invoke<AgentStatusView>(status.paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, status.paused ? 'Couldn’t resume the agent' : 'Couldn’t pause the agent')) return;
     publish(res.output);
   }
 
@@ -89,12 +86,15 @@ export function AgentControlBar({
     setError(null);
     const res = await invoke<AgentStatusView & { why: { summary: string } }>('agent.frequency.set', { postsPerWeek });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
+    if (
+      !notifyResult(
+        res,
+        { title: 'Posting frequency updated', body: res.status === 'succeeded' ? res.output.why.summary : undefined },
+        'Couldn’t change the posting frequency',
+      )
+    )
       return;
-    }
     publish(res.output);
-    setFreqNote(res.output.why.summary);
     setFreqDraft(null);
   }
 
@@ -106,7 +106,7 @@ export function AgentControlBar({
         <Badge variant={status.paused ? 'warn' : 'success'}>{status.paused ? 'Paused' : 'Running'}</Badge>
         <p className="min-w-0 flex-1 text-13 text-ink-muted">{status.effect}</p>
         <Button variant={status.paused ? 'primary' : 'outline'} disabled={busy} onClick={() => void toggle()}>
-          {busy ? 'Working…' : status.paused ? 'Resume agent' : 'Pause agent'}
+          {busy ? <Busy>Working…</Busy> : status.paused ? 'Resume agent' : 'Pause agent'}
         </Button>
       </div>
 
@@ -130,7 +130,6 @@ export function AgentControlBar({
         >
           Update
         </Button>
-        {freqNote ? <span className="text-12 text-ink-muted">{freqNote}</span> : null}
       </div>
 
       {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}

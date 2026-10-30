@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { notify } from '@/lib/notify';
 
 /**
  * Where a *personal* preference lives.
@@ -26,7 +27,6 @@ export function useAccountPrefs<T extends Record<string, unknown>>(key: string, 
   const stored = ((user?.unsafeMetadata as Record<string, unknown> | undefined)?.[key] ?? {}) as Partial<T>;
   const [draft, setDraft] = useState<T>({ ...fallback, ...stored });
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoaded) setDraft({ ...fallback, ...stored });
@@ -36,12 +36,11 @@ export function useAccountPrefs<T extends Record<string, unknown>>(key: string, 
   const save = useCallback(async () => {
     if (!user) return;
     setBusy(true);
-    setNote(null);
     try {
       await user.update({ unsafeMetadata: { ...(user.unsafeMetadata ?? {}), [key]: draft } });
-      setNote('Saved.');
+      notify.success('Saved');
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'That did not save.');
+      notify.error('Couldn’t save your preferences', { body: e instanceof Error ? e.message : 'That did not save.' });
     }
     setBusy(false);
   }, [user, key, draft]);
@@ -54,7 +53,6 @@ export function useAccountPrefs<T extends Record<string, unknown>>(key: string, 
     reset: () => setDraft({ ...fallback, ...stored }),
     save,
     busy,
-    note,
     dirty,
     ready: isLoaded,
   };

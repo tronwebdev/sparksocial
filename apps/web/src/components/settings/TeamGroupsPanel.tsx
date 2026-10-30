@@ -1,13 +1,13 @@
 ﻿'use client';
 
-import { SparkLoader } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
 
 /**
  * TEAM GROUPS (`SET-WS-TEAM-GROUPS`) — the Groups tab.
@@ -65,7 +65,6 @@ export function TeamGroupsPanel() {
   const [newCapabilities, setNewCapabilities] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [memberDrafts, setMemberDrafts] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   /**
    * The account roster, or null when it could not be read.
    *
@@ -96,14 +95,12 @@ export function TeamGroupsPanel() {
     return roster.filter((m) => m.userId && !group.members.includes(m.userId));
   }
 
-  /** Every write goes through the same reporting, so no path fails silently. */
-  async function run(key: string, work: () => Promise<{ ok: boolean; text: string }>) {
+  /** Every write goes through the same reporting — `notifyResult` — so no path fails silently. */
+  async function run(key: string, work: () => Promise<void>) {
     setBusy(key);
-    setMessage(null);
-    const { ok, text } = await work();
+    await work();
     await refresh();
     setBusy(null);
-    setMessage({ kind: ok ? 'ok' : 'err', text });
   }
 
   async function create() {
@@ -113,13 +110,11 @@ export function TeamGroupsPanel() {
         capabilities: newCapabilities,
         members: [],
       });
-      if (res.status === 'succeeded') {
-        setNewName('');
-        setNewCapabilities([]);
-        setCreating(false);
-        return { ok: true, text: `Created ${res.output.name}.` };
-      }
-      return { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
+      if (!notifyResult(res, undefined, 'Couldn’t create the group')) return;
+      setNewName('');
+      setNewCapabilities([]);
+      setCreating(false);
+      notify.success(`Created ${res.output.name}`);
     });
   }
 
@@ -130,29 +125,29 @@ export function TeamGroupsPanel() {
 
     await run(group.id, async () => {
       const res = await invoke('team.group.update', { groupId: group.id, capabilities: next });
-      return res.status === 'succeeded'
-        ? { ok: true, text: `Updated ${group.name}.` }
-        : { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
+      notifyResult(res, `Updated ${group.name}`, `Couldn’t update ${group.name}`);
     });
   }
 
   async function setMember(group: Group, userId: string, member: boolean) {
     await run(group.id, async () => {
       const res = await invoke('team.group.member.set', { groupId: group.id, userId, member });
-      if (res.status === 'succeeded') {
+      if (
+        notifyResult(
+          res,
+          member ? `Added to ${group.name}` : `Removed from ${group.name}`,
+          member ? `Couldn’t add them to ${group.name}` : `Couldn’t remove them from ${group.name}`,
+        )
+      ) {
         setMemberDrafts((prev) => ({ ...prev, [group.id]: '' }));
-        return { ok: true, text: member ? `Added to ${group.name}.` : `Removed from ${group.name}.` };
       }
-      return { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
     });
   }
 
   async function remove(group: Group) {
     await run(group.id, async () => {
       const res = await invoke('team.group.delete', { groupId: group.id });
-      return res.status === 'succeeded'
-        ? { ok: true, text: `Deleted ${group.name}.` }
-        : { ok: false, text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' };
+      notifyResult(res, `Deleted ${group.name}`, `Couldn’t delete ${group.name}`);
     });
   }
 
@@ -216,7 +211,7 @@ export function TeamGroupsPanel() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button size="sm" disabled={busy === 'create' || !newName.trim()} onClick={() => void create()}>
-              {busy === 'create' ? 'Creating…' : 'Create'}
+              {busy === 'create' ? <Busy>Creating…</Busy> : 'Create'}
             </Button>
             <Button
               size="sm"
@@ -372,11 +367,6 @@ export function TeamGroupsPanel() {
         </p>
       )}
 
-      {message && (
-        <p className={cn('mt-4 text-13', message.kind === 'ok' ? 'text-ink-muted' : 'text-destructive')}>
-          {message.text}
-        </p>
-      )}
     </section>
   );
 }

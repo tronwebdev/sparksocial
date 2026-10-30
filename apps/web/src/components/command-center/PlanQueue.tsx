@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { platformLabel } from '@/lib/platforms';
 import { cn } from '@/lib/utils';
@@ -143,8 +144,6 @@ export function PlanQueue({
   const [sending, setSending] = useState<string | null>(null);
   /** The row being removed, likewise. */
   const [removing, setRemoving] = useState<string | null>(null);
-  /** What happened, when it is not an error — a removal sent for approval. */
-  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!genomeId) return;
@@ -225,16 +224,16 @@ export function PlanQueue({
     const what = item.playbookName ? `this ${item.playbookName} post` : 'this post';
     if (!window.confirm(`Remove ${what}? Its copy, renders and links are deleted, and this cannot be undone.`)) return;
     setRemoving(item.contentItemId);
-    setError(null);
-    setNotice(null);
     try {
       const res = await invoke('content.delete', { contentItemId: item.contentItemId, genomeId });
       if (res.status === 'failed') {
-        setError(userMessage(res.error));
+        notify.error('Couldn’t remove the post', { body: userMessage(res.error) });
         return;
       }
       if (res.status !== 'succeeded') {
-        setNotice('Removal sent for approval — an owner or admin approves it in Needs Attention, and the post stays until then.');
+        notify.pending('Removal sent for approval', {
+          body: 'An owner or admin approves it in Needs Attention, and the post stays until then.',
+        });
         return;
       }
       await load();
@@ -246,7 +245,6 @@ export function PlanQueue({
   async function sendNow(item: PlanItem) {
     if (!genomeId || sending) return;
     setSending(item.contentItemId);
-    setError(null);
     try {
       const payload = await invoke<{
         playbookId: string;
@@ -256,12 +254,7 @@ export function PlanQueue({
         mediaUrls: string[];
       }>('content.publish_payload', { contentItemId: item.contentItemId, genomeId });
 
-      if (payload.status !== 'succeeded') {
-        setError(
-          payload.status === 'failed' ? userMessage(payload.error) : 'Reading that post for publishing was gated.',
-        );
-        return;
-      }
+      if (!notifyResult(payload, undefined, 'Couldn’t send the post')) return;
 
       const published = await invoke(
         'publish.now',
@@ -277,12 +270,12 @@ export function PlanQueue({
         `send-now:${item.contentItemId}:${payload.output.platform}`,
       );
 
+      if (published.status === 'failed') {
+        notify.error('Couldn’t send the post', { body: userMessage(published.error) });
+        return;
+      }
       if (published.status !== 'succeeded') {
-        setError(
-          published.status === 'failed'
-            ? userMessage(published.error)
-            : 'That post is held for approval — it will go out once approved.',
-        );
+        notify.pending('Held for approval', { body: 'It will go out once approved.' });
         return;
       }
       await load();
@@ -427,7 +420,6 @@ export function PlanQueue({
       ) : null}
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
-      {notice ? <p className="mt-3 text-13 text-ink-muted">{notice}</p> : null}
 
       {items === null && !error ? <Skeleton className="mt-4 h-40 w-full rounded-lg" /> : null}
 

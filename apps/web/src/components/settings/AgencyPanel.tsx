@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * The Agency Portal — plan §6.9, §12 P6. Org-level plan/governance/SSO and
@@ -289,13 +291,11 @@ function CreditsCard({
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function grant() {
     const cents = Math.round(Number(amount) * 100);
     if (!cents || cents <= 0 || !reason.trim() || busy) return;
     setBusy(true);
-    setError(null);
     // idempotent: false — a retried grant must not double the credit.
     const res = await invoke<{ granted: true; balance: CreditsBalance }>(
       'org.credits.grant',
@@ -303,10 +303,7 @@ function CreditsCard({
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Credit granted', body: `$${(cents / 100).toFixed(2)} added to this month.` }, 'Couldn’t grant the credit')) return;
     onGranted(res.output.balance);
     setAmount('');
     setReason('');
@@ -343,10 +340,9 @@ function CreditsCard({
           />
         </div>
         <Button size="sm" variant="outline" disabled={busy || !amount || !reason.trim()} onClick={() => void grant()}>
-          {busy ? 'Granting…' : 'Grant'}
+          {busy ? <Busy>Granting…</Busy> : 'Grant'}
         </Button>
       </div>
-      {error ? <p className="mt-2 text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }
@@ -355,18 +351,13 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function create() {
     if (!name.trim() || !category.trim() || busy) return;
     setBusy(true);
-    setError(null);
     const res = await invoke('brand.create', { name, category }, crypto.randomUUID());
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Brand created', body: name.trim() }, 'Couldn’t create the brand')) return;
     onCreated();
   }
 
@@ -391,9 +382,8 @@ function NewBrandForm({ onCreated }: { onCreated: () => void }) {
         />
       </div>
       <Button size="sm" disabled={busy || !name.trim() || !category.trim()} onClick={() => void create()}>
-        {busy ? 'Creating…' : 'Create'}
+        {busy ? <Busy>Creating…</Busy> : 'Create'}
       </Button>
-      {error ? <p className="text-13 text-destructive sm:col-span-3">{error}</p> : null}
     </div>
   );
 }

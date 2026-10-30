@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SettingsTabs } from './SettingsTabs';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `Settings WS Export` / `… Import` / `… Clone` — three prototype screens under
@@ -73,18 +74,13 @@ export function ImportExportSection() {
 function ExportTab({ genomeId }: { genomeId: string | undefined }) {
   const [payload, setPayload] = useState<ExportPayload | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function generate() {
     if (!genomeId) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Exporting this brand needs an approval.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Export ready', body: 'Download it beside the button.' }, 'Couldn’t export this brand')) return;
     setPayload(res.output.data);
   }
 
@@ -123,7 +119,7 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
               disabled={busy || !genomeId}
               className="h-[44px] rounded-[9px] bg-ink px-[22px] text-18 font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
             >
-              {busy ? 'Preparing…' : 'Generate export'}
+              {busy ? <Busy>Preparing…</Busy> : 'Generate export'}
             </button>
 
             {/*
@@ -143,8 +139,6 @@ function ExportTab({ genomeId }: { genomeId: string | undefined }) {
             ) : null}
           </div>
         </div>
-
-        {error ? <p className="mt-[14px] text-16 text-destructive">{error}</p> : null}
       </div>
 
       <RecentRail />
@@ -192,8 +186,9 @@ function ImportTab({
   const [brands, setBrands] = useState<Array<{ genomeId: string; name: string; updatedAt: string }> | null>(null);
   const [pick, setPick] = useState<string>('');
   const [busy, setBusy] = useState(false);
+  /* Problems with what was picked, shown beside the form. What the import itself
+     came to is a notification. */
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -220,7 +215,6 @@ function ImportTab({
   async function run() {
     setBusy(true);
     setError(null);
-    setDone(null);
 
     let data = file?.data ?? null;
 
@@ -234,9 +228,8 @@ function ImportTab({
         return;
       }
       const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId: from });
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, 'Couldn’t read that workspace')) {
         setBusy(false);
-        setError(res.status === 'failed' ? userMessage(res.error) : 'Reading that workspace needs an approval.');
         return;
       }
       data = res.output.data;
@@ -255,11 +248,8 @@ function ImportTab({
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a brand needs an approval.');
-      return;
-    }
-    setDone(`Created “${res.output.name}”. It is in your brand switcher.`);
+    if (!notifyResult(res, undefined, 'Couldn’t create the brand')) return;
+    notify.success(`Created “${res.output.name}”`, { body: 'It is in your brand switcher.' });
   }
 
   return (
@@ -359,7 +349,7 @@ function ImportTab({
             disabled={busy || (mode === 'import' ? !file && !pick : !pick && !sourceGenomeId)}
             className="h-[44px] rounded-[9px] bg-ink px-[24px] text-15 font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
           >
-            {busy ? 'Working…' : mode === 'clone' ? 'Clone workspace' : 'Start import'}
+            {busy ? <Busy>Working…</Busy> : mode === 'clone' ? 'Clone workspace' : 'Start import'}
           </button>
           <span className="text-16" style={{ color: 'rgb(131,131,131)' }}>
             Always creates a new brand.
@@ -367,7 +357,6 @@ function ImportTab({
         </div>
 
         {error ? <p className="mt-[14px] text-16 text-destructive">{error}</p> : null}
-        {done ? <p className="mt-[14px] text-16" style={{ color: 'var(--ss-green-700)' }}>{done}</p> : null}
       </div>
 
       <RecentRail />

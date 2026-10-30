@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PLATFORM_LIMITS, platformTakes, type PostFormat } from '@sparksocial/shared';
 import { cn } from '@/lib/utils';
+import { Busy } from '@/components/brand/SparkLoader';
 import { backdropOf, type DraftView } from './types';
 
 /**
@@ -62,7 +63,6 @@ export interface PostPreviewProps {
   onSchedule?: () => void;
   onSaveDraft: () => void;
   busy?: boolean;
-  error?: string;
 }
 
 /** `CF` from `ClientForce AI` — two letters, the design's own treatment. */
@@ -442,7 +442,6 @@ export function PostPreview({
   onSchedule,
   onSaveDraft,
   busy,
-  error,
 }: PostPreviewProps) {
   const name = brandName?.trim() || 'Your brand';
   const media = mediaOf(draft);
@@ -613,7 +612,7 @@ export function PostPreview({
         disabled={busy}
         className="flex h-[43px] w-[190px] items-center justify-center rounded-[8.457px] bg-ink text-17 font-medium text-white disabled:opacity-60"
       >
-        {busy ? 'Publishing…' : 'Publish now'}
+        {busy ? <Busy>Publishing…</Busy> : 'Publish now'}
       </button>
 
       <div className="flex items-center gap-[18px]">
@@ -681,8 +680,6 @@ export function PostPreview({
           {schedulePane}
         </div>
       )}
-
-      {error ? <p className="mt-[20px] text-14 text-destructive">{error}</p> : null}
 
       <div className="mt-[40px]">{actions}</div>
     </div>

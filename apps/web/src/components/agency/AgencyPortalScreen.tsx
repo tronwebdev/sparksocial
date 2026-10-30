@@ -9,7 +9,7 @@ import { AgencyJobFinder } from './AgencyJobFinder';
 import { AgencyWizard, WIZ_HEIGHTS, emptyWizardDraft, type WizardDraft } from './AgencyWizard';
 import { connectedAccounts, useAgencyRoster } from './useAgencyRoster';
 import { useAgencySite } from './useAgencySite';
-import { useNotifications } from '@/lib/notifications';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -95,7 +95,6 @@ export function AgencyPortalScreen() {
   const [classifying, setClassifying] = useState<string | null>(null);
 
   const { roster, error, reload } = useAgencyRoster();
-  const { toast } = useNotifications();
   const accounts = connectedAccounts(roster?.brands);
   const site = useAgencySite();
 
@@ -150,15 +149,8 @@ export function AgencyPortalScreen() {
     setGenerating(kind);
     const res = await invoke<{ url: string }>('agency.collateral.generate', { kind }, crypto.randomUUID());
     setGenerating(null);
-    if (res.status === 'succeeded') {
-      setCollateral((c) => ({ ...c, [kind === 'facebook_cover' ? 'facebookCover' : 'linkedinBanner']: res.output.url }));
-      return;
-    }
-    toast({
-      title: 'The banner wasn’t made',
-      body: res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.',
-      topic: 'generic',
-    });
+    if (!notifyResult(res, undefined, 'The banner wasn’t made')) return;
+    setCollateral((c) => ({ ...c, [kind === 'facebook_cover' ? 'facebookCover' : 'linkedinBanner']: res.output.url }));
   }
 
   async function launch() {
@@ -174,9 +166,9 @@ export function AgencyPortalScreen() {
     setLaunched(true);
     setWizStep(null);
     setView('home');
-    /* The prototype's own launch toast, through the app's notification centre
-       rather than a bespoke one — the design's toast is the same affordance. */
-    toast({ title: 'Agency launched', body: 'Welcome to your Agency Portal.', topic: 'generic' });
+    /* The prototype's own launch toast, through `notify` rather than a
+       bespoke one — the design's toast is the same affordance. */
+    notify.success('Agency launched', { body: 'Welcome to your Agency Portal.' });
   }
 
   const q = query.trim().toLowerCase();
@@ -188,15 +180,11 @@ export function AgencyPortalScreen() {
     setClassifying(b.brandId);
     const res = await invoke('agency.client.set_internal', { brandId: b.brandId, internal });
     setClassifying(null);
-    if (res.status !== 'succeeded') {
-      toast({ title: 'That didn’t save', body: res.status === 'failed' ? userMessage(res.error) : 'It needs an approval first.', topic: 'generic' });
-      return;
-    }
-    toast({
+    const done = {
       title: internal ? `${b.name} is internal` : `${b.name} is a client again`,
       body: internal ? 'It’s out of My Clients and the client totals. Nothing else about it changed.' : 'It’s back in My Clients.',
-      topic: 'generic',
-    });
+    };
+    if (!notifyResult(res, done, 'That didn’t save')) return;
     await reload();
   }
 

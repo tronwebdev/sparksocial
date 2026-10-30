@@ -9,6 +9,7 @@ import { isSparkPinned } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { SparkMark } from '@/components/brand/SparkMark';
+import { Busy } from '@/components/brand/SparkLoader';
 import {
   BRAND_SECTIONS,
   ORG_SECTIONS,
@@ -331,19 +332,20 @@ function SettingsNavPanel({
  *
  * The design spells it "Sava Changes". That is a typo in the file, not a
  * decision, so it is spelled correctly here.
+ *
+ * It says nothing after a save: what the save came to goes through `notify`,
+ * the same as every other action, rather than a grey line beside the button.
  */
 export function SettingsSaveBar({
   onSave,
   onCancel,
   busy,
   dirty,
-  note,
 }: {
   onSave: () => void;
   onCancel: () => void;
   busy?: boolean;
   dirty?: boolean;
-  note?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-[13px] border-t border-[rgba(131,131,131,0.15)] px-[30px] py-[22px]">
@@ -362,9 +364,8 @@ export function SettingsSaveBar({
         disabled={busy || !dirty}
         className="h-[44.809px] w-[167.585px] rounded-[9.704px] bg-ink text-16 font-medium text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
       >
-        {busy ? 'Saving…' : 'Save Changes'}
+        {busy ? <Busy>Saving…</Busy> : 'Save Changes'}
       </button>
-      {note ? <span className="text-16" style={{ color: 'rgb(131,131,131)' }}>{note}</span> : null}
     </div>
   );
 }

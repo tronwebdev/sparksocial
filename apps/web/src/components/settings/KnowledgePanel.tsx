@@ -10,6 +10,8 @@ import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-02` / §8.12 — what this brand knows, and the way in.
@@ -77,8 +79,8 @@ export function KnowledgePanel() {
   const genomeId = genome?.genomeId;
 
   const [list, setList] = useState<KnowledgeList | null>(null);
+  /* The list failing to load. What a crawl, attach, upload or check came to is a notification. */
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<'crawl' | 'attach' | 'check' | null>(null);
 
   const [siteUrl, setSiteUrl] = useState('');
@@ -112,7 +114,6 @@ export function KnowledgePanel() {
   async function crawl() {
     if (!genomeId || !siteUrl.trim()) return;
     setBusy('crawl');
-    setNote(null);
     /**
       * Fresh rather than keyed on the URL: a site is re-crawled precisely because
       * it changed, and a stable key would return the previous crawl forever.
@@ -123,18 +124,12 @@ export function KnowledgePanel() {
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That crawl was held for review.' });
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t read that site')) return;
     // The tool reports a `failure` rather than throwing when a crawl reaches a
     // real site and finds nothing worth attaching. Surfaced as-is: "0 pages
     // attached" with no reason is the kind of result people retry three times.
-    setNote(
-      res.output.failure
-        ? { kind: 'err', text: res.output.failure }
-        : { kind: 'ok', text: `Attached ${res.output.attached.length} page${res.output.attached.length === 1 ? '' : 's'}.` },
-    );
+    if (res.output.failure) notify.warning('Nothing attached from that site', { body: res.output.failure });
+    else notify.success(`Attached ${res.output.attached.length} page${res.output.attached.length === 1 ? '' : 's'}`);
     setSiteUrl('');
     await load();
   }
@@ -142,11 +137,12 @@ export function KnowledgePanel() {
   async function attachDoc() {
     if (!genomeId || !docId.trim() || !docText.trim()) return;
     if (docText.length > MAX_DOC_CHARS) {
-      setNote({ kind: 'err', text: `That is ${docText.length.toLocaleString()} characters; the limit is ${MAX_DOC_CHARS.toLocaleString()}. Split it into sections.` });
+      notify.warning('That document is too long', {
+        body: `That is ${docText.length.toLocaleString()} characters; the limit is ${MAX_DOC_CHARS.toLocaleString()}. Split it into sections.`,
+      });
       return;
     }
     setBusy('attach');
-    setNote(null);
     // Fresh rather than keyed on `docId`, so editing a document's text and
      // re-attaching it under the same id saves the edit instead of replaying the
      // first version.
@@ -156,11 +152,8 @@ export function KnowledgePanel() {
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was held for review.' });
-      return;
-    }
-    setNote({ kind: 'ok', text: `Attached “${res.output.docId}”.` });
+    if (!notifyResult(res, undefined, 'Couldn’t attach that document')) return;
+    notify.success(`Attached “${res.output.docId}”`);
     setDocId('');
     setDocText('');
     await load();
@@ -181,11 +174,10 @@ export function KnowledgePanel() {
   async function uploadDocument(file: File) {
     if (!genome || busyDoc) return;
     if (file.size > PDF_MAX_MB * 1024 * 1024) {
-      setNote({ kind: 'err', text: `That file is larger than ${PDF_MAX_MB}MB.` });
+      notify.warning(`That file is larger than ${PDF_MAX_MB}MB`);
       return;
     }
     setBusyDoc(true);
-    setNote(null);
 
     const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId: genome.genomeId,
@@ -193,19 +185,15 @@ export function KnowledgePanel() {
       contentType: 'application/pdf',
       sizeBytes: file.size,
     });
-    if (presigned.status !== 'succeeded') {
+    if (!notifyResult(presigned, undefined, 'Couldn’t upload that PDF')) {
       setBusyDoc(false);
-      setNote({
-        kind: 'err',
-        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
-      });
       return;
     }
 
     const put = await uploadToStorage(presigned.output.uploadUrl, file, 'application/pdf', presigned.output.headers);
     if (!put.ok) {
       setBusyDoc(false);
-      setNote({ kind: 'err', text: put.message });
+      notify.error('Couldn’t upload that PDF', { body: put.message });
       return;
     }
 
@@ -216,16 +204,11 @@ export function KnowledgePanel() {
     );
     setBusyDoc(false);
 
-    if (read.status !== 'succeeded') {
-      // The tool's own wording is the useful one — "that PDF has no text in it,
-      // it is probably a scan" is an instruction, not a failure.
-      setNote({
-        kind: 'err',
-        text: read.status === 'failed' ? userMessage(read.error) : 'Reading that document was gated.',
-      });
-      return;
-    }
-    setNote({ kind: 'ok', text: `Read “${file.name}” and attached it as ${read.output.docId}.` });
+    // The tool's own wording is the useful one — "that PDF has no text in it,
+    // it is probably a scan" is an instruction, not a failure — and it becomes
+    // the notification's detail line.
+    if (!notifyResult(read, undefined, 'Couldn’t read that document')) return;
+    notify.success(`Read “${file.name}”`, { body: `Attached as ${read.output.docId}.` });
     await load();
   }
 
@@ -237,9 +220,8 @@ export function KnowledgePanel() {
   function readFile(file: File) {
     const lower = file.name.toLowerCase();
     if (!READABLE_EXTENSIONS.some((ext) => lower.endsWith(ext))) {
-      setNote({
-        kind: 'err',
-        text: `${file.name} needs a parser SPARK does not have. Plain text, Markdown, CSV or JSON — or paste the text in directly.`,
+      notify.warning(`${file.name} can’t be read here`, {
+        body: 'It needs a parser SPARK does not have. Plain text, Markdown, CSV or JSON — or paste the text in directly.',
       });
       return;
     }
@@ -250,13 +232,15 @@ export function KnowledgePanel() {
       // A filename is a better default id than an empty box, and the person can
       // still change it before attaching.
       if (!docId.trim()) setDocId(file.name.replace(/\.[^.]+$/, ''));
-      setNote(
-        text.length > MAX_DOC_CHARS
-          ? { kind: 'err', text: `${file.name} is longer than ${MAX_DOC_CHARS.toLocaleString()} characters — only the first part was loaded. Check it before attaching.` }
-          : { kind: 'ok', text: `Loaded ${file.name}. Review it, then attach.` },
-      );
+      if (text.length > MAX_DOC_CHARS) {
+        notify.warning(`Only the first part of ${file.name} was loaded`, {
+          body: `It is longer than ${MAX_DOC_CHARS.toLocaleString()} characters. Check it before attaching.`,
+        });
+      } else {
+        notify.success(`Loaded ${file.name}`, { body: 'Review it, then attach.' });
+      }
     };
-    reader.onerror = () => setNote({ kind: 'err', text: `Could not read ${file.name}.` });
+    reader.onerror = () => notify.error(`Couldn’t read ${file.name}`);
     reader.readAsText(file);
   }
 
@@ -269,10 +253,7 @@ export function KnowledgePanel() {
       { genomeId, claim: claim.trim() },
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That check was held for review.' });
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t check that claim')) return;
     setClaimResult({ grounded: res.output.grounded, ...(res.output.fixAction ? { fixAction: res.output.fixAction } : {}) });
   }
 
@@ -287,9 +268,6 @@ export function KnowledgePanel() {
       </p>
 
       {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
-      {note ? (
-        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
-      ) : null}
 
       {/* ── What is attached. First, because it is the answer to "did that work?" ── */}
       <div className="mt-5">
@@ -384,7 +362,7 @@ export function KnowledgePanel() {
               />
             </div>
             <Button disabled={busy !== null || !siteUrl.trim()} onClick={() => void crawl()}>
-              {busy === 'crawl' ? 'Reading…' : 'Read'}
+              {busy === 'crawl' ? <Busy>Reading…</Busy> : 'Read'}
             </Button>
           </div>
         </div>
@@ -469,14 +447,14 @@ export function KnowledgePanel() {
               disabled={busyDoc}
               onClick={() => pdfInput.current?.click()}
             >
-              {busyDoc ? 'Reading…' : 'Upload a PDF'}
+              {busyDoc ? <Busy>Reading…</Busy> : 'Upload a PDF'}
             </Button>
             <Button
               size="sm"
               disabled={busy !== null || !docId.trim() || !docText.trim()}
               onClick={() => void attachDoc()}
             >
-              {busy === 'attach' ? 'Attaching…' : 'Attach'}
+              {busy === 'attach' ? <Busy>Attaching…</Busy> : 'Attach'}
             </Button>
           </div>
         </div>
@@ -501,7 +479,7 @@ export function KnowledgePanel() {
             />
           </div>
           <Button variant="outline" disabled={busy !== null || !claim.trim()} onClick={() => void checkClaim()}>
-            {busy === 'check' ? 'Checking…' : 'Check'}
+            {busy === 'check' ? <Busy>Checking…</Busy> : 'Check'}
           </Button>
         </div>
 

@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { SettingsSaveBar } from '../SettingsShell';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { PersonalField, PersonalSelect } from './fields';
 import { guessTimezone, zonesIncluding } from '@sparksocial/shared';
 
@@ -85,9 +86,9 @@ export function ProfileSection() {
       // The resource re-reads itself, so every screen holding `useUser()`
       // picks up the new `imageUrl` without a reload.
       await user.reload();
-      toast.success('Profile photo updated');
+      notify.success('Profile photo updated');
     } catch (e) {
-      setPhotoError(e instanceof Error ? e.message : 'That photo did not upload.');
+      notify.error('Couldn’t upload that photo', { body: e instanceof Error ? e.message : 'That photo did not upload.' });
     }
     setPhotoBusy(false);
   }
@@ -99,14 +100,13 @@ export function ProfileSection() {
     try {
       await user.setProfileImage({ file: null });
       await user.reload();
-      toast.success('Profile photo removed');
+      notify.success('Profile photo removed');
     } catch (e) {
-      setPhotoError(e instanceof Error ? e.message : 'That photo was not removed.');
+      notify.error('Couldn’t remove your photo', { body: e instanceof Error ? e.message : 'That photo was not removed.' });
     }
     setPhotoBusy(false);
   }
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => setForm(initial), [initial]);
 
@@ -116,7 +116,6 @@ export function ProfileSection() {
   async function save() {
     if (!user) return;
     setBusy(true);
-    setNote(null);
     try {
       await user.update({
         firstName: form.first,
@@ -130,9 +129,9 @@ export function ProfileSection() {
           timezone: form.timezone,
         },
       });
-      setNote('Saved.');
+      notify.success('Profile saved');
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'That did not save.');
+      notify.error('Couldn’t save your profile', { body: e instanceof Error ? e.message : 'That did not save.' });
     }
     setBusy(false);
   }
@@ -150,7 +149,7 @@ export function ProfileSection() {
   })();
 
   if (!isLoaded) {
-    return <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Loading your profile…</p>;
+    return <SparkLoader size="panel" label="Loading your profile…" />;
   }
 
   return (
@@ -184,7 +183,7 @@ export function ProfileSection() {
           )}
           {photoBusy ? (
             <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-15 font-medium text-white">
-              Saving…
+              <Busy size={16}>Saving…</Busy>
             </span>
           ) : null}
         </span>
@@ -356,13 +355,9 @@ export function ProfileSection() {
 
       <SettingsSaveBar
         onSave={() => void save()}
-        onCancel={() => {
-          setForm(initial);
-          setNote(null);
-        }}
+        onCancel={() => setForm(initial)}
         busy={busy}
         dirty={dirty}
-        note={note}
       />
     </>
   );

@@ -1,5 +1,4 @@
 import { ClerkProvider } from '@clerk/nextjs';
-import { Toaster } from '@/components/ui/toaster';
 import { NotificationProvider } from '@/lib/notifications';
 import { NotificationToasts } from '@/components/notifications/NotificationToasts';
 
@@ -77,7 +76,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         {children}
         <NotificationToasts />
       </NotificationProvider>
-      <Toaster />
     </ClerkProvider>
   );
 }

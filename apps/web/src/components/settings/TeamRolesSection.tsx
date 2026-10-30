@@ -7,6 +7,8 @@ import { PolicyPanel } from './PolicyPanel';
 import { SettingsTabs } from './SettingsTabs';
 import { AddClientModal, AddMemberModal, EditGroupModal, type EditableGroup } from './TeamModals';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `Settings WS Team Users` / `… Team Groups` / `… Team Groups Flows`.
@@ -174,6 +176,7 @@ export function TeamRolesSection() {
 
 function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member[]) => void }) {
   const [members, setMembers] = useState<Member[] | null>(null);
+  /* The team failing to load, or loading only in part. A role change's outcome is a notification. */
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -207,10 +210,9 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
     setBusyId(m.userId);
     const res = await invoke('team.role.set', { userId: m.userId, role });
     setBusyId(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Changing a role needs an approval.');
-      return;
-    }
+    const who = m.name ?? m.email ?? 'This member';
+    const changed = { title: 'Role changed', body: `${who} is now ${role.replace(/^org:/, '')}.` };
+    if (!notifyResult(res, changed, 'Couldn’t change the role')) return;
     setMembers((list) => (list ?? []).map((x) => (x.userId === m.userId ? { ...x, orgRole: role } : x)));
   }
 
@@ -262,7 +264,7 @@ function UsersTab({ reloads, onPeople }: { reloads: number; onPeople: (m: Member
           <div aria-hidden className="h-px w-full" style={{ background: 'rgba(131,131,131,0.25)' }} />
 
           {members === null ? (
-            <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>Reading the team…</p>
+            <SparkLoader size="inline" label="Reading the team…" className="py-[24px]" />
           ) : shown.length === 0 ? (
             <p className="py-[24px] text-16" style={{ color: 'rgb(131,131,131)' }}>
               {q ? 'Nobody matches that.' : 'Nobody else is in this organisation yet.'}
@@ -407,7 +409,7 @@ function GroupsTab({
     <div className="grid grid-cols-1 gap-[34px]">
       <section>
         {groups === null ? (
-          <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Reading groups…</p>
+          <SparkLoader size="inline" label="Reading groups…" />
         ) : groups.length === 0 ? (
           <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>
             No groups yet. A group is a named set of capabilities that widens what its members may do,

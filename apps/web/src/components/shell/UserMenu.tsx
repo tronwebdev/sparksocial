@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * The account menu — and until now, the only way to sign out was clearing
@@ -84,7 +85,7 @@ export function UserMenu() {
           }}
           disabled={signingOut}
         >
-          {signingOut ? 'Signing out…' : 'Sign out'}
+          {signingOut ? <Busy size={16}>Signing out…</Busy> : 'Sign out'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

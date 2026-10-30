@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { KIND_META, longDay, type RecipeKind } from './recipeMeta';
 import type { ManageRow, RecipeItem } from './useAutomation';
 
@@ -144,7 +145,7 @@ export function CampaignManage({
                 className="h-[40px] rounded-[10px] px-[16px] text-15 font-semibold text-ink transition-opacity hover:opacity-85 disabled:opacity-50"
                 style={{ background: 'var(--ss-cyan-200)' }}
               >
-                {busyId === r.id ? 'Working…' : 'Run now'}
+                {busyId === r.id ? <Busy>Working…</Busy> : 'Run now'}
               </button>
               <button
                 type="button"

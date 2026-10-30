@@ -2,6 +2,7 @@
 
 import { useClerk, useUser } from '@clerk/nextjs';
 import { SettingsSaveBar } from '../SettingsShell';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { PrefGroup, PrefRow } from './fields';
 import { useAccountPrefs } from './prefs';
 
@@ -27,10 +28,10 @@ const DEFAULTS = {
 export function PrivacySection() {
   const { user } = useUser();
   const { openUserProfile } = useClerk();
-  const { prefs, set, reset, save, busy, note, dirty, ready } = useAccountPrefs('privacy', DEFAULTS);
+  const { prefs, set, reset, save, busy, dirty, ready } = useAccountPrefs('privacy', DEFAULTS);
 
   if (!ready) {
-    return <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Loading your preferences…</p>;
+    return <SparkLoader size="panel" label="Loading your preferences…" />;
   }
 
   return (
@@ -102,7 +103,7 @@ export function PrivacySection() {
         </section>
       </div>
 
-      <SettingsSaveBar onSave={() => void save()} onCancel={reset} busy={busy} dirty={dirty} note={note} />
+      <SettingsSaveBar onSave={() => void save()} onCancel={reset} busy={busy} dirty={dirty} />
     </>
   );
 }

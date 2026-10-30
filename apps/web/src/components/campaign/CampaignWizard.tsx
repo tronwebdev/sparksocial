@@ -43,6 +43,8 @@ import { ReviewStep } from './CampaignReviewStep';
 import { ReadinessModal } from './ReadinessModal';
 import { GOAL_CARDS, TYPE_CARDS, EXTRA_OBJECTIVES } from './campaignDraft';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `CMP-01` — the campaign wizard, PRD §8.4.
@@ -272,7 +274,6 @@ export function CampaignWizard({
    * question about a campaign the person had not finished describing.
    */
   const [showReadiness, setShowReadiness] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   /**
    * Set when somebody chooses "Continue without it".
    *
@@ -290,13 +291,9 @@ export function CampaignWizard({
   */
   const propose = useCallback(async (advance = true) => {
     setBusy(true);
-    setError(null);
     const res = await invoke<ProposedPlan>('campaign.propose_plan', { genomeId, objective, windowDays });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t propose a plan')) return;
     setPlan(res.output);
     if (advance) setStep(2);
   }, [genomeId, objective, windowDays]);
@@ -371,7 +368,6 @@ export function CampaignWizard({
   /* CMP-01.6 — activate. Four calls, in the order their effects depend on. */
   async function activate() {
     setBusy(true);
-    setError(null);
 
     /**
       * The oversight choice is stored on the *campaign*, not the brand — PRD
@@ -419,9 +415,8 @@ export function CampaignWizard({
       `campaign:${genomeId}:${Date.now()}`,
     );
 
-    if (created.status !== 'succeeded') {
+    if (!notifyResult(created, undefined, 'Couldn’t create the campaign')) {
       setBusy(false);
-      setError(created.status === 'failed' ? userMessage(created.error) : 'That request was gated.');
       return;
     }
 
@@ -431,12 +426,14 @@ export function CampaignWizard({
       campaignId: created.output.campaignId,
     });
     setBusy(false);
-    if (generated.status !== 'succeeded') {
-      setError(
-        generated.status === 'failed'
-          ? `The campaign was created but its calendar was not: ${userMessage(generated.error)}`
-          : 'The campaign was created but generating its calendar was gated.',
-      );
+    if (generated.status === 'failed') {
+      notify.error('Campaign created, but its calendar was not', { body: userMessage(generated.error) });
+      return;
+    }
+    if (generated.status === 'gated') {
+      notify.pending('Calendar sent for approval', {
+        body: 'The campaign was created. Generating its calendar needs approval.',
+      });
       return;
     }
 
@@ -473,12 +470,16 @@ export function CampaignWizard({
       { campaignId: created.output.campaignId },
       `campaign.activate:${created.output.campaignId}`,
     );
-    if (activated.status !== 'succeeded') {
-      setError(
-        activated.status === 'failed'
-          ? `The campaign and its calendar were created, but activating it did not finish: ${userMessage(activated.error)}. You can activate it from Edit Campaign in the Command Center.`
-          : 'The campaign and its calendar were created. Activating it needs approval — do it from the calendar.',
-      );
+    if (activated.status === 'failed') {
+      notify.error('Campaign created, but not activated', {
+        body: `${userMessage(activated.error)}. You can activate it from Edit Campaign in the Command Center.`,
+      });
+      return;
+    }
+    if (activated.status === 'gated') {
+      notify.pending('Activation sent for approval', {
+        body: 'The campaign and its calendar were created. Activating it needs approval — do it from the calendar.',
+      });
       return;
     }
 
@@ -490,6 +491,9 @@ export function CampaignWizard({
       return;
     }
 
+    notify.success('Campaign activated', {
+      body: `${generated.output.slotCount} ${generated.output.slotCount === 1 ? 'post' : 'posts'} planned.`,
+    });
     onActivated(created.output.campaignId);
   }
 
@@ -602,11 +606,10 @@ export function CampaignWizard({
    */
   async function connectPlatform(platform: string) {
     if (!genomeId) {
-      setError('Select a brand before connecting an account.');
+      notify.warning('Select a brand before connecting an account');
       return;
     }
     setConnecting(platform);
-    setError(null);
     // `{ genomeId, provider }` — the tool's schema. This sent `{ platform }`,
     // which matches neither field; see `AccountsSection.connect`.
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', {
@@ -614,14 +617,7 @@ export function CampaignWizard({
       provider: platform,
     });
     setConnecting(null);
-    if (res.status !== 'succeeded') {
-      setError(
-        res.status === 'failed'
-          ? userMessage(res.error)
-          : 'Connecting an account needs an approval this screen cannot give.',
-      );
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t connect that account')) return;
     window.open(res.output.authorizeUrl, '_blank', 'noopener');
   }
 
@@ -737,7 +733,6 @@ export function CampaignWizard({
 
   /** Continue on the last step activates; everywhere else it advances. */
   function forward() {
-    setError(null);
     if (step === 1) {
       void propose();
       return;
@@ -753,7 +748,6 @@ export function CampaignWizard({
   }
 
   function backward() {
-    setError(null);
     if (step === 1) {
       onCancel();
       return;
@@ -954,7 +948,7 @@ export function CampaignWizard({
                 className="ml-auto flex h-[43px] shrink-0 items-center gap-[8px] rounded-[8.457px] px-[16px] text-17 font-medium text-ink disabled:opacity-60"
                 style={{ background: 'rgba(255,255,255,0.07)', boxShadow: '0 0 0 0.846px rgba(131,131,131,0.5)' }}
               >
-                {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
+                {busy ? <Busy>Working…</Busy> : step === 6 ? 'Activate' : 'Continue'}
                 <Chevron color="rgb(12,12,12)" />
               </button>
             </div>
@@ -993,12 +987,6 @@ export function CampaignWizard({
             <div className={`mt-[16px] flex flex-col gap-[16px] ${FLATTEN}`}>
               {stepSlot}
             </div>
-
-            {error ? (
-              <p className="mt-[14px] text-15 text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
           </div>
         </div>
       </NarrowStage>
@@ -1046,7 +1034,7 @@ export function CampaignWizard({
               style={{ top: hdrTop, background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(26.946px)' }}
             >
               <span className="absolute top-[10.768px] whitespace-nowrap text-17 font-medium leading-[1.269] text-ink" style={{ left: step === 6 ? 18 : 15 }}>
-                {busy ? 'Working…' : step === 6 ? 'Activate' : 'Continue'}
+                {busy ? <Busy>Working…</Busy> : step === 6 ? 'Activate' : 'Continue'}
               </span>
               <Chevron className="absolute left-[109.135px] top-[13.864px]" color="rgb(12,12,12)" />
             </button>
@@ -1088,12 +1076,6 @@ export function CampaignWizard({
             {step !== 6 ? <AgentOrb size={113} className="left-[461px]" style={{ top: avTop }} /> : null}
 
             {stepSlot}
-
-            {error ? (
-              <p className="absolute left-[265px] w-[720px] text-15 text-destructive" style={{ top: geom.modalH - 42 }} role="alert">
-                {error}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>

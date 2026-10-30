@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import type { Folder } from './types';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -92,7 +94,7 @@ export function MemberChecklist({
   onToggle: (userId: string) => void;
   emptyHint: string;
 }) {
-  if (team === null) return <p className="py-[16px] text-15 text-ink-muted">Loading the team…</p>;
+  if (team === null) return <SparkLoader size="inline" label="Loading the team…" className="py-[16px]" />;
 
   if (team.length === 0) {
     return <p className="py-[16px] text-14 leading-[1.5] text-ink-muted">{error ?? emptyHint}</p>;
@@ -172,7 +174,6 @@ export function FolderMembersModal({
   const { team, error: teamError } = useTeam();
   const [selected, setSelected] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,7 +193,6 @@ export function FolderMembersModal({
   async function save() {
     if (busy || selected === null) return;
     setBusy(true);
-    setError(null);
     /* `idempotent: true` — the same list twice is the same state. */
     const res = await invoke('asset.folder.member.set', {
       genomeId,
@@ -200,10 +200,7 @@ export function FolderMembersModal({
       userIds: selected,
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t assign people to the folder')) return;
     onSaved(selected.length);
   }
 
@@ -232,7 +229,6 @@ export function FolderMembersModal({
           }
           emptyHint="Nobody else is in this workspace yet. Invite people in Settings → Team."
         />
-        {error ? <p className="mt-[12px] text-15 text-destructive">{error}</p> : null}
       </div>
 
       <div className="px-[60px]">
@@ -257,7 +253,7 @@ export function FolderMembersModal({
           className="flex h-[52px] items-center rounded-[11px] px-[24px] text-18 font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ background: 'var(--ss-lib-toggle)' }}
         >
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? <Busy>Saving…</Busy> : 'Save'}
         </button>
       </div>
     </ModalShell>

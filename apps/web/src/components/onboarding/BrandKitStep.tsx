@@ -9,7 +9,8 @@ import {
 import { ProtoScale } from './Stage';
 import { TimezoneField } from '@/components/common/TimezoneField';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `F6`'s third group and `M8` — the brand kit, asked during onboarding.
@@ -121,7 +122,6 @@ export function BrandKitStep({
   const [topicDraft, setTopicDraft] = useState('');
   const [claimDraft, setClaimDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   /*
    * ── These two live here, with the other hooks, and must stay here ──────
@@ -170,7 +170,6 @@ export function BrandKitStep({
 
   async function save() {
     setBusy(true);
-    setMessage(null);
 
     /*
       `voice` is a comma list now, because the capture's control is
@@ -190,12 +189,9 @@ export function BrandKitStep({
     });
 
     setBusy(false);
-    setMessage(
-      res.status === 'succeeded'
-        ? { kind: 'ok', text: 'Saved.' }
-        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval first.' },
-    );
-    return res.status === 'succeeded';
+    // Quiet on success: it saves on every blur as well as on Continue, and a
+    // card per field would bury the step. Only a failure says so.
+    return notifyResult(res, undefined, 'Couldn’t save your brand kit');
   }
 
   /*
@@ -216,7 +212,7 @@ export function BrandKitStep({
     registerSave?.(save);
   });
 
-  if (!loaded) return <p className="text-14 text-ink-muted">Reading what SPARK already has…</p>;
+  if (!loaded) return <SparkLoader size="panel" label="Reading what SPARK already has…" />;
 
   const selectedVoices = voice ? voice.split(',').filter(Boolean) : [];
   const toggleVoice = (id: string) =>
@@ -518,12 +514,7 @@ export function BrandKitStep({
           </div>
         </fieldset>
 
-        {busy ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
-        {message ? (
-          <p role={message.kind === 'err' ? 'alert' : undefined} style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}>
-            {message.text}
-          </p>
-        ) : null}
+        {busy ? <SparkLoader size="inline" label="Saving…" /> : null}
       </div>
     </ProtoScale>
   );

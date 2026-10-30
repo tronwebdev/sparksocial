@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
@@ -71,7 +73,8 @@ export function VariantResult({
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
-  const [recorded, setRecorded] = useState<string | null>(null);
+  /** Once taught, the button goes — teaching twice would count the win twice. */
+  const [recorded, setRecorded] = useState(false);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -102,13 +105,21 @@ export function VariantResult({
       contentItemId: result.winnerContentItemId,
     });
     setRecording(false);
-    setRecorded(
-      res.status === 'succeeded'
-        ? `Recorded against ${res.output.pillar} — scored ${res.output.reward.toFixed(2)} against this brand's own recent average.`
-        : res.status === 'failed'
-          ? userMessage(res.error)
-          : 'Recording needs approval first.',
-    );
+    if (
+      !notifyResult(
+        res,
+        {
+          title: 'SPARK learned from this test',
+          body:
+            res.status === 'succeeded'
+              ? `Recorded against ${res.output.pillar} — scored ${res.output.reward.toFixed(2)} against this brand's own recent average.`
+              : undefined,
+        },
+        'Couldn’t teach SPARK from this test',
+      )
+    )
+      return;
+    setRecorded(true);
   }
 
   if (!genomeId) return null;
@@ -158,10 +169,9 @@ export function VariantResult({
 
       {result.winnerContentItemId && !recorded ? (
         <Button size="sm" variant="outline" className="mt-2" disabled={recording} onClick={() => void record()}>
-          {recording ? 'Recording…' : `Teach SPARK from arm ${result.winner?.toUpperCase()}`}
+          {recording ? <Busy>Recording…</Busy> : `Teach SPARK from arm ${result.winner?.toUpperCase()}`}
         </Button>
       ) : null}
-      {recorded ? <p className="mt-2 text-12 text-ink-muted">{recorded}</p> : null}
 
       {winnerArm && result.winner && !winnerArm.engagementRate ? (
         <p className="mt-2 text-12 text-warn">

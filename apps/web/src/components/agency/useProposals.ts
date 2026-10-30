@@ -8,6 +8,7 @@ import type {
   ProposalStatus,
 } from '@sparksocial/shared/agencyPipeline';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { userMessage } from '@/lib/errorCopy';
 
 /**
@@ -110,17 +111,18 @@ export function useProposals() {
     void load();
   }, [load]);
 
-  /** Returns the tool's own message on failure — it is already the right sentence. */
+  /**
+   * Says what failed, with the tool's own message as the detail — it is already
+   * the right sentence. Resolves to whether it succeeded.
+   */
   const run = useCallback(
-    async (name: string, input: unknown, key?: string): Promise<string | null> => {
+    async (name: string, input: unknown, failTitle: string, key?: string): Promise<boolean> => {
       setBusy(true);
       try {
         const res = await invoke<unknown>(name, input, key);
-        if (res.status !== 'succeeded') {
-          return res.status === 'failed' ? userMessage(res.error) : 'That needs an approval first.';
-        }
+        if (!notifyResult(res, undefined, failTitle)) return false;
         await load();
-        return null;
+        return true;
       } finally {
         setBusy(false);
       }
@@ -128,17 +130,17 @@ export function useProposals() {
     [load],
   );
 
-  const draft = useCallback((input: DraftInput) => run('proposal.draft', input), [run]);
+  const draft = useCallback((input: DraftInput) => run('proposal.draft', input, 'Couldn’t create the proposal'), [run]);
 
   const update = useCallback(
     (proposalId: string, patch: Partial<Omit<DraftInput, 'leadId'>>) =>
-      run('proposal.update', { proposalId, ...patch }),
+      run('proposal.update', { proposalId, ...patch }, 'Couldn’t save the proposal'),
     [run],
   );
 
   const decide = useCallback(
     (proposalId: string, outcome: 'accepted' | 'declined' | 'withdrawn') =>
-      run('proposal.decide', { proposalId, outcome }),
+      run('proposal.decide', { proposalId, outcome }, 'Couldn’t update the proposal'),
     [run],
   );
 
@@ -155,7 +157,7 @@ export function useProposals() {
     async (
       proposalId: string,
       expiresInDays: number,
-    ): Promise<{ token?: string; expiresAt?: string; error?: string }> => {
+    ): Promise<{ token: string; expiresAt: string } | null> => {
       setBusy(true);
       try {
         const res = await invoke<{ token: string; expiresAt: string }>(
@@ -163,9 +165,7 @@ export function useProposals() {
           { proposalId, expiresInDays, markSent: true },
           crypto.randomUUID(),
         );
-        if (res.status !== 'succeeded') {
-          return { error: res.status === 'failed' ? userMessage(res.error) : 'Sending needs an approval first.' };
-        }
+        if (!notifyResult(res, undefined, 'Couldn’t send the proposal')) return null;
         await load();
         return { token: res.output.token, expiresAt: res.output.expiresAt };
       } finally {

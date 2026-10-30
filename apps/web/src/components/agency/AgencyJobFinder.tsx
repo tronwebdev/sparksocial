@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
 import { invoke } from '@/lib/tools';
@@ -203,7 +204,7 @@ export function AgencyJobFinder() {
           className="absolute left-[82px] top-[64px] flex h-[38px] items-center rounded-[19px] px-[14px] text-14 font-semibold"
           style={{ background: 'rgba(120,170,255,0.18)', boxShadow: 'inset 0 0 0 1px rgba(120,170,255,0.5)', color: '#9CC2FF' }}
         >
-          {jobs === null ? 'Finding opportunities…' : `NEW: ${total.toLocaleString()} opportunities waiting`}
+          {jobs === null ? <Busy size={16}>Finding opportunities…</Busy> : `NEW: ${total.toLocaleString()} opportunities waiting`}
         </span>
 
         <h2 className="absolute left-[82px] top-[122px] w-[760px] text-40 font-semibold leading-[1.25] text-white">
@@ -343,7 +344,7 @@ export function AgencyJobFinder() {
             disabled={busy}
             className="absolute left-[1500px] top-[648px] flex h-[58px] items-center justify-center rounded-[13px] bg-ink px-[24px] text-16 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 max-canvas:w-full"
           >
-            {busy ? 'Searching…' : 'Browse Jobs'}
+            {busy ? <Busy>Searching…</Busy> : 'Browse Jobs'}
           </button>
         </form>
       ) : null}
@@ -352,7 +353,7 @@ export function AgencyJobFinder() {
         {tab === 'saved'
           ? `${saved.length} Saved`
           : jobs === null
-            ? 'Searching…'
+            ? <Busy size={16}>Searching…</Busy>
             : `${total.toLocaleString()} ${total === 1 ? 'Result' : 'Results'}`}
       </span>
 
@@ -379,7 +380,7 @@ export function AgencyJobFinder() {
           style={{ boxShadow: '0 16px 40px -34px rgba(12,12,12,0.45)' }}
         >
           <p className="text-19 font-bold text-ink">
-            {tab === 'saved' ? 'Nothing saved yet' : jobs === null || busy ? 'Finding jobs…' : 'No jobs match that'}
+            {tab === 'saved' ? 'Nothing saved yet' : jobs === null || busy ? <Busy>Finding jobs…</Busy> : 'No jobs match that'}
           </p>
           <p className="mx-auto mt-[12px] max-w-[660px] text-16 leading-[1.5]" style={{ color: 'rgb(131,131,131)' }}>
             {tab === 'saved'

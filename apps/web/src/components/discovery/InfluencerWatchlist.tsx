@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
@@ -105,7 +107,6 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
   async function add() {
     if (!genomeId || !handle.trim()) return;
     setBusy('add');
-    setError(null);
     const res = await invoke<{ watchlist: Watch[] }>('trend.influencer.watch', {
       genomeId,
       action: 'add',
@@ -114,10 +115,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
       ...(note.trim() ? { note: note.trim() } : {}),
     });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, `Couldn’t watch @${handle.trim()}`)) return;
     setWatchlist(res.output.watchlist);
     setHandle('');
     setNote('');
@@ -208,7 +206,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
           />
         </div>
         <Button disabled={busy !== null || !handle.trim()} onClick={() => void add()}>
-          {busy === 'add' ? 'Adding…' : 'Watch'}
+          {busy === 'add' ? <Busy>Adding…</Busy> : 'Watch'}
         </Button>
       </div>
 
@@ -246,7 +244,7 @@ export function InfluencerWatchlist({ genomeId }: { genomeId: string | undefined
 
           <div>
             <Button variant="outline" disabled={reviewing} onClick={() => void runReview()}>
-              {reviewing ? 'Looking…' : 'What have they been posting?'}
+              {reviewing ? <Busy>Looking…</Busy> : 'What have they been posting?'}
             </Button>
           </div>
         </>

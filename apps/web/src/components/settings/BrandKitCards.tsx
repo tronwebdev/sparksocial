@@ -3,6 +3,7 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { BRAND_FONTS, fontStack } from '@sparksocial/shared';
 import { cn } from '@/lib/utils';
+import { Busy } from '@/components/brand/SparkLoader';
 import { KitRow, KitSection } from './KitSection';
 import { GOOGLE_CSS } from './BrandFontPicker';
 
@@ -85,7 +86,7 @@ export function LogoCard({
             />
           </svg>
           {/* The word goes before the button runs past the card. */}
-          <span className="[@container(max-width:420px)]:hidden">{generating ? 'Generating…' : 'Generate logo'}</span>
+          <span className="[@container(max-width:420px)]:hidden">{generating ? <Busy>Generating…</Busy> : 'Generate logo'}</span>
         </button>
       }
     >
@@ -156,7 +157,7 @@ export function LogoCard({
             />
           </svg>
           <span className="mt-[8.5px] text-16 font-normal leading-[20px] text-ink">
-            {uploading ? 'Uploading…' : 'Drop files here or browse'}
+            {uploading ? <Busy>Uploading…</Busy> : 'Drop files here or browse'}
           </span>
           {/* The design says "Png, Jpeg up to 500MB". The upload takes PNG, JPEG
               and WebP, and a logo is never 500MB — so this says what is true. */}

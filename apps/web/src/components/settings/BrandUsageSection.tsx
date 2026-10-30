@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 
@@ -83,13 +84,7 @@ export function BrandUsageSection() {
       </p>
     );
   }
-  if (!usage) {
-    return (
-      <p className="text-16" style={{ color: MUTED }}>
-        Reading this month&rsquo;s usage…
-      </p>
-    );
-  }
+  if (!usage) return <SparkLoader size="panel" label="Reading this month’s usage…" />;
 
   const resetsIn = (() => {
     const start = new Date(usage.periodStart);

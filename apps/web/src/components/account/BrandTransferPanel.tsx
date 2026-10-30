@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
-import { cn } from '@/lib/utils';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-01` — take a brand out, bring a brand in.
@@ -60,7 +60,6 @@ const REQUIRED_KEYS = ['name', 'identity', 'dimensions', 'voice', 'offer', 'cons
 export function BrandTransferPanel() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selected, setSelected] = useState('');
-  const [note, setNote] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
 
   const [json, setJson] = useState('');
@@ -81,13 +80,9 @@ export function BrandTransferPanel() {
   async function exportBrand() {
     if (!selected) return;
     setBusy('export');
-    setNote(null);
     const res = await invoke<{ data: ExportPayload }>('brand.export', { genomeId: selected });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That export was held for review.' });
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t export that brand')) return;
 
     /**
      * Written to a Blob and revoked immediately after the click. A `data:` URI
@@ -104,20 +99,20 @@ export function BrandTransferPanel() {
     a.click();
     URL.revokeObjectURL(url);
 
-    setNote({ kind: 'ok', text: `Exported ${res.output.data.name}.` });
+    notify.success(`Exported ${res.output.data.name}`);
   }
 
   function readFile(file: File) {
     if (!file.name.toLowerCase().endsWith('.json')) {
-      setNote({ kind: 'err', text: 'That needs to be the .json file an export produced.' });
+      notify.warning('That file won’t import', { body: 'It needs to be the .json file an export produced.' });
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       setJson(String(reader.result ?? ''));
-      setNote({ kind: 'ok', text: `Loaded ${file.name}. Check it, then create the brand.` });
+      notify.success(`Loaded ${file.name}`, { body: 'Check it, then create the brand.' });
     };
-    reader.onerror = () => setNote({ kind: 'err', text: `Could not read ${file.name}.` });
+    reader.onerror = () => notify.error(`Couldn’t read ${file.name}`);
     reader.readAsText(file);
   }
 
@@ -126,7 +121,7 @@ export function BrandTransferPanel() {
     try {
       parsed = JSON.parse(json);
     } catch {
-      setNote({ kind: 'err', text: 'That is not valid JSON. Paste the whole file, including the outer braces.' });
+      notify.warning('That is not valid JSON', { body: 'Paste the whole file, including the outer braces.' });
       return;
     }
 
@@ -140,15 +135,13 @@ export function BrandTransferPanel() {
     const obj = parsed as Record<string, unknown> | null;
     const missing = REQUIRED_KEYS.filter((k) => !obj || obj[k] === undefined);
     if (missing.length > 0) {
-      setNote({
-        kind: 'err',
-        text: `This is missing ${missing.join(', ')}. Paste the whole exported file, not one section of it.`,
+      notify.warning(`This is missing ${missing.join(', ')}`, {
+        body: 'Paste the whole exported file, not one section of it.',
       });
       return;
     }
 
     setBusy('import');
-    setNote(null);
     /**
      * A fresh key per press, and the reasoning here was backwards before.
      *
@@ -171,13 +164,11 @@ export function BrandTransferPanel() {
       crypto.randomUUID(),
     );
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setNote({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That import was held for review.' });
-      return;
-    }
-    setNote({
-      kind: 'ok',
-      text: `Created ${res.output.name}. Its audience segments did not transfer — no tool writes that field — so check them in brand settings.`,
+    if (!notifyResult(res, undefined, 'Couldn’t create the brand')) return;
+    // Audience segments do not travel — no tool writes that field — so the
+    // confirmation says where to look.
+    notify.success(`Created ${res.output.name}`, {
+      body: 'Its audience segments did not transfer, so check them in brand settings.',
     });
     setJson('');
     setNewName('');
@@ -192,10 +183,6 @@ export function BrandTransferPanel() {
         voice, offer and constraints travel. Assets, published posts, performance history and the audit trail
         stay where they are.
       </p>
-
-      {note ? (
-        <p className={cn('mt-3 text-13', note.kind === 'ok' ? 'text-success' : 'text-destructive')}>{note.text}</p>
-      ) : null}
 
       <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* ── Out ──────────────────────────────────────────────────────── */}
@@ -225,7 +212,7 @@ export function BrandTransferPanel() {
               </select>
             </div>
             <Button variant="outline" disabled={busy !== null || !selected} onClick={() => void exportBrand()}>
-              {busy === 'export' ? 'Exporting…' : 'Download'}
+              {busy === 'export' ? <Busy>Exporting…</Busy> : 'Download'}
             </Button>
           </div>
         </div>
@@ -278,7 +265,7 @@ export function BrandTransferPanel() {
               Load a file
             </Button>
             <Button size="sm" disabled={busy !== null || !json.trim()} onClick={() => void importBrand()}>
-              {busy === 'import' ? 'Creating…' : 'Create brand'}
+              {busy === 'import' ? <Busy>Creating…</Busy> : 'Create brand'}
             </Button>
           </div>
         </div>

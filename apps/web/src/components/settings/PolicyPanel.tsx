@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `approval.policy.get`/`.set` — real since 17 Aug 2026, reached from no
@@ -69,7 +70,6 @@ export function PolicyPanel() {
   const [familyOverrides, setFamilyOverrides] = useState<Record<string, string>>({});
   const [newFamily, setNewFamily] = useState({ family: '', autonomy: AUTONOMY_OPTIONS[1] as string });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -107,7 +107,6 @@ export function PolicyPanel() {
 
   async function save() {
     setBusy(true);
-    setMessage(null);
     const contentTypes = contentTypesText
       .split(',')
       .map((s) => s.trim())
@@ -127,11 +126,7 @@ export function PolicyPanel() {
       familyOverrides: Object.keys(familyOverrides).length ? familyOverrides : null,
     });
     setBusy(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: 'Saved.' });
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    notifyResult(res, 'Policy saved', 'Couldn’t save the policy');
   }
 
   if (loading) return null;
@@ -333,9 +328,8 @@ export function PolicyPanel() {
 
       <div className="mt-5 flex items-center gap-3">
         <Button size="sm" disabled={busy} onClick={() => void save()}>
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? <Busy>Saving…</Busy> : 'Save'}
         </Button>
-        {message ? <span className={`text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</span> : null}
       </div>
     </section>
   );

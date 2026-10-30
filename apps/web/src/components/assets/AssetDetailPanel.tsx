@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notify, notifyResult } from '@/lib/notify';
 import { ASSET_ROLES } from './roles';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `asset.rights.set` / `.cooldown.check` / `.reuse` / `.folder.*` — real
@@ -55,14 +56,12 @@ export function AssetDetailPanel({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
 
   const [reuseBusy, setReuseBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     if (!asset) return;
     setRightsStatus(asset.rightsStatus);
     setFolderId(asset.folderId ?? '');
     setCooldown(null);
-    setMessage(null);
   }, [asset]);
 
   useEffect(() => {
@@ -77,54 +76,41 @@ export function AssetDetailPanel({
 
   async function setRights(next: (typeof RIGHTS_OPTIONS)[number]) {
     setRightsBusy(true);
-    setMessage(null);
     const res = await invoke<{ rightsStatus: string }>('asset.rights.set', { genomeId, assetId: asset!.assetId, rightsStatus: next });
     setRightsBusy(false);
-    if (res.status === 'succeeded') {
-      setRightsStatus(res.output.rightsStatus);
-      onChanged();
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t change the rights status')) return;
+    setRightsStatus(res.output.rightsStatus);
+    onChanged();
   }
 
   async function checkCooldown() {
     setCooldownBusy(true);
-    setMessage(null);
     const res = await invoke<{ results: { assetId: string; inCooldown: boolean; lastUsedDaysAgo?: number }[] }>('asset.cooldown.check', {
       genomeId,
       assetIds: [asset!.assetId],
     });
     setCooldownBusy(false);
-    if (res.status === 'succeeded') {
-      setCooldown(res.output.results[0] ?? null);
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t check the cooldown')) return;
+    setCooldown(res.output.results[0] ?? null);
   }
 
   async function moveToFolder(next: string) {
     setFolderBusy(true);
-    setMessage(null);
     const res = await invoke<{ folderId: string | null }>('asset.folder.move', {
       genomeId,
       assetId: asset!.assetId,
       folderId: next || null,
     });
     setFolderBusy(false);
-    if (res.status === 'succeeded') {
-      setFolderId(res.output.folderId ?? '');
-      onChanged();
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t move it')) return;
+    setFolderId(res.output.folderId ?? '');
+    onChanged();
   }
 
   async function createFolder() {
     const name = newFolderName.trim();
     if (!name) return;
     setFolderBusy(true);
-    setMessage(null);
     const res = await invoke<{ folderId: string; name: string }>('asset.folder.create', { genomeId, name }, crypto.randomUUID());
     if (res.status === 'succeeded') {
       setFolders((f) => [...(f ?? []), res.output]);
@@ -133,21 +119,17 @@ export function AssetDetailPanel({
       await moveToFolder(res.output.folderId);
     } else {
       setFolderBusy(false);
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
+      notifyResult(res, undefined, 'Couldn’t create the folder');
     }
   }
 
   async function markUsed() {
     setReuseBusy(true);
-    setMessage(null);
     const res = await invoke<{ usageCount: number }>('asset.reuse', { genomeId, assetId: asset!.assetId }, crypto.randomUUID());
     setReuseBusy(false);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: `Marked used — usage count now ${res.output.usageCount}.` });
-      onChanged();
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t mark it used')) return;
+    notify.success('Marked used', { body: `Usage count is now ${res.output.usageCount}.` });
+    onChanged();
   }
 
   return (
@@ -189,7 +171,7 @@ export function AssetDetailPanel({
             <div className="flex items-center justify-between gap-2">
               <p className="text-13 font-medium text-ink">Reuse cooldown</p>
               <Button size="sm" variant="outline" disabled={cooldownBusy} onClick={() => void checkCooldown()}>
-                {cooldownBusy ? 'Checking…' : 'Check cooldown'}
+                {cooldownBusy ? <Busy size={16}>Checking…</Busy> : 'Check cooldown'}
               </Button>
             </div>
             {cooldown ? (
@@ -247,14 +229,10 @@ export function AssetDetailPanel({
                 </p>
               </div>
               <Button size="sm" variant="outline" disabled={reuseBusy} onClick={() => void markUsed()}>
-                {reuseBusy ? 'Recording…' : 'Mark used'}
+                {reuseBusy ? <Busy size={16}>Recording…</Busy> : 'Mark used'}
               </Button>
             </div>
           </div>
-
-          {message ? (
-            <p className={`mt-3 text-13 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>{message.text}</p>
-          ) : null}
         </div>
       </div>
     </div>

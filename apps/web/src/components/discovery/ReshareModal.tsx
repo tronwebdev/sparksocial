@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { compactVolume, saturationWord, sourceLabel, type RankedTrendItem } from './TrendCard';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * Re-share — the composer the supplied design draws, and a different thing from
@@ -138,9 +139,8 @@ export function ReshareModal({
          press, the same rule `asset.folder.create` follows. */
       crypto.randomUUID(),
     );
-    if (created.status !== 'succeeded') {
+    if (!notifyResult(created, undefined, 'Couldn’t create the campaign')) {
       setBusy(false);
-      setError(created.status === 'failed' ? userMessage(created.error) : 'That request was gated.');
       return;
     }
 
@@ -382,7 +382,7 @@ export function ReshareModal({
           className="flex h-[44px] items-center gap-[14px] rounded-[10px] bg-white px-[20px] text-16 font-semibold text-ink transition-transform hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60"
           style={{ boxShadow: 'inset 0 0 0 1.4px rgba(12,12,12,0.55)' }}
         >
-          {busy ? 'Publishing…' : 'Publish'}
+          {busy ? <Busy>Publishing…</Busy> : 'Publish'}
           <svg width="8" height="14" viewBox="0 0 8 16" fill="none" aria-hidden>
             <path d="m1 1 6 7-6 7" stroke="#0C0C0C" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

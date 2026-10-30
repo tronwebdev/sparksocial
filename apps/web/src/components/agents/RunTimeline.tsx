@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
@@ -278,7 +279,7 @@ function RunDetailPanel({
         {detail.status === 'running' ? (
           <li className="grid grid-cols-[16px_1fr] gap-3">
             <span className="mt-1.5 h-2 w-2 animate-pulse rounded-full bg-brand-purple" />
-            <p className="text-13 text-ink-muted">Working…</p>
+            <SparkLoader size="inline" label="Working…" className="text-13" />
           </li>
         ) : null}
       </ol>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { writeSelectedGenome } from '@/lib/selectedGenome';
 import { useAuth } from '@clerk/nextjs';
 import { DeleteBrandModal } from './DeleteBrandModal';
@@ -373,7 +374,7 @@ export function AgencyClientTable({
                 style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)' }}
                 title={b.internal ? 'Count this workspace as a client again' : 'Your own brand or a test — leave it out of My Clients'}
               >
-                {busyId === b.brandId ? 'Saving…' : b.internal ? 'Mark as a client' : 'Not a client — mark internal'}
+                {busyId === b.brandId ? <Busy>Saving…</Busy> : b.internal ? 'Mark as a client' : 'Not a client — mark internal'}
               </button>
             </div>
           ) : null}

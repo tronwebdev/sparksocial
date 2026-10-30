@@ -11,6 +11,7 @@ import {
   type ProposalService,
   type ProposalStatus,
 } from '@sparksocial/shared/agencyPipeline';
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import type { DraftInput, Proposal } from './useProposals';
 import { majorUnits, money, parseMoney, proposalToText } from './proposalText';
@@ -117,13 +118,12 @@ export function ProposalModal({
   capped: boolean;
   busy: boolean;
   onClose: () => void;
-  onDraft: (input: DraftInput) => Promise<string | null>;
-  onUpdate: (proposalId: string, patch: Partial<Omit<DraftInput, 'leadId'>>) => Promise<string | null>;
-  onDecide: (proposalId: string, outcome: 'accepted' | 'declined' | 'withdrawn') => Promise<string | null>;
-  onShare: (proposalId: string, days: number) => Promise<{ token?: string; expiresAt?: string; error?: string }>;
+  onDraft: (input: DraftInput) => Promise<boolean>;
+  onUpdate: (proposalId: string, patch: Partial<Omit<DraftInput, 'leadId'>>) => Promise<boolean>;
+  onDecide: (proposalId: string, outcome: 'accepted' | 'declined' | 'withdrawn') => Promise<boolean>;
+  onShare: (proposalId: string, days: number) => Promise<{ token: string; expiresAt: string } | null>;
 }) {
   const [view, setView] = useState<View>({ kind: 'list' });
-  const [error, setError] = useState<string | null>(null);
 
   /**
    * The sending agency, for the pasted text. The public page gets the same name
@@ -141,14 +141,12 @@ export function ProposalModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  /* A failure is announced by `useProposals` itself, so each handler here only
+     decides what the panel does next. */
   async function send(p: Proposal) {
-    setError(null);
-    const { token, expiresAt, error: err } = await onShare(p.id, 14);
-    if (err || !token || !expiresAt) {
-      setError(err ?? 'Sending did not return a link.');
-      return;
-    }
-    setView({ kind: 'sent', proposal: p, token, expiresAt });
+    const shared = await onShare(p.id, 14);
+    if (!shared) return;
+    setView({ kind: 'sent', proposal: p, token: shared.token, expiresAt: shared.expiresAt });
   }
 
   /* On <body>: on a narrow Agency Portal the stage flattens its children into
@@ -204,7 +202,7 @@ export function ProposalModal({
               onEdit={(p) => setView({ kind: 'edit', proposal: p })}
               from={from}
               onSend={send}
-              onDecide={async (id, outcome) => setError(await onDecide(id, outcome))}
+              onDecide={(id, outcome) => void onDecide(id, outcome)}
             />
           ) : null}
 
@@ -216,7 +214,7 @@ export function ProposalModal({
               busy={busy}
               onCancel={() => setView({ kind: 'list' })}
               onSave={async (input) => {
-                const err = view.proposal
+                const saved = view.proposal
                   ? await onUpdate(view.proposal.id, {
                       title: input.title,
                       currency: input.currency,
@@ -225,12 +223,7 @@ export function ProposalModal({
                       notes: input.notes,
                     })
                   : await onDraft(input);
-                if (err) {
-                  setError(err);
-                  return;
-                }
-                setError(null);
-                setView({ kind: 'list' });
+                if (saved) setView({ kind: 'list' });
               }}
             />
           ) : null}
@@ -240,7 +233,6 @@ export function ProposalModal({
           ) : null}
         </div>
 
-        {error ? <p className="mt-[16px] text-15 text-destructive">{error}</p> : null}
       </div>
     </div>,
     document.body,
@@ -613,7 +605,7 @@ function ProposalEditor({
           Cancel
         </button>
         <button type="button" onClick={submit} disabled={busy} className={BTN_SOLID}>
-          {busy ? 'Saving…' : existing ? 'Save changes' : 'Create proposal'}
+          {busy ? <Busy>Saving…</Busy> : existing ? 'Save changes' : 'Create proposal'}
         </button>
       </div>
     </>

@@ -65,8 +65,8 @@ export interface StepShellProps {
   titleTone?: 'question' | 'label';
   onBack?: () => void;
   onContinue?: () => void;
-  /** `Finish` on the last step, per `…193231`. */
-  continueLabel?: string;
+  /** `Finish` on the last step, per `…193231`; a `<Busy>` label while it saves. */
+  continueLabel?: React.ReactNode;
   continueDisabled?: boolean;
   children?: React.ReactNode;
   /**

@@ -1,10 +1,10 @@
 'use client';
 
 import { SparkLoader } from '@/components/brand/SparkLoader';
-import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { invoke } from '@/lib/tools';
+import { invoke, type ToolResult } from '@/lib/tools';
+import { notify, notifyResult } from '@/lib/notify';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { AutomationHome } from './AutomationHome';
 import { CampaignManage } from './CampaignManage';
@@ -35,8 +35,8 @@ import { userMessage } from '@/lib/errorCopy';
  *                    bumps a counter after the congratulations; a modal that
  *                    congratulates you before the call succeeded is a lie the
  *                    first time it fails, so the order is inverted: create,
- *                    then celebrate, and a failure keeps you on the step with
- *                    the reason
+ *                    then celebrate, and a failure keeps you on the step and
+ *                    says why
  *   review → manage  **Activate Campaign** lands on that kind's manage view,
  *                    the same handoff `atActivate` makes for AutoTrend
  *   home → manage    a recipe card's **Manage**
@@ -64,7 +64,6 @@ export function AutomationScreen() {
   const [editing, setEditing] = useState<RecipeItem | null>(null);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [launched, setLaunched] = useState<{ draft: WizardDraft; recipeId: string } | null>(null);
   const [requireApproval, setRequireApproval] = useState(true);
   const [validation, setValidation] = useState<Validation | null>(null);
@@ -74,31 +73,15 @@ export function AutomationScreen() {
   const [canvaConnected, setCanvaConnected] = useState<boolean | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectNote, setConnectNote] = useState<string | null>(null);
-  /* The screen's own toast, with SPARK beside it in the matching mood. */
-  const [toast, setToast] = useState<{ msg: string; mood?: SparkMood } | null>(null);
 
-  const say = useCallback((msg: string, mood?: SparkMood) => {
-    const next = { msg, ...(mood ? { mood } : {}) };
-    setToast(next);
-    window.setTimeout(() => setToast((t) => (t === next ? null : t)), 2600);
-  }, []);
-
-  /**
-   * What to say when a call did not succeed.
-   *
-   * `gated` is not a failure — it is the policy engine staging the call for a
-   * person, and `decision.reason` is why. `recipe.delete` is `effect:
-   * 'destructive'`, so it is gated for most roles and the flat "that request
-   * was gated" told nobody anything they could act on.
-   */
-  const whyNot = useCallback((res: { status: string; error?: { message: string }; decision?: { reason?: string } }): string => {
-    if (res.status === 'failed') return res.error?.message ?? 'That request failed.';
-    /* The engine's reason is a fragment ("Irreversible action."), so it gets a
-       lead-in rather than being shown as a whole sentence on its own. */
-    return res.decision?.reason
-      ? `Staged for approval — ${res.decision.reason.replace(/\.$/, '')}.`
-      : 'That needs an approval before it can run — check the approvals queue.';
-  }, []);
+  /*
+    A call that did not succeed goes through `notifyResult`. `gated` is not a
+    failure — it is the policy engine staging the call for a person, with
+    `decision.reason` as why — so it reads as "sent for approval" with that
+    reason rather than as an error. `recipe.delete` is `effect: 'destructive'`,
+    so it is gated for most roles, and the flat "that request was gated" this
+    screen used to say told nobody anything they could act on.
+  */
 
   /* The validate step asks the engine what it makes of the config so far. */
   const stepKind = draft ? KIND_META[draft.kind].steps[Math.min(step, KIND_META[draft.kind].steps.length - 1)] : null;
@@ -145,10 +128,7 @@ export function AutomationScreen() {
     setConnectNote(null);
     const res = await invoke<{ authorizeUrl: string }>('brand.oauth.connect', { genomeId, provider: 'canva' });
     setConnecting(false);
-    if (res.status !== 'succeeded') {
-      setConnectNote(whyNot(res));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t open Canva')) return;
     /* A new tab: the wizard is mid-flight, and Canva redirects to the API. */
     window.open(res.output.authorizeUrl, '_blank', 'noopener,noreferrer');
     setConnectNote('Finish in the Canva tab, then come back — press Continue to re-check.');
@@ -158,7 +138,6 @@ export function AutomationScreen() {
     setDraft(next);
     setEditing(recipe);
     setStep(0);
-    setError(null);
     setView('wizard');
     window.scrollTo(0, 0);
   }
@@ -166,7 +145,6 @@ export function AutomationScreen() {
   async function launch() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
-    setError(null);
 
     /* Editing saves over the recipe — `recipe.update` validates the config
        against the stored kind and keeps its history and queued outputs. */
@@ -179,17 +157,14 @@ export function AutomationScreen() {
         intervalMinutes: intervalMinutesFor(draft),
       });
       setBusy(false);
-      if (saved.status !== 'succeeded') {
-        setError(whyNot(saved));
-        return;
-      }
+      if (!notifyResult(saved, undefined, 'Couldn’t save the recipe')) return;
       const kind = draft.kind;
       setEditing(null);
       setDraft(null);
       setManageKind(kind);
       setView('manage');
       window.scrollTo(0, 0);
-      say('Changes saved', 'success');
+      notify.success('Changes saved');
       void reload();
       return;
     }
@@ -210,10 +185,7 @@ export function AutomationScreen() {
     );
     setBusy(false);
 
-    if (res.status !== 'succeeded') {
-      setError(whyNot(res));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t launch the recipe')) return;
 
     setRequireApproval(draft.reviewFirst || (draft.kind === 'auto_trend' && draft.brandSafety));
     setLaunched({ draft, recipeId: res.output.id });
@@ -237,17 +209,14 @@ export function AutomationScreen() {
         config: configFor({ ...d, reviewFirst: requireApproval }),
       });
       setBusy(false);
-      if (saved.status !== 'succeeded') {
-        say(whyNot(saved), saved.status === 'failed' ? 'error' : 'warning');
-        return;
-      }
+      if (!notifyResult(saved, undefined, 'Couldn’t save the approval setting')) return;
     }
     setLaunched(null);
     setDraft(null);
     setManageKind(d.kind);
     setView('manage');
     window.scrollTo(0, 0);
-    say(`${KIND_META[d.kind].name} campaign activated`, 'success');
+    notify.success(`${KIND_META[d.kind].name} campaign activated`);
     void reload();
   }
 
@@ -264,14 +233,14 @@ export function AutomationScreen() {
     */
     if (status === 'approved' && !row.playbookId) {
       setBusyId(null);
-      say('No format this brand can make fits this one, so there is nothing to post — remove it instead.', 'warning');
+      notify.warning('Nothing to post', { body: 'No format this brand can make fits this one — remove it instead.' });
       return;
     }
 
     const res = await invoke<{ preview: { contentItemIds?: string[] } }>('recipe.output.decide', { id: row.id, genomeId, status });
     if (res.status !== 'succeeded') {
       setBusyId(null);
-      say(whyNot(res), res.status === 'failed' ? 'error' : 'warning');
+      notifyResult(res, undefined, status === 'approved' ? 'Couldn’t approve it' : 'Couldn’t remove it');
       /* The usual cause is a stale screen — the item was decided somewhere
          else since this list loaded — so show the queue as it is now rather
          than leaving a button that will fail the same way again. */
@@ -296,44 +265,32 @@ export function AutomationScreen() {
       }
     }
     setBusyId(null);
-    say(
-      status === 'rejected'
-        ? 'Removed from the queue'
-        : drafted
-          ? 'Approved and scheduled'
-          : 'Approved and scheduled — SPARK will write it before it goes out',
-      status === 'rejected' ? undefined : 'success',
-    );
+    if (status === 'rejected') notify.info('Removed from the queue');
+    else notify.success('Approved and scheduled', drafted ? undefined : { body: 'SPARK will write it before it goes out.' });
     void reload();
   }
 
   async function recipeAction(r: RecipeItem, action: 'run' | 'pause' | 'delete') {
     if (!genomeId || busyId) return;
     setBusyId(r.id);
-    const res: { status: string; output?: unknown; error?: { message: string }; decision?: { reason?: string } } =
+    const res: ToolResult<unknown> =
       action === 'run'
         ? await invoke('recipe.run', { id: r.id, genomeId }, crypto.randomUUID())
         : action === 'delete'
           ? await invoke('recipe.delete', { id: r.id, genomeId })
           : await invoke('recipe.schedule', { id: r.id, genomeId, status: r.status === 'paused' ? 'active' : 'paused' });
     setBusyId(null);
-    if (res.status !== 'succeeded') {
-      say(whyNot(res), res.status === 'failed' ? 'error' : 'warning');
-      return;
+    const failTitle = { run: `Couldn’t run ${r.name}`, delete: `Couldn’t delete ${r.name}`, pause: `Couldn’t update ${r.name}` }[action];
+    if (!notifyResult(res, undefined, failTitle)) return;
+    if (action === 'run') {
+      /* A run says what it did — "scheduled 3 posts", "found nothing new" — in
+         its own words, rather than a bare "ran". */
+      const ranWhy = (res.output as { why?: { summary?: string } } | undefined)?.why?.summary;
+      const kind = /fail/i.test(ranWhy ?? '') ? 'error' : /nothing/i.test(ranWhy ?? '') ? 'info' : 'success';
+      notify[kind](`${r.name} ran`, ranWhy ? { body: ranWhy } : undefined);
+    } else {
+      notify.success(action === 'delete' ? `${r.name} deleted` : r.status === 'paused' ? `${r.name} resumed` : `${r.name} paused`);
     }
-    /* A run says what it did — "scheduled 3 posts", "found nothing new" — in its
-       own words, rather than a bare "ran". */
-    const ranWhy = action === 'run' ? (res.output as { why?: { summary?: string } } | undefined)?.why?.summary : undefined;
-    say(
-      action === 'run'
-        ? ranWhy ?? `${r.name} ran`
-        : action === 'delete'
-          ? `${r.name} deleted`
-          : r.status === 'paused'
-            ? `${r.name} resumed`
-            : `${r.name} paused`,
-      action !== 'run' ? 'success' : /fail/i.test(ranWhy ?? '') ? 'error' : /nothing/i.test(ranWhy ?? '') ? 'asleep' : 'success',
-    );
     void reload();
   }
 
@@ -358,11 +315,11 @@ export function AutomationScreen() {
           onPreview={(row) =>
             row.contentItemId
               ? router.push(`/agents?draft=${encodeURIComponent(row.contentItemId)}`)
-              : say(
-                  row.playbookId
-                    ? `Not written yet — approve it and SPARK writes${row.formatName ? ` the ${row.formatName} post` : ' it'} and schedules it.`
-                    : 'No format fits this one, so there is no post to preview.',
-                )
+              : row.playbookId
+                ? notify.info('Not written yet', {
+                    body: `Approve it and SPARK writes${row.formatName ? ` the ${row.formatName} post` : ' it'} and schedules it.`,
+                  })
+                : notify.info('Nothing to preview', { body: 'No format fits this one, so there is no post to preview.' })
           }
           onRemove={(row) => void decide(row, 'rejected')}
           onReview={() => {
@@ -394,7 +351,6 @@ export function AutomationScreen() {
           }}
           onLaunch={() => void launch()}
           busy={busy}
-          error={error}
           validation={validation}
           canvaConnected={canvaConnected}
           connecting={connecting}
@@ -447,21 +403,6 @@ export function AutomationScreen() {
 
       {loadError ? (
         <p className="px-auto-inset pb-[20px] text-15 text-destructive">{loadError}</p>
-      ) : null}
-
-      {toast ? (
-        <div
-          role="status"
-          className={`fixed bottom-[34px] left-1/2 z-[140] flex -translate-x-1/2 animate-toast-in items-center gap-[10px] whitespace-nowrap rounded-xl py-[13px] pr-[22px] text-15 font-medium text-white motion-reduce:animate-none ${toast.mood ? 'pl-[10px]' : 'pl-[22px]'}`}
-          style={{ background: 'rgba(12,12,12,0.92)' }}
-        >
-          {toast.mood ? (
-            <span className="-my-[8px]">
-              <SparkMark key={toast.msg} size={32} mood={toast.mood} decorative />
-            </span>
-          ) : null}
-          {toast.msg}
-        </div>
       ) : null}
     </>
   );

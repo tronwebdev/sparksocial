@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from './tools';
 import { readSelectedGenome } from './selectedGenome';
+import { bindNotifySink, type NotifyKind } from './notify';
+import { playSound, type SoundKind } from './notifySound';
 
 /**
  * ONE notification system, for the whole app.
@@ -72,7 +74,29 @@ export interface Toast {
   /** Present when there is somewhere for "Review" to go. */
   target?: { type: 'content_item'; id: string };
   messageId?: string;
+  /**
+   * Set on an action message sent through `notify` — what the person just did
+   * came to. Those show SPARK in the matching mood and close themselves;
+   * notifications from the feed carry a topic instead and stay until dismissed.
+   */
+  kind?: NotifyKind;
+  action?: { label: string; onClick: () => void };
+  /** Milliseconds on screen; `0` stays until closed. Action messages only. */
+  durationMs?: number;
 }
+
+/** How long each kind of action message stays, unless the caller says otherwise. */
+const STAY_MS: Record<NotifyKind, number> = { success: 4500, info: 5000, pending: 7000, warning: 8000, error: 9000 };
+
+/** The sound for a feed notification, by topic. */
+const TOPIC_SOUND: Record<NotificationTopic, SoundKind> = {
+  content_ready: 'info',
+  published: 'success',
+  failed: 'error',
+  queued: 'pending',
+  connection: 'warning',
+  generic: 'info',
+};
 
 interface NotificationsApi {
   items: AppNotification[] | null;
@@ -83,7 +107,7 @@ interface NotificationsApi {
   markAllRead: () => Promise<void>;
   markRead: (messageId: string) => Promise<void>;
   /** Raise a toast from anywhere in the app, for something local and immediate. */
-  toast: (t: Omit<Toast, 'id'>) => void;
+  toast: (t: Omit<Toast, 'id'> & { silent?: boolean }) => void;
   toasts: Toast[];
   dismissToast: (id: string) => void;
   /**
@@ -137,12 +161,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setToasts((cur) => cur.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback((t: Omit<Toast, 'id'>) => {
+  const toast = useCallback((t: Omit<Toast, 'id'> & { silent?: boolean }) => {
     const id = `t_${Math.random().toString(36).slice(2, 9)}`;
-    /* Three at a time. A stack taller than that covers the thing it is telling
-       you about, and the rest are in the bell anyway. */
-    setToasts((cur) => [...cur.slice(-2), { ...t, id }]);
+    const { silent, ...rest } = t;
+    const entry: Toast = rest.kind ? { durationMs: STAY_MS[rest.kind], ...rest, id } : { ...rest, id };
+    /* Four at a time. A stack taller than that covers the thing it is telling
+       you about, and the feed's own are in the bell anyway. */
+    setToasts((cur) => [...cur.slice(-3), entry]);
+    if (!silent) playSound(rest.kind ?? TOPIC_SOUND[rest.topic] ?? 'info');
   }, []);
+
+  /* `notify.*` from anywhere in the app lands here. */
+  useEffect(() => {
+    bindNotifySink((n) => {
+      const { kind, title, body, action, durationMs, silent } = n;
+      toast({
+        kind,
+        title,
+        topic: kind === 'error' ? 'failed' : 'generic',
+        ...(body ? { body } : {}),
+        ...(action ? { action } : {}),
+        ...(durationMs !== undefined ? { durationMs } : {}),
+        ...(silent ? { silent } : {}),
+      });
+    });
+    return () => bindNotifySink(null);
+  }, [toast]);
 
   const announce = useCallback(
     (n: AppNotification) => {

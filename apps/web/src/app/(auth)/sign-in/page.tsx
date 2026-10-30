@@ -10,7 +10,9 @@ import { SocialRow, type OAuthStrategy } from '@/components/auth/SocialRow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Wordmark } from '@/components/brand/Wordmark';
+import { Busy } from '@/components/brand/SparkLoader';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
+import { notify } from '@/lib/notify';
 
 /**
  * Login — built to `ui_screenshot/login.png`. Full-bleed `#6CE8FF` sky, a 472px
@@ -86,7 +88,6 @@ export default function SignInPage() {
   const [step, setStep] = useState<Step>({ kind: 'password' });
   const [errors, setErrors] = useState<FieldErrors>({ fields: {}, form: undefined });
   const [busy, setBusy] = useState(false);
-  const [resent, setResent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
@@ -177,7 +178,9 @@ export default function SignInPage() {
       } else {
         await signIn.prepareSecondFactor({ strategy: 'email_code' });
       }
-      setResent(true);
+      // A confirmation of the action, not form state — the code field's own
+      // errors stay inline under it.
+      notify.success('Code resent', { body: `Sent to ${step.safeIdentifier}.` });
     } catch (err) {
       setErrors(toFieldErrors(err));
     }
@@ -282,7 +285,7 @@ export default function SignInPage() {
               ) : null}
 
               <Button type="submit" size="cta" className="w-full" disabled={!isLoaded || busy}>
-                {busy ? 'Signing in…' : 'Login now'}
+                {busy ? <Busy>Signing in…</Busy> : 'Login now'}
               </Button>
             </form>
           </>
@@ -317,14 +320,14 @@ export default function SignInPage() {
               ) : null}
 
               <Button type="submit" size="cta" className="mt-2 w-full" disabled={!isLoaded || busy || !code}>
-                {busy ? 'Verifying…' : 'Continue'}
+                {busy ? <Busy>Verifying…</Busy> : 'Continue'}
               </Button>
             </form>
 
             <div className="mt-6 flex items-center justify-center gap-6 text-16">
               {step.kind !== 'second_factor_totp' ? (
                 <button type="button" onClick={resend} className="text-brand-purple underline" disabled={!isLoaded}>
-                  {resent ? 'Code resent' : 'Resend'}
+                  Resend
                 </button>
               ) : null}
               <button

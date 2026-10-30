@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
+import { notify, notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { BeatRow } from './BeatRow';
 import { DraftChat } from './DraftChat';
@@ -226,42 +227,33 @@ export function DraftPanel({
    * exactly the invented stage this comment argues against.
    */
   const [stage, setStage] = useState<{ beatId: string; label: string } | null>(null);
-  const [beatErrors, setBeatErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [shortUrl, setShortUrl] = useState<string | null>(null);
   const [shortening, setShortening] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
   const [renders, setRenders] = useState<Array<{ aspect: string; url: string; beatId?: string }> | null>(null);
   const [rendering, setRendering] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
-  const [rollbackError, setRollbackError] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
-  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [variants, setVariants] = useState<Array<{ beats: ResolvedBeat[] }> | null>(null);
   const [variantsLoading, setVariantsLoading] = useState(false);
-  const [variantsError, setVariantsError] = useState<string | null>(null);
   /** §8.9's A/B test. The index being split, so only that row shows a spinner. */
   const [splitting, setSplitting] = useState<number | null>(null);
-  const [splitNote, setSplitNote] = useState<string | null>(null);
   const [applyingVariant, setApplyingVariant] = useState<number | null>(null);
   const [repurposeOpen, setRepurposeOpen] = useState(false);
   const [repurposePlaybooks, setRepurposePlaybooks] = useState<PlaybookSummary[] | null>(null);
   const [repurposing, setRepurposing] = useState(false);
-  const [repurposeError, setRepurposeError] = useState<string | null>(null);
-  const [repurposeResult, setRepurposeResult] = useState<string | null>(null);
   const [explainOpenId, setExplainOpenId] = useState<string | null>(null);
   const [explainSummary, setExplainSummary] = useState<Record<string, string>>({});
   const [explainLoading, setExplainLoading] = useState<string | null>(null);
   const [staticRendering, setStaticRendering] = useState(false);
-  const [staticRenderError, setStaticRenderError] = useState<string | null>(null);
   const [canvaConnected, setCanvaConnected] = useState<boolean | null>(null);
   const [fanoutOpen, setFanoutOpen] = useState(false);
   const [brandTemplateId, setBrandTemplateId] = useState('');
   const [fanoutData, setFanoutData] = useState('');
   const [fanoutBusy, setFanoutBusy] = useState(false);
+  /** The field data's own validation only — the call's outcome is a notification. */
   const [fanoutError, setFanoutError] = useState<string | null>(null);
   const [fanoutResult, setFanoutResult] = useState<{ editUrl?: string; renders: { format: string; url: string }[] } | null>(null);
 
@@ -391,13 +383,9 @@ export function DraftPanel({
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setBeatErrors({});
     setLinkUrl('');
     setShortUrl(null);
-    setLinkError(null);
     setRenders(null);
-    setRenderError(null);
-    setRollbackError(null);
     if (initialContentItemId) {
       void loadDraft(initialContentItemId);
     } else {
@@ -498,7 +486,6 @@ export function DraftPanel({
   async function createDraft() {
     if (!genomeId || !selectedPlaybookId || busy) return;
     setBusy(true);
-    setError(null);
     // `content.draft` is deliberately `idempotent: false` — a second call is
     // a second take, not a safe replay of the first — so it requires a key,
     // and it must be fresh per click: reusing one across clicks would make
@@ -509,10 +496,7 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That draft was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate the post')) return;
     setDraft(res.output);
     setPhase('editor');
     onDraftCreated?.(res.output.contentItemId);
@@ -567,17 +551,13 @@ export function DraftPanel({
   async function redraftThisPost() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
-    setError(null);
     const res = await invoke<DraftView>(
       'content.draft',
       { genomeId, playbookId: draft.playbookId, contentItemId: draft.contentItemId, intent },
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That redraft was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t regenerate the concept')) return;
     setDraft(res.output);
   }
 
@@ -599,7 +579,6 @@ export function DraftPanel({
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
     setStage({ beatId, label: 'Asking for an image\u2026' });
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — regenerating a beat's image is the point of the
     // button, so each click needs its own key or every click after the first
     // would silently return the first image again.
@@ -617,10 +596,7 @@ export function DraftPanel({
     setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
     setStage(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate the image')) return;
     /*
       Mirrors the server: a beat with words keeps them and gets the picture
       behind it (`content.generate_image` attaches by default for text beats);
@@ -648,7 +624,6 @@ export function DraftPanel({
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
     setStage({ beatId, label: 'Rendering the avatar video\u2026' });
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_avatar_video',
@@ -664,10 +639,7 @@ export function DraftPanel({
     setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
     setStage(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate the avatar video')) return;
     replaceBeat(beatId, { kind: 'generated_video', beatId, url: res.output.url, script });
   }
 
@@ -675,7 +647,6 @@ export function DraftPanel({
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
     setStage({ beatId, label: 'Recording the voiceover\u2026' });
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_voiceover',
@@ -691,10 +662,7 @@ export function DraftPanel({
     setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
     setStage(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t record the voiceover')) return;
     replaceBeat(beatId, { kind: 'generated_audio', beatId, url: res.output.url, script });
   }
 
@@ -706,7 +674,6 @@ export function DraftPanel({
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
     setStage({ beatId, label: 'Generating b-roll\u2026' });
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — same reasoning as generateImage above.
     const res = await invoke<{ url: string }>(
       'content.generate_broll',
@@ -722,17 +689,13 @@ export function DraftPanel({
     setStage({ beatId, label: 'Saving it to the draft\u2026' });
     setBusyBeatId(null);
     setStage(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate the b-roll')) return;
     replaceBeat(beatId, { kind: 'generated_broll', beatId, url: res.output.url, prompt });
   }
 
   async function dubBeat(beatId: string, sourceUrl: string, mediaKind: 'video' | 'audio', targetLanguage: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     // idempotent: false — a re-dub is a new generation, same reasoning as every other generate_* call above.
     const res = await invoke<{ url: string }>(
       'content.generate_dub',
@@ -747,17 +710,13 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setBusyBeatId(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t dub this scene')) return;
     replaceBeat(beatId, { kind: 'dubbed_media', beatId, url: res.output.url, targetLanguage, mediaType: mediaKind });
   }
 
   async function saveBeatText(beatId: string, text: string) {
     if (!draft || !genomeId || busyBeatId) return;
     setBusyBeatId(beatId);
-    setBeatErrors((e) => ({ ...e, [beatId]: '' }));
     const res = await invoke<{ beats: ResolvedBeat[] }>('content.beat.update', {
       contentItemId: draft.contentItemId,
       genomeId,
@@ -765,10 +724,7 @@ export function DraftPanel({
       text,
     });
     setBusyBeatId(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [beatId]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t save the scene')) return;
     replaceBeat(beatId, { kind: 'text', beatId, text });
   }
 
@@ -782,8 +738,8 @@ export function DraftPanel({
    *
    * The band refusal is a normal outcome here, not an exception. On a tight
    * format there is genuinely no room for another scene, so the tool's own
-   * message - which names the resulting length and the band - is surfaced
-   * verbatim rather than replaced with something vaguer.
+   * message - which names the resulting length and the band - is the
+   * notification's detail line, verbatim, rather than something vaguer.
    */
   type SceneResult = { beats: ResolvedBeat[]; totalDurationSec: number; durationBand?: [number, number] };
 
@@ -793,7 +749,7 @@ export function DraftPanel({
    * Only `content.scene.insert` is, and it refuses outright without one — so
    * "Add scene" failed every time it was clicked, with
    * `"content.scene.insert" is not idempotent and requires an idempotency key`
-   * shown in the form's error line. The other five are idempotent and pass
+   * as its error. The other five are idempotent and pass
    * nothing. The key must be fresh per click for the reason `createDraft` gives:
    * a stable one would make every later add replay the first insert.
    */
@@ -806,17 +762,13 @@ export function DraftPanel({
     if (!draft || !genomeId || busyBeatId) return;
     const busyKey = beatId ?? SCENE_ADD_KEY;
     setBusyBeatId(busyKey);
-    setBeatErrors((e) => ({ ...e, [busyKey]: '' }));
     const res = await invoke<SceneResult>(
       name,
       { contentItemId: draft.contentItemId, genomeId, ...input },
       idempotencyKey,
     );
     setBusyBeatId(null);
-    if (res.status !== 'succeeded') {
-      setBeatErrors((e) => ({ ...e, [busyKey]: res.status === 'failed' ? userMessage(res.error) : 'Gated.' }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t change the scenes')) return;
     setDraft((d) => (d ? { ...d, beats: res.output.beats } : d));
     setSceneTotal(res.output.totalDurationSec);
   }
@@ -908,23 +860,18 @@ export function DraftPanel({
   async function shortenLink() {
     if (!genomeId || !linkUrl.trim() || shortening) return;
     setShortening(true);
-    setLinkError(null);
     const res = await invoke<{ shortUrl: string; destinationUrl: string }>('link.shorten', {
       genomeId,
       url: linkUrl.trim(),
     });
     setShortening(false);
-    if (res.status !== 'succeeded') {
-      setLinkError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t shorten the link')) return;
     setShortUrl(res.output.shortUrl);
   }
 
   async function renderCompose() {
     if (!draft || !genomeId || rendering) return;
     setRendering(true);
-    setRenderError(null);
     // idempotent: false — "a re-render is a new render... not a safe replay"
     // (compose/tool.ts), same reasoning as content.draft above.
     const res = await invoke<{ renders: Array<{ aspect: string; url: string; beatId?: string }> }>(
@@ -933,17 +880,13 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setRendering(false);
-    if (res.status !== 'succeeded') {
-      setRenderError(res.status === 'failed' ? userMessage(res.error) : 'Rendering was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t render the post')) return;
     setRenders(res.output.renders);
   }
 
   async function loadVariants() {
     if (!draft || !genomeId || variantsLoading) return;
     setVariantsLoading(true);
-    setVariantsError(null);
     // read/idempotent — a preview, safe to call with no idempotency key and
     // to re-call for a fresh set of takes.
     const res = await invoke<{ variants: Array<{ beats: ResolvedBeat[] }> }>('draft.variants', {
@@ -951,10 +894,7 @@ export function DraftPanel({
       contentItemId: draft.contentItemId,
     });
     setVariantsLoading(false);
-    if (res.status !== 'succeeded') {
-      setVariantsError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate variants')) return;
     setVariants(res.output.variants);
   }
 
@@ -986,21 +926,25 @@ export function DraftPanel({
   async function splitTest(index: number, beats: ResolvedBeat[]) {
     if (!draft || !genomeId || splitting !== null) return;
     setSplitting(index);
-    setSplitNote(null);
     const res = await invoke<{ variantGroupId: string; arms: Array<{ contentItemId: string; label: string }> }>(
       'content.variant.split',
       { genomeId, contentItemId: draft.contentItemId, variantBeats: beats },
     );
     setSplitting(null);
-    if (res.status !== 'succeeded') {
-      setSplitNote(res.status === 'failed' ? userMessage(res.error) : 'Setting up the test needs approval first.');
+    if (
+      !notifyResult(
+        res,
+        {
+          title: 'A/B test set up',
+          body:
+            'This draft is arm A and the take you picked is arm B — schedule them close together, ' +
+            'since a day apart is a different audience rather than a different post.',
+        },
+        'Couldn’t set up the test',
+      )
+    )
       return;
-    }
     setVariants(null);
-    setSplitNote(
-      'Set up. This draft is arm A and the take you picked is arm B — schedule them close together, ' +
-        'since a day apart is a different audience rather than a different post.',
-    );
   }
 
   useEffect(() => {
@@ -1026,7 +970,6 @@ export function DraftPanel({
   async function repurposeAs(targetPlaybookId: string) {
     if (!draft || !genomeId || repurposing) return;
     setRepurposing(true);
-    setRepurposeError(null);
     // idempotent: false — creates a genuinely new draft each call, same reasoning content.draft gives.
     const res = await invoke<{ contentItemId: string; playbookId: string }>(
       'draft.repurpose',
@@ -1034,12 +977,11 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setRepurposing(false);
-    if (res.status !== 'succeeded') {
-      setRepurposeError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t repurpose the post')) return;
     setRepurposeOpen(false);
-    setRepurposeResult(`Created as a new draft (${res.output.playbookId}) — the source is untouched. Find it in Drafts.`);
+    notify.success('Created as a new draft', {
+      body: `${res.output.playbookId} — the source is untouched. Find it in Drafts.`,
+    });
   }
 
   async function explainPlaybook(playbookId: string) {
@@ -1062,7 +1004,6 @@ export function DraftPanel({
   async function renderStatic() {
     if (!draft || !genomeId || staticRendering) return;
     setStaticRendering(true);
-    setStaticRenderError(null);
     // idempotent: false — same reasoning as renderCompose above.
     const res = await invoke<{ renders: Array<{ aspect: string; url: string; beatId?: string }> }>(
       'compose.static',
@@ -1070,10 +1011,7 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setStaticRendering(false);
-    if (res.status !== 'succeeded') {
-      setStaticRenderError(res.status === 'failed' ? userMessage(res.error) : 'Rendering was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t render the post')) return;
     setRenders(res.output.renders);
   }
 
@@ -1114,17 +1052,13 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setFanoutBusy(false);
-    if (res.status !== 'succeeded') {
-      setFanoutError(res.status === 'failed' ? userMessage(res.error) : 'Fanning out was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t fan out via Canva')) return;
     setFanoutResult(res.output);
   }
 
   async function publishNow() {
     if (!draft || !genomeId || busy) return;
     setBusy(true);
-    setError(null);
     /*
      * Caption, then hashtags, then the tracked link.
      *
@@ -1168,10 +1102,7 @@ export function DraftPanel({
       `publish:${draft.contentItemId}:${platform}`,
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Publishing was held for review — check the queue.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t publish the post')) return;
     onClose();
   }
 
@@ -1179,7 +1110,6 @@ export function DraftPanel({
     if (!draft || !genomeId || rollingBack) return;
     if (!window.confirm('Delete this post from the platform? This cannot be undone.')) return;
     setRollingBack(true);
-    setRollbackError(null);
     // idempotent: false — a retried rollback must not be treated as a safe
     // replay once the post is already down, so it needs a fresh key too.
     const res = await invoke<{ platform: string; rolledBackAt: string }>(
@@ -1188,10 +1118,7 @@ export function DraftPanel({
       crypto.randomUUID(),
     );
     setRollingBack(false);
-    if (res.status !== 'succeeded') {
-      setRollbackError(res.status === 'failed' ? userMessage(res.error) : 'Rollback was held for review.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t roll the post back')) return;
     setDraft((d) => (d ? { ...d, status: 'rolled_back' } : d));
   }
 
@@ -1211,7 +1138,6 @@ export function DraftPanel({
   async function rescheduleTomorrow() {
     if (!draft || !genomeId || rescheduling) return;
     setRescheduling(true);
-    setRescheduleError(null);
 
     const when = new Date();
     when.setDate(when.getDate() + 1);
@@ -1223,15 +1149,12 @@ export function DraftPanel({
       scheduledAt: when.toISOString(),
     });
     setRescheduling(false);
-    if (res.status !== 'succeeded') {
-      setRescheduleError(res.status === 'failed' ? userMessage(res.error) : 'Rescheduling was held for review.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t reschedule the post')) return;
     // Mirror the write locally rather than refetching: `content.schedule` clears
     // the attempt count and the last error, so leaving them on screen would show
     // a stall that no longer exists.
     setDraft((d) => (d ? { ...d, status: 'scheduled', publishAttempts: 0, lastPublishError: undefined, blockedReason: undefined } : d));
-    toast.success('Rescheduled for tomorrow at 9:00');
+    notify.success('Rescheduled for tomorrow at 9:00');
   }
 
   if (!open) return null;
@@ -1262,7 +1185,6 @@ export function DraftPanel({
         chrome={chrome}
         mediaType={draft.mediaType}
         busy={busyBeatId === beat.beatId}
-        error={beatErrors[beat.beatId] || undefined}
         index={i}
         startSec={startOf(i)}
         timed={draft.mediaType === 'video'}
@@ -1325,13 +1247,10 @@ export function DraftPanel({
             disabled={busyBeatId !== null || !sceneDescription.trim()}
             onClick={() => void addScene()}
           >
-            {busyBeatId === SCENE_ADD_KEY ? 'Adding…' : 'Add scene'}
+            {busyBeatId === SCENE_ADD_KEY ? <Busy>Adding…</Busy> : 'Add scene'}
           </Button>
         </div>
       </div>
-      {beatErrors[SCENE_ADD_KEY] ? (
-        <p className="mt-2 text-12 text-destructive">{beatErrors[SCENE_ADD_KEY]}</p>
-      ) : null}
     </div>
   );
 
@@ -1559,10 +1478,8 @@ export function DraftPanel({
                 )}
               </div>
 
-              {error ? <p className="text-13 text-destructive">{error}</p> : null}
-
               <Button disabled={!selectedPlaybookId || busy} onClick={() => void createDraft()}>
-                {busy ? 'Generating…' : 'Generate post'}
+                {busy ? <Busy>Generating…</Busy> : 'Generate post'}
               </Button>
             </div>
             </>
@@ -1604,7 +1521,6 @@ export function DraftPanel({
             <StallNotice
               draft={draft}
               rescheduling={rescheduling}
-              error={rescheduleError}
               onReschedule={() => void rescheduleTomorrow()}
             />
           ) : null}
@@ -1648,9 +1564,8 @@ export function DraftPanel({
                 ) : null}
               </p>
               <div className="flex items-center gap-2">
-                {rollbackError ? <p className="text-12 text-destructive">{rollbackError}</p> : null}
                 <Button size="sm" variant="outline" disabled={rollingBack} onClick={() => void rollbackPost()}>
-                  {rollingBack ? 'Rolling back…' : 'Roll back'}
+                  {rollingBack ? <Busy>Rolling back…</Busy> : 'Roll back'}
                 </Button>
               </div>
             </div>
@@ -1739,7 +1654,7 @@ export function DraftPanel({
                   onClick={() => void redraftThisPost()}
                   className="text-18 font-medium text-brand-purple hover:underline disabled:opacity-50"
                 >
-                  {busy ? 'Regenerating…' : 'Regenerate concept'}
+                  {busy ? <Busy>Regenerating…</Busy> : 'Regenerate concept'}
                 </button>
               </div>
               {/*
@@ -1840,14 +1755,12 @@ export function DraftPanel({
                 no job id to poll, so a bar would be animation over an unknown.
               */}
               {stage ? (
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-surface-muted px-4 py-3">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-primary" aria-hidden />
-                  <p className="text-13 text-ink">
-                    {stage.label}{' '}
-                    <span className="text-ink-muted">
-                      &mdash; {draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}
-                    </span>
-                  </p>
+                <div className="rounded-lg border border-border bg-surface-muted px-4 py-3">
+                  <SparkLoader
+                    size="inline"
+                    label={`${stage.label} — ${draft.beats.find((b) => b.beatId === stage.beatId)?.label ?? stage.beatId}`}
+                    className="text-13 text-ink"
+                  />
                 </div>
               ) : null}
 
@@ -1869,11 +1782,9 @@ export function DraftPanel({
                     </p>
                   </div>
                   <Button size="sm" variant="outline" disabled={variantsLoading} onClick={() => void loadVariants()}>
-                    {variantsLoading ? 'Generating…' : 'See variants'}
+                    {variantsLoading ? <Busy>Generating…</Busy> : 'See variants'}
                   </Button>
                 </div>
-                {variantsError ? <p className="mt-2 text-12 text-destructive">{variantsError}</p> : null}
-                {splitNote ? <p className="mt-2 text-12 text-ink-muted">{splitNote}</p> : null}
                 {variants && variants.length > 0 ? (
                   <ul className="mt-3 grid grid-cols-1 gap-2">
                     {variants.map((v, i) => (
@@ -1890,7 +1801,7 @@ export function DraftPanel({
                             disabled={applyingVariant !== null || splitting !== null}
                             onClick={() => void applyVariant(i, v.beats)}
                           >
-                            {applyingVariant === i ? 'Applying…' : 'Use this'}
+                            {applyingVariant === i ? <Busy>Applying…</Busy> : 'Use this'}
                           </Button>
                           {/* The two genuinely different things to do with a
                               take: replace the copy, or keep both and find out.
@@ -1901,7 +1812,7 @@ export function DraftPanel({
                             disabled={applyingVariant !== null || splitting !== null}
                             onClick={() => void splitTest(i, v.beats)}
                           >
-                            {splitting === i ? 'Setting up…' : 'Test both'}
+                            {splitting === i ? <Busy>Setting up…</Busy> : 'Test both'}
                           </Button>
                         </div>
                       </li>
@@ -1935,7 +1846,7 @@ export function DraftPanel({
                               onClick={() => void repurposeAs(p.playbookId)}
                               className="rounded-full px-3 py-1.5 text-13 text-ink hover:bg-surface-muted disabled:opacity-50"
                             >
-                              {repurposing ? 'Working…' : p.name}
+                              {repurposing ? <Busy size={16}>Working…</Busy> : p.name}
                             </button>
                             <button
                               type="button"
@@ -1951,12 +1862,12 @@ export function DraftPanel({
                   )
                 ) : null}
                 {explainOpenId ? (
-                  <p className="mt-2 text-12 text-ink-muted">
-                    {explainLoading === explainOpenId ? 'Working it out…' : explainSummary[explainOpenId]}
-                  </p>
+                  explainLoading === explainOpenId ? (
+                    <SparkLoader size="inline" label="Working it out…" className="mt-2 text-12" />
+                  ) : (
+                    <p className="mt-2 text-12 text-ink-muted">{explainSummary[explainOpenId]}</p>
+                  )
                 ) : null}
-                {repurposeError ? <p className="mt-2 text-12 text-destructive">{repurposeError}</p> : null}
-                {repurposeResult ? <p className="mt-2 text-12 text-success">{repurposeResult}</p> : null}
               </div>
 
               {error ? <p className="text-13 text-destructive">{error}</p> : null}
@@ -1988,7 +1899,6 @@ export function DraftPanel({
                 onPublish={() => void publishNow()}
                 onSaveDraft={onClose}
                 busy={busy}
-                {...(renderError ? { error: renderError } : {})}
               />
 
               {draft.mediaType !== 'text' ? (
@@ -2006,11 +1916,11 @@ export function DraftPanel({
                           title="Satori — no browser render, faster and cheaper for static formats"
                           onClick={() => void renderStatic()}
                         >
-                          {staticRendering ? 'Rendering…' : 'Fast render'}
+                          {staticRendering ? <Busy>Rendering…</Busy> : 'Fast render'}
                         </Button>
                       ) : null}
                       <Button size="sm" variant="outline" disabled={rendering} onClick={() => void renderCompose()}>
-                        {rendering ? 'Rendering…' : renders ? 'Re-render' : 'Render'}
+                        {rendering ? <Busy>Rendering…</Busy> : renders ? 'Re-render' : 'Render'}
                       </Button>
                       {canvaConnected ? (
                         <Button
@@ -2027,7 +1937,6 @@ export function DraftPanel({
                       ) : null}
                     </div>
                   </div>
-                  {staticRenderError ? <p className="mt-1 text-12 text-destructive">{staticRenderError}</p> : null}
 
                   {fanoutOpen ? (
                     <div className="mt-2 rounded-lg border border-border p-3">
@@ -2052,7 +1961,7 @@ export function DraftPanel({
                         className="mt-1 w-full resize-y rounded border border-border bg-input px-2 py-1.5 font-mono text-12 text-ink"
                       />
                       <Button size="sm" className="mt-2" disabled={fanoutBusy || !brandTemplateId.trim()} onClick={() => void fanout()}>
-                        {fanoutBusy ? 'Fanning out…' : 'Fan out'}
+                        {fanoutBusy ? <Busy>Fanning out…</Busy> : 'Fan out'}
                       </Button>
                       {fanoutError ? <p className="mt-1 text-12 text-destructive">{fanoutError}</p> : null}
                       {fanoutResult ? (
@@ -2099,7 +2008,6 @@ export function DraftPanel({
                       Not rendered yet — publishing before rendering sends the raw generated clips, not one assembled {draft.mediaType}.
                     </p>
                   )}
-                  {renderError ? <p className="mt-1 text-12 text-destructive">{renderError}</p> : null}
                 </div>
               ) : null}
 
@@ -2119,12 +2027,11 @@ export function DraftPanel({
                     </Button>
                   ) : (
                     <Button size="sm" variant="outline" disabled={!linkUrl.trim() || shortening} onClick={() => void shortenLink()}>
-                      {shortening ? 'Shortening…' : 'Shorten'}
+                      {shortening ? <Busy>Shortening…</Busy> : 'Shorten'}
                     </Button>
                   )}
                 </div>
                 {shortUrl ? <p className="mt-1 text-12 text-success">Added {shortUrl} to the caption above.</p> : null}
-                {linkError ? <p className="mt-1 text-12 text-destructive">{linkError}</p> : null}
               </div>
 
               {/*
@@ -2155,7 +2062,7 @@ export function DraftPanel({
                   Back to editor
                 </Button>
                 <Button disabled={busy} onClick={() => void publishNow()}>
-                  {busy ? 'Publishing…' : 'Publish now'}
+                  {busy ? <Busy>Publishing…</Busy> : 'Publish now'}
                 </Button>
               </>
             )}
@@ -2184,12 +2091,10 @@ export function DraftPanel({
 function StallNotice({
   draft,
   rescheduling,
-  error,
   onReschedule,
 }: {
   draft: DraftView;
   rescheduling: boolean;
-  error: string | null;
   onReschedule: () => void;
 }) {
   const blocked = draft.status === 'blocked';
@@ -2223,9 +2128,8 @@ function StallNotice({
 
         {blocked ? (
           <div className="flex shrink-0 items-center gap-2">
-            {error ? <p className="text-12 text-destructive">{error}</p> : null}
             <Button size="sm" variant="outline" disabled={rescheduling} onClick={onReschedule}>
-              {rescheduling ? 'Rescheduling\u2026' : 'Try again tomorrow'}
+              {rescheduling ? <Busy>Rescheduling\u2026</Busy> : 'Try again tomorrow'}
             </Button>
           </div>
         ) : null}

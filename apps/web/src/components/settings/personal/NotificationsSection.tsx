@@ -1,6 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { SettingsSaveBar } from '../SettingsShell';
+import { SparkLoader } from '@/components/brand/SparkLoader';
+import { notify } from '@/lib/notify';
+import { playSound, setSoundEnabled, soundEnabled } from '@/lib/notifySound';
 import { PrefGroup, PrefRow } from './fields';
 import { useAccountPrefs } from './prefs';
 
@@ -34,10 +38,14 @@ const DEFAULTS = {
 };
 
 export function NotificationsSection() {
-  const { prefs, set, reset, save, busy, note, dirty, ready } = useAccountPrefs('notifications', DEFAULTS);
+  const { prefs, set, reset, save, busy, dirty, ready } = useAccountPrefs('notifications', DEFAULTS);
+  /* Sound is per browser and applies at once — it is not part of the saved
+     account preferences below, so it does not wait for Save. */
+  const [sound, setSound] = useState(true);
+  useEffect(() => setSound(soundEnabled()), []);
 
   if (!ready) {
-    return <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Loading your preferences…</p>;
+    return <SparkLoader size="panel" label="Loading your preferences…" />;
   }
 
   return (
@@ -65,6 +73,20 @@ export function NotificationsSection() {
         </PrefGroup>
 
         <PrefGroup title="On this device">
+          <PrefRow
+            title="Notification sounds"
+            detail="A short sound with each notification — rising for success, falling for a failure, two taps for a warning. Changes straight away, on this browser only."
+            on={sound}
+            onToggle={() => {
+              const next = !sound;
+              setSound(next);
+              setSoundEnabled(next);
+              if (next) {
+                playSound('success');
+                notify.success('Sounds are on', { body: 'This is the success sound.', silent: true });
+              }
+            }}
+          />
           <PrefRow
             title="Desktop notifications"
             detail="Shown by your operating system when the app is not in front. Your browser asks first."
@@ -101,7 +123,7 @@ export function NotificationsSection() {
         </PrefGroup>
       </div>
 
-      <SettingsSaveBar onSave={() => void save()} onCancel={reset} busy={busy} dirty={dirty} note={note} />
+      <SettingsSaveBar onSave={() => void save()} onCancel={reset} busy={busy} dirty={dirty} />
     </>
   );
 }

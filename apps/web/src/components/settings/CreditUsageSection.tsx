@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { WhyPopover, type Explanation } from '@/components/explain/WhyPopover';
 import { userMessage } from '@/lib/errorCopy';
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { toolLabel } from '@sparksocial/shared/toolLabel';
 
 /**
@@ -86,7 +87,7 @@ export function CreditUsageSection() {
   }, []);
 
   if (error) return <p className="text-16 text-destructive">{error}</p>;
-  if (!usage) return <p className="text-16" style={{ color: 'rgb(131,131,131)' }}>Reading this month&rsquo;s usage…</p>;
+  if (!usage) return <SparkLoader size="panel" label="Reading this month’s usage…" />;
 
   const resetsIn = (() => {
     const start = new Date(usage.periodStart);

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Busy } from '@/components/brand/SparkLoader';
+import { notifyResult } from '@/lib/notify';
 import { invoke } from '@/lib/tools';
 import { VariantResult } from './VariantResult';
 import { userMessage } from '@/lib/errorCopy';
@@ -79,7 +81,6 @@ export function DraftList({
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<Record<string, MetricsSnapshot>>({});
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [syncErrors, setSyncErrors] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [postMetrics, setPostMetrics] = useState<Record<string, PostMetrics>>({});
   const [ctaTraffic, setCtaTraffic] = useState<Record<string, CtaTraffic>>({});
@@ -107,16 +108,9 @@ export function DraftList({
   async function syncMetrics(contentItemId: string) {
     if (!genomeId || syncing) return;
     setSyncing(contentItemId);
-    setSyncErrors((e) => ({ ...e, [contentItemId]: '' }));
     const res = await invoke<MetricsSnapshot>('analytics.sync', { genomeId, contentItemId });
     setSyncing(null);
-    if (res.status !== 'succeeded') {
-      setSyncErrors((e) => ({
-        ...e,
-        [contentItemId]: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.',
-      }));
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t sync the metrics')) return;
     setMetrics((m) => ({ ...m, [contentItemId]: res.output }));
   }
 
@@ -203,11 +197,8 @@ export function DraftList({
                         void syncMetrics(item.contentItemId);
                       }}
                     >
-                      {syncing === item.contentItemId ? 'Syncing…' : snapshot ? 'Re-sync' : 'Sync metrics'}
+                      {syncing === item.contentItemId ? <Busy>Syncing…</Busy> : snapshot ? 'Re-sync' : 'Sync metrics'}
                     </Button>
-                    {syncErrors[item.contentItemId] ? (
-                      <span className="text-12 text-destructive">{syncErrors[item.contentItemId]}</span>
-                    ) : null}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -218,7 +209,7 @@ export function DraftList({
                       }}
                     >
                       {metricsLoading === item.contentItemId
-                        ? 'Loading…'
+                        ? <Busy>Loading…</Busy>
                         : expandedId === item.contentItemId
                           ? 'Hide metrics'
                           : 'View metrics'}

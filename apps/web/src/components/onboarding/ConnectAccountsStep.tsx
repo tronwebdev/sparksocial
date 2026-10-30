@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { platformLabel } from '@/lib/platforms';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `ONB-04` — *"Connect Social Accounts (connected profiles list + OAuth popup)"*.
@@ -67,6 +69,7 @@ export function ConnectAccountsStep({
   onConnectedCountChange?: (n: number) => void;
 }) {
   const [platforms, setPlatforms] = useState<PlatformStatus[] | null>(null);
+  /** The list could not be read — page state. A failed connect is a notification. */
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
@@ -89,19 +92,17 @@ export function ConnectAccountsStep({
 
   async function connect(platform: string) {
     setBusy(platform);
-    setError(null);
     const res = await invoke<{ authorizeUrl: string }>('integration.connect', { genomeId, provider: platform });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      // The common case here is "not configured for native publishing yet",
-      // which the tool refuses by name. Shown verbatim — it is a better
-      // explanation than anything this component could paraphrase.
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    // The common case here is "not configured for native publishing yet",
+    // which the tool refuses by name. Shown verbatim as the detail — it is a
+    // better explanation than anything this component could paraphrase.
+    if (!notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`)) return;
     const win = window.open(res.output.authorizeUrl, 'spark-oauth', 'width=600,height=760');
     if (!win) {
-      setError('Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.');
+      notify.warning('Your browser blocked the sign-in window', {
+        body: 'Allow pop-ups for this site, then try again.',
+      });
     }
   }
 
@@ -141,7 +142,7 @@ export function ConnectAccountsStep({
                 </Badge>
               ) : (
                 <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => void connect(p.platform)}>
-                  {busy === p.platform ? 'Opening…' : 'Connect'}
+                  {busy === p.platform ? <Busy size={16}>Opening…</Busy> : 'Connect'}
                 </Button>
               )}
             </li>
@@ -151,7 +152,7 @@ export function ConnectAccountsStep({
 
       <div>
         <Button size="sm" variant="ghost" disabled={checking} onClick={() => void recheck()}>
-          {checking ? 'Checking…' : 'I finished in the other window — check again'}
+          {checking ? <Busy size={16}>Checking…</Busy> : 'I finished in the other window — check again'}
         </Button>
       </div>
     </div>

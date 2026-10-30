@@ -17,7 +17,7 @@ import { DraftPanel } from '@/components/command-center/draft-panel/DraftPanel';
 import { DayActionSheet } from './DayActionSheet';
 import { pillarStyle } from './pillars';
 import { CampaignReportPanel } from './CampaignReportPanel';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
 
 /**
  * THE CALENDAR — engine spec §6.8 Step 4, PRD `CAL-01`→`CAL-06`.
@@ -39,7 +39,7 @@ import { userMessage } from '@/lib/errorCopy';
  * panel in its trigger phase and pins the result to that date once
  * `content.draft` returns an id (CAL-02/04) — one flow, not two, since the
  * panel already had a trigger phase from CC-02. Dragging a slot onto another
- * day calls `content.schedule` and offers an undo instead of a blocking
+ * day calls `content.schedule` and offers an undo on its notification instead of a blocking
  * confirm dialog (CAL-05) — reversible beats a modal for a mistake this cheap
  * to fix. A mix nudge (`MixBar`'s +/−) is not that cheap — it regenerates
  * every future slot, not one date — so it gets the opposite treatment:
@@ -178,11 +178,9 @@ export function CalendarBoard({
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const [view, setView] = useState<CalendarView | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [draftPanel, setDraftPanel] = useState<{ open: boolean; contentItemId?: string; pinDate?: string }>({
     open: false,
   });
-  const [undo, setUndo] = useState<{ slotId: string; from: string; label: string } | null>(null);
   /**
    * Which day's action sheet is open — `F9`/`CAL-07`.
    *
@@ -303,13 +301,11 @@ export function CalendarBoard({
         campaignId,
         ...(Object.keys(mixOverride).length ? { mixOverride } : {}),
       });
-      if (gen.status !== 'succeeded') {
-        setError(gen.status === 'failed' ? userMessage(gen.error) : 'That change was gated.');
+      if (!notifyResult(gen, undefined, 'Couldn’t regenerate the calendar')) {
         setBusy(false);
         return;
       }
       await reload(campaignId);
-      setError(null);
       setBusy(false);
     },
     [reload],
@@ -373,18 +369,13 @@ export function CalendarBoard({
           { genomeId: genome.genomeId, playbookId },
           crypto.randomUUID(),
         );
-        if (brief.status !== 'succeeded') {
-          setError(
-            brief.status === 'failed'
-              ? userMessage(brief.error)
-              : 'That needs approval before SPARK can send you a shot list.',
-          );
-          return;
-        }
+        if (!notifyResult(brief, undefined, 'Couldn’t write the shot list')) return;
         // No calendar slot yet, and said so: the post exists once the footage
         // does, so claiming a date now would put a promise on the calendar that
         // depends on somebody filming.
-        setError('That one is filmed — SPARK has written you a shot list. It lands on the calendar once you send the clips back.');
+        notify.success('Shot list written', {
+          body: 'That one is filmed. It lands on the calendar once you send the clips back.',
+        });
         await reload(view.campaignId);
         return;
       }
@@ -394,10 +385,7 @@ export function CalendarBoard({
         { genomeId: genome.genomeId, playbookId, intent: '' },
         crypto.randomUUID(),
       );
-      if (drafted.status !== 'succeeded') {
-        setError(drafted.status === 'failed' ? userMessage(drafted.error) : 'That draft was gated.');
-        return;
-      }
+      if (!notifyResult(drafted, undefined, 'Couldn’t draft that post')) return;
       const scheduled = await invoke('content.schedule', {
         contentItemId: drafted.output.contentItemId,
         genomeId: genome.genomeId,
@@ -407,7 +395,7 @@ export function CalendarBoard({
         // The draft exists and is unscheduled, which is a real and recoverable
         // state — it shows up in the Drafts list. Said plainly rather than
         // reported as "failed", which would imply nothing happened.
-        setError('Drafted, but could not place it on that day. It is in your drafts.');
+        notify.warning('Drafted, but not placed on that day', { body: 'It is in your drafts.' });
       }
       await reload(view.campaignId);
     },
@@ -423,10 +411,7 @@ export function CalendarBoard({
         genomeId: genome.genomeId,
         scheduledAt: `${day}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
       });
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? userMessage(res.error) : 'That move was gated.');
-        return;
-      }
+      if (!notifyResult(res, undefined, 'Couldn’t move that post')) return;
       await reload(view.campaignId);
     },
     [genome, view, reload],
@@ -461,33 +446,35 @@ export function CalendarBoard({
         genomeId: genome.genomeId,
         scheduledAt: `${toDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
       });
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? userMessage(res.error) : 'That move was gated.');
-        return;
-      }
+      if (!notifyResult(res, undefined, 'Couldn’t move that post')) return;
       await reload(view.campaignId);
-      setUndo({ slotId: slot.id, from: fromDay, label: slot.playbookName ?? slot.playbookId ?? 'Post' });
+
+      /* The undo rides on the notification. Captured here rather than read
+         from state when pressed, so it puts back exactly this move even if
+         the screen has moved on to another campaign since. */
+      const { campaignId } = view;
+      const { genomeId } = genome;
+      const undoMove = async () => {
+        await invoke('content.schedule', {
+          contentItemId: slot.id,
+          genomeId,
+          scheduledAt: `${fromDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
+        });
+        await reload(campaignId);
+      };
+      notify.success(`Moved “${slot.playbookName ?? slot.playbookId ?? 'Post'}”`, {
+        action: { label: 'Undo', onClick: () => void undoMove() },
+      });
     },
     [genome, view, reload],
   );
 
-  const undoMove = useCallback(async () => {
-    if (!undo || !genome || !view) return;
-    await invoke('content.schedule', {
-      contentItemId: undo.slotId,
-      genomeId: genome.genomeId,
-      scheduledAt: `${undo.from}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
-    });
-    setUndo(null);
-    await reload(view.campaignId);
-  }, [undo, genome, view, reload]);
-
   if (loading || hydrating) return <Skeleton className="h-64 w-full rounded" />;
 
-  if ((error || genomeError) && !view) {
+  if (genomeError && !view) {
     return (
       <div className="rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-white p-6">
-        <p className="text-14 text-ink-muted">{error ?? genomeError}</p>
+        <p className="text-14 text-ink-muted">{genomeError}</p>
       </div>
     );
   }
@@ -598,7 +585,6 @@ export function CalendarBoard({
           </div>
         ) : null}
 
-        {error ? <p className="mt-3 text-13 text-destructive">{error}</p> : null}
       </section>
 
       {/* CAL-02 for a day with nothing on it yet — the grid below only ever
@@ -618,15 +604,6 @@ export function CalendarBoard({
             Create post
           </Button>
         </section>
-      ) : null}
-
-      {undo ? (
-        <div className="flex items-center gap-3 rounded-[10px] shadow-[inset_0_0_0_1px_rgba(131,131,131,0.22)] bg-[rgba(131,131,131,0.06)] px-4 py-2 text-13 text-ink-muted">
-          <span>Moved &ldquo;{undo.label}&rdquo;.</span>
-          <button type="button" onClick={() => void undoMove()} className="font-medium text-brand-purple underline">
-            Undo
-          </button>
-        </div>
       ) : null}
 
       {SHOW_SLOT_FILTERS ? (

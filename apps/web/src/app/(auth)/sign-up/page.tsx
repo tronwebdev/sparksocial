@@ -9,6 +9,7 @@ import { AuthPanel, AuthHeader } from '@/components/auth/AuthShell';
 import { AuthField, PersonIcon, MailIcon, LockIcon, RevealToggle } from '@/components/auth/AuthField';
 import { SocialRow, type OAuthStrategy } from '@/components/auth/SocialRow';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { toFieldErrors, type FieldErrors } from '@/lib/clerk-errors';
 import { rememberSelectedPlan } from '@/lib/selectedPlan';
 
@@ -206,7 +207,7 @@ export default function SignUpPage() {
             <div id="clerk-captcha" />
 
             <Button type="submit" size="cta" className="mt-1 w-full" disabled={!isLoaded || busy || !acceptedTerms}>
-              {busy ? 'Creating account…' : 'Create account'}
+              {busy ? <Busy>Creating account…</Busy> : 'Create account'}
             </Button>
           </form>
         </AuthPanel>

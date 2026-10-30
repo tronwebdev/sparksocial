@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * The onboarding form parts, at `ui build/SparkSocial Onboarding.dc.html`'s own
@@ -347,7 +348,8 @@ export function GenerateButton({
   left,
   top,
 }: {
-  label: string;
+  /** Text, or a `<Busy>` label while the generation runs. */
+  label: React.ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   title?: string;
@@ -508,7 +510,7 @@ export function DropZone({
           color: '#838383',
         }}
       >
-        {busy ? 'Uploading…' : 'Browse files'}
+        {busy ? <Busy size={16}>Uploading…</Busy> : 'Browse files'}
         <input
           id={id}
           type="file"

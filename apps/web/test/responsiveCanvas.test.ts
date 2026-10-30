@@ -654,11 +654,13 @@ describe('the Command Center holds together beside the rail', () => {
     expect(raw).toContain('<AdjustFrequency');
   });
 
-  it('draws the prototype’s toast rather than Sonner’s default', () => {
-    const raw = readFileSync(join(__dirname, '../src/components/ui/toaster.tsx'), 'utf8');
-    // Without `unstyled`, Sonner's `[data-styled=true]` rule wins over the classes.
-    expect(raw).toContain('unstyled: true');
-    expect(raw).toContain('rounded-[12px]');
-    expect(raw).toContain('px-[22px] py-[13px]');
+  it('sends action messages to the one notification card, not a second toast system', () => {
+    // The Sonner toaster this used to check is gone: every action message goes
+    // through `notify` into NotificationToasts, bottom-right, with the mood mark.
+    const toasts = readFileSync(join(__dirname, '../src/components/notifications/NotificationToasts.tsx'), 'utf8');
+    expect(toasts).toContain('ActionToast');
+    expect(toasts).toContain('bottom-[26px] right-[26px]');
+    const providers = readFileSync(join(__dirname, '../src/app/AppProviders.tsx'), 'utf8');
+    expect(providers).not.toContain('Toaster');
   });
 });

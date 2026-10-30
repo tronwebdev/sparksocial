@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Busy } from '@/components/brand/SparkLoader';
 import { startAgentRun } from '@/lib/agent';
 import { userMessage } from '@/lib/errorCopy';
 
@@ -136,7 +137,7 @@ export function DraftChat({
           className="min-w-[16rem] flex-1 resize-none rounded-lg border border-border bg-input px-3 py-2 text-14 text-ink placeholder:text-ink-placeholder focus:outline-none focus:ring-[1.5px] focus:ring-ring disabled:opacity-50"
         />
         <Button disabled={busy || disabled || !text.trim()} onClick={() => void send()}>
-          {busy ? 'Working…' : 'Send'}
+          {busy ? <Busy>Working…</Busy> : 'Send'}
         </Button>
       </div>
 

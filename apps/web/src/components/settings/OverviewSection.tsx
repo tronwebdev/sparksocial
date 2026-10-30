@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { SettingsSaveBar } from './SettingsShell';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
 
 /**
  * `Settings WS Overview`, measured off the prototype's own DOM.
@@ -75,7 +75,6 @@ export function OverviewSection() {
   const [oneLiner, setOneLiner] = useState('');
   const [initial, setInitial] = useState({ name: '', oneLiner: '' });
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!genomeId) return;
@@ -127,34 +126,31 @@ export function OverviewSection() {
   async function save() {
     if (!genomeId) return;
     setBusy(true);
-    setNote(null);
 
     if (name !== initial.name) {
       if (!brandId) {
         setBusy(false);
-        setNote('Could not resolve this brand, so the rename was not attempted.');
+        notify.error('Couldn’t rename this brand', { body: 'Could not resolve this brand, so the rename was not attempted.' });
         return;
       }
       const res = await invoke('brand.settings.patch', { brandId, name: name.trim() });
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, 'Couldn’t rename this brand')) {
         setBusy(false);
-        setNote(res.status === 'failed' ? userMessage(res.error) : 'Renaming this brand needs an approval.');
         return;
       }
     }
 
     if (oneLiner !== initial.oneLiner && oneLiner.trim()) {
       const res = await invoke('genome.identity.set', { genomeId, identity: { one_liner: oneLiner.trim() } });
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, 'Couldn’t save the description')) {
         setBusy(false);
-        setNote(res.status === 'failed' ? userMessage(res.error) : 'Saving the description needs an approval.');
         return;
       }
     }
 
     setBusy(false);
     setInitial({ name, oneLiner });
-    setNote('Saved.');
+    notify.success('Saved');
   }
 
   const connected = health?.platforms.filter((p) => p.connected) ?? [];
@@ -378,11 +374,9 @@ export function OverviewSection() {
         onCancel={() => {
           setName(initial.name);
           setOneLiner(initial.oneLiner);
-          setNote(null);
         }}
         busy={busy}
         dirty={dirty}
-        note={note}
       />
     </div>
   );

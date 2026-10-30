@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { RecipeGlyph } from './RecipeGlyph';
 import { KIND_META, type RecipeKind } from './recipeMeta';
 import type { WizardDraft } from './wizardDraft';
@@ -206,7 +207,7 @@ export function LaunchModal({
             disabled={busy}
             className="flex h-[56px] w-[316px] max-w-full items-center justify-center gap-[16px] rounded-[14px] bg-ink transition-colors hover:bg-[#242424] active:scale-[0.985] disabled:opacity-60"
           >
-            <span className="whitespace-nowrap text-18 font-semibold text-white">{busy ? 'Saving…' : 'Activate Campaign'}</span>
+            <span className="whitespace-nowrap text-18 font-semibold text-white">{busy ? <Busy>Saving…</Busy> : 'Activate Campaign'}</span>
             <svg width="8" height="14" viewBox="0 0 8 16" fill="none" aria-hidden>
               <path d="m1 1 6 7-6 7" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

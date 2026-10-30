@@ -6,7 +6,8 @@ import { NICHES, resolveNiche } from '@sparksocial/shared';
 import { BrandColorPicker, DropZone, PreviewTile, SectionLabel, SelectField, UploadSection, GenerateButton, SectionRule } from './kit';
 import { ProtoScale } from './Stage';
 import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 
 /**
  * `F6`'s "Brand Details" — the prototype's second screen, and `M8`'s logo.
@@ -78,7 +79,8 @@ export function BrandDetailsStep({
   const [logoUrl, setLogoUrl] = useState('');
   const [savingText, setSavingText] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  /** A dropped file of the wrong type — said beside the drop zone, not as news. */
+  const [fileError, setFileError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
   /**
@@ -172,7 +174,6 @@ export function BrandDetailsStep({
     if (!line && !effectiveNiche) return;
 
     setSavingText(true);
-    setMessage(null);
     const res = await invoke('genome.identity.set', {
       genomeId,
       identity: {
@@ -184,11 +185,9 @@ export function BrandDetailsStep({
       },
     });
     setSavingText(false);
-    setMessage(
-      res.status === 'succeeded'
-        ? { kind: 'ok', text: 'Saved.' }
-        : { kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That needs approval first.' },
-    );
+    // Quiet on success: it saves on every blur, and the words are already on
+    // screen — a card per field would bury the step. Only a failure says so.
+    notifyResult(res, undefined, 'Couldn’t save your brand details');
   }
 
   /**
@@ -205,7 +204,7 @@ export function BrandDetailsStep({
   }
 
   async function generateLogo() {
-    setMessage(null);
+    setFileError(null);
     setGenerating(true);
     /*
       No brandId and no hint: the schema is `{ brandId?, hint? }` and both are
@@ -216,29 +215,23 @@ export function BrandDetailsStep({
     const res = await invoke<{ logoUrl: string }>('brand.logo.generate', {}, crypto.randomUUID());
     setGenerating(false);
 
-    if (res.status !== 'succeeded') {
-      setMessage({
-        kind: 'err',
-        text: res.status === 'failed' ? userMessage(res.error) : 'Generating a logo needs approval first.',
-      });
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t generate a logo')) return;
 
     setLogoUrl(res.output.logoUrl);
     const saved = await invoke('brand.governance.set', { logoUrl: res.output.logoUrl });
     if (saved.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: 'Generated, but saving it to the brand failed.' });
+      notify.error('Logo generated, but not saved', { body: 'Saving it to the brand failed.' });
     }
   }
 
   async function uploadLogo(file: File) {
     if (!IMAGE_TYPES.includes(file.type)) {
-      setMessage({ kind: 'err', text: 'PNG, JPEG or WebP. A vector logo needs exporting to one of those.' });
+      setFileError('PNG, JPEG or WebP. A vector logo needs exporting to one of those.');
       return;
     }
 
     setUploading(true);
-    setMessage(null);
+    setFileError(null);
 
     const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
@@ -246,33 +239,22 @@ export function BrandDetailsStep({
       contentType: file.type,
       sizeBytes: file.size,
     });
-    if (presigned.status !== 'succeeded') {
+    if (!notifyResult(presigned, undefined, 'Couldn’t upload the logo')) {
       setUploading(false);
-      setMessage({
-        kind: 'err',
-        text: presigned.status === 'failed' ? userMessage(presigned.error) : 'That upload was gated.',
-      });
       return;
     }
 
     const put = await uploadToStorage(presigned.output.uploadUrl, file, file.type, presigned.output.headers);
     if (!put.ok) {
       setUploading(false);
-      setMessage({ kind: 'err', text: put.message });
+      notify.error('Couldn’t upload the logo', { body: put.message });
       return;
     }
 
     const saved = await invoke('brand.governance.set', { logoUrl: presigned.output.readUrl });
     setUploading(false);
-    if (saved.status !== 'succeeded') {
-      setMessage({
-        kind: 'err',
-        text: saved.status === 'failed' ? userMessage(saved.error) : 'Saving the logo was gated.',
-      });
-      return;
-    }
+    if (!notifyResult(saved, 'Logo saved', 'Couldn’t save the logo')) return;
     setLogoUrl(presigned.output.readUrl);
-    setMessage({ kind: 'ok', text: 'Logo saved.' });
   }
 
   /*
@@ -382,7 +364,7 @@ export function BrandDetailsStep({
           <GenerateButton
             left={385}
             top={16.9}
-            label={generating ? 'Generating…' : 'Generate logo'}
+            label={generating ? <Busy size={16}>Generating…</Busy> : 'Generate logo'}
             onClick={() => void generateLogo()}
             disabled={generating || !canGenerateLogo}
             title={
@@ -409,15 +391,12 @@ export function BrandDetailsStep({
           </PreviewTile>
         </UploadSection>
 
-        {message ? (
-          <p
-            role={message.kind === 'err' ? 'alert' : undefined}
-            style={{ fontSize: 16, color: message.kind === 'err' ? '#F01C1C' : '#838383' }}
-          >
-            {message.text}
+        {fileError ? (
+          <p role="alert" style={{ fontSize: 16, color: '#F01C1C' }}>
+            {fileError}
           </p>
         ) : null}
-        {savingText ? <p style={{ fontSize: 16, color: '#838383' }}>Saving…</p> : null}
+        {savingText ? <SparkLoader size="inline" label="Saving…" /> : null}
       </div>
     </ProtoScale>
   );

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
-import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 
 /**
@@ -110,14 +111,13 @@ export function TrendContentPack({
   const [types, setTypes] = useState<string[]>([]);
   const [ab, setAb] = useState(false);
 
+  /*
+    A failed action is announced through `notify`, not printed under a card.
+    The two cards are a screen apart, so an error under the content pack was
+    invisible to someone who had just pressed "Write hooks" — the button reset
+    and nothing else happened.
+  */
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  /**
-   * Which card the failed action lives in. The two cards are a screen apart, so
-   * an error printed under the content pack was invisible to someone who had
-   * just pressed "Write hooks" — the button reset and nothing else happened.
-   */
-  const [errorIn, setErrorIn] = useState<'pack' | 'recs'>('pack');
   const [made, setMade] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -177,18 +177,13 @@ export function TrendContentPack({
       { genomeId, playbookId, intent: intent(opening), fromTrendId: trendId },
       crypto.randomUUID(),
     );
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Drafting needs an approval first.');
-      return undefined;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t write the draft')) return undefined;
     return res.output.contentItemId;
   }
 
   async function generatePack() {
     if (busy || types.length === 0) return;
     setBusy('pack');
-    setError(null);
-    setErrorIn('pack');
     const out: Array<{ id: string; name: string }> = [];
     for (const id of types) {
       const contentItemId = await draft(id);
@@ -196,7 +191,7 @@ export function TrendContentPack({
       out.push({ id: contentItemId, name: choices.find((c) => c.id === id)?.name ?? 'Draft' });
       if (ab) {
         const v = await invoke('draft.variants', { genomeId, contentItemId, count: 2 });
-        if (v.status !== 'succeeded') setError(v.status === 'failed' ? userMessage(v.error) : 'The A/B take needs an approval.');
+        notifyResult(v, undefined, 'Couldn’t write the A/B take');
       }
     }
     setMade(out);
@@ -206,8 +201,6 @@ export function TrendContentPack({
   async function oneDraft(kind: string, playbookId: string | undefined, opening?: string) {
     if (busy || !playbookId) return;
     setBusy(kind);
-    setError(null);
-    setErrorIn('recs');
     const id = await draft(playbookId, opening);
     setBusy(null);
     if (id) onOpenDraft(id);
@@ -216,14 +209,9 @@ export function TrendContentPack({
   async function writeHooks() {
     if (busy) return;
     setBusy('hooks');
-    setError(null);
-    setErrorIn('recs');
     const res = await invoke<{ hooks: string[] }>('trend.hooks', { genomeId, trendId, count: 3 }, crypto.randomUUID());
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Writing hooks needs an approval first.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t write hooks')) return;
     setHooks(res.output.hooks);
   }
 
@@ -280,7 +268,7 @@ export function TrendContentPack({
         <p className="mt-[18px] text-14 font-medium text-ink">Post types</p>
         {choices.length === 0 ? (
           <p className="mt-[8px] text-14 text-ink-muted">
-            {suggestion === undefined ? 'Finding the formats you can run…' : 'No format is ready for this brand yet — the Re-purpose route says what is missing.'}
+            {suggestion === undefined ? <Busy size={16}>Finding the formats you can run…</Busy> : 'No format is ready for this brand yet — the Re-purpose route says what is missing.'}
           </p>
         ) : (
           <div className="mt-[8px] flex flex-wrap gap-[8px]">
@@ -309,7 +297,7 @@ export function TrendContentPack({
 
         <div className="mt-[18px] flex flex-wrap items-center gap-[12px]">
           <Button onClick={() => void generatePack()} disabled={busy !== null || types.length === 0}>
-            {busy === 'pack' ? 'Writing drafts…' : `Generate ${types.length || ''} ${types.length === 1 ? 'draft' : 'drafts'}`.replace('  ', ' ')}
+            {busy === 'pack' ? <Busy>Writing drafts…</Busy> : `Generate ${types.length || ''} ${types.length === 1 ? 'draft' : 'drafts'}`.replace('  ', ' ')}
           </Button>
           {made.map((m) => (
             <Button key={m.id} dark={false} onClick={() => onOpenDraft(m.id)}>
@@ -317,7 +305,6 @@ export function TrendContentPack({
             </Button>
           ))}
         </div>
-        {error && errorIn === 'pack' ? <p className="mt-[12px] text-14 text-destructive">{error}</p> : null}
       </div>
 
       {/* ── Recommendations: Time Shift · Format · Hook ──────────────── */}
@@ -331,11 +318,11 @@ export function TrendContentPack({
               ring: 'rgba(245,107,255,0.35)',
               desc:
                 slot === undefined
-                  ? 'Reading your posting windows…'
+                  ? <Busy size={16}>Reading your posting windows…</Busy>
                   : slot
                     ? `Post next: ${slot.label}. ${timeAdvice}`
                     : `No posting windows are set — choose them in Brand Kits. ${timeAdvice}`,
-              cta: busy === 'time' ? 'Drafting…' : 'Generate Draft',
+              cta: busy === 'time' ? <Busy>Drafting…</Busy> : 'Generate Draft',
               action: bestFormat ? () => void oneDraft('time', bestFormat.playbookId) : undefined,
             },
             {
@@ -344,8 +331,8 @@ export function TrendContentPack({
               ring: 'rgba(228,137,21,0.3)',
               desc: bestFormat
                 ? `${bestFormat.playbookName} — the best fit this brand can run now (${bestFormat.pillar}).`
-                : (suggestWhy ?? 'Working out which format fits…'),
-              cta: busy === 'format' ? 'Drafting…' : 'Generate Draft',
+                : (suggestWhy ?? <Busy size={16}>Working out which format fits…</Busy>),
+              cta: busy === 'format' ? <Busy>Drafting…</Busy> : 'Generate Draft',
               action: bestFormat ? () => void oneDraft('format', bestFormat.playbookId) : undefined,
             },
           ].map((r) => (
@@ -381,7 +368,7 @@ export function TrendContentPack({
                 </p>
               </div>
               <Button onClick={() => void writeHooks()} disabled={busy !== null} dark={Boolean(!hooks)}>
-                {busy === 'hooks' ? 'Writing…' : hooks ? 'Write others' : 'Write hooks'}
+                {busy === 'hooks' ? <Busy>Writing…</Busy> : hooks ? 'Write others' : 'Write hooks'}
               </Button>
             </div>
             {hooks ? (
@@ -390,7 +377,7 @@ export function TrendContentPack({
                   <li key={h} className="flex flex-wrap items-center gap-[12px] rounded-[10px] bg-white px-[14px] py-[10px]">
                     <span className="min-w-0 flex-1 text-15 font-medium text-ink">{h}</span>
                     <Button onClick={() => void oneDraft('hook', bestFormat?.playbookId, h)} disabled={busy !== null || !bestFormat}>
-                      {busy === 'hook' ? 'Drafting…' : 'Generate Draft'}
+                      {busy === 'hook' ? <Busy>Drafting…</Busy> : 'Generate Draft'}
                     </Button>
                   </li>
                 ))}
@@ -398,7 +385,6 @@ export function TrendContentPack({
             ) : null}
           </div>
 
-          {error && errorIn === 'recs' ? <p className="text-14 text-destructive">{error}</p> : null}
 
           <p className="text-14 text-ink-muted">
             Want this trend to drive a goal, with your CTA link on every post?{' '}

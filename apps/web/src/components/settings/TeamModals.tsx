@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { invoke } from '@/lib/tools';
 import { cn } from '@/lib/utils';
-import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `Settings WS Add Member`, `… Add Client` and `… Edit Group` — the three
@@ -73,6 +74,7 @@ function TeamModal({
   onSubmit: () => void;
   submitLabel: string;
   busy?: boolean;
+  /** The form's own validation. What the submit came to is a notification. */
   error?: string | null;
   children: ReactNode;
 }) {
@@ -120,7 +122,7 @@ function TeamModal({
             className="h-[43px] w-[167px] rounded-[8.457px] bg-white text-17 font-medium text-ink transition-shadow disabled:opacity-60"
             style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.3)' }}
           >
-            {busy ? 'Working…' : submitLabel}
+            {busy ? <Busy>Working…</Busy> : submitLabel}
           </button>
         </div>
       </div>
@@ -177,10 +179,7 @@ export function AddMemberModal({ onClose, onDone }: { onClose: () => void; onDon
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Inviting someone needs an approval.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Invite sent', body: email.trim() }, 'Couldn’t send the invite')) return;
     onDone();
     onClose();
   }
@@ -269,10 +268,7 @@ export function AddClientModal({ onClose, onDone }: { onClose: () => void; onDon
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'Adding a client needs an approval.');
-      return;
-    }
+    if (!notifyResult(res, { title: 'Client added', body: name.trim() }, 'Couldn’t add the client')) return;
     onDone();
     onClose();
   }
@@ -396,10 +392,7 @@ export function EditGroupModal({
         crypto.randomUUID(),
       );
       setBusy(false);
-      if (res.status !== 'succeeded') {
-        setError(res.status === 'failed' ? userMessage(res.error) : 'Creating a group needs an approval.');
-        return;
-      }
+      if (!notifyResult(res, { title: 'Group created', body: name.trim() }, 'Couldn’t create the group')) return;
       onDone();
       onClose();
       return;
@@ -410,9 +403,8 @@ export function EditGroupModal({
       name: name.trim(),
       capabilities: caps,
     });
-    if (updated.status !== 'succeeded') {
+    if (!notifyResult(updated, undefined, 'Couldn’t update this group')) {
       setBusy(false);
-      setError(updated.status === 'failed' ? userMessage(updated.error) : 'Updating this group needs an approval.');
       return;
     }
 
@@ -426,18 +418,14 @@ export function EditGroupModal({
         userId,
         member: added.includes(userId),
       });
-      if (res.status !== 'succeeded') {
+      if (!notifyResult(res, undefined, `Couldn’t change membership for ${label(userId)}`)) {
         setBusy(false);
-        setError(
-          res.status === 'failed'
-            ? `${label(userId)}: ${userMessage(res.error)}`
-            : `Changing membership for ${label(userId)} needs an approval.`,
-        );
         return;
       }
     }
 
     setBusy(false);
+    notify.success('Group saved', { body: name.trim() });
     onDone();
     onClose();
   }

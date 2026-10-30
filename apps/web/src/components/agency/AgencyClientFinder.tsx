@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { LEAD_TRANSITIONS, type LeadSource, type LeadStatus } from '@sparksocial/shared/agencyPipeline';
+import { Busy } from '@/components/brand/SparkLoader';
 import { cn } from '@/lib/utils';
 import { useLeads, type Lead } from './useLeads';
 import { LeadAddModal, LeadImportModal } from './LeadModals';
@@ -114,7 +115,6 @@ export function AgencyClientFinder({
   const [modal, setModal] = useState<'import' | 'add' | null>(null);
   /** The lead whose proposals are open, if any. */
   const [proposalsFor, setProposalsFor] = useState<Lead | null>(null);
-  const [rowError, setRowError] = useState<string | null>(null);
 
   /**
    * The tab picks the stages, and an explicit stage filter narrows within it.
@@ -162,7 +162,7 @@ export function AgencyClientFinder({
   const pages = Math.max(1, Math.ceil(total / PAGE));
 
   async function move(lead: Lead, to: LeadStatus) {
-    setRowError(await update(lead.id, { status: to }));
+    await update(lead.id, { status: to });
   }
 
   function exportCsv() {
@@ -339,7 +339,7 @@ export function AgencyClientFinder({
 
       <div className="absolute left-ag-tool-x top-[272px] flex items-center gap-[14px]">
         <span className="text-17 font-semibold" style={{ color: 'rgb(91,91,91)' }}>
-          {loading ? 'Loading…' : `${total} ${total === 1 ? 'Result' : 'Results'}`}
+          {loading ? <Busy size={16}>Loading…</Busy> : `${total} ${total === 1 ? 'Result' : 'Results'}`}
         </span>
         {/* Summed by the tool under its own filters — no client-side sum over a
             page could produce this correctly, and a mixed-currency workspace
@@ -553,7 +553,6 @@ export function AgencyClientFinder({
               type="button"
               onClick={() => {
                 setOpenId(isOpen ? null : lead.id);
-                setRowError(null);
               }}
               aria-expanded={isOpen}
               aria-label={isOpen ? `Collapse ${lead.businessName}` : `View ${lead.businessName}`}
@@ -618,7 +617,7 @@ export function AgencyClientFinder({
                       defaultValue=""
                       onChange={async (e) => {
                         if (!e.target.value) return;
-                        setRowError(await convert(lead.id, e.target.value));
+                        await convert(lead.id, e.target.value);
                       }}
                       aria-label={`Convert ${lead.businessName} to a client`}
                       className="cursor-pointer appearance-none bg-transparent text-15 font-semibold text-ink outline-none"
@@ -672,10 +671,6 @@ export function AgencyClientFinder({
             <div aria-hidden className="absolute bottom-0 left-0 h-px w-full" style={{ background: 'rgba(131,131,131,0.1)' }} />
           </div>
         ))}
-
-        {rowError ? (
-          <p className="absolute bottom-[62px] left-[30px] text-15 text-destructive">{rowError}</p>
-        ) : null}
 
         <div className="absolute bottom-[20px] left-[30px] flex items-center gap-[16px]">
           <span className="text-16 font-medium" style={{ color: 'rgb(91,91,91)' }}>

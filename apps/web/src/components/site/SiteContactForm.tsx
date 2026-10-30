@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 
 export interface SiteFormState {
   status: 'idle' | 'sent' | 'error';
@@ -76,7 +77,7 @@ export function SiteContactForm({
           className="inline-flex h-[52px] items-center rounded-[12px] px-[26px] text-16 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
           style={{ background: 'var(--site-primary)', color: 'var(--site-on-primary)' }}
         >
-          {pending ? 'Sending…' : ctaLabel}
+          {pending ? <Busy>Sending…</Busy> : ctaLabel}
         </button>
         {state.status === 'error' ? (
           <p role="alert" className="text-15 text-destructive">

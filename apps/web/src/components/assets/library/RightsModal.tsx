@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { Thumb } from './AssetViews';
 import { assetKind, assetName, assetStamp, type Asset } from './types';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `Rights clearance` — the list behind "N awaiting rights clearance".
@@ -62,12 +63,10 @@ export function RightsModal({
   onChanged: (message: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function clear(a: Asset) {
     if (busy) return;
     setBusy(a.assetId);
-    setError(null);
     /* `idempotent: true` — setting the same status twice is the same state, so
        no key is needed (unlike ingest, where a second call is a second asset). */
     const res = await invoke('asset.rights.set', {
@@ -76,10 +75,7 @@ export function RightsModal({
       rightsStatus: 'cleared',
     });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, `Couldn’t clear ${assetName(a)}`)) return;
     onChanged(`${assetName(a)} cleared`);
   }
 
@@ -140,15 +136,13 @@ export function RightsModal({
                     className="h-[40px] shrink-0 rounded-[10px] px-[16px] text-15 font-semibold text-ink transition-colors hover:bg-white disabled:opacity-50"
                     style={{ background: 'var(--ss-lib-toggle)' }}
                   >
-                    {busy === a.assetId ? 'Clearing…' : 'I have the rights'}
+                    {busy === a.assetId ? <Busy>Clearing…</Busy> : 'I have the rights'}
                   </button>
                 </li>
               );
             })}
           </ul>
         )}
-
-        {error ? <p className="mt-[14px] text-15 text-destructive">{error}</p> : null}
       </div>
 
       <div className="mt-[24px] flex items-center justify-center">

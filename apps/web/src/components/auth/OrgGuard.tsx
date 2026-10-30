@@ -1,6 +1,6 @@
 'use client';
 
-import { SparkFailure, SparkLoader } from '@/components/brand/SparkLoader';
+import { Busy, SparkFailure, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganizationList, useUser } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
@@ -136,7 +136,7 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
             </p>
           ) : null}
           <Button type="submit" size="cta" disabled={creating || !name.trim()}>
-            {creating ? 'Creating…' : 'Continue'}
+            {creating ? <Busy>Creating…</Busy> : 'Continue'}
           </Button>
         </form>
       </div>

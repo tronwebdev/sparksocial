@@ -1,12 +1,13 @@
 'use client';
 
-import { SparkLoader } from '@/components/brand/SparkLoader';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
 
 /**
  * What the brand is actually selling, and the line that asks for it.
@@ -68,7 +69,7 @@ export function OffersSection() {
   const [cta, setCta] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  /* The offers failing to load. What a save came to is a notification. */
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -98,8 +99,6 @@ export function OffersSection() {
   async function save() {
     if (!genomeId || busy) return;
     setBusy(true);
-    setError(null);
-    setSaved(false);
 
     const cleaned = products
       .map((p) => ({
@@ -115,14 +114,10 @@ export function OffersSection() {
       crypto.randomUUID(),
     );
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'You do not have permission to change this brand.');
-      return;
-    }
+    if (!notifyResult(res, 'Offers saved', 'Couldn’t save your offers')) return;
     // Reflect what was stored, not what was typed — see `brand.settings.patch`,
     // which returned the input and reported a write that never happened.
     setProducts(cleaned);
-    setSaved(true);
   }
 
   const update = (i: number, patch: Partial<Product>) =>
@@ -226,9 +221,8 @@ export function OffersSection() {
 
       <div className="flex flex-wrap items-center gap-[14px]">
         <Button onClick={() => void save()} disabled={busy}>
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? <Busy>Saving…</Busy> : 'Save'}
         </Button>
-        {saved ? <span className="text-14 text-success">Saved.</span> : null}
         {error ? <span className="text-14 text-destructive">{error}</span> : null}
       </div>
     </div>

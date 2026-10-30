@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { relativeTime } from '@/lib/relativeTime';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { ASSET_ROLES } from './roles';
@@ -196,10 +197,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
     setBusy(assetId);
     const res = await invoke('asset.caption.set', { genomeId: genome.genomeId, assetId, caption });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
-      return;
-    }
+    if (!notifyResult(res, 'Caption saved', 'Couldn’t save the caption')) return;
     setEditing(null);
     // Re-search rather than patching the row: the caption was re-embedded, so
     // this asset's own relevance score has changed and the ordering with it.
@@ -211,10 +209,7 @@ export function AssetSearchGrid({ refreshKey }: { refreshKey: number }) {
     setBusy(assetId);
     const res = await invoke('asset.archive', { genomeId: genome.genomeId, assetId, archived: true });
     setBusy(null);
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That change was gated.');
-      return;
-    }
+    if (!notifyResult(res, 'Asset archived', 'Couldn’t archive it')) return;
     await search();
   }
 

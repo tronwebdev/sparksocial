@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
+import { Busy, SparkLoader } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notify, notifyResult } from '@/lib/notify';
 import { userMessage } from '@/lib/errorCopy';
 
 /**
@@ -106,13 +108,12 @@ export function DeleteBrandModal({
   async function remove() {
     if (busy || !preview || !matches) return;
     setBusy(true);
-    setError(null);
 
     const held = await invoke<unknown>('brand.delete', { brandId, confirmName: typed });
 
     if (held.status === 'failed') {
       setBusy(false);
-      setError(userMessage(held.error));
+      notify.error('Couldn’t delete the brand', { body: userMessage(held.error) });
       return;
     }
 
@@ -128,14 +129,7 @@ export function DeleteBrandModal({
         `brand-delete:${brandId}`,
       );
       setBusy(false);
-      if (released.status !== 'succeeded') {
-        setError(
-          released.status === 'failed'
-            ? userMessage(released.error)
-            : 'The deletion is waiting for approval in the Command Center.',
-        );
-        return;
-      }
+      if (!notifyResult(released, undefined, 'Couldn’t delete the brand')) return;
       onDeleted(preview.name);
       return;
     }
@@ -162,9 +156,11 @@ export function DeleteBrandModal({
 
       <div className="px-[64px] pt-[18px]">
         {preview === null ? (
-          <p className="text-center text-16 text-ink-muted">
-            {error ?? 'Counting what this would remove…'}
-          </p>
+          error ? (
+            <p className="text-center text-16 text-ink-muted">{error}</p>
+          ) : (
+            <SparkLoader size="inline" label="Counting what this would remove…" className="justify-center" />
+          )
         ) : (
           <>
             <p className="text-center text-16 leading-[1.55] text-ink">
@@ -189,7 +185,6 @@ export function DeleteBrandModal({
               style={{ boxShadow: 'inset 0 0 0 1.2px rgba(131,131,131,0.4)' }}
             />
 
-            {error ? <p className="mt-[12px] text-center text-15 text-destructive">{error}</p> : null}
           </>
         )}
       </div>
@@ -213,7 +208,7 @@ export function DeleteBrandModal({
           className="flex h-[52px] items-center rounded-[11px] px-[20px] text-18 font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.985] disabled:opacity-40"
           style={{ background: '#F35525' }}
         >
-          {busy ? 'Deleting…' : 'Delete brand'}
+          {busy ? <Busy>Deleting…</Busy> : 'Delete brand'}
         </button>
       </div>
     </ModalShell>

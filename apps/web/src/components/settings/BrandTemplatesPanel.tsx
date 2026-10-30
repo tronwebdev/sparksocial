@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { invoke } from '@/lib/tools';
 import { userMessage } from '@/lib/errorCopy';
+import { notify, notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-BRAND-KITS` → Templates. The prototype draws five peer tabs
@@ -74,12 +76,13 @@ export function BrandTemplatesPanel() {
   const [draftName, setDraftName] = useState('');
   const [draftText, setDraftText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  /* The templates failing to load. What an add or remove came to is a notification. */
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     const res = await invoke<{ kitTemplates: KitTemplate[] }>('brand.governance.get', {});
     if (res.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
+      setLoadError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
       setTemplates([]);
       return;
     }
@@ -97,7 +100,6 @@ export function BrandTemplatesPanel() {
    */
   async function commit(next: KitTemplate[], ok: string) {
     setBusy(true);
-    setMessage(null);
     const res = await invoke<{ kitTemplates: KitTemplate[] }>('brand.governance.set', {
       // `null` clears rather than storing `[]`, the same rule the rest of this
       // screen follows: an empty list and "never set" read identically here and
@@ -105,18 +107,14 @@ export function BrandTemplatesPanel() {
       kitTemplates: next.length ? next : null,
     });
     setBusy(false);
-    if (res.status !== 'succeeded') {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.' });
-      return;
-    }
+    if (!notifyResult(res, ok, 'Couldn’t save the templates')) return;
     setTemplates(res.output.kitTemplates);
-    setMessage({ kind: 'ok', text: ok });
   }
 
   async function add(category: Category, text: string, name?: string) {
     const current = templates ?? [];
     if (current.length >= MAX_TEMPLATES) {
-      setMessage({ kind: 'err', text: `That is the ${MAX_TEMPLATES}-template limit. Remove one first.` });
+      notify.warning(`That is the ${MAX_TEMPLATES}-template limit`, { body: 'Remove one first.' });
       return;
     }
     const inCategory = current.filter((t) => t.category === category).length;
@@ -129,7 +127,7 @@ export function BrandTemplatesPanel() {
       name: name?.trim() || `Preset ${inCategory + 1}`,
       text: text.trim(),
     };
-    await commit([...current, template], 'Saved.');
+    await commit([...current, template], 'Template saved');
     setDraftName('');
     setDraftText('');
   }
@@ -222,7 +220,7 @@ export function BrandTemplatesPanel() {
                     variant="outline"
                     disabled={busy}
                     className="text-destructive"
-                    onClick={() => void commit(templates.filter((x) => x.id !== t.id), 'Removed.')}
+                    onClick={() => void commit(templates.filter((x) => x.id !== t.id), 'Template removed')}
                   >
                     Remove
                   </Button>
@@ -267,7 +265,7 @@ export function BrandTemplatesPanel() {
                 disabled={busy || !draftText.trim()}
                 onClick={() => void add(tab, draftText, draftName)}
               >
-                {busy ? 'Saving…' : 'Add'}
+                {busy ? <Busy>Saving…</Busy> : 'Add'}
               </Button>
             </div>
 
@@ -301,11 +299,7 @@ export function BrandTemplatesPanel() {
         </>
       )}
 
-      {message ? (
-        <p className={`mt-3 text-12 ${message.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
-          {message.text}
-        </p>
-      ) : null}
+      {loadError ? <p className="mt-3 text-12 text-destructive">{loadError}</p> : null}
     </section>
   );
 }

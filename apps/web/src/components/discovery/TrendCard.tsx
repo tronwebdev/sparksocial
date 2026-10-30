@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import { WhyPopover } from '@/components/explain/WhyPopover';
 import { cn } from '@/lib/utils';
-import { userMessage } from '@/lib/errorCopy';
 
 export interface RankedTrendItem {
   trendId: string;
@@ -234,10 +235,9 @@ export function TrendCard({
       { genomeId, trendId: trend.trendId },
     );
     setRepurposeBusy(false);
-    if (res.status !== 'succeeded') {
-      setRepurposeError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    /* A call that failed is news about the press; "nothing fits" is the
+       answer, and the card shows it in place of the media. */
+    if (!notifyResult(res, undefined, 'Couldn’t check this trend')) return;
     setSuggestion(res.output.suggestion);
     if (!res.output.suggestion) setRepurposeError(res.output.why.summary);
   }
@@ -489,7 +489,7 @@ export function TrendCard({
             <path d="M10 0.8 11.9 6.4 17.6 8.3 11.9 10.2 10 15.8 8.1 10.2 2.4 8.3 8.1 6.4Z" fill={`url(#dv-sp-${trend.trendId})`} />
             <path d="m16.6 12.2.9 2.6 2.5.9-2.5.9-.9 2.5-.9-2.5-2.5-.9 2.5-.9Z" fill={`url(#dv-sp-${trend.trendId})`} />
           </svg>
-          {repurposeBusy ? 'Thinking…' : 'Re-purpose'}
+          {repurposeBusy ? <Busy size={16}>Thinking…</Busy> : 'Re-purpose'}
         </button>
 
         <button

@@ -11,6 +11,8 @@ import { CREDIT_CATEGORY_HINT, creditsToCents } from '@sparksocial/shared/credit
 import type { CreditCategory } from '@sparksocial/shared/credits';
 import { cn } from '@/lib/utils';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `SET-WS-CREDIT-USAGE` — the Credit & Usage screen.
@@ -315,7 +317,6 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
     ),
   );
   const [saving, setSaving] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
 
   const allocatedCredits = Object.values(limits).reduce((n, v) => n + (v.trim() === '' ? 0 : Number(v) || 0), 0);
   const capCredits = Number(cap) || 0;
@@ -323,7 +324,6 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
 
   const save = async () => {
     setSaving(true);
-    setFailure(null);
     const allocationsCents: Record<string, number> = {};
     for (const [category, value] of Object.entries(limits)) {
       if (value.trim() === '') continue;
@@ -338,13 +338,7 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
       crypto.randomUUID(),
     );
     setSaving(false);
-    if (res.status === 'succeeded') {
-      await onDone();
-      return;
-    }
-    setFailure(
-      res.status === 'failed' ? userMessage(res.error) : 'Only the account owner can change spending limits.',
-    );
+    if (notifyResult(res, 'Spending limits saved', 'Couldn’t save the spending limits')) await onDone();
   };
 
   return (
@@ -401,11 +395,10 @@ function LimitEditor({ usage, onDone }: { usage: Usage; onDone: () => Promise<vo
           its own.
         </p>
       )}
-      {failure && <p className="text-12 text-destructive">{failure}</p>}
 
       <div className="flex gap-2">
         <Button size="sm" onClick={() => void save()} disabled={saving || over}>
-          {saving ? 'Saving…' : 'Save limits'}
+          {saving ? <Busy>Saving…</Busy> : 'Save limits'}
         </Button>
         <Button size="sm" variant="ghost" onClick={() => void onDone()} disabled={saving}>
           Cancel

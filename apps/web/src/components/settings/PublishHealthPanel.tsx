@@ -10,6 +10,8 @@ import { expiresInWords } from '@sparksocial/shared';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { userMessage } from '@/lib/errorCopy';
+import { notifyResult } from '@/lib/notify';
+import { Busy } from '@/components/brand/SparkLoader';
 
 /**
  * `integration.health` — real since 18 Aug 2026, replacing `publish.status`
@@ -97,6 +99,9 @@ export function PublishHealthPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyPlatform, setBusyPlatform] = useState<string | null>(null);
+  /* How the trip to a platform's consent screen came back, read from the URL on
+     arrival — page state, so it stays inline where it can still be acted on.
+     What a click on this screen came to is a notification. */
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const [credentialFor, setCredentialFor] = useState<string | null>(null);
 
@@ -179,7 +184,7 @@ export function PublishHealthPanel() {
       return;
     }
     setBusyPlatform(null);
-    setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
+    notifyResult(res, undefined, `Couldn’t connect ${platformLabel(platform)}`);
   }
 
   async function disconnect(platform: string) {
@@ -188,12 +193,8 @@ export function PublishHealthPanel() {
     setMessage(null);
     const res = await invoke<{ removed: boolean }>('brand.oauth.disconnect', { genomeId: genome.genomeId, provider: platform });
     setBusyPlatform(null);
-    if (res.status === 'succeeded') {
-      setMessage({ kind: 'ok', text: 'Disconnected.' });
-      await load();
-    } else {
-      setMessage({ kind: 'err', text: res.status === 'failed' ? userMessage(res.error) : 'That request was gated.' });
-    }
+    if (!notifyResult(res, `${platformLabel(platform)} disconnected`, `Couldn’t disconnect ${platformLabel(platform)}`)) return;
+    await load();
   }
 
   return (
@@ -219,7 +220,7 @@ export function PublishHealthPanel() {
           </p>
         </div>
         <Button size="sm" variant="outline" disabled={loading} onClick={() => void load()}>
-          {loading ? 'Refreshing…' : 'Refresh'}
+          {loading ? <Busy>Refreshing…</Busy> : 'Refresh'}
         </Button>
       </div>
 
@@ -291,7 +292,7 @@ export function PublishHealthPanel() {
                           disabled={busyPlatform === p.platform || !genome}
                           onClick={() => void connect(p.connectedVia ?? p.platform)}
                         >
-                          {busyPlatform === p.platform ? 'Redirecting…' : 'Reconnect'}
+                          {busyPlatform === p.platform ? <Busy>Redirecting…</Busy> : 'Reconnect'}
                         </Button>
                       ) : null}
                       {/* No Disconnect on a derived row: it would revoke the
@@ -305,7 +306,7 @@ export function PublishHealthPanel() {
                     </>
                   ) : p.connectedVia ? null : (
                     <Button size="sm" variant="outline" disabled={busyPlatform === p.platform || !genome} onClick={() => void connect(p.platform)}>
-                      {busyPlatform === p.platform ? 'Redirecting…' : 'Connect'}
+                      {busyPlatform === p.platform ? <Busy>Redirecting…</Busy> : 'Connect'}
                     </Button>
                   )}
                 </div>
@@ -320,11 +321,9 @@ export function PublishHealthPanel() {
           platform={credentialFor}
           genomeId={genome.genomeId}
           onClose={() => setCredentialFor(null)}
-          onConnected={(accountLabel) => {
+          onConnected={() => {
+            // The modal has already said which account connected.
             setCredentialFor(null);
-            // Named, like every other connect confirmation — see the `?social=`
-            // handler above for why the account and not just the platform.
-            setMessage({ kind: 'ok', text: `${platformLabel(credentialFor)} connected as ${accountLabel}.` });
             void load();
           }}
         />

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Busy } from '@/components/brand/SparkLoader';
 import { invoke } from '@/lib/tools';
+import { notifyResult } from '@/lib/notify';
 import type { EngagementItem } from './EngagementFeed';
-import { userMessage } from '@/lib/errorCopy';
 
 /**
  * `engage.escalate` / `engage.takeover` — the two ways a card leaves the feed
@@ -35,19 +36,14 @@ export function EngagementCardActions({
 }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [resolution, setResolution] = useState<Resolution | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   async function escalate() {
     const reason = window.prompt('Why does this need a human beyond the normal review queue?');
     if (!reason || !reason.trim()) return;
     setPhase('escalating');
-    setError(null);
     const res = await invoke<{ status: string }>('engage.escalate', { genomeId, messageId: item.id, reason: reason.trim() });
     setPhase('idle');
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t escalate it')) return;
     setResolution('escalated');
     onResolved(item.id);
   }
@@ -55,13 +51,9 @@ export function EngagementCardActions({
   async function takeover() {
     if (!window.confirm('Take over this conversation? SPARK will stop drafting, auto-handling, or acting on it.')) return;
     setPhase('takingOver');
-    setError(null);
     const res = await invoke<{ status: string }>('engage.takeover', { genomeId, messageId: item.id });
     setPhase('idle');
-    if (res.status !== 'succeeded') {
-      setError(res.status === 'failed' ? userMessage(res.error) : 'That request was gated.');
-      return;
-    }
+    if (!notifyResult(res, undefined, 'Couldn’t take it over')) return;
     setResolution('taken_over');
     onResolved(item.id);
   }
@@ -78,7 +70,7 @@ export function EngagementCardActions({
         disabled={phase !== 'idle'}
         onClick={() => void escalate()}
       >
-        {phase === 'escalating' ? 'Escalating…' : 'Escalate'}
+        {phase === 'escalating' ? <Busy size={16}>Escalating…</Busy> : 'Escalate'}
       </button>
       <span className="text-13 text-ink-muted">·</span>
       <button
@@ -87,9 +79,8 @@ export function EngagementCardActions({
         disabled={phase !== 'idle'}
         onClick={() => void takeover()}
       >
-        {phase === 'takingOver' ? 'Taking over…' : 'Take over'}
+        {phase === 'takingOver' ? <Busy size={16}>Taking over…</Busy> : 'Take over'}
       </button>
-      {error ? <p className="w-full text-13 text-destructive">{error}</p> : null}
     </div>
   );
 }
