@@ -611,10 +611,12 @@ export function SourceStep({
 
 export function ValidateStep({
   genomeId,
+  recipeId,
   draft,
   validation,
 }: {
   genomeId: string;
+  recipeId?: string | undefined;
   draft: WizardDraft;
   validation: { valid: boolean; error?: string; notApplied: Array<{ field: string; because: string }> } | null;
 }) {
@@ -738,6 +740,7 @@ export function ValidateStep({
       {!rows && draft.bulkSource !== 'folder' ? (
         <RecipePreview
           genomeId={genomeId}
+          {...(recipeId ? { recipeId } : {})}
           kind="bulk_connector"
           config={configFor(draft)}
           ready={validation?.valid === true}
@@ -750,7 +753,17 @@ export function ValidateStep({
 
 /* ── step 2 (RSS): the feed ────────────────────────────────────────────── */
 
-export function FeedStep({ genomeId, draft, set }: { genomeId: string; draft: WizardDraft; set: Set }) {
+export function FeedStep({
+  genomeId,
+  recipeId,
+  draft,
+  set,
+}: {
+  genomeId: string;
+  recipeId?: string | undefined;
+  draft: WizardDraft;
+  set: Set;
+}) {
   return (
     <section className={CARD} style={CARD_SHADOW}>
       <h2 className="text-24 font-bold text-ink">RSS feed URL</h2>
@@ -810,6 +823,7 @@ export function FeedStep({ genomeId, draft, set }: { genomeId: string; draft: Wi
           would become. */}
       <RecipePreview
         genomeId={genomeId}
+        {...(recipeId ? { recipeId } : {})}
         kind="rss"
         config={configFor(draft)}
         ready={/^https?:\/\/\S+\.\S+/i.test(draft.feedUrl.trim())}

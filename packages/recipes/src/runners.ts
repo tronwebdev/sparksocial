@@ -82,24 +82,42 @@ export function outputKeys(preview: unknown): string[] {
  *
  * "Can make today" because a recipe posts unattended: a format waiting on footage
  * nobody has shot would fail when the scheduler drafts it. The matcher's own pick
- * wins when it is makeable; otherwise the best-ranked makeable format, and a
- * format that supports one of the recipe's chosen accounts is preferred over one
- * that supports none of them.
+ * wins when its words actually matched the item and it is makeable; otherwise one
+ * of the best-ranked makeable formats, and a format that supports one of the
+ * recipe's chosen accounts is preferred over one that supports none of them.
+ *
+ * ── "Otherwise" rotates ───────────────────────────────────────────────────
+ *
+ * When nothing in the item's words matches a format — most news headlines — the
+ * matcher's answer is simply its top-ranked format, the same one every time. On
+ * staging that made a coffee-news feed five "Comparison (X vs Y)" posts in a row.
+ * So an unmatched item takes whichever of the top four makeable formats this run
+ * has used least (`formatUse`), ties going to the better-ranked one. A matched
+ * item still gets its match: that is a real reason, and rotation is not.
  */
 export function pickFormat(
-  ctx: Pick<RecipeRunContext, 'genome' | 'assets'>,
+  ctx: Pick<RecipeRunContext, 'genome' | 'assets' | 'formatUse'>,
   item: { topic: string; tags: string[] },
   targetPlatforms: readonly string[] = [],
 ): { playbookId: string; playbookName: string; intent: string } | undefined {
   const { suggestion, ranked } = suggestRepurpose(ctx.genome, ctx.assets, item);
   const fits = (id: string) =>
     targetPlatforms.length === 0 || (byId(id)?.output.platforms ?? []).some((p) => targetPlatforms.includes(p));
-  if (suggestion && !suggestion.unlockable && fits(suggestion.playbookId)) {
+  const use = (id: string) => ctx.formatUse?.set(id, (ctx.formatUse.get(id) ?? 0) + 1);
+  if (suggestion && suggestion.matchedOn.length > 0 && !suggestion.unlockable && fits(suggestion.playbookId)) {
+    use(suggestion.playbookId);
     return { playbookId: suggestion.playbookId, playbookName: suggestion.playbookName, intent: suggestion.intent };
   }
   const makeable = ranked.filter((r) => !r.unlockable);
-  const best = makeable.find((r) => fits(r.playbook.playbook_id)) ?? makeable[0];
+  const fitting = makeable.filter((r) => fits(r.playbook.playbook_id));
+  const shortlist = (fitting.length ? fitting : makeable).slice(0, 4);
+  const count = (id: string) => ctx.formatUse?.get(id) ?? 0;
+  const best = shortlist.reduce<(typeof shortlist)[number] | undefined>(
+    (pick, r) => (!pick || count(r.playbook.playbook_id) < count(pick.playbook.playbook_id) ? r : pick),
+    undefined,
+  );
   if (best) {
+    use(best.playbook.playbook_id);
     return {
       playbookId: best.playbook.playbook_id,
       playbookName: best.playbook.name,
@@ -140,6 +158,12 @@ export interface RecipeRunContext {
    * when the brand has never connected Canva.
    */
   getOAuthAccessToken?: (provider: 'canva') => Promise<string | undefined>;
+  /**
+   * How often each format has been picked so far in this run — `pickFormat`
+   * rotates unmatched items through the top formats with it. `runRecipe` makes
+   * a fresh one per run.
+   */
+  formatUse?: Map<string, number>;
   /**
    * `outputKeys` of everything this recipe produced before. A runner drops any
    * candidate sharing one *before* it applies its per-run cap, so a run is
@@ -248,7 +272,8 @@ export function requiresReview(config: unknown): boolean {
   return parsed.success ? parsed.data.reviewBeforePublish !== false : true;
 }
 
-export async function runRecipe(kind: string, config: unknown, ctx: RecipeRunContext): Promise<RecipeRunResult> {
+export async function runRecipe(kind: string, config: unknown, runCtx: RecipeRunContext): Promise<RecipeRunResult> {
+  const ctx: RecipeRunContext = { ...runCtx, formatUse: new Map() };
   switch (kind) {
     case 'auto_trend':
       return runAutoTrend(config, ctx);

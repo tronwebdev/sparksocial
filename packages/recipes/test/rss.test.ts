@@ -34,6 +34,11 @@ describe('parseFeed', () => {
     ]);
   });
 
+  it('decodes numeric character references, as WordPress feeds write them', () => {
+    const xml = `<rss><channel><item><title>Lovr Boys Cafe &#038; Roastery&#8217;s &#x201C;Hearts&#x201D;</title><link>https://e.com/a</link></item></channel></rss>`;
+    expect(parseFeed(xml)[0]!.title).toBe('Lovr Boys Cafe & Roastery’s “Hearts”');
+  });
+
   it('parses Atom entries', () => {
     const items = parseFeed(ATOM);
     expect(items).toEqual([{ title: 'Atom entry one', link: 'https://example.com/atom-1', publishedAt: '2024-01-01T00:00:00Z' }]);

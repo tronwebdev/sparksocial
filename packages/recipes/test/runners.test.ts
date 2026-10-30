@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AssetRole } from '@sparksocial/shared';
 import { GOLDEN_SET } from '@sparksocial/playbooks';
 import { createStubTrendSource } from '@sparksocial/trends';
 import { outputKeys, runRecipe, type RecipeRunContext } from '../src/runners.js';
@@ -86,6 +87,23 @@ describe('runRecipe — rss', () => {
     const result = await runRecipe('rss', { feedUrl: 'https://example.com/feed.xml' }, ctx({ fetchText: async () => feed }));
     expect(result.outputs[0]!.playbookId).toEqual(expect.any(String));
     expect(result.outputs[0]!.intent).toContain(result.outputs[0]!.playbookName!.toLowerCase());
+  });
+
+  it('rotates formats across headlines no format matches, instead of repeating one', async () => {
+    // On staging a coffee-news feed became five "Comparison (X vs Y)" posts.
+    const headlines = ['Port strike ends', 'Rainfall record broken', 'Council budget passes', 'Museum reopens'];
+    const many = `<rss><channel>${headlines
+      .map((t, i) => `<item><title>${t}</title><link>https://example.com/${i}</link></item>`)
+      .join('')}</channel></rss>`;
+    // A brand with footage of every kind, so more than one format is makeable today.
+    const stocked = Object.fromEntries(AssetRole.options.map((role) => [role, 10]));
+    const result = await runRecipe(
+      'rss',
+      { feedUrl: 'https://example.com/feed.xml' },
+      ctx({ fetchText: async () => many, assets: stocked }),
+    );
+    expect(result.outputs).toHaveLength(4);
+    expect(new Set(result.outputs.map((o) => o.playbookId)).size).toBeGreaterThan(1);
   });
 
   it('skips items it already produced and fills the run from the next ones', async () => {

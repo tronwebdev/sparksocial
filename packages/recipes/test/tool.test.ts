@@ -303,6 +303,22 @@ describe('recipe.preview', () => {
     expect(preview.effect).toBe('read');
   });
 
+  it("leaves out what a saved recipe already used, when it is given the recipe's id", async () => {
+    const f = fakeStore();
+    const feed = '<rss><channel><item><title>Hello</title><link>https://e.com/h</link></item></channel></rss>';
+    const created = await recipeCreate.handler(
+      { genomeId: 'gen_barber', kind: 'rss', name: 'Feed', config: { feedUrl: 'https://e.com/feed.xml' } },
+      ctx(f.store),
+    );
+    await makeRecipeRun({ trendSource, fetchText: async () => feed }).handler({ id: created.id, genomeId: 'gen_barber' }, ctx(f.store));
+    const preview = makeRecipePreview({ trendSource, fetchText: async () => feed });
+    const input = { genomeId: 'gen_barber', kind: 'rss' as const, config: { feedUrl: 'https://e.com/feed.xml' } };
+    expect((await preview.handler(input, ctx(f.store))).items).toHaveLength(1);
+    const editing = await preview.handler({ ...input, recipeId: created.id }, ctx(f.store));
+    expect(editing.items).toEqual([]);
+    expect(editing.why.summary).toMatch(/already used/);
+  });
+
   it('answers an unfinished config with the reason rather than throwing', async () => {
     const preview = makeRecipePreview({ trendSource, fetchText: async () => '' });
     const out = await preview.handler({ genomeId: 'gen_barber', kind: 'rss', config: { feedUrl: 'nope' } }, ctx(fakeStore().store));

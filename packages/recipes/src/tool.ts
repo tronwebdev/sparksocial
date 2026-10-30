@@ -699,6 +699,12 @@ export const RecipePreviewInput = z.object({
   genomeId: z.string().min(1),
   kind: KIND,
   config: z.unknown(),
+  /**
+   * The saved recipe being edited, when it is. Its history then applies, so the
+   * preview shows what a run would really take next rather than items the recipe
+   * already used.
+   */
+  recipeId: z.string().optional(),
 });
 
 export const RecipePreviewOutput = z.object({
@@ -749,6 +755,10 @@ export function makeRecipePreview(deps: RecipeDeps) {
         return { items: [], error, why: { summary: `Not a valid ${input.kind} config yet: ${error}`, factors: [], evidence: [], alternatives: [] } };
       }
       const runCtx = await runContextFor(deps, ctx, input.genomeId);
+      if (input.recipeId) {
+        const previous = await ctx.db.recipes.recentOutputPreviews(input.recipeId, input.genomeId, ctx.orgId, 500);
+        runCtx.seen = new Set(previous.flatMap(outputKeys));
+      }
       const { outputs, error } = await runRecipe(input.kind, parsed.data, runCtx);
       return {
         items: outputs.map((o) => ({
@@ -763,7 +773,9 @@ export function makeRecipePreview(deps: RecipeDeps) {
             ? error
             : outputs.length
               ? `A run now would produce ${outputs.length} item${outputs.length === 1 ? '' : 's'}.`
-              : 'A run now would produce nothing.',
+              : input.recipeId
+                ? 'A run now would find nothing this recipe has not already used.'
+                : 'A run now would produce nothing.',
           factors: [{ label: 'kind', detail: input.kind }],
           evidence: [],
           alternatives: [],

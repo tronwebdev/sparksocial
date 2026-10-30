@@ -368,7 +368,7 @@ export function AutomationScreen() {
       {view === 'wizard' && draft ? (
         <RecipeWizard
           genomeId={genomeId}
-          editing={editing !== null}
+          {...(editing ? { editingId: editing.id } : {})}
           draft={draft}
           onDraft={setDraft}
           step={step}

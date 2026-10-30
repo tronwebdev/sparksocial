@@ -832,7 +832,7 @@ export interface ToolIO {
     output: { outputs: Array<{ id: string; recipeId: string; runId: string; status: "pending_review" | "approved" | "rejected"; preview: unknown; contentItemId?: string; createdAt: string; decidedAt?: string }> };
   };
   "recipe.preview": {
-    input: { genomeId: string; kind: "auto_trend" | "bulk_connector" | "rss"; config: unknown };
+    input: { genomeId: string; kind: "auto_trend" | "bulk_connector" | "rss"; config: unknown; recipeId?: string };
     output: { items: Array<{ title: string; intent: string; sourceUrl?: string; playbookName?: string }>; error?: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "recipe.run": {

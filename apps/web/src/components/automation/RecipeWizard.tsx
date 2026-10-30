@@ -46,7 +46,7 @@ export interface Validation {
 
 export function RecipeWizard({
   genomeId,
-  editing = false,
+  editingId,
   draft,
   onDraft,
   step,
@@ -62,8 +62,8 @@ export function RecipeWizard({
   connectNote,
 }: {
   genomeId: string;
-  /** AUTO-02.1's edit: the same steps over a saved recipe, ending in Save rather than Launch. */
-  editing?: boolean;
+  /** AUTO-02.1's edit: the saved recipe the same steps run over, ending in Save rather than Launch. */
+  editingId?: string;
   draft: WizardDraft;
   onDraft: (next: WizardDraft) => void;
   step: number;
@@ -85,6 +85,7 @@ export function RecipeWizard({
   const kind: StepKind = steps[Math.min(step, steps.length - 1)]!;
   const last = step === steps.length - 1;
   const set = (patch: Partial<WizardDraft>) => onDraft({ ...draft, ...patch });
+  const editing = editingId !== undefined;
 
   return (
     <div className="pb-[60px] pl-[27px] pr-[30px] pt-[56px]">
@@ -176,8 +177,10 @@ export function RecipeWizard({
                 connectNote={connectNote}
               />
             ) : null}
-            {kind === 'validate' ? <ValidateStep genomeId={genomeId} draft={draft} validation={validation} /> : null}
-            {kind === 'feed' ? <FeedStep genomeId={genomeId} draft={draft} set={set} /> : null}
+            {kind === 'validate' ? (
+              <ValidateStep genomeId={genomeId} recipeId={editingId} draft={draft} validation={validation} />
+            ) : null}
+            {kind === 'feed' ? <FeedStep genomeId={genomeId} recipeId={editingId} draft={draft} set={set} /> : null}
             {kind === 'freq' ? <FreqStep draft={draft} set={set} /> : null}
 
             {error ? <p className="mt-[16px] max-w-auto-form text-15 text-destructive">{error}</p> : null}

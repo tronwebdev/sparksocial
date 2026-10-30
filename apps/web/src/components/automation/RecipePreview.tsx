@@ -35,12 +35,15 @@ function hostOf(url?: string): string | undefined {
 
 export function RecipePreview({
   genomeId,
+  recipeId,
   kind,
   config,
   ready,
   idle,
 }: {
   genomeId: string;
+  /** The saved recipe being edited — its history applies, so used items are left out. */
+  recipeId?: string;
   kind: RecipeKind;
   config: Record<string, unknown>;
   /** False until the step has enough to read — no URL yet, for instance. */
@@ -65,6 +68,7 @@ export function RecipePreview({
         genomeId,
         kind,
         config: JSON.parse(key) as unknown,
+        ...(recipeId ? { recipeId } : {}),
       });
       if (cancelled) return;
       setState(
@@ -77,7 +81,7 @@ export function RecipePreview({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [genomeId, kind, key, ready]);
+  }, [genomeId, recipeId, kind, key, ready]);
 
   return (
     <div className="mt-[26px]">
@@ -96,7 +100,9 @@ export function RecipePreview({
         </p>
       ) : state.items.length === 0 ? (
         <p className="mt-[8px] text-15" style={{ color: '#838383' }}>
-          It read fine, but there is nothing in it to post yet.
+          {recipeId
+            ? 'It read fine, and everything in it has already been used by this recipe.'
+            : 'It read fine, but there is nothing in it to post yet.'}
         </p>
       ) : (
         <>
