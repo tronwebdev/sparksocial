@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { FLATTEN, NARROW_BELOW, useNarrowStage } from '@/components/shell/narrowStage';
 import { cn } from '@/lib/utils';
+import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
  * Shared furniture for the Create Campaign screen —
@@ -133,58 +134,15 @@ export function ModalBlobs() {
  * The agent orb, at either of the two sizes the design uses (212.891 in the
  * popup, 113 in the wizard header).
  *
- * Everything inside scales off `size`, because the prototype's two copies are
- * the same construction at two scales — the small one's numbers are the large
- * one's times 113/212.891. Writing it once and scaling is what keeps them from
- * drifting apart when either is touched.
+ * It was a copy of the mark built from divs — a black ring, a frosted disc,
+ * four blobs, a visor — that looked like the logo without being it. It is the
+ * real mark now, so it turns to follow the cursor while someone fills the
+ * wizard in. Positioning stays the caller's, through `className` and `style`.
  */
 export function AgentOrb({ size, className, style }: { size: number; className?: string; style?: React.CSSProperties }) {
-  const k = size / 212.891;
-  const px = (n: number) => `${n * k}px`;
   return (
-    <div
-      aria-hidden
-      className={cn('absolute overflow-hidden rounded-full', className)}
-      style={{ width: size, height: size, ...style }}
-    >
-      <div
-        className="absolute inset-0 rounded-full bg-white"
-        style={{ boxShadow: `inset 0 0 0 ${px(10.645)} rgb(0,0,0)` }}
-      />
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: 'rgba(108,232,255,0.2)',
-          backdropFilter: `blur(${px(102.134)})`,
-          boxShadow: `inset 0 0 ${px(32.536)} ${px(11.703)} rgb(153,149,176)`,
-        }}
-      />
-      {/* The four colour blobs that read as the agent's "face". */}
-      <div
-        className="absolute overflow-hidden"
-        style={{ left: px(43.428), top: px(58.426), width: px(126.742), height: px(113.858) }}
-      >
-        <span className="absolute rounded-full" style={{ left: px(47.53), top: 0, width: px(57.06), height: px(57.06), background: 'rgb(245,107,255)' }} />
-        <span className="absolute rounded-full" style={{ left: 0, top: px(8.64), width: px(83.17), height: px(83.17), background: 'rgb(108,232,255)' }} />
-        <span className="absolute rounded-full" style={{ left: px(41.77), top: px(66.25), width: px(47.61), height: px(47.61), background: 'rgb(163,65,255)' }} />
-        <span className="absolute rounded-full" style={{ left: px(79.14), top: px(36.29), width: px(47.61), height: px(47.61), background: 'rgb(255,255,255)' }} />
-      </div>
-      {/* The visor, and the two eyes on top of it. */}
-      <div
-        className="absolute"
-        style={{
-          left: px(42.417),
-          top: px(78.822),
-          width: px(130.011),
-          height: px(52.707),
-          borderRadius: px(39.338),
-          background: 'rgba(255,255,255,0.07)',
-          backdropFilter: `blur(${px(35.528)})`,
-          boxShadow: `inset 0 0 ${px(19.799)} ${px(-3.514)} rgb(108,232,255)`,
-        }}
-      />
-      <span className="absolute rounded-full bg-white" style={{ left: px(61.74), top: px(94.589), width: px(21.289), height: px(21.289) }} />
-      <span className="absolute rounded-full bg-white" style={{ left: px(134.121), top: px(94.589), width: px(21.289), height: px(21.289) }} />
+    <div aria-hidden className={cn('absolute', className)} style={{ width: size, height: size, ...style }}>
+      <SparkMark size={size} decorative />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { invoke } from '@/lib/tools';
@@ -72,11 +73,13 @@ export function AutomationScreen() {
   const [canvaConnected, setCanvaConnected] = useState<boolean | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectNote, setConnectNote] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  /* The screen's own toast, with SPARK beside it in the matching mood. */
+  const [toast, setToast] = useState<{ msg: string; mood?: SparkMood } | null>(null);
 
-  const say = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast((t) => (t === msg ? null : t)), 2300);
+  const say = useCallback((msg: string, mood?: SparkMood) => {
+    const next = { msg, ...(mood ? { mood } : {}) };
+    setToast(next);
+    window.setTimeout(() => setToast((t) => (t === next ? null : t)), 2600);
   }, []);
 
   /**
@@ -185,7 +188,7 @@ export function AutomationScreen() {
       setManageKind(kind);
       setView('manage');
       window.scrollTo(0, 0);
-      say('Changes saved');
+      say('Changes saved', 'success');
       void reload();
       return;
     }
@@ -234,7 +237,7 @@ export function AutomationScreen() {
       });
       setBusy(false);
       if (saved.status !== 'succeeded') {
-        say(whyNot(saved));
+        say(whyNot(saved), saved.status === 'failed' ? 'error' : 'warning');
         return;
       }
     }
@@ -243,7 +246,7 @@ export function AutomationScreen() {
     setManageKind(d.kind);
     setView('manage');
     window.scrollTo(0, 0);
-    say(`${KIND_META[d.kind].name} campaign activated`);
+    say(`${KIND_META[d.kind].name} campaign activated`, 'success');
     void reload();
   }
 
@@ -260,14 +263,14 @@ export function AutomationScreen() {
     */
     if (status === 'approved' && !row.playbookId) {
       setBusyId(null);
-      say('No format this brand can make fits this one, so there is nothing to post — remove it instead.');
+      say('No format this brand can make fits this one, so there is nothing to post — remove it instead.', 'warning');
       return;
     }
 
     const res = await invoke<{ preview: { contentItemIds?: string[] } }>('recipe.output.decide', { id: row.id, genomeId, status });
     if (res.status !== 'succeeded') {
       setBusyId(null);
-      say(whyNot(res));
+      say(whyNot(res), res.status === 'failed' ? 'error' : 'warning');
       /* The usual cause is a stale screen — the item was decided somewhere
          else since this list loaded — so show the queue as it is now rather
          than leaving a button that will fail the same way again. */
@@ -298,6 +301,7 @@ export function AutomationScreen() {
         : drafted
           ? 'Approved and scheduled'
           : 'Approved and scheduled — SPARK will write it before it goes out',
+      status === 'rejected' ? undefined : 'success',
     );
     void reload();
   }
@@ -313,7 +317,7 @@ export function AutomationScreen() {
           : await invoke('recipe.schedule', { id: r.id, genomeId, status: r.status === 'paused' ? 'active' : 'paused' });
     setBusyId(null);
     if (res.status !== 'succeeded') {
-      say(whyNot(res));
+      say(whyNot(res), res.status === 'failed' ? 'error' : 'warning');
       return;
     }
     /* A run says what it did — "scheduled 3 posts", "found nothing new" — in its
@@ -327,6 +331,7 @@ export function AutomationScreen() {
           : r.status === 'paused'
             ? `${r.name} resumed`
             : `${r.name} paused`,
+      action !== 'run' ? 'success' : /fail/i.test(ranWhy ?? '') ? 'error' : /nothing/i.test(ranWhy ?? '') ? 'asleep' : 'success',
     );
     void reload();
   }
@@ -446,10 +451,15 @@ export function AutomationScreen() {
       {toast ? (
         <div
           role="status"
-          className="fixed bottom-[34px] left-1/2 z-[140] -translate-x-1/2 animate-toast-in whitespace-nowrap rounded-xl px-[22px] py-[13px] text-15 font-medium text-white motion-reduce:animate-none"
+          className={`fixed bottom-[34px] left-1/2 z-[140] flex -translate-x-1/2 animate-toast-in items-center gap-[10px] whitespace-nowrap rounded-xl py-[13px] pr-[22px] text-15 font-medium text-white motion-reduce:animate-none ${toast.mood ? 'pl-[10px]' : 'pl-[22px]'}`}
           style={{ background: 'rgba(12,12,12,0.92)' }}
         >
-          {toast}
+          {toast.mood ? (
+            <span className="-my-[8px]">
+              <SparkMark key={toast.msg} size={32} mood={toast.mood} decorative />
+            </span>
+          ) : null}
+          {toast.msg}
         </div>
       ) : null}
     </>

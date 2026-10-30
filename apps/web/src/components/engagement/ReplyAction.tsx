@@ -72,7 +72,7 @@ export function ReplyAction({
     );
     if (res.status === 'succeeded') {
       setPhase('sent');
-      toast('Reply sent');
+      toast.success('Reply sent');
       onReplied(item.id);
       return;
     }

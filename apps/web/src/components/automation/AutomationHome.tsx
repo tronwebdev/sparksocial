@@ -11,6 +11,7 @@ import {
   type RecipeKind,
 } from './recipeMeta';
 import type { QueueRow, RecipeItem } from './useAutomation';
+import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
  * The Automation Recipes home — `SparkSocial Automation.dc.html`, `isHome`.
@@ -163,17 +164,8 @@ export function AutomationHome({
       {/* ── needs attention ──────────────────────────────────────────────── */}
       {needsReview > 0 ? (
         <div className="mt-[26px] flex max-w-auto-wide items-center gap-[14px] pl-[190px] max-xl:pl-0">
-          <span
-            aria-hidden
-            className="relative block h-[60px] w-[60px] shrink-0 rounded-full"
-            style={{
-              background: 'radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%)',
-              boxShadow: '0 8px 22px -10px rgba(36,116,237,0.5)',
-            }}
-          >
-            <span className="absolute left-[17px] top-[26px] block h-[8px] w-[8px] rounded-full bg-white" />
-            <span className="absolute left-[35px] top-[26px] block h-[8px] w-[8px] rounded-full bg-white" />
-          </span>
+          {/* The mark in its "needs you" mood, beside the banner saying what is waiting. */}
+          <SparkMark size={60} mood="warning" decorative />
 
           <div
             className="flex h-[51.5px] min-w-0 flex-1 items-center gap-[12px] rounded-[15.6px] px-[12px]"

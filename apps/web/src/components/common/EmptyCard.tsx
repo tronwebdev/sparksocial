@@ -1,3 +1,4 @@
+import { SparkMark } from '@/components/brand/SparkMark';
 import Link from 'next/link';
 
 /**
@@ -5,7 +6,8 @@ import Link from 'next/link';
  * not contain — its cards are all populated, so this had to be read off a
  * screenshot of the design.
  *
- * Centred in the card: a grey glyph, "You don't have an active campaign" at
+ * Centred in the card: SPARK asleep with a grey glyph badge (it was the glyph
+ * alone until the mark gained moods), "You don't have an active campaign" at
  * 19px/600, two lines of 14px grey beneath it, and a white "+ Create Campaign"
  * button with a thin ring. Every card that has nothing to show uses the same
  * block with a different glyph and second line.
@@ -61,16 +63,27 @@ export function EmptyCard({
 }) {
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
-      <span aria-hidden className="mb-6 block">
-        {glyph === 'plane' ? (
-          <PlaneGlyph />
-        ) : glyph === 'chat' ? (
-          <ChatGlyph />
-        ) : glyph === 'chart' ? (
-          <ChartGlyph />
-        ) : (
-          <DocumentGlyph />
-        )}
+      {/* SPARK, asleep — there is nothing here for it to do yet — with the
+          card's own glyph on a badge, so what is missing still reads first. */}
+      <span className="relative mb-6 block">
+        <SparkMark size={84} mood="asleep" decorative />
+        <span
+          aria-hidden
+          className="absolute -bottom-[4px] -right-[10px] flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white"
+          style={{ boxShadow: '0 6px 16px -8px rgba(12,12,12,0.35), inset 0 0 0 1px rgba(131,131,131,0.18)' }}
+        >
+          <span className="block origin-center scale-[0.5]">
+            {glyph === 'plane' ? (
+              <PlaneGlyph />
+            ) : glyph === 'chat' ? (
+              <ChatGlyph />
+            ) : glyph === 'chart' ? (
+              <ChartGlyph />
+            ) : (
+              <DocumentGlyph />
+            )}
+          </span>
+        </span>
       </span>
 
       <p

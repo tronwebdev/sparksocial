@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ModalShell } from '@/components/common/ModalShell';
 import { invoke } from '@/lib/tools';
@@ -304,26 +305,9 @@ export function RepurposeModal({
           className="flex w-[320px] shrink-0 flex-col items-center justify-center px-[24px] py-[26px] max-lg:w-full"
           style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(226,238,255,0.55) 100%)' }}
         >
-          <span
-            aria-hidden
-            className="mb-[22px] block h-[64px] w-[64px] shrink-0 rounded-full"
-            /*
-             * The Spark orb, in the one hue it is drawn in.
-             *
-             * This was `#E6D9FF → #BFD7FF → #A9CBFF` at `50% 40%` with a violet
-             * shadow — a different colour family from the orb on every other
-             * surface. `SparkSocial Discovery.dc.html` draws it as
-             * `circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%`, as do
-             * the Assets Library, Automation and Calendar prototypes, and
-             * `DiscoveryScreenChrome`, `AutomationHome` and
-             * `CalendarScreenChrome` already implement exactly that. This modal
-             * was the only place painting it violet.
-             */
-            style={{
-              background: 'radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%)',
-              boxShadow: '0 10px 30px -12px rgba(36,116,237,0.5)',
-            }}
-          />
+          {/* The mark, which was a blue ball here — the same one the page
+              headers drew. It is thinking: it is about to write a post. */}
+          <SparkMark size={64} mood="thinking" className="mb-[22px]" decorative />
 
           <div
             className="relative w-full rounded-[14px] bg-white px-[18px] py-[14px] text-center"

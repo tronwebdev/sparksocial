@@ -1,3 +1,5 @@
+import { SparkMark } from '@/components/brand/SparkMark';
+
 /**
  * Sign Up's left panel — the Figma exports, from `ui build/assets/`.
  *
@@ -60,7 +62,9 @@ export function BrandPanel({ compact = false }: { compact?: boolean } = {}) {
         design's 456, and drifted it off the rings at every other height.
       */}
       <div className="absolute inset-x-0 top-[38%] flex -translate-y-[161px] flex-col items-center px-10">
-        <img src="/auth/signup-logo.svg" alt="" aria-hidden className="h-[148px] w-[148px] animate-breathe" />
+        {/* The real mark. This was `signup-logo.svg`, an orb with no visor and
+            no eyes — the one place the logo had no face. */}
+        <SparkMark variant="hero" decorative />
 
         {/* CS Mollwish, the display face — not the body type scale. */}
         <div className="mt-[37px] text-center">

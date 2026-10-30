@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { CalendarModal } from './CalendarModal';
 
 /**
@@ -97,14 +98,12 @@ export function AddPostModal({
                   : { background: '#FFFFFF', boxShadow: 'inset 0 0 0 1px rgba(12,12,12,0.1)' }
               }
             >
-              {/* The recommended card's mark is the agent's own two eyes — the
-                  design draws the orb's face rather than an icon. */}
+              {/* The recommended card's mark is the agent itself — the design
+                  draws the orb's face rather than an icon. It was two loose
+                  white dots; it is the mark, so it is recognisably SPARK. */}
               <span aria-hidden className="absolute left-[34px] top-[42px] block h-[34px] w-[46px]">
                 {o.recommended ? (
-                  <>
-                    <span className="absolute left-0 top-[12px] block h-[9px] w-[9px] rounded-full bg-white" />
-                    <span className="absolute left-[22px] top-[12px] block h-[9px] w-[9px] rounded-full bg-white" />
-                  </>
+                  <SparkMark size={44} className="-ml-[2px] -mt-[5px]" decorative />
                 ) : (
                   <svg width="30" height="30" viewBox="0 0 30 30" fill="none" className="ml-[8px]">
                     <path

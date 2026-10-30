@@ -75,8 +75,9 @@ export function SparkRailContainer() {
     // that did nothing. Pausing is the one control that must never fail quietly.
     const res = await invoke(paused ? 'agent.resume' : 'agent.pause', {});
     setBusy(false);
-    if (res.status === 'succeeded') toast(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
-    else toast(res.status === 'failed' ? userMessage(res.error) : 'That change is waiting for approval.');
+    if (res.status === 'succeeded') toast.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
+    else if (res.status === 'failed') toast.error(userMessage(res.error));
+    else toast.warning('That change is waiting for approval.');
     void load();
   }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { startAgentRun } from '@/lib/agent';
@@ -120,20 +121,12 @@ const TABS = [
   { key: 'convos' as const, label: 'My conversations', left: 137, width: 196 },
 ];
 
-const SPARK_ORB = (size: number) => {
-  const s = size / 26.4;
-  return (
-    <span aria-hidden className="relative block shrink-0" style={{ width: size, height: size }}>
-      <span className="absolute inset-0 rounded-full" style={{ boxShadow: `inset 0 0 0 ${1.2 * s}px #838383` }} />
-      <span
-        className="absolute rounded-[6px]"
-        style={{ left: 5 * s, top: 9.5 * s, width: 16.4 * s, height: 7.4 * s, boxShadow: `inset 0 0 0 ${1 * s}px #838383` }}
-      />
-      <span className="absolute rounded-full bg-[#838383]" style={{ left: 8.4 * s, top: 12.2 * s, width: 2.2 * s, height: 2.2 * s }} />
-      <span className="absolute rounded-full bg-[#838383]" style={{ left: 15.8 * s, top: 12.2 * s, width: 2.2 * s, height: 2.2 * s }} />
-    </span>
-  );
-};
+/*
+ * SPARK beside its own messages. This was a grey outline face drawn from spans
+ * — the only place the agent appeared without its colours. It is the mark,
+ * small enough not to follow the cursor, and thinking while a reply is coming.
+ */
+const SPARK_ORB = (size: number, mood: SparkMood = 'idle') => <SparkMark size={size} mood={mood} decorative />;
 
 /*
   What the two inactive controls say on hover. These were notes to ourselves
@@ -651,7 +644,7 @@ export function ChatDrawer({
 
             {busy ? (
               <div className="flex items-center gap-[10px]">
-                {SPARK_ORB(26.4)}
+                {SPARK_ORB(26.4, 'thinking')}
                 <span className="flex gap-[5px]">
                   {[0, 0.18, 0.36].map((d) => (
                     <span

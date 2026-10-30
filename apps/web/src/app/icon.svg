@@ -1,28 +1,28 @@
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+<svg width="64" height="64" viewBox="0 0 91 91" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!--
-    Favicon — a simplified, static reading of SparkMark (components/brand/SparkMark.tsx).
-    That component is live DOM (box-shadow rings, backdrop-filter blur) and cannot be
-    exported to a bitmap without a browser render pass, and none of that detail survives
-    at 16-32px anyway. This keeps only what reads at favicon size: the black ring, the
-    three brand blobs (pink/purple/cyan), and the visor with two eyes.
+    The browser-tab icon: the mark's own geometry (components/brand/sparkMarkEngine.ts,
+    from public/brand/spark-mark.svg) in its resting state, on a white disc so it
+    reads on light and dark tab bars alike. It used to be a hand-simplified redraw
+    with a black ring and the blobs rearranged, and the marketing site had a third
+    design; both now use this file. The eyes are drawn a touch larger than in the
+    mark, because at 16px the mark's own eyes are a single pixel.
   -->
-  <circle cx="32" cy="32" r="30" fill="#0C0C0C" />
-  <circle cx="32" cy="32" r="26" fill="#FFFFFF" />
-
-  <g clip-path="url(#face)">
-    <circle cx="16" cy="24" r="12" fill="#F56BFF" />
-    <circle cx="32" cy="14" r="12" fill="#A341FF" />
-    <circle cx="34" cy="30" r="12" fill="#F56BFF" />
-    <circle cx="18" cy="12" r="10" fill="#6CE8FF" />
-  </g>
-
-  <rect x="14" y="34" width="36" height="16" rx="8" fill="#0C0C0C" fill-opacity="0.55" />
-  <circle cx="24" cy="42" r="3" fill="#FFFFFF" />
-  <circle cx="40" cy="42" r="3" fill="#FFFFFF" />
-
   <defs>
-    <clipPath id="face">
-      <circle cx="32" cy="32" r="26" />
-    </clipPath>
+    <clipPath id="orb"><circle cx="45.5" cy="45.5" r="43.2"/></clipPath>
+    <filter id="blur" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10.15"/></filter>
   </defs>
+  <circle cx="45.5" cy="45.5" r="45" fill="#FFFFFF"/>
+  <g clip-path="url(#orb)">
+    <circle cx="45.5" cy="45.5" r="45.5" fill="#6CE8FF" fill-opacity="0.2"/>
+    <g filter="url(#blur)">
+      <circle cx="51.05" cy="37.15" r="12.19" fill="#F56BFF"/>
+      <circle cx="36.32" cy="46.42" r="17.77" fill="#6CE8FF"/>
+      <circle cx="46.57" cy="63.43" r="10.17" fill="#A341FF"/>
+      <circle cx="62.53" cy="50.64" r="10.17" fill="#FFFFFF"/>
+    </g>
+  </g>
+  <circle cx="45.5" cy="45.5" r="43.7" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="2.5"/>
+  <rect x="17.5" y="32.8" width="56.8" height="24.2" rx="12.1" fill="#6CE8FF" fill-opacity="0.55" stroke="#FFFFFF" stroke-opacity="0.8" stroke-width="1.2"/>
+  <circle cx="30.92" cy="44.96" r="5.6" fill="#FFFFFF"/>
+  <circle cx="61.85" cy="44.96" r="5.6" fill="#FFFFFF"/>
 </svg>

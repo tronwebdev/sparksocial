@@ -7,6 +7,7 @@ import { ChatDrawer } from '@/components/command-center/ChatDrawer';
 import { isSparkPinned, onAskSparkOpen } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
  * The Discovery screen's frame — `SparkSocial Discovery.dc.html`.
@@ -115,17 +116,8 @@ export function DiscoveryScreenChrome({
                   `AskSpark` block, so the bell that rides along with that block
                   has to be placed here explicitly. Same component. */}
               <NotificationBell compact />
-              <span
-                aria-hidden
-                className="relative block h-[60px] w-[60px] shrink-0 rounded-full"
-                style={{
-                  background: 'radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%)',
-                  boxShadow: '0 8px 22px -10px rgba(36,116,237,0.5)',
-                }}
-              >
-                <span className="absolute left-[17px] top-[25px] block h-[8px] w-[8px] rounded-full bg-white" />
-                <span className="absolute left-[35px] top-[25px] block h-[8px] w-[8px] rounded-full bg-white" />
-              </span>
+              {/* The mark, which was a blue ball with two dots here. */}
+              <SparkMark size={60} mood="idle" decorative />
 
               <button
                 type="button"

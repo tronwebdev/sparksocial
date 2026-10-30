@@ -82,7 +82,7 @@ export function AdjustFrequency({
       return;
     }
     setOpen(false);
-    toast(`Your agent will post ${postsPerWeek} time${postsPerWeek === 1 ? '' : 's'} a week`);
+    toast.success(`Your agent will post ${postsPerWeek} time${postsPerWeek === 1 ? '' : 's'} a week`);
     onChanged?.();
   }
 

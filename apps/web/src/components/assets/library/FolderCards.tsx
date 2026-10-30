@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { longDate } from '../AssetsLibraryScreen';
 import type { Folder } from './types';
 
@@ -317,21 +318,11 @@ export function FoldersEmptyState({ onCreate }: { onCreate: () => void }) {
           style={{ background: 'rgba(131,131,131,0.06)', filter: 'blur(2px)' }}
         />
 
-        <div
-          aria-hidden
-          className="absolute left-1/2 top-[140px] h-[170px] w-[170px] -translate-x-1/2 rounded-full"
-          style={{ background: 'rgba(255,255,255,0.75)', filter: 'blur(1px)' }}
-        />
-        <span
-          aria-hidden
-          className="absolute left-[225px] top-[202px] block h-[5px] w-[12px] rounded-[3px] bg-white"
-          style={{ boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' }}
-        />
-        <span
-          aria-hidden
-          className="absolute left-[293px] top-[202px] block h-[5px] w-[12px] rounded-[3px] bg-white"
-          style={{ boxShadow: '0 0 0 1px rgba(131,131,131,0.2)' }}
-        />
+        {/* SPARK, asleep: there is nothing here yet. This was a white disc with
+            two grey pill eyes — a face, but not the mark. */}
+        <span className="absolute left-1/2 top-[140px] -translate-x-1/2">
+          <SparkMark size={170} mood="asleep" label="No folders yet" />
+        </span>
 
         <div
           className="absolute left-1/2 top-[330px] h-[210px] w-[500px] max-w-full -translate-x-1/2 rounded-[20px] bg-white"

@@ -85,7 +85,7 @@ export function ProfileSection() {
       // The resource re-reads itself, so every screen holding `useUser()`
       // picks up the new `imageUrl` without a reload.
       await user.reload();
-      toast('Profile photo updated');
+      toast.success('Profile photo updated');
     } catch (e) {
       setPhotoError(e instanceof Error ? e.message : 'That photo did not upload.');
     }
@@ -99,7 +99,7 @@ export function ProfileSection() {
     try {
       await user.setProfileImage({ file: null });
       await user.reload();
-      toast('Profile photo removed');
+      toast.success('Profile photo removed');
     } catch (e) {
       setPhotoError(e instanceof Error ? e.message : 'That photo was not removed.');
     }

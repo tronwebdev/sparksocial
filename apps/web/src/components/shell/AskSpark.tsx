@@ -214,7 +214,7 @@ export function AskSpark({ compact = false, delegate = false }: { compact?: bool
         )}
       >
         <span className={cn('absolute left-0 top-0 block max-md:h-[52px] max-md:w-[52px]', S.orb)}>
-          <SparkMark variant="shell" size={S.orbPx} animated />
+          <SparkMark variant="shell" size={S.orbPx} />
         </span>
 
         {/* Bubble and label drop below `md`, where the orb alone is the control. */}

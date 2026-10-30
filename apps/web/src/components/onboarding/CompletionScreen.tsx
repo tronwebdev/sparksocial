@@ -60,7 +60,7 @@ export function CompletionScreen({ onDone }: { onDone: () => void }) {
         Sparksocial
       </div>
 
-      <SplashMark tone="light" />
+      <SplashMark tone="light" mood="success" />
       <ArchDome tone="light" />
 
       <img

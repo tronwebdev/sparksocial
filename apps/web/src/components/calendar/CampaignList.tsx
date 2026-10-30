@@ -108,7 +108,7 @@ export function CampaignList({
       return;
     }
     setRenaming(null);
-    toast(`Renamed to ${res.output.name}`);
+    toast.success(`Renamed to ${res.output.name}`);
     onChanged();
   }
 
@@ -147,7 +147,7 @@ export function CampaignList({
       onChanged();
       return;
     }
-    toast(`Created “${res.output.name}” as a draft, with ${planned.output.slotCount} posts planned`);
+    toast.success(`Created “${res.output.name}” as a draft, with ${planned.output.slotCount} posts planned`);
     onChanged();
   }
 
@@ -180,7 +180,7 @@ export function CampaignList({
       setError(res.status === 'failed' ? userMessage(res.error) : 'That change needs approval.');
       return;
     }
-    toast(to === 'active' ? 'Campaign is active — SPARK is planning against it' : 'Campaign paused');
+    toast.success(to === 'active' ? 'Campaign is active — SPARK is planning against it' : 'Campaign paused');
     onChanged();
   }
 

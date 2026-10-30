@@ -145,7 +145,7 @@ export function AuthHeader({
       </div>
 
       <div className="relative flex flex-col items-center">
-        {mark ?? <SparkMark variant="card" size={48} animated />}
+        {mark ?? <SparkMark variant="card" size={48} />}
         <h1
           className={cn(
             /* 26px/600 `#043133`, `margin-top: 14`. */
@@ -197,7 +197,9 @@ export function SuccessMark() {
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/2 h-[187px] w-[187px] max-w-none -translate-x-1/2 -translate-y-1/2"
       />
-      <img src="/auth/success-logo.svg" alt="" aria-hidden className="relative h-[124px] w-[124px]" />
+      {/* The mark itself, in its success mood — it used to be a separate static
+          file, drawn differently from the logo everywhere else. */}
+      <SparkMark size={124} mood="success" className="relative" />
     </span>
   );
 }

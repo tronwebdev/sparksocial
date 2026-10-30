@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 /**
  * The amber "Needs Attention" strip — `SparkSocial Command Center.dc.html`, the
  * band at 831,147.
@@ -41,14 +42,11 @@ export function NeedsAttentionBanner({ count, href = '?attention=1' }: { count: 
       className="relative flex h-[51.5px] items-center rounded-[15.6px] bg-attn pl-[9.2px] pr-[13.5px]"
       style={{ boxShadow: 'inset 0 0 0 1.04px var(--ss-cc-attn-ring)' }}
     >
-      <span className="block h-[21.8px] w-[21.9px] shrink-0" aria-hidden>
-        <svg width="21.9" height="21.8" viewBox="0 0 22 22" fill="none">
-          <path
-            d="M13.9 1.1C13 .4 12 0 10.9 0 9.9 0 8.8.4 7.9 1.1 5.4 3.2 3.1 5.5 1.1 8c-1.5 1.8-1.4 4-.1 5.8 2.1 2.6 4.4 5 7 7 1.8 1.4 4 1.4 5.8 0 2.6-2 4.9-4.4 7-6.9 1.4-1.8 1.4-4.1 0-5.9-2-2.5-4.3-4.9-6.9-6.9Z"
-            fill="rgba(230,167,81,0.3)"
-          />
-          <path d="M10.9 5.5v6.2M10.9 15.4v.6" stroke="#E6A751" strokeWidth="2.3" strokeLinecap="round" />
-        </svg>
+      {/* SPARK in its "needs you" mood — wide eyes and a "!" — where the
+          diamond icon was. It overhangs the strip a little, as the design's
+          orb beside the Automation banner does. */}
+      <span className="-my-[10px] -ml-[2px] block shrink-0">
+        <SparkMark size={40} mood="warning" decorative />
       </span>
 
       <span className="ml-[7.2px] min-w-0 truncate text-17 leading-[1.28] text-warn">

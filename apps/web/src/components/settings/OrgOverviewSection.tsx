@@ -166,7 +166,7 @@ function OrgName() {
     }
     await organization?.reload();
     setDraft(null);
-    toast(`Renamed to ${res.output.name}`);
+    toast.success(`Renamed to ${res.output.name}`);
   }
 
   return (

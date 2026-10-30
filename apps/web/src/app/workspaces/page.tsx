@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useClerk, useOrganizationList, useUser } from '@clerk/nextjs';
@@ -374,16 +375,11 @@ export default function WorkspacesPage() {
               className="absolute -bottom-[260px] -right-[80px] h-[620px] w-[620px] rounded-full"
               style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.12)', background: 'rgba(20,24,36,0.35)' }}
             />
-            <div
-              className="absolute right-[330px] top-[88px] h-16 w-[152px] rounded-[34px]"
-              style={{
-                background: 'linear-gradient(140deg, #2A3350 0%, #171C2E 100%)',
-                boxShadow: '0 24px 50px -18px rgba(120,80,240,0.55), inset 0 1px 4px rgba(255,255,255,0.18)',
-              }}
-            >
-              <span className="absolute left-[26px] top-6 h-4 w-4 rounded-full bg-white" style={{ boxShadow: '0 0 16px rgba(255,255,255,0.9)' }} />
-              <span className="absolute right-[26px] top-6 h-4 w-4 rounded-full" style={{ background: '#8FD4FF', boxShadow: '0 0 16px rgba(143,212,255,0.9)' }} />
-            </div>
+            {/* SPARK. This was a navy capsule with one white eye and one blue
+                one; it is the mark. */}
+            <span className="absolute right-[340px] top-[48px]">
+              <SparkMark size={140} decorative />
+            </span>
             <img
               src="/workspaces/ws-hero-robot.png"
               alt=""

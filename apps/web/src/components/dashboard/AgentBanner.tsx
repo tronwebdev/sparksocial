@@ -104,7 +104,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
       setError(res.status === 'failed' ? userMessage(res.error) : 'That was not allowed.');
       return;
     }
-    toast(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
+    toast.success(paused ? 'Agent resumed' : 'Agent paused — it won’t act until you resume it');
     onChanged?.();
   }
 
@@ -164,7 +164,7 @@ export function AgentBanner({ genomeId, paused, campaign, planning = 0, onChange
         */}
         <div className="flex w-[318px] shrink-0 items-start gap-0 max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1">
           <span className="block h-[118.94px] w-[118.94px] shrink-0 max-sm:h-[80px] max-sm:w-[80px]">
-            <SparkMark variant="shell" size={118.94} animated className="max-sm:!h-[80px] max-sm:!w-[80px]" />
+            <SparkMark variant="shell" size={118.94} className="max-sm:!h-[80px] max-sm:!w-[80px]" />
           </span>
 
           <span className="ml-[20.06px] flex w-[179px] shrink-0 flex-col max-canvas:w-auto max-canvas:min-w-0 max-canvas:flex-1 max-sm:ml-3">

@@ -147,7 +147,8 @@ export function NeedsAttentionScreen({ onOpenDraft }: { onOpenDraft?: (contentIt
         return;
       }
       setError(null);
-      toast(decision === 'approve' ? 'Approved — your agent will carry on' : 'Rejected — it won’t go ahead');
+      if (decision === 'approve') toast.success('Approved — your agent will carry on');
+      else toast('Rejected — it won’t go ahead');
       await load();
     },
     [load],

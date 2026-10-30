@@ -238,7 +238,7 @@ function Assistant({
 }) {
   return (
     <div className="flex items-start gap-[43px]">
-      <SparkMark variant="card" size={96} animated className="shrink-0" />
+      <SparkMark variant="card" size={96} className="shrink-0" />
 
       <div
         className={cn('relative mt-[9px] max-w-full rounded-2xl bg-white px-6 py-[26px] shadow-card')}

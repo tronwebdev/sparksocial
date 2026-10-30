@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { cn } from '@/lib/utils';
 
 /**
@@ -100,30 +101,12 @@ export function PromptComposer({
  */
 const SHRINK = 65 / 77;
 
+/**
+ * SPARK at the start of the composer. This was a grey outline face drawn from
+ * spans, the agent without its colours; it is the mark, at the same box.
+ */
 export function ComposerFaceIcon() {
-  const n = 40.9;
-  return (
-    <span
-      aria-hidden
-      style={{ display: 'block', width: n * SHRINK, height: n * SHRINK }}
-    >
-      <span
-        style={{
-          position: 'relative',
-          display: 'block',
-          width: n,
-          height: n,
-          transform: `scale(${SHRINK})`,
-          transformOrigin: 'top left',
-        }}
-      >
-        <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: 'inset 0 0 0 1.4px #838383' }} />
-        <span style={{ position: 'absolute', left: 7.7, top: 14.2, width: 25.5, height: 11.5, borderRadius: 9, boxShadow: 'inset 0 0 0 1.2px #838383' }} />
-        <span style={{ position: 'absolute', left: 13.4, top: 18.2, width: 3.6, height: 3.6, borderRadius: '50%', background: '#838383' }} />
-        <span style={{ position: 'absolute', left: 24.1, top: 18.2, width: 3.6, height: 3.6, borderRadius: '50%', background: '#838383' }} />
-      </span>
-    </span>
-  );
+  return <SparkMark size={40.9 * SHRINK} decorative />;
 }
 
 export function ComposerGlobeIcon() {

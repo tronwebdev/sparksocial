@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RosterBrand } from './useAgencyRoster';
 import { FLATTEN_NARROW, SECTION } from '@/components/shell/narrowStage';
@@ -71,17 +72,10 @@ export function AgencyHomeHero({ onLaunch }: { onLaunch: () => void }) {
         style={{ background: 'radial-gradient(circle, rgba(250,236,252,0.9) 0%, rgba(236,230,252,0.4) 58%, rgba(236,230,252,0) 78%)' }}
       />
 
-      {/* the rounded blue capsule with two glowing eyes */}
-      <span
-        aria-hidden
-        className="absolute right-[490px] top-[158px] block h-[96px] w-[170px] rounded-[34px] max-canvas:hidden"
-        style={{
-          background: 'linear-gradient(180deg, rgba(140,210,244,0.55) 0%, rgba(108,184,236,0.4) 100%)',
-          boxShadow: '0 24px 54px -22px rgba(76,150,220,0.55), inset 0 2px 10px rgba(255,255,255,0.7)',
-        }}
-      >
-        <span className="absolute left-[36px] top-[36px] block h-[22px] w-[22px] rounded-full bg-white" style={{ boxShadow: '0 0 18px rgba(255,255,255,0.9)' }} />
-        <span className="absolute right-[36px] top-[36px] block h-[22px] w-[22px] rounded-full bg-white" style={{ boxShadow: '0 0 18px rgba(255,255,255,0.9)' }} />
+      {/* SPARK. This was a blue capsule with two glowing eyes standing in for
+          it; the mark is the real thing and follows the cursor across the hero. */}
+      <span className="absolute right-[500px] top-[118px] max-canvas:hidden">
+        <SparkMark size={150} decorative />
       </span>
 
       {/* eslint-disable-next-line @next/next/no-img-element -- a fixed-size decorative sprite off the prototype, not content */}

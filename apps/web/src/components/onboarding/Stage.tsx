@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
 
 /**
  * The prototype's own layout device, adopted rather than approximated.
@@ -170,61 +171,19 @@ export function ProtoScale({ native = 891, children }: { native?: number; childr
 }
 
 /**
- * The mark, at the two sizes the prototype draws it, built from its own divs
- * rather than the SVG export.
+ * The mark on the two splash screens, at the prototype's 373.69px.
  *
- * Not a stylistic preference: the splash marks are 373.69px and carry effects
- * the export cannot show through an `<img>` — the dark variant is a translucent
- * shell with an inset cyan glow and a *blurred* blob layer at 25% opacity, and
- * the light one has an 18.685px inset black ring. The exported SVG puts its
- * frosted layers in `foreignObject`, which Chrome drops in `<img>`, so at this
- * size the difference is the whole look.
+ * This was a copy built from divs — a translucent shell with a blurred blob
+ * layer on the dark splash, an 18.685px black ring on the light one — because
+ * the SVG export could not show its frosted layers through an `<img>`. It
+ * looked like the logo but was not the logo, and its blobs sat in a different
+ * arrangement. It is the real mark now, alive like everywhere else: it follows
+ * the cursor on Meet Spark and celebrates on the completion screen.
  */
-export function SplashMark({ tone }: { tone: 'dark' | 'light' }) {
-  const blobs = (
-    <>
-      <span style={{ position: 'absolute', left: 0, top: 58, width: 110.18, height: 110.18, borderRadius: '50%', background: '#F56BFF' }} />
-      <span style={{ position: 'absolute', left: 120, top: 0, width: 110.18, height: 110.18, borderRadius: '50%', background: '#A341FF' }} />
-      <span style={{ position: 'absolute', left: 130, top: 104, width: 110.18, height: 110.18, borderRadius: '50%', background: '#F56BFF' }} />
-      <span style={{ position: 'absolute', left: 47, top: 5, width: 90, height: 90, borderRadius: '50%', background: '#6CE8FF' }} />
-    </>
-  );
-
+export function SplashMark({ tone, mood = 'idle' }: { tone: 'dark' | 'light'; mood?: SparkMood }) {
   return (
-    <div style={{ position: 'absolute', left: 677.47, top: 125, width: 373.69, height: 373.69 }}>
-      {tone === 'dark' ? (
-        <>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', boxShadow: 'inset 0 0 37.4px -7.5px rgba(108,232,255,0.35)' }} />
-          <div style={{ position: 'absolute', left: 65.42, top: 77.87, width: 244.72, height: 219.85, overflow: 'hidden', opacity: 0.25, filter: 'blur(30px)' }}>
-            {blobs}
-          </div>
-          <div style={{ position: 'absolute', left: 52, top: 122, width: 270, height: 125, borderRadius: 16, background: 'rgba(108,232,255,0.14)' }} />
-          <div
-            className="animate-breathe motion-reduce:animate-none"
-            style={{
-              position: 'absolute', left: 74.46, top: 138.37, width: 228.21, height: 92.52, borderRadius: 69.05,
-              background: 'rgba(108,232,255,0.22)',
-              boxShadow: 'inset 0 0 34.8px -6.2px #6CE8FF, 0 0 42px -4px rgba(108,232,255,0.55)',
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#FFFFFF', boxShadow: 'inset 0 0 0 18.685px #000000' }} />
-          <div style={{ position: 'absolute', left: 65.42, top: 77.87, width: 244.72, height: 219.85, overflow: 'hidden' }}>{blobs}</div>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(123.36px)', WebkitBackdropFilter: 'blur(123.36px)', boxShadow: 'inset 0 0 37.37px -7.47px #E9EFF5' }} />
-          <div
-            className="animate-breathe motion-reduce:animate-none"
-            style={{
-              position: 'absolute', left: 74.46, top: 138.37, width: 228.21, height: 92.52, borderRadius: 69.05,
-              background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(62.36px)', WebkitBackdropFilter: 'blur(62.36px)',
-              boxShadow: 'inset 0 0 34.75px -6.17px #6CE8FF',
-            }}
-          />
-        </>
-      )}
-      <div style={{ position: 'absolute', left: 108.37, top: 166.03, width: 37.37, height: 37.37, borderRadius: '50%', background: '#FFFFFF' }} />
-      <div style={{ position: 'absolute', left: 235.43, top: 166.03, width: 37.37, height: 37.37, borderRadius: '50%', background: '#FFFFFF' }} />
+    <div style={{ position: 'absolute', left: 677.47, top: 125, width: 373.69, height: 373.69 }} data-tone={tone}>
+      <SparkMark size={373.69} mood={mood} />
     </div>
   );
 }

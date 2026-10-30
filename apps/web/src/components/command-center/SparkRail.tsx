@@ -224,7 +224,7 @@ export function SparkRail({
         {/* The orb on the gradient, above the white card. 166.2 at 110.4,42.2 —
             4.5px left of centre in the design, which reads as centred. */}
         <div className="absolute left-0 right-0 top-[42.2px] flex justify-center">
-          <SparkMark variant="shell" size={166.2} animated />
+          <SparkMark variant="shell" size={166.2} />
         </div>
 
         {/*

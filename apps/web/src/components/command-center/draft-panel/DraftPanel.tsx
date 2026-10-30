@@ -1231,7 +1231,7 @@ export function DraftPanel({
     // the attempt count and the last error, so leaving them on screen would show
     // a stall that no longer exists.
     setDraft((d) => (d ? { ...d, status: 'scheduled', publishAttempts: 0, lastPublishError: undefined, blockedReason: undefined } : d));
-    toast('Rescheduled for tomorrow at 9:00');
+    toast.success('Rescheduled for tomorrow at 9:00');
   }
 
   if (!open) return null;

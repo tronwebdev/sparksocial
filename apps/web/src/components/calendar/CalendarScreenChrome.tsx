@@ -8,6 +8,7 @@ import { isSparkPinned, onAskSparkOpen } from '@/lib/askSpark';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { SparkMark } from '@/components/brand/SparkMark';
 
 /**
  * The Calendar screen's frame — `SparkSocial Calendar.dc.html`.
@@ -131,17 +132,8 @@ export function CalendarScreenChrome({
             <NotificationBell compact />
             {headline ? (
               <>
-                <span
-                  aria-hidden
-                  className="relative block h-[64px] w-[64px] shrink-0 rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 42%, #D6F1FF 0%, #A6D8FF 60%, #8FC8FF 100%)',
-                    boxShadow: '0 8px 22px -10px rgba(36,116,237,0.5)',
-                  }}
-                >
-                  <span className="absolute left-[18px] top-[27px] block h-[9px] w-[9px] rounded-full bg-white" />
-                  <span className="absolute left-[37px] top-[27px] block h-[9px] w-[9px] rounded-full bg-white" />
-                </span>
+                {/* The mark, which was a blue ball with two dots here. */}
+                <SparkMark size={64} mood="idle" decorative />
                 <span
                   className="flex h-[44px] items-center rounded-[22px] bg-white px-5 text-16 font-semibold text-ink"
                   style={{ boxShadow: '0 10px 26px -14px rgba(12,12,12,0.3)' }}

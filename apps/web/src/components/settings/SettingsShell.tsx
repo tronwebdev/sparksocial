@@ -8,6 +8,7 @@ import { ChatDrawer } from '@/components/command-center/ChatDrawer';
 import { isSparkPinned } from '@/lib/askSpark';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
 import { cn } from '@/lib/utils';
+import { SparkMark } from '@/components/brand/SparkMark';
 import {
   BRAND_SECTIONS,
   ORG_SECTIONS,
@@ -128,24 +129,9 @@ export function SettingsShell({
 
             {/* One 196-wide box, orb then pill, exactly as the design groups them. */}
             <div className={cn('mt-[15px] hidden w-[196px] items-center', !isOrg && 'xl:flex')}>
-              {/* The design's 70.216 orb, then the 126x47 r12.507 pill. */}
-              <span
-                aria-hidden
-                className="relative block h-[70.216px] w-[70.216px] shrink-0 overflow-hidden rounded-full bg-white"
-                style={{ boxShadow: 'inset 0 0 10.731px 3.86px rgba(255,255,255,0.84)' }}
-              >
-                <span className="absolute inset-0 rounded-full" style={{ background: 'rgba(108,232,255,0.2)', backdropFilter: 'blur(33.7px)' }} />
-                <span className="absolute left-[30px] top-[19.27px] block h-[18.82px] w-[18.82px] rounded-full" style={{ background: 'rgb(245,107,255)' }} />
-                <span className="absolute left-[14.32px] top-[22.12px] block h-[27.433px] w-[27.433px] rounded-full" style={{ background: 'rgb(108,232,255)' }} />
-                <span className="absolute left-[28.1px] top-[41.12px] block h-[15.702px] w-[15.702px] rounded-full" style={{ background: 'rgb(163,65,255)' }} />
-                <span className="absolute left-[40.42px] top-[31.24px] block h-[15.702px] w-[15.702px] rounded-full bg-white" />
-                <span
-                  className="absolute left-[13.989px] top-[25.996px] block h-[17.384px] w-[42.881px] rounded-[12.975px]"
-                  style={{ background: 'rgba(255,255,255,0.07)', backdropFilter: 'blur(11.7px)', boxShadow: 'inset 0 0 6.53px -1.159px rgb(108,232,255)' }}
-                />
-                <span className="absolute left-[20.363px] top-[31.199px] block h-[7.022px] w-[7.022px] rounded-full bg-white" />
-                <span className="absolute left-[44.236px] top-[31.199px] block h-[7.022px] w-[7.022px] rounded-full bg-white" />
-              </span>
+              {/* The design's 70.216 orb, then the 126x47 r12.507 pill. The orb
+                  was a copy of the mark built from spans; it is the mark. */}
+              <SparkMark size={70.216} decorative />
 
               <button
                 type="button"

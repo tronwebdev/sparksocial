@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkMark } from '@/components/brand/SparkMark';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -207,16 +208,9 @@ function PostTypeRail({
           'linear-gradient(180deg, rgba(108,232,255,0.20) 0%, rgba(163,65,255,0.10) 55%, rgba(255,255,255,0) 100%)',
       }}
     >
-      {/* The Spark orb — 126x126 at y40, 13px below the drawer's top edge. */}
-      <span
-        aria-hidden
-        className="block h-[126px] w-[126px] rounded-full"
-        style={{
-          background:
-            'radial-gradient(circle at 35% 30%, #FFFFFF 0%, rgba(108,232,255,0.9) 35%, rgba(163,65,255,0.75) 75%)',
-          boxShadow: '0 0 0 6px rgba(255,255,255,0.55)',
-        }}
-      />
+      {/* The Spark orb — 126x126 at y40, 13px below the drawer's top edge. It
+          was a gradient ball with no face; it is the mark. */}
+      <SparkMark size={126} decorative />
 
       <span className="mt-[17px] text-14 font-semibold text-ink-muted">Post Type</span>
 
