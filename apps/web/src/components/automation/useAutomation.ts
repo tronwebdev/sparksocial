@@ -43,6 +43,7 @@ interface OutputItem {
     sourceUrl?: string;
     playbookId?: string;
     playbookName?: string;
+    imageUrl?: string;
     /** Every post the output became — one per chosen account. */
     contentItemIds?: string[];
   };
@@ -73,6 +74,8 @@ export interface QueueRow {
   contentItemIds: string[];
   /** The format's name, so a row can say what it will become. */
   formatName?: string;
+  /** A picture of the source — the feed item's image, the trend's thumbnail. */
+  imageUrl?: string;
   /** True while the output is still `pending_review` — the only decidable state. */
   canDecide: boolean;
   /**
@@ -152,6 +155,7 @@ export function useAutomation(genomeId: string | undefined) {
           ...(o.contentItemId ? { contentItemId: o.contentItemId } : {}),
           contentItemIds: ids,
           ...(o.preview.playbookName ? { formatName: o.preview.playbookName } : {}),
+          ...(o.preview.imageUrl && /^https?:\/\//i.test(o.preview.imageUrl) ? { imageUrl: o.preview.imageUrl } : {}),
           canDecide: o.status === 'pending_review',
           ...(o.preview.playbookId ? { playbookId: o.preview.playbookId } : {}),
           ...(o.preview.intent ? { intent: o.preview.intent } : {}),

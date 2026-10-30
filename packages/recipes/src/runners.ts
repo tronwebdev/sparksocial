@@ -46,6 +46,12 @@ export interface RecipeOutputPreview {
   playbookName?: string;
   /** The trend an `auto_trend` output came from — `content_items.source_trend_id`. */
   trendId?: string;
+  /**
+   * A picture of the source — the feed item's image, the trend's thumbnail, the
+   * Drive or Canva file's preview. Shown in the queue so a row is recognisable
+   * at a glance; nothing posts it.
+   */
+  imageUrl?: string;
   referencedAssetIds?: string[];
   /** Set once the output has become posts — one per chosen account. */
   contentItemIds?: string[];
@@ -398,6 +404,7 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
       playbookName: format.playbookName,
       trendId: r.trend.id,
       ...(r.trend.samples[0]?.url ? { sourceUrl: r.trend.samples[0].url } : {}),
+      ...(r.trend.media?.url ? { imageUrl: r.trend.media.url } : {}),
       referencedAssetIds: [],
     });
   }
@@ -412,7 +419,7 @@ async function runAutoTrend(rawConfig: unknown, ctx: RecipeRunContext): Promise<
 function itemOutput(
   ctx: RecipeRunContext,
   config: { goal?: string; targetPlatforms: string[] },
-  item: { title: string; lead: string; sourceUrl?: string; tags?: string[] },
+  item: { title: string; lead: string; sourceUrl?: string; imageUrl?: string; tags?: string[] },
 ): RecipeOutputPreview {
   const format = pickFormat(ctx, { topic: item.title, tags: item.tags ?? [] }, config.targetPlatforms);
   return {
@@ -422,6 +429,7 @@ function itemOutput(
       config.goal,
     ),
     ...(item.sourceUrl ? { sourceUrl: item.sourceUrl } : {}),
+    ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
     ...(format ? { playbookId: format.playbookId, playbookName: format.playbookName } : {}),
   };
 }
@@ -464,6 +472,7 @@ async function runRss(rawConfig: unknown, ctx: RecipeRunContext): Promise<Recipe
           title: item.title,
           lead: config.feedType === 'podcast' ? 'New podcast episode' : 'New from the feed',
           sourceUrl: item.link,
+          ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
         }),
       ),
   };
@@ -533,7 +542,12 @@ async function runBulkConnectorCsv(config: BulkRun, ctx: RecipeRunContext): Prom
   const rows = records.map((row) => {
     const title = row.title || row.topic || Object.values(row)[0] || 'Untitled row';
     const link = row.link || row.url;
-    return { title, ...(link && /^https?:\/\//i.test(link) ? { sourceUrl: link } : {}) };
+    const image = row.image || row.media || row.image_url;
+    return {
+      title,
+      ...(link && /^https?:\/\//i.test(link) ? { sourceUrl: link } : {}),
+      ...(image && /^https?:\/\//i.test(image) ? { imageUrl: image } : {}),
+    };
   });
   const fresh = rows.filter((r) => isNew(ctx, r)).slice(0, config.perRun);
   return { outputs: fresh.map((r) => itemOutput(ctx, config, { ...r, lead: 'From the imported sheet' })) };
@@ -544,6 +558,7 @@ interface DriveFile {
   name: string;
   mimeType: string;
   webViewLink?: string;
+  thumbnailLink?: string;
   createdTime?: string;
 }
 
@@ -556,7 +571,7 @@ async function runBulkConnectorDrive(config: BulkRun, ctx: RecipeRunContext): Pr
   const params = new URLSearchParams({
     q: `'${config.driveFolderId}' in parents and trashed = false`,
     key: ctx.driveApiKey,
-    fields: 'files(id,name,mimeType,webViewLink,createdTime)',
+    fields: 'files(id,name,mimeType,webViewLink,thumbnailLink,createdTime)',
     pageSize: '50',
   });
 
@@ -580,6 +595,7 @@ async function runBulkConnectorDrive(config: BulkRun, ctx: RecipeRunContext): Pr
   const files = (body.files ?? []).map((f) => ({
     title: f.name,
     sourceUrl: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
+    ...(f.thumbnailLink ? { imageUrl: f.thumbnailLink } : {}),
   }));
   return {
     outputs: files
@@ -626,7 +642,11 @@ async function runBulkConnectorCanva(config: BulkRun, ctx: RecipeRunContext): Pr
   const designs = (body.items ?? [])
     .map((i) => i.design)
     .filter((d): d is CanvaDesign => !!d)
-    .map((d) => ({ title: d.title ?? 'Untitled design', sourceUrl: d.urls?.view_url ?? `https://www.canva.com/design/${d.id}` }));
+    .map((d) => ({
+      title: d.title ?? 'Untitled design',
+      sourceUrl: d.urls?.view_url ?? `https://www.canva.com/design/${d.id}`,
+      ...(d.thumbnail?.url ? { imageUrl: d.thumbnail.url } : {}),
+    }));
   return {
     outputs: designs
       .filter((d) => isNew(ctx, d))

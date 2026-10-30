@@ -14,6 +14,8 @@ export interface FeedItem {
   title: string;
   link: string;
   publishedAt?: string;
+  /** The item's picture, when the feed carries one — see `imageOf`. */
+  imageUrl?: string;
 }
 
 export function parseFeed(xml: string, maxItems = 20): FeedItem[] {
@@ -25,10 +27,39 @@ export function parseFeed(xml: string, maxItems = 20): FeedItem[] {
     const title = decode(firstTag(block, 'title'));
     const link = isAtom ? atomLink(block) : decode(firstTag(block, 'link'));
     const publishedAt = decode(firstTag(block, isAtom ? 'updated' : 'pubDate')) || undefined;
-    if (title && link) items.push({ title, link, ...(publishedAt ? { publishedAt } : {}) });
+    const imageUrl = imageOf(block);
+    if (title && link) {
+      items.push({ title, link, ...(publishedAt ? { publishedAt } : {}), ...(imageUrl ? { imageUrl } : {}) });
+    }
     if (items.length >= maxItems) break;
   }
   return items;
+}
+
+/**
+ * An item's picture, in the order feeds actually supply one: Media RSS
+ * (`media:content` / `media:thumbnail`), an image enclosure, then the first
+ * `<img>` in the body — WordPress feeds such as dailycoffeenews.com carry no
+ * media element and put the featured image at the top of `content:encoded`.
+ *
+ * Only an http(s) URL is returned. The queue renders it as an `<img>` in the
+ * person's browser, so a `javascript:` or `data:` value must not get through.
+ */
+function imageOf(block: string): string | undefined {
+  // A `medium="video"` media element is a video file, not a picture of one.
+  const media = block.match(/<media:(?:content|thumbnail)\b[^>]*>/i)?.[0];
+  const candidates = [
+    media && !/\bmedium=["']video/i.test(media) ? media.match(/\burl=["']([^"']+)["']/i)?.[1] : undefined,
+    block.match(/<enclosure\b(?=[^>]*\btype=["']image\/)[^>]*\burl=["']([^"']+)["']/i)?.[1],
+    // The body is usually entity-escaped or CDATA-wrapped; either way the tag
+    // is findable once `&lt;` is turned back into `<`.
+    decode(block.replace(/&lt;/g, '<').replace(/&gt;/g, '>')).match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1],
+  ];
+  for (const c of candidates) {
+    const url = c ? decode(c) : '';
+    if (/^https?:\/\//i.test(url)) return url;
+  }
+  return undefined;
 }
 
 function matchAll(text: string, re: RegExp): string[] {

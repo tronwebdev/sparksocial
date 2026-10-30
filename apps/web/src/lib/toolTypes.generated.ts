@@ -833,7 +833,7 @@ export interface ToolIO {
   };
   "recipe.preview": {
     input: { genomeId: string; kind: "auto_trend" | "bulk_connector" | "rss"; config: unknown; recipeId?: string };
-    output: { items: Array<{ title: string; intent: string; sourceUrl?: string; playbookName?: string }>; error?: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
+    output: { items: Array<{ title: string; intent: string; sourceUrl?: string; imageUrl?: string; playbookName?: string }>; error?: string; why: { summary: string; factors: Array<{ label: string; weight?: number; detail?: string }>; evidence: Array<{ kind: "asset" | "knowledge_chunk" | "past_post" | "metric" | "rule" | "trend"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "recipe.run": {
     input: { id: string; genomeId: string };

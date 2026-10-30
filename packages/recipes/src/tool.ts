@@ -713,6 +713,8 @@ export const RecipePreviewOutput = z.object({
       title: z.string(),
       intent: z.string(),
       sourceUrl: z.string().optional(),
+      /** A picture of the source, when it has one. */
+      imageUrl: z.string().optional(),
       /** The format it would become; absent when no format this brand can make fits it. */
       playbookName: z.string().optional(),
     }),
@@ -765,6 +767,7 @@ export function makeRecipePreview(deps: RecipeDeps) {
           title: o.title,
           intent: o.intent,
           ...(o.sourceUrl ? { sourceUrl: o.sourceUrl } : {}),
+          ...(o.imageUrl ? { imageUrl: o.imageUrl } : {}),
           ...(o.playbookName ? { playbookName: o.playbookName } : {}),
         })),
         ...(error ? { error } : {}),

@@ -21,6 +21,7 @@ interface PreviewItem {
   title: string;
   intent: string;
   sourceUrl?: string;
+  imageUrl?: string;
   playbookName?: string;
 }
 
@@ -114,9 +115,20 @@ export function RecipePreview({
             {state.items.map((item, i) => (
               <li
                 key={`${item.title}-${i}`}
-                className="rounded-[14px] px-[18px] py-[12px]"
+                className="flex gap-[14px] rounded-[14px] px-[18px] py-[12px]"
                 style={{ background: 'rgba(131,131,131,0.07)' }}
               >
+                {item.imageUrl && /^https?:\/\//i.test(item.imageUrl) ? (
+                  <img
+                    src={item.imageUrl}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    className="h-[56px] w-[56px] shrink-0 rounded-[10px] object-cover"
+                    onError={(e) => e.currentTarget.remove()}
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-16 font-semibold text-ink" title={item.title}>
                   {item.title}
                 </p>
@@ -128,6 +140,7 @@ export function RecipePreview({
                       : 'No format this brand can make fits it — it will be listed, not posted'}
                   </span>
                 </p>
+                </div>
               </li>
             ))}
           </ul>

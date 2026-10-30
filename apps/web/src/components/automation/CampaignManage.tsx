@@ -214,7 +214,20 @@ export function CampaignManage({
                 style={{ boxShadow: '0 16px 44px -34px rgba(12,12,12,0.3)' }}
               >
                 <div className="flex gap-[24px] p-[20px]">
-                  <span aria-hidden className="flex h-[132px] w-[132px] shrink-0 items-center justify-center rounded-[14px] max-md:hidden" style={{ background: 'rgba(131,131,131,0.08)' }}>
+                  <span aria-hidden className="relative flex h-[132px] w-[132px] shrink-0 items-center justify-center overflow-hidden rounded-[14px] max-md:hidden" style={{ background: 'rgba(131,131,131,0.08)' }}>
+                    {/* The source's own picture over the placeholder: if it
+                        fails to load it is removed, and the glyph underneath is
+                        what shows — the same fallback a row with no picture gets. */}
+                    {row.imageUrl ? (
+                      <img
+                        src={row.imageUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover"
+                        onError={(e) => e.currentTarget.remove()}
+                      />
+                    ) : null}
                     <span className="text-ink-muted">
                       <svg width="34" height="34" viewBox="0 0 18 18" fill="none">
                         <rect x="2" y="3" width="14" height="12" rx="3" stroke="currentColor" strokeWidth="1.4" />

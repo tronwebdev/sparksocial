@@ -39,6 +39,24 @@ describe('parseFeed', () => {
     expect(parseFeed(xml)[0]!.title).toBe('Lovr Boys Cafe & Roastery’s “Hearts”');
   });
 
+  it('keeps each item’s picture: media element, image enclosure, then the first image in the body', () => {
+    const item = (inner: string) => `<rss><channel><item><title>T</title><link>https://e.com/a</link>${inner}</item></channel></rss>`;
+    expect(parseFeed(item('<media:content url="https://e.com/m.jpg" medium="image"/>'))[0]!.imageUrl).toBe('https://e.com/m.jpg');
+    expect(parseFeed(item('<enclosure url="https://e.com/e.png" type="image/png" length="1"/>'))[0]!.imageUrl).toBe('https://e.com/e.png');
+    // WordPress: no media element, the featured image escaped inside content:encoded.
+    expect(
+      parseFeed(item('<content:encoded><![CDATA[<p><img src="https://e.com/w.jpg?w=600&amp;h=400" alt=""/></p>]]></content:encoded>'))[0]!.imageUrl,
+    ).toBe('https://e.com/w.jpg?w=600&h=400');
+    expect(parseFeed(item('<description>&lt;img src="https://e.com/d.jpg"&gt;</description>'))[0]!.imageUrl).toBe('https://e.com/d.jpg');
+  });
+
+  it('keeps no picture that is a video, or not a web address', () => {
+    const item = (inner: string) => `<rss><channel><item><title>T</title><link>https://e.com/a</link>${inner}</item></channel></rss>`;
+    expect(parseFeed(item('<media:content url="https://e.com/v.mp4" medium="video"/>'))[0]!.imageUrl).toBeUndefined();
+    expect(parseFeed(item('<description>&lt;img src="javascript:alert(1)"&gt;</description>'))[0]!.imageUrl).toBeUndefined();
+    expect(parseFeed(item(''))[0]!.imageUrl).toBeUndefined();
+  });
+
   it('parses Atom entries', () => {
     const items = parseFeed(ATOM);
     expect(items).toEqual([{ title: 'Atom entry one', link: 'https://example.com/atom-1', publishedAt: '2024-01-01T00:00:00Z' }]);
