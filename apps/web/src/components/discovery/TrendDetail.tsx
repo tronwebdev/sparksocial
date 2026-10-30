@@ -615,7 +615,7 @@ export function TrendDetail({
                   <rect x="2.7" y="4.1" width="18.6" height="18.4" rx="4" stroke="#5B5B5B" strokeWidth="1.8" />
                   <path d="M2.9 9.9h18.2" stroke="#5B5B5B" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
-                {view.trajectory ? `${view.trajectory.observations} readings` : 'no readings'}
+                {view.series.length === 0 ? 'no readings' : `${view.series.length} ${view.series.length === 1 ? 'reading' : 'readings'}`}
               </div>
 
               <div className="absolute bottom-[56px] left-[22px] right-[22px] top-[66px]">
