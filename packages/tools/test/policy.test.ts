@@ -401,6 +401,42 @@ describe('7 — publishing governance', () => {
       expect(d.kind).toBe('allow');
     });
 
+    /*
+     * The two above ran with the harness's default campaign, which no recipe
+     * post has. Without one, every recipe post fell to "belongs to no campaign"
+     * and waited for review whatever the recipe said — found on staging, 30 Oct.
+     */
+    it('publishes a recipe post with no campaign when the recipe and workspace permit it', () => {
+      const base = input({ tool: pub, brand: { permissions: { automationAutoPublish: true } } });
+      const d = evaluate({
+        ...base,
+        subject: { isAutomationOutput: true, reviewBeforePublish: false, campaignApprovalMode: undefined },
+      });
+      expect(d.kind).toBe('allow');
+    });
+
+    it('still holds a recipe post with no campaign when the recipe asks for review', () => {
+      const base = input({ tool: pub });
+      const d = evaluate({
+        ...base,
+        subject: { isAutomationOutput: true, reviewBeforePublish: true, campaignApprovalMode: undefined },
+      });
+      expect(ruleOf(d)).toBe('recipe.review_before_publish');
+    });
+
+    it('still applies workspace approval flows to a recipe post with no campaign', () => {
+      const base = input({
+        tool: pub,
+        caller: 'agent',
+        approvalRules: [{ id: 'r1', trigger: 'publish' as const, requiresRole: 'approver' as const, groupIds: [] as string[] }],
+      });
+      const d = evaluate({
+        ...base,
+        subject: { isAutomationOutput: true, reviewBeforePublish: false, campaignApprovalMode: undefined },
+      });
+      expect(ruleOf(d)).toBe('approval_rule.publish');
+    });
+
     it('does not apply recipe rules to non-automation output', () => {
       const d = evaluate(input({
         tool: pub,

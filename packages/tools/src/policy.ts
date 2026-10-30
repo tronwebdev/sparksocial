@@ -377,6 +377,18 @@ function scopeGrantedByCapability(
  */
 const NO_CAMPAIGN_MODE = 'review_everything' as const;
 
+/**
+ * What governs a recipe's post once the recipe's own checks have passed.
+ *
+ * A recipe answers the autonomy question for its posts the way a campaign does
+ * for its slots — "review before publish" on the recipe, approval of the output
+ * in the queue, and the workspace's `automationAutoPublish` switch, all checked
+ * in rule 7's automation branch before this is reached. A post that got past
+ * them has been allowed out. The workspace approval flows (rule 7b) still apply
+ * after it, exactly as they do to an autopublishing campaign.
+ */
+const RECIPE_MODE = 'autopublish' as const;
+
 function evaluateRules(input: PolicyInput): Decision {
   const { tool, caller, role, now, brand, subject, budget, engagement } = input;
   const approvalRules = input.approvalRules ?? [];
@@ -608,7 +620,22 @@ function evaluateRules(input: PolicyInput): Decision {
      * {@link NO_CAMPAIGN_MODE}, which requires review; see there for why
      * inheriting the brand's setting instead would be unsafe.
      */
-    const effectiveMode = subject?.campaignApprovalMode ?? NO_CAMPAIGN_MODE;
+    /*
+     * A recipe's post is not a one-off with nobody's answer: the recipe *is*
+     * its scope, the way a campaign is a slot's. Its answer was read just above
+     * — `reviewBeforePublish` (or a person approving the output, which
+     * `publishOrigin` reports as the same thing) and the workspace's
+     * `automationAutoPublish` — and a post that got past both has been allowed
+     * to publish by the one setting that governs it.
+     *
+     * Falling through to `NO_CAMPAIGN_MODE` instead, as it did, held every
+     * recipe post for review whatever the recipe said. Staging showed it on
+     * 30 October: an approved RSS output was scheduled, drafted, and then parked
+     * at "This post belongs to no campaign". No recipe could ever publish on
+     * its own, which is the one thing a recipe is for.
+     */
+    const effectiveMode =
+      subject?.campaignApprovalMode ?? (subject?.isAutomationOutput ? RECIPE_MODE : NO_CAMPAIGN_MODE);
     const fromCampaign = subject?.campaignApprovalMode !== undefined;
 
     switch (effectiveMode) {
