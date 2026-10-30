@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { compactNumber } from '@/lib/relativeTime';
@@ -467,7 +468,7 @@ export function PerformanceCards({
         <div className="h-px w-full" style={{ background: 'rgba(131,131,131,0.15)' }} />
 
         {ranked === null ? (
-          <p className="px-6 py-8 text-16 text-ink-muted">Loading…</p>
+          <SparkLoader label="Reading your results…" />
         ) : ranked.length === 0 ? (
           <EmptyCard
             glyph="chart"

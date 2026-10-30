@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -324,7 +325,11 @@ export function AssetsLibraryScreen() {
   }
 
   if (genomeLoading) {
-    return <div className="h-full w-full bg-lib-wash" />;
+    return (
+      <div className="h-full w-full bg-lib-wash">
+        <SparkLoader label="Opening your library…" className="min-h-[60vh]" />
+      </div>
+    );
   }
 
   if (genomeError || !genomeId) {
@@ -536,7 +541,7 @@ export function AssetsLibraryScreen() {
 
           <div className="mt-[24px]">
             {assets === null ? (
-              <p className="text-16 text-ink-muted">Loading…</p>
+              <SparkLoader label="Loading this folder…" />
             ) : visibleAssets.length === 0 ? (
               <p className="text-16 text-ink-muted">
                 {assetQuery

@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNotifications, splitMessage } from '@/lib/notifications';
@@ -116,7 +117,7 @@ export function NotificationBell({ compact = false }: { compact?: boolean }) {
 
           <div className="max-h-[420px] overflow-y-auto pb-[8px]">
             {items === null && loading ? (
-              <p className="px-[16px] py-[26px] text-center text-13 text-ink-muted">Loading…</p>
+              <SparkLoader size="inline" label="Loading…" className="justify-center px-[16px] py-[22px] text-13" />
             ) : (items?.length ?? 0) === 0 ? (
               <p className="px-[22px] py-[26px] text-center text-13 leading-[1.5] text-ink-muted">
                 Nothing yet. SPARK tells you here when a post is ready to review, when something

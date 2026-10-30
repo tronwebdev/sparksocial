@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { useClerk, useUser } from '@clerk/nextjs';
 import { invoke } from '@/lib/tools';
@@ -48,7 +49,9 @@ export function ConnectedSection() {
 
         <ul className="mt-[15px] grid grid-cols-1 gap-[12px]">
           {!isLoaded ? (
-            <li className="text-16" style={{ color: 'rgb(131,131,131)' }}>Loading…</li>
+            <li>
+              <SparkLoader size="inline" label="Loading connected accounts…" />
+            </li>
           ) : sign.length === 0 ? (
             <li
               className="rounded bg-white px-[22px] py-[18px] text-16"

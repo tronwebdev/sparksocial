@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useRouter } from 'next/navigation';
 import { CampaignWizard } from '@/components/campaign/CampaignWizard';
 import { useSelectedGenome } from '@/lib/useSelectedGenome';
@@ -24,13 +25,7 @@ export default function NewCampaignPage() {
   const router = useRouter();
   const { genome, loading, error } = useSelectedGenome();
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-16 text-ink-muted">Loading your brand…</p>
-      </main>
-    );
-  }
+  if (loading) return <SparkLoader size="page" label="Loading your brand…" />;
 
   if (!genome) {
     return (

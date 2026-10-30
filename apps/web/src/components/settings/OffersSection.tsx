@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,7 +129,7 @@ export function OffersSection() {
     setProducts((list) => list.map((p, n) => (n === i ? { ...p, ...patch } : p)));
 
   if (genomeLoading || !loaded) {
-    return <p className="text-16 text-ink-muted">Loading…</p>;
+    return <SparkLoader label="Loading your offers…" />;
   }
 
   if (genomeError || !genomeId) {

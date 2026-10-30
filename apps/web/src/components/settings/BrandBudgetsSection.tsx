@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,7 +124,7 @@ export function BrandBudgetsSection() {
     await load();
   }
 
-  if (brands === null) return <p className="text-16 text-ink-muted">Loading…</p>;
+  if (brands === null) return <SparkLoader label="Loading budgets…" />;
 
   if (brands.length === 0) {
     return <p className="text-16 text-ink-muted">{error ?? 'This organisation has no brands yet.'}</p>;

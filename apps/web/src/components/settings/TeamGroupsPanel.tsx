@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -235,7 +236,7 @@ export function TeamGroupsPanel() {
       )}
 
       {groups === null ? (
-        <p className="mt-4 text-13 text-ink-muted">Loading…</p>
+        <SparkLoader size="inline" label="Loading groups…" className="mt-4" />
       ) : groups.length === 0 ? (
         <p className="mt-4 text-13 text-ink-muted">
           No groups yet. Everyone has exactly what their role gives them.

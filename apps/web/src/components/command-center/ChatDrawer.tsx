@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@/lib/tools';
@@ -510,7 +511,7 @@ export function ChatDrawer({
               </button>
             </div>
           ) : runs === null ? (
-            <p className="px-[17px] text-16 font-medium text-ink-muted">Loading…</p>
+            <SparkLoader size="inline" label="Loading your conversations…" className="px-[17px]" />
           ) : runs.length === 0 ? (
             <p className="px-[17px] text-16 font-medium text-ink-muted">
               No runs yet. Every message you send here is one SPARK run, and they appear in this list.

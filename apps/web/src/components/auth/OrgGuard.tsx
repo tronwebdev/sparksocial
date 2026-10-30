@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkFailure, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { useAuth, useOrganizationList, useUser } from '@clerk/nextjs';
 import { SparkMark } from '@/components/brand/SparkMark';
@@ -142,28 +143,13 @@ export function OrgGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (failed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-8">
-        <div className="max-w-md text-center">
-          <p className="text-16 font-medium text-ink">Could not open your account</p>
-          <p className="mt-1 text-14 text-ink-muted">{failed}</p>
-        </div>
-      </div>
-    );
-  }
+  if (failed) return <SparkFailure title="Could not open your account" detail={failed} />;
 
   // Hold the shell back until the org is on the session. Rendering children
   // first would fire every page's data fetch against a session the API is
   // going to reject, so the user would see a screen full of errors that fix
   // themselves a moment later.
-  if (!ready || !orgId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-8">
-        <p className="text-14 text-ink-muted">Opening your account…</p>
-      </div>
-    );
-  }
+  if (!ready || !orgId) return <SparkLoader size="page" label="Opening your account…" />;
 
   return <>{children}</>;
 }

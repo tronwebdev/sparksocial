@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { SparkMark, type SparkMood } from '@/components/brand/SparkMark';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -336,7 +337,7 @@ export function AutomationScreen() {
     void reload();
   }
 
-  if (genomeLoading) return <p className="p-[40px] text-16 text-ink-muted">Loading…</p>;
+  if (genomeLoading) return <SparkLoader label="Loading your recipes…" className="min-h-[60vh]" />;
   if (!genomeId) return <p className="p-[40px] text-16 text-ink-muted">{genomeError ?? 'Pick a brand first.'}</p>;
 
   return (

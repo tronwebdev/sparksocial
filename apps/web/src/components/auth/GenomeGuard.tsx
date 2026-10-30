@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkFailure, SparkLoader } from '@/components/brand/SparkLoader';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { invoke } from '@/lib/tools';
@@ -57,24 +58,9 @@ export function GenomeGuard({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (failed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-8">
-        <div className="max-w-md text-center">
-          <p className="text-16 font-medium text-ink">Could not open your account</p>
-          <p className="mt-1 text-14 text-ink-muted">{failed}</p>
-        </div>
-      </div>
-    );
-  }
+  if (failed) return <SparkFailure title="Could not open your account" detail={failed} />;
 
-  if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center p-8">
-        <p className="text-14 text-ink-muted">Opening your account…</p>
-      </div>
-    );
-  }
+  if (!ready) return <SparkLoader size="page" label="Opening your account…" />;
 
   return <>{children}</>;
 }

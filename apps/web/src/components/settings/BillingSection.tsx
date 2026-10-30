@@ -1,5 +1,6 @@
 'use client';
 
+import { SparkLoader } from '@/components/brand/SparkLoader';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -110,7 +111,7 @@ export function BillingSection() {
       <section>
         <h2 className="text-18 font-semibold text-ink">Buy credits</h2>
         {packs === null ? (
-          <p className="mt-[10px] text-15 text-ink-muted">Loading…</p>
+          <SparkLoader size="inline" label="Loading credit packs…" className="mt-[10px]" />
         ) : packs.length === 0 ? (
           <p className="mt-[10px] max-w-[62ch] text-15 text-ink-muted">
             Card payments are not configured for this deployment, so credits cannot be bought here yet. An owner
