@@ -207,7 +207,7 @@ export function FolderMembersModal({
   return (
     <ModalShell
       top={220}
-      height={560}
+      height="auto"
       width={620}
       radius={28}
       background="var(--ss-grad-lib-create)"
@@ -235,7 +235,7 @@ export function FolderMembersModal({
         <AssignmentNote />
       </div>
 
-      <div className="mt-[18px] flex items-center justify-center gap-[26px]">
+      <div className="mt-[18px] flex items-center justify-center gap-[26px] pb-[40px]">
         <button
           type="button"
           onClick={onClose}

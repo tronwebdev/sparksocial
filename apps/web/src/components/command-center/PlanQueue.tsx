@@ -561,11 +561,23 @@ export function PlanQueue({
                       <circle cx="9" cy="6" r="2.2" stroke="#0C0C0C" strokeWidth="1.4" />
                     </svg>
                   </RowAction>
+                  {/* Wired the same as the rows layout below. This one was left
+                      as a disabled "isn’t available yet" from before
+                      `content.delete` existed — so the Calendar's list view,
+                      which is this layout, could never remove anything. */}
                   <RowAction
-                    disabled
-                    label="Remove"
-                    title="Removing a planned post isn’t available yet."
-                    style={{ boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)', opacity: 0.55 }}
+                    label={removing === item.contentItemId ? 'Removing…' : 'Remove'}
+                    title={
+                      item.status === 'published'
+                        ? 'Published posts stay — their results feed analytics. Remove it on the platform itself.'
+                        : 'Remove this post. Needs an owner or admin to approve.'
+                    }
+                    onClick={() => void remove(item)}
+                    disabled={removing !== null || item.status === 'published'}
+                    style={{
+                      boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.6)',
+                      opacity: removing !== null || item.status === 'published' ? 0.55 : 1,
+                    }}
                   >
                     <svg width="13" height="15" viewBox="0 0 14 16" fill="none" aria-hidden>
                       <path d="M1 3.8h12M5 3.5V2.2C5 1.5 5.5 1 6.2 1h1.6c.7 0 1.2.5 1.2 1.2v1.3M2.6 3.8l.7 9.7c.05.8.7 1.4 1.5 1.4h4.4c.8 0 1.45-.6 1.5-1.4l.7-9.7" stroke="#F35525" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />

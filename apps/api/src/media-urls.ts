@@ -77,6 +77,31 @@ export function keyFromUrl(url: string, host: string, bucket: string): string | 
 }
 
 /**
+ * Whether a URL of ours was signed for something other than reading it.
+ *
+ * `asset.upload_url` returns a presigned **PUT** for our own bucket, and this
+ * filter used to re-sign it like any other URL of ours — into a fresh GET for
+ * the same key. Every browser upload on R2 then PUT to a URL signed for
+ * `GetObject`; R2 refused it with a 403 carrying no CORS headers, which Chrome
+ * reports as a CORS failure, and the upload dialog said storage was
+ * unreachable. Measured on staging: the response's `uploadUrl` was
+ * byte-for-byte its `readUrl`.
+ *
+ * The SDK writes the operation into the query as `x-id`. Only a read, or a URL
+ * with no operation at all (an old stored row), is ours to refresh. An upload
+ * URL is not stale — it was minted in this very call.
+ */
+export function signedForWrite(url: string): boolean {
+  if (!url.includes('x-id=')) return false;
+  try {
+    const op = new URL(url).searchParams.get('x-id');
+    return op !== null && op !== 'GetObject';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Walk a tool's output and re-sign every URL that belongs to us.
  *
  * Returns the value unchanged when there is nothing to do, so the common path
@@ -95,6 +120,7 @@ export async function refreshMediaUrls<T>(
 
   const rewrite = async (node: unknown): Promise<unknown> => {
     if (typeof node === 'string') {
+      if (signedForWrite(node)) return node;
       const key = keyFromUrl(node, deps.host, deps.bucket);
       if (!key) return node;
       const cached = seen.get(key);

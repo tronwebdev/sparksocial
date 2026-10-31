@@ -652,7 +652,7 @@ export async function listUnfiledAssets(
 export async function listAssets(
   db: Database,
   scope: Scope,
-  args: { roles?: AssetRole[]; limit?: number; offset?: number } = {},
+  args: { roles?: AssetRole[]; folderId?: string; limit?: number; offset?: number } = {},
 ): Promise<
   Array<{
     assetId: string;
@@ -687,6 +687,9 @@ export async function listAssets(
         scopePredicate('assets', scope),          // ← non-negotiable
         isNull(assets.archivedAt),
         ...(args.roles?.length ? [inArray(assets.assetRole, args.roles)] : []),
+        // A folder's contents, listed rather than searched for — see
+        // `asset.list`. Narrows the scope above; never stands in for it.
+        ...(args.folderId ? [eq(assets.folderId, args.folderId)] : []),
       ),
     )
     .orderBy(sql`${assets.createdAt} DESC`)

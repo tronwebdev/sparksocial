@@ -9,6 +9,7 @@ import { formatBytes } from '../AssetsLibraryScreen';
 import { ASSET_ROLES } from '../roles';
 import type { Folder } from './types';
 import { userMessage } from '@/lib/errorCopy';
+import { uploadToStorage, type PresignedUpload } from '@/lib/uploadToStorage';
 
 /**
  * `Upload Files Modal` — `SparkSocial Assets Library.dc.html`.
@@ -44,8 +45,9 @@ import { userMessage } from '@/lib/errorCopy';
  * `asset.ingest_url`, then `asset.folder.move` to drop each new asset into the
  * folder that was open, and `asset.caption.set` for a meta description the user
  * typed. That is `AssetUploadForm`'s exact sequence — the same call order, the
- * same `x-ms-blob-type` header Azure requires, the same idempotency key derived
- * from the storage key — reproduced here rather than imported because the form
+ * same `uploadToStorage` PUT with the headers the URL was signed for, the same
+ * idempotency key derived from the storage key — reproduced here rather than
+ * imported because the form
  * owns a different shape (one file, a role picker, a rights checkbox) and this
  * panel is a multi-file flow with its own stages.
  *
@@ -166,10 +168,10 @@ export function UploadFilesModal({
     };
 
     if (!contentType) {
-      return { ...staged, error: `${ext || 'That file type'} is not one the Asset Graph accepts.` };
+      return { ...staged, error: `${ext || 'That file type'} files can’t go in the library. Use an image, video, audio file or PDF.` };
     }
 
-    const presigned = await invoke<{ uploadUrl: string; readUrl: string; key: string }>('asset.upload_url', {
+    const presigned = await invoke<PresignedUpload>('asset.upload_url', {
       genomeId,
       filename: file.name,
       contentType,
@@ -179,22 +181,11 @@ export function UploadFilesModal({
       return { ...staged, error: presigned.status === 'failed' ? userMessage(presigned.error) : 'Upload was gated.' };
     }
 
-    /* `x-ms-blob-type` is Azure's own requirement for a SAS upload, not a
-       SparkSocial convention — omit it and a real PUT answers 400. */
-    try {
-      const put = await fetch(presigned.output.uploadUrl, {
-        method: 'PUT',
-        headers: { 'content-type': contentType, 'x-ms-blob-type': 'BlockBlob' },
-        body: file,
-      });
-      if (!put.ok) return { ...staged, error: `Storage refused the file (${put.status}).` };
-    } catch {
-      return {
-        ...staged,
-        error:
-          'The browser could not reach storage. Locally that is expected — the dev upload target does not resolve without AZURE_STORAGE_ACCOUNT.',
-      };
-    }
+    /* The headers the URL was signed with — R2 signs `if-none-match`, Azure
+       needs `x-ms-blob-type` — come back from the tool; `uploadToStorage`
+       sends them and words the failure for the person holding the file. */
+    const put = await uploadToStorage(presigned.output.uploadUrl, file, contentType, presigned.output.headers);
+    if (!put.ok) return { ...staged, error: put.message };
 
     const mediaType = contentType.startsWith('image/')
       ? 'image'

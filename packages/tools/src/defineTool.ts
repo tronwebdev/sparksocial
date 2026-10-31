@@ -327,7 +327,7 @@ export interface ScopedDb {
     list(
       genomeId: string,
       orgId: string,
-      args?: { roles?: AssetRole[]; limit?: number; offset?: number },
+      args?: { roles?: AssetRole[]; folderId?: string; limit?: number; offset?: number },
     ): Promise<Array<{
       assetId: string;
       role: AssetRole;

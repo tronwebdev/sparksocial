@@ -402,19 +402,54 @@ export function CalendarBoard({
     [genome, view, reload],
   );
 
-  /** Accepting the move suggestion — the same reschedule a drag performs. */
-  const acceptMove = useCallback(
-    async (day: string, contentItemId: string) => {
+  /**
+   * One reschedule, with its undo riding on the notification — for a drag and
+   * for the Move dialog alike.
+   *
+   * The dialog is the move the Calendar screen actually offers (the draggable
+   * month grid is switched off), and it used to move the post in silence: no
+   * notification, no undo. The undo lived only on the drag path nobody could
+   * reach. Undo puts back the exact time it had, not the day at the default
+   * hour, and says whether that worked.
+   */
+  const reschedule = useCallback(
+    async (contentItemId: string, toDay: string) => {
       if (!genome || !view) return;
+      const slot = view.slots.find((s) => s.id === contentItemId);
+      const from = slot?.scheduledAt ?? null;
+      if (from?.slice(0, 10) === toDay) return;
+
       const res = await invoke('content.schedule', {
         contentItemId,
         genomeId: genome.genomeId,
-        scheduledAt: `${day}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
+        scheduledAt: `${toDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
       });
       if (!notifyResult(res, undefined, 'Couldn’t move that post')) return;
       await reload(view.campaignId);
+
+      /* Captured now rather than read from state when pressed, so it puts back
+         exactly this move even if the screen has moved on since. */
+      const { campaignId } = view;
+      const { genomeId } = genome;
+      const label = `Moved “${slot?.playbookName ?? slot?.playbookId ?? 'Post'}”`;
+      if (!from) {
+        notify.success(label);
+        return;
+      }
+      const undoMove = async () => {
+        const back = await invoke('content.schedule', { contentItemId, genomeId, scheduledAt: from });
+        if (!notifyResult(back, 'Move undone', 'Couldn’t undo the move')) return;
+        await reload(campaignId);
+      };
+      notify.success(label, { action: { label: 'Undo', onClick: () => void undoMove() } });
     },
     [genome, view, reload],
+  );
+
+  /** Accepting the move suggestion — the same reschedule a drag performs. */
+  const acceptMove = useCallback(
+    (day: string, contentItemId: string) => reschedule(contentItemId, day),
+    [reschedule],
   );
 
   /* Republished whenever a handler identity changes — each is a `useCallback`,
@@ -435,39 +470,7 @@ export function CalendarBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onActions, view, acceptRecommendation, acceptMove, openTriggerFor]);
 
-  const moveSlot = useCallback(
-    async (slot: Slot, toDay: string) => {
-      if (!genome || !view) return;
-      const fromDay = slot.scheduledAt?.slice(0, 10);
-      if (!fromDay || fromDay === toDay) return;
-
-      const res = await invoke('content.schedule', {
-        contentItemId: slot.id,
-        genomeId: genome.genomeId,
-        scheduledAt: `${toDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
-      });
-      if (!notifyResult(res, undefined, 'Couldn’t move that post')) return;
-      await reload(view.campaignId);
-
-      /* The undo rides on the notification. Captured here rather than read
-         from state when pressed, so it puts back exactly this move even if
-         the screen has moved on to another campaign since. */
-      const { campaignId } = view;
-      const { genomeId } = genome;
-      const undoMove = async () => {
-        await invoke('content.schedule', {
-          contentItemId: slot.id,
-          genomeId,
-          scheduledAt: `${fromDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
-        });
-        await reload(campaignId);
-      };
-      notify.success(`Moved “${slot.playbookName ?? slot.playbookId ?? 'Post'}”`, {
-        action: { label: 'Undo', onClick: () => void undoMove() },
-      });
-    },
-    [genome, view, reload],
-  );
+  const moveSlot = useCallback((slot: Slot, toDay: string) => reschedule(slot.id, toDay), [reschedule]);
 
   if (loading || hydrating) return <Skeleton className="h-64 w-full rounded" />;
 

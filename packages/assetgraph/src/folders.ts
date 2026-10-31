@@ -234,12 +234,22 @@ export const assetList = defineTool({
   version: 1,
 
   summary:
-    'Every asset this brand holds, newest first, optionally filtered by role. The plain browse behind the ' +
-    'Assets Library — use asset.retrieve to find one by meaning. Free.',
+    'Every asset this brand holds, newest first, optionally filtered by role or to one folder. The plain ' +
+    'browse behind the Assets Library — use asset.retrieve to find one by meaning. Free.',
 
   input: z.object({
     genomeId: z.string().min(1),
     roles: z.array(AssetRole).optional(),
+    /**
+     * One folder's contents. The Library used to fetch these with
+     * `asset.retrieve`, using the folder's *name* as the search — which skips
+     * any asset whose rights are not yet cleared (retrieval never returns
+     * them), so an upload without the rights box ticked went into its folder
+     * and never appeared there; and which takes the brand-wide top 50 before
+     * filtering, so a large brand's folder showed only the files that happened
+     * to rank. A folder is a list, not a query.
+     */
+    folderId: z.string().min(1).optional(),
     limit: z.number().int().min(1).max(200).default(60),
     offset: z.number().int().min(0).default(0),
   }),
@@ -268,6 +278,7 @@ export const assetList = defineTool({
   async handler(input, ctx) {
     const rows = await ctx.db.assets.list(input.genomeId, ctx.orgId, {
       ...(input.roles?.length ? { roles: input.roles } : {}),
+      ...(input.folderId ? { folderId: input.folderId } : {}),
       limit: input.limit,
       offset: input.offset,
     });

@@ -38,7 +38,7 @@ function Footer({
   danger?: boolean;
 }) {
   return (
-    <div className="mt-[30px] flex items-center justify-center gap-[26px]">
+    <div className="mt-[30px] flex items-center justify-center gap-[26px] pb-[40px]">
       <button
         type="button"
         onClick={onCancel}
@@ -98,7 +98,7 @@ export function ShareFolderModal({
   return (
     <ModalShell
       top={300}
-      height={400}
+      height="auto"
       width={620}
       radius={28}
       background="var(--ss-grad-lib-create)"
@@ -140,7 +140,7 @@ export function ShareFolderModal({
         ) : null}
       </div>
 
-      <div className="mt-[26px] flex items-center justify-center">
+      <div className="mt-[26px] flex items-center justify-center pb-[40px]">
         <button
           type="button"
           onClick={onClose}
@@ -193,7 +193,7 @@ export function RenameFolderModal({
   return (
     <ModalShell
       top={300}
-      height={400}
+      height="auto"
       width={620}
       radius={28}
       background="var(--ss-grad-lib-create)"
@@ -255,7 +255,7 @@ export function DeleteFolderModal({
   return (
     <ModalShell
       top={290}
-      height={420}
+      height="auto"
       width={620}
       radius={28}
       background="var(--ss-grad-lib-create)"
@@ -272,11 +272,13 @@ export function DeleteFolderModal({
         <p className="text-center text-16 leading-[1.55] text-ink">
           {folder.assetCount === 0
             ? 'This folder is empty, so nothing else changes.'
-            : `The ${folder.assetCount} ${folder.assetCount === 1 ? 'file' : 'files'} inside are not deleted.`}{' '}
+            : folder.assetCount === 1
+              ? 'The file inside is not deleted.'
+              : `The ${folder.assetCount} files inside are not deleted.`}{' '}
           <span className="text-ink-muted">
             {folder.assetCount === 0
               ? 'The folder itself is removed.'
-              : 'They stay in the Asset Graph without a folder, SPARK can still use them, and posts that already reference them keep working. To remove a file for good, delete it from inside the folder first.'}
+              : `${folder.assetCount === 1 ? 'It moves' : 'They move'} to Unfiled, SPARK can still use ${folder.assetCount === 1 ? 'it' : 'them'}, and posts that already use ${folder.assetCount === 1 ? 'it' : 'them'} keep working. To remove a file for good, delete it from inside the folder first.`}
           </span>
         </p>
       </div>
@@ -293,12 +295,14 @@ export function DeleteFolderModal({
 }
 
 /**
- * The folder picker behind "File…" in the Unfiled view — the way back for an
- * asset that a folder delete left loose.
+ * The folder picker behind Move — into a folder from Unfiled, between folders,
+ * or back out to Unfiled. It used to exist only on the Unfiled shelf, so a file
+ * put in the wrong folder could leave it only by deleting the whole folder.
  */
 export function PickFolderModal({
   genomeId,
   asset,
+  currentFolderId,
   assetName,
   folders,
   onClose,
@@ -306,6 +310,8 @@ export function PickFolderModal({
 }: {
   genomeId: string;
   asset: string;
+  /** Where it is now — left out of the choices; `null` is Unfiled. */
+  currentFolderId: string | null;
   assetName: string;
   folders: Folder[];
   onClose: () => void;
@@ -313,19 +319,23 @@ export function PickFolderModal({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function file(f: Folder) {
+  const choices = folders.filter((f) => f.folderId !== currentFolderId);
+
+  /** `null` takes it out of its folder — `asset.folder.move` accepts that. */
+  async function file(folderId: string | null, name: string) {
     if (busy) return;
-    setBusy(f.folderId);
-    const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId: f.folderId }, `asset-move:${asset}:${f.folderId}`);
+    const key = folderId ?? UNFILED_CHOICE;
+    setBusy(key);
+    const res = await invoke('asset.folder.move', { genomeId, assetId: asset, folderId }, `asset-move:${asset}:${key}`);
     setBusy(null);
-    if (!notifyResult(res, undefined, `Couldn’t move it to “${f.name}”`)) return;
-    onFiled(f.name);
+    if (!notifyResult(res, undefined, `Couldn’t move it to “${name}”`)) return;
+    onFiled(name);
   }
 
   return (
     <ModalShell
       top={240}
-      height={520}
+      height="auto"
       width={620}
       radius={28}
       background="var(--ss-grad-lib-create)"
@@ -338,33 +348,39 @@ export function PickFolderModal({
       </p>
 
       <div className="mt-[22px] max-h-[280px] overflow-y-auto px-[70px]">
-        {folders.length === 0 ? (
+        {choices.length === 0 && currentFolderId === null ? (
           <p className="py-[30px] text-center text-16 text-ink-muted">
             There are no folders yet. Create one first, then file this here.
           </p>
         ) : (
           <ul className="flex flex-col gap-[9px]">
-            {folders.map((f) => (
+            {choices.map((f) => (
               <li key={f.folderId}>
-                <button
-                  type="button"
-                  onClick={() => void file(f)}
+                <PickRow
+                  name={f.name}
+                  detail={`${f.assetCount} ${f.assetCount === 1 ? 'file' : 'files'}`}
+                  busy={busy === f.folderId}
                   disabled={busy !== null}
-                  className="flex h-[58px] w-full items-center justify-between rounded-[13px] bg-white px-[18px] transition-shadow hover:shadow-[0_10px_26px_-18px_rgba(12,12,12,0.5)] disabled:opacity-60"
-                  style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.12)' }}
-                >
-                  <span className="truncate text-16 font-semibold text-ink">{f.name}</span>
-                  <span className="ml-[12px] shrink-0 text-14 font-medium" style={{ color: '#838383' }}>
-                    {busy === f.folderId ? <Busy size={16}>Moving…</Busy> : `${f.assetCount} ${f.assetCount === 1 ? 'file' : 'files'}`}
-                  </span>
-                </button>
+                  onPick={() => void file(f.folderId, f.name)}
+                />
               </li>
             ))}
+            {currentFolderId !== null ? (
+              <li>
+                <PickRow
+                  name="Unfiled"
+                  detail="take it out of this folder"
+                  busy={busy === UNFILED_CHOICE}
+                  disabled={busy !== null}
+                  onPick={() => void file(null, 'Unfiled')}
+                />
+              </li>
+            ) : null}
           </ul>
         )}
       </div>
 
-      <div className="mt-[22px] flex items-center justify-center">
+      <div className="mt-[22px] flex items-center justify-center pb-[40px]">
         <button
           type="button"
           onClick={onClose}
@@ -377,5 +393,36 @@ export function PickFolderModal({
         </button>
       </div>
     </ModalShell>
+  );
+}
+
+const UNFILED_CHOICE = '__unfiled__';
+
+function PickRow({
+  name,
+  detail,
+  busy,
+  disabled,
+  onPick,
+}: {
+  name: string;
+  detail: string;
+  busy: boolean;
+  disabled: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      disabled={disabled}
+      className="flex h-[58px] w-full items-center justify-between rounded-[13px] bg-white px-[18px] transition-shadow hover:shadow-[0_10px_26px_-18px_rgba(12,12,12,0.5)] disabled:opacity-60"
+      style={{ boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.12)' }}
+    >
+      <span className="truncate text-16 font-semibold text-ink">{name}</span>
+      <span className="ml-[12px] shrink-0 text-14 font-medium" style={{ color: '#838383' }}>
+        {busy ? <Busy size={16}>Moving…</Busy> : detail}
+      </span>
+    </button>
   );
 }

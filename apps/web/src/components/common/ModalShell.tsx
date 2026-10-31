@@ -36,7 +36,11 @@ export function ModalShell({
 }: {
   /** The design's `top` on the 1728x1117 stage. */
   top: number;
-  height: number;
+  /**
+   * The design's height, or `'auto'` for a panel the prototypes do not draw —
+   * a short list in a fixed 520 is mostly empty panel.
+   */
+  height: number | 'auto';
   /**
    * 1035 is the Calendar's and Discovery's shared width, and the default for
    * that reason. The Agent Identity panel is ~1164 in its own design, which is
@@ -111,7 +115,7 @@ export function ModalShell({
           aria-label={label}
           className={cn('relative w-full overflow-hidden', 'animate-modal-in motion-reduce:animate-none')}
           style={{
-            height,
+            ...(height === 'auto' ? {} : { height }),
             borderRadius: radius,
             maxHeight: 'calc(100vh - 64px)',
             background: background ?? `linear-gradient(160deg, #FDFBFF 0%, ${gradientTo} 100%)`,

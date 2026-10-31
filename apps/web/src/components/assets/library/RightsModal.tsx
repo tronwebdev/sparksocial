@@ -124,7 +124,7 @@ export function RightsModal({
                       {assetName(a)}
                     </p>
                     <p className="mt-[3px] text-14 font-medium" style={{ color: status.colour }}>
-                      {status.label} · {assetKind(a.mediaType)} · {assetStamp(a.createdAt)}
+                      {status.label} · {assetKind(a.mediaType, a.url)} · {assetStamp(a.createdAt)}
                     </p>
                     <p className="mt-[2px] text-13 text-ink-muted">{status.detail}</p>
                   </div>

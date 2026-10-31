@@ -67,7 +67,7 @@ import { userMessage } from '@/lib/errorCopy';
  *
  * Folders are real: `asset.folder.create` and `asset.folder.list` (which
  * returns `createdAt` and a real `assetCount`). Assets are real:
- * `asset.retrieve` gives url, mediaType, filename, sizeBytes, caption and
+ * `asset.list` gives url, mediaType, filename, sizeBytes, caption and
  * createdAt — every column the list view draws. Removing is `asset.archive`.
  * Uploading is `asset.upload_url` → PUT → `asset.ingest_url`, which is exactly
  * what `AssetUploadForm` already does and what the Upload modal reuses.
@@ -83,15 +83,14 @@ import { userMessage } from '@/lib/errorCopy';
  *   than opening onto three dead rows. Moving an asset *between* folders is
  *   real and lives on the asset, where the tool takes it.
  *
- * ── Retrieval is not a filesystem ────────────────────────────────────────
+ * ── A folder is a list ───────────────────────────────────────────────────
  *
- * There is no "list this folder" query. `asset.retrieve` is the Asset Graph's
- * only read and it is semantic, so a folder's contents are fetched by using the
- * folder's own name as the intent and filtering the results to that folder —
- * the same method `FolderLibrary` established, kept deliberately so the two
- * cannot disagree. A folder holding more than `k` assets shows the best matches
- * rather than all of them; the count on the folder card comes from a real
- * `count(*)`, so the two never quietly agree on a wrong number.
+ * A folder's contents come from `asset.list` with its `folderId` — a direct,
+ * scoped listing, newest first. They used to come from `asset.retrieve` with
+ * the folder's name as the query, which was a search standing in for a list:
+ * it never returns an asset awaiting rights clearance, and it ranks the whole
+ * brand before the folder is picked out of the top 50, so a folder could hold
+ * files it did not show.
  */
 
 const DATE_SORTS = [
@@ -235,18 +234,16 @@ export function AssetsLibraryScreen() {
         setAssets(rows);
         return;
       }
-      const res = await invoke<{ results: Asset[] }>('asset.retrieve', {
+      /* Listed, not searched for. Retrieval skips anything whose rights are
+         not cleared and ranks the whole brand before this folder is picked
+         out of the top 50 — so an upload without the rights box ticked never
+         appeared in the folder it was put in. See `asset.list`. */
+      const res = await invoke<{ assets: Asset[] }>('asset.list', {
         genomeId,
-        /* The folder's own name is the query — see this file's header on why
-           retrieval, not a folder predicate. */
-        intent: folder.name,
-        k: 50,
+        folderId: folder.folderId,
+        limit: 200,
       });
-      if (res.status !== 'succeeded') {
-        setAssets([]);
-        return;
-      }
-      setAssets(res.output.results.filter((a) => a.folderId === folder.folderId));
+      setAssets(res.status === 'succeeded' ? res.output.assets : []);
     },
     [genomeId],
   );
@@ -516,15 +513,16 @@ export function AssetsLibraryScreen() {
                 </ViewToggle>
               </div>
 
-              {/* 1195,162 · 457x56. The design swaps its placeholder with the
-                  view, which is a nice tell that the search is over files. */}
+              {/* 1195,162 · 457x56. The design swaps its placeholder to "Search
+                  folder" in list view; it searches the files in this folder in
+                  both, so both say so. */}
               <SearchBox
                 value={assetQuery}
                 onChange={(v) => {
                   setAssetQuery(v);
                   setPage(0);
                 }}
-                placeholder={view === 'grid' ? 'Search files' : 'Search folder'}
+                placeholder="Search files"
                 className="h-[56px] w-[457px] max-w-full rounded-[14px]"
                 label="Search files in this folder"
               />
@@ -536,25 +534,21 @@ export function AssetsLibraryScreen() {
               <SparkLoader label="Loading this folder…" />
             ) : visibleAssets.length === 0 ? (
               <p className="text-16 text-ink-muted">
-                {assetQuery
-                  ? 'Nothing in this folder matches that search.'
-                  : (assets?.length ?? 0) === 0 && openFolder.assetCount > 0
-                    ? `This folder holds ${openFolder.assetCount} ${openFolder.assetCount === 1 ? 'asset' : 'assets'}, and retrieval could not surface them by the folder's name — the Asset Graph is an index of meaning, not a filesystem. Search for what is in them instead.`
-                    : 'Nothing here yet. Upload a file to fill this folder.'}
+                {assetQuery ? 'Nothing in this folder matches that search.' : 'Nothing here yet. Upload a file to fill this folder.'}
               </p>
             ) : view === 'grid' ? (
               <AssetGrid
                 assets={pageAssets}
                 onPreview={setPreview}
                 onRemove={(a) => void removeAsset(a)}
-                {...(openFolder.folderId === UNFILED ? { onFile: setFiling } : {})}
+                onFile={setFiling}
               />
             ) : (
               <AssetList
                 assets={pageAssets}
                 onPreview={setPreview}
                 onRemove={(a) => void removeAsset(a)}
-                {...(openFolder.folderId === UNFILED ? { onFile: setFiling } : {})}
+                onFile={setFiling}
               />
             )}
           </div>
@@ -825,6 +819,7 @@ export function AssetsLibraryScreen() {
         <PickFolderModal
           genomeId={genomeId}
           asset={filing.assetId}
+          currentFolderId={filing.folderId}
           assetName={assetName(filing)}
           folders={folders ?? []}
           onClose={() => setFiling(null)}
@@ -954,7 +949,9 @@ export function longDate(iso: string): string {
  */
 export function folderSize(assets: Asset[] | null): string {
   if (!assets || assets.length === 0) return '—';
-  if (assets.some((a) => a.sizeBytes === null || a.sizeBytes === undefined)) return 'size partly unknown';
+  const unknown = assets.filter((a) => a.sizeBytes === null || a.sizeBytes === undefined).length;
+  if (unknown === assets.length) return 'size unknown';
+  if (unknown > 0) return 'size partly unknown';
   const total = assets.reduce((n, a) => n + (a.sizeBytes ?? 0), 0);
   return formatBytes(total);
 }

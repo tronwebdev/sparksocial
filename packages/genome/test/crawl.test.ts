@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { admit, crawlerUserAgent, dedupeChrome, screen, textFloorFor } from '../src/crawl.js';
+import { admit, crawlerUserAgent, dedupeChrome, isConsentBanner, screen, textFloorFor } from '../src/crawl.js';
 import { explainCrawlFailure } from '../src/bootstrap.js';
 
 /**
@@ -374,5 +374,40 @@ describe('textFloorFor — an error page is not content', () => {
 
   it('treats an unreachable page (no status) as a failure too', () => {
     expect(textFloorFor(undefined)).toBeGreaterThan(textFloorFor(200));
+  });
+});
+
+describe('isConsentBanner — the cookie notice is not the business', () => {
+  const MONMOUTH =
+    '× To make our website work, we save some essential small files (cookies) on your computer. However, we don’t track your visit with marketing or analytics cookies so there is no need to opt-in or out of those. Read more about our cookies.';
+
+  it('drops a site’s own notice, named and worded like one', () => {
+    // The real markup that led monmouthcoffee.co.uk's knowledge asset.
+    expect(isConsentBanner({ id: 'site-cookies-notice', className: 'cookies-notice cookies-notice--fading', text: MONMOUTH })).toBe(true);
+    expect(isConsentBanner({ id: '', className: 'cookies-notice__description', text: MONMOUTH })).toBe(true);
+  });
+
+  it('drops an unnamed consent dialog by its role', () => {
+    expect(isConsentBanner({ id: '', className: 'x9f2', role: 'dialog', text: 'We use cookies to improve your experience. Accept all' })).toBe(true);
+  });
+
+  it('drops a known consent vendor by id, whatever language its text is in', () => {
+    expect(isConsentBanner({ id: 'onetrust-banner-sdk', className: '', text: 'Wir verwenden Cookies' })).toBe(true);
+    expect(isConsentBanner({ id: 'CybotCookiebotDialog', className: '', text: '' })).toBe(true);
+  });
+
+  it('keeps a bakery’s cookie banner — the name says cookie, the text sells them', () => {
+    expect(
+      isConsentBanner({ id: '', className: 'cookie-banner hero', text: 'Fresh cookies baked every morning. Order a dozen for Friday.' }),
+    ).toBe(false);
+  });
+
+  it('keeps consent wording that is not in a notice — a privacy section of the page', () => {
+    expect(isConsentBanner({ id: '', className: 'content-section', text: MONMOUTH })).toBe(false);
+  });
+
+  it('keeps a long block even when it is named like a notice — a banner is a paragraph', () => {
+    const long = `${MONMOUTH} `.repeat(10);
+    expect(isConsentBanner({ id: '', className: 'cookie-policy', text: long })).toBe(false);
   });
 });

@@ -76,6 +76,16 @@ const CHIP: Record<string, { bg: string; fg: string; icon: React.ReactNode }> = 
       </>
     ),
   },
+  Text: {
+    bg: 'rgba(52,168,83,0.12)',
+    fg: '#1E7A3C',
+    icon: (
+      <>
+        <path d="M2.5 2.6A1.6 1.6 0 0 1 4.1 1h5l4 4v8.4a1.6 1.6 0 0 1-1.6 1.6h-7.4a1.6 1.6 0 0 1-1.6-1.6V2.6Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M5 8h5M5 11h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </>
+    ),
+  },
   File: {
     bg: 'rgba(131,131,131,0.14)',
     fg: '#5B5B5B',
@@ -88,8 +98,8 @@ const CHIP: Record<string, { bg: string; fg: string; icon: React.ReactNode }> = 
   },
 };
 
-function KindChip({ mediaType, small = false }: { mediaType: string; small?: boolean }) {
-  const kind = assetKind(mediaType);
+function KindChip({ asset, small = false }: { asset: Asset; small?: boolean }) {
+  const kind = assetKind(asset.mediaType, asset.url);
   const c = CHIP[kind]!;
   return (
     <span
@@ -109,13 +119,26 @@ function KindChip({ mediaType, small = false }: { mediaType: string; small?: boo
 }
 
 export function Thumb({ asset, rounded }: { asset: Asset; rounded: string }) {
-  const kind = assetKind(asset.mediaType);
+  const kind = assetKind(asset.mediaType, asset.url);
   const isVideo = kind === 'Video';
   const isImage = kind === 'Image';
 
   /* Rendering a page of a PDF needs a renderer this screen does not carry, and
      an <img> at a PDF url paints the broken-image glyph. Its own mark and its
      filename say more than a blank tile would. */
+  /* Written knowledge has no file to draw — its opening lines are the
+     nearest thing to a picture of it. */
+  if (kind === 'Text') {
+    return (
+      <span className="flex h-full w-full flex-col gap-[6px] overflow-hidden p-[14px] text-left">
+        <span className="flex items-center gap-[6px] text-12 font-semibold" style={{ color: '#1E7A3C' }}>
+          Written knowledge
+        </span>
+        <span className="line-clamp-5 text-12 leading-[1.45] text-ink-muted">{asset.caption ?? assetName(asset)}</span>
+      </span>
+    );
+  }
+
   if (kind === 'PDF') {
     return (
       <span className="flex h-full w-full flex-col items-center justify-center gap-[8px] px-[12px]">
@@ -135,7 +158,10 @@ export function Thumb({ asset, rounded }: { asset: Asset; rounded: string }) {
           src={asset.url}
           alt=""
           loading="lazy"
-          className={`h-full w-full object-cover ${rounded}`}
+          /* `cover` is the design's mode and right for a photo. A logo is the
+             one image that must be seen whole — cropped to fill a 288x186
+             well, a wordmark reads as "NMO / FEE COMP". */
+          className={`h-full w-full ${asset.role === 'brand_kit' ? 'object-contain p-[14px]' : 'object-cover'} ${rounded}`}
           /* A blob URL from another origin can refuse a referrer'd request. */
           referrerPolicy="no-referrer"
         />
@@ -161,12 +187,12 @@ export function Thumb({ asset, rounded }: { asset: Asset; rounded: string }) {
   );
 }
 
-function PreviewButton({ onClick, size }: { onClick: () => void; size: 40 | 44 }) {
+function PreviewButton({ onClick, size, name }: { onClick: () => void; size: 40 | 44; name: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Preview"
+      aria-label={`Preview ${name}`}
       className="flex items-center justify-center rounded-[11px] bg-white transition-shadow hover:shadow-[inset_0_0_0_1.4px_#838383]"
       style={{ width: size, height: size, boxShadow: 'inset 0 0 0 1px rgba(131,131,131,0.35)', borderRadius: size === 40 ? 10 : 11 }}
     >
@@ -178,12 +204,12 @@ function PreviewButton({ onClick, size }: { onClick: () => void; size: 40 | 44 }
   );
 }
 
-function RemoveButton({ onClick, size }: { onClick: () => void; size: 40 | 44 }) {
+function RemoveButton({ onClick, size, name }: { onClick: () => void; size: 40 | 44; name: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Delete"
+      aria-label={`Delete ${name}`}
       className="flex items-center justify-center bg-white transition-colors hover:bg-[rgba(243,85,37,0.06)]"
       style={{ width: size, height: size, borderRadius: size === 40 ? 10 : 11, boxShadow: 'inset 0 0 0 1px rgba(243,85,37,0.55)' }}
     >
@@ -210,7 +236,7 @@ export function AssetGrid({
   assets: Asset[];
   onPreview: (a: Asset) => void;
   onRemove: (a: Asset) => void;
-  /** Only passed in the Unfiled view — puts an asset back into a folder. */
+  /** Moves an asset into a folder, to another one, or back out to Unfiled. */
   onFile?: (a: Asset) => void;
 }) {
   return (
@@ -226,7 +252,7 @@ export function AssetGrid({
           </div>
 
           <div className="absolute left-[22px] top-[216px]">
-            <KindChip mediaType={a.mediaType} />
+            <KindChip asset={a} />
           </div>
 
           {/* right 20 and right 74 in the design — with both 44 wide that is a
@@ -239,14 +265,16 @@ export function AssetGrid({
               <button
                 type="button"
                 onClick={() => onFile(a)}
+                aria-label={`Move ${assetName(a)} to a folder`}
+                title="Move to a folder"
                 className="h-[44px] rounded-[11px] px-[12px] text-14 font-semibold text-ink transition-opacity hover:opacity-80"
                 style={{ background: 'var(--ss-lib-toggle)' }}
               >
-                File…
+                Move
               </button>
             ) : null}
-            <PreviewButton onClick={() => onPreview(a)} size={44} />
-            <RemoveButton onClick={() => onRemove(a)} size={44} />
+            <PreviewButton onClick={() => onPreview(a)} size={44} name={assetName(a)} />
+            <RemoveButton onClick={() => onRemove(a)} size={44} name={assetName(a)} />
           </div>
 
           <p className="absolute left-[22px] right-[22px] top-[272px] truncate text-18 font-semibold text-ink" title={assetName(a)}>
@@ -271,11 +299,14 @@ export function AssetList({
   onFile?: (a: Asset) => void;
 }) {
   return (
-    /* Below 1300 the table scrolls in its own box rather than compressing —
-       five columns of real filenames do not survive being squeezed. */
+    /* The tracks are proportional (see `columns`), so the table fills the
+       space it has down to 900px and only scrolls below that. It used to be a
+       fixed 1300 — the design's width at 1728 — so on a 1440 laptop the Type,
+       Date and Action columns sat behind a horizontal scroll and every row's
+       Preview and Delete were off-screen. */
     <div className="max-w-lib-rule overflow-x-auto">
     <div
-      className="w-lib-rule overflow-hidden rounded-[18px] bg-white pb-[10px]"
+      className="w-full min-w-[900px] overflow-hidden rounded-[18px] bg-white pb-[10px]"
       style={{ boxShadow: '0 16px 40px -32px rgba(12,12,12,0.35)' }}
     >
       {/*
@@ -287,7 +318,7 @@ export function AssetList({
       */}
       <div
         className="grid h-lib-row-head items-center pl-[26px] text-16 font-medium"
-        style={{ gridTemplateColumns: HEAD_COLUMNS, color: '#838383', boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}
+        style={{ gridTemplateColumns: columns(26, !!onFile), color: '#838383', boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.15)' }}
       >
         <span>Assets</span>
         <span>Meta Description</span>
@@ -301,7 +332,7 @@ export function AssetList({
           <li
             key={a.assetId}
             className="grid h-lib-row items-center pl-[20px]"
-            style={{ gridTemplateColumns: ROW_COLUMNS, boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.1)' }}
+            style={{ gridTemplateColumns: columns(20, !!onFile), boxShadow: 'inset 0 -1px 0 rgba(131,131,131,0.1)' }}
           >
             <div className="flex min-w-0 items-center gap-[24px]">
               <div className="relative h-[76px] w-lib-row-thumb shrink-0 overflow-hidden rounded-[10px] bg-lib-list-thumb">
@@ -316,7 +347,7 @@ export function AssetList({
               {a.caption ?? <span className="text-ink-muted">no description</span>}
             </span>
 
-            <KindChip mediaType={a.mediaType} small />
+            <KindChip asset={a} small />
 
             <span className="whitespace-nowrap text-16 font-medium text-ink">{assetStamp(a.createdAt)}</span>
 
@@ -325,14 +356,16 @@ export function AssetList({
                 <button
                   type="button"
                   onClick={() => onFile(a)}
+                  aria-label={`Move ${assetName(a)} to a folder`}
+                  title="Move to a folder"
                   className="h-[40px] rounded-[10px] px-[12px] text-14 font-semibold text-ink transition-opacity hover:opacity-80"
                   style={{ background: 'var(--ss-lib-toggle)' }}
                 >
-                  File…
+                  Move
                 </button>
               ) : null}
-              <PreviewButton onClick={() => onPreview(a)} size={40} />
-              <RemoveButton onClick={() => onRemove(a)} size={40} />
+              <PreviewButton onClick={() => onPreview(a)} size={40} name={assetName(a)} />
+              <RemoveButton onClick={() => onRemove(a)} size={40} name={assetName(a)} />
             </div>
           </li>
         ))}
@@ -366,6 +399,12 @@ export function AssetList({
  *    was silently shrinking below its maximum — which is what put the live
  *    headers at 376/751/1126/1282/1524 instead of 378/820/1212/1352/1578.
  */
-const HEAD_COLUMNS = '442px 392px 140px 200px 1fr';
-/** Rows start at the thumb's 20 rather than the label's 26 — 6 wider, same x's. */
-const ROW_COLUMNS = '448px 392px 140px 200px 1fr';
+function columns(inset: 26 | 20, withMove: boolean): string {
+  /* The design's 442/392 as shares rather than pixels: at the full 1300 they
+     resolve to exactly those widths, and narrower they give way together.
+     Rows start at the thumb's 20 rather than the label's 26 — 6 wider, same
+     x's. The action track is the 100 the design leaves, or room for Move
+     beside the two buttons on the Unfiled shelf. */
+  const first = inset === 26 ? 442 : 448;
+  return `minmax(0,${first}fr) minmax(0,392fr) 140px 200px minmax(${withMove ? 180 : 100}px,100fr)`;
+}

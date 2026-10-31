@@ -81,9 +81,62 @@ export interface CrawlOptions {
  */
 interface BrowserGlobals {
   document?: {
-    body?: { innerText?: string };
+    body?: { innerText?: string; querySelectorAll(selector: string): ArrayLike<BrowserElement> };
     querySelectorAll(selector: string): ArrayLike<{ href: string }>;
   };
+}
+
+interface BrowserElement {
+  id: string;
+  className: unknown;
+  innerText?: string;
+  textContent: string | null;
+  getAttribute(name: string): string | null;
+  remove(): void;
+}
+
+/**
+ * The consent banner, recognised by what it is called *and* what it says.
+ *
+ * `dedupeChrome` keeps the first copy of anything repeated, which is right for
+ * a tagline and wrong for a cookie notice: the banner is usually the first
+ * thing in `<body>`, so it led page one's text, and page one's first 400
+ * characters are what the Assets Library shows as the site's caption. Measured
+ * on monmouthcoffee.co.uk, whose knowledge asset read "× To make our website
+ * work, we save some essential small files (cookies)…" — and the same text sat
+ * in the knowledge chunks SPARK drafts from.
+ *
+ * Name alone is not enough, because the brand might sell cookies: a bakery's
+ * `cookie-banner` is its hero. So an element is dropped only when its id or
+ * class names a cookie/consent *notice* and its own text reads like one, and it
+ * is short — a banner is a paragraph, not a product grid. A few vendors are
+ * recognised by id outright, because their markup is generated and their text
+ * is localised.
+ *
+ * Sources rather than RegExps, so the same rules cross into Chromium as a
+ * plain argument to `page.evaluate`, and `isConsentBanner` below is the
+ * testable copy of what runs there.
+ */
+export const CONSENT_RULES = {
+  name: '(cookie|consent|gdpr|ccpa)',
+  kind: '(notice|banner|bar|popup|pop-up|modal|dialog|consent|law|wall|message|alert|prompt|overlay|policy|disclaimer|notification|info)',
+  vendor: '^(onetrust-|CybotCookiebot|usercentrics|truste-|sp_message_container|cmpbox|qc-cmp2|didomi-|osano-cm|cky-consent|termly-)',
+  text: '\\b(cookies?|consent)\\b',
+  context: '(accept|privacy|website|browsing|analytics|tracking|personal data|opt[- ]?(in|out)|preferences|essential|experience)',
+  maxText: 1500,
+} as const;
+
+export function isConsentBanner(el: { id: string; className: string; role?: string | null; text: string }): boolean {
+  const flags = 'i';
+  const names = `${el.id} ${el.className}`;
+  const text = el.text.trim();
+  if (new RegExp(CONSENT_RULES.vendor, flags).test(el.id)) return true;
+  if (!text || text.length > CONSENT_RULES.maxText) return false;
+  const reads = new RegExp(CONSENT_RULES.text, flags).test(text) && new RegExp(CONSENT_RULES.context, flags).test(text);
+  if (!reads) return false;
+  const named = new RegExp(CONSENT_RULES.name, flags).test(names) && new RegExp(CONSENT_RULES.kind, flags).test(names);
+  const dialog = el.role === 'dialog' || el.role === 'alertdialog';
+  return named || dialog;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -342,6 +395,27 @@ export async function crawl(url: string, opts: CrawlOptions): Promise<CrawlResul
           .catch(() => {});
 
         const title = (await page.title().catch(() => '')) ?? '';
+        // Drop the consent banner before reading — see `CONSENT_RULES`. This
+        // is `isConsentBanner` restated, because a function passed to
+        // `evaluate` is serialised and cannot reach this module's scope.
+        await page
+          .evaluate((rules) => {
+            const body = (globalThis as unknown as BrowserGlobals).document?.body;
+            if (!body) return;
+            const re = (s: string) => new RegExp(s, 'i');
+            const [name, kind, vendor, said, context] = [rules.name, rules.kind, rules.vendor, rules.text, rules.context].map(re);
+            for (const el of Array.from(body.querySelectorAll('body *'))) {
+              const names = `${el.id} ${typeof el.className === 'string' ? el.className : ''}`;
+              // `textContent` too: a banner that has already faded has no
+              // innerText, and one that fades mid-crawl still matches.
+              const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+              const role = el.getAttribute('role');
+              const reads = !!text && text.length <= rules.maxText && said!.test(text) && context!.test(text);
+              const named = name!.test(names) && kind!.test(names);
+              if (vendor!.test(el.id) || (reads && (named || role === 'dialog' || role === 'alertdialog'))) el.remove();
+            }
+          }, CONSENT_RULES)
+          .catch(() => {});
         const text = clean(await page.evaluate(() => (globalThis as unknown as BrowserGlobals).document?.body?.innerText ?? ''));
 
         /*

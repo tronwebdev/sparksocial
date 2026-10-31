@@ -1003,4 +1003,25 @@ describe('asset.list', () => {
       offset: 20,
     });
   });
+
+  /*
+   * A folder's contents used to come from `asset.retrieve` with the folder's
+   * name as the query. Retrieval never returns an asset whose rights are not
+   * cleared, so an upload without the rights box ticked went into its folder
+   * and did not appear there. Listing by folder returns it.
+   */
+  it('lists one folder, including an asset retrieval would never return', async () => {
+    const pending = { ...logo, assetId: 'a_new', rightsStatus: 'pending' as const, folderId: 'f_1' };
+    const retrieve = vi.fn(async () => []);
+    const list = vi.fn(async () => [pending]);
+    const base = ctx();
+    const res = await assetList.handler(
+      { genomeId: 'gen_1', folderId: 'f_1', limit: 200, offset: 0 },
+      ctx({ db: { ...base.db, assets: { ...base.db.assets, retrieve, list } } }),
+    );
+
+    expect(list).toHaveBeenCalledWith('gen_1', expect.any(String), { folderId: 'f_1', limit: 200, offset: 0 });
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(res.assets.map((a) => [a.assetId, a.rightsStatus, a.folderId])).toEqual([['a_new', 'pending', 'f_1']]);
+  });
 });

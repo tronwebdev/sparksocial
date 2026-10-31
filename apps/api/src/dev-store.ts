@@ -528,6 +528,7 @@ export function createDevStore(
         return [...assets.entries()]
           .filter(([, a]) => a.genomeId === genomeId && a.orgId === org && !a.archivedAt)
           .filter(([, a]) => !roles?.length || roles.includes(a.role))
+          .filter(([, a]) => !args?.folderId || a.folderId === args.folderId)
           .map(([id, a]) => ({
             assetId: id,
             role: a.role,

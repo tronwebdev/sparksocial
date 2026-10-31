@@ -28,18 +28,40 @@ export interface Asset {
 
 /**
  * The design's two type chips are Video (magenta) and Image (purple); Audio,
- * PDF and File are this codebase's, in the same shape.
+ * PDF, Text and File are this codebase's, in the same shape.
  *
  * `mediaType` is the Asset Graph's own word — `image`/`video`/`audio`/
  * `document` — not a MIME type, so the prefix test is what matches both it and
  * the `image/png` form older rows carry.
  */
-export function assetKind(mediaType: string): 'Video' | 'Image' | 'Audio' | 'PDF' | 'File' {
+export type AssetKind = 'Video' | 'Image' | 'Audio' | 'PDF' | 'Text' | 'File';
+
+/**
+ * `url` separates the one `document` that is not a file. A crawled website or
+ * pasted guidelines are registered as a knowledge asset whose url is a
+ * `knowledge:` reference (`registerKnowledgeAsset`) — the text lives in
+ * `knowledge_chunks`, and there is nothing at that address to frame or open.
+ * Calling it a PDF put a blank iframe in the preview and a dead "Open original".
+ */
+export function assetKind(mediaType: string, url = ''): AssetKind {
+  if (url.startsWith(KNOWLEDGE)) return 'Text';
   if (mediaType.startsWith('video')) return 'Video';
   if (mediaType.startsWith('image')) return 'Image';
   if (mediaType.startsWith('audio')) return 'Audio';
   if (mediaType.startsWith('document') || mediaType === 'application/pdf') return 'PDF';
   return 'File';
+}
+
+const KNOWLEDGE = 'knowledge:';
+
+/**
+ * The page a knowledge asset was read from — `knowledge:https://…` for a crawl
+ * — or null for pasted text, whose reference is a chunk id with nowhere to go.
+ */
+export function knowledgeSource(url: string): string | null {
+  if (!url.startsWith(KNOWLEDGE)) return null;
+  const rest = url.slice(KNOWLEDGE.length);
+  return /^https?:\/\//i.test(rest) ? rest : null;
 }
 
 export function assetName(a: Asset): string {

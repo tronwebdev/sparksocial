@@ -2,7 +2,7 @@
 
 import { ModalShell } from '@/components/common/ModalShell';
 import { formatBytes } from '../AssetsLibraryScreen';
-import { assetKind, assetName, type Asset } from './types';
+import { assetKind, assetName, knowledgeSource, type Asset } from './types';
 
 /**
  * `View Asset Modal` — `SparkSocial Assets Library.dc.html`.
@@ -26,7 +26,10 @@ import { assetKind, assetName, type Asset } from './types';
  */
 
 export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () => void }) {
-  const kind = assetKind(asset.mediaType);
+  const kind = assetKind(asset.mediaType, asset.url);
+  /* Where "Open original" goes: the file itself, the site a crawl read, or —
+     for pasted text — nowhere, so the link is not drawn. */
+  const original = kind === 'Text' ? knowledgeSource(asset.url) : asset.url;
 
   return (
     <ModalShell top={170} height={700} width={780} radius={24} background="#FFFFFF" label="View asset" onClose={onClose}>
@@ -36,13 +39,18 @@ export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () =
           className="mt-[14px] flex h-[30px] w-fit items-center rounded-lg px-[11px] text-14 font-semibold"
           style={{ background: 'rgba(131,131,131,0.1)', color: '#5B5B5B' }}
         >
-          {asset.sizeBytes === null ? 'size not recorded' : formatBytes(asset.sizeBytes)}
+          {kind === 'Text' ? 'Written knowledge' : asset.sizeBytes === null ? 'size not recorded' : formatBytes(asset.sizeBytes)}
         </span>
       </div>
 
       <div className="px-[40px] pt-[18px]">
         <div className="relative h-[436px] w-full overflow-hidden rounded-2xl" style={{ background: '#F1F1F3' }}>
-          {kind === 'Video' ? (
+          {kind === 'Text' ? (
+            /* No file behind it: the words are the asset. */
+            <div className="h-full w-full overflow-y-auto whitespace-pre-line px-[28px] py-[24px] text-16 leading-[1.6] text-ink">
+              {asset.caption ?? 'No text was recorded for this.'}
+            </div>
+          ) : kind === 'Video' ? (
             /* Playable, rather than a still under a badge — the design draws
                the badge because its fixture is an image standing in for one. */
             <video src={asset.url} controls className="h-full w-full object-contain" />
@@ -85,7 +93,7 @@ export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () =
           )}
         </div>
 
-        {asset.caption ? (
+        {asset.caption && kind !== 'Text' ? (
           <p className="mt-[16px] line-clamp-2 text-15 text-ink-muted">{asset.caption}</p>
         ) : null}
       </div>
@@ -99,18 +107,20 @@ export function ViewAssetModal({ asset, onClose }: { asset: Asset; onClose: () =
         >
           Cancel
         </button>
+        {original ? (
         <a
-          href={asset.url}
+          href={original}
           target="_blank"
           rel="noreferrer noopener"
           className="flex h-[54px] items-center gap-[18px] rounded-xl bg-white px-[26px] active:scale-[0.985]"
           style={{ boxShadow: '0 10px 26px -16px rgba(12,12,12,0.4), inset 0 0 0 1px rgba(131,131,131,0.15)' }}
         >
-          <span className="text-17 font-semibold text-ink">Open original</span>
+          <span className="text-17 font-semibold text-ink">{kind === 'Text' ? 'Open website' : 'Open original'}</span>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
             <path d="M6 2h8v8M14 2 4.5 11.5M11 14H2V5" stroke="#0C0C0C" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </a>
+        ) : null}
       </div>
 
       <p className="px-[40px] pt-[16px] text-center text-14 text-ink-muted">

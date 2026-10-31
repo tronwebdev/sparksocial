@@ -204,7 +204,7 @@ export interface ToolIO {
     output: { assetId: string; caption: string; why: { summary: string; factors: Array<{ label: string; detail?: string }>; evidence: Array<{ kind: "asset"; id: string; note?: string }>; alternatives: Array<{ option: string; rejectedBecause: string }> } };
   };
   "asset.list": {
-    input: { genomeId: string; roles?: Array<"talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit">; limit?: number; offset?: number };
+    input: { genomeId: string; roles?: Array<"talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit">; folderId?: string; limit?: number; offset?: number };
     output: { assets: Array<{ assetId: string; role: "talent_likeness" | "product_screen" | "work_artifact" | "physical_capture" | "product_shot" | "social_proof" | "knowledge" | "past_post" | "brand_kit"; rightsStatus: "cleared" | "pending" | "restricted"; caption: (string) | (null); url: string; mediaType: "image" | "video" | "audio" | "document"; folderId: (string) | (null); filename: (string) | (null); sizeBytes: (number) | (null); createdAt: string }> };
   };
   "asset.retrieve": {
