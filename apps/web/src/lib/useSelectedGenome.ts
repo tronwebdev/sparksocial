@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { invoke } from './tools';
-import { readSelectedGenome } from './selectedGenome';
+import { readSelectedGenome, writeSelectedGenome } from './selectedGenome';
 import { userMessage } from '@/lib/errorCopy';
 
 /**
@@ -29,12 +29,16 @@ export interface UseSelectedGenome {
 }
 
 export function useSelectedGenome(): UseSelectedGenome {
-  const { orgId } = useAuth();
+  const { orgId, isLoaded } = useAuth();
   const [genome, setGenome] = useState<SelectedGenome | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    /* The cookie is read against the org, so it cannot be read before Clerk
+       has said which org this is — read at mount, a perfectly good selection
+       was ignored and the first brand shown instead. */
+    if (!isLoaded) return;
     let cancelled = false;
     void (async () => {
       const res = await invoke<{ genomes: SelectedGenome[] }>('genome.list', {});
@@ -48,14 +52,24 @@ export function useSelectedGenome(): UseSelectedGenome {
       // is a leftover from a different account on this browser. Falling back to
       // the first genome is what it always did for a cookie it could not match.
       const cookie = readSelectedGenome(orgId);
-      const selected = res.output.genomes.find((g) => g.genomeId === cookie) ?? res.output.genomes[0]!;
+      const chosen = res.output.genomes.find((g) => g.genomeId === cookie);
+      const selected = chosen ?? res.output.genomes[0]!;
+      /*
+        The fallback is recorded, not just shown. Signing out clears the
+        cookie, so after every sign-in this page showed the first brand while
+        the proxy forwarded no brand at all — and every tool that checks the
+        active brand (an upload's `asset.upload_url`, the agent's own tools)
+        refused with "genomeId does not match the active genome" until someone
+        happened to pick a brand by hand.
+      */
+      if (!chosen && orgId) writeSelectedGenome(orgId, selected.genomeId);
       setGenome(selected);
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isLoaded, orgId]);
 
   return { genome, loading, error };
 }

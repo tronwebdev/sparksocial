@@ -71,6 +71,7 @@ function minutesOf(iso: string): number {
 
 export function CalendarDayQueue({
   genomeId,
+  refreshKey,
   dayOffset,
   onDayOffset,
   onOpenDraft,
@@ -78,13 +79,15 @@ export function CalendarDayQueue({
   onCount,
 }: {
   genomeId: string | undefined;
+  /** Bumped when something else changed the schedule — re-reads in place, no loader. */
+  refreshKey?: number;
   dayOffset: number;
   onDayOffset: (next: number) => void;
   onOpenDraft: (contentItemId: string) => void;
   onAddPost: (day: string) => void;
   onCount?: (n: number) => void;
 }) {
-  const { slots, error } = useCalendarSlots(genomeId);
+  const { slots, error } = useCalendarSlots(genomeId, refreshKey);
   const [filters, setFilters] = useState<QueueFilterState>(EMPTY_FILTERS);
   const [now, setNow] = useState(() => new Date());
 

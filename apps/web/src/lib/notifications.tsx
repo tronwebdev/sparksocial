@@ -87,6 +87,7 @@ export interface Toast {
 
 /** How long each kind of action message stays, unless the caller says otherwise. */
 const STAY_MS: Record<NotifyKind, number> = { success: 4500, info: 5000, pending: 7000, warning: 8000, error: 9000 };
+const ACTION_STAY_MS = 10000;
 
 /** The sound for a feed notification, by topic. */
 const TOPIC_SOUND: Record<NotificationTopic, SoundKind> = {
@@ -164,7 +165,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const toast = useCallback((t: Omit<Toast, 'id'> & { silent?: boolean }) => {
     const id = `t_${Math.random().toString(36).slice(2, 9)}`;
     const { silent, ...rest } = t;
-    const entry: Toast = rest.kind ? { durationMs: STAY_MS[rest.kind], ...rest, id } : { ...rest, id };
+    /* A card with a button — Undo, View — stays long enough to reach it. At a
+       success's 4.5s the calendar's Undo was gone before a hand got there. */
+    const stay = rest.kind ? Math.max(STAY_MS[rest.kind], rest.action ? ACTION_STAY_MS : 0) : undefined;
+    const entry: Toast = stay !== undefined ? { durationMs: stay, ...rest, id } : { ...rest, id };
     /* Four at a time. A stack taller than that covers the thing it is telling
        you about, and the feed's own are in the bell anyway. */
     setToasts((cur) => [...cur.slice(-3), entry]);

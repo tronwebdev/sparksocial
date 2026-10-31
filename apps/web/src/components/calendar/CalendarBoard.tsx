@@ -148,6 +148,7 @@ export function CalendarBoard({
   dayFor,
   onDayForChange,
   onActions,
+  onScheduleChanged,
 }: {
   layout?: 'calendar' | 'list';
   /*
@@ -174,6 +175,13 @@ export function CalendarBoard({
     instead, and stays the only place they exist.
   */
   onActions?: (actions: BoardActions | null) => void;
+  /*
+    Called after anything here changes the schedule — a move, its undo, an
+    accepted recommendation, a regenerated calendar, a closed draft. The
+    Calendar screen draws its grid with components that read their own data,
+    and they kept showing a moved post where it was until a reload.
+  */
+  onScheduleChanged?: () => void;
 } = {}) {
   const { genome, loading, error: genomeError } = useSelectedGenome();
   const [view, setView] = useState<CalendarView | null>(null);
@@ -306,9 +314,10 @@ export function CalendarBoard({
         return;
       }
       await reload(campaignId);
+      onScheduleChanged?.();
       setBusy(false);
     },
-    [reload],
+    [reload, onScheduleChanged],
   );
 
   // `calendar.impact_preview`'s own doc comment: "show what calendar.generate
@@ -377,6 +386,7 @@ export function CalendarBoard({
           body: 'That one is filmed. It lands on the calendar once you send the clips back.',
         });
         await reload(view.campaignId);
+        onScheduleChanged?.();
         return;
       }
 
@@ -398,8 +408,9 @@ export function CalendarBoard({
         notify.warning('Drafted, but not placed on that day', { body: 'It is in your drafts.' });
       }
       await reload(view.campaignId);
+      onScheduleChanged?.();
     },
-    [genome, view, reload],
+    [genome, view, reload, onScheduleChanged],
   );
 
   /**
@@ -419,13 +430,18 @@ export function CalendarBoard({
       const from = slot?.scheduledAt ?? null;
       if (from?.slice(0, 10) === toDay) return;
 
+      /* A move changes the day, not the time. This used to land every moved
+         post on SCHEDULE_HOUR_UTC, so a 9:00 post moved to Thursday went out
+         at 13:00 — and moving it back did not put it back. */
+      const time = from && /T\d{2}:\d{2}/.test(from) ? from.slice(11) : `${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`;
       const res = await invoke('content.schedule', {
         contentItemId,
         genomeId: genome.genomeId,
-        scheduledAt: `${toDay}T${String(SCHEDULE_HOUR_UTC).padStart(2, '0')}:00:00.000Z`,
+        scheduledAt: `${toDay}T${time}`,
       });
       if (!notifyResult(res, undefined, 'Couldn’t move that post')) return;
       await reload(view.campaignId);
+      onScheduleChanged?.();
 
       /* Captured now rather than read from state when pressed, so it puts back
          exactly this move even if the screen has moved on since. */
@@ -440,10 +456,11 @@ export function CalendarBoard({
         const back = await invoke('content.schedule', { contentItemId, genomeId, scheduledAt: from });
         if (!notifyResult(back, 'Move undone', 'Couldn’t undo the move')) return;
         await reload(campaignId);
+        onScheduleChanged?.();
       };
       notify.success(label, { action: { label: 'Undo', onClick: () => void undoMove() } });
     },
-    [genome, view, reload],
+    [genome, view, reload, onScheduleChanged],
   );
 
   /** Accepting the move suggestion — the same reschedule a drag performs. */
@@ -519,7 +536,7 @@ export function CalendarBoard({
             // Both, because a rename changes the list and a status change changes
             // the badge on the open campaign too.
             if (genome) void listCampaigns(genome.genomeId).then(setCampaigns);
-            void reload(view.campaignId);
+            void reload(view.campaignId).then(() => onScheduleChanged?.());
           }}
           onNew={() => router.push('/home?new=1')}
         />
@@ -702,7 +719,7 @@ export function CalendarBoard({
         onDraftCreated={onDraftCreated}
         onClose={() => {
           setDraftPanel({ open: false });
-          if (view) void reload(view.campaignId);
+          if (view) void reload(view.campaignId).then(() => onScheduleChanged?.());
         }}
       />
     </div>

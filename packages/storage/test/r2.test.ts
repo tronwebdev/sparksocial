@@ -44,6 +44,22 @@ const base = {
 };
 
 describe('R2 blob store', () => {
+  /*
+   * The SDK's default since v3.729 signs a CRC32 into every presigned PUT, and
+   * with no body at signing time it is the checksum of zero bytes. R2 then
+   * refuses every real file. Staging's upload URL carried
+   * `x-amz-checksum-crc32=AAAAAA==`. Uses the store's own client, because
+   * that is where the setting lives; signing is local, so nothing is sent.
+   */
+  it('signs no body checksum into an upload or a read URL', async () => {
+    const store = createR2BlobStore(base);
+    const out = await store.presignUpload({ key: 'org/gen/2026/10/x.png', contentType: 'image/png' });
+    for (const url of [out.uploadUrl, out.readUrl]) {
+      const keys = [...new URL(url).searchParams.keys()].map((k) => k.toLowerCase());
+      expect(keys.filter((k) => k.includes('checksum'))).toEqual([]);
+    }
+  });
+
   it('signs uploads create-only, the way Azure signs with `c` and not `w`', async () => {
     /*
      * The property, not the mechanism. Azure's upload SAS carries create

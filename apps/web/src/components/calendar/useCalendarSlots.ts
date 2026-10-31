@@ -45,7 +45,7 @@ export interface CalendarSlots {
   reload: () => Promise<void>;
 }
 
-export function useCalendarSlots(genomeId: string | undefined): CalendarSlots {
+export function useCalendarSlots(genomeId: string | undefined, refreshKey = 0): CalendarSlots {
   const [slots, setSlots] = useState<CalendarSlot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +67,7 @@ export function useCalendarSlots(genomeId: string | undefined): CalendarSlots {
 
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, refreshKey]);
 
   return { slots, error, reload };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { CalendarBoard } from '@/components/calendar/CalendarBoard';
 import { CalendarMonthGrid } from '@/components/command-center/CalendarMonthGrid';
 import { PlanQueue } from '@/components/command-center/PlanQueue';
@@ -91,6 +91,10 @@ export default function CalendarPage() {
   /* The board's own flow handlers — see `BoardActions`. */
   const [actions, setActions] = useState<BoardActions | null>(null);
   const { genome } = useSelectedGenome();
+  /* Bumped when the board moves, places or regenerates posts, so the grid on
+     screen re-reads instead of showing a moved post where it was. */
+  const [scheduleRev, setScheduleRev] = useState(0);
+  const scheduleChanged = useCallback(() => setScheduleRev((n) => n + 1), []);
 
   return (
     <CalendarScreenChrome
@@ -124,6 +128,7 @@ export default function CalendarPage() {
       {layout === 'calendar' && span === 'week' ? (
         <CalendarWeekGrid
           genomeId={genome?.genomeId}
+          refreshKey={scheduleRev}
           weekOffset={weekOffset}
           onWeekOffset={setWeekOffset}
           onOpenDraft={(id) => setModal({ kind: 'review', contentItemId: id })}
@@ -133,6 +138,7 @@ export default function CalendarPage() {
       ) : layout === 'calendar' && span === 'day' ? (
         <CalendarDayQueue
           genomeId={genome?.genomeId}
+          refreshKey={scheduleRev}
           dayOffset={dayOffset}
           onDayOffset={setDayOffset}
           onOpenDraft={(id) => setModal({ kind: 'review', contentItemId: id })}
@@ -144,6 +150,7 @@ export default function CalendarPage() {
           <CalendarMonthGrid
             variant="screen"
             genomeId={genome?.genomeId}
+            refreshKey={scheduleRev}
             monthOffset={monthOffset}
             onMonthOffset={setMonthOffset}
             onOpenDraft={(id) => setModal({ kind: 'review', contentItemId: id })}
@@ -153,6 +160,7 @@ export default function CalendarPage() {
       ) : (
         <PlanQueue
           genomeId={genome?.genomeId}
+          refreshKey={scheduleRev}
           layout="table"
           title="Upcoming action queue"
           onOpen={(id) => setModal({ kind: 'review', contentItemId: id })}
@@ -169,7 +177,7 @@ export default function CalendarPage() {
         treatment the Command Center's control bars got.
       */}
       <div className="mt-[19px]">
-        <CalendarBoard layout={layout} onActions={setActions} />
+        <CalendarBoard layout={layout} onActions={setActions} onScheduleChanged={scheduleChanged} />
       </div>
 
       {/* The design's five, all in the shared shell. */}

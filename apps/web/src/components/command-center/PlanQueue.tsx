@@ -93,11 +93,14 @@ const SHOWN_BY_LAYOUT = { rows: 3, table: 4 } as const;
 export function PlanQueue({
   title = 'What is your Agent doing next?',
   genomeId,
+  refreshKey,
   onOpen,
   layout = 'rows',
   campaigns,
 }: {
   genomeId: string | undefined;
+  /** Bumped when something else changed the schedule — re-reads in place, no loader. */
+  refreshKey?: number;
   /**
    * The brand's campaigns, by id. With more than one, each row names its
    * campaign — this queue lists every campaign's posts together, and two
@@ -197,7 +200,7 @@ export function PlanQueue({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   /**
    * Publish a scheduled post now, ahead of its slot.

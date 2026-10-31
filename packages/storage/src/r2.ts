@@ -122,6 +122,19 @@ export function createR2BlobStore(opts: R2Options): BlobStore {
        * only re-minted.
        */
       forcePathStyle: true,
+      /**
+       * Checksums only where an operation requires one.
+       *
+       * Since v3.729 the SDK defaults to `WHEN_SUPPORTED`, which signs a CRC32
+       * into every presigned PUT — and a presigned URL has no body when it is
+       * signed, so the value is the checksum of *zero bytes* (`AAAAAA==`). R2
+       * then checks the uploaded file against it and refuses every real one.
+       * Measured on staging: the upload URL carried
+       * `x-amz-checksum-crc32=AAAAAA==`. The read side's `x-amz-checksum-mode`
+       * is the same default and buys nothing for a browser `<img>`.
+       */
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       credentials: { accessKeyId: opts.accessKeyId, secretAccessKey: opts.secretAccessKey },
     });
 

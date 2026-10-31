@@ -63,6 +63,7 @@ function monthLabel(d: Date): string {
 
 export function CalendarWeekGrid({
   genomeId,
+  refreshKey,
   weekOffset,
   onWeekOffset,
   onOpenDraft,
@@ -70,6 +71,8 @@ export function CalendarWeekGrid({
   onCount,
 }: {
   genomeId: string | undefined;
+  /** Bumped when something else changed the schedule — re-reads in place, no loader. */
+  refreshKey?: number;
   weekOffset: number;
   onWeekOffset: (next: number) => void;
   onOpenDraft: (contentItemId: string) => void;
@@ -77,7 +80,7 @@ export function CalendarWeekGrid({
   /** Lets the screen's header say "N posts this week" from the rows on screen. */
   onCount?: (n: number) => void;
 }) {
-  const { slots, error } = useCalendarSlots(genomeId);
+  const { slots, error } = useCalendarSlots(genomeId, refreshKey);
   const [filters, setFilters] = useState<QueueFilterState>(EMPTY_FILTERS);
 
   const start = useMemo(() => {

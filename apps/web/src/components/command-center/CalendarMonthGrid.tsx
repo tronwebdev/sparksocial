@@ -95,6 +95,7 @@ function dayKey(d: Date): string {
 
 export function CalendarMonthGrid({
   genomeId,
+  refreshKey,
   onOpenDraft,
   variant = 'panel',
   onAddPost,
@@ -102,6 +103,8 @@ export function CalendarMonthGrid({
   onMonthOffset,
 }: {
   genomeId: string | undefined;
+  /** Bumped when something else changed the schedule — re-reads in place, no loader. */
+  refreshKey?: number;
   onOpenDraft: (contentItemId: string) => void;
   /*
     Two sizes, two screens.
@@ -162,7 +165,7 @@ export function CalendarMonthGrid({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   if (!genomeId) return null;
 
